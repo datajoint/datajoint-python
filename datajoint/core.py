@@ -1,0 +1,2 @@
+class DataJointError(Exception):
+    pass
