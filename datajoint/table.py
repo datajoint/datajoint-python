@@ -2,7 +2,7 @@ import re
 
 class Table(object):
     """
-    dj.Table implements data definition functions
+    datajoint.Table implements data definition functions
     """
 
     def __init__(self, className):

@@ -21,7 +21,7 @@ def camelCase(s):
 
 class Schema(object):
     """
-    dj.Schema objects link a python module with a database schema
+    datajoint.Schema objects link a python module with a database schema
     """
     conn = None
     package = None
@@ -38,7 +38,7 @@ class Schema(object):
 
 
     def __repr__(self):
-        str = 'dj.Schema "{package}" -> "{dbname}" at {host}:{port}\n ({nTables} tables)'.format(
+        str = 'datajoint.Schema "{package}" -> "{dbname}" at {host}:{port}\n ({nTables} tables)'.format(
             package=self.package, dbname=self.dbname, 
             nTables=len(self.tables), **self.conn.connInfo)
         return str 

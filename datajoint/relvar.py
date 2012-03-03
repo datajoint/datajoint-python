@@ -5,45 +5,28 @@ from core import DataJointError
 SQLClause = collections.namedtuple('SQLClause', ('pro','src','res'))
 
 
-def whereList(lst):
-    "convert list of strings into WHERE clause"
-    ret = " AND ".join(lst)
-    ret = "WHERE "+ret if ret else ""
-    return ret
-
-
-def setdiff(a,b):
-    return [v for v in a if v not in b]
-
-
-def union(a,b):
-    return a + setdiff(b,a)
-
-
-def intersect(a,b):
-    returen [v for v in a if v in b]
-
-
-
 class Relvar(object):
     """
-    dj.Relvar provides data manipulation functions
+    datajoint.Relvar provides data manipulation functions
     """
 
-    def __init__(self, otherRel=None, **kwargs):
+    def __init__(self, arg=None, **kwargs):
         # self.table must be defined by derived class
-        if otherRel:
-            # copy constructor
-            self._conn = otherRel._conn
-            self.schema = otherRel.schema
-            self._sql = otherRel._sql
-            self.attrs = copy.copy(otherRel.attrs)
+        try:
+            self.schema = self.table.schema
+        except AttributeError:
+            # no table --> must be a copy constructor
+            if arg is None:
+                raise DataJointError(
+                    'Relvar classes must define a property named table')
+            else:
+                # copy constructor
+                self._conn = arg._conn
+                self.schema = arg.schema
+                self._sql = arg._sql
+                self.attrs = copy.copy(arg.attrs)
         else:
-            # constuct from the table object
-            try:
-                self.schema = self.table.schema
-            except AttributeError:
-                raise DataJointError('Relvar classes must define a property named table')
+            # load data from table
             self._conn = self.table.schema.conn
             self.attrs = copy.copy(self.table.info.attrs)
             self._sql = SQLClause(
@@ -51,9 +34,8 @@ class Relvar(object):
                 src = "`%s`.`%s`" % (self.schema.dbname, self.table.info.name),
                 res = [] 
                 )
-
             # in-constructor restriction for base relations
-            self(otherRel, **kwargs)
+            self(arg, **kwargs)
 
 
     @property 
@@ -72,20 +54,47 @@ class Relvar(object):
         return ret
 
 
-    def __call__(self, sqlCond=None, **kwargs):
-        """
-        In-place relational restriction by a condition.
+    @property
+    def count(self):
+        "return the number of tuples in the relation"
+        query = "SELECT count(*) FROM {src} {res}".format(
+            pro = ','.join(self._sql.pro), 
+            src = self._sql.src,
+            res = whereList(self._sql.res))
+        return self._conn.query(query).fetchall()[0][0]
 
-        Condition can be one of the following:
+
+
+    def __repr__(self):
+        ret = ("Relvar (derived)" if self.isDerived 
+            else "Base relvar "+self.table.className)+"\n"
+        inKey = True
+        for k, attr in self.attrs.items():
+            if k in self._sql.pro: 
+                if inKey and not attr.isKey:
+                    inKey = False
+                    ret+= '-----\n'
+                ret+= "%-16s: %-20s # %s\n" % (k, attr.type, attr.comment)
+        ret+= "  {count} tuples".format(count=self.count)
+        return ret
+
+
+
+    def __call__(self, *args, **kwargs):
+        """
+        In-place relational restriction by conditions.
+
+        Conditions can be one of the following:
             - a string containing an SQL condition applied to the relation
-            - a dict or a namedtuple specifying fields to match
+            - a set of named attributes with values to match
             - another relvar containing tuples to match (semijoin)
         """
-        if sqlCond is not None:
-            if isinstance(sqlCond, Relvar):
-                self._semijoin(sqlCond)
+        for arg in args:
+            if isinstance(arg, Relvar):
+                self._semijoin(arg)
             else: 
-                self._sql = self._sql._replace(res = self._sql.res + ["(" + sqlCond + ")"])
+                self._sql = self._sql._replace(
+                    res = self._sql.res + ["(" + arg + ")"])
 
         if kwargs:
             cond = ''
@@ -94,7 +103,8 @@ class Relvar(object):
                 #TODO: improve datatype handling and character escaping
                 cond += word+'`%s`="%s"' % (k, str(v))  
                 word = " AND "
-            self._sql = self._sql._replace(res = self._sql.res + ["(" + cond + ")"])
+            self._sql = self._sql._replace(
+                res = self._sql.res + ["(" + cond + ")"])
 
         return self
 
@@ -139,6 +149,32 @@ class Relvar(object):
 
         query = ','.join(['{attr}=%s'.format(attr=k)  for k in row.keys()])
         if query:
-            query = "{command} {src} SET {sets}".format(command=command, src=self._sql.src, sets=query)
+            query = "{command} {src} SET {sets}".format(
+                command=command, src=self._sql.src, sets=query)
             values = [v for v in row.values()]
             self._conn.query(query, values)
+
+
+
+
+
+################## MISCELLANEOUS HELPER FUNCTIONS ####################
+
+def whereList(lst):
+    "convert list of strings into WHERE clause"
+    ret = " AND ".join(lst)
+    ret = "WHERE "+ret if ret else ""
+    return ret
+
+
+def setdiff(a,b):
+    return [v for v in a if v not in b]
+
+
+def union(a,b):
+    return a + setdiff(b,a)
+
+
+def intersect(a,b):
+    return [v for v in a if v in b]
+
