@@ -5,5 +5,6 @@ from schema import Schema
 from table import Table
 from relvar import Relvar
 from task import TaskQueue
-__all__ = ['Connection', 'Schema', 'Table', 'Relvar', TaskQueue, 'conn', 'DataJointError']
+from mym import pack, unpack
+__all__ = ['Connection', 'Schema', 'Table', 'Relvar', TaskQueue, 'conn', 'DataJointError','pack','unpack']
 

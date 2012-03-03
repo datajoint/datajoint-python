@@ -10,17 +10,20 @@ class Relvar(object):
     datajoint.Relvar provides data manipulation functions
     """
 
-    def __init__(self, arg=None, **kwargs):
+    def __init__(self, *args, **kwargs):
         # self.table must be defined by derived class
         try:
             self.schema = self.table.schema
         except AttributeError:
             # no table --> must be a copy constructor
-            if arg is None:
+            if not args: 
                 raise DataJointError(
                     'Relvar classes must define a property named table')
             else:
+                if len(args)<>1 or not isinstance(args[0], Relvar):
+                    raise DataJointError('Relvar has no default constructor')
                 # copy constructor
+                arg = args[0]
                 self._conn = arg._conn
                 self.schema = arg.schema
                 self._sql = arg._sql
@@ -34,8 +37,8 @@ class Relvar(object):
                 src = "`%s`.`%s`" % (self.schema.dbname, self.table.info.name),
                 res = [] 
                 )
-            # in-constructor restriction for base relations
-            self(arg, **kwargs)
+            # in-constructor restriction of base relation
+            self(*args, **kwargs)
 
 
     @property 
@@ -48,7 +51,7 @@ class Relvar(object):
     def isDerived(self):
         "derived relvars cannot be inserted into"
         try:
-            ret = not self.table or len(self._sql.res)>0
+            ret = not self.table or len(self._sql.pro)<len(self.attrs)
         except AttributeError:
             ret = True
         return ret
@@ -116,6 +119,11 @@ class Relvar(object):
 
 
     def pro(self, *args):
+        """
+        relational projection: selects a subset of attributes
+        from the original relation. The primary key is always included
+        by default.
+        """
         if args<>('*'):  
             args = union(self.primaryKey, args)   
             self._sql = self._sql._replace(pro=intersect(self._sql.pro, args))
@@ -124,15 +132,12 @@ class Relvar(object):
 
 
     def fetch(self, *args):
-        self.pro(*args)
+        R = self.pro(*args)
         query = "SELECT {pro} FROM {src} {res}".format(
-            pro = ','.join(self._sql.pro),
-            src = self._sql.src, 
-            res = whereList(self._sql.res))
-        print "<QUERY>"
-        print query
-        print "</QUERY>"
-        return self._conn.query(query).fetchall()
+            pro = ','.join(R._sql.pro),
+            src = R._sql.src, 
+            res = whereList(R._sql.res))
+        return R._conn.query(query).fetchall()
 
 
 
