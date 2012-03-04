@@ -1,4 +1,5 @@
 import collections, copy
+import numpy as np
 from core import DataJointError
 
 
@@ -121,8 +122,8 @@ class Relvar(object):
     def pro(self, *args):
         """
         relational projection: selects a subset of attributes
-        from the original relation. The primary key is always included
-        by default.
+        from the original relation. 
+        The primary key is always included by default.
         """
         if args<>('*'):  
             args = union(self.primaryKey, args)   
@@ -137,7 +138,8 @@ class Relvar(object):
             pro = ','.join(R._sql.pro),
             src = R._sql.src, 
             res = whereList(R._sql.res))
-        return R._conn.query(query).fetchall()
+        result = R._conn.query(query).fetchall()
+        return result         
 
 
 
