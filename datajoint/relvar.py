@@ -1,14 +1,15 @@
 import collections, copy
 import numpy as np
 from core import DataJointError
-
+import blob
 
 SQLClause = collections.namedtuple('SQLClause', ('pro','src','res'))
 
 
 class Relvar(object):
     """
-    datajoint.Relvar provides data manipulation functions
+    relvar implements data manipulation functions:
+    retrieval, insertion, and relational algebra
     """
 
     def __init__(self, *args, **kwargs):
@@ -41,13 +42,11 @@ class Relvar(object):
             # in-constructor restriction of base relation
             self(*args, **kwargs)
 
-
     @property 
     def primaryKey(self):
         """ tuple of primary key attribute names
         """
         return [k for (k,v) in self.header.items() if v.isKey]
-
 
     @property
     def isDerived(self):
@@ -59,7 +58,6 @@ class Relvar(object):
             ret = True
         return ret
 
-
     @property
     def count(self):
         """return the number of tuples in the relation
@@ -69,7 +67,6 @@ class Relvar(object):
             src = self._sql.src,
             res = whereList(self._sql.res))
         return self._conn.query(query).fetchall()[0][0]
-
 
 
     def __repr__(self):
@@ -86,10 +83,8 @@ class Relvar(object):
         return ret
 
 
-
     def __call__(self, *args, **kwargs):
-        """
-        In-place relational restriction by conditions.
+        """  In-place relational restriction by conditions.
 
         Conditions can be one of the following:
             - a string containing an SQL condition applied to the relation
@@ -100,26 +95,21 @@ class Relvar(object):
             if isinstance(arg, Relvar):
                 self._semijoin(arg)
             else: 
-                self._sql = self._sql._replace(
-                    res = self._sql.res + ["(" + arg + ")"])
+                self._sql = self._sql._replace(res = self._sql.res + [arg])
 
         if kwargs:
             cond = ''
             word = ''
             for k, v in kwargs.iteritems():
-                #TODO: improve datatype handling and character escaping
-                cond += word+'`%s`="%s"' % (k, str(v))  
+                cond += word+'`%s`="%s"' % (k, str(v))
                 word = " AND "
-            self._sql = self._sql._replace(
-                res = self._sql.res + ["(" + cond + ")"])
+            self._sql = self._sql._replace(res = self._sql.res + [cond])
 
         return self
 
 
-
     def _semijoin(self, rel):
         raise DataJointError("Seminjoin is not yet implemented")
-
 
 
     def pro(self, *args):
@@ -134,16 +124,35 @@ class Relvar(object):
         return self
 
 
-
-    def fetch(self, *args):
+    def _fetch(self, *args):
+        """ fetch data from the database
+        """
         R = self.pro(*args)
         query = "SELECT {pro} FROM {src} {res}".format(
             pro = ','.join(R._sql.pro),
             src = R._sql.src, 
             res = whereList(R._sql.res))
         result = R._conn.query(query).fetchall()
-        return result         
+        return result
 
+
+    def _unpackTuple(self, tup):
+        """
+        unpacks blobs in a single tuple.
+        The tuple must correspond to the current projection in self._sql.pro
+        """
+        return [blob.unpack(tup[i]) if self.header[attr].isBlob and tup[i] else tup[i]
+                for i,attr in enumerate(self._sql.pro)]
+
+
+    def fetch(self, *args):
+        """
+        fetches data from the database as a list of named tuples. Blobs are unpacked
+        """
+        R = self._fetch(*args)
+        Tuple = collections.namedtuple('Tuple', self._sql.pro)
+        ret = [Tuple(*self._unpackTuple(tup)) for tup in R]
+        return ret
 
 
     def insert(self, row, command="INSERT"):
@@ -151,39 +160,35 @@ class Relvar(object):
         insert row into the table
         row must be a dict
         """
-
         if self.isDerived:
-            raise DataJointError("Cannot insert into a derived relation")
-        if command.upper() not in ("INSERT", "INSERT IGNORE", "REPLACE"):
-            raise DataJointError("Invalid insert command %s" % command)
+            raise DataJointError('Cannot insert into a derived relation')
+        if command.upper() not in ('INSERT', 'INSERT IGNORE', 'REPLACE'):
+            raise DataJointError('Invalid insert command %s' % command)
 
         query = ','.join(['{attr}=%s'.format(attr=k)  for k in row.keys()])
         if query:
-            query = "{command} {src} SET {sets}".format(
+            query = '{command} {src} SET {sets}'.format(
                 command=command, src=self._sql.src, sets=query)
             values = [v for v in row.values()]
             self._conn.query(query, values)
 
 
 
-
-
 ################## MISCELLANEOUS HELPER FUNCTIONS ####################
-
 def whereList(lst):
-    "convert list of strings into WHERE clause"
-    ret = " AND ".join(lst)
-    ret = "WHERE "+ret if ret else ""
+    """
+    convert list of conditions into a WHERE clause.
+    """
+    ret = ') AND ('.join(lst)
+    if ret:
+        ret = 'WHERE (%s)' % ret
     return ret
-
 
 def setdiff(a,b):
     return [v for v in a if v not in b]
 
-
 def union(a,b):
     return a + setdiff(b,a)
-
 
 def intersect(a,b):
     return [v for v in a if v in b]
