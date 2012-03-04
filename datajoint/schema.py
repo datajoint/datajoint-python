@@ -60,7 +60,7 @@ class Schema(object):
             '''.format(schema=self.dbname))
 
         TableTuple = collections.namedtuple('TableTuple',
-            ('name','comment','tier','attrs','level','parents','children'))
+            ('name','comment','tier','header','level','parents','children'))
 
         self.tables = collections.OrderedDict()
         for s in cur.fetchall():
@@ -69,7 +69,7 @@ class Schema(object):
                     name = s[0], 
                     comment = s[1].split('$')[0], 
                     tier = tableTiers[tierRe.match(s[0]).group(1)],
-                    attrs = collections.OrderedDict(),
+                    header = collections.OrderedDict(),
                     level = 0,
                     parents = [],
                     children = [])
@@ -102,7 +102,7 @@ class Schema(object):
                 # check for unsupported datatypes
                 if not (tup.isNumeric or tup.isString or tup.isBlob):
                     raise TypeError('Unsupported DataJoint datatype ' + tup.type)
-                self.tables[self.makeClassName(s[0])].attrs[s[1]] = tup
+                self.tables[self.makeClassName(s[0])].header[s[1]] = tup
 
 
         print 'Loading table dependencies...'

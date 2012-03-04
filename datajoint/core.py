@@ -1,2 +1,3 @@
-class DataJointError(Exception):
+import exceptions 
+class DataJointError(exceptions.StandardError):
     pass

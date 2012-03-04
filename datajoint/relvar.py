@@ -28,13 +28,13 @@ class Relvar(object):
                 self._conn = arg._conn
                 self.schema = arg.schema
                 self._sql = arg._sql
-                self.attrs = copy.copy(arg.attrs)
+                self.header = copy.copy(arg.header)
         else:
             # load data from table
             self._conn = self.table.schema.conn
-            self.attrs = copy.copy(self.table.info.attrs)
+            self.header = copy.copy(self.table.info.header)
             self._sql = SQLClause(
-                pro = self.attrs.keys(),
+                pro = self.header.keys(),
                 src = "`%s`.`%s`" % (self.schema.dbname, self.table.info.name),
                 res = [] 
                 )
@@ -44,15 +44,17 @@ class Relvar(object):
 
     @property 
     def primaryKey(self):
-        "tuple of primary key attribute names"
-        return [k for (k,v) in self.attrs.items() if v.isKey]
+        """ tuple of primary key attribute names
+        """
+        return [k for (k,v) in self.header.items() if v.isKey]
 
 
     @property
     def isDerived(self):
-        "derived relvars cannot be inserted into"
+        """ derived relvars cannot be inserted into
+        """
         try:
-            ret = not self.table or len(self._sql.pro)<len(self.attrs)
+            ret = not self.table or len(self._sql.pro)<len(self.header)
         except AttributeError:
             ret = True
         return ret
@@ -60,7 +62,8 @@ class Relvar(object):
 
     @property
     def count(self):
-        "return the number of tuples in the relation"
+        """return the number of tuples in the relation
+        """
         query = "SELECT count(*) FROM {src} {res}".format(
             pro = ','.join(self._sql.pro), 
             src = self._sql.src,
@@ -73,7 +76,7 @@ class Relvar(object):
         ret = ("Relvar (derived)" if self.isDerived 
             else "Base relvar "+self.table.className)+"\n"
         inKey = True
-        for k, attr in self.attrs.items():
+        for k, attr in self.header.items():
             if k in self._sql.pro: 
                 if inKey and not attr.isKey:
                     inKey = False

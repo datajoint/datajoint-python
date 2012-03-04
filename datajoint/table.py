@@ -46,7 +46,7 @@ class Table(object):
         ret =  "{name}({tier})   # {comment}\n".format(
             name=self.className,tier=self.info.tier,comment=self.info.comment) 
         inKey = True
-        for k, attr in self.info.attrs.items():
+        for k, attr in self.info.header.items():
             if inKey and not attr.isKey:
                 inKey = False
                 ret+= '-----\n'
