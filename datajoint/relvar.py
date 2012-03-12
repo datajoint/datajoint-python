@@ -1,5 +1,4 @@
 import collections, copy, pprint
-import numpy as np
 from core import DataJointError
 import blob
 
@@ -28,8 +27,7 @@ class Relvar(object):
         except AttributeError:
             # no table --> must be a copy constructor
             if not args: 
-                raise DataJointError(
-                    'Relvar classes must define a property named table')
+                raise DataJointError('Relvar classes must define a property named table')
             else:
                 if len(args)<>1 or not isinstance(args[0], Relvar):
                     raise DataJointError('Relvar has no default constructor')
@@ -55,7 +53,7 @@ class Relvar(object):
     def primaryKey(self):
         """ tuple of primary key attribute names
         """
-        return [k for (k,v) in self.header.items() if v.isKey]
+        return [k for (k,v) in self.header.iteritems() if v.isKey]
 
     @property
     def isDerived(self):
@@ -93,14 +91,6 @@ class Relvar(object):
     def __repr__(self):
         ret = ("\nRelvar (derived)" if self.isDerived
             else "\nBase relvar "+self.table.className)+"\n"
-        ret += '    -- ATTRIBUTES --\n'
-        inKey = True
-        for k, attr in self.header.items():
-            if k in self._sql.pro: 
-                if inKey and not attr.isKey:
-                    inKey = False
-                    ret+= '-----\n'
-                ret+= "%-16s: %-20s # %s\n" % (k, attr.type, attr.comment)
         n = self.count
         limit = max(16,min(n,20))
         ret+= '\n'+ pprint.pformat(self.fetch(limit=limit))
@@ -118,33 +108,62 @@ class Relvar(object):
             - a set of named attributes with values to match
             - another relvar containing tuples to match (semijoin)
         """
+        if kwargs:
+            # collapse named arguments into a dict
+            self(kwargs)
+
         for arg in args:
             if not isinstance(arg, Relvar):
-                # SQL expression
-                self._sql = self._sql._replace(res = self._sql.res + [arg])
+                try:
+                    # non-dict restrictors must provide method _asdict()
+                    arg = arg._asdict()
+                except AttributeError:
+                    pass
+                
+                try:
+                    cond = ''
+                    word = '' 
+                    for k, v in arg.iteritems():
+                        if self.header.has_key(k):
+                            cond += word+'`%s`="%s"' % (k, str(v))
+                            word = " AND "
+                    self._sql = self._sql._replace(res = self._sql.res + [cond])
+                except AttributeError:
+                    # if the argument does not quack like a dict, assume it's an SQL string
+                    self._sql = self._sql._replace(res = self._sql.res + [arg])
             else:
                 # relational semijoin
                 commonAttrs = intersect(self.header.keys(), arg.header.keys())
                 if commonAttrs:
-                    arg = Relvar(arg).pro(commonAttrs)
+                    commonAttrs = "`"+"`,`".join(commonAttrs)+"`"
                     self._sql = self._sql._replace(res = self._sql.res + [
-                        '(`{commonAttrs}`) IN (SELECT {pro} FROM {src} {res})'.format(
-                            commonAttrs = '`,`'.join(commonAttrs),
-                            pro = ','.join(arg._sql.pro),
+                        '({commonAttrs}) IN (SELECT {pro} FROM {src} {res})'.format(
+                            commonAttrs = commonAttrs,
+                            pro = commonAttrs,
                             src = arg._sql.src,
                             res = whereList(arg._sql.res))])
-            
-        if kwargs:
-            cond = ''
-            word = ''
-            for k, v in kwargs.iteritems():
-                cond += word+'`%s`="%s"' % (k, str(v))
-                word = " AND "
-            self._sql = self._sql._replace(res = self._sql.res + [cond])
-
         return self
 
+    
 
+    def __sub__(self, arg):
+        """
+        relational antijoin
+        """
+        rel = Relvar(self)   # make a copy
+        commonAttrs = intersect(rel.header.keys(), arg.header.keys())
+        if commonAttrs:
+            commonAttrs = "`"+"`,`".join(commonAttrs)+"`"
+            rel._sql = rel._sql._replace(res = rel._sql.res + [
+                '({commonAttrs}) NOT IN (SELECT {pro} FROM {src} {res})'.format(
+                    commonAttrs = commonAttrs,
+                    pro = commonAttrs,
+                    src = arg._sql.src,
+                    res = whereList(arg._sql.res))])
+        return rel
+
+    
+            
     def pro(self, *args):
         """
         relational projection: selects a subset of attributes
@@ -162,23 +181,18 @@ class Relvar(object):
         """
         relational join
         """
-        R1 = Relvar(self)
-
-        src = ""
-        if R1.isDerived or R1._sql.res:
-            src += '(' + R1.sql + ') as ' + newAlias()
+        if self.isDerived or self._sql.res:
+            src = '(' + self.sql + ') as ' + newAlias()
         else:
-            src += R1._sql.src
+            src = self._sql.src
         src += " NATURAL JOIN "
-        if R2.isDerived or R1._sql.res:
+        if R2.isDerived or R2._sql.res:
             src += '(' + R2.sql + ') as ' + newAlias()
         else:
             src += R2._sql.src
-
-        # copy the new fields
+        R1 = Relvar(self)
         for k in setdiff(R2.header.keys(), R1.header.keys()):
             R1.header[k] = R2.header[k]
-
         R1._sql = SQLClause(
             pro = R1.header.keys(),
             res = [],
@@ -251,9 +265,7 @@ class Relvar(object):
 
 ################## MISCELLANEOUS HELPER FUNCTIONS ####################
 def whereList(lst):
-    """
-    convert list of conditions into a WHERE clause.
-    """
+    """convert list of conditions into a WHERE clause."""
     ret = ') AND ('.join(lst)
     if ret:
         ret = 'WHERE (%s)' % ret
@@ -269,8 +281,8 @@ def intersect(a,b):
     return [v for v in a if v in b]
 
 aliasNum = 1
-
 def newAlias():
+    """make an alias table name"""
     global aliasNum
     aliasNum += 1
-    return "rrr"+str(aliasNum)
+    return "`$dj%x`" % aliasNum
