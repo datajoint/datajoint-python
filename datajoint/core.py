@@ -1,3 +1,3 @@
 import exceptions 
-class DataJointError(exceptions.StandardError):
+class DataJointError(exceptions.Exception):
     pass

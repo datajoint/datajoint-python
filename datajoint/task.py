@@ -4,7 +4,7 @@ import time
 
 
 def _ping():
-    print "The task thread is running" 
+    print "The task thread is running"
 
 
 class TaskQueue(object):
@@ -18,21 +18,19 @@ class TaskQueue(object):
 
     Datajoint applications may uses a task queue for delayed inserts.
     """
-
     def __init__(self):
         self.queue = Queue.Queue()
         self.thread = threading.Thread(target=self._worker)
         self.thread.daemon = True
         self.thread.start()
 
-
     def submit(self, func=_ping, *args):
-        "Submit task for execution"
+        """Submit task for execution"""
         self.queue.put((func, args))
 
 
     def quit(self, timeout=3.0):
-        "Wait until all tasks finish"
+        """Wait until all tasks finish"""
         self.queue.put('quit')
         self.thread.join(timeout)
         if self.thread.isAlive():
@@ -48,7 +46,8 @@ class TaskQueue(object):
             fun, args = msg
             try:
                 fun(*args)
-            except Exception, e:
+            except Exception as e:
                 print "Exception in the task thread:"
                 print e
             self.queue.task_done()
+

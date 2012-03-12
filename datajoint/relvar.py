@@ -110,6 +110,9 @@ class Relvar(object):
         """
         if kwargs:
             # collapse named arguments into a dict
+            unknownAttrs = setdiff(kwargs.items(), self.header.iterms())
+            if unknownAttrs:
+                raise DataJointError("unknown attributes " + str(unknownAttrs))
             self(kwargs)
 
         for arg in args:
@@ -247,7 +250,7 @@ class Relvar(object):
     def insert(self, row, command="INSERT"):
         """
         insert row into the table
-        row must be a dict
+        row must be a dict or must define method _asdict
         """
         if self.isDerived:
             raise DataJointError('Cannot insert into a derived relation')
@@ -255,6 +258,10 @@ class Relvar(object):
             raise DataJointError('Invalid insert command %s' % command)
 
         query = ','.join(['{attr}=%s'.format(attr=k)  for k in row.keys()])
+        try:
+            row = row._asdict()
+        except AttributeError:
+            pass
         if query:
             query = '{command} {src} SET {sets}'.format(
                 command=command, src=self._sql.src, sets=query)

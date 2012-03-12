@@ -34,7 +34,7 @@ class Connection:
 
 
     def query(self, query, args=(), autocommit=False):
-        "execute the specified query and return its cursor"
+        """execute the specified query and return its cursor"""
         cur = self._conn.cursor()
         cur.execute(query, args)
         if autocommit:

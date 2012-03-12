@@ -1,5 +1,7 @@
 import re, collections
 from conn import conn as djconn
+import networkx as nx
+import matplotlib.pyplot as plt
 
 # table tiers are encoded by naming convention as follows:
 tableTiers = {
@@ -127,15 +129,30 @@ class Schema(object):
             self.tables[self.makeClassName(s[0])].parents.append(self.makeClassName(s[1]))
             self.tables[self.makeClassName(s[1])].children.append(self.makeClassName(s[0]))
 
-        # compute hierarchy levels 
-        changed = True
-        while changed:
-            changed = False
-            for (k,v) in self.tables.items():
-                if v.parents:
-                    newLevel = max([self.tables[p].level for p in v.parents])+1
-                    if newLevel>1000:
-                        raise(Exception('Found a cyclical dependency'))
-                    if self.tables[k].level < newLevel:
-                        changed = True
-                        self.tables[k] = self.tables[k]._replace(level = newLevel)
+        self.graph = nx.DiGraph()
+        for k,v in self.tables.iteritems():
+            for child in v.children:
+                self.graph.add_edge(k,child)
+
+
+    def erd(self, prog='dot'):
+        """
+        plot the schema's entity relationship diagram (ERD).
+        The layout programs can be 'dot' (default), 'neato', 'fdp', 'sfdp', 'circo', 'twopi'
+        """
+        def tableList(tier):
+            return [i for i in self.graph if self.tables[i].tier==tier]
+        pos=nx.graphviz_layout(self.graph,prog=prog,args='')
+        plt.figure(figsize=(8,8))
+        nx.draw_networkx_edges(self.graph,pos, alpha=0.3)
+        nx.draw_networkx_nodes(self.graph, pos, nodelist=tableList('manual'),
+                               node_color='g', node_size=200, alpha=0.3)
+        nx.draw_networkx_nodes(self.graph, pos, nodelist=tableList('computed'),
+                               node_color='r', node_size=200, alpha=0.3)
+        nx.draw_networkx_nodes(self.graph, pos, nodelist=tableList('imported'),
+                               node_color='b', node_size=200, alpha=0.3)
+        nx.draw_networkx_nodes(self.graph, pos, nodelist=tableList('lookup'),
+                               node_color='gray', node_size=120, alpha=0.3)
+        nx.draw_networkx_labels(self.graph,pos,font_weight='bold',font_size=9)
+        nx.draw(self.graph,pos,alpha=0,with_labels=False)
+        plt.show()
