@@ -1,9 +1,18 @@
-import collections, copy
+import collections, copy, pprint
 import numpy as np
 from core import DataJointError
 import blob
 
 SQLClause = collections.namedtuple('SQLClause', ('pro','src','res'))
+
+
+class NamedTupleList(list):
+    """
+    NamedTupleList is a list of named tuples. It provides dotted attribute lookup for the list as a whole.
+    """
+    def __getattribute__(self, attr):
+        return [v.__getattribute__(attr) for v in self]
+
 
 
 class Relvar(object):
@@ -50,13 +59,25 @@ class Relvar(object):
 
     @property
     def isDerived(self):
-        """ derived relvars cannot be inserted into
+        """
+        derived relvars cannot be inserted into
         """
         try:
             ret = not self.table or len(self._sql.pro)<len(self.header)
         except AttributeError:
             ret = True
         return ret
+
+    @property
+    def sql(self):
+        """
+        the full SQL fetch statement
+        """
+        return "SELECT {pro}\n   FROM {src}\n   {res}".format(
+            pro = "`"+"`,`".join(self._sql.pro) + "`",
+            src = self._sql.src,
+            res = whereList(self._sql.res))
+
 
     @property
     def count(self):
@@ -70,8 +91,9 @@ class Relvar(object):
 
 
     def __repr__(self):
-        ret = ("Relvar (derived)" if self.isDerived 
-            else "Base relvar "+self.table.className)+"\n"
+        ret = ("\nRelvar (derived)" if self.isDerived
+            else "\nBase relvar "+self.table.className)+"\n"
+        ret += '    -- ATTRIBUTES --\n'
         inKey = True
         for k, attr in self.header.items():
             if k in self._sql.pro: 
@@ -79,7 +101,12 @@ class Relvar(object):
                     inKey = False
                     ret+= '-----\n'
                 ret+= "%-16s: %-20s # %s\n" % (k, attr.type, attr.comment)
-        ret+= "  {count} tuples".format(count=self.count)
+        n = self.count
+        limit = max(16,min(n,20))
+        ret+= '\n'+ pprint.pformat(self.fetch(limit=limit))
+        if limit < n:
+            ret += '\n  ...'
+        ret+= "\n {count} tuples".format(count=self.count)
         return ret
 
 
@@ -92,11 +119,21 @@ class Relvar(object):
             - another relvar containing tuples to match (semijoin)
         """
         for arg in args:
-            if isinstance(arg, Relvar):
-                self._semijoin(arg)
-            else: 
+            if not isinstance(arg, Relvar):
+                # SQL expression
                 self._sql = self._sql._replace(res = self._sql.res + [arg])
-
+            else:
+                # relational semijoin
+                commonAttrs = intersect(self.header.keys(), arg.header.keys())
+                if commonAttrs:
+                    arg = Relvar(arg).pro(commonAttrs)
+                    self._sql = self._sql._replace(res = self._sql.res + [
+                        '(`{commonAttrs}`) IN (SELECT {pro} FROM {src} {res})'.format(
+                            commonAttrs = '`,`'.join(commonAttrs),
+                            pro = ','.join(arg._sql.pro),
+                            src = arg._sql.src,
+                            res = whereList(arg._sql.res))])
+            
         if kwargs:
             cond = ''
             word = ''
@@ -108,32 +145,80 @@ class Relvar(object):
         return self
 
 
-    def _semijoin(self, rel):
-        raise DataJointError("Seminjoin is not yet implemented")
-
-
     def pro(self, *args):
         """
         relational projection: selects a subset of attributes
         from the original relation. 
         The primary key is always included by default.
         """
-        if args<>('*'):  
+        if args<>('*',):
             args = union(self.primaryKey, args)   
             self._sql = self._sql._replace(pro=intersect(self._sql.pro, args))
         return self
 
 
-    def _fetch(self, *args):
-        """ fetch data from the database
+
+    def __mul__(self, R2):
         """
-        R = self.pro(*args)
-        query = "SELECT {pro} FROM {src} {res}".format(
-            pro = ','.join(R._sql.pro),
-            src = R._sql.src, 
-            res = whereList(R._sql.res))
-        result = R._conn.query(query).fetchall()
+        relational join
+        """
+        R1 = Relvar(self)
+
+        src = ""
+        if R1.isDerived or R1._sql.res:
+            src += '(' + R1.sql + ') as ' + newAlias()
+        else:
+            src += R1._sql.src
+        src += " NATURAL JOIN "
+        if R2.isDerived or R1._sql.res:
+            src += '(' + R2.sql + ') as ' + newAlias()
+        else:
+            src += R2._sql.src
+
+        # copy the new fields
+        for k in setdiff(R2.header.keys(), R1.header.keys()):
+            R1.header[k] = R2.header[k]
+
+        R1._sql = SQLClause(
+            pro = R1.header.keys(),
+            res = [],
+            src = src
+        )
+        return R1
+
+
+
+    
+    def fetch(self, *args, **kwargs):
+        """
+        fetches data from the database as a list of named tuples. Blobs are unpacked
+        """
+        rel = Relvar(self)
+        R = rel._fetch(*args, **kwargs)
+        Tuple = collections.namedtuple('Tuple', rel._sql.pro)
+        ret = [Tuple(*rel._unpackTuple(tup)) for tup in R]
+        return NamedTupleList(ret)
+
+    
+
+    def _fetch(self, *args, **kwargs):
+        """
+        Project in place and fetch data from the database
+        """
+        self.pro(*args)
+        query = self.sql
+        try:
+            query += ' LIMIT %d, %d' % kwargs['limit']
+        except KeyError:
+            #no limit specified - do nothing
+            pass
+        except TypeError:
+            # only the number of fields is specified
+            query += ' LIMIT %d' % kwargs['limit']
+            
+        result = self._conn.query(query).fetchall()
         return result
+
 
 
     def _unpackTuple(self, tup):
@@ -143,17 +228,7 @@ class Relvar(object):
         """
         return [blob.unpack(tup[i]) if self.header[attr].isBlob and tup[i] else tup[i]
                 for i,attr in enumerate(self._sql.pro)]
-
-
-    def fetch(self, *args):
-        """
-        fetches data from the database as a list of named tuples. Blobs are unpacked
-        """
-        R = self._fetch(*args)
-        Tuple = collections.namedtuple('Tuple', self._sql.pro)
-        ret = [Tuple(*self._unpackTuple(tup)) for tup in R]
-        return ret
-
+    
 
     def insert(self, row, command="INSERT"):
         """
@@ -193,3 +268,9 @@ def union(a,b):
 def intersect(a,b):
     return [v for v in a if v in b]
 
+aliasNum = 1
+
+def newAlias():
+    global aliasNum
+    aliasNum += 1
+    return "rrr"+str(aliasNum)

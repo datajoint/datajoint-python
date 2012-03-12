@@ -21,14 +21,14 @@ def camelCase(s):
 
 class Schema(object):
     """
-    datajoint.Schema objects link a python module with a database schema
+    datajoint.Schema objects link a python module (package) with a database schema
     """
     conn = None
     package = None
     dbname = None
 
 
-    def __init__(self, package, dbname, conn=None):
+    def __init__(self, package=package, dbname=dbname, conn=None):
         if conn is None:
             conn = djconn()
         self.conn = conn
@@ -38,13 +38,17 @@ class Schema(object):
 
 
     def __repr__(self):
-        str = 'datajoint.Schema "{package}" -> "{dbname}" at {host}:{port}\n ({nTables} tables)'.format(
-            package=self.package, dbname=self.dbname, 
+        ret = 'datajoint.Schema "{package}" -> "{dbname}" at {host}:{port}\n {tableList}\n ({nTables} tables)'.format(
+            package=self.package, dbname=self.dbname,
+            tableList = '\n'.join(self.tables.keys()),
             nTables=len(self.tables), **self.conn.connInfo)
-        return str 
+        return ret
 
 
     def makeClassName(self, tableName):
+        """
+        make a class name from the table name.
+        """
         return self.package + '.' + camelCase(tableName)
 
 
