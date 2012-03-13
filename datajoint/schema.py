@@ -1,5 +1,6 @@
 import re, collections
 from conn import conn as djconn
+from core import DataJointError
 import networkx as nx
 import matplotlib.pyplot as plt
 
@@ -95,7 +96,7 @@ class Schema(object):
                 column_type, (is_nullable="YES") AS isnullable,
                 column_comment, column_default
             FROM information_schema.columns
-            WHERE (table_schema, column_name) in {allTables}
+            WHERE (table_schema, table_name) in {allTables}
             '''.format(allTables=allTables))
 
         FieldTuple = collections.namedtuple('FieldTuple',
@@ -114,7 +115,7 @@ class Schema(object):
             )
             # check for unsupported datatypes
             if not (tup.isNumeric or tup.isString or tup.isBlob):
-                raise TypeError('Unsupported DataJoint datatype ' + tup.type)
+                raise DataJointError('Unsupported DataJoint datatype ' + tup.type)
             self.tables[self.conn.makeClassName(s[0],s[1])].header[s[2]] = tup
 
 
