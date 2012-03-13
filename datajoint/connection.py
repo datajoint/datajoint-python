@@ -1,13 +1,11 @@
 import pymysql
+import re
 
 
 class Connection:
     """
     dj.Connection objects link a python package with a database schema
     """
-    connInfo = []
-    _conn = []
-
 
     def __init__(self, host, user, passwd, initFun):
         try:
@@ -20,8 +18,20 @@ class Connection:
         if self._conn.ping():
             print "Connected", user+'@'+host+':'+str(port)
         self._conn.autocommit(True)
+        self.packages = {}
 
+        
+    def makeClassName(self, dbname, tableName):
+        """
+        make a class name from the table name.
+        """
+        try:
+            ret = self.packages[dbname] + '.' + camelCase(tableName)
+        except KeyError:
+            ret = '$' + dbname + '.' + camelCase(tableName)
+        return ret
 
+        
     def __repr__(self):
         connected = "connected" if self._conn.ping() else "disconnected"
         return "DataJoint connection ({connected}) {user}@{host}:{port}".format(
@@ -52,3 +62,11 @@ class Connection:
 
     def commitTransaction(self):
         self.query('COMMIT')
+
+
+
+def camelCase(s):
+    def toUpper(matchobj):
+        return matchobj.group(0)[-1].upper()
+    return re.sub('(^|[_\W])+[a-zA-Z]', toUpper, s)
+

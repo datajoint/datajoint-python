@@ -51,7 +51,8 @@ class Relvar(object):
 
     @property 
     def primaryKey(self):
-        """ tuple of primary key attribute names
+        """
+        tuple of primary key attribute names
         """
         return [k for (k,v) in self.header.iteritems() if v.isKey]
 
