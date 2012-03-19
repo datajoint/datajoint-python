@@ -356,7 +356,6 @@ class Relvar(object):
         if query:
             query = '{command} {src} SET {sets}'.format(
                 command=command, src=self._sql.src, sets=query)
-            # pack blobs
             values = [makeNice(row,k) for k in attrs]
             self._conn.query(query, values)
 
