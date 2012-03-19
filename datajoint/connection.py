@@ -43,12 +43,10 @@ class Connection:
         self._conn.close()
 
 
-    def query(self, query, args=(), autocommit=False):
+    def query(self, query, args=()):
         """execute the specified query and return its cursor"""
         cur = self._conn.cursor()
         cur.execute(query, args)
-        if autocommit:
-            _conn.commit()
         return cur
 
 

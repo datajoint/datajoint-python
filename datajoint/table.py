@@ -51,6 +51,18 @@ class Table(object):
         """
         return self.info.header
 
+    @property
+    def distinguishing(self):
+        """
+        primary key fields that are not found in any of the parents
+        """
+        ret = self.primaryKey
+        for parent in self.parents:
+            for attr in Table(parent).primaryKey:
+                if attr in ret:
+                    ret.remove(attr)
+        return ret
+
 
     @property 
     def declaration(self):
@@ -63,10 +75,10 @@ class Table(object):
             raise DataJointError('Table %s has no class' % self.className)
         return cl.__doc__
 
-
     @property
     def primaryKey(self):
         return [k for (k,v) in self.header.iteritems() if v.isKey]
+
 
     @property 
     def info(self):

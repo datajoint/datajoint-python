@@ -1,8 +1,9 @@
 import collections, copy, pprint
 from core import DataJointError
+from schema import HeaderEntry
 import blob
 
-SQLClause = collections.namedtuple('SQLClause', ('pro','src','res'))
+SQLClause = collections.namedtuple('SQLClause', ('pro','src','res','groupBy'))
 
 
 class NamedTupleList(list):
@@ -44,7 +45,8 @@ class Relvar(object):
             self._sql = SQLClause(
                 pro = self.header.keys(),
                 src = "`%s`.`%s`" % (self.schema.dbname, self.table.info.name),
-                res = [] 
+                res = [],
+                groupBy = []
                 )
             # in-constructor restriction of base relation
             self(*args, **kwargs)
@@ -62,20 +64,48 @@ class Relvar(object):
         derived relvars cannot be inserted into
         """
         try:
-            ret = not self.table or len(self._sql.pro)<len(self.header)
+            ret = self._sql.groupBy or not self.table or len(self._sql.pro)<len(self.header)
         except AttributeError:
             ret = True
         return ret
+
+    
+    def autoincrement(self, key={}, attr=None):
+        """
+        Complete the provided key with the missing field's new value that is not found in the table.
+        The missing attribute name can be supplied as argument attr or (by default) taken from the primary key.
+        """
+        if self.isDerived or len(self._sql.res)>0:
+            raise DataJointError('Cannot generate a new key for a derived relation')
+        if attr is None:
+            # take the first missing attribute from the primary key
+            attr = setdiff(self.table.primaryKey, key)
+            if not attr:
+                raise DataJointError('The supplied key has no missing attributes')
+            attr=attr[0]
+        # retrieve the next value. TODO: replace with server-side computation
+        v = self(key).fetchAttr(attr)
+        try:
+            v = max(v)+1   # autoincrement
+        except ValueError:
+            v = 0    # start with 0
+        key = key.copy()
+        key[attr] = v
+        return key
+    
 
     @property
     def sql(self):
         """
         the full SQL fetch statement
         """
-        return "SELECT {pro}\n   FROM {src}\n   {res}".format(
-            pro = "`"+"`,`".join(self._sql.pro) + "`",
+        ret = "SELECT {pro}\n   FROM {src}\n   {res}".format(
+            pro = ",".join([self.header[attr].expression+'`'+attr+'`' for attr in self._sql.pro]),
             src = self._sql.src,
             res = whereList(self._sql.res))
+        if self._sql.groupBy:
+            ret += ' GROUP BY `' + '`,`'.join(self._sql.groupBy)
+        return ret
 
 
     @property
@@ -102,13 +132,14 @@ class Relvar(object):
 
 
     def __call__(self, *args, **kwargs):
-        """  In-place relational restriction by conditions.
+        """  Relational restriction by conditions.
 
         Conditions can be one of the following:
             - a string containing an SQL condition applied to the relation
             - a set of named attributes with values to match
             - another relvar containing tuples to match (semijoin)
         """
+        self = copy.copy(self)
         if kwargs:
             # collapse named arguments into a dict
             unknownAttrs = setdiff(kwargs.items(), self.header.iterms())
@@ -206,6 +237,43 @@ class Relvar(object):
 
 
 
+
+    def extend(self, **kwargs):
+        ret = Relvar(self)
+        for k,v in kwargs.items():
+            ret.header[k] = HeaderEntry(
+                isKey = False,
+                type = '',
+                isNullable = True,
+                comment = '',
+                default = '',
+                isNumeric = False,
+                isString = False,
+                isBlob = False,
+                expression = '(' + v + ') as '
+            )
+            ret._sql = ret._sql._replace(pro=ret._sql.pro + [k])
+        return ret
+
+
+
+    def aggregate(self, other, **kwargs):
+        """
+        relational aggregation operator
+        """
+        ret = extend(self*other, **kwargs)
+        ret._sql = ret._sql._replace(groupBy = setdiff(ret.primaryKey, other.primaryKey))
+
+
+
+
+
+    def fetchAttr(self, attr):
+        """
+        fetch values from a single column
+        """
+        return eval('self.fetch(attr).%s' % attr)
+
     
     def fetch(self, *args, **kwargs):
         """
@@ -252,22 +320,46 @@ class Relvar(object):
         """
         insert row into the table
         row must be a dict or must define method _asdict
+        If row has extra fields, they are ignored.
         """
+        def makeNice(row,k):
+            """
+            prepare vallue from row to be inserted
+            """
+            v = row[k]
+            if self.header[k].isBlob:
+                v = blob.pack(v)
+            else:
+                try:
+                    v = v.tolist()
+                except AttributeError:
+                    pass
+            return v
+            
         if self.isDerived:
             raise DataJointError('Cannot insert into a derived relation')
         if command.upper() not in ('INSERT', 'INSERT IGNORE', 'REPLACE'):
             raise DataJointError('Invalid insert command %s' % command)
 
-        query = ','.join(['{attr}=%s'.format(attr=k)  for k in row.keys()])
         try:
             row = row._asdict()
         except AttributeError:
             pass
+
+        try:
+            attrs = row.keys()
+        except AttributeError:
+            raise DataJointError('insert tuple must be a dict or must have method _asdict()')
+
+        attrs = [k for k in attrs if k in self.header.keys()]
+        query = ','.join(['{attr}=%s'.format(attr=k) for k in attrs])
         if query:
             query = '{command} {src} SET {sets}'.format(
                 command=command, src=self._sql.src, sets=query)
-            values = [v for v in row.values()]
+            # pack blobs
+            values = [makeNice(row,k) for k in attrs]
             self._conn.query(query, values)
+
 
 
 

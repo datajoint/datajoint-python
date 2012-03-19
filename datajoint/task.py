@@ -24,10 +24,12 @@ class TaskQueue(object):
         self.thread.daemon = True
         self.thread.start()
 
+    def empty(self):
+        return self.queue.empty()
+
     def submit(self, func=_ping, *args):
         """Submit task for execution"""
         self.queue.put((func, args))
-
 
     def quit(self, timeout=3.0):
         """Wait until all tasks finish"""
@@ -35,7 +37,6 @@ class TaskQueue(object):
         self.thread.join(timeout)
         if self.thread.isAlive():
             raise Exception('Task thread is still executing. Try quitting again.')
-
 
     def _worker(self):
         while True:
@@ -50,4 +51,5 @@ class TaskQueue(object):
                 print "Exception in the task thread:"
                 print e
             self.queue.task_done()
+
 

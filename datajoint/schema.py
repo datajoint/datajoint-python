@@ -15,6 +15,10 @@ tableTiers = {
 # regular expression to match valid table names
 tierRe = re.compile('^(|#|_|__)[a-z]\w+$')
 
+
+HeaderEntry = collections.namedtuple('HeaderEntry',
+    ('isKey','type','isNullable','comment','default','isNumeric','isString','isBlob','expression'))
+
 class Schema(object):
     """
     datajoint.Schema objects link a python module (package) with a database schema
@@ -99,11 +103,8 @@ class Schema(object):
             WHERE (table_schema, table_name) in {allTables}
             '''.format(allTables=allTables))
 
-        FieldTuple = collections.namedtuple('FieldTuple',
-            ('isKey','type','isNullable','comment','default','isNumeric','isString','isBlob'))
-
         for s in cur.fetchall():
-            tup = FieldTuple(
+            tup = HeaderEntry(
                 isKey = s[3]!=0,
                 type = s[4],
                 isNullable = s[5]!=0,
@@ -111,7 +112,8 @@ class Schema(object):
                 default = s[7],
                 isNumeric = None != re.match('^((tiny|small|medium|big)?int|decimal|double|float)', s[4]),
                 isString = None != re.match('^((var)?char|enum|date|timestamp)', s[4]),
-                isBlob = None != re.match('^(tiny|medium|long)?blob', s[4])
+                isBlob = None != re.match('^(tiny|medium|long)?blob', s[4]),
+                expression = ''
             )
             # check for unsupported datatypes
             if not (tup.isNumeric or tup.isString or tup.isBlob):
@@ -120,7 +122,7 @@ class Schema(object):
 
 
 
-    def erd(self, prog='dot', subset=None):
+    def erd(self, subset=None, prog='dot'):
         """
         plot the schema's entity relationship diagram (ERD).
         The layout programs can be 'dot' (default), 'neato', 'fdp', 'sfdp', 'circo', 'twopi'
