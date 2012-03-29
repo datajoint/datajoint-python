@@ -17,8 +17,39 @@ tierRe = re.compile('^(|#|_|__)[a-z]\w+$')
 
 
 HeaderEntry = collections.namedtuple('HeaderEntry',
-    ('isKey','type','isNullable','comment','default','isNumeric','isString','isBlob','expression'))
+    ('isKey','type','isNullable','comment','default','isNumeric','isString','isBlob','alias'))
 
+class Header(collections.OrderedDict):
+    @property
+    def attrList(self):
+        """
+        make an SQL list of attributes for header, expanding field aliases.
+        """
+        assert self
+        return ','.join(["(%s) as `%s`" % (v.alias, k) if v.alias else "`%s`" % k for k,v in self.items()])
+
+    def clearAliases(self):
+        """
+        remove aliases from attributes
+        """
+        for k,v in self.items():
+            if v.alias:
+                self[k] = v._replace(alias=None)
+
+    def pro(self, attrs):
+        """
+        project header onto a list of attributes.
+        Alway include primary keys.
+        """
+        if '*' in attrs:
+            ret = Header(self)
+        else:
+            ret = Header({k:v for k,v in self.items() if k in attrs or v.isKey})
+        # TODO: add computed and renamed attributes
+        return ret
+    
+
+    
 class Schema(object):
     """
     datajoint.Schema objects link a python module (package) with a database schema
@@ -35,7 +66,7 @@ class Schema(object):
         conn.packages[dbname] = package
         self.package = package 
         self.dbname = dbname
-        self.reload()
+        self.reload()    # TODO: consider delayed loading
 
 
     def __repr__(self):
@@ -78,7 +109,7 @@ class Schema(object):
                 name = s[1],
                 comment = s[2].split('$')[0],
                 tier = tableTiers[tierRe.match(s[1]).group(1)],
-                header = collections.OrderedDict(),
+                header = Header(),
                 parents = [],
                 children = [])
 
@@ -113,7 +144,7 @@ class Schema(object):
                 isNumeric = None != re.match('^((tiny|small|medium|big)?int|decimal|double|float)', s[4]),
                 isString = None != re.match('^((var)?char|enum|date|timestamp)', s[4]),
                 isBlob = None != re.match('^(tiny|medium|long)?blob', s[4]),
-                expression = ''
+                alias = None
             )
             # check for unsupported datatypes
             if not (tup.isNumeric or tup.isString or tup.isBlob):

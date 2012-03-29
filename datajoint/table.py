@@ -19,7 +19,7 @@ class Table(object):
     def schema(self):
         """schema object of the base relvar"""
         return self.module.schema
-
+    
     @property 
     def module(self):
         """python module containing the base relvar"""
