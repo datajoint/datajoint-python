@@ -66,6 +66,7 @@ class GeneralRelvar(object):
 
     def __call__(self, *args, **kwargs):
         ret = copy.copy(self)
+        ret._restrictions = list(self._restrictions)
         ret.restrict(*args, **kwargs)
         return ret
 

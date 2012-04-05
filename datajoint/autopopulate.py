@@ -43,7 +43,6 @@ class AutoPopulate:
         for which there is not already a tuple in rel.
         """
 
-        callback = self.makeTuples
         self.conn.cancelTransaction()
 
         # enumerate unpopulated keys
@@ -61,14 +60,15 @@ class AutoPopulate:
                 errKeys, errors = [], []
             for key in unpopulated.fetch():
                 self.conn.startTransaction()
-                if self(key).count:  # already populated
+                n = self(key).count
+                if n:  # already populated
                     self.conn.cancelTransaction()
                 else:
                     print 'Populating:'
                     pprint.pprint(key)
 
                     try:
-                        callback(key)
+                        self.makeTuples(key)
                     except Exception as e:
                         self.conn.cancelTransaction()
                         if not catchErrors:
