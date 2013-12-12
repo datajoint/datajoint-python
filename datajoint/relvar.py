@@ -252,7 +252,7 @@ class BaseRelvar(GeneralRelvar):
         """
         if attr is None:
             # take the first missing attribute from the primary key
-            attr = setdiff(self.table.primaryKey, key)
+            attr = setdiff(self._table.primaryKey, key)
             if not attr:
                 raise DataJointError('The supplied key has no missing attributes')
             attr=attr[0]
