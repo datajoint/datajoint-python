@@ -1,2 +1,6 @@
 .ipynb_checkpoints/
+*/.*.swp
+*/.*.swo
+*/*.pyc
+.DS_Store
 
