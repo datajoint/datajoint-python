@@ -10,10 +10,12 @@ tableTiers = {
     '#':'lookup',     # lookup tables start with a #
     '_':'imported',   # imported tables start with _
     '__':'computed'   # computed tables start with __
+    '~':'job'         # job tables start with ~
 }
 
 # regular expression to match valid table names
-tierRe = re.compile('^(|#|_|__)[a-z]\w+$')
+sqlPtrn = re.compile(r'^(#|_|__|~)?[a-z][a-z0-9]*$')
+tierPtrn = re.compile(r'^(|#|_|__|~)[a-z]\w+$')
 
 
 HeaderEntry = collections.namedtuple('HeaderEntry',
@@ -47,26 +49,40 @@ class Header(collections.OrderedDict):
             ret = Header({k:v for k,v in self.items() if k in attrs or v.isKey})
         # TODO: add computed and renamed attributes
         return ret
-    
 
-    
+
+
 class Schema(object):
     """
     datajoint.Schema objects link a python module (package) with a database schema
     """
-    conn = None
-    package = None
-    dbname = None
+    #conn = None
+    #package = None
+    #dbname = None
+
+    @property
+    def headers(self):
+        self.reload() # load headers if necessary
+        return self._headers
+
+    @property
+    def tableNames(self):
+        self.reload() # load table names if necessary
+        return self._tableNames
 
 
-    def __init__(self, package=package, dbname=dbname, conn=None):
+
+    def __init__(self, package, dbname, conn=None):
         if conn is None:
-            conn = djconn()
+            conn = djconn() # open up new connection
         self.conn = conn
-        conn.packages[dbname] = package
-        self.package = package 
+        conn.packages[dbname] = package # register this schema
+        self.package = package
         self.dbname = dbname
-        self.reload()    # TODO: consider delayed loading
+        self._loaded = False # indicates loading status
+        self._headers = {}
+        self._tableNames = {}
+        #self.reload()    # TODO: consider delayed loading
 
 
     def __repr__(self):
@@ -78,12 +94,31 @@ class Schema(object):
 
 
 
-    def reload(self):
+    def reload(self, force=False):
         """
-        load table definitions and dependencies   
+        load table definitions and dependencies
         """
+        if self.loaded and not force:
+            return # nothing to do here
 
-        print 'Loading table dependencies...'
+        # Cleanup beofre reloading
+        self._loaded = True
+        self.conn.clearDependencies(self)
+        self._headers.clear()
+        self._tablesNames.clear()
+
+        if True: #TODO replace this with module wide variable reference
+            print 'Loading table definitions from %s...' % self.dbName
+
+
+        cur = self.conn.query('SHOW TABLE STATUS FROM `{dbName}` WHERE name REGEXP "{sqlPtrn}"'.format(
+            dbName=self.dbName, sqlPtrn = self.sqlPtrn),
+            cursor = self.conn.dict_cursor)
+
+        tableInfo = cur.fetchall()
+
+
+
         cur = self.conn.query('''
         SELECT DISTINCT table_schema, table_name, referenced_table_schema, referenced_table_name
             FROM information_schema.key_column_usage
