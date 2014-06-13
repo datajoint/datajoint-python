@@ -1,42 +1,118 @@
-import re, collections
+import re
 from conn import conn as djconn
 from core import DataJointError
 import networkx as nx
 import matplotlib.pyplot as plt
+from copy import deepcopy
+import core
+from core import camelCase
 
 # table tiers are encoded by naming convention as follows:
 tableTiers = {
-    '':'manual',      # manual tables have no prefix
-    '#':'lookup',     # lookup tables start with a #
-    '_':'imported',   # imported tables start with _
-    '__':'computed'   # computed tables start with __
-    '~':'job'         # job tables start with ~
+    '': 'manual',      # manual tables have no prefix
+    '#': 'lookup',     # lookup tables start with a #
+    '_': 'imported',   # imported tables start with _
+    '__': 'computed',  # computed tables start with __
+    '~': 'job'         # job tables start with ~
 }
 
 # regular expression to match valid table names
-sqlPtrn = re.compile(r'^(#|_|__|~)?[a-z][a-z0-9]*$')
-tierPtrn = re.compile(r'^(|#|_|__|~)[a-z]\w+$')
+sqlPtrn = r'^(#|_|__|~)?[a-z][a-z0-9]*$'
+tierRe = re.compile(r'^(|#|_|__|~)[a-z]\w+$')
 
 
-HeaderEntry = collections.namedtuple('HeaderEntry',
-    ('isKey','type','isNullable','comment','default','isNumeric','isString','isBlob','alias'))
+# HeaderEntry = collections.namedtuple('HeaderEntry',
+# ('isKey','type','isNullable','comment','default','isNumeric','isString','isBlob','alias'))
 
-class Header(collections.OrderedDict):
+class Header(object):
+    """
+    Package-private class for handling table header information
+    """
     @property
-    def attrList(self):
-        """
-        make an SQL list of attributes for header, expanding field aliases.
-        """
-        assert self
-        return ','.join(["(%s) as `%s`" % (v.alias, k) if v.alias else "`%s`" % k for k,v in self.items()])
+    def names(self):
+        return [atr['name'] for atr in self.attrs]
 
-    def clearAliases(self):
-        """
-        remove aliases from attributes
-        """
-        for k,v in self.items():
-            if v.alias:
-                self[k] = v._replace(alias=None)
+    @property
+    def primaryKey(self):
+        return [atr['name'] for atr in self.attrs if atr['isKey']]
+
+    @property
+    def dependentFields(self):
+        return [atr['name'] for atr in self.attrs if not atr['isKey']]
+
+    @property
+    def blobNames(self):
+        return [atr['name'] for atr in self.attrs if atr['isBlob']]
+
+    @property
+    def notBlobs(self):
+        return [atr['name'] for atr in self.attrs if not atr['isBlob']]
+
+    @property
+    def hasAliases(self):
+        return any((bool(atr['alias']) for atr in self.attrs))
+
+    @property
+    def count(self):
+        return len(self.attrs)
+
+    @property
+    def byName(self, name):
+        for attr in self.attrs:
+            if attr['name'] == name:
+                return attr
+        raise KeyError('Field with name %s not found' % name)
+
+    def __init__(self, info, attrs):
+        self.info = info
+        self.attrs = attrs
+
+    def derive(self):
+        return Header(None, deepcopy(self.attrs))
+
+    # Class methods
+    @classmethod
+    def initFromDatabase(cls, schema, tableInfo):
+        cur = schema.conn.query(
+            """
+            SHOW FULL COLUMNS FROM `{tblName}` IN `{dbName}`
+            """.format(tblName=tableInfo['name'], dbName=schema.dbName),
+            cursor=schema.conn.dict_cursor)
+
+        attrs = cur.fetchall()
+
+        renameMap = {
+            'Field': 'name',
+            'Type': 'type',
+            'Null': 'isNullable',
+            'Default': 'default',
+            'Key': 'isKey',
+            'Comment': 'comment'}
+
+        dropFields = ['Privileges', 'Collation']
+
+        # rename fields using renameMap and drop unwanted fields
+        attrs = [{renameMap[k] if k in renameMap else k: v
+                  for k, v in x.iteritems() if k not in dropFields}
+                 for x in attrs]
+
+        for attr in attrs:
+            attr['isNullable'] = attr['isNullable'] == 'YES'
+            attr['isKey'] = attr['isKey'] == 'PRI'
+            attr['isAutoincrement'] = bool(re.search(r'auto_increment', attr['Extra'], flags=re.IGNORECASE))
+            attr['isNumeric'] = bool(re.match(r'(tiny|small|medium|big)?int|decimal|double|float', attr['type']))
+            attr['isString'] = bool(re.match(r'(var)?char|enum|date|time|timestamp', attr['type']))
+            attr['isBlob'] = bool(re.match(r'(tiny|medium|long)?blob', attr['type']))
+
+            # strip field lengths off of integer types
+            attr['type'] = re.sub(r'((tiny|small|medium|big)?int)\(\d+\)', r'\1', attr['type'])
+            attr['alias'] = ''
+            if not (attr['isNumeric'] or attr['isString'] or attr['isBlob']):
+                raise DataJointError('Unsupported field type {field} in `{dbName}`.`{tblName}`'.format(
+                    field=attr['type'], dbName=schema.dbName, tblName=tableInfo['name']))
+            attr.pop('Extra')
+
+        return cls(tableInfo, attrs)
 
     def pro(self, attrs):
         """
@@ -49,7 +125,6 @@ class Header(collections.OrderedDict):
             ret = Header({k:v for k,v in self.items() if k in attrs or v.isKey})
         # TODO: add computed and renamed attributes
         return ret
-
 
 
 class Schema(object):
@@ -70,123 +145,58 @@ class Schema(object):
         self.reload() # load table names if necessary
         return self._tableNames
 
-
-
-    def __init__(self, package, dbname, conn=None):
+    def __init__(self, package, dbName, conn=None):
         if conn is None:
             conn = djconn() # open up new connection
         self.conn = conn
-        conn.packages[dbname] = package # register this schema
+        conn.packages[dbName] = package # register this schema
         self.package = package
-        self.dbname = dbname
+        self.dbName = dbName
         self._loaded = False # indicates loading status
-        self._headers = {}
-        self._tableNames = {}
-        #self.reload()    # TODO: consider delayed loading
-
+        self._headers = {} # header object indexed by table name
+        self._tableNames = {} # mapping from full class name to table name
 
     def __repr__(self):
-        ret = 'datajoint.Schema "{package}" -> "{dbname}" at {host}:{port}\n {tableList}\n ({nTables} tables)'.format(
-            package=self.package, dbname=self.dbname,
-            tableList = '\n'.join(self.tables.keys()),
-            nTables=len(self.tables), **self.conn.connInfo)
+        ret = 'datajoint.Schema "{package}" -> "{dbName}" at {host}:{port}\n{tableList}\n({nTables} tables)'.format(
+            package=self.package,
+            dbName=self.dbName,
+            tableList='\n'.join(self.tableNames.keys()),
+            nTables=len(self.tableNames), **self.conn.connInfo)
         return ret
-
-
 
     def reload(self, force=False):
         """
         load table definitions and dependencies
         """
-        if self.loaded and not force:
+        if self._loaded and not force:
             return # nothing to do here
 
         # Cleanup beofre reloading
         self._loaded = True
         self.conn.clearDependencies(self)
         self._headers.clear()
-        self._tablesNames.clear()
+        self._tableNames.clear()
 
-        if True: #TODO replace this with module wide variable reference
+        if core.VERBOSE: #TODO Come up with a better place to keep package wide config variables
             print 'Loading table definitions from %s...' % self.dbName
 
-
         cur = self.conn.query('SHOW TABLE STATUS FROM `{dbName}` WHERE name REGEXP "{sqlPtrn}"'.format(
-            dbName=self.dbName, sqlPtrn = self.sqlPtrn),
+            dbName=self.dbName, sqlPtrn = sqlPtrn),
             cursor = self.conn.dict_cursor)
 
         tableInfo = cur.fetchall()
 
+        # rename fields
+        tableInfo = [{k.lower() : v for k,v in info.iteritems()} for info in tableInfo]
 
+        for info in tableInfo:
+            info['tier'] = tableTiers[tierRe.match(info['name']).group(1)] # lookup tier for the table based on tableName
+            self._tableNames['%s.%s'%(self.package, camelCase(info['name']))] = info['name']
+            self._headers[info['name']] = Header.initFromDatabase(self, info)
 
-        cur = self.conn.query('''
-        SELECT DISTINCT table_schema, table_name, referenced_table_schema, referenced_table_name
-            FROM information_schema.key_column_usage
-            WHERE table_schema="{schema}" AND referenced_table_name is not NULL
-            OR referenced_table_schema="{schema}"
-        '''.format(schema=self.dbname))
-        deps = cur.fetchall()
-        allTables = tuple({(str(a[0]),str(a[1])) for a in deps if tierRe.match(a[1])}.union(
-            {(str(a[2]),str(a[3])) for a in deps if tierRe.match(a[1])}))
-
-        print 'Loading table info...'
-        cur = self.conn.query('''
-            SELECT table_schema, table_name, table_comment
-            FROM information_schema.tables WHERE (table_schema, table_name) in {allTables}
-            '''.format(allTables=allTables))
-
-        TableTuple = collections.namedtuple('TableTuple',
-            ('name','comment','tier','header','parents','children'))
-
-        self.tables = collections.OrderedDict()
-        for s in cur.fetchall():
-            self.tables[self.conn.makeClassName(s[0],s[1])] = TableTuple(
-                name = s[1],
-                comment = s[2].split('$')[0],
-                tier = tableTiers[tierRe.match(s[1]).group(1)],
-                header = Header(),
-                parents = [],
-                children = [])
-
-        # construct the dependencies
-        for s in deps:
-            self.tables[self.conn.makeClassName(s[0],s[1])].parents.append(
-                self.conn.makeClassName(s[2], s[3]))
-            self.tables[self.conn.makeClassName(s[2],s[3])].children.append(
-                self.conn.makeClassName(s[0], s[1]))
-
-        self.graph = nx.DiGraph()
-        for k,v in self.tables.iteritems():
-            for child in v.children:
-                self.graph.add_edge(k,child)
-
-        print 'Loading column info...'
-        cur = self.conn.query('''
-            SELECT table_schema, table_name, column_name, (column_key="PRI") AS `iskey`,
-                column_type, (is_nullable="YES") AS isnullable,
-                column_comment, column_default
-            FROM information_schema.columns
-            WHERE (table_schema, table_name) in {allTables}
-            '''.format(allTables=allTables))
-
-        for s in cur.fetchall():
-            tup = HeaderEntry(
-                isKey = s[3]!=0,
-                type = s[4],
-                isNullable = s[5]!=0,
-                comment = s[6],
-                default = s[7],
-                isNumeric = None != re.match('^((tiny|small|medium|big)?int|decimal|double|float)', s[4]),
-                isString = None != re.match('^((var)?char|enum|date|timestamp)', s[4]),
-                isBlob = None != re.match('^(tiny|medium|long)?blob', s[4]),
-                alias = None
-            )
-            # check for unsupported datatypes
-            if not (tup.isNumeric or tup.isString or tup.isBlob):
-                raise DataJointError('Unsupported DataJoint datatype ' + tup.type)
-            self.tables[self.conn.makeClassName(s[0],s[1])].header[s[2]] = tup
-
-
+        if core.VERBOSE:
+            print 'Loading dependices...'
+        self.conn.loadDependencies(self)
 
     def erd(self, subset=None, prog='dot'):
         """
@@ -218,3 +228,7 @@ class Schema(object):
         nx.draw_networkx_labels(g, pos, nodelist = subset, font_weight='bold', font_size=9)
         nx.draw(g,pos,alpha=0,with_labels=False)
         plt.show()
+
+
+    def __iter__(self):
+        return self._headers.iterkeys()

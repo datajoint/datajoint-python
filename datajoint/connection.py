@@ -1,6 +1,7 @@
-import re
 import pymysql
 import pymysql.cursors
+from core import camelCase
+import re
 
 class Connection:
     """
@@ -31,41 +32,66 @@ class Connection:
         """
         return self._conn.ping()
 
-
-    def makeClassName(self, dbname, tableName):
+    def makeClassName(self, dbName, tableName):
         """
         make a class name from the table name.
         """
-        try:
-            ret = self.packages[dbname] + '.' + camelCase(tableName)
-        except KeyError:
-            ret = '$' + dbname + '.' + camelCase(tableName)
-        return ret
+        return  (self.packages[dbName] if dbName in self.packages else '$'+dbName) + '.' + camelCase(tableName)
 
     def loadDependencies(self, schema):
-        import pdb; pdb.set_trace()  # XXX BREAKPOINT
         ptrn = r"""
-        FOREIGN KEY\s+\((?P<attr1>[`\w ,]+)\)\s+   # list of keys in this table
-        REFERENCES\s+(?P<ref>[`\w ,]+)\s\          # table referenced
-        \((?P<attr2>[`\w ,]+)\)                    # list of keys in the referenced table
+        FOREIGN\ KEY\s+\((?P<attr1>[`\w ,]+)\)\s+   # list of keys in this table
+        REFERENCES\s+(?P<ref>[^\s]+)\s+           # table referenced
+        \((?P<attr2>[`\w ,]+)\)                     # list of keys in the referenced table
         """
-        for tables in schema: # visit each table in schema
-            s = self.query('SHOW CREATE TABLE `{dbName}`.`{tblName}`'.format(
-                dbName=schema.dbName, tblName=schema.tblName),
+
+        for tblName in schema: # visit each table in schema
+            cur = self.query('SHOW CREATE TABLE `{dbName}`.`{tblName}`'.format(
+                dbName=schema.dbName, tblName=tblName),
                 cursor = self.dict_cursor)
-        print ptrn
-        print s
+
+            tblDef = cur.fetchone()
+            fullTblName = '`%s`.`%s`' % (schema.dbName, tblName)
+            self.parents[fullTblName] = []
+            self.referenced[fullTblName] = []
+            m_fk = re.finditer(ptrn, tblDef['Create Table'], re.X) # find all foreign key statements
+
+            for m in m_fk:
+                assert m.group('attr1') == m.group('attr2'), 'Foreign keys must link identically named attributes'
+                attrs = m.group('attr1')
+                attrs = re.split(r',\s+', re.sub(r'`(.*?)`', r'\1', attrs)) # remove ` around attrs and split into list
+                pk = schema.headers[tblName].primaryKey
+                isPrimary = all([k in pk for k in attrs])
+                ref = m.group('ref') # referenced table
+
+                if not re.search(r'`\.`', ref): # if referencing other table in same schema
+                    ref = '`%s`.%s' % (schema.dbName, ref) # convert to full-table name
+
+                if isPrimary:
+                    self.parents[fullTblName].append(ref)
+                else:
+                    self.referenced[fullTblName].append(ref)
+
+                self.parents.setdefault(ref, [])
+                self.referenced.setdefault(ref, [])
+
+
+
+
+
+
+
 
     def clearDependencies(self, schema=None):
         if schema is None:
-            self.parents.clear
-            self.referenced.clear
+            self.parents.clear()
+            self.referenced.clear()
         else:
             tableKeys = ('`%s`.`%s`'%(schema.dbName, tblName) for tblName in schema)
             for key in tableKeys:
                 if key in self.parents:
                     self.parents.pop(key)
-                if key in self.refernced:
+                if key in self.referenced:
                     self.referenced.pop(key)
 
     def addPackage(self, dbname, package):
@@ -84,17 +110,14 @@ class Connection:
         return [referencing for referencing, referenced in self.referenced.iteritems()
                 if referencedTable in referenced]
 
-
     def __repr__(self):
         connected = "connected" if self._conn.ping() else "disconnected"
         return "DataJoint connection ({connected}) {user}@{host}:{port}".format(
             connected=connected, **self.connInfo)
 
-
     def __del__(self):
         print 'Disconnecting {user}@{host}:{port}'.format(**self.connInfo)
         self._conn.close()
-
 
     def query(self, query, args=(), cursor=pymysql.cursors.Cursor):
         """execute the specified query and return its cursor"""
@@ -102,21 +125,18 @@ class Connection:
         cur.execute(query, args)
         return cur
 
-
     def startTransaction(self):
         self.query('START TRANSACTION WITH CONSISTENT SNAPSHOT')
 
-
     def cancelTransaction(self):
         self.query('ROLLBACK')
-
 
     def commitTransaction(self):
         self.query('COMMIT')
 
 
-def camelCase(s):
-    def toUpper(matchobj):
-        return matchobj.group(0)[-1].upper()
-    return re.sub('(^|[_\W])+[a-zA-Z]', toUpper, s)
+#def camelCase(s):
+#    def toUpper(matchobj):
+#        return matchobj.group(0)[-1].upper()
+#    return re.sub('(^|[_\W])+[a-zA-Z]', toUpper, s)
 
