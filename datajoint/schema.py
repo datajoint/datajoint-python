@@ -17,7 +17,7 @@ tableTiers = {
 }
 
 # regular expression to match valid table names
-sqlPtrn = r'^(#|_|__|~)?[a-z][a-z0-9]*$'
+sqlPtrn = r'^(#|_|__|~)?[a-z][a-z0-9_]*$'
 tierRe = re.compile(r'^(|#|_|__|~)[a-z]\w+$')
 
 
@@ -126,6 +126,20 @@ class Header(object):
         # TODO: add computed and renamed attributes
         return ret
 
+    def __repr__(self):
+        ret = 'DataJoint Header object'
+        if self.info:
+            ret += ' for table %s' % self.info['name']
+        pk = self.primaryKey
+        if pk:
+            ret += '\nPK attributes: %s' % self.primaryKey
+        npk = self.dependentFields
+        if npk:
+            ret += '\nNPK attributes: %s' % self.dependentFields
+        ret += '\n(total of %d attributes)\n' % self.count
+
+        return ret
+
 
 class Schema(object):
     """
@@ -155,6 +169,7 @@ class Schema(object):
         self._loaded = False # indicates loading status
         self._headers = {} # header object indexed by table name
         self._tableNames = {} # mapping from full class name to table name
+        self.prefix = None
 
     def __repr__(self):
         ret = 'datajoint.Schema "{package}" -> "{dbName}" at {host}:{port}\n{tableList}\n({nTables} tables)'.format(
@@ -163,6 +178,23 @@ class Schema(object):
             tableList='\n'.join(self.tableNames.keys()),
             nTables=len(self.tableNames), **self.conn.connInfo)
         return ret
+
+    def __str__(self):
+        ret = '\nDataJoint schema %s, stored in MySQL database %s' % (self.package, self.dbName)
+        if self.prefix:
+            ret += ' with table prefix %s\n\n' % self.prefix
+        else:
+            ret += '\n\n'
+
+        ret += '%-25s%-16s%s\n%s\n' % ('Table Name', 'Tier', 'Comment', '#'*80)
+        for table, header in self.headers.iteritems():
+            ret += '%20s %10s  %s\n' % (
+                camelCase(header.info['name']),
+                header.info['tier'],
+                header.info['comment'])
+        return ret
+
+
 
     def reload(self, force=False):
         """
@@ -229,6 +261,8 @@ class Schema(object):
         nx.draw(g,pos,alpha=0,with_labels=False)
         plt.show()
 
-
     def __iter__(self):
+        """
+        Iterator over full table names `{dbName}`.`{tableName}`
+        """
         return self._headers.iterkeys()

@@ -75,13 +75,6 @@ class Connection:
                 self.parents.setdefault(ref, [])
                 self.referenced.setdefault(ref, [])
 
-
-
-
-
-
-
-
     def clearDependencies(self, schema=None):
         if schema is None:
             self.parents.clear()
@@ -133,6 +126,21 @@ class Connection:
 
     def commitTransaction(self):
         self.query('COMMIT')
+
+    def tableToClass(self, fullTableName, strict = False):
+        m = re.match(r'^`(?P<dbName>.+)`.`(?P<tblName>[#~\w\d]+)`$', fullTableName)
+        assert  m, 'Invalid table name %s' % fullTableName
+        dbName = m.group('dbName')
+        tblName = m.group('tblName')
+        if dbName in self.packages:
+            className = '%s.%s' % (self.packages[dbName], camelCase(tblName))
+        elif strict:
+            raise ValueError('Unknown package for "%s". Activate its schema first.' % dbName)
+        else:
+            className = fullTableName
+        return className
+
+
 
 
 #def camelCase(s):

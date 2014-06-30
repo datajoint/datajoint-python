@@ -31,11 +31,11 @@ class GeneralRelvar(object):
     def sql(self):
         return self.__compile()[1]
 
-    @property 
+    @property
     def header(self):
         return self.__compile()[0]
 
-    @property 
+    @property
     def primaryKey(self):
         return [k for (k,v) in self.header.iteritems() if v.isKey]
 
@@ -154,8 +154,8 @@ class GeneralRelvar(object):
 
         return header, sql
 
-    
-            
+
+
 
     def fetchAttr(self, attr):
         """
@@ -163,7 +163,7 @@ class GeneralRelvar(object):
         """
         return eval('self.fetch(attr).%s' % attr)
 
-    
+
     def fetch(self, *args, **kwargs):
         """
         fetches data from the database as a list of named tuples. Blobs are unpacked
@@ -189,7 +189,7 @@ class GeneralRelvar(object):
         ret = [Tuple(*unpackTuple(tup,header)) for tup in R]
         return NamedTupleList(ret)
 
-    
+
 
 
 class BaseRelvar(GeneralRelvar):
@@ -197,14 +197,14 @@ class BaseRelvar(GeneralRelvar):
     BaseRelvar is a relvar linked to a specific table in the database with no additional operators applied
     other than restriction.
     """
-    
+
     def __init__(self, table, restrictions=None):
         GeneralRelvar.__init__(self, 'table', [table], restrictions)
 
     @property
     def _table(self):
         return self._operands[0]
-    
+
 
     def insert(self, row, command="INSERT"):
         """
@@ -290,7 +290,7 @@ class Relvar(BaseRelvar):
 
 
 
-    
+
 def setdiff(a,b):
     return [v for v in a if v not in b]
 
