@@ -1,7 +1,6 @@
 import collections, copy, pprint
 import abc
 from core import DataJointError
-from schema import Header, HeaderEntry
 import blob
 
 

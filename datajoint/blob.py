@@ -1,12 +1,12 @@
 import zlib
 import collections
 import numpy as np
-from core import *
+from core import DataJointError
 
 
 def pack(obj):
     """
-    packs an object into a blob similar for compatibility with mym.mex
+    packs an object into a blob to be compatible with mym.mex
     """
     if not isinstance(obj, np.ndarray):
         raise DataJointError("Only numpy arrays can be saved in blobs")
@@ -31,9 +31,9 @@ def pack(obj):
 
     if isComplex:
         blob+= objImag.tostring()
-    
+
     if len(blob)>1000:
-        compressed = 'ZL123\0'+np.asarray(len(blob),dtype=np.uint64).tostring() + zlib.compress(blob) 
+        compressed = 'ZL123\0'+np.asarray(len(blob),dtype=np.uint64).tostring() + zlib.compress(blob)
         if len(compressed) < len(blob):
             blob = compressed
     return blob
@@ -51,7 +51,7 @@ def unpack(blob):
         assert(len(blob)==blobLen)
 
     blobType = blob[4]
-    if blobType<>'A':
+    if blobType!='A':
         raise DataJointError('only arrays are currently allowed in blobs')
     p = 5
     ndims = np.fromstring(blob[p:p+8], dtype=np.uint64)

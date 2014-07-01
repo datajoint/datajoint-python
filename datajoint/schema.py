@@ -24,7 +24,7 @@ tierRe = re.compile(r'^(|#|_|__|~)[a-z]\w+$')
 # HeaderEntry = collections.namedtuple('HeaderEntry',
 # ('isKey','type','isNullable','comment','default','isNumeric','isString','isBlob','alias'))
 
-class Header(object):
+class Header:
     """
     Package-private class for handling table header information
     """
@@ -73,6 +73,10 @@ class Header(object):
     # Class methods
     @classmethod
     def initFromDatabase(cls, schema, tableInfo):
+        """
+        initialize the schema from 
+        """
+        
         cur = schema.conn.query(
             """
             SHOW FULL COLUMNS FROM `{tblName}` IN `{dbName}`
@@ -97,8 +101,8 @@ class Header(object):
                  for x in attrs]
 
         for attr in attrs:
-            attr['isNullable'] = attr['isNullable'] == 'YES'
-            attr['isKey'] = attr['isKey'] == 'PRI'
+            attr['isNullable'] = (attr['isNullable'] == 'YES')
+            attr['isKey'] = (attr['isKey'] == 'PRI')
             attr['isAutoincrement'] = bool(re.search(r'auto_increment', attr['Extra'], flags=re.IGNORECASE))
             attr['isNumeric'] = bool(re.match(r'(tiny|small|medium|big)?int|decimal|double|float', attr['type']))
             attr['isString'] = bool(re.match(r'(var)?char|enum|date|time|timestamp', attr['type']))
@@ -210,7 +214,7 @@ class Schema(object):
         self._tableNames.clear()
 
         if core.VERBOSE: #TODO Come up with a better place to keep package wide config variables
-            print 'Loading table definitions from %s...' % self.dbName
+            print('Loading table definitions from %s...' % self.dbName)
 
         cur = self.conn.query('SHOW TABLE STATUS FROM `{dbName}` WHERE name REGEXP "{sqlPtrn}"'.format(
             dbName=self.dbName, sqlPtrn = sqlPtrn),
@@ -227,7 +231,7 @@ class Schema(object):
             self._headers[info['name']] = Header.initFromDatabase(self, info)
 
         if core.VERBOSE:
-            print 'Loading dependices...'
+            print('Loading dependices...')
         self.conn.loadDependencies(self)
 
     def erd(self, subset=None, prog='dot'):

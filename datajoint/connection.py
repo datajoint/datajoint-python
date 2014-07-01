@@ -19,7 +19,7 @@ class Connection:
         self.connInfo = dict(host=host, port=port, user=user, passwd=passwd)
         self._conn = pymysql.connect(init_command=initFun, **self.connInfo)
         if self.isConnected:
-            print "Connected", user+'@'+host+':'+str(port)
+            print("Connected", user+'@'+host+':'+str(port))
         self._conn.autocommit(True)
         self.parents = {} # map table names to their parent table names (primary foreign key)
         self.referenced = {} # map tales names to table names they reference (non-primary foreign key)
@@ -109,7 +109,7 @@ class Connection:
             connected=connected, **self.connInfo)
 
     def __del__(self):
-        print 'Disconnecting {user}@{host}:{port}'.format(**self.connInfo)
+        print('Disconnecting {user}@{host}:{port}'.format(**self.connInfo))
         self._conn.close()
 
     def query(self, query, args=(), cursor=pymysql.cursors.Cursor):
@@ -139,12 +139,4 @@ class Connection:
         else:
             className = fullTableName
         return className
-
-
-
-
-#def camelCase(s):
-#    def toUpper(matchobj):
-#        return matchobj.group(0)[-1].upper()
-#    return re.sub('(^|[_\W])+[a-zA-Z]', toUpper, s)
-
+        

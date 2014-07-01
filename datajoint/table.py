@@ -184,4 +184,4 @@ class Table(object):
         raise DataJointError("Not implemented yet")
 
     def __call__(*args, **kwargs):
-        print "Not yet implemented"
+        print("Not yet implemented")
