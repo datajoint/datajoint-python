@@ -1,13 +1,12 @@
-import Queue   # rename to queue in python 3
+import queue   # rename to queue in python 3
 import threading
-import time
 
 
 def _ping():
-    print "The task thread is running"
+    print("The task thread is running")
 
 
-class TaskQueue(object):
+class TaskQueue:
     """
     Executes tasks in a single parallel thread in FIFO sequence.
     Example:
@@ -19,7 +18,7 @@ class TaskQueue(object):
     Datajoint applications may uses a task queue for delayed inserts.
     """
     def __init__(self):
-        self.queue = Queue.Queue()
+        self.queue = queue.Queue()
         self.thread = threading.Thread(target=self._worker)
         self.thread.daemon = True
         self.thread.start()
@@ -48,8 +47,8 @@ class TaskQueue(object):
             try:
                 fun(*args)
             except Exception as e:
-                print "Exception in the task thread:"
-                print e
+                print("Exception in the task thread:")
+                print(e)
             self.queue.task_done()
 
 

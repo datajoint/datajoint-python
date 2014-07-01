@@ -51,7 +51,7 @@ class AutoPopulate:
             unpopulated = unpopulated()   # instantiate
             
         if not unpopulated.count:
-            print 'Nothing to populate'
+            print('Nothing to populate')
         else:
             unpopulated = unpopulated(*args, **kwargs) # - self   # TODO: implement antijoin
 
@@ -64,7 +64,7 @@ class AutoPopulate:
                 if n:  # already populated
                     self.conn.cancelTransaction()
                 else:
-                    print 'Populating:'
+                    print('Populating:')
                     pprint.pprint(key)
 
                     try:
@@ -73,7 +73,7 @@ class AutoPopulate:
                         self.conn.cancelTransaction()
                         if not catchErrors:
                             raise
-                        print e
+                        print(e)
                         errors += [e]
                         errKeys+= [key]
                     else:

@@ -12,4 +12,5 @@ __author__ = "Dimitri Yatsenko, Baylor College of Medicine"
 __version__ = "0.1"
 
 __all__ = ['__author__','__version__',
-    'Connection', 'Schema', 'Table', 'Relvar', 'AutoPopulate', 'TaskQueue', 'conn', 'DataJointError','blob']
+    'Connection', 'Schema', 'Table', 'Relvar', 'AutoPopulate', 'TaskQueue',
+    'conn', 'DataJointError','blob']

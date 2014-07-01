@@ -51,7 +51,7 @@ def unpack(blob):
         assert(len(blob)==blobLen)
 
     blobType = blob[4]
-    if blobType<>'A':
+    if blobType!='A':
         raise DataJointError('only arrays are currently allowed in blobs')
     p = 5
     ndims = np.fromstring(blob[p:p+8], dtype=np.uint64)

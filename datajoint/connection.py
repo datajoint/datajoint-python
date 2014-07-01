@@ -16,7 +16,7 @@ class Connection:
         self.connInfo = dict(host=host, port=port, user=user, passwd=passwd)
         self._conn = pymysql.connect(init_command=initFun, **self.connInfo)
         if self._conn.ping():
-            print "Connected", user+'@'+host+':'+str(port)
+            print("Connected", user+'@'+host+':'+str(port))
         self._conn.autocommit(True)
         self.packages = {}
 
@@ -39,7 +39,7 @@ class Connection:
         
 
     def __del__(self):
-        print 'Disconnecting {user}@{host}:{port}'.format(**self.connInfo)
+        print('Disconnecting {user}@{host}:{port}'.format(**self.connInfo))
         self._conn.close()
 
 

@@ -83,7 +83,7 @@ class Schema(object):
         load table definitions and dependencies   
         """
 
-        print 'Loading table dependencies...'
+        print('Loading table dependencies...')
         cur = self.conn.query('''
         SELECT DISTINCT table_schema, table_name, referenced_table_schema, referenced_table_name
             FROM information_schema.key_column_usage
@@ -94,7 +94,7 @@ class Schema(object):
         allTables = tuple({(str(a[0]),str(a[1])) for a in deps if tierRe.match(a[1])}.union(
             {(str(a[2]),str(a[3])) for a in deps if tierRe.match(a[1])}))
 
-        print 'Loading table info...'
+        print('Loading table info...')
         cur = self.conn.query('''
             SELECT table_schema, table_name, table_comment
             FROM information_schema.tables WHERE (table_schema, table_name) in {allTables}
@@ -125,7 +125,7 @@ class Schema(object):
             for child in v.children:
                 self.graph.add_edge(k,child)
 
-        print 'Loading column info...'
+        print('Loading column info...')
         cur = self.conn.query('''
             SELECT table_schema, table_name, column_name, (column_key="PRI") AS `iskey`,
                 column_type, (is_nullable="YES") AS isnullable,
