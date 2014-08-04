@@ -1,7 +1,9 @@
 import re
 
-# package-wide variable
-VERBOSE = True
+# package-wide settings that control execution
+settings = dict(
+verbose = True
+)
 
 class DataJointError(Exception):
     pass

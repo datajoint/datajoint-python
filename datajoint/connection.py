@@ -1,47 +1,83 @@
 import pymysql
-import pymysql.cursors
-from core import camelCase
+from core import camelCase, settings
+from heading import Heading
 import re
+
+
+tableTiers = {
+    '': 'manual',      # manual tables have no prefix
+    '#': 'lookup',     # lookup tables start with a #
+    '_': 'imported',   # imported tables start with _
+    '__': 'computed',  # computed tables start with __
+    '~': 'job'         # job tables start with ~
+}
+
+tableNameRegExp = re.compile(r'^(|#|_|__|~)[a-z][a-z0-9_]*$')
+
 
 class Connection:
     """
-    dj.Connection objects link a python package with a database schema
+    a dj.Connection manages a connection to a database server.
+    It also contains headers 
     """
-    tuple_cursor = pymysql.cursors.Cursor
-    dict_cursor = pymysql.cursors.DictCursor
-
     def __init__(self, host, user, passwd, initFun):
         try:
             host, port = host.split(':')
             port = int(port)
         except ValueError:
-            port = 3306
+            port = 3306   # default MySQL port
         self.connInfo = dict(host=host, port=port, user=user, passwd=passwd)
         self._conn = pymysql.connect(init_command=initFun, **self.connInfo)
         if self.isConnected:
             print("Connected", user+'@'+host+':'+str(port))
         self._conn.autocommit(True)
-        self.parents = {} # map table names to their parent table names (primary foreign key)
-        self.referenced = {} # map tales names to table names they reference (non-primary foreign key)
-        self.packages = {}
+        self.parents = {} # maps table names to their parent table names (primary foreign key)
+        self.referenced = {} # maps table names to table names they reference (non-primary foreign key)
+        self.schemas = {}  # 
 
     @property
     def isConnected(self):
-        """
-        Check the connection status for database
-        """
         return self._conn.ping()
+        
+        
+    def activateSchema(self, module, dbName):
+        """
+        loads or reloads a schema and associates it with a module
+        The module may define classes for existing or new tables.
+        """
+        self.schemas[dbName] = module;        
+        if settings['verbose']: 
+            print('Loading table definitions from %s...' % dbName)
+    
+        cur = self.conn.query('SHOW TABLE STATUS FROM `{dbName}` WHERE name REGEXP "{sqlPtrn}"'.format(
+            dbName=self.dbName, sqlPtrn = tableNameRegExp.pattern),  asDict=True)
+        tableInfo = cur.fetchall()
+    
+        # fields to lowercase
+        tableInfo = [{k.lower():v for k,v in info.iteritems()} for info in tableInfo]
+        
+        # rename fields
+        for info in tableInfo:
+            info['tier'] = tableTiers[tableNameRegExp.match(info['name']).group(1)] # lookup tier for the table based on tableName
+            self._tableNames['%s.%s'%(self.package, camelCase(info['name']))] = info['name']
+            self._headers[info['name']] = Heading.initFromDatabase(self, info)
+    
+        if settings['verbose']:
+            print('Loading dependices...')
+        self.conn.loadDependencies(self)
+            
+        
 
-    def makeClassName(self, dbName, tableName):
-        """
-        make a class name from the table name.
-        """
-        return  (self.packages[dbName] if dbName in self.packages else '$'+dbName) + '.' + camelCase(tableName)
 
     def loadDependencies(self, schema):
+        """
+        load dependencies (foreign keys) between tables by examnining their 
+        respective CREATE TABLE statements.
+        """
+
         ptrn = r"""
         FOREIGN\ KEY\s+\((?P<attr1>[`\w ,]+)\)\s+   # list of keys in this table
-        REFERENCES\s+(?P<ref>[^\s]+)\s+           # table referenced
+        REFERENCES\s+(?P<ref>[^\s]+)\s+             # table referenced
         \((?P<attr2>[`\w ,]+)\)                     # list of keys in the referenced table
         """
 
@@ -54,9 +90,8 @@ class Connection:
             fullTblName = '`%s`.`%s`' % (schema.dbName, tblName)
             self.parents[fullTblName] = []
             self.referenced[fullTblName] = []
-            m_fk = re.finditer(ptrn, tblDef['Create Table'], re.X) # find all foreign key statements
 
-            for m in m_fk:
+            for m in re.finditer(ptrn, tblDef['Create Table'], re.X):  # iterate through foreign key statements
                 assert m.group('attr1') == m.group('attr2'), 'Foreign keys must link identically named attributes'
                 attrs = m.group('attr1')
                 attrs = re.split(r',\s+', re.sub(r'`(.*?)`', r'\1', attrs)) # remove ` around attrs and split into list
@@ -87,8 +122,6 @@ class Connection:
                 if key in self.referenced:
                     self.referenced.pop(key)
 
-    def addPackage(self, dbname, package):
-        self.packages[dbname] = package
 
     def children(self, parentTable):
         """
@@ -112,8 +145,9 @@ class Connection:
         print('Disconnecting {user}@{host}:{port}'.format(**self.connInfo))
         self._conn.close()
 
-    def query(self, query, args=(), cursor=pymysql.cursors.Cursor):
+    def query(self, query, args=(), asDict=False):
         """execute the specified query and return its cursor"""
+        cursor = pymysql.cursors.DictCursor if asDict else pymysql.cursors.Cursor;
         cur = self._conn.cursor(cursor=cursor)
         cur.execute(query, args)
         return cur
