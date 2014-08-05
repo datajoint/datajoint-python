@@ -13,6 +13,9 @@ tableTiers = {
     '~': 'job'         # job tables start with ~
 }
 
+# The following two regular expression are equivalent but one works in python
+# and the other works in MySQL
+tableNameRegExpSQL = re.compile('^(#|_|__|~)?[a-z][a-z0-9_]*$')  
 tableNameRegExp = re.compile('^(|#|_|__|~)[a-z][a-z0-9_]*$')
 
 
@@ -60,7 +63,7 @@ class Connection:
             print('Loading table definitions from %s...' % self.schemas[moduleName])
         dbname = self.schemas[moduleName]
         cur = self.query('SHOW TABLE STATUS FROM `{dbname}` WHERE name REGEXP "{sqlPtrn}"'.format(
-            dbname=dbname, sqlPtrn = tableNameRegExp.pattern), asDict=True)
+            dbname=dbname, sqlPtrn = tableNameRegExpSQL.pattern), asDict=True)
         tableInfo = cur.fetchall()
     
         # fields to lowercase
