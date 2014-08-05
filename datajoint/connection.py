@@ -2,6 +2,7 @@ import pymysql
 from core import camelCase, settings
 from heading import Heading
 import re
+import imp
 
 
 tableTiers = {
@@ -12,7 +13,7 @@ tableTiers = {
     '~': 'job'         # job tables start with ~
 }
 
-tableNameRegExp = re.compile(r'^(|#|_|__|~)[a-z][a-z0-9_]*$')
+tableNameRegExp = re.compile('^(|#|_|__|~)[a-z][a-z0-9_]*$')
 
 
 class Connection:
@@ -31,40 +32,47 @@ class Connection:
         if self.isConnected:
             print("Connected", user+'@'+host+':'+str(port))
         self._conn.autocommit(True)
-        self.parents = {} # maps table names to their parent table names (primary foreign key)
+
+        self.schemas = {}  # maps module names to database names
+        self.modules = {}  # maps database names to module objects
+        self.parents = {}  # maps table names to their parent table names (primary foreign key)
         self.referenced = {} # maps table names to table names they reference (non-primary foreign key)
-        self.schemas = {}  # 
+        
+        self.headings = {}   # contains headings indexed by `dbname`.`table_name`
 
     @property
     def isConnected(self):
         return self._conn.ping()
         
         
-    def activateSchema(self, module, dbName):
+    def bind(self, moduleName, dbname):
         """
-        loads or reloads a schema and associates it with a module
-        The module may define classes for existing or new tables.
+        bind module moduleName to database dbname
         """
-        self.schemas[dbName] = module;        
+        self.modules[dbname] = imp.importlib.__import__(moduleName)
+        self.schemas[moduleName] = dbname;
+        self.loadSchema(moduleName)
+        
+        
+    def loadSchema(self, moduleName):
+        
         if settings['verbose']: 
-            print('Loading table definitions from %s...' % dbName)
-    
-        cur = self.conn.query('SHOW TABLE STATUS FROM `{dbName}` WHERE name REGEXP "{sqlPtrn}"'.format(
-            dbName=self.dbName, sqlPtrn = tableNameRegExp.pattern),  asDict=True)
+            print('Loading table definitions from %s...' % self.schemas[moduleName])
+        dbname = self.schemas[moduleName]
+        cur = self.query('SHOW TABLE STATUS FROM `{dbname}` WHERE name REGEXP "{sqlPtrn}"'.format(
+            dbname=dbname, sqlPtrn = tableNameRegExp.pattern), asDict=True)
         tableInfo = cur.fetchall()
     
         # fields to lowercase
-        tableInfo = [{k.lower():v for k,v in info.iteritems()} for info in tableInfo]
+        tableInfo = [{k.lower():v for k,v in info.items()} for info in tableInfo]
         
         # rename fields
         for info in tableInfo:
             info['tier'] = tableTiers[tableNameRegExp.match(info['name']).group(1)] # lookup tier for the table based on tableName
-            self._tableNames['%s.%s'%(self.package, camelCase(info['name']))] = info['name']
-            self._headers[info['name']] = Heading.initFromDatabase(self, info)
+            self.headings['`%s`.`%s`'%(dbname, info['name'])] = \
+                Heading.initFromDatabase(self, dbname, info['name'] )
     
-        if settings['verbose']:
-            print('Loading dependices...')
-        self.conn.loadDependencies(self)
+        #TODO: self.loadDependencies(self)
             
         
 
@@ -81,13 +89,16 @@ class Connection:
         \((?P<attr2>[`\w ,]+)\)                     # list of keys in the referenced table
         """
 
+        if settings['verbose']:
+           print('Loading dependices...')
+ 
         for tblName in schema: # visit each table in schema
-            cur = self.query('SHOW CREATE TABLE `{dbName}`.`{tblName}`'.format(
-                dbName=schema.dbName, tblName=tblName),
+            cur = self.query('SHOW CREATE TABLE `{dbname}`.`{tblName}`'.format(
+                dbname=schema.dbname, tblName=tblName),
                 cursor = self.dict_cursor)
 
             tblDef = cur.fetchone()
-            fullTblName = '`%s`.`%s`' % (schema.dbName, tblName)
+            fullTblName = '`%s`.`%s`' % (schema.dbname, tblName)
             self.parents[fullTblName] = []
             self.referenced[fullTblName] = []
 
@@ -100,7 +111,7 @@ class Connection:
                 ref = m.group('ref') # referenced table
 
                 if not re.search(r'`\.`', ref): # if referencing other table in same schema
-                    ref = '`%s`.%s' % (schema.dbName, ref) # convert to full-table name
+                    ref = '`%s`.%s' % (schema.dbname, ref) # convert to full-table name
 
                 if isPrimary:
                     self.parents[fullTblName].append(ref)
@@ -115,7 +126,7 @@ class Connection:
             self.parents.clear()
             self.referenced.clear()
         else:
-            tableKeys = ('`%s`.`%s`'%(schema.dbName, tblName) for tblName in schema)
+            tableKeys = ('`%s`.`%s`'%(schema.dbname, tblName) for tblName in schema)
             for key in tableKeys:
                 if key in self.parents:
                     self.parents.pop(key)
@@ -162,14 +173,14 @@ class Connection:
         self.query('COMMIT')
 
     def tableToClass(self, fullTableName, strict = False):
-        m = re.match(r'^`(?P<dbName>.+)`.`(?P<tblName>[#~\w\d]+)`$', fullTableName)
+        m = re.match(r'^`(?P<dbname>.+)`.`(?P<tblName>[#~\w\d]+)`$', fullTableName)
         assert  m, 'Invalid table name %s' % fullTableName
-        dbName = m.group('dbName')
+        dbname = m.group('dbname')
         tblName = m.group('tblName')
-        if dbName in self.packages:
-            className = '%s.%s' % (self.packages[dbName], camelCase(tblName))
+        if dbname in self.packages:
+            className = '%s.%s' % (self.packages[dbname], camelCase(tblName))
         elif strict:
-            raise ValueError('Unknown package for "%s". Activate its schema first.' % dbName)
+            raise ValueError('Unknown package for "%s". Activate its schema first.' % dbname)
         else:
             className = fullTableName
         return className
