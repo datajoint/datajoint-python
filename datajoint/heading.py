@@ -48,6 +48,13 @@ class Heading:
     def hasAliases(self):
         return any((bool(k.alias) for k in self.attrs))
         
+    def __getaddr__(self,name):
+        """shortcut to the attribute"""
+        return self.attr[name]
+        
+    def __repr__(self):
+        return '\n'.join(['%-20s : %-24s  # %s' % (k,v.type,v.comment) 
+            for k,v in self.attrs.items()])
 
     def pro(self, attrs):
         """
