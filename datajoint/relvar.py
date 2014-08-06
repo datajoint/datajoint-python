@@ -76,7 +76,7 @@ class Relvar(GeneralRelvar, Table):
             if not issubclass(type(self), Relvar):
                 raise DataJointError('Relvar is missing connection information')
             module = imp.importlib.__import__(self.__class__.__module__)
-            prettyName = module.__name__ + '.' + self.__class__.__name__
+            prettyName = self.__class__.__name__
             try:            
                 conn = module.conn   
             except AttributeError:
@@ -88,20 +88,21 @@ class Relvar(GeneralRelvar, Table):
         self.prettyName = prettyName
         self.dbname = dbname
         self.declaration = declaration
+        self.conn.loadHeadings(dbname)
     
     @property
     def isDeclared(self):
         # True if found in the database
-        return self.prettyName in self.conn.tableNames
+        return self.prettyName in self.conn.tableNames[self.dbname]
         
     @property
-    def fullTableName(self):
+    def tableName(self):
         if self.isDeclared:
-            return self.conn.tableNames[self.prettyName]            
+            return self.conn.tableNames[self.dbname][self.prettyName]            
     
     @property
     def heading(self):
         if self.isDeclared:
-            return self.conn.headings[self.fullTableName]
+            return self.conn.headings[self.dbname][self.tableName]
         
     

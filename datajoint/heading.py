@@ -30,23 +30,23 @@ class Heading:
 
     @property
     def primaryKey(self):
-        return [k for k in self.attrs if k.isKey]
+        return [k for k,v in self.attrs.items() if v.isKey]
 
     @property
     def dependentFields(self):
-        return [k for k in self.attrs if not k.isKey]
+        return [k for k,v in self.attrs.items() if not v.isKey]
 
     @property
-    def blobNames(self):
-        return [k for k in self.attrs if k.isBlob]
+    def blobs(self):
+        return [k for k,v in self.attrs.items() if v.isBlob]
 
     @property
     def notBlobs(self):
-        return [k for k in self.attrs if not k.isBlob]
+        return [k for k,v in self.attrs.items() if not v.isBlob]
 
     @property
     def hasAliases(self):
-        return any((bool(k.alias) for k in self.attrs))
+        return any((bool(v.alias) for v in self.attrs.values()))
         
     def __getitem__(self,name):
         """shortcut to the attribute"""

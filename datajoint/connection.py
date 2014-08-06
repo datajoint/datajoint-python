@@ -32,9 +32,9 @@ class Connection:
 
         self.schemas    = {}  # dbnames indexed by module names
         self.modules    = {}  # modules indexed by database names
-        self.tableNames = {}  # full tables names indexed by their 'module.prettyNames' 
-        self.headings   = {}  # contains headings indexed by `dbname`.`table_name`
-        self.tableInfo  = {}  # table information indexed by `dbname`.`table_name`
+        self.tableNames = {}  # full tables names indexed by [dbname][PrettyName] 
+        self.headings   = {}  # contains headings indexed by [dbname][table_name]
+        self.tableInfo  = {}  # table information indexed by [dbname][table_name]
 
         # dependencies from foreign keys
         self.parents    = {}  # maps table names to their parent table names (primary foreign key)
@@ -53,28 +53,30 @@ class Connection:
             raise DataJointError('Database `%s` is already bound to module `%s`'
                 %(dbname,self.modules[dbname].__name__))
         self.modules[dbname] = imp.importlib.__import__(moduleName)
-        self.schemas[moduleName] = dbname   
+        self.schemas[moduleName] = dbname 
         
-        log('Loading table definitions from `%s`...' % dbname)
-        cur = self.query('SHOW TABLE STATUS FROM `{dbname}` WHERE name REGEXP "{sqlPtrn}"'.format(
-            dbname=dbname, sqlPtrn = tableNameRegExpSQL.pattern), asDict=True)
-        tabInfo = cur.fetchall()
     
-        # fields to lowercase
-        tabInfo = [{k.lower():v for k,v in info.items()} for info in tabInfo]
-        
-        # generate headings
-        for info in tabInfo:
-            tabName = info.pop('name')
-            fullName = '`%s`.`%s`'%(dbname, tabName);
-            # look up role by table name prefix
-            role = prefixRole[tableNameRegExp.match(tabName).group(1)]
-            prettyName = '%s.%s' % (moduleName,camelCase(tabName))
-            self.tableNames[prettyName] = fullName
-            self.tableInfo[fullName] = dict(info,role=role)
-            self.headings[fullName] = Heading.initFromDatabase(self,dbname,tabName)
+    def loadHeadings(self, dbname):
+        if not dbname in self.headings:
+            log('Loading table definitions from `%s`...' % dbname)
+            self.tableNames[dbname] = {}
+            self.headings[dbname] = {}
+            self.tableInfo[dbname] = {}
+
+            cur = self.query('SHOW TABLE STATUS FROM `{dbname}` WHERE name REGEXP "{sqlPtrn}"'.format(
+                dbname=dbname, sqlPtrn = tableNameRegExpSQL.pattern), asDict=True)        
+            
+            for info in cur:
+                info = {k.lower():v for k,v in info.items()}  # lowercase it
+                tabName = info.pop('name')
+                # look up role by table name prefix
+                role = prefixRole[tableNameRegExp.match(tabName).group(1)]
+                prettyName = camelCase(tabName)
+                self.tableNames[dbname][prettyName] = tabName
+                self.tableInfo[dbname][tabName] = dict(info,role=role)
+                self.headings[dbname][tabName] = Heading.initFromDatabase(self,dbname,tabName)
     
-        #TODO: self.loadDependencies(self)
+            #TODO: self.loadDependencies(self)
             
         
 
