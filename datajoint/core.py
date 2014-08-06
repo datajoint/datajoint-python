@@ -1,9 +1,14 @@
 import re
 
 # package-wide settings that control execution
-settings = dict(
-verbose = True
-)
+class settings:
+    verbose = True
+
+
+def log(msg):
+    if settings.verbose:
+        print(msg)
+
 
 class DataJointError(Exception):
     pass

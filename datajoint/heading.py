@@ -7,77 +7,82 @@ Created on Mon Aug  4 01:29:51 2014
 
 import re
 from core import DataJointError
+from collections import OrderedDict, namedtuple
 
 
 class Heading:
     """
     local class for handling table headings
     """
+    
+    AttrTuple = namedtuple('AttrTuple',('name','type','isKey','isNullable',
+    'default','comment','isAutoincrement','isNumeric','isString','isBlob','alias'))
+
+    def __init__(self, attrs):
+        # Input: attrs - array of dicts with attribute descriptions
+        self.attrs = OrderedDict([(q['name'], Heading.AttrTuple(**q)) for q in attrs])
+    
+
+
     @property
     def names(self):
-        return [atr['name'] for atr in self.attrs]
+        return [k for k in self.attrs]
 
     @property
     def primaryKey(self):
-        return [atr['name'] for atr in self.attrs if atr['isKey']]
+        return [k for k in self.attrs if k.isKey]
 
     @property
     def dependentFields(self):
-        return [atr['name'] for atr in self.attrs if not atr['isKey']]
+        return [k for k in self.attrs if not k.isKey]
 
     @property
     def blobNames(self):
-        return [atr['name'] for atr in self.attrs if atr['isBlob']]
+        return [k for k in self.attrs if k.isBlob]
 
     @property
     def notBlobs(self):
-        return [atr['name'] for atr in self.attrs if not atr['isBlob']]
+        return [k for k in self.attrs if not k.isBlob]
 
     @property
     def hasAliases(self):
-        return any((bool(atr['alias']) for atr in self.attrs))
-
-    @property
-    def byName(self, name):
-        for attr in self.attrs:
-            if attr['name'] == name:
-                return attr
-        raise KeyError("Field with name '%s' not found" % name)
-
-    def __init__(self, dbName, tableName, attrs):
-        self.dbName = dbName
-        self.tableName = tableName
-        self.attrs = attrs
-
-    # Class methods
-    @classmethod
-    def initFromDatabase(cls, conn, dbName, tableName):
-        """
-        initialize heading from database
-        """
+        return any((bool(k.alias) for k in self.attrs))
         
+
+    def pro(self, attrs):
+        """
+        project heading onto a list of attributes.
+        Always include primary key.
+        """
+        # TODO: parse computed and renamed attributes
+                        
+                        
+    @classmethod
+    def initFromDatabase(cls, conn, dbname, tabname):
+        """
+        initialize heading from a database table
+        """
         cur = conn.query(
-            """
-            SHOW FULL COLUMNS FROM `{tableName}` IN `{dbName}`
-            """.format(tableName=tableName, dbName=dbName), 
-                       asDict=True)
+            'SHOW FULL COLUMNS FROM `{tabname}` IN `{dbname}`'.format(
+            tabname=tabname, dbname=dbname),asDict=True)
         attrs = cur.fetchall()
 
         renameMap = {
-            'Field': 'name',
-            'Type': 'type',
-            'Null': 'isNullable',
+            'Field'  : 'name',
+            'Type'   : 'type',
+            'Null'   : 'isNullable',
             'Default': 'default',
-            'Key': 'isKey',
+            'Key'    : 'isKey',
             'Comment': 'comment'}
+            
+        dropFields = ('Privileges', 'Collation')
 
-        dropFields = ['Privileges', 'Collation']
-
-        # rename fields using renameMap and drop unwanted fields
+        # rename and drop attributes
         attrs = [{renameMap[k] if k in renameMap else k: v
-                  for k, v in x.items() if k not in dropFields}
-                 for x in attrs]
+                    for k, v in x.items() if k not in dropFields}
+                        for x in attrs]
 
+        # additional attribute properties
         for attr in attrs:
             attr['isNullable'] = (attr['isNullable'] == 'YES')
             attr['isKey'] = (attr['isKey'] == 'PRI')
@@ -90,28 +95,8 @@ class Heading:
             attr['type'] = re.sub(r'((tiny|small|medium|big)?int)\(\d+\)', r'\1', attr['type'])
             attr['alias'] = ''
             if not (attr['isNumeric'] or attr['isString'] or attr['isBlob']):
-                raise DataJointError('Unsupported field type {field} in `{dbName}`.`{tableName}`'.format(
-                    field=attr['type'], dbName=dbName, tableName=tableName))
+                raise DataJointError('Unsupported field type {field} in `{dbname}`.`{tabname}`'.format(
+                    field=attr['type'], dbname=dbname, tabname=tabname))
             attr.pop('Extra')
+        return cls(attrs)
 
-        return cls(dbName, tableName, attrs)
-
-
-    def pro(self, attrs):
-        """
-        project heading onto a list of attributes.
-        Always include primary key.
-        """
-        # TODO: parse computed and renamed attributes
-        return Heading(self.dbName, self.tableName,
-                      [{k:v for k,v in x.items()} 
-                      for x in self.attrs 
-                      if '*' in attrs or x['name'] in attrs or x['isKey']])
-        
-        
-if __name__ == "__main__":
-    from conn import conn
-    h = Heading.initFromDatabase(conn(),'common','animal')
-    print('Attributes: ', h.names)
-    print('Primary key: ', h.primaryKey)
-        

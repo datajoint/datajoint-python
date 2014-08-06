@@ -10,7 +10,6 @@ def conn(host=None, user=None, passwd=None, initFun=None):
     This is one of several ways to configure and access a datajoint connection.
     Users may customize their own connection manager.
     """
-
     global connObj
     if not connObj:
         host = host or os.getenv('DJ_HOST') or input('Enter datajoint server address >> ')

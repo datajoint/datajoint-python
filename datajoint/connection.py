@@ -1,28 +1,22 @@
 import pymysql
-from core import camelCase, settings
+from core import log, DataJointError, camelCase
 from heading import Heading
 import re
 import imp
-
-
-tableTiers = {
-    '': 'manual',      # manual tables have no prefix
-    '#': 'lookup',     # lookup tables start with a #
-    '_': 'imported',   # imported tables start with _
-    '__': 'computed',  # computed tables start with __
-    '~': 'job'         # job tables start with ~
-}
+from relvar import prefixRole 
 
 # The following two regular expression are equivalent but one works in python
 # and the other works in MySQL
-tableNameRegExpSQL = re.compile('^(#|_|__|~)?[a-z][a-z0-9_]*$')  
-tableNameRegExp = re.compile('^(|#|_|__|~)[a-z][a-z0-9_]*$')
+tableNameRegExpSQL = re.compile('^(#|_|__|~)?[a-z][a-z0-9_]*$')
+tableNameRegExp = re.compile('^(|#|_|__|~)[a-z][a-z0-9_]*$')    # MySQL does not accept this by MariaDB does
+
+
 
 
 class Connection:
     """
-    a dj.Connection manages a connection to a database server.
-    It also contains headers 
+    A dj.Connection object manages a connection to a database server.
+    It also catalogues modules, schemas, tables, and their dependencies (foreign keys) 
     """
     def __init__(self, host, user, passwd, initFun):
         try:
@@ -36,12 +30,15 @@ class Connection:
             print("Connected", user+'@'+host+':'+str(port))
         self._conn.autocommit(True)
 
-        self.schemas = {}  # maps module names to database names
-        self.modules = {}  # maps database names to module objects
-        self.parents = {}  # maps table names to their parent table names (primary foreign key)
-        self.referenced = {} # maps table names to table names they reference (non-primary foreign key)
-        
-        self.headings = {}   # contains headings indexed by `dbname`.`table_name`
+        self.schemas    = {}  # dbnames indexed by module names
+        self.modules    = {}  # modules indexed by database names
+        self.tableNames = {}  # full tables names indexed by their 'module.prettyNames' 
+        self.headings   = {}  # contains headings indexed by `dbname`.`table_name`
+        self.tableInfo  = {}  # table information indexed by `dbname`.`table_name`
+
+        # dependencies from foreign keys
+        self.parents    = {}  # maps table names to their parent table names (primary foreign key)
+        self.referenced = {}  # maps table names to table names they reference (non-primary foreign key        
 
     @property
     def isConnected(self):
@@ -50,30 +47,32 @@ class Connection:
         
     def bind(self, moduleName, dbname):
         """
-        bind module moduleName to database dbname
+        binds module moduleName to database dbname
         """
+        if dbname in self.modules:
+            raise DataJointError('Database `%s` is already bound to module `%s`'
+                %(dbname,self.modules[dbname].__name__))
         self.modules[dbname] = imp.importlib.__import__(moduleName)
-        self.schemas[moduleName] = dbname;
-        self.loadSchema(moduleName)
+        self.schemas[moduleName] = dbname   
         
-        
-    def loadSchema(self, moduleName):
-        
-        if settings['verbose']: 
-            print('Loading table definitions from %s...' % self.schemas[moduleName])
-        dbname = self.schemas[moduleName]
+        log('Loading table definitions from `%s`...' % dbname)
         cur = self.query('SHOW TABLE STATUS FROM `{dbname}` WHERE name REGEXP "{sqlPtrn}"'.format(
             dbname=dbname, sqlPtrn = tableNameRegExpSQL.pattern), asDict=True)
-        tableInfo = cur.fetchall()
+        tabInfo = cur.fetchall()
     
         # fields to lowercase
-        tableInfo = [{k.lower():v for k,v in info.items()} for info in tableInfo]
+        tabInfo = [{k.lower():v for k,v in info.items()} for info in tabInfo]
         
-        # rename fields
-        for info in tableInfo:
-            info['tier'] = tableTiers[tableNameRegExp.match(info['name']).group(1)] # lookup tier for the table based on tableName
-            self.headings['`%s`.`%s`'%(dbname, info['name'])] = \
-                Heading.initFromDatabase(self, dbname, info['name'] )
+        # generate headings
+        for info in tabInfo:
+            tabName = info.pop('name')
+            fullName = '`%s`.`%s`'%(dbname, tabName);
+            # look up role by table name prefix
+            role = prefixRole[tableNameRegExp.match(tabName).group(1)]
+            prettyName = '%s.%s' % (moduleName,camelCase(tabName))
+            self.tableNames[prettyName] = fullName
+            self.tableInfo[fullName] = dict(info,role=role)
+            self.headings[fullName] = Heading.initFromDatabase(self,dbname,tabName)
     
         #TODO: self.loadDependencies(self)
             
@@ -92,14 +91,11 @@ class Connection:
         \((?P<attr2>[`\w ,]+)\)                     # list of keys in the referenced table
         """
 
-        if settings['verbose']:
-           print('Loading dependices...')
+        log('Loading dependices...')
  
         for tblName in schema: # visit each table in schema
             cur = self.query('SHOW CREATE TABLE `{dbname}`.`{tblName}`'.format(
-                dbname=schema.dbname, tblName=tblName),
-                cursor = self.dict_cursor)
-
+                dbname=schema.dbname, tblName=tblName), asDict=True)
             tblDef = cur.fetchone()
             fullTblName = '`%s`.`%s`' % (schema.dbname, tblName)
             self.parents[fullTblName] = []
@@ -160,8 +156,8 @@ class Connection:
         self._conn.close()
 
     def query(self, query, args=(), asDict=False):
-        """execute the specified query and return its cursor"""
-        cursor = pymysql.cursors.DictCursor if asDict else pymysql.cursors.Cursor;
+        """execute the specified query and return the tuple generator"""
+        cursor = pymysql.cursors.DictCursor if asDict else pymysql.cursors.Cursor
         cur = self._conn.cursor(cursor=cursor)
         cur.execute(query, args)
         return cur
@@ -174,17 +170,3 @@ class Connection:
 
     def commitTransaction(self):
         self.query('COMMIT')
-
-    def tableToClass(self, fullTableName, strict = False):
-        m = re.match(r'^`(?P<dbname>.+)`.`(?P<tblName>[#~\w\d]+)`$', fullTableName)
-        assert  m, 'Invalid table name %s' % fullTableName
-        dbname = m.group('dbname')
-        tblName = m.group('tblName')
-        if dbname in self.packages:
-            className = '%s.%s' % (self.packages[dbname], camelCase(tblName))
-        elif strict:
-            raise ValueError('Unknown package for "%s". Activate its schema first.' % dbname)
-        else:
-            className = fullTableName
-        return className
-        
