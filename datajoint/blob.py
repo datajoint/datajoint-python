@@ -4,6 +4,30 @@ import numpy as np
 from core import DataJointError
 
 
+mxClassID = collections.OrderedDict(
+    # see http://www.mathworks.com/help/techdoc/apiref/mxclassid.html
+    mxUNKNOWN_CLASS = None,
+    mxCELL_CLASS    = None,   # not yet implemented
+    mxSTRUCT_CLASS  = None,   # not yet implemented
+    mxLOGICAL_CLASS = np.dtype('bool'),
+    mxCHAR_CLASS    = np.dtype('c'),
+    mxVOID_CLASS    = None,
+    mxDOUBLE_CLASS  = np.dtype('float64'),
+    mxSINGLE_CLASS  = np.dtype('float32'),
+    mxINT8_CLASS    = np.dtype('int8'),
+    mxUINT8_CLASS   = np.dtype('uint8'),
+    mxINT16_CLASS   = np.dtype('int16'),
+    mxUINT16_CLASS  = np.dtype('uint16'),
+    mxINT32_CLASS   = np.dtype('int32'),
+    mxUINT32_CLASS  = np.dtype('uint32'),
+    mxINT64_CLASS   = np.dtype('int64'),
+    mxUINT64_CLASS  = np.dtype('uint64'),
+    mxFUNCTION_CLASS= None
+    )
+
+reverseClassID = {v:i for i,v in enumerate(mxClassID.values())}
+
+
 def pack(obj):
     """
     packs an object into a blob to be compatible with mym.mex
@@ -72,25 +96,3 @@ def unpack(blob):
 
 
 
-mxClassID = collections.OrderedDict((
-    # from http://www.mathworks.com/help/techdoc/apiref/mxclassid.html
-    ('mxUNKNOWN_CLASS', None),
-    ('mxCELL_CLASS', None),
-    ('mxSTRUCT_CLASS', None),
-    ('mxLOGICAL_CLASS', np.dtype('bool')),
-    ('mxCHAR_CLASS', np.dtype('c')),
-    ('mxVOID_CLASS', None),
-    ('mxDOUBLE_CLASS', np.dtype('float64')),
-    ('mxSINGLE_CLASS', np.dtype('float32')),
-    ('mxINT8_CLASS', np.dtype('int8')),
-    ('mxUINT8_CLASS', np.dtype('uint8')),
-    ('mxINT16_CLASS', np.dtype('int16')),
-    ('mxUINT16_CLASS', np.dtype('uint16')),
-    ('mxINT32_CLASS', np.dtype('int32')),
-    ('mxUINT32_CLASS', np.dtype('uint32')),
-    ('mxINT64_CLASS', np.dtype('int64')),
-    ('mxUINT64_CLASS', np.dtype('uint64')),
-    ('mxFUNCTION_CLASS', None)
-    ))
-
-reverseClassID = {v:i for i,v in enumerate(mxClassID.values())}
