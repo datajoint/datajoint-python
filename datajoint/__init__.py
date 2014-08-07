@@ -1,12 +1,12 @@
-from conn import conn
-from connection import Connection
-from heading import Heading
-from core import DataJointError
-from table import Table
-from relvar import Relvar
-from task import TaskQueue
-from autopopulate import AutoPopulate
-import blob
+from .conn import conn
+from .connection import Connection
+from .heading import Heading
+from .core import DataJointError
+from .table import Table
+from .relvar import Relvar
+from .task import TaskQueue
+from .autopopulate import AutoPopulate
+from . import blob
 
 __author__ = "Dimitri Yatsenko and Edgar Walker at Baylor College of Medicine"
 __version__ = "0.1"

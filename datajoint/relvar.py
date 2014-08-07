@@ -1,6 +1,6 @@
 import imp
 from enum import Enum
-from core import DataJointError
+from .core import DataJointError, camelCase
 
 # table names have prefixes that designate their roles in the processing chain
 Role = Enum('Role','manual lookup imported computed')
@@ -62,6 +62,7 @@ class Relvar(GeneralRelvar, Table):
     """
 
     def __init__(self, conn=None, dbname=None, prettyName=None, declaration=None):
+        # TODO: change prettyName by something more sensible for the user 
         """
         INPUTS:
         conn - a datajoint.Connection object
@@ -77,6 +78,7 @@ class Relvar(GeneralRelvar, Table):
                 raise DataJointError('Relvar is missing connection information')
             module = imp.importlib.__import__(self.__class__.__module__)
             prettyName = self.__class__.__name__
+            assert prettyName == camelCase(prettyName), 'Class %s should be renamed %s' % (prettyName, camelCase(prettyName))
             try:            
                 conn = module.conn   
             except AttributeError:
@@ -89,6 +91,7 @@ class Relvar(GeneralRelvar, Table):
         self.dbname = dbname
         self.declaration = declaration
         self.conn.loadHeadings(dbname)
+        
     
     @property
     def isDeclared(self):

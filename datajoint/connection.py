@@ -1,9 +1,9 @@
 import pymysql
-from core import log, DataJointError, camelCase
-from heading import Heading
+from .core import log, DataJointError, camelCase
+from .heading import Heading
 import re
 import imp
-from relvar import prefixRole 
+from .relvar import prefixRole 
 
 # The following two regular expression are equivalent but one works in python
 # and the other works in MySQL
@@ -30,7 +30,7 @@ class Connection:
             print("Connected", user+'@'+host+':'+str(port))
         self._conn.autocommit(True)
 
-        self.schemas    = {}  # dbnames indexed by module names
+        self.schemas    = {}  # database indexed by module names
         self.modules    = {}  # modules indexed by database names
         self.tableNames = {}  # full tables names indexed by [dbname][PrettyName] 
         self.headings   = {}  # contains headings indexed by [dbname][table_name]
@@ -56,8 +56,12 @@ class Connection:
         self.schemas[moduleName] = dbname 
         
     
-    def loadHeadings(self, dbname):
-        if not dbname in self.headings:
+    def loadHeadings(self, dbname, force=False):
+        """
+        Load table information including roles and list of attributes for all
+        tables within dbname by examining respective TABLE STATUS
+        """
+        if not dbname in self.headings or force:
             log('Loading table definitions from `%s`...' % dbname)
             self.tableNames[dbname] = {}
             self.headings[dbname] = {}
@@ -75,13 +79,11 @@ class Connection:
                 self.tableNames[dbname][prettyName] = tabName
                 self.tableInfo[dbname][tabName] = dict(info,role=role)
                 self.headings[dbname][tabName] = Heading.initFromDatabase(self,dbname,tabName)
-    
-            #TODO: self.loadDependencies(self)
+            self.loadDependencies(dbname)
             
-        
 
 
-    def loadDependencies(self, schema):
+    def loadDependencies(self, dbname): # TODO: Perhaps consider making this "private" by preceding with underscore?
         """
         load dependencies (foreign keys) between tables by examnining their 
         respective CREATE TABLE statements.
@@ -93,13 +95,13 @@ class Connection:
         \((?P<attr2>[`\w ,]+)\)                     # list of keys in the referenced table
         """
 
-        log('Loading dependices...')
- 
-        for tblName in schema: # visit each table in schema
-            cur = self.query('SHOW CREATE TABLE `{dbname}`.`{tblName}`'.format(
-                dbname=schema.dbname, tblName=tblName), asDict=True)
+        log('Loading dependices for %s...' % dbname)
+        
+        for tabName in self.tableInfo[dbname]:
+            cur = self.query('SHOW CREATE TABLE `{dbname}.`{tabName}`'.format(
+                dbname = dbname, tabName = tabName), asDict=True)
             tblDef = cur.fetchone()
-            fullTblName = '`%s`.`%s`' % (schema.dbname, tblName)
+            fullTblName = '`%s`.`%s`' % (dbname, tabName)
             self.parents[fullTblName] = []
             self.referenced[fullTblName] = []
 
@@ -107,12 +109,12 @@ class Connection:
                 assert m.group('attr1') == m.group('attr2'), 'Foreign keys must link identically named attributes'
                 attrs = m.group('attr1')
                 attrs = re.split(r',\s+', re.sub(r'`(.*?)`', r'\1', attrs)) # remove ` around attrs and split into list
-                pk = schema.headers[tblName].primaryKey
+                pk = self.headings[dbname][tabName].primaryKey
                 isPrimary = all([k in pk for k in attrs])
                 ref = m.group('ref') # referenced table
 
                 if not re.search(r'`\.`', ref): # if referencing other table in same schema
-                    ref = '`%s`.%s' % (schema.dbname, ref) # convert to full-table name
+                    ref = '`%s`.%s' % (dbname, ref) # convert to full-table name
 
                 if isPrimary:
                     self.parents[fullTblName].append(ref)
@@ -122,12 +124,13 @@ class Connection:
                 self.parents.setdefault(ref, [])
                 self.referenced.setdefault(ref, [])
 
-    def clearDependencies(self, schema=None):
-        if schema is None:
+
+    def clearDependencies(self, dbname=None):
+        if dbname is None: # clear out all dependencies
             self.parents.clear()
             self.referenced.clear()
         else:
-            tableKeys = ('`%s`.`%s`'%(schema.dbname, tblName) for tblName in schema)
+            tableKeys = ('`%s`.`%s`'%(dbname, tblName) for tblName in self.tableInfo[dbname])
             for key in tableKeys:
                 if key in self.parents:
                     self.parents.pop(key)
@@ -139,13 +142,13 @@ class Connection:
         """
         Return a list of tables for which parentTable is a parent (primary foreign key)
         """
-        return [childTable for childTable, parents in self.parents.iteritems() if parentTable in parents]
+        return [childTable for childTable, parents in self.parents.items() if parentTable in parents]
 
     def referencing(self, referencedTable):
         """
         Return a list of tables that references referencedTable as non-primary foreign key
         """
-        return [referencing for referencing, referenced in self.referenced.iteritems()
+        return [referencing for referencing, referenced in self.referenced.items()
                 if referencedTable in referenced]
 
     def __repr__(self):

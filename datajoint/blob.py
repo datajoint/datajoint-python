@@ -1,7 +1,7 @@
 import zlib
 import collections
 import numpy as np
-from core import DataJointError
+from .core import DataJointError
 
 
 def pack(obj):
