@@ -6,7 +6,7 @@ Created on Mon Aug  4 01:29:51 2014
 """
 
 import re
-from core import DataJointError
+from .core import DataJointError
 from collections import OrderedDict, namedtuple
 
 
