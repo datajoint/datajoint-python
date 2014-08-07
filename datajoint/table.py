@@ -1,4 +1,4 @@
-from core import DataJointError
+from .core import DataJointError
 import importlib
 
 class Table(object):

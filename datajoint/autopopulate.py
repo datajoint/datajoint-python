@@ -1,4 +1,4 @@
-from relvar import GeneralRelvar
+from .relvar import GeneralRelvar
 import pprint
 import abc
 
