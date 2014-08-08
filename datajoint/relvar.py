@@ -1,6 +1,7 @@
 import imp
 from enum import Enum
 from .core import DataJointError, camelCase
+from .relational import Relational
 
 # table names have prefixes that designate their roles in the processing chain
 Role = Enum('Role','manual lookup imported computed')
@@ -13,36 +14,8 @@ rolePrefix = {
 prefixRole = dict(zip(rolePrefix.values(),rolePrefix.keys()))
 
 
-class GeneralRelvar:    
-    """
-    datajoint.GeneralRelvar implements relational algebra and fetching data.
-    Relvar objects sharing the same connection object can be combined into 
-    queries using relational operators: restrict, project, and join.
-    """    
-    def __init__(self, conn, operator, restrictions=None, *operands):
-        self.conn = conn
-        self.operator = operator
-        self.restrictions = restrictions
-        self.operands = operands
 
-
-class Table:
-    """
-    datajoint.Table implement data declaration functions.
-    """
-    def __init__(self, conn, dbname, tabName, declaration=None):
-        self.conn = conn                # a dj.Connection object    
-        self.dbname = dbname            # database schema name
-        self.name = tabName             # table name
-        self.declaration = declaration  # table declaration in datajoint syntax
-        
-    @property
-    def fullname(self):
-        return "`%s`.`%s`" % (self.dbname,self.name) 
-
-
-
-class Relvar(GeneralRelvar, Table):
+class Relvar(Relational):
     """
     datajoint.Relvar integrates all data manipulation and data declaration functions.
     An instance of the class provides an interface to a single table in the database.
@@ -91,6 +64,11 @@ class Relvar(GeneralRelvar, Table):
         self.dbname = dbname
         self.declaration = declaration
         self.conn.loadHeadings(dbname)
+    
+
+    def _compile(self):
+        sql = '`%s`.`%s`' % (self.dbname, self.tableName)
+        return self.conn, sql, self.heading
         
     
     @property
@@ -100,12 +78,22 @@ class Relvar(GeneralRelvar, Table):
         
     @property
     def tableName(self):
-        if self.isDeclared:
-            return self.conn.tableNames[self.dbname][self.prettyName]            
+        self.declare
+        return self.conn.tableNames[self.dbname][self.prettyName]            
     
     @property
     def heading(self):
-        if self.isDeclared:
-            return self.conn.headings[self.dbname][self.tableName]
+        self.declare
+        return self.conn.headings[self.dbname][self.tableName]
         
+    def declare(self):
+        if not self.isDeclared:
+            self._declare()  
+            if not self.isDeclared:
+                raise DataJointError('Table could not be declared for %s' % self.prettyName)
     
+    def _declare(self):
+        """
+        _declare is called when no table in the database matches this object
+        """
+        # TODO: declare the table based on self.declaration
