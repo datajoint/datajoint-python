@@ -57,10 +57,11 @@ class Heading:
             (k if v.default is None else '%s="%s"'%(k,v.default), v.type,v.comment) 
             for k,v in self.attrs.items()])
 
-    def pro(self, attrs):
+    def pro(self, *attrs, **renames):
         """
-        project heading onto a list of attributes.
-        Always include primary key.
+        derive a new heading by selecting, renaming, or computing new attributes.
+        In relational algebra these operators are known as project, rename, and expand.
+        The primary key is always included.
         """
         # TODO: parse computed and renamed attributes
                         

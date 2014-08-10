@@ -1,16 +1,14 @@
 import pymysql
-from .core import log, DataJointError, camelCase
-from .heading import Heading
 import re
 import imp
+from .core import log, DataJointError, camelCase
+from .heading import Heading
 from .relvar import prefixRole 
 
 # The following two regular expression are equivalent but one works in python
 # and the other works in MySQL
 tableNameRegExpSQL = re.compile('^(#|_|__|~)?[a-z][a-z0-9_]*$')
 tableNameRegExp = re.compile('^(|#|_|__|~)[a-z][a-z0-9_]*$')    # MySQL does not accept this by MariaDB does
-
-
 
 
 class Connection:
@@ -79,7 +77,7 @@ class Connection:
                 self.tableNames[dbname][prettyName] = tabName
                 self.tableInfo[dbname][tabName] = dict(info,role=role)
                 self.headings[dbname][tabName] = Heading.initFromDatabase(self,dbname,tabName)
-            self.loadDependencies(dbname)
+            # self.loadDependencies(dbname)
             
 
 

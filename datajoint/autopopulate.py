@@ -1,4 +1,4 @@
-from .relvar import GeneralRelvar
+from .relational import Relational
 import pprint
 import abc
 
@@ -30,10 +30,7 @@ class AutoPopulate:
         pass
 
     @abc.abstractproperty
-    def conn(self): pass   # inherited from dj.GeneralRelvar
-
-    @abc.abstractmethod
-    def __call__(self): pass   # inherited from dj.GeneralRelvar
+    def conn(self): pass   # inherited from dj.Relvar
 
 
     def populate(self, catchErrors=False, *args, **kwargs):
