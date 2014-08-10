@@ -4,6 +4,7 @@ Created on Thu Aug  7 17:00:02 2014
 
 @author: dimitri
 """
+import numpy as np
 from copy import copy
 from .core import DataJointError
 
@@ -34,8 +35,10 @@ class Relational:
         """
         fetch relation from database into a recarray
         """
-        conn, sql, heading = Projection(*arg,**kwarg)._compile()
-        cur = conn.query(sql)
+        conn, sql, heading = Projection(self,*arg,**kwarg)._compile()
+        cur = conn.query('SELECT `'+'`,`'.join(heading.names)+'` FROM ' + sql)        
+        return np.array(list(cur), dtype=heading.asdtype)
+
         
     def __iand__(self, restriction):
         " in-place relational restriction "
@@ -74,11 +77,13 @@ class Projection(Relational):
 
     aliasCounter = 0
 
-    def __init__(self,_sub=None,*arg,**kwarg):
+    def __init__(self, rel, _sub=None, *arg, **kwarg):
+        self._rel = rel        
         self._sub = _sub        
         self._renames = kwarg;
         self._attributes = arg
         
     def _compile(self):
-        #TODO: complete
-        pass
+        conn, sql, heading = self._rel._compile()   
+        # TODO: implement projection
+        return conn, sql, heading
