@@ -77,7 +77,7 @@ class Connection:
                 self.tableNames[dbname][prettyName] = tabName
                 self.tableInfo[dbname][tabName] = dict(info,role=role)
                 self.headings[dbname][tabName] = Heading.initFromDatabase(self,dbname,tabName)
-            # self.loadDependencies(dbname)
+            self.loadDependencies(dbname)
             
 
 
@@ -96,8 +96,7 @@ class Connection:
         log('Loading dependices for %s...' % dbname)
         
         for tabName in self.tableInfo[dbname]:
-            cur = self.query('SHOW CREATE TABLE `{dbname}.`{tabName}`'.format(
-                dbname = dbname, tabName = tabName), asDict=True)
+            cur = self.query('SHOW CREATE TABLE `{dbname}`.`{tabName}`'.format(dbname = dbname, tabName = tabName), asDict=True)
             tblDef = cur.fetchone()
             fullTblName = '`%s`.`%s`' % (dbname, tabName)
             self.parents[fullTblName] = []
