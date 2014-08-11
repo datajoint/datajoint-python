@@ -61,14 +61,6 @@ class Heading:
             v.comment)
             for k,v in self.attrs.items()])
 
-    def pro(self, *attrs, **renames):
-        """
-        derive a new heading by selecting, renaming, or computing new attributes.
-        In relational algebra these operators are known as project, rename, and expand.
-        The primary key is always included.
-        """
-        # TODO: parse computed and renamed attributes
-
     @property        
     def asdtype(self):
         """
@@ -153,4 +145,15 @@ class Heading:
                     attr['dtype'] = numTypes[(t,isUnsigned)]
 
         return cls(attrs)
+        
+        
+        @classmethod
+        def pro(cls, heading, *attrs, **renames):
+        """
+        derive a new heading by selecting, renaming, or computing new attributes.
+        In relational algebra these operators are known as project, rename, and expand.
+        The primary key is always included.
+        """
+        # TODO: parse computed and renamed attributes
+
     

@@ -15,8 +15,9 @@ class Relational:
     Relvar objects sharing the same connection object can be combined into 
     queries using relational operators: restrict, project, and join.
     """    
-    def __init__(self):
-        self._restrictions = []; 
+    def __init__(self, conn):
+        self._restrictions = [];
+        self.conn = conn
       
     def __mul__(self, other):
         " relational join "
@@ -77,18 +78,21 @@ class Join(Relational):
     aliasCounter = 0
     
     def __init__(self,rel1,rel2):
+        super().__init__(rel1.conn)
         if not isinstance(rel2,Relational):
             raise DataJointError('relvars can only be joined with other relvars')
-        self.rel1 = rel1;
-        self.rel2 = rel2;
+        if not rel1.conn is rel2.conn:
+            raise DataJointError('Cannot join relvars from different connections')
+        self._rel1 = rel1;
+        self._rel2 = rel2;
     
     def _compile(self):
-        conn1, sql1, heading1 = self.rel1._compile()
-        conn2, sql2, heading2 = self.rel2._compile()
-        if not conn1 is conn2:
-            raise DataJointError('Cannot join relvars from different connections')
-        #TODO: complete
-        return conn1, sql, joinHeading
+        sql1, heading1 = self._rel1._compile()
+        sql2, heading2 = self._rel2._compile()
+        heading = Heading.join(heading1,heading2)
+        #TODO: incomplete
+        sql = '%s NATURAL JOIN %s as `$t%x`' % (sql1, sql2) 
+        return sql, heading
 
 
         
@@ -97,12 +101,19 @@ class Projection(Relational):
     aliasCounter = 0
 
     def __init__(self, rel, _sub=None, *arg, **kwarg):
+        if _sub and isinstance(_sub, Relational):
+            raise DataJointError('A relationl is required for ')
+        if _sub and not kwarg:
+            raise DataJointError('No aggregation attributes requested')
+        super().__init__(rel.conn)
         self._rel = rel        
         self._sub = _sub        
-        self._renames = kwarg;
-        self._attributes = arg
+        self._selection = arg
+        self._renames = kwarg
         
     def _compile(self):
-        conn, sql, heading = self._rel._compile()   
+        sql, heading = self._rel._compile()
+        heading = Heading.pro(heading, *arg, **kwarg)
+        
         # TODO: implement projection
         return conn, sql, heading

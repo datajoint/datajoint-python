@@ -60,7 +60,7 @@ class Relvar(Relational):
             dbname = conn.schemas[module.__name__]
             declaration = self.__class__.__doc__   # table declaration is in the doc string
   
-        self.conn = conn;
+        super().__init__(conn)
         self.prettyName = prettyName
         self.dbname = dbname
         self.declaration = declaration
