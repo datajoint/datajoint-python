@@ -36,21 +36,36 @@ class Relational:
         fetch relation from database into a recarray
         """
         conn, sql, heading = Projection(self,*arg,**kwarg)._compile()
-        cur = conn.query('SELECT `'+'`,`'.join(heading.names)+'` FROM ' + sql)        
-        return np.array(list(cur), dtype=heading.asdtype)
+        cur = conn.query('SELECT `'+'`,`'.join(heading.names)+'` FROM ' + sql)
+        ret = np.array(list(cur), dtype=heading.asdtype)
+        # TODO: unpack blobs
+        return ret
 
-        
-    def __iand__(self, restriction):
-        " in-place relational restriction "
-        self._restrictions.append(restriction)
-        return self
-    
     def __and__(self, restriction):
-        " relational restriction "
+        "relational restriction or semijoin"
         ret = copy(self)
         ret &= restriction
         return ret
+        
+    def __iand__(self, restriction):
+        "in-place relational restriction or semijoin"
+        self._restrictions.append(restriction)
+        return self    
 
+    def __isub__(self, restriction):
+        "in-place relational restriction or antijoin"
+        self &= Not(restriction)
+        return self
+
+    def __sub__(self, restriction):
+        "inverted restriction or antijoin"
+        return self & Not(restriction)
+
+
+class Not:
+    "inverse of a restriction" 
+    def __init__(self,restriction):
+        self.restriction = restriction
   
    
 class Join(Relational):
@@ -67,8 +82,8 @@ class Join(Relational):
         conn1, sql1, heading1 = self.rel1._compile()
         conn2, sql2, heading2 = self.rel2._compile()
         if not conn1 is conn2:
-            raise DataJointError('Relvars with different database connections cannot be joined')
-        #TODO: complete this
+            raise DataJointError('Cannot join relvars from different connections')
+        #TODO: complete
         return conn1, sql, joinHeading
 
 
