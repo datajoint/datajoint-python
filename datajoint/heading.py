@@ -68,7 +68,14 @@ class Heading:
         """        
         return np.dtype(dict(
             names=self.names, 
-            formats=[v.dtype for k,v in self.attrs.items()]))        
+            formats=[v.dtype for k,v in self.attrs.items()]))  
+    
+    @property
+    def asSQL(self):
+        """represent heading as SQL field list"""
+        attrNames = ['`%s`' % name if self.attrs[name].alias is None else '%s as `%s`' % (self.attrs[name].alias, name)
+                 for name in self.names]
+        return ','.join(attrNames)
                         
                         
     @classmethod
@@ -147,13 +154,27 @@ class Heading:
         return cls(attrs)
         
         
-        @classmethod
-        def pro(cls, heading, *attrs, **renames):
+    def _pro(self, *attrList, **renameDict):
         """
-        derive a new heading by selecting, renaming, or computing new attributes.
+        derive a new heading by selecting, renaming, or computing attributes.
         In relational algebra these operators are known as project, rename, and expand.
         The primary key is always included.
-        """
-        # TODO: parse computed and renamed attributes
-
-    
+        """        
+        # include pimrary key
+        attrList = set(attrList).union(self.primaryKey)
+        
+        # include all if '*'
+        if '*' in attrList:
+            attrList.discard('*')
+            attrList.update(self.names)
+            
+        # report missing attributes
+        missing = attrList.difference(self.names) 
+        if missing:
+            raise DataJointError('Attributes %s are not found' % str(missing))
+        
+        # TODO: process renameDict
+                                
+        # make new heading
+        return Heading([v._asdict() for k,v in self.attrs.items() if k in attrList])  
+        

@@ -20,25 +20,22 @@ class Relational:
         self.conn = conn
       
     def __mul__(self, other):
-        " relational join "
+        "relational join"
         return Join(self,other)
         
-    def pro(self, _sub=None, *arg, **kwarg):
-        " relational projection "
-        if not _sub is None and not isinstance(_sub, Relational):
-            raise DataJointError('Aggregation can only be performed on relvars')
-        return Projection(self, *arg, **kwarg)
+    def pro(self, *arg, _sub=None, **kwarg):
+        "relational projection abd aggregation"
+        print('**SELECT**', arg)
+        return Projection(self, _sub=_sub, *arg, **kwarg)
         
-    def aggr(self, rel, *arg, **kwarg):
-        " relational aggregation "
-        return self.pro(_sub=rel, *arg, **kwarg)
-               
-    def fetch(self, _limit=None, _offset=0, *arg, **kwarg):
+    def fetch(self, *arg, _limit=None, _offset=0, **kwarg):
         """
         fetch relation from database into a recarray
         """
-        conn, sql, heading = Projection(self,*arg,**kwarg)._compile()
-        cur = conn.query('SELECT `'+'`,`'.join(heading.names)+'` FROM ' + sql)
+        sql, heading = self.pro(*arg,**kwarg)._compile()
+        #TODO: implement offset and limt
+        print('SELECT '+heading.asSQL+' FROM ' + sql)
+        cur = self.conn.query('SELECT '+heading.asSQL+' FROM ' + sql)
         ret = np.array(list(cur), dtype=heading.asdtype)
         # unpack blobs
         for i in range(len(ret)):
@@ -89,8 +86,8 @@ class Join(Relational):
     def _compile(self):
         sql1, heading1 = self._rel1._compile()
         sql2, heading2 = self._rel2._compile()
-        heading = Heading.join(heading1,heading2)
         #TODO: incomplete
+        heading = heading1.join(heading2)
         sql = '%s NATURAL JOIN %s as `$t%x`' % (sql1, sql2) 
         return sql, heading
 
@@ -100,7 +97,7 @@ class Projection(Relational):
 
     aliasCounter = 0
 
-    def __init__(self, rel, _sub=None, *arg, **kwarg):
+    def __init__(self, rel, *arg, _sub, **kwarg):
         if _sub and isinstance(_sub, Relational):
             raise DataJointError('A relationl is required for ')
         if _sub and not kwarg:
@@ -110,10 +107,10 @@ class Projection(Relational):
         self._sub = _sub        
         self._selection = arg
         self._renames = kwarg
+        print('Selection: ', self._selection)
         
     def _compile(self):
         sql, heading = self._rel._compile()
-        heading = Heading.pro(heading, *arg, **kwarg)
-        
-        # TODO: implement projection
-        return conn, sql, heading
+        heading = heading._pro(*self._selection, **self._renames)
+        # TODO: enclose in subquery if necessary
+        return sql, heading

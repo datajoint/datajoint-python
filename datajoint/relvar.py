@@ -69,7 +69,7 @@ class Relvar(Relational):
 
     def _compile(self):
         sql = '`%s`.`%s`' % (self.dbname, self.tableName)
-        return self.conn, sql, self.heading
+        return sql, self.heading
         
     
     @property
