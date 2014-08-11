@@ -4,12 +4,13 @@ from .core import DataJointError, camelCase
 from .relational import Relational
 
 # table names have prefixes that designate their roles in the processing chain
-Role = Enum('Role','manual lookup imported computed')
+Role = Enum('Role','manual lookup imported computed job')
 rolePrefix = {
     Role.manual   : '',
     Role.lookup   : '#',
     Role.imported : '_',
-    Role.computed : '__'
+    Role.computed : '__',
+    Role.job      : '~'
     }   
 prefixRole = dict(zip(rolePrefix.values(),rolePrefix.keys()))
 

@@ -7,6 +7,7 @@ Created on Thu Aug  7 17:00:02 2014
 import numpy as np
 from copy import copy
 from .core import DataJointError
+from .blob import unpack
 
 class Relational:    
     """
@@ -39,8 +40,9 @@ class Relational:
         cur = conn.query('SELECT `'+'`,`'.join(heading.names)+'` FROM ' + sql)
         ret = np.array(list(cur), dtype=heading.asdtype)
         # unpack blobs
-                
-        
+        for i in range(len(ret)):
+            for f in heading.blobs:
+                ret[i][f] = unpack(ret[i][f])                 
         return ret
 
     def __and__(self, restriction):
