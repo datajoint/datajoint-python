@@ -38,7 +38,9 @@ class Relational:
         conn, sql, heading = Projection(self,*arg,**kwarg)._compile()
         cur = conn.query('SELECT `'+'`,`'.join(heading.names)+'` FROM ' + sql)
         ret = np.array(list(cur), dtype=heading.asdtype)
-        # TODO: unpack blobs
+        # unpack blobs
+                
+        
         return ret
 
     def __and__(self, restriction):
