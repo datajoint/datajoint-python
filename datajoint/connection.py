@@ -73,8 +73,8 @@ class Connection:
                 tabName = info.pop('name')
                 # look up role by table name prefix
                 role = prefixRole[tableNameRegExp.match(tabName).group(1)]
-                prettyName = camelCase(tabName)
-                self.tableNames[dbname][prettyName] = tabName
+                displayName = camelCase(tabName)
+                self.tableNames[dbname][displayName] = tabName
                 self.tableInfo[dbname][tabName] = dict(info,role=role)
                 self.headings[dbname][tabName] = Heading.initFromDatabase(self,dbname,tabName)
             self.loadDependencies(dbname)

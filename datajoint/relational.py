@@ -9,9 +9,10 @@ from copy import copy
 from .core import DataJointError, log
 from .blob import unpack
 
-class Relational:    
+class _Relational:   
     """
     Relational implements relational algebra and fetching data.
+    Relational is a private, abstract class and should never be instantiated by the user.
     Relvar objects sharing the same connection object can be combined into 
     queries using relational operators: restrict, project, and join.
     """    
@@ -27,6 +28,13 @@ class Relational:
         "relational projection abd aggregation"
         return Projection(self, _sub=_sub, *arg, **kwarg)
         
+    @property 
+    def count(self):
+        [sql,heading] = self._compile()
+        sql = 'SELECT count(*) FROM ' + sql + self._whereClause
+        cur = self.conn.query(sql)
+        return cur.fetchone()[0]
+        
     def fetch(self, *arg, _limit=None, _offset=0, **kwarg):
         """
         fetch relation from database into a recarray
@@ -35,7 +43,8 @@ class Relational:
         #TODO: implement offset and limt
         sql = 'SELECT '+heading.asSQL+' FROM ' + sql + self._whereClause
         log(sql)
-        ret = np.array(list(self.conn.query(sql)), dtype=heading.asdtype)
+        cur = self.conn.query(sql)
+        ret = np.array(list(cur), dtype=heading.asdtype)
         # unpack blobs
         for i in range(len(ret)):
             for f in heading.blobs:
@@ -68,13 +77,13 @@ class Relational:
         "make there WHERE clause based on the current restriction"
         def makeCondition(arg):
             if isinstance(arg,dict):
-                conds = ['`%s`="%s"'%(k,repr(v)) for k,v in arg.items()]
+                conds = ['`%s`=%s'%(k,repr(v)) for k,v in arg.items()]
             elif isinstance(arg,np.void):
-                conds = ['`%s`="%s"'%(k, arg[k]) for k in arg.dtype.fields]
+                conds = ['`%s`=%s'%(k, arg[k]) for k in arg.dtype.fields]
             else:
                 raise DataJointError('invalid restriction type')
             
-            return '('+') AND ('.join(conds)+')'
+            return ' AND '.join(conds)
                 
         
         if not self._restrictions:
@@ -106,13 +115,13 @@ class Not:
         self._restriction = restriction
   
    
-class Join(Relational):
+class Join(_Relational):
 
     aliasCounter = 0
     
     def __init__(self,rel1,rel2):
         super().__init__(rel1.conn)
-        if not isinstance(rel2,Relational):
+        if not isinstance(rel2,_Relational):
             raise DataJointError('relvars can only be joined with other relvars')
         if not rel1.conn is rel2.conn:
             raise DataJointError('Cannot join relvars from different connections')
@@ -130,12 +139,12 @@ class Join(Relational):
 
 
         
-class Projection(Relational):
+class Projection(_Relational):
 
     aliasCounter = 0
 
     def __init__(self, rel, *arg, _sub, **kwarg):
-        if _sub and isinstance(_sub, Relational):
+        if _sub and isinstance(_sub, _Relational):
             raise DataJointError('A relationl is required for ')
         if _sub and not kwarg:
             raise DataJointError('No aggregation attributes requested')
