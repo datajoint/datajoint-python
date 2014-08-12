@@ -5,11 +5,12 @@ Created on Thu Aug  7 17:00:02 2014
 @author: dimitri
 """
 import numpy as np
+import abc
 from copy import copy
 from .core import DataJointError, log
 from .blob import unpack
 
-class _Relational:   
+class _Relational(metaclass=abc.ABCMeta):   
     """
     Relational implements relational algebra and fetching data.
     Relational is a private, abstract class and should never be instantiated by the user.
