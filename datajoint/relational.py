@@ -6,7 +6,7 @@ Created on Thu Aug  7 17:00:02 2014
 """
 import numpy as np
 from copy import copy
-from .core import DataJointError
+from .core import DataJointError, log
 from .blob import unpack
 
 class Relational:    
@@ -34,7 +34,7 @@ class Relational:
         sql, heading = self.pro(*arg,**kwarg)._compile()
         #TODO: implement offset and limt
         sql = 'SELECT '+heading.asSQL+' FROM ' + sql + self._whereClause
-        print(sql)
+        log(sql)
         ret = np.array(list(self.conn.query(sql)), dtype=heading.asdtype)
         # unpack blobs
         for i in range(len(ret)):
@@ -65,7 +65,18 @@ class Relational:
         
     @property
     def _whereClause(self):
-        "apply restriction to sql statement"
+        "make there WHERE clause based on the current restriction"
+        def makeCondition(arg):
+            if isinstance(arg,dict):
+                conds = ['`%s`="%s"'%(k,repr(v)) for k,v in arg.items()]
+            elif isinstance(arg,np.void):
+                conds = ['`%s`="%s"'%(k, arg[k]) for k in arg.dtype.fields]
+            else:
+                raise DataJointError('invalid restriction type')
+            
+            return '('+') AND ('.join(conds)+')'
+                
+        
         if not self._restrictions:
             sql = ''
         else:
@@ -74,6 +85,11 @@ class Relational:
                 negate = isinstance(r,Not)
                 if negate:
                     r = r._restriction
+                if isinstance(r,dict) or isinstance(r,np.void):
+                    r = makeCondition(r)
+                elif isinstance(r,np.ndarray) or isinstance(r,list):
+                    r = '('+') OR ('.join([makeCondition(q) for q in r])+')'
+                        
                 #TODO: imlement restriction by dict and np.array
                 assert isinstance(r,str), 'condition must be converted into a string'
                 r = '('+r+')'
