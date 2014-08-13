@@ -4,11 +4,30 @@ import imp
 from .core import log, DataJointError, camelCase
 from .heading import Heading
 from .relvar import prefixRole 
+import os
+#from getpass import getpass
 
 # The following two regular expression are equivalent but one works in python
 # and the other works in MySQL
 tableNameRegExpSQL = re.compile('^(#|_|__|~)?[a-z][a-z0-9_]*$')
 tableNameRegExp = re.compile('^(|#|_|__|~)[a-z][a-z0-9_]*$')    # MySQL does not accept this by MariaDB does
+
+_connObj = None   # persstent connection object used by dj.conn() 
+
+def conn(host=None, user=None, passwd=None, initFun=None):
+    """
+    Manage a persistent connection object.
+    This is one of several ways to configure and access a datajoint connection.
+    Users may customize their own connection manager.
+    """
+    global _connObj
+    if not _connObj:
+        host = host or os.getenv('DJ_HOST') or input('Enter datajoint server address >> ')
+        user = user or os.getenv('DJ_USER') or input('Enter datajoint user name >> ')
+        passwd = passwd or os.getenv('DJ_PASS') or input('Enter datajoint password >> ') # had trouble with getpass
+        initFun = initFun or os.getenv('DJ_INIT')
+        _connObj = Connection(host, user, passwd, initFun)
+    return _connObj
 
 
 class Connection:
@@ -73,8 +92,8 @@ class Connection:
                 tabName = info.pop('name')
                 # look up role by table name prefix
                 role = prefixRole[tableNameRegExp.match(tabName).group(1)]
-                prettyName = camelCase(tabName)
-                self.tableNames[dbname][prettyName] = tabName
+                displayName = camelCase(tabName)
+                self.tableNames[dbname][displayName] = tabName
                 self.tableInfo[dbname][tabName] = dict(info,role=role)
                 self.headings[dbname][tabName] = Heading.initFromDatabase(self,dbname,tabName)
             self.loadDependencies(dbname)

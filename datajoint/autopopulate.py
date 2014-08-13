@@ -1,16 +1,14 @@
-from .relational import Relational
+from .relational import _Relational
 import pprint
 import abc
 
 #noinspection PyExceptionInherit,PyCallingNonCallable
-class AutoPopulate:
+class AutoPopulate(metaclass=abc.ABCMeta):
     """
     Class datajoint.AutoPopulate is a mixin that adds the method populate() to a dj.Relvar class.
     Auto-populated relvars must inherit from both datajoint.Relvar and datajoint.AutoPopulate,
     must define the property popRel, and must define the callback method makeTuples.
     """
-    __metaclass__ = abc.ABCMeta
-
 
     @abc.abstractproperty
     def popRel(self):
@@ -29,11 +27,8 @@ class AutoPopulate:
         """
         pass
 
-    @abc.abstractproperty
-    def conn(self): pass   # inherited from dj.Relvar
 
-
-    def populate(self, catchErrors=False, *args, **kwargs):
+    def populate(self, catchErrors=False, reserveJobs=False, restrict=None):
         """
         rel.populate() will call rel.makeTuples(key) for every primary key in self.popRel
         for which there is not already a tuple in rel.
@@ -43,7 +38,7 @@ class AutoPopulate:
 
         # enumerate unpopulated keys
         unpopulated = self.popRel
-        if ~isinstance(unpopulated, GeneralRelvar):
+        if ~isinstance(unpopulated, _Relational):
             unpopulated = unpopulated()   # instantiate
             
         if not unpopulated.count:
