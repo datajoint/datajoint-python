@@ -1,7 +1,7 @@
 import imp
 import re
 from enum import Enum
-from .core import DataJointError, camelCase, log
+from .core import DataJointError, camelCase, fromCamelCase, log
 from .relational import _Relational
 from .heading import Heading
 
@@ -84,7 +84,7 @@ class Relvar(_Relational):
     @property
     def tableName(self):
         self.declare()
-        return self.conn.tableNames[self.dbname][self.prettyName]
+        return self.conn.tableNames[self.dbname][self.displayName]
 
     @property
     def heading(self):
@@ -107,13 +107,13 @@ class Relvar(_Relational):
 
 
     @classmethod
-    def getRelvar(cls, conn, modName, prettyName):
+    def getRelvar(cls, conn, modName, displayName):
         module = imp.importlib.__import__(modName)
-        if prettyName in module.__dict__:
-            return module.__dict__[prettyName]()
+        if displayName in module.__dict__:
+            return module.__dict__[displayName]()
         else:
             dbname = conn.schemas[modName]
-            return cls(conn=conn, dbname=dbname, prettyName=prettyName)
+            return cls(conn=conn, dbname=dbname, displayName=displayName)
 
 
     def _fieldToSQL(self, field):
@@ -149,12 +149,12 @@ class Relvar(_Relational):
         """
         tableInfo, parents, referenced, fieldDefs, indexDefs = self._parseDeclaration()
         fullName = tableInfo['module'] + '.' + tableInfo['className']
-        clsName = self.__module__ + '.' + self.prettyName
+        clsName = self.__module__ + '.' + self.displayName
         assert fullName == clsName, 'Table name %s does not match the declared name %s' % (clsName, fullName)
 
         # compile the CREATE TABLE statement
         # TODO: support prefix
-        tableName = rolePrefix[tableInfo['tier']] + self.prettyName
+        tableName = rolePrefix[tableInfo['tier']] + fromCamelCase(self.displayName)
         sql = 'CREATE TABLE `%s`.`%s` (\n' % (self.dbname, tableName)
 
         # add inherited primary key fields
@@ -251,8 +251,8 @@ class Relvar(_Relational):
                 inKey = False
             elif line.startswith('->'):
                 # foreign key
-                module, prettyName = line[2:].strip().split('.')
-                p = self.getRelvar(self.conn, module, prettyName)
+                module, displayName = line[2:].strip().split('.')
+                p = self.getRelvar(self.conn, module, displayName)
                 parents.append(p) if inKey else referenced.append(p)
             elif re.match(r'^(unique\s+)?index[^:]*$', line):
                 indexDefs.append(self._parseIndexDef(line))
