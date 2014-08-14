@@ -13,9 +13,9 @@ from .blob import unpack
 class _Relational(metaclass=abc.ABCMeta):   
     """
     Relational implements relational algebra and fetching data.
-    Relational is a private, abstract class and should never be instantiated by the user.
-    Relvar objects sharing the same connection object can be combined into 
-    queries using relational operators: restrict, project, and join.
+    It is a mixin class that provides relational operators, iteration, and 
+    fetch capability.
+    Relational operators are: restrict, pro, aggr, and join. 
     """    
     def __init__(self, conn):
         self._restrictions = [];
@@ -71,21 +71,35 @@ class _Relational(metaclass=abc.ABCMeta):
         cur = self.conn.query(sql)
         return cur.fetchone()[0]
         
-    def fetch(self, *arg, _limit=None, _offset=0, **kwarg):
+    def fetch(self, *attrs, _limit=None, _offset=0, _orderBy=None, **renames):
         """
         fetch relation from database into a recarray
         """
-        sql, heading = self.pro(*arg,**kwarg)._compile()
-        #TODO: implement offset and limt
-        sql = 'SELECT '+heading.asSQL+' FROM ' + sql + self._whereClause
-        log(sql)
-        cur = self.conn.query(sql)
+        cur, heading = self._fetchCursor(*attrs, _limit=_limit, _offset=_offset, _orderBy=_orderBy, **renames)
         ret = np.array(list(cur), dtype=heading.asdtype)
         # unpack blobs
         for i in range(len(ret)):
             for f in heading.blobs:
                 ret[i][f] = unpack(ret[i][f])                 
         return ret
+    
+    def _fetchCursor(self, *attrs, _limit, _offset, _orderBy, **renames):
+        sql, heading = self.pro(*attrs, **renames)._compile()
+        #TODO: implement offset, limit, and order by
+        sql = 'SELECT '+heading.asSQL+' FROM ' + sql + self._whereClause
+        log(sql)
+        return self.conn.query(sql), heading
+        
+        
+    ########  iterator  ###############
+    def __iter__(self):
+        cur, h = self._fetchCursor(_limit=None, _offset=0, _orderBy=None)
+        dtype = h.asdtype        
+        q = cur.fetchone()       
+        while q:
+            yield np.array([q,],dtype=dtype)
+            q = cur.fetchone()       
+            
 
 
     @property
