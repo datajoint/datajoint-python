@@ -21,6 +21,17 @@ class _Relational(metaclass=abc.ABCMeta):
         self._restrictions = [];
         self.conn = conn
       
+    @abc.abstractmethod 
+    def _compile():
+        """
+        all deriving classes must define _compile(self) to return the sql string
+        and the heading        
+        """
+        return NotImplemented  # must override
+        
+
+    ######    Relational algebra   ##############
+
     def __mul__(self, other):
         "relational join"
         return Join(self,other)
@@ -29,6 +40,30 @@ class _Relational(metaclass=abc.ABCMeta):
         "relational projection abd aggregation"
         return Projection(self, _sub=_sub, *arg, **kwarg)
         
+    def __and__(self, restriction):
+        "relational restriction or semijoin"
+        ret = copy(self)
+        ret._restrictions = list(ret._restrictions)  # copy restiction
+        ret &= restriction
+        return ret
+        
+    def __iand__(self, restriction):
+        "in-place relational restriction or semijoin"
+        self._restrictions.append(restriction)
+        return self    
+
+    def __isub__(self, restriction):
+        "in-place relational restriction or antijoin"
+        self &= Not(restriction)
+        return self
+
+    def __sub__(self, restriction):
+        "inverted restriction or antijoin"
+        return self & Not(restriction)
+        
+
+    ######    Fetching the data   ##############
+
     @property 
     def count(self):
         [sql,heading] = self._compile()
@@ -52,27 +87,7 @@ class _Relational(metaclass=abc.ABCMeta):
                 ret[i][f] = unpack(ret[i][f])                 
         return ret
 
-    def __and__(self, restriction):
-        "relational restriction or semijoin"
-        ret = copy(self)
-        ret._restrictions = list(ret._restrictions)  # copy restiction
-        ret &= restriction
-        return ret
-        
-    def __iand__(self, restriction):
-        "in-place relational restriction or semijoin"
-        self._restrictions.append(restriction)
-        return self    
 
-    def __isub__(self, restriction):
-        "in-place relational restriction or antijoin"
-        self &= Not(restriction)
-        return self
-
-    def __sub__(self, restriction):
-        "inverted restriction or antijoin"
-        return self & Not(restriction)
-        
     @property
     def _whereClause(self):
         "make there WHERE clause based on the current restriction"
