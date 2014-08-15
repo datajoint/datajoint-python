@@ -17,9 +17,7 @@ class _Relational(metaclass=abc.ABCMeta):
     fetch capability.
     Relational operators are: restrict, pro, aggr, and join. 
     """    
-    def __init__(self, conn):
-        self._restrictions = [];
-        self.conn = conn
+    _restrictions = None
       
     @abc.abstractmethod 
     def _compile():
@@ -39,18 +37,20 @@ class _Relational(metaclass=abc.ABCMeta):
     def pro(self, *arg, _sub=None, **kwarg):
         "relational projection abd aggregation"
         return Projection(self, _sub=_sub, *arg, **kwarg)
-        
+            
+    def __iand__(self, restriction):
+        "in-place relational restriction or semijoin"
+        if self._restrictions is None:
+            self._restrictions = []
+        self._restrictions.append(restriction)
+        return self        
+    
     def __and__(self, restriction):
         "relational restriction or semijoin"
         ret = copy(self)
         ret._restrictions = list(ret._restrictions)  # copy restiction
         ret &= restriction
         return ret
-        
-    def __iand__(self, restriction):
-        "in-place relational restriction or semijoin"
-        self._restrictions.append(restriction)
-        return self    
 
     def __isub__(self, restriction):
         "in-place relational restriction or antijoin"
@@ -150,11 +150,11 @@ class Join(_Relational):
     aliasCounter = 0
     
     def __init__(self,rel1,rel2):
-        super().__init__(rel1.conn)
         if not isinstance(rel2,_Relational):
             raise DataJointError('relvars can only be joined with other relvars')
         if not rel1.conn is rel2.conn:
             raise DataJointError('Cannot join relvars from different connections')
+        self.conn = rel1.conn
         self._rel1 = rel1;
         self._rel2 = rel2;
     
@@ -178,7 +178,7 @@ class Projection(_Relational):
             raise DataJointError('A relationl is required for ')
         if _sub and not kwarg:
             raise DataJointError('No aggregation attributes requested')
-        super().__init__(rel.conn)
+        self.conn = rel.conn
         self._rel = rel        
         self._sub = _sub        
         self._selection = arg

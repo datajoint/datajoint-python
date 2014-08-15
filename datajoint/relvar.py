@@ -1,9 +1,10 @@
 import imp
 import re
 from enum import Enum
-from .core import DataJointError, camelCase, fromCamelCase, log
+from .core import DataJointError, fromCamelCase, log
 from .relational import _Relational
 from .heading import Heading
+
 
 # table names have prefixes that designate their roles in the processing chain
 Role = Enum('Role','manual lookup imported computed job')
@@ -37,63 +38,63 @@ class Relvar(_Relational):
     table names are converted from CamelCase to underscore_separated_words and
     prefixed according to the table's role.
     """
-
-    def __init__(self, conn=None, dbname=None, displayName=None, declaration=None):
-        # TODO: change displayName by something more sensible for the user
-        """
-        INPUTS:
-        conn - a datajoint.Connection object
-        dbname - database schema name
-        displayName - module.PrettyTableName (the CamelCase version of the table name)
-        declaration - table declaration string in DataJoint syntax
-        """
-        # unless otherwise specified, take the name and module of the derived class
-        # The doc string of the derived class contains the table declaration
-        if conn is None or dbname is None or displayName is None:
-            # must be a derived class
-            if not issubclass(type(self), Relvar):
-                raise DataJointError('Relvar is missing connection information')
-            module = imp.importlib.__import__(self.__class__.__module__)
-            displayName = self.__class__.__name__
-            assert displayName == camelCase(displayName), 'Class %s should be renamed %s' % (displayName, camelCase(displayName))
+ 
+    def __init__(self, conn=None, dbname=None, className=None, declaration=None):
+        
+        if self.__class__ is Relvar:
+            # instantiate without subclassing 
+            if not(conn and dbname and className):
+                raise DataJointError('Missing argument: please specify conn, dbanem, and className.')
+            self.className = className
+            self.conn = conn
+            self.dbname = dbname
+            self.declaration = declaration
+            if dbname not in self.conn.modules:    # register with a fake module, enclosed in backquotes
+                self.conn.bind('`%s`'%dbname, dbname)
+        else:
+            # instantiate a derived class 
+            if conn or dbname or className or declaration:
+                raise DataJointError('With derived classes, constructor arguments are ignored')
+            self.className = self.__class__.__name__
+            module = imp.importlib.import_module(self.__module__)                
             try:
-                conn = module.conn
+                self.conn = module.conn
             except AttributeError:
-                raise DataJointError('DataJoint module %s must declare a connection object conn.' % module.__name__)
-            dbname = conn.schemas[module.__name__]
-            declaration = self.__class__.__doc__   # table declaration is in the doc string
-
-        super().__init__(conn)
-        self.displayName = displayName
-        self.dbname = dbname
-        self.declaration = declaration
-        self.conn.loadHeadings(dbname)
+                raise DataJointError("Please define object 'conn' in '%s'." % module.__name__)
+            try:
+                self.dbname = self.conn.dbnames[self.__module__]
+            except KeyError:
+                raise DataJointError('Module %s is not bound to a database. See datajoint.connection.bind' % self.__module__)
+            self.declaration = self.__doc__
+               
 
 
     def _compile(self):
-        sql = '`%s`.`%s`' % (self.dbname, self.tableName)
+        sql = '`%s`.`%s`' % (self.dbname, self.table)
         return sql, self.heading
+
 
 
     @property
     def isDeclared(self):
-        # True if found in the database
-        return self.displayName in self.conn.tableNames[self.dbname]
+        "True if table is found in the database"
+        self.conn.loadHeadings(self.dbname)
+        return self.className in self.conn.tableNames[self.dbname]
 
 
     @property
-    def tableName(self):
+    def table(self):
         self.declare()
-        return self.conn.tableNames[self.dbname][self.displayName]
+        return self.conn.tableNames[self.dbname][self.className]
 
     @property
     def heading(self):
         self.declare()
-        return self.conn.headings[self.dbname][self.tableName]
+        return self.conn.headings[self.dbname][self.table]
 
     @property
     def fullTableName(self):
-        return '`%s`.`%s`' % (self.dbname, self.tableName)
+        return '`%s`.`%s`' % (self.dbname, self.table)
 
     @property
     def primaryKey(self):
@@ -103,23 +104,22 @@ class Relvar(_Relational):
         if not self.isDeclared:
             self._declare()
             if not self.isDeclared:
-                raise DataJointError('Table could not be declared for %s' % self.displayName)
-
-
+                raise DataJointError('Table could not be declared for %s' % self.className)
+    
     @classmethod
-    def getRelvar(cls, conn, modName, displayName):
-        module = imp.importlib.__import__(modName)
-        if displayName in module.__dict__:
-            return module.__dict__[displayName]()
-        else:
-            dbname = conn.schemas[modName]
-            return cls(conn=conn, dbname=dbname, displayName=displayName)
+    def getRelvar(cls, conn, module, className):
+        """load relvar from module if available"""
+        modObj = imp.importlib.__import__(module)
+        try:
+            return modObj.__dict__[className]()
+        except KeyError:
+            return cls(conn=conn, dbname=conn.schemas[module], className=className)
+
 
 
     def _fieldToSQL(self, field):
         """
-        Takes in field attribute tuple and returns the SQL statement to create the
-        attribute
+        Converts an attribute definition tuple into SQL code 
         """
         if field.isNullable:
             default = 'DEFAULT NULL'
@@ -139,7 +139,7 @@ class Relvar(_Relational):
             'Illegal characters in attribute comment "%s"' % field.comment
 
         return '`{name}` {type} {default} COMMENT "{comment}", \n'.format(\
-        name=field.name, type=field.type, default=default, comment=field.comment)
+            name=field.name, type=field.type, default=default, comment=field.comment)
 
 
 
@@ -154,7 +154,7 @@ class Relvar(_Relational):
 
         # compile the CREATE TABLE statement
         # TODO: support prefix
-        tableName = rolePrefix[tableInfo['tier']] + fromCamelCase(self.displayName)
+        tableName = rolePrefix[tableInfo['tier']] + fromCamelCase(self.className)
         sql = 'CREATE TABLE `%s`.`%s` (\n' % (self.dbname, tableName)
 
         # add inherited primary key fields
@@ -251,9 +251,9 @@ class Relvar(_Relational):
                 inKey = False
             elif line.startswith('->'):
                 # foreign key
-                module, displayName = line[2:].strip().split('.')
-                p = self.getRelvar(self.conn, module, displayName)
-                parents.append(p) if inKey else referenced.append(p)
+                module, className = line[2:].strip().split('.')
+                rel = self.getRelvar(self.conn, module, className)
+                (parents if inKey else referenced).append(rel)
             elif re.match(r'^(unique\s+)?index[^:]*$', line):
                 indexDefs.append(self._parseIndexDef(line))
             elif fieldP.match(line):
@@ -261,7 +261,7 @@ class Relvar(_Relational):
             else:
                 raise DataJointError('Invalid table declaration line "%s"' % line)
 
-        return (tableInfo, parents, referenced, fieldDefs, indexDefs)
+        return tableInfo, parents, referenced, fieldDefs, indexDefs
 
     def _parseAttrDef(self, line, inKey):
         line = line.strip()

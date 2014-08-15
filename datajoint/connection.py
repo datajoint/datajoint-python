@@ -1,10 +1,9 @@
 import pymysql
 import re
-import imp
 from .core import log, DataJointError, camelCase
+import os
 from .heading import Heading
 from .relvar import prefixRole 
-import os
 #from getpass import getpass
 
 # The following two regular expression are equivalent but one works in python
@@ -12,7 +11,7 @@ import os
 tableNameRegExpSQL = re.compile('^(#|_|__|~)?[a-z][a-z0-9_]*$')
 tableNameRegExp = re.compile('^(|#|_|__|~)[a-z][a-z0-9_]*$')    # MySQL does not accept this by MariaDB does
 
-_connObj = None   # persstent connection object used by dj.conn() 
+_connObj = None   # persitent connection object used by dj.conn() 
 
 def conn(host=None, user=None, passwd=None, initFun=None):
     """
@@ -48,8 +47,9 @@ class Connection:
         self._conn.autocommit(True)
 
         self.schemas    = {}  # database indexed by module names
-        self.modules    = {}  # modules indexed by database names
-        self.tableNames = {}  # full tables names indexed by [dbname][PrettyName] 
+        self.modules    = {}  # modules indexed by dbnames
+        self.dbnames    = {}  # modules indexed by database names
+        self.tableNames = {}  # tables names indexed by [dbname][ClassName] 
         self.headings   = {}  # contains headings indexed by [dbname][table_name]
         self.tableInfo  = {}  # table information indexed by [dbname][table_name]
 
@@ -62,15 +62,15 @@ class Connection:
         return self._conn.ping()
         
         
-    def bind(self, moduleName, dbname):
+    def bind(self, module, dbname):
         """
-        binds module moduleName to database dbname
+        binds module to dbname
         """
         if dbname in self.modules:
             raise DataJointError('Database `%s` is already bound to module `%s`'
-                %(dbname,self.modules[dbname].__name__))
-        self.modules[dbname] = imp.importlib.__import__(moduleName)
-        self.schemas[moduleName] = dbname 
+                %(dbname,self.modules[dbname]))
+        self.modules[dbname] = module
+        self.dbnames[module] = dbname 
         
     
     def loadHeadings(self, dbname, force=False):
