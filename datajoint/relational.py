@@ -105,38 +105,39 @@ class _Relational(metaclass=abc.ABCMeta):
     @property
     def _whereClause(self):
         "make there WHERE clause based on the current restriction"
+
+        if not self._restrictions:
+            return ''
+        
         def makeCondition(arg):
             if isinstance(arg,dict):
                 conds = ['`%s`=%s'%(k,repr(v)) for k,v in arg.items()]
             elif isinstance(arg,np.void):
                 conds = ['`%s`=%s'%(k, arg[k]) for k in arg.dtype.fields]
             else:
-                raise DataJointError('invalid restriction type')
-            
+                raise DataJointError('invalid restriction type')            
             return ' AND '.join(conds)
-                
-        
-        if not self._restrictions:
-            sql = ''
-        else:
-            condStr = []
-            for r in self._restrictions:
-                negate = isinstance(r,Not)
-                if negate:
-                    r = r._restriction
-                if isinstance(r,dict) or isinstance(r,np.void):
-                    r = makeCondition(r)
-                elif isinstance(r,np.ndarray) or isinstance(r,list):
-                    r = '('+') OR ('.join([makeCondition(q) for q in r])+')'
-                        
-                #TODO: imlement restriction by dict and np.array
-                assert isinstance(r,str), 'condition must be converted into a string'
-                r = '('+r+')'
-                if negate:
-                    r = 'NOT '+r;
-                condStr.append(r)
-            sql = ' WHERE ' + ' AND '.join(condStr)
-        return sql
+             
+        condStr = []
+        for r in self._restrictions:
+            negate = isinstance(r,Not)
+            if negate:
+                r = r._restriction
+            if isinstance(r,dict) or isinstance(r,np.void):
+                r = makeCondition(r)
+            elif isinstance(r,np.ndarray) or isinstance(r,list):
+                r = '('+') OR ('.join([makeCondition(q) for q in r])+')'
+            elif isinstance(r,_Relational):
+                raise DataJointError('not yet implemented')
+                                    
+            #TODO: imlement restriction by dict and np.array
+            assert isinstance(r,str), 'condition must be converted into a string'
+            r = '('+r+')'
+            if negate:
+                r = 'NOT '+r;
+            condStr.append(r)
+            
+        return ' WHERE ' + ' AND '.join(condStr)
 
 
 class Not:

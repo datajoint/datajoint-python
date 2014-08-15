@@ -106,14 +106,16 @@ class Relvar(_Relational):
             if not self.isDeclared:
                 raise DataJointError('Table could not be declared for %s' % self.className)
     
+    
     @classmethod
     def getRelvar(cls, conn, module, className):
         """load relvar from module if available"""
         modObj = imp.importlib.__import__(module)
         try:
-            return modObj.__dict__[className]()
+            ret = modObj.__dict__[className]()
         except KeyError:
-            return cls(conn=conn, dbname=conn.schemas[module], className=className)
+            ret = cls(conn=conn, dbname=conn.schemas[module], className=className)
+        return ret
 
 
 
