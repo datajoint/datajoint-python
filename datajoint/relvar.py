@@ -32,7 +32,7 @@ class Relvar(_Relational):
     With direct instantiation, instance parameters must be explicitly specified.
     With a derived class, all the instance parameters are taken from the module
     of the deriving class. The module must declare the connection object conn.
-    The name of the deriving class is used as the table's displayName.
+    The name of the deriving class is used as the table's className.
 
     Tables are identified by their "pretty names", which are CamelCase. The actual
     table names are converted from CamelCase to underscore_separated_words and
@@ -151,7 +151,7 @@ class Relvar(_Relational):
         """
         tableInfo, parents, referenced, fieldDefs, indexDefs = self._parseDeclaration()
         fullName = tableInfo['module'] + '.' + tableInfo['className']
-        clsName = self.__module__ + '.' + self.displayName
+        clsName = self.__module__ + '.' + self.className
         assert fullName == clsName, 'Table name %s does not match the declared name %s' % (clsName, fullName)
 
         # compile the CREATE TABLE statement
@@ -271,8 +271,9 @@ class Relvar(_Relational):
         ^(?P<name>[a-z][a-z\d_]*)\s*             # field name
         (=\s*(?P<default>\S+(\s+\S+)*)\s*)?      # default value
         :\s*(?P<type>\w[^\#]*[^\#\s])\s*         # datatype
-        (\#\s*(?P<comment>\S.*\S)\s*)?$          # comment
+        (\#\s*(?P<comment>\S*(\s+\S+)*)\s*)?$          # comment
         """
+        
         attrP = re.compile(attrPtrn, re.I + re.X)
         m = attrP.match(line)
         assert m, 'Invalid field declaration "%s"' % line
