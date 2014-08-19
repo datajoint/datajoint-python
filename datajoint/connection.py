@@ -3,7 +3,7 @@ import re
 from .core import log, DataJointError, camelCase
 import os
 from .heading import Heading
-from .relvar import prefixRole 
+from .base import prefixRole 
 #from getpass import getpass
 
 # The following two regular expression are equivalent but one works in python

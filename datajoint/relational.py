@@ -10,6 +10,19 @@ from copy import copy
 from .core import DataJointError, log
 from .blob import unpack
 
+def expandNested(args):
+    if type(args) is str:
+        return [args]
+    z = []
+    try:
+        if len(args) == 0:
+            return args
+        for x in args:
+            z.extend(expandNested(x))
+    except TypeError:
+        z.append(args)
+    return z
+
 class _Relational(metaclass=abc.ABCMeta):   
     """
     Relational implements relational algebra and fetching data.
@@ -18,7 +31,10 @@ class _Relational(metaclass=abc.ABCMeta):
     Relational operators are: restrict, pro, aggr, and join. 
     """    
     _restrictions = None
-      
+    _limit = None
+    _offset = 0
+    _order_by = []
+    
     @abc.abstractmethod 
     def _compile():
         """
@@ -64,13 +80,38 @@ class _Relational(metaclass=abc.ABCMeta):
 
     ######    Fetching the data   ##############
 
-    @property 
+    @property
     def count(self):
         [sql,heading] = self._compile()
         sql = 'SELECT count(*) FROM ' + sql + self._whereClause
         cur = self.conn.query(sql)
         return cur.fetchone()[0]
-        
+
+    def limit(self, n, offset=0):
+        ret = copy(self)
+        ret._limit = n
+        ret._offset = 0
+        return ret
+
+    def orderBy(self, *attrs):
+        ret = copy(self)
+        ret._order_by = expandNested(attrs)
+        return ret
+
+    @property
+    def _orderLimitClause(self):
+        clause = ''
+
+        if self._order_by:
+            clause += ' ORDER BY ' + ', '.join(self._order_by)
+
+        if self._limit is not None and self._limit >= 0:
+            clause += ' LIMIT %d' %  self._limit
+            if self._offset > 0:
+                clause += ' OFFSET %d ' %  self._offset
+                
+        return clause
+
     def fetch(self, *attrs, _limit=None, _offset=0, _orderBy=None, **renames):
         """
         fetch relation from database into a recarray
@@ -80,13 +121,13 @@ class _Relational(metaclass=abc.ABCMeta):
         # unpack blobs
         for i in range(len(ret)):
             for f in heading.blobs:
-                ret[i][f] = unpack(ret[i][f])                 
+                ret[i][f] = unpack(ret[i][f])
         return ret
     
     def _fetchCursor(self, *attrs, _limit, _offset, _orderBy, **renames):
         sql, heading = self.pro(*attrs, **renames)._compile()
         #TODO: implement offset, limit, and order by
-        sql = 'SELECT '+heading.asSQL+' FROM ' + sql + self._whereClause
+        sql = 'SELECT '+heading.asSQL+' FROM ' + sql + self._whereClause + self._orderLimitClause
         log(sql)
         return self.conn.query(sql), heading
         
