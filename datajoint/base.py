@@ -20,9 +20,9 @@ prefixRole = dict(zip(rolePrefix.values(),rolePrefix.keys()))
 mysql_constants = ['CURRENT_TIMESTAMP']
 
 
-class Relvar(_Relational):
+class Base(_Relational):
     """
-    datajoint.Relvar integrates all data manipulation and data declaration functions.
+    datajoint.Base integrates all data manipulation and data declaration functions.
     An instance of the class provides an interface to a single table in the database.
 
     An instance of the the class can be produce in two ways:
@@ -41,7 +41,7 @@ class Relvar(_Relational):
  
     def __init__(self, conn=None, dbname=None, className=None, declaration=None):
         
-        if self.__class__ is Relvar:
+        if self.__class__ is Base:
             # instantiate without subclassing 
             if not(conn and dbname and className):
                 raise DataJointError('Missing argument: please specify conn, dbanem, and className.')
@@ -108,7 +108,7 @@ class Relvar(_Relational):
     
     
     @classmethod
-    def getRelvar(cls, conn, module, className):
+    def getBase(cls, conn, module, className):
         """load relvar from module if available"""
         modObj = imp.importlib.__import__(module)
         try:
@@ -142,8 +142,6 @@ class Relvar(_Relational):
 
         return '`{name}` {type} {default} COMMENT "{comment}", \n'.format(\
             name=field.name, type=field.type, default=default, comment=field.comment)
-
-
 
     def _declare(self):
         """
@@ -222,6 +220,9 @@ class Relvar(_Relational):
 
 
     def _parseDeclaration(self):
+        """
+        Parse declaration and create new SQL table accordingly
+        """
         parents = []
         referenced = []
         indexDefs = []
@@ -254,7 +255,7 @@ class Relvar(_Relational):
             elif line.startswith('->'):
                 # foreign key
                 module, className = line[2:].strip().split('.')
-                rel = self.getRelvar(self.conn, module, className)
+                rel = self.getBase(self.conn, module, className)
                 (parents if inKey else referenced).append(rel)
             elif re.match(r'^(unique\s+)?index[^:]*$', line):
                 indexDefs.append(self._parseIndexDef(line))
@@ -266,6 +267,10 @@ class Relvar(_Relational):
         return tableInfo, parents, referenced, fieldDefs, indexDefs
 
     def _parseAttrDef(self, line, inKey):
+        """
+        Parse attribute definition line in the declaration and returns
+        an attribute tuple.
+        """
         line = line.strip()
         attrPtrn = """
         ^(?P<name>[a-z][a-z\d_]*)\s*             # field name
@@ -312,10 +317,37 @@ class Relvar(_Relational):
         'Duplicate attributes in index declaration "%s"' % line
         return indexInfo
 
-
-
-
-
-
-
-
+    def erd(self, subset=None, prog='dot'):
+        """
+        plot the schema's entity relationship diagram (ERD).
+        The layout programs can be 'dot' (default), 'neato', 'fdp', 'sfdp', 'circo', 'twopi'
+        """
+        if not subset:
+            g = self.graph
+        else:
+            g = self.graph.copy()
+        """
+         g = self.graph
+         else:
+         g = self.graph.copy()
+         for i in g.nodes():
+         if i not in subset:
+         g.remove_node(i)
+        def tablelist(tier):
+        return [i for i in g if self.tables[i].tier==tier]
+        
+        pos=nx.graphviz_layout(g,prog=prog,args='')
+        plt.figure(figsize=(8,8))
+        nx.draw_networkx_edges(g, pos, alpha=0.3)
+        nx.draw_networkx_nodes(g, pos, nodelist=tablelist('manual'),
+        node_color='g', node_size=200, alpha=0.3)
+        nx.draw_networkx_nodes(g, pos, nodelist=tablelist('computed'),
+        node_color='r', node_size=200, alpha=0.3)
+        nx.draw_networkx_nodes(g, pos, nodelist=tablelist('imported'),
+        node_color='b', node_size=200, alpha=0.3)
+        nx.draw_networkx_nodes(g, pos, nodelist=tablelist('lookup'),
+        node_color='gray', node_size=120, alpha=0.3)
+        nx.draw_networkx_labels(g, pos, nodelist = subset, font_weight='bold', font_size=9)
+        nx.draw(g,pos,alpha=0,with_labels=false)
+        plt.show()
+        """
