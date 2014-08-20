@@ -2,26 +2,13 @@
 """
 Created on Thu Aug  7 17:00:02 2014
 
-@author: dimitri
+@author: dimitri, eywalker
 """
 import numpy as np
 import abc
 from copy import copy
 from .core import DataJointError, log
 from .blob import unpack
-
-def expandNested(args):
-    if type(args) is str:
-        return [args]
-    z = []
-    try:
-        if len(args) == 0:
-            return args
-        for x in args:
-            z.extend(expandNested(x))
-    except TypeError:
-        z.append(args)
-    return z
 
 class _Relational(metaclass=abc.ABCMeta):   
     """
@@ -95,7 +82,7 @@ class _Relational(metaclass=abc.ABCMeta):
 
     def orderBy(self, *attrs):
         ret = copy(self)
-        ret._order_by = expandNested(attrs)
+        ret._order_by = attrs
         return ret
 
     @property
