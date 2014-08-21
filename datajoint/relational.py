@@ -74,9 +74,9 @@ class _Relational(metaclass=abc.ABCMeta):
         cur = self.conn.query(sql)
         return cur.fetchone()[0]
 
+    @property    
     def fetch(self):
         return Fetch(self)
-
         
     ########  iterator  ###############
     def __iter__(self):

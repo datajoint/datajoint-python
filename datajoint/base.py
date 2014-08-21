@@ -73,7 +73,7 @@ class Base(_Relational):
         Compiles SQL string and heading for the table to be
         used in relational algebra
         """
-        return self.fullTableName, self.heading
+        return self.fullTableName + self._whereClause, self.heading
 
 
     @property

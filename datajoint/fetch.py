@@ -44,7 +44,7 @@ class Fetch:
     
     def _cursor(self, *attrs, **renames):
         sql, heading = self.rel.pro(*attrs, **renames)._compile()
-        
+        sql = 'SELECT ' + heading.asSQL + ' FROM ' + sql 
         # add ORDER BY clause
         if self._orderBy:
             sql += ' ORDER BY ' + ', '.join(self._orderBy)
