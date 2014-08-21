@@ -74,13 +74,11 @@ class Base(_Relational):
         return sql, self.heading
 
 
-
     @property
     def isDeclared(self):
         "True if table is found in the database"
         self.conn.loadHeadings(self.dbname)
         return self.className in self.conn.tableNames[self.dbname]
-
 
     @property
     def table(self):
@@ -105,8 +103,46 @@ class Base(_Relational):
             self._declare()
             if not self.isDeclared:
                 raise DataJointError('Table could not be declared for %s' % self.className)
-    
-    
+
+    """
+    Data Definition Functionalities
+    """
+    def setTableComment(self, newComment):
+        """
+        Update the table comment in the table declaration.
+        """
+        # TODO: add verification procedure
+        self.alter('COMMENT="%s"' % newComment)
+
+    def addAttribute(self, definition, first=False,  after=''):
+        """
+        Add a new attribute to the table. A full line from the
+        table definition is passed in as "definition".
+
+        The definition can specify where to place the new attribute.
+        Make after="First" to add the attribute as the first attribute
+        or "AFTER `attribute`" to place it after an existing attribute.
+        """
+        # TODO: Update this definition!
+        position = ' FIRST' if first else (' AFTER %s' % after if after else '')
+        sql = self._fieldToSQL(self._parseAttrDef(definition))
+        self._alter('ADD COLUMN %s%s' % (sql[:-2], position))
+
+    def dropAttribute(self, attrName):
+        """
+        Drop the attribute attrName from this table
+        """
+        self._alter('DROP COLUMN `%s`' % attrName)
+
+    def alterAttribute(self, attrName, newDefinition):
+        """
+        Alter the definition of the field attrName in
+        this table using the newDefinition.
+        """
+        sql = self._fieldToSQL(self._parseAttrDef(newDefinition))
+        self._alter('CHANGE COLUMN `%s` %s' % (attrName, sql[:-2]))
+
+
     @classmethod
     def getBase(cls, conn, module, className):
         """load relvar from module if available"""
@@ -118,6 +154,9 @@ class Base(_Relational):
         return ret
 
 
+    #////////////////////////////////////////////////////////////
+    # Private Methods
+    #////////////////////////////////////////////////////////////
 
     def _fieldToSQL(self, field):
         """
@@ -140,8 +179,18 @@ class Base(_Relational):
         assert not any((c in r'\"' for c in field.comment)), \
             'Illegal characters in attribute comment "%s"' % field.comment
 
-        return '`{name}` {type} {default} COMMENT "{comment}", \n'.format(\
+        return '`{name}` {type} {default} COMMENT "{comment}",\n'.format(\
             name=field.name, type=field.type, default=default, comment=field.comment)
+
+    def _alter(self, alterStatement):
+        """
+        Execute ALTER TABLE statment for this table. The schema
+        will be reloaded within the connection object.
+        """
+        sql = 'ALTER TABLE %s %s' % (self.fullTableName, alterStatement)
+        self.conn.query(sql)
+        self.conn.loadHeadings(self.dbname, force=True)
+        # TODO: place table definition sync mechanism
 
     def _declare(self):
         """
@@ -218,7 +267,6 @@ class Base(_Relational):
             self.conn.query(sql)
             self.conn.loadHeadings(self.dbname, force=True)
 
-
     def _parseDeclaration(self):
         """
         Parse declaration and create new SQL table accordingly
@@ -266,7 +314,7 @@ class Base(_Relational):
 
         return tableInfo, parents, referenced, fieldDefs, indexDefs
 
-    def _parseAttrDef(self, line, inKey):
+    def _parseAttrDef(self, line, inKey=False):
         """
         Parse attribute definition line in the declaration and returns
         an attribute tuple.
@@ -316,6 +364,7 @@ class Base(_Relational):
         assert len(attributes) == len(set(attributes)), \
         'Duplicate attributes in index declaration "%s"' % line
         return indexInfo
+
 
     def erd(self, subset=None, prog='dot'):
         """
