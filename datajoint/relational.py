@@ -80,7 +80,7 @@ class _Relational(metaclass=abc.ABCMeta):
         
     ########  iterator  ###############
     def __iter__(self):
-        cur, h = self.fetch._fetchCursor(_limit=None, _offset=0, _orderBy=None)
+        cur, h = self.fetch._cursor()
         dtype = h.asdtype        
         q = cur.fetchone()       
         while q:

@@ -42,7 +42,7 @@ class Fetch:
                 ret[i][f] = unpack(ret[i][f])
         return ret
     
-    def _cursor(self, *attrs, _limit, _offset, _orderBy, **renames):
+    def _cursor(self, *attrs, **renames):
         sql, heading = self.rel.pro(*attrs, **renames)._compile()
         
         # add ORDER BY clause
