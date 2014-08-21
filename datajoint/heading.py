@@ -2,7 +2,7 @@
 """
 Created on Mon Aug  4 01:29:51 2014
 
-@author: dimitri
+@author: dimitri, eywalker
 """
 
 import re
@@ -13,9 +13,9 @@ from .core import DataJointError
 
 class Heading:
     """
-    local class for handling table headings
+    local class for relational object headings
     """
-    
+
     AttrTuple = namedtuple('AttrTuple',('name','type','isKey','isNullable',
     'default','comment','isAutoincrement','isNumeric','isString','isBlob',
     'alias','dtype'))
@@ -23,7 +23,7 @@ class Heading:
     def __init__(self, attrs):
         # Input: attrs - array of dicts with attribute descriptions
         self.attrs = OrderedDict([(q['name'], Heading.AttrTuple(**q)) for q in attrs])
-    
+
 
     @property
     def names(self):
@@ -48,36 +48,36 @@ class Heading:
     @property
     def hasAliases(self):
         return any((bool(v.alias) for v in self.attrs.values()))
-        
+
     def __getitem__(self,name):
         """shortcut to the attribute"""
         return self.attrs[name]
-        
+
     def __repr__(self):
         autoIncrementString = {False:'', True:' auto_increment'}
-        return '\n'.join(['%-20s : %-28s # %s' % ( 
-            k if v.default is None else '%s="%s"'%(k,v.default), 
-            '%s%s' % (v.type, autoIncrementString[v.isAutoincrement]), 
+        return '\n'.join(['%-20s : %-28s # %s' % (
+            k if v.default is None else '%s="%s"'%(k,v.default),
+            '%s%s' % (v.type, autoIncrementString[v.isAutoincrement]),
             v.comment)
             for k,v in self.attrs.items()])
 
-    @property        
+    @property
     def asdtype(self):
         """
         represent the heading as a numpy dtype
-        """        
+        """
         return np.dtype(dict(
-            names=self.names, 
-            formats=[v.dtype for k,v in self.attrs.items()]))  
-    
+            names=self.names,
+            formats=[v.dtype for k,v in self.attrs.items()]))
+
     @property
     def asSQL(self):
         """represent heading as SQL field list"""
         attrNames = ['`%s`' % name if self.attrs[name].alias is None else '%s as `%s`' % (self.attrs[name].alias, name)
                  for name in self.names]
         return ','.join(attrNames)
-                        
-                        
+
+
     @classmethod
     def initFromDatabase(cls, conn, dbname, tabname):
         """
@@ -95,7 +95,7 @@ class Heading:
             'Default': 'default',
             'Key'    : 'isKey',
             'Comment': 'comment'}
-            
+
         dropFields = ('Privileges', 'Collation')
 
         # rename and drop attributes
@@ -106,11 +106,11 @@ class Heading:
             ('float',False):np.float32,
             ('float',True):np.float32,
             ('double',False):np.float32,
-            ('double',True):np.float64, 
+            ('double',True):np.float64,
             ('tinyint',False):np.int8,
-            ('tinyint',True):np.uint8, 
+            ('tinyint',True):np.uint8,
             ('smallint',False):np.int16,
-            ('smallint',True):np.uint16, 
+            ('smallint',True):np.uint16,
             ('mediumint',False):np.int32,
             ('mediumint',True):np.uint32,
             ('int',False):np.int32,
@@ -131,14 +131,14 @@ class Heading:
 
             # strip field lengths off integer types
             attr['type'] = re.sub(r'((tiny|small|medium|big)?int)\(\d+\)', r'\1', attr['type'])
-           
+
             attr['alias'] = None
             if not (attr['isNumeric'] or attr['isString'] or attr['isBlob']):
                 raise DataJointError('Unsupported field type {field} in `{dbname}`.`{tabname}`'.format(
                     field=attr['type'], dbname=dbname, tabname=tabname))
             attr.pop('Extra')
-            
-            # fill out the dtype. All floats and non-nullable integers are turned into specific dtypes 
+
+            # fill out the dtype. All floats and non-nullable integers are turned into specific dtypes
             attr['dtype'] = object
             if attr['isNumeric'] :
                 isInteger = bool(re.match(r'(tiny|small|medium|big)?int',attr['type']))
@@ -148,33 +148,33 @@ class Heading:
                     t = attr['type']
                     t = re.sub(r'\(.*\)','',t)    # remove parentheses
                     t = re.sub(r' unsigned$','',t)   # remove unsigned
-                    assert (t,isUnsigned) in numTypes, 'dtype not found for type %s' % t                 
+                    assert (t,isUnsigned) in numTypes, 'dtype not found for type %s' % t
                     attr['dtype'] = numTypes[(t,isUnsigned)]
 
         return cls(attrs)
-        
-        
+
+
     def _pro(self, *attrList, **renameDict):
         """
         derive a new heading by selecting, renaming, or computing attributes.
         In relational algebra these operators are known as project, rename, and expand.
         The primary key is always included.
-        """        
+        """
         # include pimrary key
         attrList = set(attrList).union(self.primaryKey)
-        
+
         # include all if '*'
         if '*' in attrList:
             attrList.discard('*')
             attrList.update(self.names)
-            
+
         # report missing attributes
-        missing = attrList.difference(self.names) 
+        missing = attrList.difference(self.names)
         if missing:
             raise DataJointError('Attributes %s are not found' % str(missing))
-        
+
         # TODO: process renameDict
-                                
+
         # make new heading
-        return Heading([v._asdict() for k,v in self.attrs.items() if k in attrList])  
-        
+        return Heading([v._asdict() for k,v in self.attrs.items() if k in attrList])
+

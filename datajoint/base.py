@@ -38,11 +38,11 @@ class Base(_Relational):
     table names are converted from CamelCase to underscore_separated_words and
     prefixed according to the table's role.
     """
- 
+
     def __init__(self, conn=None, dbname=None, className=None, declaration=None):
-        
+
         if self.__class__ is Base:
-            # instantiate without subclassing 
+            # instantiate without subclassing
             if not(conn and dbname and className):
                 raise DataJointError('Missing argument: please specify conn, dbanem, and className.')
             self.className = className
@@ -52,11 +52,11 @@ class Base(_Relational):
             if dbname not in self.conn.modules:    # register with a fake module, enclosed in backquotes
                 self.conn.bind('`%s`'%dbname, dbname)
         else:
-            # instantiate a derived class 
+            # instantiate a derived class
             if conn or dbname or className or declaration:
                 raise DataJointError('With derived classes, constructor arguments are ignored')
             self.className = self.__class__.__name__
-            module = imp.importlib.import_module(self.__module__)                
+            module = imp.importlib.import_module(self.__module__)
             try:
                 self.conn = module.conn
             except AttributeError:
@@ -66,12 +66,14 @@ class Base(_Relational):
             except KeyError:
                 raise DataJointError('Module %s is not bound to a database. See datajoint.connection.bind' % self.__module__)
             self.declaration = self.__doc__
-               
 
 
     def _compile(self):
-        sql = '`%s`.`%s`' % (self.dbname, self.table)
-        return sql, self.heading
+        """
+        Compiles SQL string and heading for the table to be
+        used in relational algebra
+        """
+        return self.fullTableName, self.heading
 
 
     @property
@@ -160,7 +162,7 @@ class Base(_Relational):
 
     def _fieldToSQL(self, field):
         """
-        Converts an attribute definition tuple into SQL code 
+        Converts an attribute definition tuple into SQL code
         """
         if field.isNullable:
             default = 'DEFAULT NULL'
@@ -326,7 +328,7 @@ class Base(_Relational):
         :\s*(?P<type>\w[^\#]*[^\#\s])\s*         # datatype
         (\#\s*(?P<comment>\S*(\s+\S+)*)\s*)?$          # comment
         """
-        
+
         attrP = re.compile(attrPtrn, re.I + re.X)
         m = attrP.match(line)
         assert m, 'Invalid field declaration "%s"' % line
@@ -384,7 +386,7 @@ class Base(_Relational):
          g.remove_node(i)
         def tablelist(tier):
         return [i for i in g if self.tables[i].tier==tier]
-        
+
         pos=nx.graphviz_layout(g,prog=prog,args='')
         plt.figure(figsize=(8,8))
         nx.draw_networkx_edges(g, pos, alpha=0.3)

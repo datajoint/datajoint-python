@@ -3,15 +3,15 @@ import re
 from .core import log, DataJointError, camelCase
 import os
 from .heading import Heading
-from .base import prefixRole 
-#from getpass import getpass
+from .base import prefixRole
 
 # The following two regular expression are equivalent but one works in python
 # and the other works in MySQL
 tableNameRegExpSQL = re.compile('^(#|_|__|~)?[a-z][a-z0-9_]*$')
 tableNameRegExp = re.compile('^(|#|_|__|~)[a-z][a-z0-9_]*$')    # MySQL does not accept this by MariaDB does
 
-_connObj = None   # persitent connection object used by dj.conn() 
+_connObj = None   # persitent connection object used by dj.conn()
+
 
 def conn(host=None, user=None, passwd=None, initFun=None):
     """
@@ -23,7 +23,8 @@ def conn(host=None, user=None, passwd=None, initFun=None):
     if not _connObj:
         host = host or os.getenv('DJ_HOST') or input('Enter datajoint server address >> ')
         user = user or os.getenv('DJ_USER') or input('Enter datajoint user name >> ')
-        passwd = passwd or os.getenv('DJ_PASS') or input('Enter datajoint password >> ') # had trouble with getpass
+        # had trouble with getpass
+        passwd = passwd or os.getenv('DJ_PASS') or input('Enter datajoint password >> ')
         initFun = initFun or os.getenv('DJ_INIT')
         _connObj = Connection(host, user, passwd, initFun)
     return _connObj
@@ -32,7 +33,7 @@ def conn(host=None, user=None, passwd=None, initFun=None):
 class Connection:
     """
     A dj.Connection object manages a connection to a database server.
-    It also catalogues modules, schemas, tables, and their dependencies (foreign keys) 
+    It also catalogues modules, schemas, tables, and their dependencies (foreign keys)
     """
     def __init__(self, host, user, passwd, initFun):
         try:
@@ -49,19 +50,18 @@ class Connection:
         self.schemas    = {}  # database indexed by module names
         self.modules    = {}  # modules indexed by dbnames
         self.dbnames    = {}  # modules indexed by database names
-        self.tableNames = {}  # tables names indexed by [dbname][ClassName] 
+        self.tableNames = {}  # tables names indexed by [dbname][ClassName]
         self.headings   = {}  # contains headings indexed by [dbname][table_name]
         self.tableInfo  = {}  # table information indexed by [dbname][table_name]
 
         # dependencies from foreign keys
         self.parents    = {}  # maps table names to their parent table names (primary foreign key)
-        self.referenced = {}  # maps table names to table names they reference (non-primary foreign key        
+        self.referenced = {}  # maps table names to table names they reference (non-primary foreign key
 
     @property
     def isConnected(self):
         return self._conn.ping()
-        
-        
+
     def bind(self, module, dbname):
         """
         binds module to dbname
@@ -70,9 +70,8 @@ class Connection:
             raise DataJointError('Database `%s` is already bound to module `%s`'
                 %(dbname,self.modules[dbname]))
         self.modules[dbname] = module
-        self.dbnames[module] = dbname 
-        
-    
+        self.dbnames[module] = dbname
+
     def loadHeadings(self, dbname, force=False):
         """
         Load table information including roles and list of attributes for all
@@ -85,8 +84,8 @@ class Connection:
             self.tableInfo[dbname] = {}
 
             cur = self.query('SHOW TABLE STATUS FROM `{dbname}` WHERE name REGEXP "{sqlPtrn}"'.format(
-                dbname=dbname, sqlPtrn = tableNameRegExpSQL.pattern), asDict=True)        
-            
+                dbname=dbname, sqlPtrn=tableNameRegExpSQL.pattern), asDict=True)
+
             for info in cur:
                 info = {k.lower():v for k,v in info.items()}  # lowercase it
                 tabName = info.pop('name')
@@ -97,12 +96,10 @@ class Connection:
                 self.tableInfo[dbname][tabName] = dict(info,role=role)
                 self.headings[dbname][tabName] = Heading.initFromDatabase(self,dbname,tabName)
             self.loadDependencies(dbname)
-            
-
 
     def loadDependencies(self, dbname): # TODO: Perhaps consider making this "private" by preceding with underscore?
         """
-        load dependencies (foreign keys) between tables by examnining their 
+        load dependencies (foreign keys) between tables by examnining their
         respective CREATE TABLE statements.
         """
 
@@ -113,7 +110,7 @@ class Connection:
         """
 
         log('Loading dependices for %s...' % dbname)
-        
+
         for tabName in self.tableInfo[dbname]:
             cur = self.query('SHOW CREATE TABLE `{dbname}`.`{tabName}`'.format(dbname = dbname, tabName = tabName), asDict=True)
             tblDef = cur.fetchone()
@@ -140,7 +137,6 @@ class Connection:
                 self.parents.setdefault(ref, [])
                 self.referenced.setdefault(ref, [])
 
-
     def clearDependencies(self, dbname=None):
         if dbname is None: # clear out all dependencies
             self.parents.clear()
@@ -152,7 +148,6 @@ class Connection:
                     self.parents.pop(key)
                 if key in self.referenced:
                     self.referenced.pop(key)
-
 
     def children(self, parentTable):
         """
