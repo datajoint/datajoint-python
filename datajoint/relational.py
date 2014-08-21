@@ -7,8 +7,8 @@ Created on Thu Aug  7 17:00:02 2014
 import numpy as np
 import abc
 from copy import copy
-from .core import DataJointError, log
-from .blob import unpack
+from .core import DataJointError
+from .fetch import Fetch
 
 class _Relational(metaclass=abc.ABCMeta):   
     """
@@ -74,54 +74,13 @@ class _Relational(metaclass=abc.ABCMeta):
         cur = self.conn.query(sql)
         return cur.fetchone()[0]
 
-    def limit(self, n, offset=0):
-        ret = copy(self)
-        ret._limit = n
-        ret._offset = 0
-        return ret
+    def fetch(self):
+        return Fetch(self)
 
-    def orderBy(self, *attrs):
-        ret = copy(self)
-        ret._order_by = attrs
-        return ret
-
-    @property
-    def _orderLimitClause(self):
-        clause = ''
-
-        if self._order_by:
-            clause += ' ORDER BY ' + ', '.join(self._order_by)
-
-        if self._limit is not None and self._limit >= 0:
-            clause += ' LIMIT %d' %  self._limit
-            if self._offset > 0:
-                clause += ' OFFSET %d ' %  self._offset
-                
-        return clause
-
-    def fetch(self, *attrs, _limit=None, _offset=0, _orderBy=None, **renames):
-        """
-        fetch relation from database into a recarray
-        """
-        cur, heading = self._fetchCursor(*attrs, _limit=_limit, _offset=_offset, _orderBy=_orderBy, **renames)
-        ret = np.array(list(cur), dtype=heading.asdtype)
-        # unpack blobs
-        for i in range(len(ret)):
-            for f in heading.blobs:
-                ret[i][f] = unpack(ret[i][f])
-        return ret
-    
-    def _fetchCursor(self, *attrs, _limit, _offset, _orderBy, **renames):
-        sql, heading = self.pro(*attrs, **renames)._compile()
-        #TODO: implement offset, limit, and order by
-        sql = 'SELECT '+heading.asSQL+' FROM ' + sql + self._whereClause + self._orderLimitClause
-        log(sql)
-        return self.conn.query(sql), heading
-        
         
     ########  iterator  ###############
     def __iter__(self):
-        cur, h = self._fetchCursor(_limit=None, _offset=0, _orderBy=None)
+        cur, h = self.fetch._fetchCursor(_limit=None, _offset=0, _orderBy=None)
         dtype = h.asdtype        
         q = cur.fetchone()       
         while q:
