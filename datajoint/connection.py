@@ -10,24 +10,35 @@ from .base import prefixRole
 tableNameRegExpSQL = re.compile('^(#|_|__|~)?[a-z][a-z0-9_]*$')
 tableNameRegExp = re.compile('^(|#|_|__|~)[a-z][a-z0-9_]*$')    # MySQL does not accept this by MariaDB does
 
-_connObj = None   # persitent connection object used by dj.conn()
 
 
-def conn(host=None, user=None, passwd=None, initFun=None):
+def connContainer():
     """
-    Manage a persistent connection object.
-    This is one of several ways to configure and access a datajoint connection.
-    Users may customize their own connection manager.
+    creates a persistent connections for everyone to use
     """
-    global _connObj
-    if not _connObj:
-        host = host or os.getenv('DJ_HOST') or input('Enter datajoint server address >> ')
-        user = user or os.getenv('DJ_USER') or input('Enter datajoint user name >> ')
-        # had trouble with getpass
-        passwd = passwd or os.getenv('DJ_PASS') or input('Enter datajoint password >> ')
-        initFun = initFun or os.getenv('DJ_INIT')
-        _connObj = Connection(host, user, passwd, initFun)
-    return _connObj
+    _connObj = None   # persistent connection object used by dj.conn()
+
+    def conn(host=None, user=None, passwd=None, initFun=None):
+        """
+        Manage a persistent connection object.
+        This is one of several ways to configure and access a datajoint connection.
+        Users may customize their own connection manager.
+        """
+        nonlocal _connObj
+        if not _connObj:
+            host = host or os.getenv('DJ_HOST') or input('Enter datajoint server address >> ')
+            user = user or os.getenv('DJ_USER') or input('Enter datajoint user name >> ')
+            # had trouble with getpass
+            passwd = passwd or os.getenv('DJ_PASS') or input('Enter datajoint password >> ')
+            initFun = initFun or os.getenv('DJ_INIT')
+            _connObj = Connection(host, user, passwd, initFun)
+        return _connObj
+        
+    return conn
+
+
+# The function conn is used by others to obtain the persistent connection object
+conn = connContainer()
 
 
 class Connection:
