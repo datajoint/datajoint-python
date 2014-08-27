@@ -69,7 +69,7 @@ class _Relational(metaclass=abc.ABCMeta):
 
     @property
     def count(self):
-        [sql,heading] = self._compile()
+        sql, heading = self._compile()
         sql = 'SELECT count(*) FROM ' + sql + self._whereClause
         cur = self.conn.query(sql)
         return cur.fetchone()[0]
@@ -115,9 +115,11 @@ class _Relational(metaclass=abc.ABCMeta):
             elif isinstance(r,np.ndarray) or isinstance(r,list):
                 r = '('+') OR ('.join([makeCondition(q) for q in r])+')'
             elif isinstance(r,_Relational):
-                raise DataJointError('not yet implemented')
-                                    
-            #TODO: imlement restriction by dict and np.array
+                sql1, heading1 = self._compile()
+                sql2, heading2 = r._compile()
+                commonAttrs = ','.join([q for q in heading1.names if heading2.names])  
+                r = '(%s) in (SELECT %s FROM %s)' % (commonAttrs, commonAttrs, sql2)
+                
             assert isinstance(r,str), 'condition must be converted into a string'
             r = '('+r+')'
             if negate:

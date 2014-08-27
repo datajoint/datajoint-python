@@ -1,5 +1,6 @@
 import imp
 import re
+import numpy as np
 from enum import Enum
 from .core import DataJointError, fromCamelCase, log
 from .relational import _Relational
@@ -66,6 +67,30 @@ class Base(_Relational):
             except KeyError:
                 raise DataJointError('Module %s is not bound to a database. See datajoint.connection.bind' % self.__module__)
             self.declaration = self.__doc__
+            
+
+    def insert(self, tup):
+        """
+        insert one tuple.  tup can be an iterable in matching order, a dict with named fields, or an np.void
+        """
+        if issubclass(type(tup),tuple) or issubclass(type(tup),list):
+           valueList = ','.join([repr(q) for q in tup])
+           fieldList = self.heading.asSQL
+        elif issubclass(type(tup),dict):
+            valueList = ','.join([repr(tup[q]) for q in self.heading.names if q in tup])
+            fieldList = ','.join(tup.keys())
+        elif issubclass(type(tup),np.void):
+            valueList = ','.join([repr(tup[q]) for q in self.heading.names if q in tup])
+            fieldList = '.'.join(tup.dtype.fields)
+        else:
+            raise DataJointError('Datatype %s cannot be inserted' % type(tup))
+        
+        sql = "INSERT INTO %s (%s) VALUES (%s)" % (self.fullTableName, fieldList, valueList) 
+        print(sql)
+        self.conn.query(sql)
+        
+        
+        
 
 
     def _compile(self):
