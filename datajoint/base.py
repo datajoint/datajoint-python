@@ -71,7 +71,11 @@ class Base(_Relational):
 
     def insert(self, tup):
         """
-        insert one tuple.  tup can be an iterable in matching order, a dict with named fields, or an np.void
+        insert one tuple.  tup can be an iterable in matching order, a dict with named fields, or an np.void.
+        
+        EXAMPLE:
+        b = djtest.Subject()
+        b.insert(dict(subject_id=7,species="mouse",real_id=1007,date_of_birth="2014-09-01"))
         """
         if issubclass(type(tup),tuple) or issubclass(type(tup),list):
            valueList = ','.join([repr(q) for q in tup])
