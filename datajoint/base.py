@@ -85,9 +85,8 @@ class Base(_Relational):
         else:
             raise DataJointError('Datatype %s cannot be inserted' % type(tup))
         
-        sql = "INSERT INTO %s (%s) VALUES (%s)" % (self.fullTableName, fieldList, valueList) 
-        print(sql)
-        self.conn.query(sql)
+        self.conn.query("INSERT INTO %s (%s) VALUES (%s)" % 
+            (self.fullTableName, fieldList, valueList))
         
         
         
