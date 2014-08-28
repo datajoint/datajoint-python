@@ -107,6 +107,8 @@ class Connection:
                 self.tableInfo[dbname][tabName] = dict(info,role=role)
                 self.headings[dbname][tabName] = Heading.initFromDatabase(self,dbname,tabName)
             self.loadDependencies(dbname)
+            
+                    
 
     def loadDependencies(self, dbname): # TODO: Perhaps consider making this "private" by preceding with underscore?
         """
@@ -147,6 +149,7 @@ class Connection:
 
                 self.parents.setdefault(ref, [])
                 self.referenced.setdefault(ref, [])
+                
 
     def clearDependencies(self, dbname=None):
         if dbname is None: # clear out all dependencies

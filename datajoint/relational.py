@@ -78,8 +78,10 @@ class _Relational(metaclass=abc.ABCMeta):
     def fetch(self):
         return Fetch(self)
         
-    ########  iterator  ###############
     def __iter__(self):
+        """
+        iterator  yields primary key tuples 
+        """
         cur, h = self.fetch._cursor()
         dtype = h.asdtype        
         q = cur.fetchone()       

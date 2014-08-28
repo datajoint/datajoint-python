@@ -69,7 +69,7 @@ class Base(_Relational):
             self.declaration = self.__doc__
             
 
-    def insert(self, tup):
+    def insert(self, tup, ignoreErrors=False, replace=False):
         """
         insert one tuple.  tup can be an iterable in matching order, a dict with named fields, or an np.void.
         
@@ -79,20 +79,34 @@ class Base(_Relational):
         """
         if issubclass(type(tup),tuple) or issubclass(type(tup),list):
            valueList = ','.join([repr(q) for q in tup])
-           fieldList = self.heading.asSQL
+           fieldList = '`'+'`,`'.join(self.heading.names[0:len(tup)])+'`'
         elif issubclass(type(tup),dict):
             valueList = ','.join([repr(tup[q]) for q in self.heading.names if q in tup])
-            fieldList = ','.join(tup.keys())
+            fieldList = '`'+'`,`'.join([q for q in self.heading.names if q in tup])+'`'
         elif issubclass(type(tup),np.void):
             valueList = ','.join([repr(tup[q]) for q in self.heading.names if q in tup])
-            fieldList = '.'.join(tup.dtype.fields)
+            fieldList = '`'+'`,`'.join(tup.dtype.fields)+'`'
         else:
             raise DataJointError('Datatype %s cannot be inserted' % type(tup))
-        
-        self.conn.query("INSERT INTO %s (%s) VALUES (%s)" % 
-            (self.fullTableName, fieldList, valueList))
-        
-        
+        if replace:
+            sql = 'REPLACE'
+        elif ignoreErrors:
+            sql = 'INSERT IGNORE'
+        else:
+            sql = 'INSERT'
+        sql += " INTO %s (%s) VALUES (%s)" % (self.fullTableName, fieldList, valueList)
+        log(sql)
+        self.conn.query(sql)
+            
+            
+    def drop(self):
+        """
+        drop table
+        """
+        # TODO make cascading
+        self.conn.query('DROP TABLE %s' % self.fullTableName)
+        self.conn.clearDependencies(dbname=self.dbname)
+        self.conn.loadHeadings(dbname=self.dbname, force=True)
         
 
 
