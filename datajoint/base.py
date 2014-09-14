@@ -45,7 +45,7 @@ class Base(_Relational):
         if self.__class__ is Base:
             # instantiate without subclassing
             if not(conn and dbname and className):
-                raise DataJointError('Missing argument: please specify conn, dbanem, and className.')
+                raise DataJointError('Missing argument: please specify conn, dbname, and className.')
             self.className = className
             self.conn = conn
             self.dbname = dbname
@@ -67,12 +67,12 @@ class Base(_Relational):
             except KeyError:
                 raise DataJointError('Module %s is not bound to a database. See datajoint.connection.bind' % self.__module__)
             self.declaration = self.__doc__
-            
+
 
     def insert(self, tup, ignoreErrors=False, replace=False):
         """
         insert one tuple.  tup can be an iterable in matching order, a dict with named fields, or an np.void.
-        
+
         EXAMPLE:
         b = djtest.Subject()
         b.insert(dict(subject_id=7,species="mouse",real_id=1007,date_of_birth="2014-09-01"))
@@ -97,8 +97,8 @@ class Base(_Relational):
         sql += " INTO %s (%s) VALUES (%s)" % (self.fullTableName, fieldList, valueList)
         log(sql)
         self.conn.query(sql)
-            
-            
+
+
     def drop(self):
         """
         drop table
@@ -107,7 +107,7 @@ class Base(_Relational):
         self.conn.query('DROP TABLE %s' % self.fullTableName)
         self.conn.clearDependencies(dbname=self.dbname)
         self.conn.loadHeadings(dbname=self.dbname, force=True)
-        
+
 
 
     def _compile(self):
