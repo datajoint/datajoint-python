@@ -11,7 +11,6 @@ tableNameRegExpSQL = re.compile('^(#|_|__|~)?[a-z][a-z0-9_]*$')
 tableNameRegExp = re.compile('^(|#|_|__|~)[a-z][a-z0-9_]*$')    # MySQL does not accept this by MariaDB does
 
 
-
 def connContainer():
     """
     creates a persistent connections for everyone to use
@@ -33,7 +32,7 @@ def connContainer():
             initFun = initFun or os.getenv('DJ_INIT')
             _connObj = Connection(host, user, passwd, initFun)
         return _connObj
-        
+
     return conn
 
 
@@ -55,7 +54,7 @@ class Connection:
         self.connInfo = dict(host=host, port=port, user=user, passwd=passwd)
         self._conn = pymysql.connect(init_command=initFun, **self.connInfo)
         if self.isConnected:
-            print("Connected", user+'@'+host+':'+str(port))
+            print("Connected", user + '@'+host+':'+str(port))
         self._conn.autocommit(True)
 
         self.schemas    = {}  # database indexed by module names
@@ -80,13 +79,37 @@ class Connection:
         if dbname in self.modules:
             raise DataJointError('Database `%s` is already bound to module `%s`'
                 %(dbname,self.modules[dbname]))
-        self.modules[dbname] = module
-        self.dbnames[module] = dbname
+
+        cur = self.query("SHOW DATABASES LIKE '{dbname}'".format(dbname=dbname))
+        count = cur.rowcount
+
+        if count == 1:
+            # Database exists
+            self.modules[dbname] = module
+            self.dbnames[module] = dbname
+        elif count == 0:
+            # Database doesn't exist, attempt to create
+            try:
+                cur = self.query("CREATE DATABASE `{dbname}`".format(dbname=dbname))
+                log.print('Created database `{dbname}`'.format(dbname=dbname))
+            except pymysql.OperationalError as e:
+                raise DataJointError('Database named `{dbname}` was not defined, and'\
+                                     ' an attempt to create has failed. Check'\
+                                     ' permissions.'.format(dbname=dbname))
+        else:
+            raise DataJointError('Database name {dbname} matched more than one'\
+                                 'existing databases. Database name should not be'\
+                                 'a pattern.'.format(dbname=dbname))
+
 
     def loadHeadings(self, dbname, force=False):
         """
         Load table information including roles and list of attributes for all
         tables within dbname by examining respective TABLE STATUS
+
+        By default, the heading is NOT loaded again if heading already exists.
+        Setting force=True will result in reloading of the heading even if one
+        already exists.
         """
         if not dbname in self.headings or force:
             log('Loading table definitions from `%s`...' % dbname)
@@ -107,8 +130,7 @@ class Connection:
                 self.tableInfo[dbname][tabName] = dict(info,role=role)
                 self.headings[dbname][tabName] = Heading.initFromDatabase(self,dbname,tabName)
             self.loadDependencies(dbname)
-            
-                    
+
 
     def loadDependencies(self, dbname): # TODO: Perhaps consider making this "private" by preceding with underscore?
         """
@@ -149,7 +171,7 @@ class Connection:
 
                 self.parents.setdefault(ref, [])
                 self.referenced.setdefault(ref, [])
-                
+
 
     def clearDependencies(self, dbname=None):
         if dbname is None: # clear out all dependencies
@@ -186,7 +208,12 @@ class Connection:
         self._conn.close()
 
     def query(self, query, args=(), asDict=False):
-        """execute the specified query and return the tuple generator"""
+        """
+        Execute the specified query and return the tuple generator.
+
+        If asDict is set to True, the returned cursor objects returns
+        query results as dictionary.
+        """
         cursor = pymysql.cursors.DictCursor if asDict else pymysql.cursors.Cursor
         cur = self._conn.cursor(cursor=cursor)
         cur.execute(query, args)
