@@ -4,6 +4,9 @@ from .core import log, DataJointError, camelCase
 import os
 from .heading import Heading
 from .base import prefixRole
+import logging
+
+logger = logging.getLogger(__name__)
 
 # The following two regular expression are equivalent but one works in python
 # and the other works in MySQL
@@ -89,9 +92,11 @@ class Connection:
             self.dbnames[module] = dbname
         elif count == 0:
             # Database doesn't exist, attempt to create
+            logger.warning('Database `{dbname}` could not be found. '\
+                           'Attempting to create the database.'.format(dbname=dbname))
             try:
                 cur = self.query("CREATE DATABASE `{dbname}`".format(dbname=dbname))
-                log.print('Created database `{dbname}`'.format(dbname=dbname))
+                logger.warning('Created database `{dbname}`.'.format(dbname=dbname))
             except pymysql.OperationalError as e:
                 raise DataJointError('Database named `{dbname}` was not defined, and'\
                                      ' an attempt to create has failed. Check'\
@@ -112,7 +117,7 @@ class Connection:
         already exists.
         """
         if not dbname in self.headings or force:
-            log('Loading table definitions from `%s`...' % dbname)
+            logger.info('Loading table definitions from `{dbname}`...'.format(dbname=dbname))
             self.tableNames[dbname] = {}
             self.headings[dbname] = {}
             self.tableInfo[dbname] = {}
@@ -144,7 +149,7 @@ class Connection:
         \((?P<attr2>[`\w ,]+)\)                     # list of keys in the referenced table
         """
 
-        log('Loading dependices for %s...' % dbname)
+        logger.info('Loading dependencies for `{dbname}`'.format(dbname=dbname))
 
         for tabName in self.tableInfo[dbname]:
             cur = self.query('SHOW CREATE TABLE `{dbname}`.`{tabName}`'.format(dbname = dbname, tabName = tabName), asDict=True)

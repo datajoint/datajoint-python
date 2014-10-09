@@ -5,9 +5,12 @@ from enum import Enum
 from .core import DataJointError, fromCamelCase, log
 from .relational import _Relational
 from .heading import Heading
+import logging
 
 
 # table names have prefixes that designate their roles in the processing chain
+logger = logging.getLogger(__name__)
+
 Role = Enum('Role','manual lookup imported computed job')
 rolePrefix = {
     Role.manual   : '',
@@ -95,7 +98,7 @@ class Base(_Relational):
         else:
             sql = 'INSERT'
         sql += " INTO %s (%s) VALUES (%s)" % (self.fullTableName, fieldList, valueList)
-        log(sql)
+        logger.info(sql)
         self.conn.query(sql)
 
 
@@ -307,7 +310,7 @@ class Base(_Relational):
         self.conn.loadHeadings(self.dbname, force=True)
         if not self.isDeclared:
             # execute declaration
-            log('\n<SQL>\n' + sql + '</SQL>\n\n')
+            logger.info('\n<SQL>\n' + sql + '</SQL>\n\n')
             self.conn.query(sql)
             self.conn.loadHeadings(self.dbname, force=True)
 

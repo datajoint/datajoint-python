@@ -1,13 +1,13 @@
 import re
-
+import logging
 # package-wide settings that control execution
+
+# setup logger
+logging.basicConfig(level=logging.INFO)
+
 class settings:
-    verbose = True
+    # verbose = True
 
-
-def log(msg):
-    if settings.verbose:
-        print(msg)
 
 
 class DataJointError(Exception):
