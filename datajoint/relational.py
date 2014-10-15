@@ -10,46 +10,48 @@ from copy import copy
 from .core import DataJointError
 from .fetch import Fetch
 
-class _Relational(metaclass=abc.ABCMeta):   
+class _Relational(metaclass=abc.ABCMeta):
     """
     Relational implements relational algebra and fetching data.
-    It is a mixin class that provides relational operators, iteration, and 
+    It is a mixin class that provides relational operators, iteration, and
     fetch capability.
-    Relational operators are: restrict, pro, aggr, and join. 
-    """    
+    Relational operators are: restrict, pro, aggr, and join.
+    """
     _restrictions = None
     _limit = None
     _offset = 0
     _order_by = []
-    
-    @abc.abstractmethod 
+
+    @abc.abstractmethod
     def _compile():
         """
         all deriving classes must define _compile(self) to return the sql string
-        and the heading        
+        and the heading
         """
         return NotImplemented  # must override
-        
+
 
     ######    Relational algebra   ##############
 
     def __mul__(self, other):
         "relational join"
         return Join(self,other)
-        
+
     def pro(self, *arg, _sub=None, **kwarg):
         "relational projection abd aggregation"
         return Projection(self, _sub=_sub, *arg, **kwarg)
-            
+
     def __iand__(self, restriction):
         "in-place relational restriction or semijoin"
         if self._restrictions is None:
             self._restrictions = []
         self._restrictions.append(restriction)
-        return self        
-    
+        return self
+
     def __and__(self, restriction):
         "relational restriction or semijoin"
+        if self._restrictions is None:
+            self._restrictions = []
         ret = copy(self)
         ret._restrictions = list(ret._restrictions)  # copy restiction
         ret &= restriction
@@ -63,7 +65,7 @@ class _Relational(metaclass=abc.ABCMeta):
     def __sub__(self, restriction):
         "inverted restriction or antijoin"
         return self & Not(restriction)
-        
+
 
     ######    Fetching the data   ##############
 
@@ -74,21 +76,20 @@ class _Relational(metaclass=abc.ABCMeta):
         cur = self.conn.query(sql)
         return cur.fetchone()[0]
 
-    @property    
+    @property
     def fetch(self):
         return Fetch(self)
-        
+
     def __iter__(self):
         """
-        iterator  yields primary key tuples 
+        iterator  yields primary key tuples
         """
         cur, h = self.fetch._cursor()
-        dtype = h.asdtype        
-        q = cur.fetchone()       
+        dtype = h.asdtype
+        q = cur.fetchone()
         while q:
             yield np.array([q,],dtype=dtype)
-            q = cur.fetchone()       
-            
+            q = cur.fetchone()
 
 
     @property
@@ -97,16 +98,16 @@ class _Relational(metaclass=abc.ABCMeta):
 
         if not self._restrictions:
             return ''
-        
+
         def makeCondition(arg):
             if isinstance(arg,dict):
                 conds = ['`%s`=%s'%(k,repr(v)) for k,v in arg.items()]
             elif isinstance(arg,np.void):
                 conds = ['`%s`=%s'%(k, arg[k]) for k in arg.dtype.fields]
             else:
-                raise DataJointError('invalid restriction type')            
+                raise DataJointError('invalid restriction type')
             return ' AND '.join(conds)
-             
+
         condStr = []
         for r in self._restrictions:
             negate = isinstance(r,Not)
@@ -119,28 +120,28 @@ class _Relational(metaclass=abc.ABCMeta):
             elif isinstance(r,_Relational):
                 sql1, heading1 = self._compile()
                 sql2, heading2 = r._compile()
-                commonAttrs = ','.join([q for q in heading1.names if heading2.names])  
+                commonAttrs = ','.join([q for q in heading1.names if heading2.names])
                 r = '(%s) in (SELECT %s FROM %s)' % (commonAttrs, commonAttrs, sql2)
-                
+
             assert isinstance(r,str), 'condition must be converted into a string'
             r = '('+r+')'
             if negate:
                 r = 'NOT '+r;
             condStr.append(r)
-            
+
         return ' WHERE ' + ' AND '.join(condStr)
 
 
 class Not:
-    "inverse of a restriction" 
+    "inverse of a restriction"
     def __init__(self,restriction):
         self._restriction = restriction
-  
-   
+
+
 class Join(_Relational):
 
     aliasCounter = 0
-    
+
     def __init__(self,rel1,rel2):
         if not isinstance(rel2,_Relational):
             raise DataJointError('relvars can only be joined with other relvars')
@@ -149,7 +150,7 @@ class Join(_Relational):
         self.conn = rel1.conn
         self._rel1 = rel1;
         self._rel2 = rel2;
-    
+
     def _compile(self):
         sql1, heading1 = self._rel1._compile()
         sql2, heading2 = self._rel2._compile()
@@ -160,7 +161,7 @@ class Join(_Relational):
         return sql+self._whereClause, heading
 
 
-        
+
 class Projection(_Relational):
 
     aliasCounter = 0
@@ -171,11 +172,11 @@ class Projection(_Relational):
         if _sub and not kwarg:
             raise DataJointError('No aggregation attributes requested')
         self.conn = rel.conn
-        self._rel = rel        
-        self._sub = _sub        
+        self._rel = rel
+        self._sub = _sub
         self._selection = arg
         self._renames = kwarg
-        
+
     def _compile(self):
         sql, heading = self._rel._compile()
         heading = heading._pro(*self._selection, **self._renames)

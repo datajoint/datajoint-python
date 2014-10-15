@@ -2,10 +2,14 @@ import re
 import logging
 # package-wide settings that control execution
 
-# setup logger
-logging.basicConfig(level=logging.INFO)
+# setup root logger
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+
+
 
 class settings:
+    pass
     # verbose = True
 
 

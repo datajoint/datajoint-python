@@ -77,6 +77,19 @@ class Heading:
                  for name in self.names]
         return ','.join(attrNames)
 
+    # Use heading as a dictionary like object
+    def __getitem__(self, field):
+        return self.attrs[field]
+
+    def keys(self):
+        return self.attrs.keys()
+
+    def values(self):
+        return self.attrs.values()
+
+    def items(self):
+        return self.attrs.items()
+
 
     @classmethod
     def initFromDatabase(cls, conn, dbname, tabname):

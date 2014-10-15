@@ -7,20 +7,22 @@ Created on Wed Aug 20 22:05:29 2014
 
 from .blob import unpack
 import numpy as np
-from .core import log
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Fetch:
     """
     Fetch defines callable objects that fetch data from a relation
     """
-    
+
     def __init__(self, relational):
         self.rel = relational
-        self._orderBy = None        
+        self._orderBy = None
         self._offset = 0
         self._limit = None
-    
+
     def limit(self, n, offset=0):
         self._limit = n
         self._offset = offset
@@ -29,7 +31,7 @@ class Fetch:
     def orderBy(self, *attrs):
         self._orderBy = attrs
         return self
-    
+
     def __call__(self, *attrs, **renames):
         """
         fetch relation from database into an np.array
@@ -41,10 +43,10 @@ class Fetch:
             for f in heading.blobs:
                 ret[i][f] = unpack(ret[i][f])
         return ret
-    
+
     def _cursor(self, *attrs, **renames):
         sql, heading = self.rel.pro(*attrs, **renames)._compile()
-        sql = 'SELECT ' + heading.asSQL + ' FROM ' + sql 
+        sql = 'SELECT ' + heading.asSQL + ' FROM ' + sql
         # add ORDER BY clause
         if self._orderBy:
             sql += ' ORDER BY ' + ', '.join(self._orderBy)
@@ -55,5 +57,5 @@ class Fetch:
             if self._offset:
                 sql += ' OFFSET %d ' %  self._offset
 
-        log(sql)
+        logger.debug(sql)
         return self.rel.conn.query(sql), heading

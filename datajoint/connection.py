@@ -1,17 +1,19 @@
 import pymysql
 import re
-from .core import log, DataJointError, camelCase
+from .core import DataJointError, camelCase
 import os
 from .heading import Heading
 from .base import prefixRole
 import logging
+import networkx as nx
+
 
 logger = logging.getLogger(__name__)
 
 # The following two regular expression are equivalent but one works in python
 # and the other works in MySQL
 tableNameRegExpSQL = re.compile('^(#|_|__|~)?[a-z][a-z0-9_]*$')
-tableNameRegExp = re.compile('^(|#|_|__|~)[a-z][a-z0-9_]*$')    # MySQL does not accept this by MariaDB does
+tableNameRegExp = re.compile('^(|#|_|__|~)[a-z][a-z0-9_]*$')    # MySQL does not accept this but MariaDB does
 
 
 def connContainer():
@@ -38,8 +40,7 @@ def connContainer():
 
     return conn
 
-
-# The function conn is used by others to obtain the persistent connection object
+# The function conn is used by others to obtain the package wide persistent connection object
 conn = connContainer()
 
 
@@ -56,13 +57,14 @@ class Connection:
             port = 3306   # default MySQL port
         self.connInfo = dict(host=host, port=port, user=user, passwd=passwd)
         self._conn = pymysql.connect(init_command=initFun, **self.connInfo)
+        # TODO Do something if connection cannot be established
         if self.isConnected:
             print("Connected", user + '@'+host+':'+str(port))
         self._conn.autocommit(True)
 
         self.schemas    = {}  # database indexed by module names
         self.modules    = {}  # modules indexed by dbnames
-        self.dbnames    = {}  # modules indexed by database names
+        self.dbnames    = {}  # database names indexed by modules
         self.tableNames = {}  # tables names indexed by [dbname][ClassName]
         self.headings   = {}  # contains headings indexed by [dbname][table_name]
         self.tableInfo  = {}  # table information indexed by [dbname][table_name]
@@ -77,7 +79,13 @@ class Connection:
 
     def bind(self, module, dbname):
         """
-        binds module to dbname
+        Binds the `module` name to the database named `dbname`.
+        Throws an error if `dbname` is already bound to a module.
+
+        If the database `dbname` does not exist in the server, attempt
+        to create the database and then bind module to it.
+
+        `dbname` should be a valid database identifier and not a match pattern.
         """
         if dbname in self.modules:
             raise DataJointError('Database `%s` is already bound to module `%s`'
@@ -97,6 +105,8 @@ class Connection:
             try:
                 cur = self.query("CREATE DATABASE `{dbname}`".format(dbname=dbname))
                 logger.warning('Created database `{dbname}`.'.format(dbname=dbname))
+                self.modules[dbname] = module
+                self.dbnames[module] = dbname
             except pymysql.OperationalError as e:
                 raise DataJointError('Database named `{dbname}` was not defined, and'\
                                      ' an attempt to create has failed. Check'\
@@ -112,7 +122,7 @@ class Connection:
         Load table information including roles and list of attributes for all
         tables within dbname by examining respective TABLE STATUS
 
-        By default, the heading is NOT loaded again if heading already exists.
+        By default, the heading is NOT loaded again if it already exists.
         Setting force=True will result in reloading of the heading even if one
         already exists.
         """
@@ -177,8 +187,11 @@ class Connection:
                 self.parents.setdefault(ref, [])
                 self.referenced.setdefault(ref, [])
 
-
     def clearDependencies(self, dbname=None):
+        """
+        Clears dependency mapping originating from `dbname`. If `dbname` is not
+        specified, dependencies for all databases will be cleared.
+        """
         if dbname is None: # clear out all dependencies
             self.parents.clear()
             self.referenced.clear()
@@ -190,27 +203,53 @@ class Connection:
                 if key in self.referenced:
                     self.referenced.pop(key)
 
-    def children(self, parentTable):
+    def parents_of(self, childTable):
         """
-        Return a list of tables for which parentTable is a parent (primary foreign key)
+        Returns a list of tables that are parents for the childTable based on
+        primary foreign keys.
+        """
+        return self.parents.get(childTable, []).copy()
+
+    def children_of(self, parentTable):
+        """
+        Returnis a list of tables for which parentTable is a parent (primary foreign key)
         """
         return [childTable for childTable, parents in self.parents.items() if parentTable in parents]
 
+    def referenced_by(self, referencingTable):
+        """
+        Returns a list of tables that are referenced by non-primary foreign key
+        by the referencingTable.
+        """
+        return self.referenced.get(referencingTable, []).copy()
+
     def referencing(self, referencedTable):
         """
-        Return a list of tables that references referencedTable as non-primary foreign key
+        Returns a list of tables that references referencedTable as non-primary foreign key
         """
         return [referencing for referencing, referenced in self.referenced.items()
                 if referencedTable in referenced]
 
+    #TODO: Reimplement __str__
+    def __str__(self):
+        return self.__repr__() # placeholder until more suitable __str__ is implemented
+
     def __repr__(self):
-        connected = "connected" if self._conn.ping() else "disconnected"
+        connected = "connected" if self.isConnected else "disconnected"
         return "DataJoint connection ({connected}) {user}@{host}:{port}".format(
             connected=connected, **self.connInfo)
 
     def __del__(self):
         print('Disconnecting {user}@{host}:{port}'.format(**self.connInfo))
         self._conn.close()
+
+    def erd(self, *args, **kwargs):
+        pass
+
+
+
+
+#----------Database Interaction----------
 
     def query(self, query, args=(), asDict=False):
         """
@@ -221,6 +260,9 @@ class Connection:
         """
         cursor = pymysql.cursors.DictCursor if asDict else pymysql.cursors.Cursor
         cur = self._conn.cursor(cursor=cursor)
+
+        # Log the query
+        logger.debug("Execute query:\n" + query)
         cur.execute(query, args)
         return cur
 

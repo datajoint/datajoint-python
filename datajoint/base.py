@@ -2,7 +2,7 @@ import imp
 import re
 import numpy as np
 from enum import Enum
-from .core import DataJointError, fromCamelCase, log
+from .core import DataJointError, fromCamelCase
 from .relational import _Relational
 from .heading import Heading
 import logging
@@ -44,17 +44,16 @@ class Base(_Relational):
     """
 
     def __init__(self, conn=None, dbname=None, className=None, declaration=None):
-
         if self.__class__ is Base:
             # instantiate without subclassing
-            if not(conn and dbname and className):
+            if not (conn and dbname and className):
                 raise DataJointError('Missing argument: please specify conn, dbname, and className.')
             self.className = className
             self.conn = conn
             self.dbname = dbname
             self.declaration = declaration
             if dbname not in self.conn.modules:    # register with a fake module, enclosed in backquotes
-                self.conn.bind('`%s`'%dbname, dbname)
+                self.conn.bind('`{0}`'.format(dbname), dbname)
         else:
             # instantiate a derived class
             if conn or dbname or className or declaration:
@@ -64,11 +63,11 @@ class Base(_Relational):
             try:
                 self.conn = module.conn
             except AttributeError:
-                raise DataJointError("Please define object 'conn' in '%s'." % module.__name__)
+                raise DataJointError("Please define object 'conn' in '{}'.".format(self.__module__))
             try:
                 self.dbname = self.conn.dbnames[self.__module__]
             except KeyError:
-                raise DataJointError('Module %s is not bound to a database. See datajoint.connection.bind' % self.__module__)
+                raise DataJointError('Module {} is not bound to a database. See datajoint.connection.bind'.format(self.__module__))
             self.declaration = self.__doc__
 
 
@@ -112,7 +111,6 @@ class Base(_Relational):
         self.conn.loadHeadings(dbname=self.dbname, force=True)
 
 
-
     def _compile(self):
         """
         Compiles SQL string and heading for the table to be
@@ -142,10 +140,17 @@ class Base(_Relational):
         return '`%s`.`%s`' % (self.dbname, self.table)
 
     @property
+    def fullClassName(self):
+        return '{}.{}'.format(self.__module__, self.className)
+
+    @property
     def primaryKey(self):
         return self.heading.primaryKey
 
     def declare(self):
+        """
+        Declare the table in database if it doesn't already exist.
+        """
         if not self.isDeclared:
             self._declare()
             if not self.isDeclared:
@@ -195,7 +200,7 @@ class Base(_Relational):
         """load relvar from module if available"""
         modObj = imp.importlib.__import__(module)
         try:
-            ret = modObj.__dict__[className]()
+            ret = getattr(modObj, className)()
         except KeyError:
             ret = cls(conn=conn, dbname=conn.schemas[module], className=className)
         return ret
@@ -222,7 +227,7 @@ class Base(_Relational):
                 else:
                     default = '%s DEFAULT "%s"' % (default, field.default)
 
-        # TODO: escase instead! - same goes for Matlab side implementation
+        # TODO: escape instead! - same goes for Matlab side implementation
         assert not any((c in r'\"' for c in field.comment)), \
             'Illegal characters in attribute comment "%s"' % field.comment
 
@@ -246,7 +251,9 @@ class Base(_Relational):
         tableInfo, parents, referenced, fieldDefs, indexDefs = self._parseDeclaration()
         fullName = tableInfo['module'] + '.' + tableInfo['className']
         clsName = self.__module__ + '.' + self.className
-        assert fullName == clsName, 'Table name %s does not match the declared name %s' % (clsName, fullName)
+        if not fullName == clsName:
+            raise DataJointError('Table name {} does not match the declared' \
+                                 'name {}'.format(clsName, fullName))
 
         # compile the CREATE TABLE statement
         # TODO: support prefix
@@ -257,16 +264,26 @@ class Base(_Relational):
         primaryKeyFields = set()
         nonKeyFields = set()
         for p in parents:
-            keys = (x for x in p.heading.attrs.values() if x.isKey)
-            for field in keys:
+            for key in p.primaryKey:
+                field = p.heading[key]
                 if field.name not in primaryKeyFields:
                     primaryKeyFields.add(field.name)
                     sql += self._fieldToSQL(field)
+                else:
+                    logger.debug('Field definition of {} in {} ignored'.format(
+                        field.name, p.fullClassName))
 
         # add newly defined primary key fields
         for field in (f for f in fieldDefs if f.isKey):
+            if field.isNullable:
+                raise DataJointError('Primary key {} cannot be nullable'.format(
+                    field.name))
+            if field.name in primaryKeyFields:
+                raise DataJointError('Duplicate declaration of the primary key '\
+                                     '{key}. Check to make sure that the key '\
+                                     'is not declared already in referenced '\
+                                     'tables'.format(key=field.name))
             primaryKeyFields.add(field.name)
-            assert not field.isNullable, 'primary key header cannot be nullable'
             sql += self._fieldToSQL(field)
 
         # add secondary foreign key attributes
@@ -310,7 +327,7 @@ class Base(_Relational):
         self.conn.loadHeadings(self.dbname, force=True)
         if not self.isDeclared:
             # execute declaration
-            logger.info('\n<SQL>\n' + sql + '</SQL>\n\n')
+            logger.debug('\n<SQL>\n' + sql + '</SQL>\n\n')
             self.conn.query(sql)
             self.conn.loadHeadings(self.dbname, force=True)
 
@@ -333,10 +350,14 @@ class Base(_Relational):
         """
         p = re.compile(ptrn, re.X)
         tableInfo = p.match(declaration[0]).groupdict()
-        assert tableInfo['tier'] in Role.__members__, 'invalidTableTier:Invalid tier for table %s.%s' % (tableInfo['module'], tableInfo['className'])
+        if tableInfo['tier'] not in Role.__members__:
+            raise DataJointError('InvalidTableTier: Invalid tier {tier} for table\
+                                 {module}.{cls}'.format(tier=tableInfo['tier'],
+                                                        module=tableInfo['module'],
+                                                        cls=tableInfo['className']))
         tableInfo['tier'] = Role[tableInfo['tier']] # convert into enum
-        inKey = True
 
+        inKey = True # parse primary keys
         fieldPtrn = """
         ^[a-z][a-z\d_]*\s*          # name
         (=\s*\S+(\s+\S+)*\s*)?      # optional defaults
@@ -346,7 +367,7 @@ class Base(_Relational):
 
         for line in declaration[1:]:
             if line.startswith('---'):
-                inKey = False
+                inKey = False # start parsing non-PK fields
             elif line.startswith('->'):
                 # foreign key
                 module, className = line[2:].strip().split('.')
