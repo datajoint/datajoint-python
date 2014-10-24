@@ -6,6 +6,10 @@ from .heading import Heading
 from .base import prefixRole
 import logging
 import networkx as nx
+from networkx import pygraphviz_layout
+import matplotlib.pyplot as plt
+from .erd import DBConnGraph
+
 
 
 logger = logging.getLogger(__name__)
@@ -73,6 +77,8 @@ class Connection:
         self.parents    = {}  # maps table names to their parent table names (primary foreign key)
         self.referenced = {}  # maps table names to table names they reference (non-primary foreign key
 
+        self._graph = DBConnGraph(self) # initialize an empty connection graph
+
     @property
     def isConnected(self):
         return self._conn.ping()
@@ -116,8 +122,27 @@ class Connection:
                                  'existing databases. Database name should not be'\
                                  'a pattern.'.format(dbname=dbname))
 
+    def loadHeadings(self, dbname=None, force=False):
+        """
+        Load table information including roles and list of attributes for all
+        tables within dbname by examining respective TABLE STATUS
 
-    def loadHeadings(self, dbname, force=False):
+        If dbname is not specified or None, will load headings for all
+        databases that are bound to a module.
+
+        By default, the heading is NOT loaded again if it already exists.
+        Setting force=True will result in reloading of the heading even if one
+        already exists.
+        """
+        if dbname:
+            self._loadHeadingsFor(dbname, force)
+            return
+
+        for dbname in self.modules:
+            self._loadHeadingsFor(dbname, force)
+
+
+    def _loadHeadingsFor(self, dbname, force=False):
         """
         Load table information including roles and list of attributes for all
         tables within dbname by examining respective TABLE STATUS
@@ -243,9 +268,28 @@ class Connection:
         print('Disconnecting {user}@{host}:{port}'.format(**self.connInfo))
         self._conn.close()
 
-    def erd(self, *args, **kwargs):
-        pass
 
+    def erd(self, databases=None, tables=None, fill=True, reload=True):
+        """
+        Creates Entity Relation Diagram for the database or specified subset of
+        tables.
+
+        Set `fill` to False to only display specified tables. (By default
+        connection tables are automatically included)
+        """
+        if reload:
+            self.loadHeadings() # load all tables and relations for bound databases
+
+        self._graph.update_graph() # update the graph
+
+        H = self._graph.copy_graph()
+        if databases:
+            H = H.restrict_by_modules(databases, fill)
+
+        if tables:
+            H = H.restrict_by_tables(tables, fill)
+
+        H.plot()
 
 
 
