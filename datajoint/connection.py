@@ -118,9 +118,9 @@ class Connection:
                                      ' an attempt to create has failed. Check'\
                                      ' permissions.'.format(dbname=dbname))
         else:
-            raise DataJointError('Database name {dbname} matched more than one'\
-                                 'existing databases. Database name should not be'\
-                                 'a pattern.'.format(dbname=dbname))
+            raise DataJointError("Database name {dbname} matched more than one " \
+                                 "existing databases. Database name should not be " \
+                                 "a pattern.".format(dbname=dbname))
 
     def loadHeadings(self, dbname=None, force=False):
         """
@@ -278,20 +278,18 @@ class Connection:
         connection tables are automatically included)
         """
         if reload:
-            self.loadHeadings() # load all tables and relations for bound databases
+            self.loadHeadings()  # load all tables and relations for bound databases
 
-        self._graph.update_graph() # update the graph
+        self._graph.update_graph()  # update the graph
 
-        H = self._graph.copy_graph()
+        graph = self._graph.copy_graph()
         if databases:
-            H = H.restrict_by_modules(databases, fill)
+            graph = graph.restrict_by_modules(databases, fill)
 
         if tables:
-            H = H.restrict_by_tables(tables, fill)
+            graph = graph.restrict_by_tables(tables, fill)
 
-        H.plot()
-
-
+        graph.plot()
 
 #----------Database Interaction----------
 
@@ -306,7 +304,7 @@ class Connection:
         cur = self._conn.cursor(cursor=cursor)
 
         # Log the query
-        logger.debug("Execute query:\n" + query)
+        logger.debug("Executing SQL:" + query)
         cur.execute(query, args)
         return cur
 

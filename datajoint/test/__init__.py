@@ -8,13 +8,17 @@ after the test.
 import pymysql
 from os import environ
 
+# Connection information for testing
 CONN_INFO = {
     'host': environ.get('DJ_TEST_HOST', 'localhost'),
     'user': environ.get('DJ_TEST_USER', 'dj_test'),
     'passwd': environ.get('DJ_TEST_PASSWORD', 'dj_test')
 }
+# Prefix for all databases used during testing
 PREFIX = environ.get('DJ_TEST_DB_PREFIX', 'dj')
+# Bare connection used for verification of query results
 BASE_CONN = pymysql.connect(**CONN_INFO)
+BASE_CONN.autocommit(True)
 
 
 def setup():
