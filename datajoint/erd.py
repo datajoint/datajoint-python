@@ -132,6 +132,48 @@ class RelGraph(DiGraph):
             s.update(self.descendents(c))
         return s
 
+    def updown_neighbors(self, node, ups, downs, prev=None):
+        s = {node}
+        if ups > 0:
+            for x in G.predecessors_iter(node):
+                if x==prev:
+                    continue
+                s.update(self.updown_neighbors(x, ups-1, downs, node))
+        if downs > 0:
+            for x in G.successors_iter(node):
+                if x==prev:
+                    continue
+                s.update(self.updown_neighbors(x, ups, downs-1, node))
+        return s
+
+    def n_neighbors(self, node, n, prev=None):
+        """
+        Returns a set of n degree neighbors for the
+        specified node. The set with contain the node itself.
+
+        n degree neighbors are defined as node that can be reached
+        within n edges from the root node.
+
+        By default all edges (incoming and outgoing) will be followed.
+        Set directed=True to follow only outgoing edges.
+        """
+        s = {node}
+        if n < 1:
+            return s
+        if n == 1:
+            s.update(G.predecessors(node))
+            s.update(G.successors(node))
+            return s
+        for x in G.predecesors_iter():
+            if x == prev:  # skip prev point
+                continue
+            s.update(n_neighbors(G, x, n-1, prev))
+        for x in G.succesors_iter():
+            if x == prev:
+                continue
+            s.update(n_neighbors(G, x, n-1, prev))
+        return s
+
 full_table_ptrn = re.compile(r'`(.*)`\.`(.*)`')
 
 class DBConnGraph(RelGraph):
