@@ -34,7 +34,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         for which there is not already a tuple in rel.
         """
 
-        self.conn.cancelTransaction()
+        self.conn.cancel_transaction()
 
         # enumerate unpopulated keys
         unpopulated = self.popRel
@@ -50,10 +50,10 @@ class AutoPopulate(metaclass=abc.ABCMeta):
             if catchErrors:
                 errKeys, errors = [], []
             for key in unpopulated.fetch():
-                self.conn.startTransaction()
+                self.conn.start_transaction()
                 n = self(key).count
                 if n:  # already populated
-                    self.conn.cancelTransaction()
+                    self.conn.cancel_transaction()
                 else:
                     print('Populating:')
                     pprint.pprint(key)
@@ -61,13 +61,13 @@ class AutoPopulate(metaclass=abc.ABCMeta):
                     try:
                         self.makeTuples(key)
                     except Exception as e:
-                        self.conn.cancelTransaction()
+                        self.conn.cancel_transaction()
                         if not catchErrors:
                             raise
                         print(e)
                         errors += [e]
                         errKeys+= [key]
                     else:
-                        self.conn.commitTransaction()
+                        self.conn.commit_transaction()
         if catchErrors:
             return errors, errKeys

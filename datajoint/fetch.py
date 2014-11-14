@@ -28,7 +28,7 @@ class Fetch:
         self._offset = offset
         return self
 
-    def orderBy(self, *attrs):
+    def order_by(self, *attrs):
         self._orderBy = attrs
         return self
 

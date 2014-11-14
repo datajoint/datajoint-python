@@ -36,7 +36,7 @@ def pack(obj):
         raise DataJointError("Only numpy arrays can be saved in blobs")
 
     blob = b"mYm\0A"  # TODO: extend to process other datatypes besides arrays
-    blob+= np.asarray((len(obj.shape),)+obj.shape,dtype=np.uint64).tostring()
+    blob += np.asarray((len(obj.shape),)+obj.shape,dtype=np.uint64).tostring()
 
     isComplex = np.iscomplexobj(obj)
     if isComplex:
@@ -73,15 +73,15 @@ def unpack(blob):
         raise DataJointError('only arrays are currently allowed in blobs')
     p = 5
     ndims = np.fromstring(blob[p:p+8], dtype=np.uint64)
-    p+=8
+    p += 8
     arrDims = np.fromstring(blob[p:p+8*ndims], dtype=np.uint64)
-    p+=8*ndims
+    p += 8 * ndims
     mxType, dtype = [q for q in mxClassID.items()][np.fromstring(blob[p:p+4],dtype=np.uint32)[0]]
     if dtype is None:
         raise DataJointError('Unsupported matlab datatype '+mxType+' in blob')
-    p+=4
+    p += 4
     complexity = np.fromstring(blob[p:p+4],dtype=np.uint32)[0]
-    p+=4
+    p += 4
     obj = np.fromstring(blob[p:], dtype=dtype)
     if complexity:
         obj = obj[:len(obj)/2] + 1j*obj[len(obj)/2:]

@@ -30,11 +30,11 @@ class Heading:
         return [k for k in self.attrs]
 
     @property
-    def primaryKey(self):
+    def primary_key(self):
         return [k for k,v in self.attrs.items() if v.isKey]
 
     @property
-    def dependentFields(self):
+    def dependent_fields(self):
         return [k for k,v in self.attrs.items() if not v.isKey]
 
     @property
@@ -42,11 +42,11 @@ class Heading:
         return [k for k,v in self.attrs.items() if v.isBlob]
 
     @property
-    def notBlobs(self):
+    def non_blobs(self):
         return [k for k,v in self.attrs.items() if not v.isBlob]
 
     @property
-    def hasAliases(self):
+    def has_aliases(self):
         return any((bool(v.alias) for v in self.attrs.values()))
 
     def __getitem__(self,name):
@@ -92,7 +92,7 @@ class Heading:
 
 
     @classmethod
-    def initFromDatabase(cls, conn, dbname, tabname):
+    def init_from_database(cls, conn, dbname, tabname):
         """
         initialize heading from a database table
         """
@@ -101,7 +101,7 @@ class Heading:
             tabname=tabname, dbname=dbname),asDict=True)
         attrs = cur.fetchall()
 
-        renameMap = {
+        rename_map = {
             'Field'  : 'name',
             'Type'   : 'type',
             'Null'   : 'isNullable',
@@ -112,7 +112,7 @@ class Heading:
         dropFields = ('Privileges', 'Collation')
 
         # rename and drop attributes
-        attrs = [{renameMap[k] if k in renameMap else k: v
+        attrs = [{rename_map[k] if k in rename_map else k: v
                     for k, v in x.items() if k not in dropFields}
                         for x in attrs]
         numTypes ={
@@ -174,7 +174,7 @@ class Heading:
         The primary key is always included.
         """
         # include pimrary key
-        attrList = set(attrList).union(self.primaryKey)
+        attrList = set(attrList).union(self.primary_key)
 
         # include all if '*'
         if '*' in attrList:

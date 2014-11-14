@@ -2,7 +2,7 @@ import imp
 import re
 import numpy as np
 from enum import Enum
-from .core import DataJointError, fromCamelCase
+from .core import DataJointError, from_camel_case
 from .relational import _Relational
 from .heading import Heading
 import logging
@@ -96,7 +96,7 @@ class Base(_Relational):
             sql = 'INSERT IGNORE'
         else:
             sql = 'INSERT'
-        sql += " INTO %s (%s) VALUES (%s)" % (self.fullTableName, fieldList, valueList)
+        sql += " INTO %s (%s) VALUES (%s)" % (self.full_table_name, fieldList, valueList)
         logger.info(sql)
         self.conn.query(sql)
 
@@ -106,9 +106,9 @@ class Base(_Relational):
         drop table
         """
         # TODO make cascading
-        self.conn.query('DROP TABLE %s' % self.fullTableName)
-        self.conn.clearDependencies(dbname=self.dbname)
-        self.conn.loadHeadings(dbname=self.dbname, force=True)
+        self.conn.query('DROP TABLE %s' % self.full_table_name)
+        self.conn.clear_dependencies(dbname=self.dbname)
+        self.conn.load_headings(dbname=self.dbname, force=True)
 
 
     def _compile(self):
@@ -116,13 +116,13 @@ class Base(_Relational):
         Compiles SQL string and heading for the table to be
         used in relational algebra
         """
-        return self.fullTableName + self._whereClause, self.heading
+        return self.full_table_name + self._whereClause, self.heading
 
 
     @property
-    def isDeclared(self):
+    def is_declared(self):
         "True if table is found in the database"
-        self.conn.loadHeadings(self.dbname)
+        self.conn.load_headings(self.dbname)
         return self.className in self.conn.tableNames[self.dbname]
 
     @property
@@ -136,37 +136,37 @@ class Base(_Relational):
         return self.conn.headings[self.dbname][self.table]
 
     @property
-    def fullTableName(self):
+    def full_table_name(self):
         return '`%s`.`%s`' % (self.dbname, self.table)
 
     @property
-    def fullClassName(self):
+    def full_class_name(self):
         return '{}.{}'.format(self.__module__, self.className)
 
     @property
-    def primaryKey(self):
-        return self.heading.primaryKey
+    def primary_key(self):
+        return self.heading.primary_key
 
     def declare(self):
         """
         Declare the table in database if it doesn't already exist.
         """
-        if not self.isDeclared:
+        if not self.is_declared:
             self._declare()
-            if not self.isDeclared:
+            if not self.is_declared:
                 raise DataJointError('Table could not be declared for %s' % self.className)
 
     """
     Data Definition Functionalities
     """
-    def setTableComment(self, newComment):
+    def set_table_comment(self, newComment):
         """
         Update the table comment in the table declaration.
         """
         # TODO: add verification procedure
         self.alter('COMMENT="%s"' % newComment)
 
-    def addAttribute(self, definition, first=False,  after=''):
+    def add_attribute(self, definition, first=False,  after=''):
         """
         Add a new attribute to the table. A full line from the
         table definition is passed in as "definition".
@@ -177,26 +177,26 @@ class Base(_Relational):
         """
         # TODO: Update this definition!
         position = ' FIRST' if first else (' AFTER %s' % after if after else '')
-        sql = self._fieldToSQL(self._parseAttrDef(definition))
+        sql = self._field_to_SQL(self._parse_attr_def(definition))
         self._alter('ADD COLUMN %s%s' % (sql[:-2], position))
 
-    def dropAttribute(self, attrName):
+    def drop_attribute(self, attrName):
         """
         Drop the attribute attrName from this table
         """
         self._alter('DROP COLUMN `%s`' % attrName)
 
-    def alterAttribute(self, attrName, newDefinition):
+    def alter_attribute(self, attrName, newDefinition):
         """
         Alter the definition of the field attrName in
         this table using the newDefinition.
         """
-        sql = self._fieldToSQL(self._parseAttrDef(newDefinition))
+        sql = self._field_to_SQL(self._parse_attr_def(newDefinition))
         self._alter('CHANGE COLUMN `%s` %s' % (attrName, sql[:-2]))
 
 
     @classmethod
-    def getBase(cls, conn, module, className):
+    def get_base(cls, conn, module, className):
         """load relvar from module if available"""
         modObj = imp.importlib.__import__(module)
         try:
@@ -210,7 +210,7 @@ class Base(_Relational):
     # Private Methods
     #////////////////////////////////////////////////////////////
 
-    def _fieldToSQL(self, field):
+    def _field_to_SQL(self, field):
         """
         Converts an attribute definition tuple into SQL code
         """
@@ -239,16 +239,16 @@ class Base(_Relational):
         Execute ALTER TABLE statment for this table. The schema
         will be reloaded within the connection object.
         """
-        sql = 'ALTER TABLE %s %s' % (self.fullTableName, alterStatement)
+        sql = 'ALTER TABLE %s %s' % (self.full_table_name, alterStatement)
         self.conn.query(sql)
-        self.conn.loadHeadings(self.dbname, force=True)
+        self.conn.load_headings(self.dbname, force=True)
         # TODO: place table definition sync mechanism
 
     def _declare(self):
         """
         _declare is called when no table in the database matches this object
         """
-        tableInfo, parents, referenced, fieldDefs, indexDefs = self._parseDeclaration()
+        tableInfo, parents, referenced, fieldDefs, indexDefs = self._parse_declaration()
         fullName = tableInfo['module'] + '.' + tableInfo['className']
         clsName = self.__module__ + '.' + self.className
         if not fullName == clsName:
@@ -257,21 +257,21 @@ class Base(_Relational):
 
         # compile the CREATE TABLE statement
         # TODO: support prefix
-        tableName = rolePrefix[tableInfo['tier']] + fromCamelCase(self.className)
+        tableName = rolePrefix[tableInfo['tier']] + from_camel_case(self.className)
         sql = 'CREATE TABLE `%s`.`%s` (\n' % (self.dbname, tableName)
 
         # add inherited primary key fields
         primaryKeyFields = set()
         nonKeyFields = set()
         for p in parents:
-            for key in p.primaryKey:
+            for key in p.primary_key:
                 field = p.heading[key]
                 if field.name not in primaryKeyFields:
                     primaryKeyFields.add(field.name)
-                    sql += self._fieldToSQL(field)
+                    sql += self._field_to_SQL(field)
                 else:
                     logger.debug('Field definition of {} in {} ignored'.format(
-                        field.name, p.fullClassName))
+                        field.name, p.full_class_name))
 
         # add newly defined primary key fields
         for field in (f for f in fieldDefs if f.isKey):
@@ -284,7 +284,7 @@ class Base(_Relational):
                                      'is not declared already in referenced '\
                                      'tables'.format(key=field.name))
             primaryKeyFields.add(field.name)
-            sql += self._fieldToSQL(field)
+            sql += self._field_to_SQL(field)
 
         # add secondary foreign key attributes
         for r in referenced:
@@ -292,12 +292,12 @@ class Base(_Relational):
             for field in keys:
                 if field.name not in primaryKeyFields | nonKeyFields:
                     nonKeyFields.add(field.name)
-                    sql += self._fieldToSQL(field)
+                    sql += self._field_to_SQL(field)
 
         # add dependent attributes
         for field in (f for f in fieldDefs if not f.isKey):
             nonKeyFields.add(field.name)
-            sql += self._fieldToSQL(field)
+            sql += self._field_to_SQL(field)
 
         # add primary key declaration
         assert len(primaryKeyFields)>0, 'table must have a primary key'
@@ -306,16 +306,16 @@ class Base(_Relational):
 
         # add foreign key declarations
         for ref in parents+referenced:
-            keys = ', '.join(ref.primaryKey)
+            keys = ', '.join(ref.primary_key)
             sql += 'FOREIGN KEY (%s) REFERENCES %s (%s) ON UPDATE CASCADE ON DELETE RESTRICT,\n' % \
-                    (keys, ref.fullTableName, keys)
+                    (keys, ref.full_table_name, keys)
 
 
         # add secondary index declarations
         # gather implicit indexes due to foreign keys first
-        implicitIndexes = []
+        implicit_indexes = []
         for fkSource in parents+referenced:
-            implicitIndexes.append(fkSource.primaryKey)
+            implicit_indexes.append(fkSource.primary_key)
 
         #for index in indexDefs:
         #TODO: finish this up...
@@ -324,14 +324,14 @@ class Base(_Relational):
         sql = '%s\n) ENGINE = InnoDB, COMMENT "%s"' % (sql[:-2], tableInfo['comment'])
 
         # make sure that the table does not alredy exist
-        self.conn.loadHeadings(self.dbname, force=True)
-        if not self.isDeclared:
+        self.conn.load_headings(self.dbname, force=True)
+        if not self.is_declared:
             # execute declaration
             logger.debug('\n<SQL>\n' + sql + '</SQL>\n\n')
             self.conn.query(sql)
-            self.conn.loadHeadings(self.dbname, force=True)
+            self.conn.load_headings(self.dbname, force=True)
 
-    def _parseDeclaration(self):
+    def _parse_declaration(self):
         """
         Parse declaration and create new SQL table accordingly
         """
@@ -349,13 +349,13 @@ class Base(_Relational):
         \#\s*(?P<comment>.*)$                       #  comment
         """
         p = re.compile(ptrn, re.X)
-        tableInfo = p.match(declaration[0]).groupdict()
-        if tableInfo['tier'] not in Role.__members__:
+        table_info = p.match(declaration[0]).groupdict()
+        if table_info['tier'] not in Role.__members__:
             raise DataJointError('InvalidTableTier: Invalid tier {tier} for table\
-                                 {module}.{cls}'.format(tier=tableInfo['tier'],
-                                                        module=tableInfo['module'],
-                                                        cls=tableInfo['className']))
-        tableInfo['tier'] = Role[tableInfo['tier']] # convert into enum
+                                 {module}.{cls}'.format(tier=table_info['tier'],
+                                                        module=table_info['module'],
+                                                        cls=table_info['className']))
+        table_info['tier'] = Role[table_info['tier']] # convert into enum
 
         inKey = True # parse primary keys
         fieldPtrn = """
@@ -371,67 +371,67 @@ class Base(_Relational):
             elif line.startswith('->'):
                 # foreign key
                 module, className = line[2:].strip().split('.')
-                rel = self.getBase(self.conn, module, className)
+                rel = self.get_base(self.conn, module, className)
                 (parents if inKey else referenced).append(rel)
             elif re.match(r'^(unique\s+)?index[^:]*$', line):
-                indexDefs.append(self._parseIndexDef(line))
+                indexDefs.append(self._parse_index_def(line))
             elif fieldP.match(line):
-                fieldDefs.append(self._parseAttrDef(line, inKey))
+                fieldDefs.append(self._parse_attr_def(line, inKey))
             else:
                 raise DataJointError('Invalid table declaration line "%s"' % line)
 
-        return tableInfo, parents, referenced, fieldDefs, indexDefs
+        return table_info, parents, referenced, fieldDefs, indexDefs
 
-    def _parseAttrDef(self, line, inKey=False):
+    def _parse_attr_def(self, line, inKey=False):
         """
         Parse attribute definition line in the declaration and returns
         an attribute tuple.
         """
         line = line.strip()
-        attrPtrn = """
+        attr_ptrn = """
         ^(?P<name>[a-z][a-z\d_]*)\s*             # field name
         (=\s*(?P<default>\S+(\s+\S+)*)\s*)?      # default value
         :\s*(?P<type>\w[^\#]*[^\#\s])\s*         # datatype
         (\#\s*(?P<comment>\S*(\s+\S+)*)\s*)?$          # comment
         """
 
-        attrP = re.compile(attrPtrn, re.I + re.X)
+        attrP = re.compile(attr_ptrn, re.I + re.X)
         m = attrP.match(line)
         assert m, 'Invalid field declaration "%s"' % line
-        attrInfo = m.groupdict()
-        if not attrInfo['comment']:
-            attrInfo['comment'] = ''
-        if not attrInfo['default']:
-            attrInfo['default'] = ''
-        attrInfo['isNullable'] = attrInfo['default'].lower() == 'null'
-        assert (not re.match(r'^bigint', attrInfo['type'], re.I) or not attrInfo['isNullable']), \
+        attr_info = m.groupdict()
+        if not attr_info['comment']:
+            attr_info['comment'] = ''
+        if not attr_info['default']:
+            attr_info['default'] = ''
+        attr_info['isNullable'] = attr_info['default'].lower() == 'null'
+        assert (not re.match(r'^bigint', attr_info['type'], re.I) or not attr_info['isNullable']), \
             'BIGINT attributes cannot be nullable in "%s"' % line
 
-        attrInfo['isKey'] = inKey;
-        attrInfo['isAutoincrement'] = None
-        attrInfo['isNumeric'] = None
-        attrInfo['isString'] = None
-        attrInfo['isBlob'] = None
-        attrInfo['alias'] = None
-        attrInfo['dtype'] = None
+        attr_info['isKey'] = inKey;
+        attr_info['isAutoincrement'] = None
+        attr_info['isNumeric'] = None
+        attr_info['isString'] = None
+        attr_info['isBlob'] = None
+        attr_info['alias'] = None
+        attr_info['dtype'] = None
 
-        return Heading.AttrTuple(**attrInfo)
+        return Heading.AttrTuple(**attr_info)
 
-    def _parseIndexDef(self, line):
+    def _parse_index_def(self, line):
         line = line.strip()
-        indexPtrn = """
+        index_ptrn = """
         ^(?P<unique>UNIQUE)?\s*INDEX\s*      # [UNIQUE] INDEX
         \((?P<attributes>[^\)]+)\)$          # (attr1, attr2)
         """
-        indexP = re.compile(indexPtrn, re.I + re.X)
+        indexP = re.compile(index_ptrn, re.I + re.X)
         m = indexP.match(line)
         assert m, 'Invalid index declaration "%s"' % line
-        indexInfo = m.groupdict()
-        attributes = re.split(r'\s*,\s*', indexInfo['attributes'].strip())
-        indexInfo['attributes'] = attributes
+        index_info = m.groupdict()
+        attributes = re.split(r'\s*,\s*', index_info['attributes'].strip())
+        index_info['attributes'] = attributes
         assert len(attributes) == len(set(attributes)), \
         'Duplicate attributes in index declaration "%s"' % line
-        return indexInfo
+        return index_info
 
 
     def erd(self, subset=None, prog='dot'):

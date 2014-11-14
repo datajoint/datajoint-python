@@ -1,5 +1,4 @@
 from .connection import conn, Connection
-from .heading import Heading
 from .core import DataJointError
 from .base import Base
 from .task import TaskQueue

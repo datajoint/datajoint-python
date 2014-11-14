@@ -1,4 +1,4 @@
-from .core import DataJointError, camelCase
+from .core import DataJointError, to_camel_case
 import networkx as nx
 from networkx import DiGraph
 from networkx import pygraphviz_layout
@@ -183,7 +183,7 @@ class DBConnGraph(RelGraph):
     """
     def __init__(self, conn, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if conn.isConnected:
+        if conn.is_connected:
             self._conn = conn
         else:
             raise DataJointError('The connection is broken') #TODO: make better exception message
@@ -194,7 +194,7 @@ class DBConnGraph(RelGraph):
         dbname = m.group(1)
         table_name = m.group(2)
         mod_name = self._conn.modules[dbname]
-        class_name = camelCase(table_name)
+        class_name = to_camel_case(table_name)
         return '{}.{}'.format(mod_name, class_name)
 
     def update_graph(self):
