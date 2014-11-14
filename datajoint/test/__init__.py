@@ -31,13 +31,17 @@ def teardown():
 
 def cleanup():
     """
-    Removes all databases beginning with the prefix
+    Removes all databases with name starting with the prefix.
+    To deal with possible foreign key constraints, it will unset
+    and then later reset FOREIGN_KEY_CHECKS flag
     """
     cur = BASE_CONN.cursor()
     cur.execute("SHOW DATABASES LIKE '{}\_%'".format(PREFIX))
     dbs = [x[0] for x in cur.fetchall()]
+    cur.execute('SET FOREIGN_KEY_CHECKS=0')
     for db in dbs:
         cur.execute('DROP DATABASE `{}`'.format(db))
+    cur.execute('SET FOREIGN_KEY_CHECKS=1')
 
 
 

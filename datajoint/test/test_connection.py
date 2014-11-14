@@ -9,13 +9,62 @@ import datajoint as dj
 from datajoint.core import DataJointError
 
 
-def test_establish_connection():
+def test_dj_conn():
     """
     Should be able to establish a connection
     """
     c = dj.conn(**CONN_INFO)
-    assert c.isConnected
+    assert c.is_connected
 
+
+def test_persistent_dj_conn():
+    """
+    conn() method should provide persistent connection
+    across calls.
+    """
+    c1 = dj.conn(**CONN_INFO)
+    c2 = dj.conn(host='test', user='test', passwd='test')
+    assert_true(c1 is c2)
+
+
+def test_dj_conn_reset():
+    """
+    Passing in rest=True should allow for new persistent
+    connection to be created.
+    """
+    c1 = dj.conn(**CONN_INFO)
+    c2 = dj.conn(reset=True, **CONN_INFO)
+    assert_true(c1 is not c2)
+
+
+def setup_test_db():
+    """
+    Helper method to setup databases with tables to be used
+    during the test
+    """
+    cur = BASE_CONN.cursor()
+    cur.execute("CREATE DATABASE `{}_test1`".format(PREFIX))
+    cur.execute("CREATE DATABASE `{}_test2`".format(PREFIX))
+    query1 = """
+    CREATE TABLE `{prefix}_test1`.`subjects`
+    (
+      subject_id      SMALLINT        COMMENT 'Unique subject ID',
+      subject_name    VARCHAR(255)    COMMENT 'Subject name',
+      subject_email   VARCHAR(255)    COMMENT 'Subject email address',
+      PRIMARY KEY (subject_id)
+    )
+    """.format(prefix=PREFIX)
+    cur.execute(query1)
+    query2 = """
+    CREATE TABLE `{prefix}_test2`.`experiments`
+    (
+      experiment_id       SMALLINT        COMMENT 'Unique experiment ID',
+      experiment_name     VARCHAR(255)    COMMENT 'Experiment name',
+      subject_id          SMALLINT,
+      CONSTRAINT FOREIGN KEY (`subject_id`) REFERENCES `dj_test1`.`subjects` (`subject_id`) ON UPDATE CASCADE ON DELETE RESTRICT,
+      PRIMARY KEY (subject_id, experiment_id)
+    )""".format(prefix=PREFIX)
+    cur.execute(query2)
 
 
 class TestConnectionWithoutBindings(object):
@@ -23,23 +72,9 @@ class TestConnectionWithoutBindings(object):
     Test methods from Connection that does not
     depend on presence of module to database bindings.
     """
-    def __init__(self):
-        self.conn = dj.conn(**CONN_INFO)
-
     def setup(self):
-        cur = BASE_CONN.cursor()
-        cur.execute("CREATE DATABASE `{}_test1`".format(PREFIX))
-        cur.execute("CREATE DATABASE `{}_test2`".format(PREFIX))
-        query = """
-        CREATE TABLE `{prefix}_test1`.`subjects`
-        (
-          subject_id      SMALLINT        COMMENT 'Unique subject ID',
-          subject_name    VARCHAR(255)    COMMENT 'Subject name',
-          subject_email   VARCHAR(255)    COMMENT 'Subject email address',
-          PRIMARY KEY (subject_id)
-        )
-        """.format(prefix=PREFIX)
-        cur.execute(query)
+        self.conn = dj.Connection(**CONN_INFO)
+        setup_test_db()
 
     def teardown(self):
         cleanup()
@@ -105,11 +140,11 @@ class TestConnectionWithoutBindings(object):
         Test transaction commit
         """
         table_name = PREFIX + '_test1.subjects'
-        self.conn.startTransaction()
+        self.conn.start_transaction()
         self.conn.query("INSERT INTO {table} VALUES (0, 'dj_user', 'dj_user@example.com')".format(table=table_name))
         cur = BASE_CONN.cursor()
         assert_equal(cur.execute("SELECT * FROM {}".format(table_name)), 0)
-        self.conn.commitTransaction()
+        self.conn.commit_transaction()
         assert_equal(cur.execute("SELECT * FROM {}".format(table_name)), 1)
 
     def test_transaction_rollback(self):
@@ -117,32 +152,23 @@ class TestConnectionWithoutBindings(object):
         Test transaction rollback
         """
         table_name = PREFIX + '_test1.subjects'
-        self.conn.startTransaction()
+        self.conn.start_transaction()
         self.conn.query("INSERT INTO {table} VALUES (0, 'dj_user', 'dj_user@example.com')".format(table=table_name))
         cur = BASE_CONN.cursor()
         assert_equal(cur.execute("SELECT * FROM {}".format(table_name)), 0)
-        self.conn.cancelTransaction()
+        self.conn.cancel_transaction()
         assert_equal(cur.execute("SELECT * FROM {}".format(table_name)), 0)
+
+
 
 
 class TestConnectionWithBindings(object):
     """
     Tests heading and dependency loadings
     """
-    def __init__(self):
-        self.conn = dj.conn(**CONN_INFO)
-
     def setup(self):
-        cur = BASE_CONN.cursor()
-        sql = """
-        CREATE TABLE `{prefix}_test1`.`subjects`
-        (
-          subject_id      SMALLINT        COMMENT 'Unique subject ID',
-          subject_name    VARCHAR(255)    COMMENT 'Subject name',
-          subject_email   VARCHAR(255)    COMMENT 'Subject email address',
-          PRIMARY KEY (subject_id)
-        )
-        """.format(prefix=PREFIX)
+        self.conn = dj.Connection(**CONN_INFO)
+        cur.execute(query)
 
 
 

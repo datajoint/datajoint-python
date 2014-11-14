@@ -1,6 +1,6 @@
 import pymysql
 import re
-from .core import DataJointError, camelCase
+from .core import DataJointError, to_camel_case
 import os
 from .heading import Heading
 from .base import prefixRole
@@ -16,24 +16,26 @@ logger = logging.getLogger(__name__)
 
 # The following two regular expression are equivalent but one works in python
 # and the other works in MySQL
-tableNameRegExpSQL = re.compile('^(#|_|__|~)?[a-z][a-z0-9_]*$')
-tableNameRegExp = re.compile('^(|#|_|__|~)[a-z][a-z0-9_]*$')    # MySQL does not accept this but MariaDB does
+table_name_regexp_sql = re.compile('^(#|_|__|~)?[a-z][a-z0-9_]*$')
+table_name_regexp = re.compile('^(|#|_|__|~)[a-z][a-z0-9_]*$')    # MySQL does not accept this but MariaDB does
 
 
-def connContainer():
+def conn_container():
     """
     creates a persistent connections for everyone to use
     """
     _connObj = None   # persistent connection object used by dj.conn()
 
-    def conn(host=None, user=None, passwd=None, initFun=None):
+    def conn(host=None, user=None, passwd=None, initFun=None, reset=False):
         """
         Manage a persistent connection object.
         This is one of several ways to configure and access a datajoint connection.
         Users may customize their own connection manager.
+
+        Set rest=True to reset the persistent connection object
         """
         nonlocal _connObj
-        if not _connObj:
+        if not _connObj or reset:
             host = host or os.getenv('DJ_HOST') or input('Enter datajoint server address >> ')
             user = user or os.getenv('DJ_USER') or input('Enter datajoint user name >> ')
             # had trouble with getpass
@@ -45,7 +47,7 @@ def connContainer():
     return conn
 
 # The function conn is used by others to obtain the package wide persistent connection object
-conn = connContainer()
+conn = conn_container()
 
 
 class Connection:
@@ -53,7 +55,7 @@ class Connection:
     A dj.Connection object manages a connection to a database server.
     It also catalogues modules, schemas, tables, and their dependencies (foreign keys)
     """
-    def __init__(self, host, user, passwd, initFun):
+    def __init__(self, host, user, passwd, initFun=None):
         try:
             host, port = host.split(':')
             port = int(port)
@@ -62,7 +64,7 @@ class Connection:
         self.connInfo = dict(host=host, port=port, user=user, passwd=passwd)
         self._conn = pymysql.connect(init_command=initFun, **self.connInfo)
         # TODO Do something if connection cannot be established
-        if self.isConnected:
+        if self.is_connected:
             print("Connected", user + '@'+host+':'+str(port))
         self._conn.autocommit(True)
 
@@ -80,7 +82,7 @@ class Connection:
         self._graph = DBConnGraph(self) # initialize an empty connection graph
 
     @property
-    def isConnected(self):
+    def is_connected(self):
         return self._conn.ping()
 
     def bind(self, module, dbname):
@@ -122,7 +124,7 @@ class Connection:
                                  "existing databases. Database name should not be " \
                                  "a pattern.".format(dbname=dbname))
 
-    def loadHeadings(self, dbname=None, force=False):
+    def load_headings(self, dbname=None, force=False):
         """
         Load table information including roles and list of attributes for all
         tables within dbname by examining respective TABLE STATUS
@@ -135,14 +137,14 @@ class Connection:
         already exists.
         """
         if dbname:
-            self._loadHeadingsFor(dbname, force)
+            self._load_headings(dbname, force)
             return
 
         for dbname in self.modules:
-            self._loadHeadingsFor(dbname, force)
+            self._load_headings(dbname, force)
 
 
-    def _loadHeadingsFor(self, dbname, force=False):
+    def _load_headings(self, dbname, force=False):
         """
         Load table information including roles and list of attributes for all
         tables within dbname by examining respective TABLE STATUS
@@ -158,21 +160,21 @@ class Connection:
             self.tableInfo[dbname] = {}
 
             cur = self.query('SHOW TABLE STATUS FROM `{dbname}` WHERE name REGEXP "{sqlPtrn}"'.format(
-                dbname=dbname, sqlPtrn=tableNameRegExpSQL.pattern), asDict=True)
+                dbname=dbname, sqlPtrn=table_name_regexp_sql.pattern), asDict=True)
 
             for info in cur:
                 info = {k.lower():v for k,v in info.items()}  # lowercase it
                 tabName = info.pop('name')
                 # look up role by table name prefix
-                role = prefixRole[tableNameRegExp.match(tabName).group(1)]
-                displayName = camelCase(tabName)
+                role = prefixRole[table_name_regexp.match(tabName).group(1)]
+                displayName = to_camel_case(tabName)
                 self.tableNames[dbname][displayName] = tabName
                 self.tableInfo[dbname][tabName] = dict(info,role=role)
-                self.headings[dbname][tabName] = Heading.initFromDatabase(self,dbname,tabName)
-            self.loadDependencies(dbname)
+                self.headings[dbname][tabName] = Heading.init_from_database(self,dbname,tabName)
+            self.load_dependencies(dbname)
 
 
-    def loadDependencies(self, dbname): # TODO: Perhaps consider making this "private" by preceding with underscore?
+    def load_dependencies(self, dbname): # TODO: Perhaps consider making this "private" by preceding with underscore?
         """
         load dependencies (foreign keys) between tables by examnining their
         respective CREATE TABLE statements.
@@ -197,7 +199,7 @@ class Connection:
                 assert m.group('attr1') == m.group('attr2'), 'Foreign keys must link identically named attributes'
                 attrs = m.group('attr1')
                 attrs = re.split(r',\s+', re.sub(r'`(.*?)`', r'\1', attrs)) # remove ` around attrs and split into list
-                pk = self.headings[dbname][tabName].primaryKey
+                pk = self.headings[dbname][tabName].primary_key
                 isPrimary = all([k in pk for k in attrs])
                 ref = m.group('ref') # referenced table
 
@@ -212,7 +214,7 @@ class Connection:
                 self.parents.setdefault(ref, [])
                 self.referenced.setdefault(ref, [])
 
-    def clearDependencies(self, dbname=None):
+    def clear_dependencies(self, dbname=None):
         """
         Clears dependency mapping originating from `dbname`. If `dbname` is not
         specified, dependencies for all databases will be cleared.
@@ -260,12 +262,12 @@ class Connection:
         return self.__repr__() # placeholder until more suitable __str__ is implemented
 
     def __repr__(self):
-        connected = "connected" if self.isConnected else "disconnected"
+        connected = "connected" if self.is_connected else "disconnected"
         return "DataJoint connection ({connected}) {user}@{host}:{port}".format(
             connected=connected, **self.connInfo)
 
     def __del__(self):
-        print('Disconnecting {user}@{host}:{port}'.format(**self.connInfo))
+        logger.info('Disconnecting {user}@{host}:{port}'.format(**self.connInfo))
         self._conn.close()
 
 
@@ -278,7 +280,7 @@ class Connection:
         connection tables are automatically included)
         """
         if reload:
-            self.loadHeadings()  # load all tables and relations for bound databases
+            self.load_headings()  # load all tables and relations for bound databases
 
         self._graph.update_graph()  # update the graph
 
@@ -290,8 +292,6 @@ class Connection:
             graph = graph.restrict_by_tables(tables, fill)
 
         graph.plot()
-
-#----------Database Interaction----------
 
     def query(self, query, args=(), asDict=False):
         """
@@ -308,11 +308,11 @@ class Connection:
         cur.execute(query, args)
         return cur
 
-    def startTransaction(self):
+    def start_transaction(self):
         self.query('START TRANSACTION WITH CONSISTENT SNAPSHOT')
 
-    def cancelTransaction(self):
+    def cancel_transaction(self):
         self.query('ROLLBACK')
 
-    def commitTransaction(self):
+    def commit_transaction(self):
         self.query('COMMIT')
