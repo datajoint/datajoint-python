@@ -24,7 +24,7 @@ def conn_container():
     """
     creates a persistent connections for everyone to use
     """
-    _connObj = None   # persistent connection object used by dj.conn()
+    persistentConn = None   # persistent connection object used by dj.conn()
 
     def conn(host=None, user=None, passwd=None, initFun=None, reset=False):
         """
@@ -43,12 +43,14 @@ def conn_container():
             initFun = initFun or os.getenv('DJ_INIT')
             _connObj = Connection(host, user, passwd, initFun)
         return _connObj
+    return conn
 
     return conn
 
 # The function conn is used by others to obtain the package wide persistent connection object
 conn = conn_container()
 
+defaultPort = 3306
 
 class Connection:
     """
@@ -60,7 +62,7 @@ class Connection:
             host, port = host.split(':')
             port = int(port)
         except ValueError:
-            port = 3306   # default MySQL port
+            port = defaultPort   
         self.connInfo = dict(host=host, port=port, user=user, passwd=passwd)
         self._conn = pymysql.connect(init_command=initFun, **self.connInfo)
         # TODO Do something if connection cannot be established
@@ -80,6 +82,25 @@ class Connection:
         self.referenced = {}  # maps table names to table names they reference (non-primary foreign key
 
         self._graph = DBConnGraph(self) # initialize an empty connection graph
+
+    def isSame(self, host, user):
+        """
+        true if the connection host and user name are the same
+        """
+        if host is None:
+            host = self.connInfo['host']
+            port = self.connInfo['port']
+        else:
+            try:
+                host, port = host.split(':')
+                port = int(port)
+            except ValueError:
+                port = defaultPort
+
+        if user is None:
+            user = self.connInfo['user']
+
+        return self.connInfo['host']==host and self.connInfo['port']==port and self.connInfo['user']==user
 
     @property
     def is_connected(self):

@@ -13,17 +13,16 @@ from .core import DataJointError
 
 class Heading:
     """
-    local class for relational object headings
+    local class for relationals' headings.
     """
 
     AttrTuple = namedtuple('AttrTuple',('name','type','isKey','isNullable',
     'default','comment','isAutoincrement','isNumeric','isString','isBlob',
-    'alias','dtype'))
+    'computation','dtype'))
 
     def __init__(self, attrs):
-        # Input: attrs - array of dicts with attribute descriptions
+        # Input: attrs -list of dicts with attribute descriptions
         self.attrs = OrderedDict([(q['name'], Heading.AttrTuple(**q)) for q in attrs])
-
 
     @property
     def names(self):
@@ -46,8 +45,8 @@ class Heading:
         return [k for k,v in self.attrs.items() if not v.isBlob]
 
     @property
-    def has_aliases(self):
-        return any((bool(v.alias) for v in self.attrs.values()))
+    def computed(self):
+        return [k for k,v in self.attrs.items() if v.computation]
 
     def __getitem__(self,name):
         """shortcut to the attribute"""
@@ -73,7 +72,7 @@ class Heading:
     @property
     def asSQL(self):
         """represent heading as SQL field list"""
-        attrNames = ['`%s`' % name if self.attrs[name].alias is None else '%s as `%s`' % (self.attrs[name].alias, name)
+        attrNames = ['`%s`' % name if self.attrs[name].computation is None else '%s as `%s`' % (self.attrs[name].computation, name)
                  for name in self.names]
         return ','.join(attrNames)
 
@@ -109,7 +108,7 @@ class Heading:
             'Key'    : 'isKey',
             'Comment': 'comment'}
 
-        dropFields = ('Privileges', 'Collation')
+        dropFields = ('Privileges', 'Collation')  # unncessary
 
         # rename and drop attributes
         attrs = [{rename_map[k] if k in rename_map else k: v
@@ -130,6 +129,7 @@ class Heading:
             ('int',True):np.uint32,
             ('bigint',False):np.int64,
             ('bigint',True):np.uint64
+            # TODO: include decimal and numeric datatypes
             }
 
 
@@ -145,7 +145,7 @@ class Heading:
             # strip field lengths off integer types
             attr['type'] = re.sub(r'((tiny|small|medium|big)?int)\(\d+\)', r'\1', attr['type'])
 
-            attr['alias'] = None
+            attr['computation'] = None
             if not (attr['isNumeric'] or attr['isString'] or attr['isBlob']):
                 raise DataJointError('Unsupported field type {field} in `{dbname}`.`{tabname}`'.format(
                     field=attr['type'], dbname=dbname, tabname=tabname))
@@ -167,27 +167,67 @@ class Heading:
         return cls(attrs)
 
 
-    def _pro(self, *attrList, **renameDict):
+    def pro(self, *attrList, **renameDict):
         """
         derive a new heading by selecting, renaming, or computing attributes.
         In relational algebra these operators are known as project, rename, and expand.
         The primary key is always included.
         """
-        # include pimrary key
-        attrList = set(attrList).union(self.primary_key)
-
-        # include all if '*'
-        if '*' in attrList:
-            attrList.discard('*')
-            attrList.update(self.names)
+        # include all if '*' is in attrSet, always include primary key
+        attrSet = set(self.names) if '*' in attrList \
+            else set(attrList).union(self.primaryKey)
 
         # report missing attributes
-        missing = attrList.difference(self.names)
+        missing = attrSet.difference(self.names)
         if missing:
             raise DataJointError('Attributes %s are not found' % str(missing))
 
-        # TODO: process renameDict
+        # make attrList a list of dicts for initializing a Heading
+        attrList = [v._asdict() for k,v in self.attrs.items() 
+            if k in attrSet and k not in renameDict.values()]
 
-        # make new heading
-        return Heading([v._asdict() for k,v in self.attrs.items() if k in attrList])
+        # add renamed and computed attributes
+        for newName, computation in renameDict.items():
+            if computation in self.names:
+                # renamed attribute
+                newAttr = self.attrs[computation]._asdict()
+                newAttr['name'] = newName
+                newAttr['computation'] = '`' + computation + '`'
+            else:
+                # computed attribute
+                newAttr = dict(
+                    name = newName,
+                    type = 'computed',
+                    isKey = False,
+                    isNullable = False,
+                    default = None,
+                    comment = 'computed attribute',
+                    isAutoincrement = False,
+                    isNumeric = None,
+                    isString = None,
+                    isBlob = False,
+                    computation = computation,
+                    dtype = object)
+            attrList.append(newAttr)
+
+        return Heading(attrList)
+
+
+    def join(self,other):
+        """
+        join two headings
+        """
+        assert isinstance(other,Heading)
+        attrList = [v._asdict() for v in self.attrs.values()]
+        for name in other.names:
+            if name not in self.names:
+                attrList.append(other.attrs[name]._asdict())
+        return Heading(attrList)
+
+
+    def resolveComputations(self):
+        """
+        Remove computations.  To be done after computations have been resolved in a subquery
+        """
+        return Heading( [dict(v._asdict(),computation=None) for v in self.attrs.values()] )
 

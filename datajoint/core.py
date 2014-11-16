@@ -11,7 +11,6 @@ class Settings:
     pass
     # verbose = True
 
-
 class DataJointError(Exception):
     """
     Base class for errors specific to DataJoint internal
@@ -47,8 +46,6 @@ def from_camel_case(s):
     assert not re.match(r'\d.*', s), 'string cannot begin with a digit'
     assert re.match(r'^[a-zA-Z0-9]*$', s), 'fromCameCase string can only contain alphanumerica characters'
     def conv(matchobj):
-        if matchobj.groups()[0]:
-            return '_' + matchobj.group(0).lower()
-        else:
-            return matchobj.group(0).lower()
+        return ('_' if matchobj.groups()[0] else '') + matchobj.group(0).lower()
+
     return re.sub(r'(\B[A-Z])|(\b[A-Z])', conv, s)
