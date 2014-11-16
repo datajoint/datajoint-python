@@ -24,7 +24,7 @@ def conn_container():
     """
     creates a persistent connections for everyone to use
     """
-    persistentConn = None   # persistent connection object used by dj.conn()
+    _connObj = None   # persistent connection object used by dj.conn()
 
     def conn(host=None, user=None, passwd=None, initFun=None, reset=False):
         """

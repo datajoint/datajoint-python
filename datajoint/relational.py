@@ -82,7 +82,7 @@ class _Relational(metaclass=abc.ABCMeta):
         return Fetch(self)
         
     def __repr__(self):
-        header = self.heading.notBlobs;        
+        header = self.heading.non_blobs;        
         limit = 13;
         width = 12;
         template = '%%-%d.%ds' % (width,width);
@@ -171,6 +171,9 @@ class Join(_Relational):
     @property
     def heading(self):
         return self._rel1.heading.join(self._rel2.heading)
+        
+    @property 
+    def sql(self):
         Join.aliasCounter += 1
         return '%s NATURAL JOIN %s as `j%x`' % (self._rel1.sql, self._rel2.sql, Join.aliasCounter)
 

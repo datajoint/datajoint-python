@@ -77,8 +77,6 @@ class Heading:
         return ','.join(attrNames)
 
     # Use heading as a dictionary like object
-    def __getitem__(self, field):
-        return self.attrs[field]
 
     def keys(self):
         return self.attrs.keys()
@@ -175,7 +173,7 @@ class Heading:
         """
         # include all if '*' is in attrSet, always include primary key
         attrSet = set(self.names) if '*' in attrList \
-            else set(attrList).union(self.primaryKey)
+            else set(attrList).union(self.primary_key)
 
         # report missing attributes
         missing = attrSet.difference(self.names)

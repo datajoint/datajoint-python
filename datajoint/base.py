@@ -126,7 +126,7 @@ class Base(_Relational):
 
     @property    
     def sql(self):
-        return self.fullTableName + self._whereClause
+        return self.full_table_name + self._whereClause
                 
     @property
     def heading(self):
@@ -144,10 +144,6 @@ class Base(_Relational):
         self.declare()
         return self.conn.tableNames[self.dbname][self.className]
 
-    @property
-    def heading(self):
-        self.declare()
-        return self.conn.headings[self.dbname][self.table]
 
     @property
     def full_table_name(self):
