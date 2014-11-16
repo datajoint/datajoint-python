@@ -34,7 +34,8 @@ class Fetch:
         """
         fetch relation from database into an np.array
         """
-        cur, heading = self._cursor(*attrs, **renames)
+        cur= self._cursor(*attrs, **renames)
+        heading = self.rel.heading
         ret = np.array(list(cur), dtype=heading.asdtype)
         # unpack blobs
         for i in range(len(ret)):
@@ -43,8 +44,8 @@ class Fetch:
         return ret
     
     def _cursor(self, *attrs, **renames):
-        sql, heading = self.rel.pro(*attrs, **renames)._compile()
-        sql = 'SELECT ' + heading.asSQL + ' FROM ' + sql 
+        rel = self.rel.pro(*attrs, **renames)
+        sql = 'SELECT ' + rel.heading.asSQL + ' FROM ' + rel.sql 
         # add ORDER BY clause
         if self._orderBy:
             sql += ' ORDER BY ' + ', '.join(self._orderBy)
@@ -55,5 +56,4 @@ class Fetch:
             if self._offset:
                 sql += ' OFFSET %d ' %  self._offset
 
-        log(sql)
-        return self.rel.conn.query(sql), heading
+        return self.rel.conn.query(sql)

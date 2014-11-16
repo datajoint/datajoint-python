@@ -26,7 +26,7 @@ class Base(_Relational):
     datajoint.Base integrates all data manipulation and data declaration functions.
     An instance of the class provides an interface to a single table in the database.
 
-    An instance of the the class can be produce in two ways:
+    An instance of the class can be produce in two ways:
         1. direct instantiation  (used mostly for debugging and odd jobs)
         2. instantiation from a derived class (regular recommended use)
 
@@ -35,9 +35,21 @@ class Base(_Relational):
     of the deriving class. The module must declare the connection object conn.
     The name of the deriving class is used as the table's className.
 
-    Tables are identified by their "pretty names", which are CamelCase. The actual
-    table names are converted from CamelCase to underscore_separated_words and
-    prefixed according to the table's role.
+    The table associated with an instance of Base is identified by the className
+    property, which is a string in CamelCase. The actual table name is obtained 
+    by converting className from CamelCase to underscore_separated_words and 
+    prefixing according to the table's role.
+    
+    The table declaration can be specified in the doc string of the inheriting 
+    class, in the DataJoint table declaration syntax. 
+    
+    Base also implements the methods insert and delete to insert and delete tuples
+    from the table. It can also be an argument in relational operators: restrict, 
+    join, pro, and aggr.  See class _Relational.
+    
+    Base instances return their table's heading by looking it up in the connection
+    object. This ensures that Base instances contain the current table definition
+    even after tables are modified after the instance is created.
     """
 
     def __init__(self, conn=None, dbname=None, className=None, declaration=None):
@@ -66,6 +78,7 @@ class Base(_Relational):
                 self.dbname = self.conn.dbnames[self.__module__]
             except KeyError:
                 raise DataJointError('Module %s is not bound to a database. See datajoint.connection.bind' % self.__module__)
+            # take table declaration from the deriving class' doc string
             self.declaration = self.__doc__
             
 
@@ -92,17 +105,15 @@ class Base(_Relational):
         self.conn.query("INSERT INTO %s (%s) VALUES (%s)" % 
             (self.fullTableName, fieldList, valueList))
         
-        
-        
-
-
-    def _compile(self):
-        """
-        Compiles SQL string and heading for the table to be
-        used in relational algebra
-        """
-        return self.fullTableName + self._whereClause, self.heading
-
+    
+    @property    
+    def sql(self):
+        return self.fullTableName + self._whereClause
+                
+    @property
+    def heading(self):
+        self.declare()
+        return self.conn.headings[self.dbname][self.table]
 
     @property
     def isDeclared(self):
@@ -114,11 +125,6 @@ class Base(_Relational):
     def table(self):
         self.declare()
         return self.conn.tableNames[self.dbname][self.className]
-
-    @property
-    def heading(self):
-        self.declare()
-        return self.conn.headings[self.dbname][self.table]
 
     @property
     def fullTableName(self):
@@ -153,7 +159,6 @@ class Base(_Relational):
         Make after="First" to add the attribute as the first attribute
         or "AFTER `attribute`" to place it after an existing attribute.
         """
-        # TODO: Update this definition!
         position = ' FIRST' if first else (' AFTER %s' % after if after else '')
         sql = self._fieldToSQL(self._parseAttrDef(definition))
         self._alter('ADD COLUMN %s%s' % (sql[:-2], position))
@@ -175,7 +180,10 @@ class Base(_Relational):
 
     @classmethod
     def getBase(cls, conn, module, className):
-        """load relvar from module if available"""
+        """
+        load base relation from module.  If the base relation is not defined in
+        the module, then construct it using Base constructor.
+        """
         modObj = imp.importlib.__import__(module)
         try:
             ret = modObj.__dict__[className]()

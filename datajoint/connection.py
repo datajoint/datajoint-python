@@ -12,11 +12,11 @@ tableNameRegExp = re.compile('^(|#|_|__|~)[a-z][a-z0-9_]*$')    # MySQL does not
 
 
 
-def connContainer():
+def connPersistent():
     """
     creates a persistent connections for everyone to use
     """
-    _connObj = None   # persistent connection object used by dj.conn()
+    persistentConn = None   # persistent connection object used by dj.conn()
 
     def conn(host=None, user=None, passwd=None, initFun=None):
         """
@@ -24,34 +24,36 @@ def connContainer():
         This is one of several ways to configure and access a datajoint connection.
         Users may customize their own connection manager.
         """
-        nonlocal _connObj
-        if not _connObj:
+        nonlocal persistentConn
+        if persistentConn is None or not persistentConn.isSame(host=host,user=user):          
             host = host or os.getenv('DJ_HOST') or input('Enter datajoint server address >> ')
             user = user or os.getenv('DJ_USER') or input('Enter datajoint user name >> ')
             # had trouble with getpass
             passwd = passwd or os.getenv('DJ_PASS') or input('Enter datajoint password >> ')
             initFun = initFun or os.getenv('DJ_INIT')
-            _connObj = Connection(host, user, passwd, initFun)
-        return _connObj
+            persistentConn = Connection(host, user, passwd, initFun)
+        return persistentConn
         
     return conn
 
 
 # The function conn is used by others to obtain the persistent connection object
-conn = connContainer()
+conn = connPersistent()
 
+defaultPort = 3306
 
 class Connection:
     """
     A dj.Connection object manages a connection to a database server.
     It also catalogues modules, schemas, tables, and their dependencies (foreign keys)
     """
+    
     def __init__(self, host, user, passwd, initFun):
         try:
             host, port = host.split(':')
             port = int(port)
         except ValueError:
-            port = 3306   # default MySQL port
+            port = defaultPort   
         self.connInfo = dict(host=host, port=port, user=user, passwd=passwd)
         self._conn = pymysql.connect(init_command=initFun, **self.connInfo)
         if self.isConnected:
@@ -69,6 +71,26 @@ class Connection:
         self.parents    = {}  # maps table names to their parent table names (primary foreign key)
         self.referenced = {}  # maps table names to table names they reference (non-primary foreign key
 
+    def isSame(self, host, user):
+        """
+        true if the connection host and user name are the same
+        """
+        if host is None:
+            host = self.connInfo['host']
+            port = self.connInfo['port']
+        else:
+            try:
+                host, port = host.split(':')
+                port = int(port)
+            except ValueError:
+                port = defaultPort
+                
+        if user is None:
+            user = self.connInfo['user']
+            
+        return self.connInfo['host']==host and self.connInfo['port']==port and self.connInfo['user']==user
+        
+        
     @property
     def isConnected(self):
         return self._conn.ping()
