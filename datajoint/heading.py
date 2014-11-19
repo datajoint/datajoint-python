@@ -211,7 +211,7 @@ class Heading:
         return Heading(attrList)
 
 
-    def join(self,other):
+    def join(self, other):
         """
         join two headings
         """

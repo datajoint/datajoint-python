@@ -54,9 +54,9 @@ class Fetch:
 
         # add LIMIT clause
         if self._limit:
-            sql += ' LIMIT %d' %  self._limit
+            sql += ' LIMIT %d' % self._limit
             if self._offset:
-                sql += ' OFFSET %d ' %  self._offset
+                sql += ' OFFSET %d ' % self._offset
 
         logger.debug(sql)
         return self.rel.conn.query(sql)

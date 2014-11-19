@@ -52,3 +52,15 @@ class TwoPhotonSession(dj.Base):
     setup      : tinyint   # experimental setup
     lens       : tinyint   # lens e.g.: 10x, 20x. 25x, 60x
     """
+class EphysSetup(dj.Base):
+    """
+    demo1.EphysSetup (manual) # Ephys setup
+    setup_id    : tinyint # unique seutp id
+    """
+
+class EphysExperiment(dj.Base):
+    """
+    demo1.EphysExperiment (manual) # Ephys experiment
+    -> demo1.Subject
+    -> demo1.EphysSetup
+    """

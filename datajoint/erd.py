@@ -1,12 +1,15 @@
-from .core import DataJointError, to_camel_case
+import re
+import logging
+
 import networkx as nx
 from networkx import DiGraph
 from networkx import pygraphviz_layout
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import transforms
-import re
-import logging
+
+from .core import DataJointError, to_camel_case
+
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +20,7 @@ class RelGraph(DiGraph):
 
     @property
     def node_labels(self):
-        return {k:attr['label'] for k,attr in self.node.items()}
+        return {k: attr['label'] for k, attr in self.node.items()}
 
     @property
     def pk_edges(self):
@@ -88,7 +91,7 @@ class RelGraph(DiGraph):
         connection points for two nodes in the set.
         """
         H = self.subgraph(self.ancestors_of_all(nodes))
-        return H.descendents_of_all(nodes)
+        return H.descendants_of_all(nodes)
 
     def ancestors_of_all(self, nodes):
         """
@@ -100,14 +103,14 @@ class RelGraph(DiGraph):
             s.update(self.ancestors(n))
         return s
 
-    def descendents_of_all(self, nodes):
+    def descendants_of_all(self, nodes):
         """
         Find and return a set including all descendents of the given
         nodes. The set will also contain the given nodes as well.
         """
         s = set()
         for n in nodes:
-            s.update(self.descendents(n))
+            s.update(self.descendants(n))
         return s
 
     def ancestors(self, node):
@@ -121,7 +124,7 @@ class RelGraph(DiGraph):
             s.update(self.ancestors(p))
         return s
 
-    def descendents(self, node):
+    def descendants(self, node):
         """
         Find and return a set containing all descendents of the specified
         node. For convenience in plotting, this set will also include
@@ -129,19 +132,20 @@ class RelGraph(DiGraph):
         """
         s = {node}
         for c in self.successors_iter(node):
-            s.update(self.descendents(c))
+            s.update(self.descendants(c))
         return s
+
 
     def updown_neighbors(self, node, ups, downs, prev=None):
         s = {node}
         if ups > 0:
-            for x in G.predecessors_iter(node):
-                if x==prev:
+            for x in self.predecessors_iter(node):
+                if x == prev:
                     continue
                 s.update(self.updown_neighbors(x, ups-1, downs, node))
         if downs > 0:
-            for x in G.successors_iter(node):
-                if x==prev:
+            for x in self.successors_iter(node):
+                if x == prev:
                     continue
                 s.update(self.updown_neighbors(x, ups, downs-1, node))
         return s
@@ -161,17 +165,17 @@ class RelGraph(DiGraph):
         if n < 1:
             return s
         if n == 1:
-            s.update(G.predecessors(node))
-            s.update(G.successors(node))
+            s.update(self.predecessors(node))
+            s.update(self.successors(node))
             return s
-        for x in G.predecesors_iter():
+        for x in self.predecesors_iter():
             if x == prev:  # skip prev point
                 continue
-            s.update(n_neighbors(G, x, n-1, prev))
-        for x in G.succesors_iter():
+            s.update(self.n_neighbors(x, n-1, prev))
+        for x in self.succesors_iter():
             if x == prev:
                 continue
-            s.update(n_neighbors(G, x, n-1, prev))
+            s.update(self.n_neighbors(x, n-1, prev))
         return s
 
 full_table_ptrn = re.compile(r'`(.*)`\.`(.*)`')

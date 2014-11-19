@@ -402,9 +402,9 @@ class Base(_Relational):
         line = line.strip()
         attr_ptrn = """
         ^(?P<name>[a-z][a-z\d_]*)\s*             # field name
-        (=\s*(?P<default>\S+(\s+\S+)*)\s*)?      # default value
+        (=\s*(?P<default>\S+(\s+\S+)*?)\s*)?      # default value
         :\s*(?P<type>\w[^\#]*[^\#\s])\s*         # datatype
-        (\#\s*(?P<comment>\S*(\s+\S+)*)\s*)?$          # comment
+        (\#\s*(?P<comment>\S*(\s+\S+)*)\s*)?$    # comment
         """
 
         attrP = re.compile(attr_ptrn, re.I + re.X)
@@ -424,7 +424,7 @@ class Base(_Relational):
         attr_info['isNumeric'] = None
         attr_info['isString'] = None
         attr_info['isBlob'] = None
-        attr_info['alias'] = None
+        attr_info['computation'] = None
         attr_info['dtype'] = None
 
         return Heading.AttrTuple(**attr_info)
