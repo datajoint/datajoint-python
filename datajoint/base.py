@@ -1,4 +1,4 @@
-import imp
+import importlib
 import re
 import numpy as np
 from enum import Enum
@@ -55,12 +55,12 @@ class Base(_Relational):
     even after tables are modified after the instance is created.
     """
 
-    def __init__(self, conn=None, dbname=None, className=None, declaration=None):
+    def __init__(self, conn=None, dbname=None, class_name=None, declaration=None):
         if self.__class__ is Base:
             # instantiate without subclassing
-            if not (conn and dbname and className):
+            if not (conn and dbname and class_name):
                 raise DataJointError('Missing argument: please specify conn, dbname, and className.')
-            self.className = className
+            self.class_name = class_name
             self.conn = conn
             self.dbname = dbname
             self.declaration = declaration
@@ -68,10 +68,10 @@ class Base(_Relational):
                 self.conn.bind('`{0}`'.format(dbname), dbname)
         else:
             # instantiate a derived class
-            if conn or dbname or className or declaration:
+            if conn or dbname or class_name or declaration:
                 raise DataJointError('With derived classes, constructor arguments are ignored')
-            self.className = self.__class__.__name__
-            module = imp.importlib.import_module(self.__module__)
+            self.class_name = self.__class__.__name__
+            module = importlib.import_module(self.__module__)
             try:
                 self.conn = module.conn
             except AttributeError:
@@ -137,12 +137,12 @@ class Base(_Relational):
     def is_declared(self):
         "True if table is found in the database"
         self.conn.load_headings(self.dbname)
-        return self.className in self.conn.tableNames[self.dbname]
+        return self.class_name in self.conn.tableNames[self.dbname]
 
     @property
     def table(self):
         self.declare()
-        return self.conn.tableNames[self.dbname][self.className]
+        return self.conn.tableNames[self.dbname][self.class_name]
 
 
     @property
@@ -151,7 +151,7 @@ class Base(_Relational):
 
     @property
     def full_class_name(self):
-        return '{}.{}'.format(self.__module__, self.className)
+        return '{}.{}'.format(self.__module__, self.class_name)
 
     @property
     def primary_key(self):
@@ -164,7 +164,7 @@ class Base(_Relational):
         if not self.is_declared:
             self._declare()
             if not self.is_declared:
-                raise DataJointError('Table could not be declared for %s' % self.className)
+                raise DataJointError('Table could not be declared for %s' % self.class_name)
 
     """
     Data Definition Functionalities
@@ -205,16 +205,16 @@ class Base(_Relational):
 
 
     @classmethod
-    def get_base(cls, conn, module, className):
+    def get_base(cls, conn, module, class_name):
         """
         load base relation from module.  If the base relation is not defined in
         the module, then construct it using Base constructor.
         """
-        modObj = imp.importlib.__import__(module)
+        mod_obj = importlib.__import__(module)
         try:
-            ret = getattr(modObj, className)()
+            ret = getattr(mod_obj, class_name)()
         except KeyError:
-            ret = cls(conn=conn, dbname=conn.schemas[module], className=className)
+            ret = cls(conn=conn, dbname=conn.schemas[module], className=class_name)
         return ret
 
 
@@ -260,26 +260,26 @@ class Base(_Relational):
         """
         _declare is called when no table in the database matches this object
         """
-        tableInfo, parents, referenced, fieldDefs, indexDefs = self._parse_declaration()
-        fullName = tableInfo['module'] + '.' + tableInfo['className']
-        clsName = self.__module__ + '.' + self.className
-        if not fullName == clsName:
-            raise DataJointError('Table name {} does not match the declared' \
-                                 'name {}'.format(clsName, fullName))
+        table_info, parents, referenced, fieldDefs, indexDefs = self._parse_declaration()
+        defined_name = table_info['module'] + '.' + table_info['className']
+        expected_name = self.__module__.split('.')[-1] + '.' + self.class_name
+        if not defined_name == expected_name:
+            raise DataJointError('Table name {} does not match the declared'
+                                 'name {}'.format(expected_name, defined_name))
 
         # compile the CREATE TABLE statement
         # TODO: support prefix
-        tableName = rolePrefix[tableInfo['tier']] + from_camel_case(self.className)
-        sql = 'CREATE TABLE `%s`.`%s` (\n' % (self.dbname, tableName)
+        table_name = rolePrefix[table_info['tier']] + from_camel_case(self.class_name)
+        sql = 'CREATE TABLE `%s`.`%s` (\n' % (self.dbname, table_name)
 
         # add inherited primary key fields
-        primaryKeyFields = set()
-        nonKeyFields = set()
+        primary_key_fields = set()
+        non_key_fields = set()
         for p in parents:
             for key in p.primary_key:
                 field = p.heading[key]
-                if field.name not in primaryKeyFields:
-                    primaryKeyFields.add(field.name)
+                if field.name not in primary_key_fields:
+                    primary_key_fields.add(field.name)
                     sql += self._field_to_SQL(field)
                 else:
                     logger.debug('Field definition of {} in {} ignored'.format(
@@ -290,30 +290,30 @@ class Base(_Relational):
             if field.isNullable:
                 raise DataJointError('Primary key {} cannot be nullable'.format(
                     field.name))
-            if field.name in primaryKeyFields:
+            if field.name in primary_key_fields:
                 raise DataJointError('Duplicate declaration of the primary key '\
                                      '{key}. Check to make sure that the key '\
                                      'is not declared already in referenced '\
                                      'tables'.format(key=field.name))
-            primaryKeyFields.add(field.name)
+            primary_key_fields.add(field.name)
             sql += self._field_to_SQL(field)
 
         # add secondary foreign key attributes
         for r in referenced:
             keys = (x for x in r.heading.attrs.values() if x.isKey)
             for field in keys:
-                if field.name not in primaryKeyFields | nonKeyFields:
-                    nonKeyFields.add(field.name)
+                if field.name not in primary_key_fields | non_key_fields:
+                    non_key_fields.add(field.name)
                     sql += self._field_to_SQL(field)
 
         # add dependent attributes
         for field in (f for f in fieldDefs if not f.isKey):
-            nonKeyFields.add(field.name)
+            non_key_fields.add(field.name)
             sql += self._field_to_SQL(field)
 
         # add primary key declaration
-        assert len(primaryKeyFields)>0, 'table must have a primary key'
-        keys = ', '.join(primaryKeyFields)
+        assert len(primary_key_fields)>0, 'table must have a primary key'
+        keys = ', '.join(primary_key_fields)
         sql += 'PRIMARY KEY (%s),\n' % keys
 
         # add foreign key declarations
@@ -325,15 +325,15 @@ class Base(_Relational):
 
         # add secondary index declarations
         # gather implicit indexes due to foreign keys first
-        implicit_indexes = []
-        for fkSource in parents+referenced:
-            implicit_indexes.append(fkSource.primary_key)
+        implicit_indices = []
+        for fk_source in parents+referenced:
+            implicit_indices.append(fk_source.primary_key)
 
         #for index in indexDefs:
         #TODO: finish this up...
 
         # close the declaration
-        sql = '%s\n) ENGINE = InnoDB, COMMENT "%s"' % (sql[:-2], tableInfo['comment'])
+        sql = '%s\n) ENGINE = InnoDB, COMMENT "%s"' % (sql[:-2], table_info['comment'])
 
         # make sure that the table does not alredy exist
         self.conn.load_headings(self.dbname, force=True)
@@ -349,8 +349,8 @@ class Base(_Relational):
         """
         parents = []
         referenced = []
-        indexDefs = []
-        fieldDefs = []
+        index_defs = []
+        field_defs = []
         declaration = re.split(r'\s*\n\s*', self.declaration.strip())
 
         # remove comment lines
@@ -369,30 +369,30 @@ class Base(_Relational):
                                                         cls=table_info['className']))
         table_info['tier'] = Role[table_info['tier']] # convert into enum
 
-        inKey = True # parse primary keys
-        fieldPtrn = """
+        in_key = True # parse primary keys
+        field_ptrn = """
         ^[a-z][a-z\d_]*\s*          # name
         (=\s*\S+(\s+\S+)*\s*)?      # optional defaults
         :\s*\w.*$                   # type, comment
         """
-        fieldP = re.compile(fieldPtrn, re.I + re.X) # ignore case and verbose
+        fieldP = re.compile(field_ptrn, re.I + re.X) # ignore case and verbose
 
         for line in declaration[1:]:
             if line.startswith('---'):
-                inKey = False # start parsing non-PK fields
+                in_key = False # start parsing non-PK fields
             elif line.startswith('->'):
                 # foreign key
                 module, className = line[2:].strip().split('.')
                 rel = self.get_base(self.conn, module, className)
-                (parents if inKey else referenced).append(rel)
+                (parents if in_key else referenced).append(rel)
             elif re.match(r'^(unique\s+)?index[^:]*$', line):
-                indexDefs.append(self._parse_index_def(line))
+                index_defs.append(self._parse_index_def(line))
             elif fieldP.match(line):
-                fieldDefs.append(self._parse_attr_def(line, inKey))
+                field_defs.append(self._parse_attr_def(line, in_key))
             else:
                 raise DataJointError('Invalid table declaration line "%s"' % line)
 
-        return table_info, parents, referenced, fieldDefs, indexDefs
+        return table_info, parents, referenced, field_defs, index_defs
 
     def _parse_attr_def(self, line, inKey=False):
         """

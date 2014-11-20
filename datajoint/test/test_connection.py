@@ -3,10 +3,14 @@ Collection of test cases to test connection module.
 """
 __author__ = 'eywalker'
 from . import (CONN_INFO, PREFIX, BASE_CONN, cleanup)
-from .schemas import test1
+from .schemata import test1
 from nose.tools import assert_true, assert_raises, assert_equal
 import datajoint as dj
 from datajoint.core import DataJointError
+
+
+def setup():
+    cleanup()
 
 
 def test_dj_conn():
@@ -37,7 +41,7 @@ def test_dj_conn_reset():
     assert_true(c1 is not c2)
 
 
-def setup_test_db():
+def setup_sample_db():
     """
     Helper method to setup databases with tables to be used
     during the test
@@ -55,16 +59,16 @@ def setup_test_db():
     )
     """.format(prefix=PREFIX)
     cur.execute(query1)
-    query2 = """
-    CREATE TABLE `{prefix}_test2`.`experiments`
-    (
-      experiment_id       SMALLINT        COMMENT 'Unique experiment ID',
-      experiment_name     VARCHAR(255)    COMMENT 'Experiment name',
-      subject_id          SMALLINT,
-      CONSTRAINT FOREIGN KEY (`subject_id`) REFERENCES `dj_test1`.`subjects` (`subject_id`) ON UPDATE CASCADE ON DELETE RESTRICT,
-      PRIMARY KEY (subject_id, experiment_id)
-    )""".format(prefix=PREFIX)
-    cur.execute(query2)
+    # query2 = """
+    # CREATE TABLE `{prefix}_test2`.`experiments`
+    # (
+    #   experiment_id       SMALLINT        COMMENT 'Unique experiment ID',
+    #   experiment_name     VARCHAR(255)    COMMENT 'Experiment name',
+    #   subject_id          SMALLINT,
+    #   CONSTRAINT FOREIGN KEY (`subject_id`) REFERENCES `dj_test1`.`subjects` (`subject_id`) ON UPDATE CASCADE ON DELETE RESTRICT,
+    #   PRIMARY KEY (subject_id, experiment_id)
+    # )""".format(prefix=PREFIX)
+    # cur.execute(query2)
 
 
 class TestConnectionWithoutBindings(object):
@@ -74,14 +78,14 @@ class TestConnectionWithoutBindings(object):
     """
     def setup(self):
         self.conn = dj.Connection(**CONN_INFO)
-        setup_test_db()
+        setup_sample_db()
 
     def teardown(self):
         cleanup()
 
     def check_binding(self, db_name, module):
         """
-        Check if the specified database-module pairing exists
+        Helper method to check if the specified database-module pairing exists
         """
         assert_equal(self.conn.modules[db_name], module)
         assert_equal(self.conn.dbnames[module], db_name)
@@ -161,14 +165,13 @@ class TestConnectionWithoutBindings(object):
 
 
 
-
-class TestConnectionWithBindings(object):
-    """
-    Tests heading and dependency loadings
-    """
-    def setup(self):
-        self.conn = dj.Connection(**CONN_INFO)
-        cur.execute(query)
+# class TestConnectionWithBindings(object):
+#     """
+#     Tests heading and dependency loadings
+#     """
+#     def setup(self):
+#         self.conn = dj.Connection(**CONN_INFO)
+#         cur.execute(query)
 
 
 
