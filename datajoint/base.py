@@ -1,5 +1,6 @@
 import importlib
 import re
+from types import ModuleType
 import numpy as np
 from enum import Enum
 from .core import DataJointError, from_camel_case
@@ -29,7 +30,7 @@ class Base(_Relational):
     datajoint.Base integrates all data manipulation and data declaration functions.
     An instance of the class provides an interface to a single table in the database.
 
-    An instance of the class can be produce in two ways:
+    An instance of the class can be produced in two ways:
         1. direct instantiation  (used mostly for debugging and odd jobs)
         2. instantiation from a derived class (regular recommended use)
 
@@ -59,7 +60,7 @@ class Base(_Relational):
         if self.__class__ is Base:
             # instantiate without subclassing
             if not (conn and dbname and class_name):
-                raise DataJointError('Missing argument: please specify conn, dbname, and className.')
+                raise DataJointError('Missing argument: please specify conn, dbname, and class name.')
             self.class_name = class_name
             self.conn = conn
             self.dbname = dbname
@@ -71,13 +72,14 @@ class Base(_Relational):
             if conn or dbname or class_name or declaration:
                 raise DataJointError('With derived classes, constructor arguments are ignored')
             self.class_name = self.__class__.__name__
-            module = importlib.import_module(self.__module__)
+            module = self.__module__
+            mod_obj = importlib.import_module(module)
             try:
-                self.conn = module.conn
+                self.conn = mod_obj.conn
             except AttributeError:
                 raise DataJointError("Please define object 'conn' in '{}'.".format(self.__module__))
             try:
-                self.dbname = self.conn.dbnames[self.__module__]
+                self.dbname = self.conn.dbnames[module]
             except KeyError:
                 raise DataJointError('Module {} is not bound to a database. See datajoint.connection.bind'.format(self.__module__))
             # take table declaration from the deriving class' doc string
@@ -92,13 +94,13 @@ class Base(_Relational):
         b = djtest.Subject()
         b.insert(dict(subject_id=7,species="mouse",real_id=1007,date_of_birth="2014-09-01"))
         """
-        if issubclass(type(tup),tuple) or issubclass(type(tup),list):
+        if issubclass(type(tup), tuple) or issubclass(type(tup), list):
            valueList = ','.join([repr(q) for q in tup])
            fieldList = '`'+'`,`'.join(self.heading.names[0:len(tup)])+'`'
-        elif issubclass(type(tup),dict):
+        elif issubclass(type(tup), dict):
             valueList = ','.join([repr(tup[q]) for q in self.heading.names if q in tup])
             fieldList = '`'+'`,`'.join([q for q in self.heading.names if q in tup])+'`'
-        elif issubclass(type(tup),np.void):
+        elif issubclass(type(tup), np.void):
             valueList = ','.join([repr(tup[q]) for q in self.heading.names if q in tup])
             fieldList = '`'+'`,`'.join(tup.dtype.fields)+'`'
         else:
@@ -112,7 +114,6 @@ class Base(_Relational):
         sql += " INTO %s (%s) VALUES (%s)" % (self.full_table_name, fieldList, valueList)
         logger.info(sql)
         self.conn.query(sql)
-
 
     def drop(self):
         """
@@ -131,23 +132,23 @@ class Base(_Relational):
     @property
     def heading(self):
         self.declare()
-        return self.conn.headings[self.dbname][self.table]
+        return self.conn.headings[self.dbname][self.table_name]
 
     @property
     def is_declared(self):
         "True if table is found in the database"
         self.conn.load_headings(self.dbname)
-        return self.class_name in self.conn.tableNames[self.dbname]
+        return self.class_name in self.conn.table_names[self.dbname]
 
     @property
-    def table(self):
+    def table_name(self):
         self.declare()
-        return self.conn.tableNames[self.dbname][self.class_name]
+        return self.conn.table_names[self.dbname][self.class_name]
 
 
     @property
     def full_table_name(self):
-        return '`%s`.`%s`' % (self.dbname, self.table)
+        return '`%s`.`%s`' % (self.dbname, self.table_name)
 
     @property
     def full_class_name(self):
@@ -203,19 +204,71 @@ class Base(_Relational):
         sql = self._field_to_SQL(self._parse_attr_def(newDefinition))
         self._alter('CHANGE COLUMN `%s` %s' % (attrName, sql[:-2]))
 
+    def erd(self, subset=None, prog='dot'):
+        """
+        plot the schema's entity relationship diagram (ERD).
+        The layout programs can be 'dot' (default), 'neato', 'fdp', 'sfdp', 'circo', 'twopi'
+        """
+        if not subset:
+            g = self.graph
+        else:
+            g = self.graph.copy()
+        """
+         g = self.graph
+         else:
+         g = self.graph.copy()
+         for i in g.nodes():
+         if i not in subset:
+         g.remove_node(i)
+        def tablelist(tier):
+        return [i for i in g if self.tables[i].tier==tier]
+
+        pos=nx.graphviz_layout(g,prog=prog,args='')
+        plt.figure(figsize=(8,8))
+        nx.draw_networkx_edges(g, pos, alpha=0.3)
+        nx.draw_networkx_nodes(g, pos, nodelist=tablelist('manual'),
+        node_color='g', node_size=200, alpha=0.3)
+        nx.draw_networkx_nodes(g, pos, nodelist=tablelist('computed'),
+        node_color='r', node_size=200, alpha=0.3)
+        nx.draw_networkx_nodes(g, pos, nodelist=tablelist('imported'),
+        node_color='b', node_size=200, alpha=0.3)
+        nx.draw_networkx_nodes(g, pos, nodelist=tablelist('lookup'),
+        node_color='gray', node_size=120, alpha=0.3)
+        nx.draw_networkx_labels(g, pos, nodelist = subset, font_weight='bold', font_size=9)
+        nx.draw(g,pos,alpha=0,with_labels=false)
+        plt.show()
+        """
 
     @classmethod
-    def get_base(cls, conn, module, class_name):
+    def get_module(cls, module_name):
+        mod_obj = importlib.import_module(cls.__module__)
+        attr = getattr(mod_obj, module_name, None)
+        if isinstance(attr, ModuleType):
+            return attr
+        if mod_obj.__package__:
+            try:
+                return importlib.import_module('.'+module_name, mod_obj.__package__)
+            except ImportError:
+                pass
+        try:
+            return importlib.import_module(module_name)
+        except ImportError:
+            return None
+
+    def get_base(self, module_name, class_name):
         """
         load base relation from module.  If the base relation is not defined in
         the module, then construct it using Base constructor.
         """
-        mod_obj = importlib.__import__(module)
+        mod_obj = self.get_module(module_name)
         try:
             ret = getattr(mod_obj, class_name)()
         except KeyError:
-            ret = cls(conn=conn, dbname=conn.schemas[module], className=class_name)
+            ret = self.__class__(conn=self.conn,
+                                 dbname=self.conn.schemas[module_name],
+                                 class_name=class_name)
         return ret
+
 
 
     #////////////////////////////////////////////////////////////
@@ -444,39 +497,3 @@ class Base(_Relational):
         assert len(attributes) == len(set(attributes)), \
         'Duplicate attributes in index declaration "%s"' % line
         return index_info
-
-
-    def erd(self, subset=None, prog='dot'):
-        """
-        plot the schema's entity relationship diagram (ERD).
-        The layout programs can be 'dot' (default), 'neato', 'fdp', 'sfdp', 'circo', 'twopi'
-        """
-        if not subset:
-            g = self.graph
-        else:
-            g = self.graph.copy()
-        """
-         g = self.graph
-         else:
-         g = self.graph.copy()
-         for i in g.nodes():
-         if i not in subset:
-         g.remove_node(i)
-        def tablelist(tier):
-        return [i for i in g if self.tables[i].tier==tier]
-
-        pos=nx.graphviz_layout(g,prog=prog,args='')
-        plt.figure(figsize=(8,8))
-        nx.draw_networkx_edges(g, pos, alpha=0.3)
-        nx.draw_networkx_nodes(g, pos, nodelist=tablelist('manual'),
-        node_color='g', node_size=200, alpha=0.3)
-        nx.draw_networkx_nodes(g, pos, nodelist=tablelist('computed'),
-        node_color='r', node_size=200, alpha=0.3)
-        nx.draw_networkx_nodes(g, pos, nodelist=tablelist('imported'),
-        node_color='b', node_size=200, alpha=0.3)
-        nx.draw_networkx_nodes(g, pos, nodelist=tablelist('lookup'),
-        node_color='gray', node_size=120, alpha=0.3)
-        nx.draw_networkx_labels(g, pos, nodelist = subset, font_weight='bold', font_size=9)
-        nx.draw(g,pos,alpha=0,with_labels=false)
-        plt.show()
-        """

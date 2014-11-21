@@ -2,14 +2,14 @@
 Collection of test cases for base module. Tests functionalities such as
 creating tables using docstring table declarations
 """
+from .schemata.schema1 import test1, test2, test3
+
+
 __author__ = 'eywalker'
 
 from . import BASE_CONN, CONN_INFO, PREFIX, cleanup
-import datajoint as dj #TODO: probably make this a relative import"
-from ..base import Base
 from ..connection import Connection
-from .schemata import test1, test2, test3
-from nose.tools import raises, assert_raises, assert_equal, assert_regexp_matches, assert_false, assert_true
+from nose.tools import assert_raises, assert_equal, assert_regexp_matches, assert_false, assert_true
 from ..core import DataJointError
 
 
@@ -40,6 +40,11 @@ class TestBaseObject(object):
 
         test2.conn = self.conn
 
+
+        from .schemata.schema2 import test2 as test22
+        test22.conn = self.conn
+        self.conn.bind(test22.__name__, PREFIX+'_test2')
+
         test3.__dict__.pop('conn', None) # make sure conn is not defined
 
 
@@ -52,7 +57,7 @@ class TestBaseObject(object):
         connection defined but not bound to a database should raise error
         """
         with assert_raises(DataJointError) as e:
-            test2.Subjects()
+            test2.Experiments()
         assert_regexp_matches(e.exception.args[0], r".*not bound.*")
 
     def test_instantiation_from_module_without_conn_should_fail(self):
@@ -80,10 +85,6 @@ class TestBaseObject(object):
         b.declare()
         assert_true(b.is_declared)
 
-    def test_full_table_name(self):
-        """
-        Full table name should return appropriate table name
-        """
 
     def test_declaration_from_doc_string(self):
         cur = BASE_CONN.cursor()
