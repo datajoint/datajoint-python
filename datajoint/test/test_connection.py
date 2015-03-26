@@ -76,6 +76,7 @@ class TestConnectionWithoutBindings(object):
     """
     Test methods from Connection that does not
     depend on presence of module to database bindings.
+    This includes tests for `bind` method itself.
     """
     def setup(self):
         self.conn = dj.Connection(**CONN_INFO)
@@ -99,6 +100,9 @@ class TestConnectionWithoutBindings(object):
         module = test1.__name__
         self.conn.bind(module, db_name)
         self.check_binding(db_name, module)
+
+    def test_bind_at_package_level(self):
+        pass
 
     def test_bind_to_non_existing_database(self):
         """

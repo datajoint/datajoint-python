@@ -133,6 +133,7 @@ class Base(_Relational):
         self.conn.query('DROP TABLE %s' % self.full_table_name)
         self.conn.clear_dependencies(dbname=self.dbname)
         self.conn.load_headings(dbname=self.dbname, force=True)
+        logger.debug("Dropped table %s" % self.full_table_name)
 
 
     @property    

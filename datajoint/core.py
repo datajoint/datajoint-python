@@ -28,9 +28,9 @@ def to_camel_case(s):
     >>>to_camel_case("table_name")
         "TableName"
     """
-    def toUpper(matchobj):
+    def to_upper(matchobj):
         return matchobj.group(0)[-1].upper()
-    return re.sub('(^|[_\W])+[a-zA-Z]', toUpper, s)
+    return re.sub('(^|[_\W])+[a-zA-Z]', to_upper, s)
 
 
 def from_camel_case(s):
