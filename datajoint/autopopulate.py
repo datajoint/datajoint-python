@@ -1,17 +1,14 @@
-from core import DataJointError
-from relvar import *
+from .relational import _Relational
 import pprint
 import abc
 
 #noinspection PyExceptionInherit,PyCallingNonCallable
-class AutoPopulate:
+class AutoPopulate(metaclass=abc.ABCMeta):
     """
     Class datajoint.AutoPopulate is a mixin that adds the method populate() to a dj.Relvar class.
     Auto-populated relvars must inherit from both datajoint.Relvar and datajoint.AutoPopulate,
     must define the property popRel, and must define the callback method makeTuples.
     """
-    __metaclass__ = abc.ABCMeta
-
 
     @abc.abstractproperty
     def popRel(self):
@@ -30,24 +27,18 @@ class AutoPopulate:
         """
         pass
 
-    @abc.abstractproperty
-    def conn(self): pass   # inherited from dj.GeneralRelvar
 
-    @abc.abstractmethod
-    def __call__(self): pass   # inherited from dj.GeneralRelvar
-
-
-    def populate(self, catchErrors=False, *args, **kwargs):
+    def populate(self, catchErrors=False, reserveJobs=False, restrict=None):
         """
         rel.populate() will call rel.makeTuples(key) for every primary key in self.popRel
         for which there is not already a tuple in rel.
         """
 
-        self.conn.cancelTransaction()
+        self.conn.cancel_transaction()
 
         # enumerate unpopulated keys
         unpopulated = self.popRel
-        if ~isinstance(unpopulated, GeneralRelvar):
+        if ~isinstance(unpopulated, _Relational):
             unpopulated = unpopulated()   # instantiate
             
         if not unpopulated.count:
@@ -59,10 +50,10 @@ class AutoPopulate:
             if catchErrors:
                 errKeys, errors = [], []
             for key in unpopulated.fetch():
-                self.conn.startTransaction()
+                self.conn.start_transaction()
                 n = self(key).count
                 if n:  # already populated
-                    self.conn.cancelTransaction()
+                    self.conn.cancel_transaction()
                 else:
                     print('Populating:')
                     pprint.pprint(key)
@@ -70,13 +61,13 @@ class AutoPopulate:
                     try:
                         self.makeTuples(key)
                     except Exception as e:
-                        self.conn.cancelTransaction()
+                        self.conn.cancel_transaction()
                         if not catchErrors:
                             raise
                         print(e)
                         errors += [e]
                         errKeys+= [key]
                     else:
-                        self.conn.commitTransaction()
+                        self.conn.commit_transaction()
         if catchErrors:
             return errors, errKeys

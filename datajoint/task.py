@@ -1,4 +1,4 @@
-import queue   # rename to queue in python 3
+import queue
 import threading
 
 
@@ -15,7 +15,7 @@ class TaskQueue:
         queue.submit(func2)
         queue.quit()  # wait until the last task is done and stop thread
 
-    Datajoint applications may uses a task queue for delayed inserts.
+    Datajoint applications may use a task queue for delayed inserts.
     """
     def __init__(self):
         self.queue = queue.Queue()
@@ -50,5 +50,4 @@ class TaskQueue:
                 print("Exception in the task thread:")
                 print(e)
             self.queue.task_done()
-
-
+            
