@@ -88,8 +88,8 @@ class TestConnectionWithoutBindings(object):
         """
         Helper method to check if the specified database-module pairing exists
         """
-        assert_equal(self.conn.modules[db_name], module)
-        assert_equal(self.conn.dbnames[module], db_name)
+        assert_equal(self.conn.db_to_mod[db_name], module)
+        assert_equal(self.conn.mod_to_db[module], db_name)
 
     def test_bind_to_existing_database(self):
         """

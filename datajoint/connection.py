@@ -3,7 +3,7 @@ import re
 from .core import DataJointError, to_camel_case
 import os
 from .heading import Heading
-from .base import prefixRole
+from .base import prefix_to_role
 import logging
 import networkx as nx
 from networkx import pygraphviz_layout
@@ -44,12 +44,11 @@ def conn_container():
         return _connObj
     return conn
 
-    return conn
 
 # The function conn is used by others to obtain the package wide persistent connection object
 conn = conn_container()
 
-defaultPort = 3306
+default_port = 3306
 
 
 class Connection:
@@ -63,8 +62,7 @@ class Connection:
             host, port = host.split(':')
             port = int(port)
         except ValueError:
-            port = defaultPort
-
+            port = default_port
         self.conn_info = dict(host=host, port=port, user=user, passwd=passwd)
         self._conn = pymysql.connect(init_command=initFun, **self.conn_info)
         # TODO Do something if connection cannot be established
@@ -72,9 +70,9 @@ class Connection:
             print("Connected", user + '@' + host + ':' + str(port))
         self._conn.autocommit(True)
 
-        self.schemas = {}  # database indexed by module names
-        self.modules = {}  # modules indexed by dbnames
-        self.dbnames = {}  # database names indexed by modules
+        self.mod_to_db2 = {}  # database indexed by module names
+        self.db_to_mod = {}  # modules indexed by dbnames
+        self.mod_to_db = {}  # database names indexed by modules
         self.table_names = {}  # tables names indexed by [dbname][class_name]
         self.headings = {}  # contains headings indexed by [dbname][table_name]
         self.tableInfo = {}  # table information indexed by [dbname][table_name]
@@ -82,8 +80,13 @@ class Connection:
         # dependencies from foreign keys
         self.parents = {}  # maps table names to their parent table names (primary foreign key)
         self.referenced = {}  # maps table names to table names they reference (non-primary foreign key
-
         self._graph = DBConnGraph(self)  # initialize an empty connection graph
+
+    def __eq__(self, other):
+        """
+        true if the connection host, port, and user name are the same
+        """
+        return self.conn_info == other.conn_info
 
     def is_same(self, host, user):
         """
@@ -97,7 +100,7 @@ class Connection:
                 host, port = host.split(':')
                 port = int(port)
             except ValueError:
-                port = defaultPort
+                port = default_port
 
         if user is None:
             user = self.conn_info['user']
@@ -117,25 +120,25 @@ class Connection:
     def bind(self, module, dbname):
         """
         Binds the `module` name to the database named `dbname`.
-        Throws an error if `dbname` is already bound to a module.
+        Throws an error if `dbname` is already bound to another module.
 
-        If the database `dbname` does not exist in the server, attempt
-        to create the database and then bind module to it.
+        If the database `dbname` does not exist in the server, attempts
+        to create the database and then bind the module.
 
         `dbname` should be a valid database identifier and not a match pattern.
         """
 
-        if dbname in self.modules:
+        if dbname in self.db_to_mod:
             raise DataJointError('Database `%s` is already bound to module `%s`'
-                                 % (dbname, self.modules[dbname]))
+                                 % (dbname, self.db_to_mod[dbname]))
 
         cur = self.query("SHOW DATABASES LIKE '{dbname}'".format(dbname=dbname))
         count = cur.rowcount
 
         if count == 1:
             # Database exists
-            self.modules[dbname] = module
-            self.dbnames[module] = dbname
+            self.db_to_mod[dbname] = module
+            self.mod_to_db[module] = dbname
         elif count == 0:
             # Database doesn't exist, attempt to create
             logger.warning("Database `{dbname}` could not be found. "
@@ -143,8 +146,8 @@ class Connection:
             try:
                 cur = self.query("CREATE DATABASE `{dbname}`".format(dbname=dbname))
                 logger.warning('Created database `{dbname}`.'.format(dbname=dbname))
-                self.modules[dbname] = module
-                self.dbnames[module] = dbname
+                self.db_to_mod[dbname] = module
+                self.mod_to_db[module] = dbname
             except pymysql.OperationalError:
                 raise DataJointError("Database named `{dbname}` was not defined, and"
                                      " an attempt to create has failed. Check"
@@ -170,9 +173,8 @@ class Connection:
             self._load_headings(dbname, force)
             return
 
-        for dbname in self.modules:
+        for dbname in self.db_to_mod:
             self._load_headings(dbname, force)
-
 
     def _load_headings(self, dbname, force=False):
         """
@@ -196,13 +198,12 @@ class Connection:
                 info = {k.lower(): v for k, v in info.items()}  # lowercase it
                 table_name = info.pop('name')
                 # look up role by table name prefix
-                role = prefixRole[table_name_regexp.match(table_name).group(1)]
-                display_name = to_camel_case(table_name)
-                self.table_names[dbname][display_name] = table_name
+                role = prefix_to_role[table_name_regexp.match(table_name).group(1)]
+                class_name = to_camel_case(table_name)
+                self.table_names[dbname][class_name] = table_name
                 self.tableInfo[dbname][table_name] = dict(info, role=role)
                 self.headings[dbname][table_name] = Heading.init_from_database(self, dbname, table_name)
             self.load_dependencies(dbname)
-
 
     def load_dependencies(self, dbname):  # TODO: Perhaps consider making this "private" by preceding with underscore?
         """

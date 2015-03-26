@@ -12,15 +12,15 @@ import logging
 # table names have prefixes that designate their roles in the processing chain
 logger = logging.getLogger(__name__)
 
-Role = Enum('Role','manual lookup imported computed job')
-rolePrefix = {
-    Role.manual   : '',
-    Role.lookup   : '#',
-    Role.imported : '_',
-    Role.computed : '__',
-    Role.job      : '~'
-    }
-prefixRole = dict(zip(rolePrefix.values(),rolePrefix.keys()))
+Role = Enum('Role', 'manual lookup imported computed job')
+role_to_prefix = {
+    Role.manual:    '',
+    Role.lookup:    '#',
+    Role.imported:  '_',
+    Role.computed:  '__',
+    Role.job:       '~'
+}
+prefix_to_role = dict(zip(role_to_prefix.values(), role_to_prefix.keys()))
 
 mysql_constants = ['CURRENT_TIMESTAMP']
 
@@ -57,6 +57,7 @@ class Base(_Relational):
     """
 
     def __init__(self, conn=None, dbname=None, class_name=None, declaration=None):
+        self._use_package = False
         if self.__class__ is Base:
             # instantiate without subclassing
             if not (conn and dbname and class_name):
@@ -65,28 +66,37 @@ class Base(_Relational):
             self.conn = conn
             self.dbname = dbname
             self.declaration = declaration
-            if dbname not in self.conn.modules:    # register with a fake module, enclosed in backquotes
+            if dbname not in self.conn.modules:    # register with a fake module, enclosed in back quotes
                 self.conn.bind('`{0}`'.format(dbname), dbname)
         else:
             # instantiate a derived class
             if conn or dbname or class_name or declaration:
-                raise DataJointError('With derived classes, constructor arguments are ignored')
+                raise DataJointError('With derived classes, constructor arguments are ignored') #TODO: consider changing this to a warning instead
             self.class_name = self.__class__.__name__
             module = self.__module__
             mod_obj = importlib.import_module(module)
             try:
                 self.conn = mod_obj.conn
             except AttributeError:
-                raise DataJointError("Please define object 'conn' in '{}'.".format(self.__module__))
+                try:
+                    pkg_obj = importlib.import_module(mod_obj.__package__)
+                    self.conn = pkg_obj.conn
+                    self._use_package = True
+                except AttributeError:
+                    raise DataJointError("Please define object 'conn' in '{}' or in its containing package.".format(self.__module__))
             try:
-                self.dbname = self.conn.dbnames[module]
+                if (self._use_package):
+                    pkg_name = '.'.join(module.split('.')[:-1])
+                    self.dbname = self.conn.mod_to_db[pkg_name]
+                else:
+                    self.dbname = self.conn.mod_to_db[module]
             except KeyError:
                 raise DataJointError('Module {} is not bound to a database. See datajoint.connection.bind'.format(self.__module__))
             # take table declaration from the deriving class' doc string
             self.declaration = self.__doc__
 
 
-    def insert(self, tup, ignoreErrors=False, replace=False):
+    def insert(self, tup, ignore_errors=False, replace=False):
         """
         insert one tuple.  tup can be an iterable in matching order, a dict with named fields, or an np.void.
 
@@ -107,7 +117,7 @@ class Base(_Relational):
             raise DataJointError('Datatype %s cannot be inserted' % type(tup))
         if replace:
             sql = 'REPLACE'
-        elif ignoreErrors:
+        elif ignore_errors:
             sql = 'INSERT IGNORE'
         else:
             sql = 'INSERT'
@@ -168,7 +178,7 @@ class Base(_Relational):
                 raise DataJointError('Table could not be declared for %s' % self.class_name)
 
     """
-    Data Definition Functionalities
+    Data definition functionalities
     """
     def set_table_comment(self, newComment):
         """
@@ -241,6 +251,20 @@ class Base(_Relational):
 
     @classmethod
     def get_module(cls, module_name):
+        """
+        Resolve short name reference to a module and return the corresponding module object
+
+        :param module_name: short name for the module, whose reference is to be resolved
+        :return: resolved module object. If no module matches the short name, `None` will be returned
+
+        The module_name resolution steps in the following order:
+        1) Global reference to a module of the same name defined in the module that contains this Base derivative.
+            This is the recommended use case.
+        2) Module of the same name defined in the package containing this Base derivative. This will only look for the
+            most immediate containing package (e.g. if this class is contained in package.subpackage.module, it will
+            check within `package.subpackage` but not inside `package`).
+        3) Globally accessible module with the same name.
+        """
         mod_obj = importlib.import_module(cls.__module__)
         attr = getattr(mod_obj, module_name, None)
         if isinstance(attr, ModuleType):
@@ -249,11 +273,10 @@ class Base(_Relational):
             try:
                 return importlib.import_module('.'+module_name, mod_obj.__package__)
             except ImportError:
-                pass
-        try:
-            return importlib.import_module(module_name)
-        except ImportError:
-            return None
+                try:
+                    return importlib.import_module(module_name)
+                except ImportError:
+                    return None
 
     def get_base(self, module_name, class_name):
         """
@@ -301,7 +324,7 @@ class Base(_Relational):
 
     def _alter(self, alterStatement):
         """
-        Execute ALTER TABLE statment for this table. The schema
+        Execute ALTER TABLE statement for this table. The schema
         will be reloaded within the connection object.
         """
         sql = 'ALTER TABLE %s %s' % (self.full_table_name, alterStatement)
@@ -322,7 +345,7 @@ class Base(_Relational):
 
         # compile the CREATE TABLE statement
         # TODO: support prefix
-        table_name = rolePrefix[table_info['tier']] + from_camel_case(self.class_name)
+        table_name = role_to_prefix[table_info['tier']] + from_camel_case(self.class_name)
         sql = 'CREATE TABLE `%s`.`%s` (\n' % (self.dbname, table_name)
 
         # add inherited primary key fields
@@ -435,8 +458,8 @@ class Base(_Relational):
                 in_key = False # start parsing non-PK fields
             elif line.startswith('->'):
                 # foreign key
-                module, className = line[2:].strip().split('.')
-                rel = self.get_base(self.conn, module, className)
+                module_name, class_name = line[2:].strip().split('.')
+                rel = self.get_base(module_name, class_name)
                 (parents if in_key else referenced).append(rel)
             elif re.match(r'^(unique\s+)?index[^:]*$', line):
                 index_defs.append(self._parse_index_def(line))

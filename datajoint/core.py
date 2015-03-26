@@ -4,7 +4,7 @@ import logging
 
 # setup root logger
 logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.DEBUG) #set package wide logger level TODO:make this respond to environmental variable
 
 
 class Settings:
@@ -42,9 +42,12 @@ def from_camel_case(s):
     >>>from_camel_case("TableName")
         "table_name"
     """
-    assert not re.search(r'\s', s), 'white space is not allowed'
-    assert not re.match(r'\d.*', s), 'string cannot begin with a digit'
-    assert re.match(r'^[a-zA-Z0-9]*$', s), 'fromCameCase string can only contain alphanumerica characters'
+    if re.search(r'\s', s):
+        raise DataJointError('White space is not allowed')
+    if re.match(r'\d.*', s):
+        raise DataJointError('String cannot begin with a digit')
+    if not re.match(r'^[a-zA-Z0-9]*$', s):
+        raise DataJointError('String can only contain alphanumeric characters')
     def conv(matchobj):
         return ('_' if matchobj.groups()[0] else '') + matchobj.group(0).lower()
 
