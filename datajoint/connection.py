@@ -75,7 +75,7 @@ class Connection:
         self.schemas = {}  # database indexed by module names
         self.modules = {}  # modules indexed by dbnames
         self.dbnames = {}  # database names indexed by modules
-        self.tableNames = {}  # tables names indexed by [dbname][ClassName]
+        self.table_names = {}  # tables names indexed by [dbname][class_name]
         self.headings = {}  # contains headings indexed by [dbname][table_name]
         self.tableInfo = {}  # table information indexed by [dbname][table_name]
 
@@ -85,7 +85,7 @@ class Connection:
 
         self._graph = DBConnGraph(self)  # initialize an empty connection graph
 
-    def isSame(self, host, user):
+    def is_same(self, host, user):
         """
         true if the connection host and user name are the same
         """
@@ -106,9 +106,13 @@ class Connection:
                self.conn_info['port'] == port and \
                self.conn_info['user'] == user
 
+
     @property
     def is_connected(self):
         return self._conn.ping()
+
+    def get_full_module_name(self, module):
+        return '.'.join(self.root_package, module)
 
     def bind(self, module, dbname):
         """
@@ -120,6 +124,7 @@ class Connection:
 
         `dbname` should be a valid database identifier and not a match pattern.
         """
+
         if dbname in self.modules:
             raise DataJointError('Database `%s` is already bound to module `%s`'
                                  % (dbname, self.modules[dbname]))
@@ -180,7 +185,7 @@ class Connection:
         """
         if not dbname in self.headings or force:
             logger.info('Loading table definitions from `{dbname}`...'.format(dbname=dbname))
-            self.tableNames[dbname] = {}
+            self.table_names[dbname] = {}
             self.headings[dbname] = {}
             self.tableInfo[dbname] = {}
 
@@ -193,7 +198,7 @@ class Connection:
                 # look up role by table name prefix
                 role = prefixRole[table_name_regexp.match(table_name).group(1)]
                 display_name = to_camel_case(table_name)
-                self.tableNames[dbname][display_name] = table_name
+                self.table_names[dbname][display_name] = table_name
                 self.tableInfo[dbname][table_name] = dict(info, role=role)
                 self.headings[dbname][table_name] = Heading.init_from_database(self, dbname, table_name)
             self.load_dependencies(dbname)
@@ -221,7 +226,7 @@ class Connection:
             self.parents[full_table_name] = []
             self.referenced[full_table_name] = []
 
-            for m in re.finditer(ptrn, table_def['Create Table'], re.X):  # iterate through foreign key statements
+            for m in re.finditer(ptrn, table_def["Create Table"], re.X):  # iterate through foreign key statements
                 assert m.group('attr1') == m.group('attr2'), 'Foreign keys must link identically named attributes'
                 attrs = m.group('attr1')
                 attrs = re.split(r',\s+', re.sub(r'`(.*?)`', r'\1', attrs))  # remove ` around attrs and split into list

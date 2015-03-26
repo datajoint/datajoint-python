@@ -1,9 +1,10 @@
 """
 Collection of test cases to test connection module.
 """
+from test.schemata.schema1 import test1
+
 __author__ = 'eywalker'
 from . import (CONN_INFO, PREFIX, BASE_CONN, cleanup)
-from .schemata import test1
 from nose.tools import assert_true, assert_raises, assert_equal
 import datajoint as dj
 from datajoint.core import DataJointError
@@ -94,7 +95,7 @@ class TestConnectionWithoutBindings(object):
         """
         Should be able to bind a module to an existing database
         """
-        db_name= PREFIX + '_test1'
+        db_name = PREFIX + '_test1'
         module = test1.__name__
         self.conn.bind(module, db_name)
         self.check_binding(db_name, module)

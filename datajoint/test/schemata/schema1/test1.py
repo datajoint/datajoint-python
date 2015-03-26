@@ -1,5 +1,5 @@
 """
-Test 2 Schema definition -  has conn but not bound
+Test 1 Schema definition - fully bound and has connection object
 """
 __author__ = 'eywalker'
 
@@ -8,7 +8,7 @@ import datajoint as dj
 
 class Subjects(dj.Base):
     """
-    test2.Subjects (manual)     # Basic subject info
+    test1.Subjects (manual)     # Basic subject info
 
     subject_id       : int      # unique subject id
     ---
