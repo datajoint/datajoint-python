@@ -32,7 +32,7 @@ class TestBaseObject(object):
         test2 - has conn but not bound
         test3 - no conn and not bound
         """
-        cleanup() # drop all databases with PREFIX
+        cleanup()  # drop all databases with PREFIX
 
         self.conn = Connection(**CONN_INFO)
         test1.conn = self.conn
@@ -40,12 +40,11 @@ class TestBaseObject(object):
 
         test2.conn = self.conn
 
+        from .schemata.schema2 import test2 as test2_2
+        test2_2.conn = self.conn
+        self.conn.bind(test2_2.__name__, PREFIX+'_test2_2')
 
-        from .schemata.schema2 import test2 as test22
-        test22.conn = self.conn
-        self.conn.bind(test22.__name__, PREFIX+'_test2')
-
-        test3.__dict__.pop('conn', None) # make sure conn is not defined
+        test3.__dict__.pop('conn', None)  # make sure conn is not defined in test3
 
 
     def teardown(self):
@@ -85,12 +84,13 @@ class TestBaseObject(object):
         b.declare()
         assert_true(b.is_declared)
 
-
     def test_declaration_from_doc_string(self):
         cur = BASE_CONN.cursor()
         assert_equal(cur.execute("SHOW TABLES IN `{}` LIKE 'subjects'".format(PREFIX + '_test1')), 0)
         test1.Subjects().declare()
         assert_equal(cur.execute("SHOW TABLES IN `{}` LIKE 'subjects'".format(PREFIX + '_test1')), 1)
+
+
 
 
 

@@ -28,18 +28,19 @@ def test_persistent_dj_conn():
     across calls.
     """
     c1 = dj.conn(**CONN_INFO)
-    c2 = dj.conn(host='test', user='test', passwd='test')
+    c2 = dj.conn()
     assert_true(c1 is c2)
 
 
 def test_dj_conn_reset():
     """
-    Passing in rest=True should allow for new persistent
+    Passing in reset=True should allow for new persistent
     connection to be created.
     """
     c1 = dj.conn(**CONN_INFO)
     c2 = dj.conn(reset=True, **CONN_INFO)
     assert_true(c1 is not c2)
+
 
 
 def setup_sample_db():
