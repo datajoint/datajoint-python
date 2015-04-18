@@ -103,6 +103,8 @@ class _Relational(metaclass=abc.ABCMeta):
         """
         iterator  yields primary key tuples
         """
+        from IPython import embed
+        embed()
         cur, h = self.fetch._cursor()
         dtype = h.asdtype
         q = cur.fetchone()

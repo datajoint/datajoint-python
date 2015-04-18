@@ -1,7 +1,7 @@
 """
 Collection of test cases to test core module.
 """
-from test.schemata.schema1 import test1
+from datajoint.test.schemata.schema1 import test1
 
 __author__ = 'eywalker'
 from . import (CONN_INFO, PREFIX, BASE_CONN, cleanup)

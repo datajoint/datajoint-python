@@ -2,7 +2,7 @@
 Collection of test cases for base module. Tests functionalities such as
 creating tables using docstring table declarations
 """
-from .schemata.schema1 import test1, test2, test3
+from datajoint.test.schemata.schema1 import test1, test2, test3
 
 
 __author__ = 'eywalker'

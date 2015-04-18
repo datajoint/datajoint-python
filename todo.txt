@@ -1,0 +1,3 @@
+* move the table definition into a class variable (__tabledef)
+* check in the constructor whether the reverse engineered tabledef and __tabledef match
+* move test up one directory hierarchy level
