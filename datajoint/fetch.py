@@ -37,7 +37,7 @@ class Fetch:
         fetch relation from database into an np.array
         """
         cur = self._cursor(*attrs, **renames)
-        heading = self.rel.heading
+        heading = self.rel.pro(*attrs, **renames).heading
         ret = np.array(list(cur), dtype=heading.asdtype)
         # unpack blobs
         for i in range(len(ret)):

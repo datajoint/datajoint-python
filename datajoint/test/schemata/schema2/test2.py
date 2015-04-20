@@ -1,5 +1,5 @@
 """
-Test 2 Schema definition -  has conn but not bound
+Test 2 Schema definition
 """
 __author__ = 'eywalker'
 

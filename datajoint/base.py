@@ -93,7 +93,12 @@ class Base(_Relational):
             except KeyError:
                 raise DataJointError('Module {} is not bound to a database. See datajoint.connection.bind'.format(self.__module__))
             # take table declaration from the deriving class' doc string
-            self.declaration = self.__doc__
+            if hasattr(self, '_table_def'):
+                self.declaration = self._table_def
+            else:
+                self.declaration = None
+
+
 
 
     def insert(self, tup, ignore_errors=False, replace=False):
@@ -337,6 +342,8 @@ class Base(_Relational):
         """
         _declare is called when no table in the database matches this object
         """
+        if not self.declaration:
+            raise DataJointError('Table declaration is missing!')
         table_info, parents, referenced, fieldDefs, indexDefs = self._parse_declaration()
         defined_name = table_info['module'] + '.' + table_info['className']
         expected_name = self.__module__.split('.')[-1] + '.' + self.class_name
