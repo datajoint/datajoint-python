@@ -15,7 +15,7 @@ conn.bind(module=__name__, dbname='dj_test')  # bind this module to the database
 
 
 class Subject(dj.Base):
-    """
+    _table_def = """
     demo1.Subject (manual)     # Basic subject info
 
     subject_id       : int     # internal subject id
@@ -28,9 +28,11 @@ class Subject(dj.Base):
     animal_notes=""             : varchar(4096)                 # strain, genetic manipulations, etc
     """
 
+class Exp2(dj.Base):
+    pass
 
 class Experiment(dj.Base):
-    """
+    _table_def = """
     demo1.Experiment (manual)     # Basic subject info
 
     -> demo1.Subject
@@ -43,7 +45,7 @@ class Experiment(dj.Base):
 
 
 class TwoPhotonSession(dj.Base):
-    """
+    _table_def = """
     demo1.TwoPhotonSession (manual)   # a two-photon imaging session
 
     -> demo1.Experiment
@@ -53,13 +55,13 @@ class TwoPhotonSession(dj.Base):
     lens       : tinyint   # lens e.g.: 10x, 20x. 25x, 60x
     """
 class EphysSetup(dj.Base):
-    """
+    _table_def = """
     demo1.EphysSetup (manual) # Ephys setup
     setup_id    : tinyint # unique seutp id
     """
 
 class EphysExperiment(dj.Base):
-    """
+    _table_def = """
     demo1.EphysExperiment (manual) # Ephys experiment
     -> demo1.Subject
     -> demo1.EphysSetup
