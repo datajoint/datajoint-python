@@ -8,7 +8,7 @@ import datajoint as dj
 
 
 class Subjects(dj.Base):
-    """
+    _table_def = """
     test2.Subjects (manual)     # Basic subject info
 
     pop_id       : int      # unique experiment id

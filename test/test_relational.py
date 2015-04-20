@@ -1,13 +1,9 @@
 """
 Collection of test cases to test relational methods
 """
-from datajoint.test.schemata.schema1 import test1
 
 __author__ = 'eywalker'
-from . import (CONN_INFO, PREFIX, BASE_CONN, cleanup)
-from nose.tools import assert_true, assert_raises, assert_equal
-import datajoint as dj
-from datajoint.core import DataJointError
+
 
 def setup():
     """

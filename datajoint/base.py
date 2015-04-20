@@ -102,8 +102,6 @@ class Base(_Relational):
                 self.declaration = None
 
 
-
-
     def insert(self, tup, ignore_errors=False, replace=False):
         """
         insert one tuple.  tup can be an iterable in matching order, a dict with named fields, or an np.void.

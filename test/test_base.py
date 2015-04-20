@@ -2,15 +2,15 @@
 Collection of test cases for base module. Tests functionalities such as
 creating tables using docstring table declarations
 """
-from datajoint.test.schemata.schema1 import test1, test2, test3
+from .schemata.schema1 import test1, test2, test3
 
 
 __author__ = 'eywalker'
 
 from . import BASE_CONN, CONN_INFO, PREFIX, cleanup
-from ..connection import Connection
+from datajoint.connection import Connection
 from nose.tools import assert_raises, assert_equal, assert_regexp_matches, assert_false, assert_true
-from ..core import DataJointError
+from datajoint.core import DataJointError
 
 
 def setup():
@@ -76,7 +76,7 @@ class TestBaseObject(object):
         s = test1.Subjects()
         assert_equal(s.dbname, PREFIX + '_test1')
         assert_equal(s.conn, self.conn)
-        assert_equal(s.declaration, test1.Subjects.__doc__)
+        assert_equal(s.declaration, test1.Subjects._table_def)
 
     def test_declaration_status(self):
         b = test1.Subjects()
