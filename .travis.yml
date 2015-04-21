@@ -1,7 +1,5 @@
 language: python
-python:
-  - "3.3"
-  - "3.4"
+python: 3.4
 services: mysql
 env:
   - DJ_TEST_HOST="127.0.0.1" DJ_TEST_USER="root" DJ_TEST_PASSWORD="" DJ_HOST="127.0.0.1" DJ_USER="root" DJ_PASSWORD=""
