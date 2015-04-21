@@ -13,9 +13,9 @@ logging.basicConfig(level=logging.DEBUG)
 
 # Connection information for testing
 CONN_INFO = {
-    'host': environ.get('DJ_TEST_HOST', 'localhost'),
-    'user': environ.get('DJ_TEST_USER', 'datajoint'),
-    'passwd': environ.get('DJ_TEST_PASSWORD', 'datajoint')
+    'host': environ.get('DJ_TEST_HOST', '127.0.0.1'),
+    'user': environ.get('DJ_TEST_USER', 'root'),
+    'passwd': environ.get('DJ_TEST_PASSWORD', '')
 }
 # Prefix for all databases used during testing
 PREFIX = environ.get('DJ_TEST_DB_PREFIX', 'dj')
