@@ -2,6 +2,11 @@ language: python
 python:
   - "3.3"
   - "3.4"
+services: mysql
+env:
+  - DJ_TEST_HOST="127.0.0.1"
+  - DJ_TEST_USER="root"
+  - DJ_TEST_PASSWORD=""
 before_install:
   - sudo apt-get install -qq libatlas-dev libatlas-base-dev liblapack-dev gfortran
   - sudo apt-get update
@@ -21,7 +26,7 @@ install:
   # Replace dep1 dep2 ... with your dependencies
   - conda create -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy setuptools pip
   - source activate test-environment
-  - pip install nose nose-cov python-coveralls decorator pandas pymysql networkx
+  - pip install nose nose-cov python-coveralls decorator pandas pymysql networkx matplotlib
   - conda info -a
 # command to run tests
 script:
