@@ -4,3 +4,5 @@
 */*.pyc
 .DS_Store
 __*__
+.idea
+datajoint.egg-info/

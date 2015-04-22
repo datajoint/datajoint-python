@@ -55,7 +55,7 @@ class _Relational(metaclass=abc.ABCMeta):
         "relational restriction or semijoin"
         if self._restrictions is None:
             self._restrictions = []
-        ret = copy(self)
+        ret = copy(self) # todo: why not deepcopy it?
         ret._restrictions = list(ret._restrictions)  # copy restriction
         ret &= restriction
         return ret
@@ -75,28 +75,28 @@ class _Relational(metaclass=abc.ABCMeta):
     def count(self):
         sql = 'SELECT count(*) FROM ' + self.sql + self._whereClause
         cur = self.conn.query(sql)
-        return cur.fetchone()[0]
+        return cur.fetchone()[0] #todo: should we assert that this only returns one result?
 
     @property
     def fetch(self):
         return Fetch(self)
-        
+
     def __repr__(self):
-        header = self.heading.non_blobs;        
-        limit = 13;
-        width = 12;
-        template = '%%-%d.%ds' % (width,width);
-        str = ' '.join([template % column for column in header])+'\n';
-        str+= ' '.join(['+'+'-'*(width-2)+'+' for column in header])+'\n';
-        
-        tuples = self.fetch.limit(limit)(*header);
+        header = self.heading.non_blobs
+        limit = 13
+        width = 12
+        template = '%%-%d.%ds' % (width, width)
+        ret_val = ' '.join([template % column for column in header]) + '\n'
+        ret_val += ' '.join(['+' + '-' * (width - 2) + '+' for column in header]) + '\n'
+
+        tuples = self.fetch.limit(limit)(*header)
         for tup in tuples:
-            str += ' '.join([template % column for column in tup])+'\n';
+            ret_val += ' '.join([template % column for column in tup]) + '\n'
         cnt = self.count
         if cnt > limit:
-            str += '...\n'
-        str += '%d tuples\n' % self.count
-        return str
+            ret_val += '...\n'
+        ret_val += '%d tuples\n' % self.count
+        return ret_val
         
     ########  iterator  ###############
     def __iter__(self):
@@ -107,7 +107,7 @@ class _Relational(metaclass=abc.ABCMeta):
         dtype = h.asdtype
         q = cur.fetchone()
         while q:
-            yield np.array([q,],dtype=dtype)
+            yield np.array([q,],dtype=dtype) #todo: why convert that into an array?
             q = cur.fetchone()
 
 

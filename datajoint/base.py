@@ -14,11 +14,11 @@ logger = logging.getLogger(__name__)
 
 Role = Enum('Role', 'manual lookup imported computed job')
 role_to_prefix = {
-    Role.manual:    '',
-    Role.lookup:    '#',
-    Role.imported:  '_',
-    Role.computed:  '__',
-    Role.job:       '~'
+    Role.manual: '',
+    Role.lookup: '#',
+    Role.imported: '_',
+    Role.computed: '__',
+    Role.job: '~'
 }
 prefix_to_role = dict(zip(role_to_prefix.values(), role_to_prefix.keys()))
 
@@ -66,12 +66,13 @@ class Base(_Relational):
             self.conn = conn
             self.dbname = dbname
             self.declaration = declaration
-            if dbname not in self.conn.modules:    # register with a fake module, enclosed in back quotes
+            if dbname not in self.conn.modules:  # register with a fake module, enclosed in back quotes
                 self.conn.bind('`{0}`'.format(dbname), dbname)
         else:
             # instantiate a derived class
             if conn or dbname or class_name or declaration:
-                raise DataJointError('With derived classes, constructor arguments are ignored') #TODO: consider changing this to a warning instead
+                raise DataJointError(
+                    'With derived classes, constructor arguments are ignored')  # TODO: consider changing this to a warning instead
             self.class_name = self.__class__.__name__
             module = self.__module__
             mod_obj = importlib.import_module(module)
@@ -83,7 +84,8 @@ class Base(_Relational):
                     self.conn = pkg_obj.conn
                     self._use_package = True
                 except AttributeError:
-                    raise DataJointError("Please define object 'conn' in '{}' or in its containing package.".format(self.__module__))
+                    raise DataJointError(
+                        "Please define object 'conn' in '{}' or in its containing package.".format(self.__module__))
             try:
                 if (self._use_package):
                     pkg_name = '.'.join(module.split('.')[:-1])
@@ -91,14 +93,13 @@ class Base(_Relational):
                 else:
                     self.dbname = self.conn.mod_to_db[module]
             except KeyError:
-                raise DataJointError('Module {} is not bound to a database. See datajoint.connection.bind'.format(self.__module__))
+                raise DataJointError(
+                    'Module {} is not bound to a database. See datajoint.connection.bind'.format(self.__module__))
             # take table declaration from the deriving class' doc string
             if hasattr(self, '_table_def'):
                 self.declaration = self._table_def
             else:
                 self.declaration = None
-
-
 
 
     def insert(self, tup, ignore_errors=False, replace=False):
@@ -110,14 +111,14 @@ class Base(_Relational):
         b.insert(dict(subject_id=7,species="mouse",real_id=1007,date_of_birth="2014-09-01"))
         """
         if issubclass(type(tup), tuple) or issubclass(type(tup), list):
-           valueList = ','.join([repr(q) for q in tup])
-           fieldList = '`'+'`,`'.join(self.heading.names[0:len(tup)])+'`'
+            valueList = ','.join([repr(q) for q in tup])
+            fieldList = '`' + '`,`'.join(self.heading.names[0:len(tup)]) + '`'
         elif issubclass(type(tup), dict):
             valueList = ','.join([repr(tup[q]) for q in self.heading.names if q in tup])
-            fieldList = '`'+'`,`'.join([q for q in self.heading.names if q in tup])+'`'
+            fieldList = '`' + '`,`'.join([q for q in self.heading.names if q in tup]) + '`'
         elif issubclass(type(tup), np.void):
             valueList = ','.join([repr(tup[q]) for q in self.heading.names if q in tup])
-            fieldList = '`'+'`,`'.join(tup.dtype.fields)+'`'
+            fieldList = '`' + '`,`'.join(tup.dtype.fields) + '`'
         else:
             raise DataJointError('Datatype %s cannot be inserted' % type(tup))
         if replace:
@@ -141,10 +142,10 @@ class Base(_Relational):
         logger.debug("Dropped table %s" % self.full_table_name)
 
 
-    @property    
+    @property
     def sql(self):
         return self.full_table_name + self._whereClause
-                
+
     @property
     def heading(self):
         self.declare()
@@ -186,6 +187,7 @@ class Base(_Relational):
     """
     Data definition functionalities
     """
+
     def set_table_comment(self, newComment):
         """
         Update the table comment in the table declaration.
@@ -193,7 +195,7 @@ class Base(_Relational):
         # TODO: add verification procedure
         self.alter('COMMENT="%s"' % newComment)
 
-    def add_attribute(self, definition, first=False,  after=''):
+    def add_attribute(self, definition, first=False, after=''):
         """
         Add a new attribute to the table. A full line from the
         table definition is passed in as "definition".
@@ -277,7 +279,7 @@ class Base(_Relational):
             return attr
         if mod_obj.__package__:
             try:
-                return importlib.import_module('.'+module_name, mod_obj.__package__)
+                return importlib.import_module('.' + module_name, mod_obj.__package__)
             except ImportError:
                 try:
                     return importlib.import_module(module_name)
@@ -299,8 +301,7 @@ class Base(_Relational):
         return ret
 
 
-
-    #////////////////////////////////////////////////////////////
+    # ////////////////////////////////////////////////////////////
     # Private Methods
     #////////////////////////////////////////////////////////////
 
@@ -325,7 +326,7 @@ class Base(_Relational):
         assert not any((c in r'\"' for c in field.comment)), \
             'Illegal characters in attribute comment "%s"' % field.comment
 
-        return '`{name}` {type} {default} COMMENT "{comment}",\n'.format(\
+        return '`{name}` {type} {default} COMMENT "{comment}",\n'.format( \
             name=field.name, type=field.type, default=default, comment=field.comment)
 
     def _alter(self, alterStatement):
@@ -375,9 +376,9 @@ class Base(_Relational):
                 raise DataJointError('Primary key {} cannot be nullable'.format(
                     field.name))
             if field.name in primary_key_fields:
-                raise DataJointError('Duplicate declaration of the primary key '\
-                                     '{key}. Check to make sure that the key '\
-                                     'is not declared already in referenced '\
+                raise DataJointError('Duplicate declaration of the primary key ' \
+                                     '{key}. Check to make sure that the key ' \
+                                     'is not declared already in referenced ' \
                                      'tables'.format(key=field.name))
             primary_key_fields.add(field.name)
             sql += self._field_to_SQL(field)
@@ -396,21 +397,21 @@ class Base(_Relational):
             sql += self._field_to_SQL(field)
 
         # add primary key declaration
-        assert len(primary_key_fields)>0, 'table must have a primary key'
+        assert len(primary_key_fields) > 0, 'table must have a primary key'
         keys = ', '.join(primary_key_fields)
         sql += 'PRIMARY KEY (%s),\n' % keys
 
         # add foreign key declarations
-        for ref in parents+referenced:
+        for ref in parents + referenced:
             keys = ', '.join(ref.primary_key)
             sql += 'FOREIGN KEY (%s) REFERENCES %s (%s) ON UPDATE CASCADE ON DELETE RESTRICT,\n' % \
-                    (keys, ref.full_table_name, keys)
+                   (keys, ref.full_table_name, keys)
 
 
         # add secondary index declarations
         # gather implicit indexes due to foreign keys first
         implicit_indices = []
-        for fk_source in parents+referenced:
+        for fk_source in parents + referenced:
             implicit_indices.append(fk_source.primary_key)
 
         #for index in indexDefs:
@@ -451,19 +452,19 @@ class Base(_Relational):
                                  {module}.{cls}'.format(tier=table_info['tier'],
                                                         module=table_info['module'],
                                                         cls=table_info['className']))
-        table_info['tier'] = Role[table_info['tier']] # convert into enum
+        table_info['tier'] = Role[table_info['tier']]  # convert into enum
 
-        in_key = True # parse primary keys
+        in_key = True  # parse primary keys
         field_ptrn = """
         ^[a-z][a-z\d_]*\s*          # name
         (=\s*\S+(\s+\S+)*\s*)?      # optional defaults
         :\s*\w.*$                   # type, comment
         """
-        fieldP = re.compile(field_ptrn, re.I + re.X) # ignore case and verbose
+        fieldP = re.compile(field_ptrn, re.I + re.X)  # ignore case and verbose
 
         for line in declaration[1:]:
             if line.startswith('---'):
-                in_key = False # start parsing non-PK fields
+                in_key = False  # start parsing non-PK fields
             elif line.startswith('->'):
                 # foreign key
                 module_name, class_name = line[2:].strip().split('.')
@@ -526,5 +527,5 @@ class Base(_Relational):
         attributes = re.split(r'\s*,\s*', index_info['attributes'].strip())
         index_info['attributes'] = attributes
         assert len(attributes) == len(set(attributes)), \
-        'Duplicate attributes in index declaration "%s"' % line
+            'Duplicate attributes in index declaration "%s"' % line
         return index_info

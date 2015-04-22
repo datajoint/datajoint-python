@@ -35,10 +35,14 @@ def conn_container():
         """
         nonlocal _connObj
         if not _connObj or reset:
-            host = host or os.getenv('DJ_HOST') or input('Enter datajoint server address >> ')
-            user = user or os.getenv('DJ_USER') or input('Enter datajoint user name >> ')
+            host = host if host is not None else os.getenv('DJ_HOST') #or input('Enter datajoint server address >> ')
+            user = user if user is not None else  os.getenv('DJ_USER') #or input('Enter datajoint user name >> ')
             # had trouble with getpass
-            passwd = passwd or os.getenv('DJ_PASS') or input('Enter datajoint password >> ')
+            print('passwd', passwd)
+            print('passwd is None', passwd is None)
+            print('DJ_PASS', os.getenv('DJ_PASS'))
+            print('DJ_PASS is None', os.getenv('DJ_PASS') is None)
+            passwd = passwd if passwd is not None else os.getenv('DJ_PASS') #or input('Enter datajoint password >> ')
             initFun = initFun or os.getenv('DJ_INIT')
             _connObj = Connection(host, user, passwd, initFun)
         return _connObj
