@@ -38,9 +38,10 @@ def conn_container():
             host = host or os.getenv('DJ_HOST') #or input('Enter datajoint server address >> ')
             user = user or os.getenv('DJ_USER') #or input('Enter datajoint user name >> ')
             # had trouble with getpass
-            print('passwd',passwd)
+            print('passwd', passwd)
+            print('passwd is None', passwd is None)
             print('DJ_PASS', os.getenv('DJ_PASS'))
-            passwd = ''
+            print('DJ_PASS is None', os.getenv('DJ_PASS') is None)
             #passwd = passwd or os.getenv('DJ_PASS') #or input('Enter datajoint password >> ')
             initFun = initFun or os.getenv('DJ_INIT')
             _connObj = Connection(host, user, passwd, initFun)
