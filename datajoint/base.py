@@ -12,7 +12,7 @@ import logging
 # table names have prefixes that designate their roles in the processing chain
 logger = logging.getLogger(__name__)
 
-Role = Enum('Role', 'manual lookup imported computed job')
+Role = Enum('Role', 'manual lookup imported computed job')  # Todo: Shouldn't this go into the settings module?
 role_to_prefix = {
     Role.manual: '',
     Role.lookup: '#',
@@ -27,12 +27,14 @@ mysql_constants = ['CURRENT_TIMESTAMP']
 
 class Base(_Relational):
     """
-    datajoint.Base integrates all data manipulation and data declaration functions.
+    Base integrates all data manipulation and data declaration functions.
     An instance of the class provides an interface to a single table in the database.
 
     An instance of the class can be produced in two ways:
-        1. direct instantiation  (used mostly for debugging and odd jobs)
-        2. instantiation from a derived class (regular recommended use)
+
+    1. direct instantiation  (used mostly for debugging and odd jobs)
+
+    2. instantiation from a derived class (regular recommended use)
 
     With direct instantiation, instance parameters must be explicitly specified.
     With a derived class, all the instance parameters are taken from the module
@@ -49,11 +51,33 @@ class Base(_Relational):
     
     Base also implements the methods insert and delete to insert and delete tuples
     from the table. It can also be an argument in relational operators: restrict, 
-    join, pro, and aggr.  See class _Relational.
+    join, pro, and aggr.  See class :mod:`datajoint.relational`.
     
     Base instances return their table's heading by looking it up in the connection
     object. This ensures that Base instances contain the current table definition
     even after tables are modified after the instance is created.
+
+    :param conn=None: :mod:`datajoint.connection.Connection` object. Only used when Base is
+                      instantiated directly.
+    :param dbname=None: Name of the database. Only used when Base is instantiated directly.
+    :param class_name=None: Class name. Only used when Base is instantiated directly.
+    :param declaration=None:
+
+    Example for a usage of Base::
+
+        import datajoint as dj
+
+
+        class Subjects(dj.Base):
+            _table_def = '''
+            test1.Subjects (manual)                                    # Basic subject info
+
+            subject_id            : int                                # unique subject id
+            ---
+            real_id               : varchar(40)                        #  real-world name
+            species = "mouse"     : enum('mouse', 'monkey', 'human')   # species
+            '''
+
     """
 
     def __init__(self, conn=None, dbname=None, class_name=None, declaration=None):
@@ -65,7 +89,7 @@ class Base(_Relational):
             self.class_name = class_name
             self.conn = conn
             self.dbname = dbname
-            self.declaration = declaration
+            self.declaration = declaration  # todo: why is this set as declaration and not as _table_def?
             if dbname not in self.conn.modules:  # register with a fake module, enclosed in back quotes
                 self.conn.bind('`{0}`'.format(dbname), dbname)
         else:
@@ -95,21 +119,29 @@ class Base(_Relational):
             except KeyError:
                 raise DataJointError(
                     'Module {} is not bound to a database. See datajoint.connection.bind'.format(self.__module__))
-            # take table declaration from the deriving class' doc string
+            # take table declaration from the deriving class' _table_def string
+            # todo: declaration and _table_def seem to be redundant!
             if hasattr(self, '_table_def'):
                 self.declaration = self._table_def
             else:
                 self.declaration = None
 
 
-    def insert(self, tup, ignore_errors=False, replace=False):
+    def insert(self, tup, ignore_errors=False, replace=False):  # todo: do we support records and named tuples for tup?
         """
-        insert one tuple.  tup can be an iterable in matching order, a dict with named fields, or an np.void.
+        Insert one data tuple.
 
-        EXAMPLE:
-        b = djtest.Subject()
-        b.insert(dict(subject_id=7,species="mouse",real_id=1007,date_of_birth="2014-09-01"))
+        :param tup: Data tuple. Can be an iterable in matching order, a dict with named fields, or an np.void.
+        :param ignore_errors=False: Ignores errors if True.
+        :param replace=False: Replaces data tuple if True.
+
+        Example::
+
+            b = djtest.Subject()
+            b.insert( dict(subject_id = 7, species="mouse",\\
+                           real_id = 1007, date_of_birth = "2014-09-01") )
         """
+
         if issubclass(type(tup), tuple) or issubclass(type(tup), list):
             valueList = ','.join([repr(q) for q in tup])
             fieldList = '`' + '`,`'.join(self.heading.names[0:len(tup)]) + '`'
@@ -133,9 +165,9 @@ class Base(_Relational):
 
     def drop(self):
         """
-        drop table
+        Drops the table associated to this object.
         """
-        # TODO make cascading
+        # TODO make cascading (github issue #16)
         self.conn.query('DROP TABLE %s' % self.full_table_name)
         self.conn.clear_dependencies(dbname=self.dbname)
         self.conn.load_headings(dbname=self.dbname, force=True)
@@ -178,6 +210,8 @@ class Base(_Relational):
     def declare(self):
         """
         Declare the table in database if it doesn't already exist.
+
+        :raises: DataJointError if the table cannot be declared.
         """
         if not self.is_declared:
             self._declare()
@@ -191,46 +225,58 @@ class Base(_Relational):
     def set_table_comment(self, newComment):
         """
         Update the table comment in the table declaration.
+
+        :param newComment: new comment as string
+
         """
-        # TODO: add verification procedure
+        # TODO: add verification procedure (github issue #24)
         self.alter('COMMENT="%s"' % newComment)
 
-    def add_attribute(self, definition, first=False, after=''):
+    def add_attribute(self, definition, after=None):
         """
-        Add a new attribute to the table. A full line from the
-        table definition is passed in as "definition".
+        Add a new attribute to the table. A full line from the table definition
+        is passed in as definition.
 
-        The definition can specify where to place the new attribute.
-        Make after="First" to add the attribute as the first attribute
-        or "AFTER `attribute`" to place it after an existing attribute.
+        The definition can specify where to place the new attribute. Use after=None
+        to add the attribute as the first attribute or after='attribute' to place it
+        after an existing attribute.
+
+        :param definition: table definition
+        :param after=None: After which attribute of the table the new attribute is inserted.
+                           If None, the attribute is inserted in front.
         """
-        position = ' FIRST' if first else (' AFTER %s' % after if after else '')
+        position = ' FIRST' if after is None else (' AFTER %s' % after if after else '')
         sql = self._field_to_SQL(self._parse_attr_def(definition))
         self._alter('ADD COLUMN %s%s' % (sql[:-2], position))
 
-    def drop_attribute(self, attrName):
+    def drop_attribute(self, attr_name):
         """
-        Drop the attribute attrName from this table
-        """
-        self._alter('DROP COLUMN `%s`' % attrName)
+        Drops the attribute attrName from this table.
 
-    def alter_attribute(self, attrName, newDefinition):
+        :param attr_name: Name of the attribute that is dropped.
         """
-        Alter the definition of the field attrName in
-        this table using the newDefinition.
+        self._alter('DROP COLUMN `%s`' % attr_name)
+
+    def alter_attribute(self, attr_name, new_definition):
         """
-        sql = self._field_to_SQL(self._parse_attr_def(newDefinition))
-        self._alter('CHANGE COLUMN `%s` %s' % (attrName, sql[:-2]))
+        Alter the definition of the field attr_name in this table using the new definition.
+
+        :param attr_name: field that is redefined
+        :param new_definition: new definition of the field
+        """
+        sql = self._field_to_SQL(self._parse_attr_def(new_definition))
+        self._alter('CHANGE COLUMN `%s` %s' % (attr_name, sql[:-2]))
 
     def erd(self, subset=None, prog='dot'):
         """
-        plot the schema's entity relationship diagram (ERD).
+        Plot the schema's entity relationship diagram (ERD).
         The layout programs can be 'dot' (default), 'neato', 'fdp', 'sfdp', 'circo', 'twopi'
         """
         if not subset:
             g = self.graph
         else:
             g = self.graph.copy()
+        # todo: make erd work (github issue #7)
         """
          g = self.graph
          else:
@@ -266,12 +312,13 @@ class Base(_Relational):
         :return: resolved module object. If no module matches the short name, `None` will be returned
 
         The module_name resolution steps in the following order:
-        1) Global reference to a module of the same name defined in the module that contains this Base derivative.
-            This is the recommended use case.
-        2) Module of the same name defined in the package containing this Base derivative. This will only look for the
-            most immediate containing package (e.g. if this class is contained in package.subpackage.module, it will
-            check within `package.subpackage` but not inside `package`).
-        3) Globally accessible module with the same name.
+
+        1. Global reference to a module of the same name defined in the module that contains this Base derivative.
+           This is the recommended use case.
+        2. Module of the same name defined in the package containing this Base derivative. This will only look for the
+           most immediate containing package (e.g. if this class is contained in package.subpackage.module, it will
+           check within `package.subpackage` but not inside `package`).
+        3. Globally accessible module with the same name.
         """
         mod_obj = importlib.import_module(cls.__module__)
         attr = getattr(mod_obj, module_name, None)
@@ -288,8 +335,12 @@ class Base(_Relational):
 
     def get_base(self, module_name, class_name):
         """
-        load base relation from module.  If the base relation is not defined in
+        Loads the base relation from the module.  If the base relation is not defined in
         the module, then construct it using Base constructor.
+
+        :param module_name: module name
+        :param class_name: class name
+        :returns: the base relation
         """
         mod_obj = self.get_module(module_name)
         try:
@@ -303,7 +354,7 @@ class Base(_Relational):
 
     # ////////////////////////////////////////////////////////////
     # Private Methods
-    #////////////////////////////////////////////////////////////
+    # ////////////////////////////////////////////////////////////
 
     def _field_to_SQL(self, field):
         """

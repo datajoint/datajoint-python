@@ -12,6 +12,8 @@ Contents:
    :maxdepth: 2
 
    base.rst
+          relational.rst
+          connection.rst
 
 Indices and tables
 ==================
