@@ -12,7 +12,8 @@ import logging
 # table names have prefixes that designate their roles in the processing chain
 logger = logging.getLogger(__name__)
 
-Role = Enum('Role', 'manual lookup imported computed job')  # Todo: Shouldn't this go into the settings module?
+# Todo: Shouldn't this go into the settings module?
+Role = Enum('Role', 'manual lookup imported computed job')
 role_to_prefix = {
     Role.manual: '',
     Role.lookup: '#',
@@ -26,6 +27,7 @@ mysql_constants = ['CURRENT_TIMESTAMP']
 
 
 class Base(_Relational):
+
     """
     Base integrates all data manipulation and data declaration functions.
     An instance of the class provides an interface to a single table in the database.
@@ -45,14 +47,14 @@ class Base(_Relational):
     property, which is a string in CamelCase. The actual table name is obtained 
     by converting className from CamelCase to underscore_separated_words and 
     prefixing according to the table's role.
-    
+
     The table declaration can be specified in the doc string of the inheriting 
     class, in the DataJoint table declaration syntax. 
-    
+
     Base also implements the methods insert and delete to insert and delete tuples
     from the table. It can also be an argument in relational operators: restrict, 
     join, pro, and aggr.  See class :mod:`datajoint.relational`.
-    
+
     Base instances return their table's heading by looking it up in the connection
     object. This ensures that Base instances contain the current table definition
     even after tables are modified after the instance is created.
@@ -85,12 +87,14 @@ class Base(_Relational):
         if self.__class__ is Base:
             # instantiate without subclassing
             if not (conn and dbname and class_name):
-                raise DataJointError('Missing argument: please specify conn, dbname, and class name.')
+                raise DataJointError(
+                    'Missing argument: please specify conn, dbname, and class name.')
             self.class_name = class_name
             self.conn = conn
             self.dbname = dbname
             self._table_def = table_def
-            if dbname not in self.conn.modules:  # register with a fake module, enclosed in back quotes
+            # register with a fake module, enclosed in back quotes
+            if dbname not in self.conn.modules:
                 self.conn.bind('`{0}`'.format(dbname), dbname)
         else:
             # instantiate a derived class
@@ -125,8 +129,8 @@ class Base(_Relational):
             else:
                 self._table_def = None
 
-
-    def insert(self, tup, ignore_errors=False, replace=False):  # todo: do we support records and named tuples for tup?
+    # todo: do we support records and named tuples for tup?
+    def insert(self, tup, ignore_errors=False, replace=False):
         """
         Insert one data tuple.
 
@@ -145,10 +149,13 @@ class Base(_Relational):
             valueList = ','.join([repr(q) for q in tup])
             fieldList = '`' + '`,`'.join(self.heading.names[0:len(tup)]) + '`'
         elif issubclass(type(tup), dict):
-            valueList = ','.join([repr(tup[q]) for q in self.heading.names if q in tup])
-            fieldList = '`' + '`,`'.join([q for q in self.heading.names if q in tup]) + '`'
+            valueList = ','.join([repr(tup[q])
+                                  for q in self.heading.names if q in tup])
+            fieldList = '`' + \
+                        '`,`'.join([q for q in self.heading.names if q in tup]) + '`'
         elif issubclass(type(tup), np.void):
-            valueList = ','.join([repr(tup[q]) for q in self.heading.names if q in tup])
+            valueList = ','.join([repr(tup[q])
+                                  for q in self.heading.names if q in tup])
             fieldList = '`' + '`,`'.join(tup.dtype.fields) + '`'
         else:
             raise DataJointError('Datatype %s cannot be inserted' % type(tup))
@@ -158,7 +165,8 @@ class Base(_Relational):
             sql = 'INSERT IGNORE'
         else:
             sql = 'INSERT'
-        sql += " INTO %s (%s) VALUES (%s)" % (self.full_table_name, fieldList, valueList)
+        sql += " INTO %s (%s) VALUES (%s)" % (self.full_table_name,
+                                              fieldList, valueList)
         logger.info(sql)
         self.conn.query(sql)
 
@@ -171,7 +179,6 @@ class Base(_Relational):
         self.conn.clear_dependencies(dbname=self.dbname)
         self.conn.load_headings(dbname=self.dbname, force=True)
         logger.debug("Dropped table %s" % self.full_table_name)
-
 
     @property
     def sql(self):
@@ -197,7 +204,6 @@ class Base(_Relational):
         """
         self.declare()
         return self.conn.table_names[self.dbname][self.class_name]
-
 
     @property
     def full_table_name(self):
@@ -229,7 +235,8 @@ class Base(_Relational):
         if not self.is_declared:
             self._declare()
             if not self.is_declared:
-                raise DataJointError('Table could not be declared for %s' % self.class_name)
+                raise DataJointError(
+                    'Table could not be declared for %s' % self.class_name)
 
     """
     Data definition functionalities
@@ -258,7 +265,8 @@ class Base(_Relational):
         :param after=None: After which attribute of the table the new attribute is inserted.
                            If None, the attribute is inserted in front.
         """
-        position = ' FIRST' if after is None else (' AFTER %s' % after if after else '')
+        position = ' FIRST' if after is None else (
+            ' AFTER %s' % after if after else '')
         sql = self._field_to_SQL(self._parse_attr_def(definition))
         self._alter('ADD COLUMN %s%s' % (sql[:-2], position))
 
@@ -364,7 +372,6 @@ class Base(_Relational):
                                  class_name=class_name)
         return ret
 
-
     # ////////////////////////////////////////////////////////////
     # Private Methods
     # ////////////////////////////////////////////////////////////
@@ -393,7 +400,7 @@ class Base(_Relational):
         assert not any((c in r'\"' for c in field.comment)), \
             'Illegal characters in attribute comment "%s"' % field.comment
 
-        return '`{name}` {type} {default} COMMENT "{comment}",\n'.format( \
+        return '`{name}` {type} {default} COMMENT "{comment}",\n'.format(
             name=field.name, type=field.type, default=default, comment=field.comment)
 
     def _alter(self, alter_statement):
@@ -423,7 +430,8 @@ class Base(_Relational):
 
         # compile the CREATE TABLE statement
         # TODO: support prefix
-        table_name = role_to_prefix[table_info['tier']] + from_camel_case(self.class_name)
+        table_name = role_to_prefix[
+                         table_info['tier']] + from_camel_case(self.class_name)
         sql = 'CREATE TABLE `%s`.`%s` (\n' % (self.dbname, table_name)
 
         # add inherited primary key fields
@@ -445,9 +453,9 @@ class Base(_Relational):
                 raise DataJointError('Primary key {} cannot be nullable'.format(
                     field.name))
             if field.name in primary_key_fields:
-                raise DataJointError('Duplicate declaration of the primary key ' \
-                                     '{key}. Check to make sure that the key ' \
-                                     'is not declared already in referenced ' \
+                raise DataJointError('Duplicate declaration of the primary key '
+                                     '{key}. Check to make sure that the key '
+                                     'is not declared already in referenced '
                                      'tables'.format(key=field.name))
             primary_key_fields.add(field.name)
             sql += self._field_to_SQL(field)
@@ -476,18 +484,18 @@ class Base(_Relational):
             sql += 'FOREIGN KEY (%s) REFERENCES %s (%s) ON UPDATE CASCADE ON DELETE RESTRICT,\n' % \
                    (keys, ref.full_table_name, keys)
 
-
         # add secondary index declarations
         # gather implicit indexes due to foreign keys first
         implicit_indices = []
         for fk_source in parents + referenced:
             implicit_indices.append(fk_source.primary_key)
 
-        #for index in indexDefs:
-        #TODO: finish this up...
+        # for index in indexDefs:
+        # TODO: finish this up...
 
         # close the declaration
-        sql = '%s\n) ENGINE = InnoDB, COMMENT "%s"' % (sql[:-2], table_info['comment'])
+        sql = '%s\n) ENGINE = InnoDB, COMMENT "%s"' % (
+            sql[:-2], table_info['comment'])
 
         # make sure that the table does not alredy exist
         self.conn.load_headings(self.dbname, force=True)
@@ -519,7 +527,8 @@ class Base(_Relational):
         if table_info['tier'] not in Role.__members__:
             raise DataJointError('InvalidTableTier: Invalid tier {tier} for table\
                                  {module}.{cls}'.format(tier=table_info['tier'],
-                                                        module=table_info['module'],
+                                                        module=table_info[
+                                                            'module'],
                                                         cls=table_info['className']))
         table_info['tier'] = Role[table_info['tier']]  # convert into enum
 
@@ -544,7 +553,8 @@ class Base(_Relational):
             elif fieldP.match(line):
                 field_defs.append(self._parse_attr_def(line, in_key))
             else:
-                raise DataJointError('Invalid table declaration line "%s"' % line)
+                raise DataJointError(
+                    'Invalid table declaration line "%s"' % line)
 
         return table_info, parents, referenced, field_defs, index_defs
 
