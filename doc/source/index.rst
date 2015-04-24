@@ -6,14 +6,22 @@
 Welcome to datajoint's documentation!
 =====================================
 
-Contents:
+Tutorials:
+
+.. toctree::
+   :maxdepth: 2
+
+   Getting started.rst
+
+API:
 
 .. toctree::
    :maxdepth: 2
 
    base.rst
-          relational.rst
-          connection.rst
+   relational.rst
+   connection.rst
+
 
 Indices and tables
 ==================

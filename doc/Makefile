@@ -49,6 +49,10 @@ help:
 clean:
 	rm -rf $(BUILDDIR)/*
 
+tutorials:
+	cd source; ipython nbconvert --to rst "../../tutorials/*.ipynb"
+
+
 html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
