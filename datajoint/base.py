@@ -61,7 +61,7 @@ class Base(_Relational):
                       instantiated directly.
     :param dbname=None: Name of the database. Only used when Base is instantiated directly.
     :param class_name=None: Class name. Only used when Base is instantiated directly.
-    :param declaration=None:
+    :param table_def=None: Declaration of the table. Only used when Base is instantiated directly.
 
     Example for a usage of Base::
 
@@ -80,7 +80,7 @@ class Base(_Relational):
 
     """
 
-    def __init__(self, conn=None, dbname=None, class_name=None, declaration=None):
+    def __init__(self, conn=None, dbname=None, class_name=None, table_def=None):
         self._use_package = False
         if self.__class__ is Base:
             # instantiate without subclassing
@@ -89,12 +89,12 @@ class Base(_Relational):
             self.class_name = class_name
             self.conn = conn
             self.dbname = dbname
-            self.declaration = declaration  # todo: why is this set as declaration and not as _table_def?
+            self._table_def = table_def
             if dbname not in self.conn.modules:  # register with a fake module, enclosed in back quotes
                 self.conn.bind('`{0}`'.format(dbname), dbname)
         else:
             # instantiate a derived class
-            if conn or dbname or class_name or declaration:
+            if conn or dbname or class_name or table_def:
                 raise DataJointError(
                     'With derived classes, constructor arguments are ignored')  # TODO: consider changing this to a warning instead
             self.class_name = self.__class__.__name__
@@ -119,12 +119,11 @@ class Base(_Relational):
             except KeyError:
                 raise DataJointError(
                     'Module {} is not bound to a database. See datajoint.connection.bind'.format(self.__module__))
-            # take table declaration from the deriving class' _table_def string
-            # todo: declaration and _table_def seem to be redundant!
+
             if hasattr(self, '_table_def'):
-                self.declaration = self._table_def
+                self._table_def = self._table_def
             else:
-                self.declaration = None
+                self._table_def = None
 
 
     def insert(self, tup, ignore_errors=False, replace=False):  # todo: do we support records and named tuples for tup?
@@ -413,7 +412,7 @@ class Base(_Relational):
         """
         Declares the table in the data base if no table in the database matches this object.
         """
-        if not self.declaration:
+        if not self._table_def:
             raise DataJointError('Table declaration is missing!')
         table_info, parents, referenced, fieldDefs, indexDefs = self._parse_declaration()
         defined_name = table_info['module'] + '.' + table_info['className']
@@ -506,7 +505,7 @@ class Base(_Relational):
         referenced = []
         index_defs = []
         field_defs = []
-        declaration = re.split(r'\s*\n\s*', self.declaration.strip())
+        declaration = re.split(r'\s*\n\s*', self._table_def.strip())
 
         # remove comment lines
         declaration = [x for x in declaration if not x.startswith('#')]
