@@ -76,7 +76,7 @@ class TestBaseObject(object):
         s = test1.Subjects()
         assert_equal(s.dbname, PREFIX + '_test1')
         assert_equal(s.conn, self.conn)
-        assert_equal(s.declaration, test1.Subjects._table_def)
+        assert_equal(s._table_def, test1.Subjects._table_def)
 
     def test_declaration_status(self):
         b = test1.Subjects()
