@@ -8,7 +8,7 @@ Created on Mon Aug  4 01:29:51 2014
 import re
 from collections import OrderedDict, namedtuple
 import numpy as np
-from .core import DataJointError
+from datajoint import DataJointError
 
 
 class Heading:

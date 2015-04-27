@@ -7,7 +7,7 @@ Created on Thu Aug  7 17:00:02 2014
 import numpy as np
 import abc
 from copy import copy
-from .core import DataJointError
+from datajoint import DataJointError
 from .fetch import Fetch
 
 class _Relational(metaclass=abc.ABCMeta):

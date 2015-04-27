@@ -3,7 +3,8 @@ import re
 from types import ModuleType
 import numpy as np
 from enum import Enum
-from .core import DataJointError, from_camel_case
+from .utils import from_camel_case
+from . import DataJointError
 from .relational import _Relational
 from .heading import Heading
 import logging
