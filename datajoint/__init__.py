@@ -20,12 +20,12 @@ class DataJointError(Exception):
 # ----------- loads local configuration from file ----------------
 from .settings import Config, logger
 config = Config()
-local_config_file = os.environ.get(config['settings']['local config var'], None)
+local_config_file = os.environ.get(config['config.varname'], None)
 if local_config_file is None:
-    local_config_file = os.path.expanduser(config['settings']['local config file'])
+    local_config_file = os.path.expanduser(config['config.file'])
 else:
     local_config_file = os.path.expanduser(local_config_file)
-    config['settings']['local config file'] = local_config_file
+    config['config.file'] = local_config_file
 try:
     logger.log(logging.INFO, "Loading local settings from {0:s}".format(local_config_file))
     config.load(local_config_file)

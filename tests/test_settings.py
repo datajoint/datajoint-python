@@ -19,13 +19,13 @@ def nested_dict_compare(d1, d2):
         return True
 
 def test_load_save():
-    old = dj.config['settings']['local config file']
-    dj.config['settings']['local config file'] = 'tmp.json'
+    old = dj.config['config.file']
+    dj.config['config.file'] = 'tmp.json'
     dj.config.save()
     conf = dj.Config()
     conf.load('tmp.json')
     assert_true(nested_dict_compare(conf, dj.config), 'Two config files do not match.')
-    dj.config['settings']['local config file'] = old
+    dj.config['config.file'] = old
     os.remove('tmp.json')
 
 

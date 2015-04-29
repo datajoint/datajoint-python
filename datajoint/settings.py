@@ -13,15 +13,12 @@ import collections
 validators = collections.defaultdict(lambda: lambda value: True)
 
 default = {
-    'database': {
-        'host': 'localhost',
-        'password': 'datajoint',
-        'user': 'datajoint'
-    },
-    'settings': {
-        'local config file': 'dj_local_conf.json',
-        'local config var': 'DJ_LOCAL_CONF'
-    }
+    'database.host': 'localhost',
+    'database.password': 'datajoint',
+    'database.user': 'datajoint',
+    #
+    'config.file': 'dj_local_conf.json',
+    'config.varname': 'DJ_LOCAL_CONF'
 }
 
 class Config(collections.MutableMapping):
@@ -42,7 +39,7 @@ class Config(collections.MutableMapping):
         return self._conf[key]
 
     def __setitem__(self, key, value):
-        if validators[key]:
+        if validators[key](value):
             self._conf[key] = value
         else:
             raise DataJointError(u'Validator for {0:s} did not pass'.format(key, ))
@@ -69,7 +66,7 @@ class Config(collections.MutableMapping):
         """
         if filename is None:
             import datajoint as dj
-            filename = dj.config['settings']['local config file']
+            filename = dj.config['config.file']
         with open(filename, 'w') as fid:
             json.dump(self._conf, fid)
 
@@ -81,7 +78,7 @@ class Config(collections.MutableMapping):
         """
         if filename is None:
             import datajoint as dj
-            filename = dj.config['settings']['local config file']
+            filename = dj.config['config.file']
         with open(filename, 'r') as fid:
             self.update(json.load(fid))
 
