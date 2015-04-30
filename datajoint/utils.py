@@ -1,22 +1,11 @@
 import re
-import logging
 # package-wide settings that control execution
 
 # setup root logger
-logger = logging.getLogger()
-logger.setLevel(logging.DEBUG) #set package wide logger level TODO:make this respond to environmental variable
+from . import DataJointError
 
 
-class Settings:
-    pass
-    # verbose = True
 
-class DataJointError(Exception):
-    """
-    Base class for errors specific to DataJoint internal
-    operation.
-    """
-    pass
 
 
 def to_camel_case(s):

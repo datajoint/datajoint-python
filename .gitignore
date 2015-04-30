@@ -6,3 +6,4 @@
 __*__
 .idea
 datajoint.egg-info/
+*.pyc

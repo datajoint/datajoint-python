@@ -1,6 +1,7 @@
 import pymysql
 import re
-from .core import DataJointError, to_camel_case
+from .utils import to_camel_case
+from . import DataJointError
 import os
 from .heading import Heading
 from .base import prefix_to_role

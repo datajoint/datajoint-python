@@ -5,7 +5,8 @@ Collection of test cases to test core module.
 __author__ = 'eywalker'
 from . import (CONN_INFO, PREFIX, BASE_CONN, cleanup)
 from nose.tools import assert_true, assert_raises, assert_equal
-from datajoint.core import to_camel_case, from_camel_case, DataJointError
+from datajoint.utils import to_camel_case, from_camel_case
+from datajoint import DataJointError
 
 
 def setup():

@@ -8,7 +8,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import transforms
 
-from .core import DataJointError, to_camel_case
+from .utils import to_camel_case
+from . import DataJointError
 
 
 logger = logging.getLogger(__name__)

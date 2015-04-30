@@ -10,7 +10,7 @@ __author__ = 'eywalker'
 from . import BASE_CONN, CONN_INFO, PREFIX, cleanup
 from datajoint.connection import Connection
 from nose.tools import assert_raises, assert_equal, assert_regexp_matches, assert_false, assert_true
-from datajoint.core import DataJointError
+from datajoint import DataJointError
 
 
 def setup():
