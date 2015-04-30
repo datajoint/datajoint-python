@@ -39,6 +39,8 @@ class Config(collections.MutableMapping):
         return self._conf[key]
 
     def __setitem__(self, key, value):
+        if isinstance(value, collections.Mapping):
+            raise ValueError("Nested settings are not supported!")
         if validators[key](value):
             self._conf[key] = value
         else:
