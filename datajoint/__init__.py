@@ -29,7 +29,7 @@ else:
 try:
     logger.log(logging.INFO, "Loading local settings from {0:s}".format(local_config_file))
     config.load(local_config_file)
-except:
+except FileNotFoundError:
     logger.warn("Local config file {0:s} does not exist! Creating it.".format(local_config_file))
     config.save(local_config_file)
 
