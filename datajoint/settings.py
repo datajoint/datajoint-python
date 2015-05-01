@@ -16,6 +16,9 @@ default = {
     'database.host': 'localhost',
     'database.password': 'datajoint',
     'database.user': 'datajoint',
+    'database.port': 3306,
+    #
+    'connection.init_function': None,
     #
     'config.file': 'dj_local_conf.json',
     'config.varname': 'DJ_LOCAL_CONF'

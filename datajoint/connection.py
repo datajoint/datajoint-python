@@ -10,7 +10,7 @@ import networkx as nx
 from networkx import pygraphviz_layout
 import matplotlib.pyplot as plt
 from .erd import DBConnGraph
-
+from . import config
 
 logger = logging.getLogger(__name__)
 
@@ -36,15 +36,10 @@ def conn_container():
         """
         nonlocal _connObj
         if not _connObj or reset:
-            host = host if host is not None else os.getenv('DJ_HOST') #or input('Enter datajoint server address >> ')
-            user = user if user is not None else  os.getenv('DJ_USER') #or input('Enter datajoint user name >> ')
-            # had trouble with getpass
-            print('passwd', passwd)
-            print('passwd is None', passwd is None)
-            print('DJ_PASS', os.getenv('DJ_PASS'))
-            print('DJ_PASS is None', os.getenv('DJ_PASS') is None)
-            passwd = passwd if passwd is not None else os.getenv('DJ_PASS') #or input('Enter datajoint password >> ')
-            initFun = initFun or os.getenv('DJ_INIT')
+            host = host if host is not None else config['database.host']
+            user = user if user is not None else config['database.user']
+            passwd = passwd if passwd is not None else config['database.password']
+            initFun = initFun if initFun is not None else config['connection.init_function']
             _connObj = Connection(host, user, passwd, initFun)
         return _connObj
     return conn
@@ -53,7 +48,6 @@ def conn_container():
 # The function conn is used by others to obtain the package wide persistent connection object
 conn = conn_container()
 
-default_port = 3306
 
 
 class Connection:
@@ -63,11 +57,11 @@ class Connection:
     """
 
     def __init__(self, host, user, passwd, initFun=None):
-        try:
+        if ':' in host:
             host, port = host.split(':')
             port = int(port)
-        except ValueError:
-            port = default_port
+        else:
+            port = config['database.port']
         self.conn_info = dict(host=host, port=port, user=user, passwd=passwd)
         self._conn = pymysql.connect(init_command=initFun, **self.conn_info)
         # TODO Do something if connection cannot be established

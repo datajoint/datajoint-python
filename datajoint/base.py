@@ -95,7 +95,8 @@ class Base(_Relational):
             self.dbname = dbname
             self._table_def = table_def
             # register with a fake module, enclosed in back quotes
-            if dbname not in self.conn.modules:
+
+            if dbname not in self.conn.db_to_mod:
                 self.conn.bind('`{0}`'.format(dbname), dbname)
         else:
             # instantiate a derived class
