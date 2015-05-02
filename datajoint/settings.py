@@ -24,6 +24,7 @@ default = {
     'config.varname': 'DJ_LOCAL_CONF'
 }
 
+
 class Config(collections.MutableMapping):
     """
     Stores datajoint settings. Behaves like a dictionary, but applies validator functions
@@ -31,7 +32,6 @@ class Config(collections.MutableMapping):
 
     The default parameters are stored in datajoint.settings.default . If a local config file
     exists, the settings specified in this file override the default settings.
-
     """
 
     def __init__(self, *args, **kwargs):

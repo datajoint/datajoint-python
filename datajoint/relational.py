@@ -10,6 +10,7 @@ from copy import copy
 from datajoint import DataJointError
 from .fetch import Fetch
 
+
 class _Relational(metaclass=abc.ABCMeta):
     """
     Relational implements relational operators.
@@ -26,7 +27,6 @@ class _Relational(metaclass=abc.ABCMeta):
     _offset = 0
     _order_by = []
     
-    #### abstract properties that subclasses must define  #####
     @abc.abstractproperty
     def sql(self):
         return NotImplemented
@@ -35,45 +35,54 @@ class _Relational(metaclass=abc.ABCMeta):
     def heading(self):
         return NotImplemented
             
-    ######    Relational algebra   ##############
     def __mul__(self, other):
-        "relational join"
-        return Join(self,other)
+        """
+        relational join
+        """
+        return Join(self, other)
 
     def pro(self, *arg, _sub=None, **kwarg):
-        "relational projection abd aggregation"
+        """
+        relational projection abd aggregation
+        """
         return Projection(self, _sub=_sub, *arg, **kwarg)
 
     def __iand__(self, restriction):
-        "in-place relational restriction or semijoin"
+        """
+        in-place relational restriction or semijoin
+        """
         if self._restrictions is None:
             self._restrictions = []
         self._restrictions.append(restriction)
         return self
 
     def __and__(self, restriction):
-        "relational restriction or semijoin"
+        """
+        relational restriction or semijoin
+        """
         if self._restrictions is None:
             self._restrictions = []
-        ret = copy(self) # todo: why not deepcopy it?
+        ret = copy(self)  # todo: why not deepcopy it?
         ret._restrictions = list(ret._restrictions)  # copy restriction
         ret &= restriction
         return ret
 
     def __isub__(self, restriction):
-        "in-place inverted restriction aka antijoin"
+        """
+        in-place inverted restriction aka antijoin
+        """
         self &= Not(restriction)
         return self
 
     def __sub__(self, restriction):
-        "inverted restriction aka antijoin"
+        """
+        inverted restriction aka antijoin
+        """
         return self & Not(restriction)
 
-
-    ######    Fetching the data   ##############
     @property
     def count(self):
-        sql = 'SELECT count(*) FROM ' + self.sql + self._whereClause
+        sql = 'SELECT count(*) FROM ' + self.sql + self._where_clause
         cur = self.conn.query(sql)
         return cur.fetchone()[0] #todo: should we assert that this only returns one result?
 
@@ -98,7 +107,6 @@ class _Relational(metaclass=abc.ABCMeta):
         ret_val += '%d tuples\n' % self.count
         return ret_val
         
-    ########  iterator  ###############
     def __iter__(self):
         """
         iterator  yields primary key tuples
@@ -112,61 +120,63 @@ class _Relational(metaclass=abc.ABCMeta):
 
 
     @property
-    def _whereClause(self):
-        "make there WHERE clause based on the current restriction"
-
+    def _where_clause(self):
+        """
+        make there WHERE clause based on the current restriction
+        """
         if not self._restrictions:
             return ''
 
-        def makeCondition(arg):
+        def make_condition(arg):
             if isinstance(arg,dict):
-                conds = ['`%s`=%s'%(k,repr(v)) for k,v in arg.items()]
+                conds = ['`%s`=%s' % (k, repr(v)) for k, v in arg.items()]
             elif isinstance(arg,np.void):
-                conds = ['`%s`=%s'%(k, arg[k]) for k in arg.dtype.fields]
+                conds = ['`%s`=%s' % (k, arg[k]) for k in arg.dtype.fields]
             else:
                 raise DataJointError('invalid restriction type')
             return ' AND '.join(conds)
 
-        condStr = []
+        condition_string = []
         for r in self._restrictions:
-            negate = isinstance(r,Not)
+            negate = isinstance(r, Not)
             if negate:
                 r = r._restriction
-            if isinstance(r,dict) or isinstance(r,np.void):
-                r = makeCondition(r)
-            elif isinstance(r,np.ndarray) or isinstance(r,list):
-                r = '('+') OR ('.join([makeCondition(q) for q in r])+')'
-            elif isinstance(r,_Relational):
-                commonAttrs = ','.join([q for q in self.heading.names if r.heading.names])  
-                r = '(%s) in (SELECT %s FROM %s)' % (commonAttrs, commonAttrs, r.sql)
+            if isinstance(r, dict) or isinstance(r, np.void):
+                r = make_condition(r)
+            elif isinstance(r, np.ndarray) or isinstance(r, list):
+                r = '('+') OR ('.join([make_condition(q) for q in r])+')'
+            elif isinstance(r, _Relational):
+                common_attributes = ','.join([q for q in self.heading.names if r.heading.names])  
+                r = '(%s) in (SELECT %s FROM %s)' % (common_attributes, common_attributes, r.sql)
                 
-            assert isinstance(r,str), 'condition must be converted into a string'
+            assert isinstance(r, str), 'condition must be converted into a string'
             r = '('+r+')'
             if negate:
-                r = 'NOT '+r;
-            condStr.append(r)
+                r = 'NOT '+r
+            condition_string.append(r)
 
-        return ' WHERE ' + ' AND '.join(condStr)
+        return ' WHERE ' + ' AND '.join(condition_string)
 
 
 class Not:
-    "inverse of a restriction"
-    def __init__(self,restriction):
+    """
+    inverse of a restriction
+    """
+    def __init__(self, restriction):
         self._restriction = restriction
 
 
 class Join(_Relational):
+    alias_counter = 0
 
-    aliasCounter = 0
-
-    def __init__(self,rel1,rel2):
-        if not isinstance(rel2,_Relational):
+    def __init__(self, rel1, rel2):
+        if not isinstance(rel2, _Relational):
             raise DataJointError('relvars can only be joined with other relvars')
         if rel1.conn is not rel2.conn:
             raise DataJointError('Cannot join relations with different database connections')
         self.conn = rel1.conn
-        self._rel1 = rel1;
-        self._rel2 = rel2;
+        self._rel1 = rel1
+        self._rel2 = rel2
     
     @property
     def heading(self):
@@ -174,13 +184,12 @@ class Join(_Relational):
         
     @property 
     def sql(self):
-        Join.aliasCounter += 1
-        return '%s NATURAL JOIN %s as `j%x`' % (self._rel1.sql, self._rel2.sql, Join.aliasCounter)
+        Join.alias_counter += 1
+        return '%s NATURAL JOIN %s as `j%x`' % (self._rel1.sql, self._rel2.sql, Join.alias_counter)
 
 
 class Projection(_Relational):
-
-    aliasCounter = 0
+    alias_counter = 0
 
     def __init__(self, rel, *arg, _sub, **kwarg):
         if _sub and isinstance(_sub, _Relational):
@@ -201,18 +210,17 @@ class Projection(_Relational):
 
 
 class Subquery(_Relational):
-    
-    aliasCounter = 0;    
+    alias_counter = 0
     
     def __init__(self, rel):
-        self.conn = rel.conn;
-        self._rel = rel;
+        self.conn = rel.conn
+        self._rel = rel
         
     @property
     def sql(self):
-        self.aliasCounter = self.aliasCounter + 1;
-        return '(SELECT ' + self._rel.heading.asSQL + ' FROM ' + self._rel.sql + ') as `s%x`' % self.aliasCounter
+        self.alias_counter += 1
+        return '(SELECT ' + self._rel.heading.as_sql + ' FROM ' + self._rel.sql + ') as `s%x`' % self.alias_counter
         
     @property
     def heading(self):
-        return self._rel.heading.resolveComputations()
+        return self._rel.heading.resolve_computations()

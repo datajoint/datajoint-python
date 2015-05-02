@@ -13,11 +13,9 @@ conn = dj.conn()   # connect to database; conn must be defined in module namespa
 conn.bind(module=__name__, dbname='dj_test')  # bind this module to the database
 
 
-
 class Subject(dj.Base):
-    _table_def = """
+    _definition = """
     demo1.Subject (manual)     # Basic subject info
-
     subject_id       : int     # internal subject id
     ---
     real_id                     :  varchar(40)    #  real-world name
@@ -28,13 +26,10 @@ class Subject(dj.Base):
     animal_notes=""             : varchar(4096)                 # strain, genetic manipulations, etc
     """
 
-class Exp2(dj.Base):
-    pass
 
 class Experiment(dj.Base):
-    _table_def = """
+    _definition = """
     demo1.Experiment (manual)     # Basic subject info
-
     -> demo1.Subject
     experiment          : smallint   # experiment number for this subject
     ---
@@ -44,25 +39,24 @@ class Experiment(dj.Base):
     """
 
 
-class TwoPhotonSession(dj.Base):
-    _table_def = """
-    demo1.TwoPhotonSession (manual)   # a two-photon imaging session
-
+class Session(dj.Base):
+    _definition = """
+    demo1.Session (manual)   # a two-photon imaging session
     -> demo1.Experiment
-    tp_session : tinyint  # two-photon session within this experiment
+    session_id    : tinyint  # two-photon session within this experiment
+    -----------
+    setup      : tinyint   # experimental setup
+    lens       : tinyint   # lens e.g.: 10x, 20x. 25x, 60x
+    """
+
+
+class Scan(dj.Base):
+    _definition = """
+    demo1.Scan (manual)   # a two-photon imaging session
+    -> demo1.Session
+    scan_id : tinyint  # two-photon session within this experiment
     ----
     setup      : tinyint   # experimental setup
     lens       : tinyint   # lens e.g.: 10x, 20x. 25x, 60x
     """
-class EphysSetup(dj.Base):
-    _table_def = """
-    demo1.EphysSetup (manual) # Ephys setup
-    setup_id    : tinyint # unique seutp id
-    """
 
-class EphysExperiment(dj.Base):
-    _table_def = """
-    demo1.EphysExperiment (manual) # Ephys experiment
-    -> demo1.Subject
-    -> demo1.EphysSetup
-    """

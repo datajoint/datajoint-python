@@ -72,7 +72,7 @@ class Base(_Relational):
 
 
         class Subjects(dj.Base):
-            _table_def = '''
+            _definition = '''
             test1.Subjects (manual)                                    # Basic subject info
 
             subject_id            : int                                # unique subject id
@@ -93,7 +93,7 @@ class Base(_Relational):
             self.class_name = class_name
             self.conn = conn
             self.dbname = dbname
-            self._table_def = table_def
+            self._definition = table_def
             # register with a fake module, enclosed in back quotes
 
             if dbname not in self.conn.db_to_mod:
@@ -126,10 +126,10 @@ class Base(_Relational):
                 raise DataJointError(
                     'Module {} is not bound to a database. See datajoint.connection.bind'.format(self.__module__))
 
-            if hasattr(self, '_table_def'):
-                self._table_def = self._table_def
+            if hasattr(self, '_definition'):
+                self._definition = self._definition
             else:
-                self._table_def = None
+                self._definition = None
 
     # todo: do we support records and named tuples for tup?
     def insert(self, tup, ignore_errors=False, replace=False):
@@ -421,7 +421,7 @@ class Base(_Relational):
         """
         Declares the table in the data base if no table in the database matches this object.
         """
-        if not self._table_def:
+        if not self._definition:
             raise DataJointError('Table declaration is missing!')
         table_info, parents, referenced, fieldDefs, indexDefs = self._parse_declaration()
         defined_name = table_info['module'] + '.' + table_info['className']
@@ -515,7 +515,7 @@ class Base(_Relational):
         referenced = []
         index_defs = []
         field_defs = []
-        declaration = re.split(r'\s*\n\s*', self._table_def.strip())
+        declaration = re.split(r'\s*\n\s*', self._definition.strip())
 
         # remove comment lines
         declaration = [x for x in declaration if not x.startswith('#')]

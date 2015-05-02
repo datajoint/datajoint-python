@@ -16,7 +16,6 @@ class Fetch:
     """
     Fetch defines callable objects that fetch data from a relation
     """
-
     def __init__(self, relational):
         self.rel = relational
         self._orderBy = None
