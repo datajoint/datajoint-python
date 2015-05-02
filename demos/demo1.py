@@ -12,8 +12,6 @@ print("Welcome to the database 'demo1'")
 conn = dj.conn()   # connect to database; conn must be defined in module namespace
 conn.bind(module=__name__, dbname='dj_test')  # bind this module to the database
 
-
-
 class Subject(dj.Base):
     _table_def = """
     demo1.Subject (manual)     # Basic subject info
