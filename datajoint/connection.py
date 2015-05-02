@@ -140,11 +140,11 @@ class Connection:
             self.mod_to_db[module] = dbname
         elif count == 0:
             # Database doesn't exist, attempt to create
-            logger.warning("Database `{dbname}` could not be found. "
-                           "Attempting to create the database.".format(dbname=dbname))
+            logger.info("Database `{dbname}` could not be found. "
+                        "Attempting to create the database.".format(dbname=dbname))
             try:
-                cur = self.query("CREATE DATABASE `{dbname}`".format(dbname=dbname))
-                logger.warning('Created database `{dbname}`.'.format(dbname=dbname))
+                self.query("CREATE DATABASE `{dbname}`".format(dbname=dbname))
+                logger.info('Created database `{dbname}`.'.format(dbname=dbname))
                 self.db_to_mod[dbname] = module
                 self.mod_to_db[module] = dbname
             except pymysql.OperationalError:

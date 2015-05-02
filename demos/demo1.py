@@ -46,7 +46,7 @@ class Session(dj.Base):
     session_id    : tinyint  # two-photon session within this experiment
     -----------
     setup      : tinyint   # experimental setup
-    lens       : tinyint   # lens e.g.: 10x, 20x. 25x, 60x
+    lens       : tinyint   # lens e.g.: 10x, 20x, 25x, 60x
     """
 
 
@@ -56,7 +56,7 @@ class Scan(dj.Base):
     -> demo1.Session
     scan_id : tinyint  # two-photon session within this experiment
     ----
-    setup      : tinyint   # experimental setup
-    lens       : tinyint   # lens e.g.: 10x, 20x. 25x, 60x
+    depth  :   float    #  depth from surface
+    wavelength : smallint  # (nm)  laser wavelength
+    mwatts: numeric(4,1)  # (mW) laser power to brain
     """
-
