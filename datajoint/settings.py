@@ -8,9 +8,21 @@ import pprint
 __author__ = 'eywalker'
 import logging
 import collections
+from enum import Enum
 
 
 validators = collections.defaultdict(lambda: lambda value: True)
+
+Role = Enum('Role', 'manual lookup imported computed job')
+role_to_prefix = {
+    Role.manual: '',
+    Role.lookup: '#',
+    Role.imported: '_',
+    Role.computed: '__',
+    Role.job: '~'
+}
+prefix_to_role = dict(zip(role_to_prefix.values(), role_to_prefix.keys()))
+
 
 default = {
     'database.host': 'localhost',

@@ -63,11 +63,9 @@ class Scan(dj.Base):
     mwatts: numeric(4,1)  # (mW) laser power to brain
     """
 
+
 class ScanInfo(dj.Base, dj.AutoPopulate):
-    definition = """
-
-    """
-
+    definition = None
     pop_rel = Session
 
     def make_tuples(self, key):

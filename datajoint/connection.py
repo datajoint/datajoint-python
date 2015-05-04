@@ -3,7 +3,7 @@ import re
 from .utils import to_camel_case
 from . import DataJointError
 from .heading import Heading
-from .base import prefix_to_role
+from .settings import prefix_to_role
 import logging
 from .erd import DBConnGraph
 from . import config
@@ -22,7 +22,7 @@ def conn_container():
     """
     _connObj = None  # persistent connection object used by dj.conn()
 
-    def conn(host=None, user=None, passwd=None, initFun=None, reset=False):
+    def conn_function(host=None, user=None, passwd=None, init_fun=None, reset=False):
         """
         Manage a persistent connection object.
         This is one of several ways to configure and access a datajoint connection.
@@ -35,10 +35,10 @@ def conn_container():
             host = host if host is not None else config['database.host']
             user = user if user is not None else config['database.user']
             passwd = passwd if passwd is not None else config['database.password']
-            initFun = initFun if initFun is not None else config['connection.init_function']
-            _connObj = Connection(host, user, passwd, initFun)
+            init_fun = init_fun if init_fun is not None else config['connection.init_function']
+            _connObj = Connection(host, user, passwd, init_fun)
         return _connObj
-    return conn
+    return conn_function
 
 # The function conn is used by others to obtain the package wide persistent connection object
 conn = conn_container()
@@ -50,14 +50,14 @@ class Connection:
     It also catalogues modules, schemas, tables, and their dependencies (foreign keys)
     """
 
-    def __init__(self, host, user, passwd, initFun=None):
+    def __init__(self, host, user, passwd, init_fun=None):
         if ':' in host:
             host, port = host.split(':')
             port = int(port)
         else:
             port = config['database.port']
         self.conn_info = dict(host=host, port=port, user=user, passwd=passwd)
-        self._conn = pymysql.connect(init_command=initFun, **self.conn_info)
+        self._conn = pymysql.connect(init_command=init_fun, **self.conn_info)
         # TODO Do something if connection cannot be established
         if self.is_connected:
             print("Connected", user + '@' + host + ':' + str(port))
@@ -221,7 +221,8 @@ class Connection:
             self.referenced[full_table_name] = []
 
             for m in re.finditer(ptrn, table_def["Create Table"], re.X):  # iterate through foreign key statements
-                assert m.group('attr1') == m.group('attr2'), 'Foreign keys must link identically named attributes'
+                assert m.group('attr1') == m.group('attr2'), \
+                    'Foreign keys must link identically named attributes'
                 attrs = m.group('attr1')
                 attrs = re.split(r',\s+', re.sub(r'`(.*?)`', r'\1', attrs))  # remove ` around attrs and split into list
                 pk = self.headings[dbname][tabName].primary_key
@@ -264,14 +265,14 @@ class Connection:
 
     def children_of(self, parent_table):
         """
-        Returnis a list of tables for which parentTable is a parent (primary foreign key)
+        Returns a list of tables for which parent_table is a parent (primary foreign key)
         """
         return [child_table for child_table, parents in self.parents.items() if parent_table in parents]
 
     def referenced_by(self, referencing_table):
         """
         Returns a list of tables that are referenced by non-primary foreign key
-        by the referencingTable.
+        by the referencing_table.
         """
         return self.referenced.get(referencing_table, []).copy()
 

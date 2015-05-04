@@ -1,14 +1,13 @@
 import logging
 import os
 
-__author__ = "Dimitri Yatsenko, Edgar Walker, and Fabian Sinz   at Baylor College of Medicine"
+__author__ = "Dimitri Yatsenko, Edgar Walker, and Fabian Sinz at Baylor College of Medicine"
 __version__ = "0.2"
 __all__ = ['__author__', '__version__',
            'Connection', 'Heading', 'Base', 'Not',
-           'AutoPopulate', 'TaskQueue', 'conn', 'DataJointError', 'blob']
+           'AutoPopulate', 'conn', 'DataJointError', 'blob']
 
 
-# ----- define datajoint error before the import hierarchy is flattened --------
 class DataJointError(Exception):
     """
     Base class for errors specific to DataJoint internal operation.
@@ -39,6 +38,3 @@ from .base import Base
 from .autopopulate import AutoPopulate
 from . import blob
 from .relational import Not
-
-
-

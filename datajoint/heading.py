@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Aug  4 01:29:51 2014
-
-@author: dimitri, eywalker
-"""
 
 import re
 from collections import OrderedDict, namedtuple

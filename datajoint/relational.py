@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
 """
-Created on Thu Aug  7 17:00:02 2014
+classes for relational algebra
+"""
 
-@author: dimitri, eywalker
-"""
 import numpy as np
 import abc
 from copy import copy
@@ -43,17 +41,46 @@ class Relation(metaclass=abc.ABCMeta):
         """
         return Join(self, other)
 
-    def pro(self, select=None, rename=None, expand=None, aggregate=None):
+    def __mod__(self, attribute_list):
         """
-        relational operators project, rename, expand, and aggregate. Primary key attributes are always included unless
-        renamed.
-        :param select: list of attributes to project; '*' stands for all attributes.
-        :param rename:  dictionary of renamed attributes
-        :param expand:  dictionary of computed attributes, including summary operators on the aggregated relation
-        :param aggregate: a relation for which summary computations can be performed in expand
-        :return: projected Relation object
+        relational projection operator.
+        :param attribute_list: list of attribute specifications.
+        The attribute specifications are strings in following forms:
+        'name' - specific attribute
+        'name->new_name'  - rename attribute.  The old attribute is kept only if specifically included.
+        'sql_expression->new_name' - extend attribute, i.e. a new computed attribute.
+        :return: a new relation with specified heading
         """
-        return Projection(self, select, rename, expand, aggregate)
+        self.project(attribute_list)
+
+    def project(self, *selection, **aliases):
+        """
+        Relational projection operator.
+        :param attributes: a list of attribute names to be included in the result.
+        :param renames: a dict of attributes to be renamed
+        :return: a new relation with selected fields
+        Primary key attributes are always selected and cannot be excluded.
+        Therefore obj.project() produces a relation with only the primary key attributes.
+        If selection includes the string '*', all attributes are selected.
+        Each attribute can only be used once in attributes or renames.  Therefore, the projected
+        relation cannot have more attributes than the original relation.
+        """
+        return self.aggregate(
+            group=selection.pop[0] if selection and isinstance(selection[0], Relation) else None,
+            *selection, **aliases)
+
+    def aggregate(self, group, *selection, **aliases):
+        """
+        Relational aggregation operator
+        :param grouped_relation:
+        :param extensions:
+        :return:
+        """
+        if group is not None and not isinstance(group, Relation):
+            raise DataJointError('The second argument of aggregate must be a relation')
+        # convert the string notation for aliases to
+
+        return Projection(group=group, *attriutes, **aliases)
 
     def __iand__(self, restriction):
         """
@@ -228,19 +255,15 @@ class Join(Relation):
 class Projection(Relation):
     alias_counter = 0
 
-    def __init__(self, relation, select, rename, expand, aggregate):
+    def __init__(self, relation, *attributes, **renames):
         """
-        See Relation.pro()
+        See Relation.project()
         """
-        if aggregate is not None and not isinstance(aggregate, Relation):
-            raise DataJointError('Relation join must receive two relations')
         self.conn = relation.conn
         self._relation = relation
-        self._select = select
-        self._rename = rename
-        self._expand = expand
-        self._aggregate = aggregate
-        
+        self._projection_attributes = attributes
+        self._renamed_attributes = renames
+
     @property 
     def sql(self):
         return self._rel.sql
