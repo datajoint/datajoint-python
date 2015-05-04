@@ -1,11 +1,5 @@
 import re
-# package-wide settings that control execution
-
-# setup root logger
 from . import DataJointError
-
-
-
 
 
 def to_camel_case(s):
@@ -24,7 +18,7 @@ def to_camel_case(s):
 
 def from_camel_case(s):
     """
-    Conver names in camel case into underscore
+    Convert names in camel case into underscore
     (_) separated names
 
     Example:
@@ -37,6 +31,7 @@ def from_camel_case(s):
         raise DataJointError('String cannot begin with a digit')
     if not re.match(r'^[a-zA-Z0-9]*$', s):
         raise DataJointError('String can only contain alphanumeric characters')
+
     def conv(matchobj):
         return ('_' if matchobj.groups()[0] else '') + matchobj.group(0).lower()
 

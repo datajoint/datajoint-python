@@ -6,6 +6,7 @@ Created on Tue Aug 26 17:42:52 2014
 """
 
 import datajoint as dj
+import os
 
 print("Welcome to the database 'demo1'")
 
@@ -13,11 +14,9 @@ conn = dj.conn()   # connect to database; conn must be defined in module namespa
 conn.bind(module=__name__, dbname='dj_test')  # bind this module to the database
 
 
-
 class Subject(dj.Base):
-    _table_def = """
+    definition = """
     demo1.Subject (manual)     # Basic subject info
-
     subject_id       : int     # internal subject id
     ---
     real_id                     :  varchar(40)    #  real-world name
@@ -28,41 +27,49 @@ class Subject(dj.Base):
     animal_notes=""             : varchar(4096)                 # strain, genetic manipulations, etc
     """
 
-class Exp2(dj.Base):
-    pass
 
 class Experiment(dj.Base):
-    _table_def = """
+    definition = """
     demo1.Experiment (manual)     # Basic subject info
-
     -> demo1.Subject
     experiment          : smallint   # experiment number for this subject
     ---
+    experiment_folder               : varchar(255) # folder path
     experiment_date                 : date        # experiment start date
     experiment_notes=""             : varchar(4096)
     experiment_ts=CURRENT_TIMESTAMP : timestamp   # automatic timestamp
     """
 
 
-class TwoPhotonSession(dj.Base):
-    _table_def = """
-    demo1.TwoPhotonSession (manual)   # a two-photon imaging session
-
+class Session(dj.Base):
+    definition = """
+    demo1.Session (manual)   # a two-photon imaging session
     -> demo1.Experiment
-    tp_session : tinyint  # two-photon session within this experiment
-    ----
+    session_id    : tinyint  # two-photon session within this experiment
+    -----------
     setup      : tinyint   # experimental setup
-    lens       : tinyint   # lens e.g.: 10x, 20x. 25x, 60x
-    """
-class EphysSetup(dj.Base):
-    _table_def = """
-    demo1.EphysSetup (manual) # Ephys setup
-    setup_id    : tinyint # unique seutp id
+    lens       : tinyint   # lens e.g.: 10x, 20x, 25x, 60x
     """
 
-class EphysExperiment(dj.Base):
-    _table_def = """
-    demo1.EphysExperiment (manual) # Ephys experiment
-    -> demo1.Subject
-    -> demo1.EphysSetup
+
+class Scan(dj.Base):
+    definition = """
+    demo1.Scan (manual)   # a two-photon imaging session
+    -> demo1.Session
+    scan_id : tinyint  # two-photon session within this experiment
+    ----
+    depth  :   float    #  depth from surface
+    wavelength : smallint  # (nm)  laser wavelength
+    mwatts: numeric(4,1)  # (mW) laser power to brain
     """
+
+
+class ScanInfo(dj.Base, dj.AutoPopulate):
+    definition = None
+    pop_rel = Session
+
+    def make_tuples(self, key):
+        info = (Session()*Scan() & key).pro('experiment_folder').fetch()
+        filename = os.path.join(info.experiment_folder, 'scan_%03', )
+
+

@@ -8,9 +8,21 @@ import pprint
 __author__ = 'eywalker'
 import logging
 import collections
+from enum import Enum
 
 
 validators = collections.defaultdict(lambda: lambda value: True)
+
+Role = Enum('Role', 'manual lookup imported computed job')
+role_to_prefix = {
+    Role.manual: '',
+    Role.lookup: '#',
+    Role.imported: '_',
+    Role.computed: '__',
+    Role.job: '~'
+}
+prefix_to_role = dict(zip(role_to_prefix.values(), role_to_prefix.keys()))
+
 
 default = {
     'database.host': 'localhost',
@@ -24,6 +36,7 @@ default = {
     'config.varname': 'DJ_LOCAL_CONF'
 }
 
+
 class Config(collections.MutableMapping):
     """
     Stores datajoint settings. Behaves like a dictionary, but applies validator functions
@@ -31,7 +44,6 @@ class Config(collections.MutableMapping):
 
     The default parameters are stored in datajoint.settings.default . If a local config file
     exists, the settings specified in this file override the default settings.
-
     """
 
     def __init__(self, *args, **kwargs):

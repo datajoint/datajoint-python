@@ -1,54 +1,48 @@
-from .relational import _Relational
+from .relational import Relation
+from . import DataJointError
 import pprint
 import abc
 
 #noinspection PyExceptionInherit,PyCallingNonCallable
+
+
 class AutoPopulate(metaclass=abc.ABCMeta):
     """
-    Class datajoint.AutoPopulate is a mixin that adds the method populate() to a dj.Relvar class.
-    Auto-populated relvars must inherit from both datajoint.Relvar and datajoint.AutoPopulate,
-    must define the property popRel, and must define the callback method makeTuples.
+    AutoPopulate is a mixin class that adds the method populate() to a Base class.
+    Auto-populated relations must inherit from both Base and AutoPopulate,
+    must define the property pop_rel, and must define the callback method make_tuples.
     """
 
     @abc.abstractproperty
-    def popRel(self):
+    def pop_rel(self):
         """
-        Derived classes must implement the read-only property popRel (populate relation) which is the relational
-        expression (a dj.Relvar object) that defines how keys are generated for the populate call.
+        Derived classes must implement the read-only property pop_rel (populate relation) which is the relational
+        expression (a Relation object) that defines how keys are generated for the populate call.
         """
         pass
 
-    
     @abc.abstractmethod
-    def makeTuples(self, key):
+    def make_tuples(self, key):
         """
-        Derived classes must implement methods makeTuples that fetches data from parent tables, restricting by
+        Derived classes must implement method make_tuples that fetches data from parent tables, restricting by
         the given key, computes dependent attributes, and inserts the new tuples into self.
         """
         pass
 
-
-    def populate(self, catchErrors=False, reserveJobs=False, restrict=None):
+    def populate(self, catch_errors=False, reserve_jobs=False, restrict=None):
         """
-        rel.populate() will call rel.makeTuples(key) for every primary key in self.popRel
+        rel.populate() will call rel.make_tuples(key) for every primary key in self.pop_rel
         for which there is not already a tuple in rel.
         """
-
+        if not isinstance(self.pop_rel, Relation):
+            raise DataJointError('')
         self.conn.cancel_transaction()
 
-        # enumerate unpopulated keys
-        unpopulated = self.popRel
-        if ~isinstance(unpopulated, _Relational):
-            unpopulated = unpopulated()   # instantiate
-            
+        unpopulated = self.pop_rel - self
         if not unpopulated.count:
-            print('Nothing to populate')
-        else:
-            unpopulated = unpopulated(*args, **kwargs) # - self   # TODO: implement antijoin
-
-            # execute
-            if catchErrors:
-                errKeys, errors = [], []
+            print('Nothing to populate', flush=True)   # TODO: use logging?
+            if catch_errors:
+                error_keys, errors = [], []
             for key in unpopulated.fetch():
                 self.conn.start_transaction()
                 n = self(key).count
@@ -57,17 +51,16 @@ class AutoPopulate(metaclass=abc.ABCMeta):
                 else:
                     print('Populating:')
                     pprint.pprint(key)
-
                     try:
-                        self.makeTuples(key)
+                        self.make_tuples(key)
                     except Exception as e:
                         self.conn.cancel_transaction()
-                        if not catchErrors:
+                        if not catch_errors:
                             raise
                         print(e)
                         errors += [e]
-                        errKeys+= [key]
+                        error_keys += [key]
                     else:
                         self.conn.commit_transaction()
-        if catchErrors:
-            return errors, errKeys
+        if catch_errors:
+            return errors, error_keys

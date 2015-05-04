@@ -14,6 +14,7 @@ from . import DataJointError
 
 logger = logging.getLogger(__name__)
 
+
 class RelGraph(DiGraph):
     """
     Represents relations between tables and databases
