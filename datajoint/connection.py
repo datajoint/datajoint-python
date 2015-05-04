@@ -2,13 +2,9 @@ import pymysql
 import re
 from .utils import to_camel_case
 from . import DataJointError
-import os
 from .heading import Heading
 from .base import prefix_to_role
 import logging
-import networkx as nx
-from networkx import pygraphviz_layout
-import matplotlib.pyplot as plt
 from .erd import DBConnGraph
 from . import config
 
@@ -44,10 +40,8 @@ def conn_container():
         return _connObj
     return conn
 
-
 # The function conn is used by others to obtain the package wide persistent connection object
 conn = conn_container()
-
 
 
 class Connection:

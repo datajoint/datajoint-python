@@ -8,25 +8,22 @@ import numpy as np
 import abc
 from copy import copy
 from datajoint import DataJointError
-from .fetch import Fetch
+import logging
+
+logger = logging.getLogger(__name__)
 
 
-class _Relational(metaclass=abc.ABCMeta):
+class Relation(metaclass=abc.ABCMeta):
     """
-    Relational implements relational operators.
-    Relational objects reference other relational objects linked by operators.
-    The leaves of this tree of objects are base relvars.    
-    When fetching data from the database, this tree of objects is compiled into
-    and SQL expression. 
-    It is a mixin class that provides relational operators, iteration, and 
-    fetch capability.
-    Relational operators are: restrict, pro, aggr, and join. 
+    Relation implements relational operators.
+    Relation objects reference other relation objects linked by operators.
+    The leaves of this tree of objects are base relations.
+    When fetching data from the database, this tree of objects is compiled into an SQL expression.
+    It is a mixin class that provides relational operators, iteration, and fetch capability.
+    Relation operators are: restrict, pro, and join.
     """    
     _restrictions = []
-    _limit = None
-    _offset = 0
-    _order_by = []
-    
+
     @abc.abstractproperty
     def sql(self):
         return NotImplemented
@@ -34,6 +31,10 @@ class _Relational(metaclass=abc.ABCMeta):
     @abc.abstractproperty
     def heading(self):
         return NotImplemented
+
+    @property
+    def restrictions(self):
+        return self._restrictions
             
     def __mul__(self, other):
         """
@@ -41,11 +42,17 @@ class _Relational(metaclass=abc.ABCMeta):
         """
         return Join(self, other)
 
-    def pro(self, *arg, _sub=None, **kwarg):
+    def pro(self, select=None, rename=None, expand=None, aggregate=None):
         """
-        relational projection abd aggregation
+        relational operators project, rename, expand, and aggregate. Primary key attributes are always included unless
+        renamed.
+        :param select: list of attributes to project; '*' stands for all attributes.
+        :param rename:  dictionary of renamed attributes
+        :param expand:  dictionary of computed attributes, including summary operators on the aggregated relation
+        :param aggregate: a relation for which summary computations can be performed in expand
+        :return: projected Relation object
         """
-        return Projection(self, _sub=_sub, *arg, **kwarg)
+        return Projection(self, select, rename, expand, aggregate)
 
     def __iand__(self, restriction):
         """
@@ -84,11 +91,40 @@ class _Relational(metaclass=abc.ABCMeta):
     def count(self):
         sql = 'SELECT count(*) FROM ' + self.sql + self._where_clause
         cur = self.conn.query(sql)
-        return cur.fetchone()[0] #todo: should we assert that this only returns one result?
+        return cur.fetchone()[0]
 
-    @property
-    def fetch(self):
-        return Fetch(self)
+    def __call__(self, offset=0, limit=None, order_by=None, descending=False):
+        """
+        fetches the relation from the database table into an np.array and unpacks blob attributes.
+        :param offset: the number of tuples to skip in the returned result
+        :param limit: the maximum number of tuples to return
+        :param order_by: the list of attributes to order the results. No ordering should be assumed if order_by=None.
+        :param descending: the list of attributes to order the results
+        :return: the contents of the relation in the form of a structured numpy.array
+        """
+        cur = self.cursor(offset, limit, order_by, descending)
+        ret = np.array(list(cur), dtype=self.heading.asdtype)
+        for f in self.heading.blobs:
+            for i in range(len(ret)):
+                ret[i][f] = unpack(ret[i][f])
+        return ret
+
+    def cursor(self, offset=0, limit=None, order_by=None, descending=False):
+        """
+        :param attributes: projection attributes
+        :param renames: rename attributes
+        :return: cursor to the query
+        """
+        rel = self.rel.pro(*attributes, **renames)
+        sql = 'SELECT ' + rel.heading.asSQL + ' FROM ' + rel.sql
+        if self._orderBy:
+            sql += ' ORDER BY ' + ', '.join(self._orderBy)
+        if self._limit:
+            sql += ' LIMIT %d' % self._limit
+            if self._offset:
+                sql += ' OFFSET %d ' % self._offset
+        logger.debug(sql)
+        return self.rel.conn.query(sql)
 
     def __repr__(self):
         header = self.heading.non_blobs
@@ -96,7 +132,7 @@ class _Relational(metaclass=abc.ABCMeta):
         width = 12
         template = '%%-%d.%ds' % (width, width)
         ret_val = ' '.join([template % column for column in header]) + '\n'
-        ret_val += ' '.join(['+' + '-' * (width - 2) + '+' for column in header]) + '\n'
+        ret_val += ' '.join(['+' + '-' * (width - 2) + '+' for _ in header]) + '\n'
 
         tuples = self.fetch.limit(limit)(*header)
         for tup in tuples:
@@ -115,9 +151,8 @@ class _Relational(metaclass=abc.ABCMeta):
         dtype = h.asdtype
         q = cur.fetchone()
         while q:
-            yield np.array([q,],dtype=dtype) #todo: why convert that into an array?
+            yield np.array([q, ], dtype=dtype) #todo: why convert that into an array?
             q = cur.fetchone()
-
 
     @property
     def _where_clause(self):
@@ -126,26 +161,26 @@ class _Relational(metaclass=abc.ABCMeta):
         """
         if not self._restrictions:
             return ''
-
+        
         def make_condition(arg):
-            if isinstance(arg,dict):
-                conds = ['`%s`=%s' % (k, repr(v)) for k, v in arg.items()]
-            elif isinstance(arg,np.void):
-                conds = ['`%s`=%s' % (k, arg[k]) for k in arg.dtype.fields]
+            if isinstance(arg, dict):
+                conditions = ['`%s`=%s' % (k, repr(v)) for k, v in arg.items()]
+            elif isinstance(arg, np.void):
+                conditions = ['`%s`=%s' % (k, arg[k]) for k in arg.dtype.fields]
             else:
                 raise DataJointError('invalid restriction type')
-            return ' AND '.join(conds)
+            return ' AND '.join(conditions)
 
         condition_string = []
         for r in self._restrictions:
             negate = isinstance(r, Not)
             if negate:
-                r = r._restriction
+                r = r.restrictions
             if isinstance(r, dict) or isinstance(r, np.void):
                 r = make_condition(r)
             elif isinstance(r, np.ndarray) or isinstance(r, list):
                 r = '('+') OR ('.join([make_condition(q) for q in r])+')'
-            elif isinstance(r, _Relational):
+            elif isinstance(r, Relation):
                 common_attributes = ','.join([q for q in self.heading.names if r.heading.names])  
                 r = '(%s) in (SELECT %s FROM %s)' % (common_attributes, common_attributes, r.sql)
                 
@@ -166,11 +201,11 @@ class Not:
         self._restriction = restriction
 
 
-class Join(_Relational):
+class Join(Relation):
     alias_counter = 0
 
     def __init__(self, rel1, rel2):
-        if not isinstance(rel2, _Relational):
+        if not isinstance(rel2, Relation):
             raise DataJointError('relvars can only be joined with other relvars')
         if rel1.conn is not rel2.conn:
             raise DataJointError('Cannot join relations with different database connections')
@@ -188,17 +223,21 @@ class Join(_Relational):
         return '%s NATURAL JOIN %s as `j%x`' % (self._rel1.sql, self._rel2.sql, Join.alias_counter)
 
 
-class Projection(_Relational):
+class Projection(Relation):
     alias_counter = 0
 
-    def __init__(self, rel, *arg, _sub, **kwarg):
-        if _sub and isinstance(_sub, _Relational):
-            raise DataJointError('Relational join must receive two relations')
-        self.conn = rel.conn
-        self._rel = rel
-        self._sub = _sub
-        self._selection = arg
-        self._renames = kwarg
+    def __init__(self, relation, select, rename, expand, aggregate):
+        """
+        See Relation.pro()
+        """
+        if aggregate is not None and not isinstance(aggregate, Relation):
+            raise DataJointError('Relation join must receive two relations')
+        self.conn = relation.conn
+        self._relation = relation
+        self._select = select
+        self._rename = rename
+        self._expand = expand
+        self._aggregate = aggregate
         
     @property 
     def sql(self):
@@ -209,7 +248,7 @@ class Projection(_Relational):
         return self._rel.heading.pro(*self._selection, **self._renames)
 
 
-class Subquery(_Relational):
+class Subquery(Relation):
     alias_counter = 0
     
     def __init__(self, rel):

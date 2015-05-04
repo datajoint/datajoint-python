@@ -60,3 +60,6 @@ class Scan(dj.Base):
     wavelength : smallint  # (nm)  laser wavelength
     mwatts: numeric(4,1)  # (mW) laser power to brain
     """
+
+
+class Alignment(dj.Base, )
