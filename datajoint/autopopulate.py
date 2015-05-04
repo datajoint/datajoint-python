@@ -51,7 +51,6 @@ class AutoPopulate(metaclass=abc.ABCMeta):
                 else:
                     print('Populating:')
                     pprint.pprint(key)
-
                     try:
                         self.make_tuples(key)
                     except Exception as e:

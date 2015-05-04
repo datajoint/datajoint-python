@@ -7,14 +7,13 @@ __all__ = ['__author__', '__version__',
            'Connection', 'Heading', 'Base', 'Not',
            'AutoPopulate', 'TaskQueue', 'conn', 'DataJointError', 'blob']
 
-# ------------ define datajoint error before the import hierarchy is flattened ------------
+
+# ----- define datajoint error before the import hierarchy is flattened --------
 class DataJointError(Exception):
     """
-    Base class for errors specific to DataJoint internal
-    operation.
+    Base class for errors specific to DataJoint internal operation.
     """
     pass
-
 
 
 # ----------- loads local configuration from file ----------------
@@ -37,7 +36,6 @@ except FileNotFoundError:
 # ------------- flatten import hierarchy -------------------------
 from .connection import conn, Connection
 from .base import Base
-from .task import TaskQueue
 from .autopopulate import AutoPopulate
 from . import blob
 from .relational import Not

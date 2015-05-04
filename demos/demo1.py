@@ -6,6 +6,7 @@ Created on Tue Aug 26 17:42:52 2014
 """
 
 import datajoint as dj
+import os
 
 print("Welcome to the database 'demo1'")
 
@@ -14,7 +15,7 @@ conn.bind(module=__name__, dbname='dj_test')  # bind this module to the database
 
 
 class Subject(dj.Base):
-    _definition = """
+    definition = """
     demo1.Subject (manual)     # Basic subject info
     subject_id       : int     # internal subject id
     ---
@@ -28,11 +29,12 @@ class Subject(dj.Base):
 
 
 class Experiment(dj.Base):
-    _definition = """
+    definition = """
     demo1.Experiment (manual)     # Basic subject info
     -> demo1.Subject
     experiment          : smallint   # experiment number for this subject
     ---
+    experiment_folder               : varchar(255) # folder path
     experiment_date                 : date        # experiment start date
     experiment_notes=""             : varchar(4096)
     experiment_ts=CURRENT_TIMESTAMP : timestamp   # automatic timestamp
@@ -40,7 +42,7 @@ class Experiment(dj.Base):
 
 
 class Session(dj.Base):
-    _definition = """
+    definition = """
     demo1.Session (manual)   # a two-photon imaging session
     -> demo1.Experiment
     session_id    : tinyint  # two-photon session within this experiment
@@ -51,7 +53,7 @@ class Session(dj.Base):
 
 
 class Scan(dj.Base):
-    _definition = """
+    definition = """
     demo1.Scan (manual)   # a two-photon imaging session
     -> demo1.Session
     scan_id : tinyint  # two-photon session within this experiment
@@ -61,5 +63,15 @@ class Scan(dj.Base):
     mwatts: numeric(4,1)  # (mW) laser power to brain
     """
 
+class ScanInfo(dj.Base, dj.AutoPopulate):
+    definition = """
 
-class Alignment(dj.Base, )
+    """
+
+    pop_rel = Session
+
+    def make_tuples(self, key):
+        info = (Session()*Scan() & key).pro('experiment_folder').fetch()
+        filename = os.path.join(info.experiment_folder, 'scan_%03', )
+
+

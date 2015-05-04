@@ -60,16 +60,16 @@ class Heading:
             for k, v in self.attributes.items()])
 
     @property
-    def asdtype(self):
+    def as_dtype(self):
         """
         represent the heading as a numpy dtype
         """
         return np.dtype(dict(
             names=self.names,
-            formats=[v.dtype for k,v in self.attributes.items()]))
+            formats=[v.dtype for k, v in self.attributes.items()]))
 
     @property
-    def as_sql(self):   # TODO: replace with __str__?
+    def as_sql(self):
         """
         represent heading as SQL field list
         """
@@ -88,13 +88,13 @@ class Heading:
         return self.attributes.items()
 
     @classmethod
-    def init_from_database(cls, conn, dbname, tabname):
+    def init_from_database(cls, conn, dbname, table_name):
         """
         initialize heading from a database table
         """
         cur = conn.query(
-            'SHOW FULL COLUMNS FROM `{tabname}` IN `{dbname}`'.format(
-            tabname=tabname, dbname=dbname), asDict=True)
+            'SHOW FULL COLUMNS FROM `{table_name}` IN `{dbname}`'.format(
+            table_name=table_name, dbname=dbname), asDict=True)
         attributes = cur.fetchall()
 
         rename_map = {
@@ -127,7 +127,7 @@ class Heading:
             ('int', True): np.uint32,
             ('bigint', False): np.int64,
             ('bigint', True): np.uint64
-            # TODO: include decimal and numeric datatypes
+            # TODO: include types DECIMAL and NUMERIC
             }
 
         # additional attribute properties
@@ -144,22 +144,22 @@ class Heading:
 
             attr['computation'] = None
             if not (attr['numeric'] or attr['string'] or attr['is_blob']):
-                raise DataJointError('Unsupported field type {field} in `{dbname}`.`{tabname}`'.format(
-                    field=attr['type'], dbname=dbname, tabname=tabname))
+                raise DataJointError('Unsupported field type {field} in `{dbname}`.`{table_name}`'.format(
+                    field=attr['type'], dbname=dbname, table_name=table_name))
             attr.pop('Extra')
 
             # fill out the dtype. All floats and non-nullable integers are turned into specific dtypes
             attr['dtype'] = object
             if attr['numeric']:
-                isInteger = bool(re.match(r'(tiny|small|medium|big)?int', attr['type']))
-                isFloat = bool(re.match(r'(double|float)',attr['type']))
-                if isInteger and not attr['nullable'] or isFloat:
-                    isUnsigned = bool(re.match('\sunsigned', attr['type'], flags=re.IGNORECASE))
+                is_integer = bool(re.match(r'(tiny|small|medium|big)?int', attr['type']))
+                is_float = bool(re.match(r'(double|float)', attr['type']))
+                if is_integer and not attr['nullable'] or is_float:
+                    is_unsigned = bool(re.match('\sunsigned', attr['type'], flags=re.IGNORECASE))
                     t = attr['type']
                     t = re.sub(r'\(.*\)', '', t)    # remove parentheses
                     t = re.sub(r' unsigned$', '', t)   # remove unsigned
-                    assert (t, isUnsigned) in numeric_types, 'dtype not found for type %s' % t
-                    attr['dtype'] = numeric_types[(t, isUnsigned)]
+                    assert (t, is_unsigned) in numeric_types, 'dtype not found for type %s' % t
+                    attr['dtype'] = numeric_types[(t, is_unsigned)]
 
         return cls(attributes)
 
@@ -224,4 +224,3 @@ class Heading:
         Remove computations.  To be done after computations have been resolved in a subquery
         """
         return Heading([dict(v._asdict(), computation=None) for v in self.attributes.values()])
-
