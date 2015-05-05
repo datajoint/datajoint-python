@@ -5,6 +5,7 @@ from enum import Enum
 from . import DataJointError
 from .table import Table
 import logging
+from .declare import declare
 
 logger = logging.getLogger(__name__)
 
@@ -42,16 +43,19 @@ class Base(Table, metaclass=abc.ABCMeta):
         self.class_name = self.__class__.__name__
         module = self.__module__
         mod_obj = importlib.import_module(module)
+        use_package = False
         try:
             conn = mod_obj.conn
         except AttributeError:
             try:
+                # check if database bound at the package level instead
                 pkg_obj = importlib.import_module(mod_obj.__package__)
                 conn = pkg_obj.conn
                 use_package = True
             except AttributeError:
                 raise DataJointError(
                     "Please define object 'conn' in '{}' or in its containing package.".format(self.__module__))
+        self.conn = conn
         try:
             if use_package:
                 pkg_name = '.'.join(module.split('.')[:-1])
@@ -61,7 +65,8 @@ class Base(Table, metaclass=abc.ABCMeta):
         except KeyError:
             raise DataJointError(
                 'Module {} is not bound to a database. See datajoint.connection.bind'.format(self.__module__))
-        super().__init__(self, conn=conn, dbname=dbname, class_name=self.__class__.__name__)
+        declare(self.conn, self.definition, self.full_class_name)
+        super().__init__(conn=conn, dbname=dbname, class_name=self.__class__.__name__)
 
 
     @classmethod

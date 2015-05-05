@@ -65,9 +65,8 @@ class Relation(metaclass=abc.ABCMeta):
         Each attribute can only be used once in attributes or renames.  Therefore, the projected
         relation cannot have more attributes than the original relation.
         """
-        return self.aggregate(
-            group=selection.pop[0] if selection and isinstance(selection[0], Relation) else None,
-            *selection, **aliases)
+        group = selection.pop[0] if selection and isinstance(selection[0], Relation) else None
+        return self.aggregate(group, *selection, **aliases)
 
     def aggregate(self, group, *selection, **aliases):
         """
@@ -79,8 +78,9 @@ class Relation(metaclass=abc.ABCMeta):
         if group is not None and not isinstance(group, Relation):
             raise DataJointError('The second argument of aggregate must be a relation')
         # convert the string notation for aliases to
-
-        return Projection(group=group, *attriutes, **aliases)
+        # handling of the variable group is unclear here
+        # and thus ommitted
+        return Projection(self, *selection, **aliases)
 
     def __iand__(self, restriction):
         """
@@ -121,6 +121,9 @@ class Relation(metaclass=abc.ABCMeta):
         cur = self.conn.query(sql)
         return cur.fetchone()[0]
 
+    def fetch(self, *args, **kwargs):
+        return self(*args, **kwargs)
+
     def __call__(self, offset=0, limit=None, order_by=None, descending=False):
         """
         fetches the relation from the database table into an np.array and unpacks blob attributes.
@@ -131,7 +134,7 @@ class Relation(metaclass=abc.ABCMeta):
         :return: the contents of the relation in the form of a structured numpy.array
         """
         cur = self.cursor(offset, limit, order_by, descending)
-        ret = np.array(list(cur), dtype=self.heading.asdtype)
+        ret = np.array(list(cur), dtype=self.heading.as_dtype)
         for f in self.heading.blobs:
             for i in range(len(ret)):
                 ret[i][f] = unpack(ret[i][f])
@@ -160,12 +163,12 @@ class Relation(metaclass=abc.ABCMeta):
         return self.conn.query(sql)
 
     def __repr__(self):
-        limit = 13
+        limit = 13 #TODO: move some of these display settings into the config
         width = 12
         template = '%%-%d.%ds' % (width, width)
-        repr_string = ' '.join([template % column for column in header]) + '\n'
-        repr_string += ' '.join(['+' + '-' * (width - 2) + '+' for _ in header]) + '\n'
-        tuples = self.pro(*self.heading.non_blobs).fetch(limit=limit)
+        repr_string = ' '.join([template % column for column in self.heading]) + '\n'
+        repr_string += ' '.join(['+' + '-' * (width - 2) + '+' for _ in self.heading]) + '\n'
+        tuples = self.project(*self.heading.non_blobs).fetch(limit=limit)
         for tup in tuples:
             repr_string += ' '.join([template % column for column in tup]) + '\n'
         if self.count > limit:
@@ -177,7 +180,7 @@ class Relation(metaclass=abc.ABCMeta):
         """
         iterator  yields primary key tuples
         """
-        cur, h = self.pro().cursor()
+        cur, h = self.project().cursor()
         q = cur.fetchone()
         while q:
             yield np.array([q, ], dtype=h.asdtype)
@@ -266,11 +269,11 @@ class Projection(Relation):
 
     @property 
     def sql(self):
-        return self._rel.sql
+        return self._relation.sql
         
     @property
     def heading(self):
-        return self._rel.heading.pro(*self._selection, **self._renames)
+        return self._relation.heading.pro(*self._projection_attributes, **self._renamed_attributes)
 
 
 class Subquery(Relation):
