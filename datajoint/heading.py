@@ -81,6 +81,9 @@ class Heading:
     def items(self):
         return self.attributes.items()
 
+    def __iter__(self):
+        return iter(self.attributes)
+
     @classmethod
     def init_from_database(cls, conn, dbname, table_name):
         """

@@ -14,14 +14,15 @@ def declare(conn, definition, class_name):
     """
     Declares the table in the data base if no table in the database matches this object.
     """
-    table_info, parents, referenced, field_definitions, index_definitions = parse_declaration(definition)
+    table_info, parents, referenced, field_definitions, index_definitions = _parse_declaration(conn, definition)
     defined_name = table_info['module'] + '.' + table_info['className']
-    if not defined_name == class_name:
-        raise DataJointError('Table name {} does not match the declared'
-                             'name {}'.format(class_name, defined_name))
+    # TODO: clean up this mess... currently just ignoring the name used to define the table
+    #if not defined_name == class_name:
+    #    raise DataJointError('Table name {} does not match the declared'
+    #                         'name {}'.format(class_name, defined_name))
 
     # compile the CREATE TABLE statement
-    table_name = role_to_prefix[table_info['tier']] + from_camel_case(class_name)
+    table_name = role_to_prefix[table_info['tier']] + from_camel_case(defined_name)
     sql = 'CREATE TABLE `%s`.`%s` (\n' % (self.dbname, table_name)
 
     # add inherited primary key fields
@@ -88,7 +89,8 @@ def declare(conn, definition, class_name):
         sql[:-2], table_info['comment'])
 
     # make sure that the table does not alredy exist
-    self.conn.load_headings(self.dbname, force=True)
+    # TODO: there will be a problem with resolving the module here...
+    conn.load_headings(self.dbname, force=True)
     if not self.is_declared:
         # execute declaration
         logger.debug('\n<SQL>\n' + sql + '</SQL>\n\n')
@@ -96,7 +98,7 @@ def declare(conn, definition, class_name):
         self.conn.load_headings(self.dbname, force=True)
 
 
-def _parse_declaration(self):
+def _parse_declaration(conn, definition):
     """
     Parse declaration and create new SQL table accordingly.
     """
@@ -104,7 +106,7 @@ def _parse_declaration(self):
     referenced = []
     index_defs = []
     field_defs = []
-    declaration = re.split(r'\s*\n\s*', self.definition.strip())
+    declaration = re.split(r'\s*\n\s*', definition.strip())
 
     # remove comment lines
     declaration = [x for x in declaration if not x.startswith('#')]
@@ -205,11 +207,11 @@ def parse_attribute_definition(line, in_key=False):  # todo add docu for in_key
     assert (not re.match(r'^bigint', attr_info['type'], re.I) or not attr_info['nullable']), \
         'BIGINT attributes cannot be nullable in "%s"' % line
 
-    attr_info['isKey'] = in_key
-    attr_info['isAutoincrement'] = None
-    attr_info['isNumeric'] = None
-    attr_info['isString'] = None
-    attr_info['isBlob'] = None
+    attr_info['in_key'] = in_key
+    attr_info['autoincrement'] = None
+    attr_info['numeric'] = None
+    attr_info['string'] = None
+    attr_info['is_blob'] = None
     attr_info['computation'] = None
     attr_info['dtype'] = None
 
