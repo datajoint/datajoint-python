@@ -1,7 +1,6 @@
 import importlib
 import abc
 from types import ModuleType
-from enum import Enum
 from . import DataJointError
 from .table import Table
 import logging
@@ -28,7 +27,6 @@ class Base(Table, metaclass=abc.ABCMeta):
             real_id               : varchar(40)                        #  real-world name
             species = "mouse"     : enum('mouse', 'monkey', 'human')   # species
             '''
-
     """
 
     @abc.abstractproperty
@@ -67,7 +65,6 @@ class Base(Table, metaclass=abc.ABCMeta):
                 'Module {} is not bound to a database. See datajoint.connection.bind'.format(self.__module__))
         declare(self.conn, self.definition, self.full_class_name)
         super().__init__(conn=conn, dbname=dbname, class_name=self.__class__.__name__)
-
 
     @classmethod
     def get_module(cls, module_name):

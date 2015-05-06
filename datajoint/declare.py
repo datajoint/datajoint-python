@@ -44,8 +44,8 @@ def declare(conn, definition, class_name):
             raise DataJointError('Primary key {} cannot be nullable'.format(
                 field.name))
         if field.name in primary_key_fields:
-            raise DataJointError('Duplicate declaration of the primary key '
-                                 '{key}. Check to make sure that the key '
+            raise DataJointError('Duplicate attribute {key} in the primary key. '
+                                 'Check to make sure that the key '
                                  'is not declared already in referenced '
                                  'tables'.format(key=field.name))
         primary_key_fields.add(field.name)
@@ -165,11 +165,9 @@ def field_to_sql(field):
         # if some default specified
         if field.default:
             # enclose value in quotes (even numeric), except special SQL values
-            # or values already enclosed by the user
-            if field.default.upper() in mysql_constants or field.default[:1] in ["'", '"']:
-                default = '%s DEFAULT %s' % (default, field.default)
-            else:
-                default = '%s DEFAULT "%s"' % (default, field.default)
+            add_quotes = field.default.upper() not in mysql_constants \
+                and field.default[:1] not in ["'", '"']
+            default += ' DEFAULT ' + ('"%s"' if add_quotes else '%s') % field.default
 
     # TODO: escape instead! - same goes for Matlab side implementation
     assert not any((c in r'\"' for c in field.comment)), \

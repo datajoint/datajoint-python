@@ -4,6 +4,7 @@ classes for relational algebra
 
 import numpy as np
 import abc
+import re
 from copy import copy
 from datajoint import DataJointError
 from .blob import unpack
@@ -41,46 +42,49 @@ class Relation(metaclass=abc.ABCMeta):
         """
         return Join(self, other)
 
-    def __mod__(self, attribute_list):
+    def __mod__(self, attributes=None):
         """
-        relational projection operator.
-        :param attribute_list: list of attribute specifications.
-        The attribute specifications are strings in following forms:
-        'name' - specific attribute
-        'name->new_name'  - rename attribute.  The old attribute is kept only if specifically included.
-        'sql_expression->new_name' - extend attribute, i.e. a new computed attribute.
-        :return: a new relation with specified heading
+        relational projection operator.  See Relation.project
         """
-        self.project(attribute_list)
+        return self.project(*attributes)
 
-    def project(self, *selection, **aliases):
+    def project(self, *attributes, **aliases):
         """
         Relational projection operator.
         :param attributes: a list of attribute names to be included in the result.
-        :param renames: a dict of attributes to be renamed
         :return: a new relation with selected fields
         Primary key attributes are always selected and cannot be excluded.
         Therefore obj.project() produces a relation with only the primary key attributes.
-        If selection includes the string '*', all attributes are selected.
+        If attributes includes the string '*', all attributes are selected.
         Each attribute can only be used once in attributes or renames.  Therefore, the projected
         relation cannot have more attributes than the original relation.
         """
-        group = selection.pop[0] if selection and isinstance(selection[0], Relation) else None
-        return self.aggregate(group, *selection, **aliases)
+        # if the first attribute is a relation, it will be aggregated
+        group = attributes.pop[0] \
+            if attributes and isinstance(attributes[0], Relation) else None
+        return self.aggregate(group, *attributes, **aliases)
 
-    def aggregate(self, group, *selection, **aliases):
+    def aggregate(self, group, *attributes, **aliases):
         """
         Relational aggregation operator
-        :param grouped_relation:
+        :param group:  relation whose tuples can be used in aggregation operators
         :param extensions:
-        :return:
+        :return: a relation representing the aggregation/projection operator result
         """
         if group is not None and not isinstance(group, Relation):
-            raise DataJointError('The second argument of aggregate must be a relation')
-        # convert the string notation for aliases to
-        # handling of the variable group is unclear here
-        # and thus ommitted
-        return Projection(self, *selection, **aliases)
+            raise DataJointError('The second argument must be a relation or None')
+        alias_parser = re.compile(
+            '^\s*(?P<sql_expression>\S(.*\S)?)\s*->\s*(?P<alias>[a-z][a-z_0-9]*)\s*$')
+
+        # expand extended attributes in the form 'sql_expression -> new_attribute'
+        new_selection = []
+        for attribute in attributes:
+            alias_match = alias_parser.match(attribute)
+            if alias_match:
+                aliases.update(alias_match.groupdict())
+            else:
+                new_selection += attribute
+        return Projection(self, group, *new_selection, **aliases)
 
     def __iand__(self, restriction):
         """
@@ -121,10 +125,10 @@ class Relation(metaclass=abc.ABCMeta):
         cur = self.conn.query(sql)
         return cur.fetchone()[0]
 
-    def fetch(self, *args, **kwargs):
+    def __call__(self, *args, **kwargs):
         return self(*args, **kwargs)
 
-    def __call__(self, offset=0, limit=None, order_by=None, descending=False):
+    def fetch(self, offset=0, limit=None, order_by=None, descending=False):
         """
         fetches the relation from the database table into an np.array and unpacks blob attributes.
         :param offset: the number of tuples to skip in the returned result
@@ -180,7 +184,7 @@ class Relation(metaclass=abc.ABCMeta):
         """
         iterator  yields primary key tuples
         """
-        cur, h = self.project().cursor()
+        cur, h = self.project().cursor()   # project
         q = cur.fetchone()
         while q:
             yield np.array([q, ], dtype=h.asdtype)
