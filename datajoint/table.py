@@ -84,7 +84,7 @@ class Table(Relation):
         """
         Inserts an entire batch of entries. Additional keyword arguments are passed it insert.
 
-        :param iter: Must be an iterator that generates a sequence of valid arguments for insert. 
+        :param iter: Must be an iterator that generates a sequence of valid arguments for insert.
         """
         for row in iter:
             self.insert(row, **kwargs)
@@ -113,15 +113,23 @@ class Table(Relation):
         """
 
         if isinstance(tup, tuple) or isinstance(tup, list) or isinstance(tup, np.ndarray):
-            value_list = ','.join([repr(q) for q in tup])
+            value_list = ','.join([repr(val) if not name in self.heading.blobs else '%s'
+                                    for name, val in zip(self.heading.names, tup)])
+            args = tuple(pack(val) for name, val in zip(self.heading.names, tup) if name in self.heading.blobs)
             attribute_list = '`' + '`,`'.join(self.heading.names[0:len(tup)]) + '`'
+
         elif isinstance(tup, dict):
-            value_list = ','.join([repr(tup[q])
-                                   for q in self.heading.names if q in tup])
-            attribute_list = '`' + '`,`'.join([q for q in self.heading.names if q in tup]) + '`'
+            value_list = ','.join([repr(tup[name]) if not name in self.heading.blobs else '%s'
+                                    for name in self.heading.names if name in tup])
+            args = tuple(pack(tup[name]) for name in self.heading.names
+                                if (name in tup and name in self.heading.blobs) )
+            attribute_list = '`' + '`,`'.join([name for name in self.heading.names if name in tup]) + '`'
         elif isinstance(tup, np.void):
-            value_list = ','.join([repr(tup[q])
-                                   for q in self.heading.names if q in tup.dtype.fields])
+            value_list = ','.join([repr(tup[name]) if not name in self.heading.blobs else '%s'
+                                    for name in self.heading.names if name in tup.dtype.fields])
+
+            args = tuple(pack(tup[name]) for name in self.heading.names
+                                if (name in tup.dtype.fields and name in self.heading.blobs) )
             attribute_list = '`' + '`,`'.join([q for q in self.heading.names if q in tup.dtype.fields]) + '`'
         else:
             raise DataJointError('Datatype %s cannot be inserted' % type(tup))
@@ -133,9 +141,8 @@ class Table(Relation):
             sql = 'INSERT'
         sql += " INTO %s (%s) VALUES (%s)" % (self.full_table_name,
                                               attribute_list, value_list)
-
         logger.info(sql)
-        self.conn.query(sql)
+        self.conn.query(sql, args=args)
 
     def delete(self):  # TODO: (issues #14 and #15)
         pass
