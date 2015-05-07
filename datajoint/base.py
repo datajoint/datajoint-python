@@ -9,7 +9,6 @@ import re
 from .settings import Role, role_to_prefix
 from .utils import from_camel_case
 from .heading import Heading
-from .declare import declare
 
 logger = logging.getLogger(__name__)
 

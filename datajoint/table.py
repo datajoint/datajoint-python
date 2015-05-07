@@ -2,7 +2,6 @@ import numpy as np
 import logging
 from . import DataJointError
 from .relational import Relation
-from .declare import (declare, parse_attribute_definition)
 
 logger = logging.getLogger(__name__)
 
