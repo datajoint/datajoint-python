@@ -4,7 +4,7 @@ Settings for DataJoint.
 from . import DataJointError
 import json
 import pprint
-from django.utils.datastructures import SortedDict
+from collections import OrderedDict
 
 __author__ = 'eywalker'
 import logging
@@ -26,7 +26,7 @@ role_to_prefix = {
 }
 prefix_to_role = dict(zip(role_to_prefix.values(), role_to_prefix.keys()))
 
-default = SortedDict({
+default = OrderedDict({
     'database.host': 'localhost',
     'database.password': 'datajoint',
     'database.user': 'datajoint',
