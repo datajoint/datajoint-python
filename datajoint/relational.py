@@ -64,27 +64,28 @@ class Relation(metaclass=abc.ABCMeta):
             if attributes and isinstance(attributes[0], Relation) else None
         return self.aggregate(group, *attributes, **aliases)
 
-    def aggregate(self, group, *attributes, **aliases):
+    def aggregate(self, _group, *attributes, **aliases):
         """
         Relational aggregation operator
         :param group:  relation whose tuples can be used in aggregation operators
         :param extensions:
         :return: a relation representing the aggregation/projection operator result
         """
-        if group is not None and not isinstance(group, Relation):
+        if _group is not None and not isinstance(_group, Relation):
             raise DataJointError('The second argument must be a relation or None')
         alias_parser = re.compile(
             '^\s*(?P<sql_expression>\S(.*\S)?)\s*->\s*(?P<alias>[a-z][a-z_0-9]*)\s*$')
 
         # expand extended attributes in the form 'sql_expression -> new_attribute'
-        new_selection = []
+        _attributes = []
         for attribute in attributes:
             alias_match = alias_parser.match(attribute)
             if alias_match:
-                aliases.update(alias_match.groupdict())
+                d = alias_match.group_dict()
+                aliases.update({d['alias']: d['sql_expression']})
             else:
-                new_selection += attribute
-        return Projection(self, group, *new_selection, **aliases)
+                _attributes += attribute
+        return Projection(self, _group, *_attributes, **aliases)
 
     def __iand__(self, restriction):
         """
@@ -108,7 +109,7 @@ class Relation(metaclass=abc.ABCMeta):
 
     def __isub__(self, restriction):
         """
-        in-place inverted restriction aka antijoin
+        in-place antijoin (inverted restriction)
         """
         self &= Not(restriction)
         return self
@@ -121,8 +122,7 @@ class Relation(metaclass=abc.ABCMeta):
 
     @property
     def count(self):
-        sql = 'SELECT count(*) FROM ' + self.sql + self._where_clause
-        cur = self.conn.query(sql)
+        cur = self.conn.query('SELECT count(*) FROM ' + self.sql[0] + self._where)
         return cur.fetchone()[0]
 
     def __call__(self, *args, **kwargs):
@@ -154,7 +154,8 @@ class Relation(metaclass=abc.ABCMeta):
         """
         if offset and limit is None:
             raise DataJointError('')
-        sql = 'SELECT ' + self.heading.as_sql + ' FROM ' + self.sql
+        sql, heading = self.sql
+        sql = 'SELECT ' + heading.as_sql + ' FROM ' + sql
         if order_by is not None:
             sql += ' ORDER BY ' + ', '.join(self._orderBy)
             if descending:
@@ -191,11 +192,11 @@ class Relation(metaclass=abc.ABCMeta):
             q = cur.fetchone()
 
     @property
-    def _where_clause(self):
+    def _where(self):
         """
-        make there WHERE clause based on the current restriction
+        convert the restriction into an SQL WHERE
         """
-        if not self._restrictions:
+        if not self.restrictions:
             return ''
         
         def make_condition(arg):
@@ -234,7 +235,11 @@ class Not:
     inverse of a restriction
     """
     def __init__(self, restriction):
-        self._restriction = restriction
+        self.__restriction = restriction
+
+    @property
+    def restriction(self):
+        return self.__restriction
 
 
 class Join(Relation):
@@ -242,7 +247,7 @@ class Join(Relation):
 
     def __init__(self, rel1, rel2):
         if not isinstance(rel2, Relation):
-            raise DataJointError('relvars can only be joined with other relvars')
+            raise DataJointError('a relation can only be joined with another relation')
         if rel1.conn is not rel2.conn:
             raise DataJointError('Cannot join relations with different database connections')
         self.conn = rel1.conn
@@ -262,17 +267,19 @@ class Join(Relation):
 class Projection(Relation):
     alias_counter = 0
 
-    def __init__(self, relation, *attributes, **renames):
+    def __init__(self, relation, group=None, *attributes, **renames):
         """
         See Relation.project()
         """
         self.conn = relation.conn
+        self._group = group
         self._relation = relation
         self._projection_attributes = attributes
         self._renamed_attributes = renames
 
     @property 
     def sql(self):
+        if
         return self._relation.sql
         
     @property
@@ -290,8 +297,9 @@ class Subquery(Relation):
     @property
     def sql(self):
         self.alias_counter += 1
-        return '(SELECT ' + self._rel.heading.as_sql + ' FROM ' + self._rel.sql + ') as `s%x`' % self.alias_counter
+        return ('(SELECT ' + self._rel.heading.as_sql +
+                ' FROM ' + self._rel.sql + ') as `s%x`' % self.alias_counter)
         
     @property
     def heading(self):
-        return self._rel.heading.resolve_computations()
+        return self._rel.heading.resolve_aliases()
