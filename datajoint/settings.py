@@ -11,6 +11,8 @@ import logging
 import collections
 from enum import Enum
 
+LOCALCONFIG = 'dj_local_conf.json'
+CONFIGVAR = 'DJ_LOCAL_CONF'
 
 validators = collections.defaultdict(lambda: lambda value: True)
 
@@ -32,8 +34,6 @@ default = SortedDict({
     #
     'connection.init_function': None,
     #
-    'config.file': 'dj_local_conf.json',
-    'config.varname': 'DJ_LOCAL_CONF'
 })
 
 
