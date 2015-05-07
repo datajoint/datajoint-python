@@ -2,7 +2,6 @@ import numpy as np
 import logging
 from . import DataJointError
 from .relational import Relation
-from .declare import declare
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +24,6 @@ class Table(Relation):
     """
 
     def __init__(self, conn=None, dbname=None, class_name=None, definition=None):
-        self._use_package = False
         self.class_name = class_name
         self.conn = conn
         self.dbname = dbname
