@@ -143,7 +143,7 @@ class Base(Table, metaclass=abc.ABCMeta):
                 field = p.heading[key]
                 if field.name not in primary_key_fields:
                     primary_key_fields.add(field.name)
-                    sql += self._field_to_SQL(field)
+                    sql += self._field_to_sql(field)
                 else:
                     logger.debug('Field definition of {} in {} ignored'.format(
                         field.name, p.full_class_name))
@@ -351,6 +351,8 @@ class Base(Table, metaclass=abc.ABCMeta):
            check within `package.subpackage` but not inside `package`).
         3. Globally accessible module with the same name.
         """
+        # from IPython import embed
+        # embed()
         mod_obj = importlib.import_module(cls.__module__)
         attr = getattr(mod_obj, module_name, None)
         if isinstance(attr, ModuleType):
@@ -359,7 +361,8 @@ class Base(Table, metaclass=abc.ABCMeta):
             try:
                 return importlib.import_module('.' + module_name, mod_obj.__package__)
             except ImportError:
-                try:
-                    return importlib.import_module(module_name)
-                except ImportError:
-                    return None
+                pass
+        try:
+            return importlib.import_module(module_name)
+        except ImportError:
+            return None

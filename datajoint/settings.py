@@ -83,9 +83,9 @@ class Config(collections.MutableMapping):
         """
         if filename is None:
             import datajoint as dj
-            filename = dj.config['config.file']
+            filename = LOCALCONFIG
         with open(filename, 'w') as fid:
-            json.dump(self._conf, fid)
+            json.dump(self._conf, fid, indent=4)
 
     def load(self, filename):
         """

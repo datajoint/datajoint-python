@@ -2,6 +2,7 @@ import numpy as np
 import logging
 from . import DataJointError
 from .relational import Relation
+from .blob import pack
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ class Table(Relation):
             # register with a fake module, enclosed in back quotes
             self.conn.bind('`{0}`'.format(dbname), dbname)
 
-        #TODO: delay the loading until first use (move out of __init__)
+        # TODO: delay the loading until first use (move out of __init__)
         self.conn.load_headings()
         if self.class_name not in self.conn.table_names[self.dbname]:
             if definition is None:
@@ -78,11 +79,29 @@ class Table(Relation):
         """
         return self.heading.primary_key
 
+
+    def iter_insert(self, iter, **kwargs):
+        """
+        Inserts an entire batch of entries. Additional keyword arguments are passed it insert.
+
+        :param iter: Must be an iterator that generates a sequence of valid arguments for insert. 
+        """
+        for row in iter:
+            self.insert(row, **kwargs)
+
+    def batch_insert(self, data, **kwargs):
+        """
+        Inserts an entire batch of entries. Additional keyword arguments are passed it insert.
+
+        :param data: must be iterable, each row must be a valid argument for insert
+        """
+        self.iter_insert(data.__iter__())
+
     def insert(self, tup, ignore_errors=False, replace=False):  # TODO: in progress (issue #8)
         """
-        Insert one data tuple.
+        Insert one data tuple, one data record, or one dictionary.
 
-        :param tup: Data tuple. Can be an iterable in matching order, a dict with named fields, or an np.void.
+        :param tup: Data tuple, record, or dictionary.
         :param ignore_errors=False: Ignores errors if True.
         :param replace=False: Replaces data tuple if True.
 
@@ -92,19 +111,18 @@ class Table(Relation):
             b.insert(dict(subject_id = 7, species="mouse",\\
                            real_id = 1007, date_of_birth = "2014-09-01"))
         """
-        # todo: do we support records and named tuples for tup?
 
-        if issubclass(type(tup), tuple) or issubclass(type(tup), list):
+        if isinstance(tup, tuple) or isinstance(tup, list) or isinstance(tup, np.ndarray):
             value_list = ','.join([repr(q) for q in tup])
-            attribute_list = '`'+'`,`'.join(self.heading.names[0:len(tup)]) + '`'
-        elif issubclass(type(tup), dict):
+            attribute_list = '`' + '`,`'.join(self.heading.names[0:len(tup)]) + '`'
+        elif isinstance(tup, dict):
             value_list = ','.join([repr(tup[q])
-                                  for q in self.heading.names if q in tup])
+                                   for q in self.heading.names if q in tup])
             attribute_list = '`' + '`,`'.join([q for q in self.heading.names if q in tup]) + '`'
-        elif issubclass(type(tup), np.void):
+        elif isinstance(tup, np.void):
             value_list = ','.join([repr(tup[q])
-                                  for q in self.heading.names if q in tup])
-            attribute_list = '`' + '`,`'.join(tup.dtype.fields) + '`'
+                                   for q in self.heading.names if q in tup.dtype.fields])
+            attribute_list = '`' + '`,`'.join([q for q in self.heading.names if q in tup.dtype.fields]) + '`'
         else:
             raise DataJointError('Datatype %s cannot be inserted' % type(tup))
         if replace:
@@ -115,10 +133,11 @@ class Table(Relation):
             sql = 'INSERT'
         sql += " INTO %s (%s) VALUES (%s)" % (self.full_table_name,
                                               attribute_list, value_list)
+
         logger.info(sql)
         self.conn.query(sql)
 
-    def delete(self):   # TODO: (issues #14 and #15)
+    def delete(self):  # TODO: (issues #14 and #15)
         pass
 
     def drop(self):
