@@ -76,12 +76,10 @@ class TestBaseObject(object):
         s = test1.Subjects()
         assert_equal(s.dbname, PREFIX + '_test1')
         assert_equal(s.conn, self.conn)
-        assert_equal(s._table_def, test1.Subjects._table_def)
+        assert_equal(s.definition, test1.Subjects.definition)
 
     def test_declaration_status(self):
         b = test1.Subjects()
-        assert_false(b.is_declared)
-        b.declare()
         assert_true(b.is_declared)
 
     def test_declaration_from_doc_string(self):

@@ -25,7 +25,6 @@ class Table(Relation):
     """
 
     def __init__(self, conn=None, dbname=None, class_name=None, definition=None):
-        self._use_package = False
         self.class_name = class_name
         self.conn = conn
         self.dbname = dbname
