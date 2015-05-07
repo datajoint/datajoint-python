@@ -1,6 +1,6 @@
 __author__ = 'fabee'
 
-from .schemata.schema1 import test1
+from .schemata.schema1 import test1, test4
 
 from . import BASE_CONN, CONN_INFO, PREFIX, cleanup
 from datajoint.connection import Connection
@@ -34,8 +34,11 @@ class TestTableObject(object):
         cleanup()  # drop all databases with PREFIX
         self.conn = Connection(**CONN_INFO)
         test1.conn = self.conn
+        test4.conn = self.conn
         self.conn.bind(test1.__name__, PREFIX + '_test1')
+        self.conn.bind(test4.__name__, PREFIX + '_test4')
         self.relvar = test1.Subjects()
+        self.relvar_blob = test4.Matrix()
 
     def teardown(self):
         cleanup()
@@ -45,6 +48,13 @@ class TestTableObject(object):
         testt = (1, 'Peter', 'mouse')
         self.relvar.insert(testt)
         testt2 = tuple((self.relvar & 'subject_id = 1').fetch()[0])
+        assert_equal(testt2, testt, "Inserted and fetched tuple do not match!")
+
+    def test_list_insert(self):
+        "Test whether tuple insert works"
+        testt = [1, 'Peter', 'mouse']
+        self.relvar.insert(testt)
+        testt2 = list((self.relvar & 'subject_id = 1').fetch()[0])
         assert_equal(testt2, testt, "Inserted and fetched tuple do not match!")
 
     def test_record_insert(self):
@@ -105,3 +115,8 @@ class TestTableObject(object):
 
         for e,d in zip(expected, delivered):
             assert_equal(tuple(e), tuple(d),'Inserted and fetched records do not match')
+
+    def test_blob_insert(self):
+        x = np.random.randn(10)
+        t = (0, x, 'this is a random image')
+        self.relvar_blob.insert(t)

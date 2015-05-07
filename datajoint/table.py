@@ -84,7 +84,7 @@ class Table(Relation):
         """
         Inserts an entire batch of entries. Additional keyword arguments are passed it insert.
 
-        :param iter: Must be an iterator that generates a sequence of valid arguments for insert. 
+        :param iter: Must be an iterator that generates a sequence of valid arguments for insert.
         """
         for row in iter:
             self.insert(row, **kwargs)
@@ -111,16 +111,17 @@ class Table(Relation):
             b.insert(dict(subject_id = 7, species="mouse",\\
                            real_id = 1007, date_of_birth = "2014-09-01"))
         """
+        valfunc = lambda q: repr if q not in self.heading.blobs else lambda x: str(pack(x))
 
         if isinstance(tup, tuple) or isinstance(tup, list) or isinstance(tup, np.ndarray):
-            value_list = ','.join([repr(q) for q in tup])
+            value_list = ','.join([valfunc(name)(q) for name, q in zip(self.heading.names, tup)])
             attribute_list = '`' + '`,`'.join(self.heading.names[0:len(tup)]) + '`'
         elif isinstance(tup, dict):
-            value_list = ','.join([repr(tup[q])
+            value_list = ','.join([valfunc(q)(tup[q])
                                    for q in self.heading.names if q in tup])
             attribute_list = '`' + '`,`'.join([q for q in self.heading.names if q in tup]) + '`'
         elif isinstance(tup, np.void):
-            value_list = ','.join([repr(tup[q])
+            value_list = ','.join([valfunc(q)(tup[q])
                                    for q in self.heading.names if q in tup.dtype.fields])
             attribute_list = '`' + '`,`'.join([q for q in self.heading.names if q in tup.dtype.fields]) + '`'
         else:
@@ -133,7 +134,6 @@ class Table(Relation):
             sql = 'INSERT'
         sql += " INTO %s (%s) VALUES (%s)" % (self.full_table_name,
                                               attribute_list, value_list)
-
         logger.info(sql)
         self.conn.query(sql)
 
