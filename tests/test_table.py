@@ -7,7 +7,7 @@ from datajoint.connection import Connection
 from nose.tools import assert_raises, assert_equal, assert_regexp_matches, assert_false, assert_true, assert_list_equal
 from datajoint import DataJointError
 import numpy as np
-
+from numpy.testing import assert_array_equal
 
 def setup():
     """
@@ -120,3 +120,5 @@ class TestTableObject(object):
         x = np.random.randn(10)
         t = (0, x, 'this is a random image')
         self.relvar_blob.insert(t)
+        x2 = self.relvar_blob.fetch()[0][1]
+        assert_array_equal(x,x2, 'inserted blob does not match')
