@@ -4,6 +4,7 @@ Settings for DataJoint.
 from . import DataJointError
 import json
 import pprint
+from django.utils.datastructures import SortedDict
 
 __author__ = 'eywalker'
 import logging
@@ -23,8 +24,7 @@ role_to_prefix = {
 }
 prefix_to_role = dict(zip(role_to_prefix.values(), role_to_prefix.keys()))
 
-
-default = {
+default = SortedDict({
     'database.host': 'localhost',
     'database.password': 'datajoint',
     'database.user': 'datajoint',
@@ -34,7 +34,7 @@ default = {
     #
     'config.file': 'dj_local_conf.json',
     'config.varname': 'DJ_LOCAL_CONF'
-}
+})
 
 
 class Config(collections.MutableMapping):
