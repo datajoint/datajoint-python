@@ -26,11 +26,20 @@ class Relation(metaclass=abc.ABCMeta):
 
     @abc.abstractproperty
     def sql(self):
-        return NotImplemented
-    
+        """
+        The sql property returns the tuple: (SQL command, Heading object) for its relation.
+        The SQL command does not include the attribute list or the WHERE clause.
+        :return:  sql, heading
+        """
+        pass
+
     @abc.abstractproperty
-    def heading(self):
-        return NotImplemented
+    def conn(self):
+        """
+        All relations must keep track of their connection object
+        :return:
+        """
+        pass
 
     @property
     def restrictions(self):
@@ -184,6 +193,9 @@ class Relation(metaclass=abc.ABCMeta):
     def __iter__(self):
         """
         iterator  yields primary key tuples
+        Example:
+        for key in relation:
+            (schema.Relation & key).fetch('field')
         """
         cur, h = self.project().cursor()   # project
         q = cur.fetchone()
@@ -243,7 +255,7 @@ class Not:
 
 
 class Join(Relation):
-    alias_counter = 0
+    subquery_counter = 0
 
     def __init__(self, rel1, rel2):
         if not isinstance(rel2, Relation):
@@ -253,19 +265,19 @@ class Join(Relation):
         self.conn = rel1.conn
         self._rel1 = rel1
         self._rel2 = rel2
-    
+
     @property
     def heading(self):
         return self._rel1.heading.join(self._rel2.heading)
-        
-    @property 
+
+    @property
     def sql(self):
-        Join.alias_counter += 1
-        return '%s NATURAL JOIN %s as `j%x`' % (self._rel1.sql, self._rel2.sql, Join.alias_counter)
+        Join.subquery_counter += 1
+        return '%s NATURAL JOIN %s as `j%x`' % (self._rel1.sql, self._rel2.sql, Join.subquery_counter)
 
 
 class Projection(Relation):
-    alias_counter = 0
+    subquery_counter = 0
 
     def __init__(self, relation, group=None, *attributes, **renames):
         """
@@ -277,29 +289,36 @@ class Projection(Relation):
         self._projection_attributes = attributes
         self._renamed_attributes = renames
 
-    @property 
-    def sql(self):
-        if
-        return self._relation.sql
-        
     @property
-    def heading(self):
-        return self._relation.heading.pro(*self._projection_attributes, **self._renamed_attributes)
+    def sql(self):
+        sql = self._relation.sql
+        if self._group is not None:
+            sql = "NATURAL LEFT JOIN "
+        return self._relation.sql, \
+            self._relation.heading.pro(*self._projection_attributes, **self._renamed_attributes)
 
 
 class Subquery(Relation):
-    alias_counter = 0
-    
+    """
+    A Subquery encapsulates its argument in a SELECT statement, enabling its use as a subquery.
+    The attribute list and the WHERE clause are resolved.
+    """
+    _counter = 0
+
     def __init__(self, rel):
-        self.conn = rel.conn
         self._rel = rel
-        
+
+    @property
+    def conn(self):
+        return self._rel.conn
+
+    @property
+    def counter(self):
+        Subquery._counter += 1
+        return Subquery._counter
+
     @property
     def sql(self):
-        self.alias_counter += 1
         return ('(SELECT ' + self._rel.heading.as_sql +
-                ' FROM ' + self._rel.sql + ') as `s%x`' % self.alias_counter)
-        
-    @property
-    def heading(self):
-        return self._rel.heading.resolve_aliases()
+                ' FROM ' + self._rel.sql + self._rel.where + ') as `s%x`' % self.counter),\
+            self._rel.heading.clear_aliases()
