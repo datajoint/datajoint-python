@@ -17,18 +17,19 @@ class Base(Table, metaclass=abc.ABCMeta):
     Base is a Table that implements data definition functions.
     It is an abstract class with the abstract property 'definition'.
 
-    Example for a usage of Base::
+    Example for a usage of Base:
 
         import datajoint as dj
 
 
-        class Subjects(dj.Base):
+        class Subject(dj.Base):
             definition = '''
-            test1.Subjects (manual)                                    # Basic subject info
-            subject_id            : int                                # unique subject id
+            test1.Subjects (manual)                       # Basic info about experiment subject
+            subject_id            : int                   # unique subject id
             ---
-            real_id               : varchar(40)                        #  real-world name
-            species = "mouse"     : enum('mouse', 'monkey', 'human')   # species
+            species = "mouse"     : enum('mouse', 'monkey', 'human')
+            date_of_birth         : date
+            subject_notes         : varchar(1000)                      # notes about the subject
             '''
     """
 
@@ -87,7 +88,8 @@ class Base(Table, metaclass=abc.ABCMeta):
                 raise DataJointError(
                     'Table could not be declared for %s' % self.class_name)
 
-    def _field_to_sql(self, field):
+    @staticmethod
+    def _field_to_sql(field):
         """
         Converts an attribute definition tuple into SQL code.
         :param field: attribute definition
@@ -216,28 +218,26 @@ class Base(Table, metaclass=abc.ABCMeta):
 
         # remove comment lines
         declaration = [x for x in declaration if not x.startswith('#')]
-        ptrn = """
+        pattern = """
         ^(?P<module>\w+)\.(?P<className>\w+)\s*     #  module.className
         \(\s*(?P<tier>\w+)\s*\)\s*                  #  (tier)
         \#\s*(?P<comment>.*)$                       #  comment
         """
-        p = re.compile(ptrn, re.X)
+        p = re.compile(pattern, re.X)
         table_info = p.match(declaration[0]).groupdict()
         if table_info['tier'] not in Role.__members__:
             raise DataJointError('InvalidTableTier: Invalid tier {tier} for table\
                                  {module}.{cls}'.format(tier=table_info['tier'],
-                                                        module=table_info[
-                                                            'module'],
+                                                        module=table_info['module'],
                                                         cls=table_info['className']))
         table_info['tier'] = Role[table_info['tier']]  # convert into enum
 
         in_key = True  # parse primary keys
-        field_ptrn = """
-        ^[a-z][a-z\d_]*\s*          # name
-        (=\s*\S+(\s+\S+)*\s*)?      # optional defaults
-        :\s*\w.*$                   # type, comment
-        """
-        fieldP = re.compile(field_ptrn, re.I + re.X)  # ignore case and verbose
+        field_regexp = re.compile("""
+            ^[a-z][a-z\d_]*\s*          # name
+            (=\s*\S+(\s+\S+)*\s*)?      # optional defaults
+            :\s*\w.*$                   # type, comment
+        """, re.X)
 
         for line in declaration[1:]:
             if line.startswith('---'):
@@ -249,15 +249,15 @@ class Base(Table, metaclass=abc.ABCMeta):
                 (parents if in_key else referenced).append(rel)
             elif re.match(r'^(unique\s+)?index[^:]*$', line):
                 index_defs.append(self._parse_index_def(line))
-            elif fieldP.match(line):
+            elif field_regexp.match(line):
                 field_defs.append(self._parse_attr_def(line, in_key))
             else:
-                raise DataJointError(
-                    'Invalid table declaration line "%s"' % line)
+                raise DataJointError('Invalid table declaration line "%s"' % line)
 
         return table_info, parents, referenced, field_defs, index_defs
 
-    def _parse_attr_def(self, line, in_key=False):  # todo add docu for in_key
+    @staticmethod
+    def _parse_attr_def(line, in_key=False):  # todo add docu for in_key
         """
         Parse attribute definition line in the declaration and returns
         an attribute tuple.
@@ -267,17 +267,15 @@ class Base(Table, metaclass=abc.ABCMeta):
         :returns: attribute tuple
         """
         line = line.strip()
-        attr_ptrn = """
-        ^(?P<name>[a-z][a-z\d_]*)\s*             # field name
-        (=\s*(?P<default>\S+(\s+\S+)*?)\s*)?     # default value
-        :\s*(?P<type>\w[^\#]*[^\#\s])\s*         # datatype
-        (\#\s*(?P<comment>\S*(\s+\S+)*)\s*)?$    # comment
-        """
-
-        attrP = re.compile(attr_ptrn, re.I + re.X)
-        m = attrP.match(line)
-        assert m, 'Invalid field declaration "%s"' % line
-        attr_info = m.groupdict()
+        field_regexp = re.compile("""
+            ^(?P<name>[a-z][a-z\d_]*)\s*             # field name
+            (=\s*(?P<default>\S+(\s+\S+)*?)\s*)?     # default value
+            :\s*(?P<type>\w[^\#]*[^\#\s])\s*         # datatype
+            (\#\s*(?P<comment>\S*(\s+\S+)*)\s*)?$    # comment
+            """, re.X)
+        match = field_regexp.match(line)
+        assert match, 'Invalid field declaration "%s"' % line
+        attr_info = match.groupdict()
         if not attr_info['comment']:
             attr_info['comment'] = ''
         if not attr_info['default']:
@@ -296,7 +294,8 @@ class Base(Table, metaclass=abc.ABCMeta):
 
         return Heading.AttrTuple(**attr_info)
 
-    def _parse_index_def(self, line):
+    @staticmethod
+    def _parse_index_def(line):
         """
         Parses index definition.
 
@@ -304,14 +303,13 @@ class Base(Table, metaclass=abc.ABCMeta):
         :return: groupdict with index info
         """
         line = line.strip()
-        index_ptrn = """
-        ^(?P<unique>UNIQUE)?\s*INDEX\s*      # [UNIQUE] INDEX
-        \((?P<attributes>[^\)]+)\)$          # (attr1, attr2)
-        """
-        indexP = re.compile(index_ptrn, re.I + re.X)
-        m = indexP.match(line)
-        assert m, 'Invalid index declaration "%s"' % line
-        index_info = m.groupdict()
+        index_regexp = re.compile("""
+            ^(?P<unique>UNIQUE)?\s*INDEX\s*      # [UNIQUE] INDEX
+            \((?P<attributes>[^\)]+)\)$          # (attr1, attr2)
+        """, re.I + re.X)
+        match = index_regexp.match(line)
+        assert match, 'Invalid index declaration "%s"' % line
+        index_info = match.groupdict()
         attributes = re.split(r'\s*,\s*', index_info['attributes'].strip())
         index_info['attributes'] = attributes
         assert len(attributes) == len(set(attributes)), \
