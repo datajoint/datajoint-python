@@ -7,13 +7,10 @@ import datajoint as dj
 
 
 def test_load_save():
-    old = dj.config['config.file']
-    dj.config['config.file'] = 'tmp.json'
-    dj.config.save()
+    dj.config.save('tmp.json')
     conf = dj.Config()
     conf.load('tmp.json')
     assert_true(conf == dj.config, 'Two config files do not match.')
-    dj.config['config.file'] = old
     os.remove('tmp.json')
 
 @raises(ValueError)

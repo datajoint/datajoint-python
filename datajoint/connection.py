@@ -35,6 +35,9 @@ def conn_container():
             host = host if host is not None else config['database.host']
             user = user if user is not None else config['database.user']
             passwd = passwd if passwd is not None else config['database.password']
+
+            if passwd is None: passwd = input("Please enter database password: ")
+
             init_fun = init_fun if init_fun is not None else config['connection.init_function']
             _connObj = Connection(host, user, passwd, init_fun)
         return _connObj

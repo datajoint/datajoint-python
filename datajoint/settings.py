@@ -4,12 +4,15 @@ Settings for DataJoint.
 from . import DataJointError
 import json
 import pprint
+from collections import OrderedDict
 
 __author__ = 'eywalker'
 import logging
 import collections
 from enum import Enum
 
+LOCALCONFIG = 'dj_local_conf.json'
+CONFIGVAR = 'DJ_LOCAL_CONF'
 
 validators = collections.defaultdict(lambda: lambda value: True)
 
@@ -23,8 +26,7 @@ role_to_prefix = {
 }
 prefix_to_role = dict(zip(role_to_prefix.values(), role_to_prefix.keys()))
 
-
-default = {
+default = OrderedDict({
     'database.host': 'localhost',
     'database.password': 'datajoint',
     'database.user': 'datajoint',
@@ -32,9 +34,7 @@ default = {
     #
     'connection.init_function': None,
     #
-    'config.file': 'dj_local_conf.json',
-    'config.varname': 'DJ_LOCAL_CONF'
-}
+})
 
 
 class Config(collections.MutableMapping):

@@ -10,6 +10,6 @@ setup(
     description='An object-relational mapping and relational algebra to facilitate data definition and data manipulation in MySQL databases.',
     url='https://github.com/datajoint/datajoint-python',
     packages=['datajoint'],
-    requires=['numpy', 'pymysql', 'networkx', 'matplotlib', 'sphinx_rtd_theme', 'mock', 'json']
-    # todo: add license (check license of used packages)
+    requires=['numpy', 'pymysql', 'networkx', 'matplotlib', 'sphinx_rtd_theme', 'mock', 'json'],
+    license = "MIT",
 )
