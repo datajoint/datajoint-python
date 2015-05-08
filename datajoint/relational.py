@@ -263,17 +263,25 @@ class Join(Relation):
         if rel1.conn is not rel2.conn:
             raise DataJointError('Cannot join relations with different database connections')
         self.conn = rel1.conn
-        self._rel1 = rel1
-        self._rel2 = rel2
+        self._rel1 = Subquery(rel1)
+        self._rel2 = Subquery(rel2)
+
+    @property
+    def conn(self):
+        return self._rel1.conn
 
     @property
     def heading(self):
         return self._rel1.heading.join(self._rel2.heading)
 
     @property
+    def counter(self):
+        self.subquery_counter += 1
+        return self.subquery_counter
+
+    @property
     def sql(self):
-        Join.subquery_counter += 1
-        return '%s NATURAL JOIN %s as `j%x`' % (self._rel1.sql, self._rel2.sql, Join.subquery_counter)
+        return '%s NATURAL JOIN %s as `_j%x`' % (self._rel1.sql, self._rel2.sql, self.counter)
 
 
 class Projection(Relation):
@@ -284,7 +292,8 @@ class Projection(Relation):
         See Relation.project()
         """
         if group:
-            # TODO: assert that group.conn is same as relation.conn
+            if relation.conn is not group.conn:
+                raise DataJointError('Cannot join relations with different database connections')
             self._group = Subquery(group)
             self._relation = Subquery(relation)
         else:
