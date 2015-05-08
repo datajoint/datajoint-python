@@ -32,7 +32,6 @@ class Base(Table, metaclass=abc.ABCMeta):
             subject_notes         : varchar(1000)                      # notes about the subject
             '''
     """
-
     @abc.abstractproperty
     def definition(self):
         """
@@ -41,7 +40,25 @@ class Base(Table, metaclass=abc.ABCMeta):
         """
         pass
 
-    def __init__(self):
+    @property
+    def full_class_name(self):
+        """
+        :return: full class name including the entire package hierarchy
+        """
+        return '{}.{}'.format(self.__module__, self.class_name)
+
+    @property
+    def access_name(self):
+        """
+        :return: name by which this class should be accessible as
+        """
+        if self._use_package:
+            parent = self.__module__.split('.')[-2]
+        else:
+            parent = self.__module__.split('.')[-1]
+        return parent + '.' + self.class_name
+
+    def __init__(self): #TODO: support taking in conn obj
         self.class_name = self.__class__.__name__
         module = self.__module__
         mod_obj = importlib.import_module(module)
@@ -60,6 +77,7 @@ class Base(Table, metaclass=abc.ABCMeta):
         self.conn = conn
         try:
             if self._use_package:
+                # the database is bound to the package
                 pkg_name = '.'.join(module.split('.')[:-1])
                 dbname = self.conn.mod_to_db[pkg_name]
             else:
@@ -326,12 +344,15 @@ class Base(Table, metaclass=abc.ABCMeta):
         :returns: the base relation
         """
         mod_obj = self.get_module(module_name)
+        if not mod_obj:
+            raise DataJointError('Module named {mod_name} was not found. Please make'
+                                 ' sure that it is in the path or you import the module.'.format(mod_name=module_name))
         try:
             ret = getattr(mod_obj, class_name)()
-        except KeyError:
-            ret = self.__class__(conn=self.conn,
-                                 dbname=self.conn.schemas[module_name],
-                                 class_name=class_name)
+        except AttributeError:
+            ret = Table(conn=self.conn,
+                        dbname=self.conn.mod_to_db[mod_obj.__name__],
+                        class_name=class_name)
         return ret
 
     @classmethod
@@ -354,6 +375,8 @@ class Base(Table, metaclass=abc.ABCMeta):
         # from IPython import embed
         # embed()
         mod_obj = importlib.import_module(cls.__module__)
+        if cls.__module__.split('.')[-1] == module_name:
+            return mod_obj
         attr = getattr(mod_obj, module_name, None)
         if isinstance(attr, ModuleType):
             return attr

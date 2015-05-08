@@ -66,7 +66,6 @@ class Connection:
             print("Connected", user + '@' + host + ':' + str(port))
         self._conn.autocommit(True)
 
-        self.mod_to_db2 = {}  # database indexed by module names
         self.db_to_mod = {}  # modules indexed by dbnames
         self.mod_to_db = {}  # database names indexed by modules
         self.table_names = {}  # tables names indexed by [dbname][class_name]
