@@ -2,14 +2,14 @@ import importlib
 import abc
 from types import ModuleType
 from . import DataJointError
-from .table import Table
+from .free_relation import FreeRelation
 import logging
 
 
 logger = logging.getLogger(__name__)
 
 
-class Base(Table, metaclass=abc.ABCMeta):
+class Base(FreeRelation, metaclass=abc.ABCMeta):
     """
     Base is a Table that implements data definition functions.
     It is an abstract class with the abstract property 'definition'.
@@ -104,7 +104,7 @@ class Base(Table, metaclass=abc.ABCMeta):
         try:
             ret = getattr(mod_obj, class_name)()
         except AttributeError:
-            ret = Table(conn=self.conn,
+            ret = FreeRelation(conn=self.conn,
                         dbname=self.conn.mod_to_db[mod_obj.__name__],
                         class_name=class_name)
         return ret

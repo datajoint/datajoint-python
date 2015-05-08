@@ -13,14 +13,14 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class Relation(metaclass=abc.ABCMeta):
+class RelationalOperand(metaclass=abc.ABCMeta):
     """
-    Relation implements relational algebra and fetch methods.
-    Relation objects reference other relation objects linked by operators.
+    RelationalOperand implements relational algebra and fetch methods.
+    RelationalOperand objects reference other relation objects linked by operators.
     The leaves of this tree of objects are base relations.
     When fetching data from the database, this tree of objects is compiled into an SQL expression.
     It is a mixin class that provides relational operators, iteration, and fetch capability.
-    Relation operators are: restrict, pro, and join.
+    RelationalOperand operators are: restrict, pro, and join.
     """    
     _restrictions = []
 
@@ -53,7 +53,7 @@ class Relation(metaclass=abc.ABCMeta):
 
     def __mod__(self, attributes=None):
         """
-        relational projection operator.  See Relation.project
+        relational projection operator.  See RelationalOperand.project
         """
         return self.project(*attributes)
 
@@ -70,7 +70,7 @@ class Relation(metaclass=abc.ABCMeta):
         """
         # if the first attribute is a relation, it will be aggregated
         group = attributes.pop[0] \
-            if attributes and isinstance(attributes[0], Relation) else None
+            if attributes and isinstance(attributes[0], RelationalOperand) else None
         return self.aggregate(group, *attributes, **renamed_attributes)
 
     def aggregate(self, _group, *attributes, **renamed_attributes):
@@ -80,7 +80,7 @@ class Relation(metaclass=abc.ABCMeta):
         :param extensions:
         :return: a relation representing the aggregation/projection operator result
         """
-        if _group is not None and not isinstance(_group, Relation):
+        if _group is not None and not isinstance(_group, RelationalOperand):
             raise DataJointError('The second argument must be a relation or None')
         alias_parser = re.compile(
             '^\s*(?P<sql_expression>\S(.*\S)?)\s*->\s*(?P<alias>[a-z][a-z_0-9]*)\s*$')
@@ -229,7 +229,7 @@ class Relation(metaclass=abc.ABCMeta):
                 r = make_condition(r)
             elif isinstance(r, np.ndarray) or isinstance(r, list):
                 r = '('+') OR ('.join([make_condition(q) for q in r])+')'
-            elif isinstance(r, Relation):
+            elif isinstance(r, RelationalOperand):
                 common_attributes = ','.join([q for q in self.heading.names if r.heading.names])  
                 r = '(%s) in (SELECT %s FROM %s)' % (common_attributes, common_attributes, r.sql)
                 
@@ -254,11 +254,11 @@ class Not:
         return self.__restriction
 
 
-class Join(Relation):
+class Join(RelationalOperand):
     subquery_counter = 0
 
     def __init__(self, rel1, rel2):
-        if not isinstance(rel2, Relation):
+        if not isinstance(rel2, RelationalOperand):
             raise DataJointError('a relation can only be joined with another relation')
         if rel1.conn is not rel2.conn:
             raise DataJointError('Cannot join relations with different database connections')
@@ -284,12 +284,12 @@ class Join(Relation):
         return '%s NATURAL JOIN %s as `_j%x`' % (self._rel1.sql, self._rel2.sql, self.counter)
 
 
-class Projection(Relation):
+class Projection(RelationalOperand):
     subquery_counter = 0
 
     def __init__(self, relation, group=None, *attributes, **renamed_attributes):
         """
-        See Relation.project()
+        See RelationalOperand.project()
         """
         if group:
             if relation.conn is not group.conn:
@@ -317,7 +317,7 @@ class Projection(Relation):
         return sql, heading
 
 
-class Subquery(Relation):
+class Subquery(RelationalOperand):
     """
     A Subquery encapsulates its argument in a SELECT statement, enabling its use as a subquery.
     The attribute list and the WHERE clause are resolved.

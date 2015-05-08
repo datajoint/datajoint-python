@@ -1,7 +1,7 @@
 import numpy as np
 import logging
 from . import DataJointError
-from .relational import Relation
+from .relational_operand import RelationalOperand
 from .blob import pack
 from .heading import Heading
 import re
@@ -11,7 +11,7 @@ from .utils import from_camel_case
 logger = logging.getLogger(__name__)
 
 
-class Table(Relation):
+class Table(RelationalOperand):
     """
     A Table object is a relation associated with a table.
     A Table object provides insert and delete methods.
