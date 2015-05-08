@@ -9,7 +9,7 @@ from . import test1 as alias
 
 
 # references to another schema
-class Experiments(dj.Base):
+class Experiments(dj.Relation):
     definition = """
     test2.Experiments (manual)     # Basic subject info
     -> test1.Subjects
@@ -20,21 +20,21 @@ class Experiments(dj.Base):
     """
 
 # references to another schema
-class Conditions(dj.Base):
+class Conditions(dj.Relation):
     definition = """
     test2.Conditions (manual)     # Subject conditions
     -> alias.Subjects
     condition_name              : varchar(255)    # description of the condition
     """
 
-class FoodPreference(dj.Base):
+class FoodPreference(dj.Relation):
     definition = """
     test2.FoodPreference (manual)   # Food preference of each subject
     -> animals.Subjects
     preferred_food           : enum('banana', 'apple', 'oranges')
     """
 
-class Session(dj.Base):
+class Session(dj.Relation):
     definition = """
     test2.Session (manual)     # Experiment sessions
     -> test1.Subjects

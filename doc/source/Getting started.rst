@@ -16,7 +16,7 @@ This tests some latex :math:`x \mapsto y`.
     environ.get('DJ_PASSW', 'datajoint')
     import datajoint as dj
     
-    class Subjects(dj.Base):
+    class Subjects(dj.Relation):
         _table_def = """
         Subjects (manual)     # Basic subject info
     

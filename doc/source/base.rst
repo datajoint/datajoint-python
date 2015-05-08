@@ -1,4 +1,4 @@
-Base
+Relation
 ====
 
 .. automodule:: datajoint.base

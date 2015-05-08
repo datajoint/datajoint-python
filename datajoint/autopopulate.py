@@ -1,4 +1,4 @@
-from .relational import Relation
+from .relational_operand import RelationalOperand
 from . import DataJointError
 import pprint
 import abc
@@ -10,8 +10,8 @@ logger = logging.getLogger(__name__)
 
 class AutoPopulate(metaclass=abc.ABCMeta):
     """
-    AutoPopulate is a mixin class that adds the method populate() to a Base class.
-    Auto-populated relations must inherit from both Base and AutoPopulate,
+    AutoPopulate is a mixin class that adds the method populate() to a Relation class.
+    Auto-populated relations must inherit from both Relation and AutoPopulate,
     must define the property pop_rel, and must define the callback method make_tuples.
     """
 
@@ -40,7 +40,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         rel.populate() will call rel.make_tuples(key) for every primary key in self.pop_rel
         for which there is not already a tuple in rel.
         """
-        if not isinstance(self.pop_rel, Relation):
+        if not isinstance(self.pop_rel, RelationalOperand):
             raise DataJointError('')
         self.conn.cancel_transaction()
 

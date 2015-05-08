@@ -9,17 +9,17 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class Base(FreeRelation, metaclass=abc.ABCMeta):
+class Relation(FreeRelation, metaclass=abc.ABCMeta):
     """
-    Base is a Table that implements data definition functions.
+    Relation is a Table that implements data definition functions.
     It is an abstract class with the abstract property 'definition'.
 
-    Example for a usage of Base::
+    Example for a usage of Relation::
 
         import datajoint as dj
 
 
-        class Subjects(dj.Base):
+        class Subjects(dj.Relation):
             definition = '''
             test1.Subjects (manual)                                    # Basic subject info
             subject_id            : int                                # unique subject id
@@ -91,7 +91,7 @@ class Base(FreeRelation, metaclass=abc.ABCMeta):
     def get_base(self, module_name, class_name):
         """
         Loads the base relation from the module.  If the base relation is not defined in
-        the module, then construct it using Base constructor.
+        the module, then construct it using Relation constructor.
 
         :param module_name: module name
         :param class_name: class name
@@ -119,9 +119,9 @@ class Base(FreeRelation, metaclass=abc.ABCMeta):
 
         The module_name resolution steps in the following order:
 
-        1. Global reference to a module of the same name defined in the module that contains this Base derivative.
+        1. Global reference to a module of the same name defined in the module that contains this Relation derivative.
            This is the recommended use case.
-        2. Module of the same name defined in the package containing this Base derivative. This will only look for the
+        2. Module of the same name defined in the package containing this Relation derivative. This will only look for the
            most immediate containing package (e.g. if this class is contained in package.subpackage.module, it will
            check within `package.subpackage` but not inside `package`).
         3. Globally accessible module with the same name.

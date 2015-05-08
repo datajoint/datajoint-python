@@ -11,20 +11,20 @@ from .utils import from_camel_case
 logger = logging.getLogger(__name__)
 
 
-class Table(RelationalOperand):
+class FreeRelation(RelationalOperand):
     """
-    A Table object is a relation associated with a table.
-    A Table object provides insert and delete methods.
-    Table objects are only used internally and for debugging.
-    The table must already exist in the schema for its Table object to work.
+    A FreeRelation object is a relation associated with a table.
+    A FreeRelation object provides insert and delete methods.
+    FreeRelation objects are only used internally and for debugging.
+    The table must already exist in the schema for its FreeRelation object to work.
 
-    The table associated with an instance of Base is identified by its 'class name'.
+    The table associated with an instance of Relation is identified by its 'class name'.
     property, which is a string in CamelCase. The actual table name is obtained
     by converting className from CamelCase to underscore_separated_words and
     prefixing according to the table's role.
 
-    Base instances obtain their table's heading by looking it up in the connection
-    object. This ensures that Base instances contain the current table definition
+    Relation instances obtain their table's heading by looking it up in the connection
+    object. This ensures that Relation instances contain the current table definition
     even after tables are modified after the instance is created.
     """
 
@@ -62,7 +62,7 @@ class Table(RelationalOperand):
             self._declare()
             if not self.is_declared:
                 raise DataJointError(
-                    'Table could not be declared for %s' % self.class_name)
+                    'FreeRelation could not be declared for %s' % self.class_name)
 
     @staticmethod
     def _field_to_sql(field): #TODO move this into Attribute Tuple
@@ -360,7 +360,7 @@ class Table(RelationalOperand):
         m = re.match(r'`(\w+)`', module_name)
         if m:
             dbname = m.group(1)
-            return Table(self.conn, dbname, class_name)
+            return FreeRelation(self.conn, dbname, class_name)
         else:
             return None
 

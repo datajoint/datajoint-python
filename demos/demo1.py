@@ -14,7 +14,7 @@ conn = dj.conn()   # connect to database; conn must be defined in module namespa
 conn.bind(module=__name__, dbname='dj_test')  # bind this module to the database
 
 
-class Subject(dj.Base):
+class Subject(dj.Relation):
     definition = """
     demo1.Subject (manual)     # Basic subject info
     subject_id       : int     # internal subject id
@@ -28,7 +28,7 @@ class Subject(dj.Base):
     """
 
 
-class Experiment(dj.Base):
+class Experiment(dj.Relation):
     definition = """
     demo1.Experiment (manual)     # Basic subject info
     -> demo1.Subject
@@ -41,7 +41,7 @@ class Experiment(dj.Base):
     """
 
 
-class Session(dj.Base):
+class Session(dj.Relation):
     definition = """
     demo1.Session (manual)   # a two-photon imaging session
     -> demo1.Experiment
@@ -52,7 +52,7 @@ class Session(dj.Base):
     """
 
 
-class Scan(dj.Base):
+class Scan(dj.Relation):
     definition = """
     demo1.Scan (manual)   # a two-photon imaging session
     -> demo1.Session
