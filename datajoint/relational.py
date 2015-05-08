@@ -57,7 +57,7 @@ class Relation(metaclass=abc.ABCMeta):
         """
         return self.project(*attributes)
 
-    def project(self, *attributes, **aliases):
+    def project(self, *attributes, **renamed_attributes):
         """
         Relational projection operator.
         :param attributes: a list of attribute names to be included in the result.
@@ -65,15 +65,15 @@ class Relation(metaclass=abc.ABCMeta):
         Primary key attributes are always selected and cannot be excluded.
         Therefore obj.project() produces a relation with only the primary key attributes.
         If attributes includes the string '*', all attributes are selected.
-        Each attribute can only be used once in attributes or renames.  Therefore, the projected
+        Each attribute can only be used once in attributes or renamed_attributes.  Therefore, the projected
         relation cannot have more attributes than the original relation.
         """
         # if the first attribute is a relation, it will be aggregated
         group = attributes.pop[0] \
             if attributes and isinstance(attributes[0], Relation) else None
-        return self.aggregate(group, *attributes, **aliases)
+        return self.aggregate(group, *attributes, **renamed_attributes)
 
-    def aggregate(self, _group, *attributes, **aliases):
+    def aggregate(self, _group, *attributes, **renamed_attributes):
         """
         Relational aggregation operator
         :param group:  relation whose tuples can be used in aggregation operators
@@ -91,10 +91,10 @@ class Relation(metaclass=abc.ABCMeta):
             alias_match = alias_parser.match(attribute)
             if alias_match:
                 d = alias_match.group_dict()
-                aliases.update({d['alias']: d['sql_expression']})
+                renamed_attributes.update({d['alias']: d['sql_expression']})
             else:
                 _attributes += attribute
-        return Projection(self, _group, *_attributes, **aliases)
+        return Projection(self, _group, *_attributes, **renamed_attributes)
 
     def __iand__(self, restriction):
         """
@@ -279,23 +279,33 @@ class Join(Relation):
 class Projection(Relation):
     subquery_counter = 0
 
-    def __init__(self, relation, group=None, *attributes, **renames):
+    def __init__(self, relation, group=None, *attributes, **renamed_attributes):
         """
         See Relation.project()
         """
-        self.conn = relation.conn
-        self._group = group
-        self._relation = relation
+        if group:
+            # TODO: assert that group.conn is same as relation.conn
+            self._group = Subquery(group)
+            self._relation = Subquery(relation)
+        else:
+            self._group = None
+            self._relation = relation
         self._projection_attributes = attributes
-        self._renamed_attributes = renames
+        self._renamed_attributes = renamed_attributes
+
+    @property
+    def conn(self):
+        return self._relation.conn
 
     @property
     def sql(self):
-        sql = self._relation.sql
+        sql, heading = self._relation.sql
+        heading = heading.pro(self._projection_attributes, self._renamed_attributes)
         if self._group is not None:
-            sql = "NATURAL LEFT JOIN "
-        return self._relation.sql, \
-            self._relation.heading.pro(*self._projection_attributes, **self._renamed_attributes)
+            group_sql, group_heading = self._group.sql
+            sql = ("(%s) NATURAL LEFT JOIN (%s) GROUP BY `%s`" %
+                   (sql, group_sql, '`,`'.join(heading.primary_key)))
+        return sql, heading
 
 
 class Subquery(Relation):
@@ -320,5 +330,5 @@ class Subquery(Relation):
     @property
     def sql(self):
         return ('(SELECT ' + self._rel.heading.as_sql +
-                ' FROM ' + self._rel.sql + self._rel.where + ') as `s%x`' % self.counter),\
+                ' FROM ' + self._rel.sql + self._rel.where + ') as `_s%x`' % self.counter),\
             self._rel.heading.clear_aliases()

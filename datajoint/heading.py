@@ -145,7 +145,7 @@ class Heading:
                     field=attr['type'], dbname=dbname, table_name=table_name))
             attr.pop('Extra')
 
-            # fill out the dtype. All floats and non-nullable integers are turned into specific dtypes
+            # fill out dtype. All floats and non-nullable integers are turned into specific dtypes
             attr['dtype'] = object
             if attr['numeric']:
                 is_integer = bool(re.match(r'(tiny|small|medium|big)?int', attr['type']))
@@ -160,7 +160,7 @@ class Heading:
 
         return cls(attributes)
 
-    def pro(self, *attribute_list, **rename_dict):
+    def pro(self, *attribute_list, **renamed_attributes):
         """
         derive a new heading by selecting, renaming, or computing attributes.
         In relational algebra these operators are known as project, rename, and expand.
@@ -177,10 +177,10 @@ class Heading:
 
         # make attribute_list a list of dicts for initializing a Heading
         attribute_list = [v._asdict() for k, v in self.attributes.items()
-                          if k in attribute_set and k not in rename_dict.values()]
+                          if k in attribute_set and k not in renamed_attributes.values()]
 
         # add renamed and computed attributes
-        for new_name, computation in rename_dict.items():
+        for new_name, computation in renamed_attributes.items():
             if computation in self.names:
                 # renamed attribute
                 new_attr = self.attributes[computation]._asdict()
