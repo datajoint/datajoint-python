@@ -1,14 +1,10 @@
 import importlib
 import abc
 from types import ModuleType
-from enum import Enum
 from . import DataJointError
 from .table import Table
 import logging
-import re
-from .settings import Role, role_to_prefix
-from .utils import from_camel_case
-from .heading import Heading
+
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +45,7 @@ class Base(Table, metaclass=abc.ABCMeta):
         return '{}.{}'.format(self.__module__, self.class_name)
 
     @property
-    def access_name(self):
+    def ref_name(self):
         """
         :return: name by which this class should be accessible as
         """
@@ -60,12 +56,12 @@ class Base(Table, metaclass=abc.ABCMeta):
         return parent + '.' + self.class_name
 
 
-
     def __init__(self): #TODO: support taking in conn obj
-        self.class_name = self.__class__.__name__
-        module = self.__module__
-        mod_obj = importlib.import_module(module)
+        class_name = self.__class__.__name__
+        module_name = self.__module__
+        mod_obj = importlib.import_module(module_name)
         self._use_package = False
+        # first, find the conn object
         try:
             conn = mod_obj.conn
         except AttributeError:
@@ -76,19 +72,20 @@ class Base(Table, metaclass=abc.ABCMeta):
                 self._use_package = True
             except AttributeError:
                 raise DataJointError(
-                    "Please define object 'conn' in '{}' or in its containing package.".format(self.__module__))
-        self.conn = conn
+                    "Please define object 'conn' in '{}' or in its containing package.".format(module_name))
+        # now use the conn object to determine the dbname this belongs to
         try:
             if self._use_package:
                 # the database is bound to the package
-                pkg_name = '.'.join(module.split('.')[:-1])
-                dbname = self.conn.mod_to_db[pkg_name]
+                pkg_name = '.'.join(module_name.split('.')[:-1])
+                dbname = conn.mod_to_db[pkg_name]
             else:
-                dbname = self.conn.mod_to_db[module]
+                dbname = conn.mod_to_db[module_name]
         except KeyError:
             raise DataJointError(
-                'Module {} is not bound to a database. See datajoint.connection.bind'.format(self.__module__))
-        self.dbname = dbname
+                'Module {} is not bound to a database. See datajoint.connection.bind'.format(module_name))
+        # initialize using super class's constructor
+        super().__init__(conn, dbname, class_name)
 
 
     def get_base(self, module_name, class_name):

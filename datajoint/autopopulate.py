@@ -2,9 +2,11 @@ from .relational import Relation
 from . import DataJointError
 import pprint
 import abc
+import logging
 
 #noinspection PyExceptionInherit,PyCallingNonCallable
 
+logger = logging.getLogger(__name__)
 
 class AutoPopulate(metaclass=abc.ABCMeta):
     """
@@ -29,6 +31,10 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         """
         pass
 
+    @property
+    def target(self):
+        return self
+
     def populate(self, catch_errors=False, reserve_jobs=False, restrict=None):
         """
         rel.populate() will call rel.make_tuples(key) for every primary key in self.pop_rel
@@ -38,9 +44,9 @@ class AutoPopulate(metaclass=abc.ABCMeta):
             raise DataJointError('')
         self.conn.cancel_transaction()
 
-        unpopulated = self.pop_rel - self
+        unpopulated = self.pop_rel - self.target
         if not unpopulated.count:
-            print('Nothing to populate', flush=True)   # TODO: use logging?
+            logger.info('Nothing to populate', flush=True)
             if catch_errors:
                 error_keys, errors = [], []
             for key in unpopulated.fetch():

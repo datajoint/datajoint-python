@@ -27,9 +27,9 @@ class Experiments(dj.Base):
     """
 
 # refers to a table in dj_test2 (bound to test2) but without a class
-class Session(dj.Base):
+class Sessions(dj.Base):
     definition = """
-    test1.Session (manual)     # Experiment sessions
+    test1.Sessions (manual)     # Experiment sessions
     -> test1.Subjects
     -> test2.Experimenter
     session_id     : int       # unique session id
@@ -45,6 +45,13 @@ class Match(dj.Base):
     dob    : date     # date of birth
     """
 
+# this tries to reference a table in database directly without ORM
+class TrainingSession(dj.Base):
+    definition = """
+    test1.TrainingSession (manual)  # training sessions
+    -> `dj_test2`.Experimenter
+    session_id    : int      # training session id
+    """
 
 class Empty(dj.Base):
     pass

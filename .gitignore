@@ -1,4 +1,5 @@
 .ipynb_checkpoints/
+*.json
 */.*.swp
 */.*.swo
 */*.pyc

@@ -4,6 +4,7 @@ classes for relational algebra
 
 import numpy as np
 import abc
+import re
 from copy import copy
 from datajoint import DataJointError
 from .blob import unpack
@@ -25,11 +26,20 @@ class Relation(metaclass=abc.ABCMeta):
 
     @abc.abstractproperty
     def sql(self):
-        return NotImplemented
-    
+        """
+        The sql property returns the tuple: (SQL command, Heading object) for its relation.
+        The SQL command does not include the attribute list or the WHERE clause.
+        :return:  sql, heading
+        """
+        pass
+
     @abc.abstractproperty
-    def heading(self):
-        return NotImplemented
+    def conn(self):
+        """
+        All relations must keep track of their connection object
+        :return:
+        """
+        pass
 
     @property
     def restrictions(self):
@@ -41,46 +51,50 @@ class Relation(metaclass=abc.ABCMeta):
         """
         return Join(self, other)
 
-    def __mod__(self, attribute_list):
+    def __mod__(self, attributes=None):
         """
-        relational projection operator.
-        :param attribute_list: list of attribute specifications.
-        The attribute specifications are strings in following forms:
-        'name' - specific attribute
-        'name->new_name'  - rename attribute.  The old attribute is kept only if specifically included.
-        'sql_expression->new_name' - extend attribute, i.e. a new computed attribute.
-        :return: a new relation with specified heading
+        relational projection operator.  See Relation.project
         """
-        self.project(attribute_list)
+        return self.project(*attributes)
 
-    def project(self, *selection, **aliases):
+    def project(self, *attributes, **renamed_attributes):
         """
         Relational projection operator.
         :param attributes: a list of attribute names to be included in the result.
-        :param renames: a dict of attributes to be renamed
         :return: a new relation with selected fields
         Primary key attributes are always selected and cannot be excluded.
         Therefore obj.project() produces a relation with only the primary key attributes.
-        If selection includes the string '*', all attributes are selected.
-        Each attribute can only be used once in attributes or renames.  Therefore, the projected
+        If attributes includes the string '*', all attributes are selected.
+        Each attribute can only be used once in attributes or renamed_attributes.  Therefore, the projected
         relation cannot have more attributes than the original relation.
         """
-        group = selection.pop[0] if selection and isinstance(selection[0], Relation) else None
-        return self.aggregate(group, *selection, **aliases)
+        # if the first attribute is a relation, it will be aggregated
+        group = attributes.pop[0] \
+            if attributes and isinstance(attributes[0], Relation) else None
+        return self.aggregate(group, *attributes, **renamed_attributes)
 
-    def aggregate(self, group, *selection, **aliases):
+    def aggregate(self, _group, *attributes, **renamed_attributes):
         """
         Relational aggregation operator
-        :param grouped_relation:
+        :param group:  relation whose tuples can be used in aggregation operators
         :param extensions:
-        :return:
+        :return: a relation representing the aggregation/projection operator result
         """
-        if group is not None and not isinstance(group, Relation):
-            raise DataJointError('The second argument of aggregate must be a relation')
-        # convert the string notation for aliases to
-        # handling of the variable group is unclear here
-        # and thus ommitted
-        return Projection(self, *selection, **aliases)
+        if _group is not None and not isinstance(_group, Relation):
+            raise DataJointError('The second argument must be a relation or None')
+        alias_parser = re.compile(
+            '^\s*(?P<sql_expression>\S(.*\S)?)\s*->\s*(?P<alias>[a-z][a-z_0-9]*)\s*$')
+
+        # expand extended attributes in the form 'sql_expression -> new_attribute'
+        _attributes = []
+        for attribute in attributes:
+            alias_match = alias_parser.match(attribute)
+            if alias_match:
+                d = alias_match.group_dict()
+                renamed_attributes.update({d['alias']: d['sql_expression']})
+            else:
+                _attributes += attribute
+        return Projection(self, _group, *_attributes, **renamed_attributes)
 
     def __iand__(self, restriction):
         """
@@ -104,7 +118,7 @@ class Relation(metaclass=abc.ABCMeta):
 
     def __isub__(self, restriction):
         """
-        in-place inverted restriction aka antijoin
+        in-place antijoin (inverted restriction)
         """
         self &= Not(restriction)
         return self
@@ -117,14 +131,13 @@ class Relation(metaclass=abc.ABCMeta):
 
     @property
     def count(self):
-        sql = 'SELECT count(*) FROM ' + self.sql + self._where_clause
-        cur = self.conn.query(sql)
+        cur = self.conn.query('SELECT count(*) FROM ' + self.sql[0] + self._where)
         return cur.fetchone()[0]
 
-    def fetch(self, *args, **kwargs):
+    def __call__(self, *args, **kwargs):
         return self(*args, **kwargs)
 
-    def __call__(self, offset=0, limit=None, order_by=None, descending=False):
+    def fetch(self, offset=0, limit=None, order_by=None, descending=False):
         """
         fetches the relation from the database table into an np.array and unpacks blob attributes.
         :param offset: the number of tuples to skip in the returned result
@@ -150,7 +163,8 @@ class Relation(metaclass=abc.ABCMeta):
         """
         if offset and limit is None:
             raise DataJointError('')
-        sql = 'SELECT ' + self.heading.as_sql + ' FROM ' + self.sql
+        sql, heading = self.sql
+        sql = 'SELECT ' + heading.as_sql + ' FROM ' + sql
         if order_by is not None:
             sql += ' ORDER BY ' + ', '.join(self._orderBy)
             if descending:
@@ -179,19 +193,22 @@ class Relation(metaclass=abc.ABCMeta):
     def __iter__(self):
         """
         iterator  yields primary key tuples
+        Example:
+        for key in relation:
+            (schema.Relation & key).fetch('field')
         """
-        cur, h = self.project().cursor()
+        cur, h = self.project().cursor()   # project
         q = cur.fetchone()
         while q:
             yield np.array([q, ], dtype=h.asdtype)
             q = cur.fetchone()
 
     @property
-    def _where_clause(self):
+    def _where(self):
         """
-        make there WHERE clause based on the current restriction
+        convert the restriction into an SQL WHERE
         """
-        if not self._restrictions:
+        if not self.restrictions:
             return ''
         
         def make_condition(arg):
@@ -230,64 +247,97 @@ class Not:
     inverse of a restriction
     """
     def __init__(self, restriction):
-        self._restriction = restriction
+        self.__restriction = restriction
+
+    @property
+    def restriction(self):
+        return self.__restriction
 
 
 class Join(Relation):
-    alias_counter = 0
+    subquery_counter = 0
 
     def __init__(self, rel1, rel2):
         if not isinstance(rel2, Relation):
-            raise DataJointError('relvars can only be joined with other relvars')
+            raise DataJointError('a relation can only be joined with another relation')
         if rel1.conn is not rel2.conn:
             raise DataJointError('Cannot join relations with different database connections')
         self.conn = rel1.conn
-        self._rel1 = rel1
-        self._rel2 = rel2
-    
+        self._rel1 = Subquery(rel1)
+        self._rel2 = Subquery(rel2)
+
+    @property
+    def conn(self):
+        return self._rel1.conn
+
     @property
     def heading(self):
         return self._rel1.heading.join(self._rel2.heading)
-        
-    @property 
+
+    @property
+    def counter(self):
+        self.subquery_counter += 1
+        return self.subquery_counter
+
+    @property
     def sql(self):
-        Join.alias_counter += 1
-        return '%s NATURAL JOIN %s as `j%x`' % (self._rel1.sql, self._rel2.sql, Join.alias_counter)
+        return '%s NATURAL JOIN %s as `_j%x`' % (self._rel1.sql, self._rel2.sql, self.counter)
 
 
 class Projection(Relation):
-    alias_counter = 0
+    subquery_counter = 0
 
-    def __init__(self, relation, *attributes, **renames):
+    def __init__(self, relation, group=None, *attributes, **renamed_attributes):
         """
         See Relation.project()
         """
-        self.conn = relation.conn
-        self._relation = relation
+        if group:
+            if relation.conn is not group.conn:
+                raise DataJointError('Cannot join relations with different database connections')
+            self._group = Subquery(group)
+            self._relation = Subquery(relation)
+        else:
+            self._group = None
+            self._relation = relation
         self._projection_attributes = attributes
-        self._renamed_attributes = renames
+        self._renamed_attributes = renamed_attributes
 
-    @property 
-    def sql(self):
-        return self._relation.sql
-        
     @property
-    def heading(self):
-        return self._relation.heading.pro(*self._projection_attributes, **self._renamed_attributes)
+    def conn(self):
+        return self._relation.conn
+
+    @property
+    def sql(self):
+        sql, heading = self._relation.sql
+        heading = heading.pro(self._projection_attributes, self._renamed_attributes)
+        if self._group is not None:
+            group_sql, group_heading = self._group.sql
+            sql = ("(%s) NATURAL LEFT JOIN (%s) GROUP BY `%s`" %
+                   (sql, group_sql, '`,`'.join(heading.primary_key)))
+        return sql, heading
 
 
 class Subquery(Relation):
-    alias_counter = 0
-    
+    """
+    A Subquery encapsulates its argument in a SELECT statement, enabling its use as a subquery.
+    The attribute list and the WHERE clause are resolved.
+    """
+    _counter = 0
+
     def __init__(self, rel):
-        self.conn = rel.conn
         self._rel = rel
-        
+
+    @property
+    def conn(self):
+        return self._rel.conn
+
+    @property
+    def counter(self):
+        Subquery._counter += 1
+        return Subquery._counter
+
     @property
     def sql(self):
-        self.alias_counter += 1
-        return '(SELECT ' + self._rel.heading.as_sql + ' FROM ' + self._rel.sql + ') as `s%x`' % self.alias_counter
-        
-    @property
-    def heading(self):
-        return self._rel.heading.resolve_computations()
+        return ('(SELECT ' + self._rel.heading.as_sql +
+                ' FROM ' + self._rel.sql + self._rel.where + ') as `_s%x`' % self.counter),\
+            self._rel.heading.clear_aliases()

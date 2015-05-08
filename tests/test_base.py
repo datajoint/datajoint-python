@@ -178,7 +178,7 @@ class TestBaseWithExistingTables(object):
         assert_true(s.is_declared)
 
     def test_definition_referring_to_existing_table_without_class(self):
-        s1 = test1.Session()
+        s1 = test1.Sessions()
         assert_true('experimenter_id' in s1.primary_key)
 
         s2 = test2.Session()
@@ -188,6 +188,15 @@ class TestBaseWithExistingTables(object):
         s = test1.Match()
         s.declare()
         assert_true('pop_id' in s.primary_key)
+
+    def test_direct_reference_to_existing_table_should_fail(self):
+        """
+        When deriving from Base, definition should not contain direct reference
+        to a database name
+        """
+        s = test1.TrainingSession()
+        with assert_raises(DataJointError):
+            s.declare()
 
 @raises(TypeError)
 def test_instantiation_of_base_derivative_without_definition_should_fail():

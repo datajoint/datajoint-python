@@ -30,15 +30,22 @@ class Table(Relation):
 
     def __init__(self, conn=None, dbname=None, class_name=None, definition=None):
         self.class_name = class_name
-        self.conn = conn
+        self._conn = conn
         self.dbname = dbname
-        self.definition = definition
+        self._definition = definition
 
         if dbname not in self.conn.db_to_mod:
             # register with a fake module, enclosed in back quotes
             # necessary for loading mechanism
             self.conn.bind('`{0}`'.format(dbname), dbname)
 
+    @property
+    def definition(self):
+        return self._definition
+
+    @property
+    def conn(self):
+        return self._conn
 
     @property
     def is_declared(self):
@@ -86,7 +93,7 @@ class Table(Relation):
 
     @property
     def sql(self):
-        return self.full_table_name
+        return self.full_table_name, self.heading
 
     @property
     def heading(self):
@@ -350,7 +357,12 @@ class Table(Relation):
         return Heading.AttrTuple(**attr_info)
 
     def get_base(self, module_name, class_name):
-        return None
+        m = re.match(r'`(\w+)`', module_name)
+        if m:
+            dbname = m.group(1)
+            return Table(self.conn, dbname, class_name)
+        else:
+            return None
 
     @property
     def ref_name(self):
@@ -367,12 +379,8 @@ class Table(Relation):
             raise DataJointError('Table definition is missing!')
         table_info, parents, referenced, field_defs, index_defs = self._parse_declaration()
         defined_name = table_info['module'] + '.' + table_info['className']
-        if self._use_package:
-            parent = self.__module__.split('.')[-2]
-        else:
-            parent = self.__module__.split('.')[-1]
-        expected_name = parent + '.' + self.class_name
-        if not defined_name == expected_name:
+
+        if not defined_name == self.ref_name:
             raise DataJointError('Table name {} does not match the declared'
                                  'name {}'.format(expected_name, defined_name))
 
@@ -466,7 +474,7 @@ class Table(Relation):
         # remove comment lines
         declaration = [x for x in declaration if not x.startswith('#')]
         ptrn = """
-        ^(?P<module>\w+)\.(?P<className>\w+)\s*     #  module.className
+        ^(?P<module>[\w\`]+)\.(?P<className>\w+)\s*     #  module.className
         \(\s*(?P<tier>\w+)\s*\)\s*                  #  (tier)
         \#\s*(?P<comment>.*)$                       #  comment
         """

@@ -11,8 +11,8 @@ def to_camel_case(s):
     >>>to_camel_case("table_name")
         "TableName"
     """
-    def to_upper(matchobj):
-        return matchobj.group(0)[-1].upper()
+    def to_upper(match):
+        return match.group(0)[-1].upper()
     return re.sub('(^|[_\W])+[a-zA-Z]', to_upper, s)
 
 
@@ -26,13 +26,13 @@ def from_camel_case(s):
         "table_name"
     """
     if re.search(r'\s', s):
-        raise DataJointError('White space is not allowed')
+        raise DataJointError('Input cannot contain white space')
     if re.match(r'\d.*', s):
-        raise DataJointError('String cannot begin with a digit')
+        raise DataJointError('Input cannot begin with a digit')
     if not re.match(r'^[a-zA-Z0-9]*$', s):
         raise DataJointError('String can only contain alphanumeric characters')
 
-    def conv(matchobj):
-        return ('_' if matchobj.groups()[0] else '') + matchobj.group(0).lower()
+    def convert(match):
+        return ('_' if match.groups()[0] else '') + match.group(0).lower()
 
-    return re.sub(r'(\B[A-Z])|(\b[A-Z])', conv, s)
+    return re.sub(r'(\B[A-Z])|(\b[A-Z])', convert, s)
