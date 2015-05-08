@@ -7,7 +7,7 @@ import datajoint as dj
 
 
 
-class Subjects(dj.Base):
+class Subjects(dj.Relation):
     definition = """
     schema2.Subjects (manual)     # Basic subject info
     pop_id       : int      # unique experiment id

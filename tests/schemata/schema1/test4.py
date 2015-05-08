@@ -6,7 +6,7 @@ __author__ = 'fabee'
 import datajoint as dj
 
 
-class Matrix(dj.Base):
+class Matrix(dj.Relation):
     definition = """
     test4.Matrix (manual)        # Some numpy array
 

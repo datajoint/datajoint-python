@@ -8,7 +8,7 @@ from nose.tools import assert_raises, assert_equal, assert_regexp_matches, asser
 from datajoint import DataJointError
 import numpy as np
 from numpy.testing import assert_array_equal
-from datajoint.table import Table
+from datajoint.free_relation import FreeRelation
 
 def setup():
     """
@@ -23,7 +23,7 @@ class TestTableObject(object):
         self.setup()
 
     """
-    Test cases for Table objects
+    Test cases for FreeRelation objects
     """
 
     def setup(self):
@@ -126,7 +126,7 @@ class TestTableObject(object):
 
 class TestUnboundTables(object):
     """
-    Test usages of Table objects not connected to a module.
+    Test usages of FreeRelation objects not connected to a module.
     """
     def setup(self):
         cleanup()
@@ -139,7 +139,7 @@ class TestUnboundTables(object):
         ---
         animal_name : varchar(128)  # name of the animal
         """
-        table = Table(self.conn, 'dj_free', 'Animals', definition)
+        table = FreeRelation(self.conn, 'dj_free', 'Animals', definition)
         table.declare()
         assert_true('animal_id' in table.primary_key)
 
@@ -149,7 +149,7 @@ class TestUnboundTables(object):
         -> `dj_free`.Animals
         rec_session_id : int     # recording session identifier
         """
-        table = Table(self.conn, 'dj_free', 'Recordings', definition)
+        table = FreeRelation(self.conn, 'dj_free', 'Recordings', definition)
         assert_raises(DataJointError, table.declare)
 
     def test_reference_to_existing_table(self):
@@ -159,7 +159,7 @@ class TestUnboundTables(object):
         ---
         animal_name : varchar(128)  # name of the animal
         """
-        table1 = Table(self.conn, 'dj_free', 'Animals', definition1)
+        table1 = FreeRelation(self.conn, 'dj_free', 'Animals', definition1)
         table1.declare()
 
         definition2 = """
@@ -167,7 +167,7 @@ class TestUnboundTables(object):
         -> `dj_free`.Animals
         rec_session_id : int     # recording session identifier
         """
-        table2 = Table(self.conn, 'dj_free', 'Recordings', definition2)
+        table2 = FreeRelation(self.conn, 'dj_free', 'Recordings', definition2)
         table2.declare()
         assert_true('animal_id' in table2.primary_key)
 

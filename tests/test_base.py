@@ -23,7 +23,7 @@ def setup():
 
 class TestBaseInstantiations(object):
     """
-    Test cases for instantiating Base objects
+    Test cases for instantiating Relation objects
     """
     def __init__(self):
         self.conn = None
@@ -52,7 +52,7 @@ class TestBaseInstantiations(object):
 
     def test_instantiation_from_unbound_module_should_fail(self):
         """
-        Attempting to instantiate a Base derivative from a module with
+        Attempting to instantiate a Relation derivative from a module with
         connection defined but not bound to a database should raise error
         """
         test1.conn = self.conn
@@ -62,7 +62,7 @@ class TestBaseInstantiations(object):
 
     def test_instantiation_from_module_without_conn_should_fail(self):
         """
-        Attempting to instantiate a Base derivative from a module that lacks
+        Attempting to instantiate a Relation derivative from a module that lacks
         `conn` object should raise error
         """
         with assert_raises(DataJointError) as e:
@@ -72,7 +72,7 @@ class TestBaseInstantiations(object):
     def test_instantiation_of_base_derivatives(self):
         """
         Test instantiation and initialization of objects derived from
-        Base class
+        Relation class
         """
         test1.conn = self.conn
         self.conn.bind(test1.__name__, PREFIX + '_test1')
@@ -92,7 +92,7 @@ class TestBaseInstantiations(object):
 class TestBaseDeclaration(object):
     """
     Test declaration (creation of table) from
-    definition in Base under various circumstances
+    definition in Relation under various circumstances
     """
 
     def setup(self):
@@ -171,7 +171,7 @@ class TestBaseWithExistingTables(object):
 
     def test_detection_of_existing_table(self):
         """
-        The Base instance should be able to detect if the
+        The Relation instance should be able to detect if the
         corresponding table already exists in the database
         """
         s = test1.Subjects()
@@ -191,7 +191,7 @@ class TestBaseWithExistingTables(object):
 
     def test_direct_reference_to_existing_table_should_fail(self):
         """
-        When deriving from Base, definition should not contain direct reference
+        When deriving from Relation, definition should not contain direct reference
         to a database name
         """
         s = test1.TrainingSession()
