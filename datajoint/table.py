@@ -30,15 +30,22 @@ class Table(Relation):
 
     def __init__(self, conn=None, dbname=None, class_name=None, definition=None):
         self.class_name = class_name
-        self.conn = conn
+        self._conn = conn
         self.dbname = dbname
-        self.definition = definition
+        self._definition = definition
 
         if dbname not in self.conn.db_to_mod:
             # register with a fake module, enclosed in back quotes
             # necessary for loading mechanism
             self.conn.bind('`{0}`'.format(dbname), dbname)
 
+    @property
+    def definition(self):
+        return self._definition
+
+    @property
+    def conn(self):
+        return self._conn
 
     @property
     def is_declared(self):
@@ -86,7 +93,7 @@ class Table(Relation):
 
     @property
     def sql(self):
-        return self.full_table_name
+        return self.full_table_name, self.heading
 
     @property
     def heading(self):

@@ -39,12 +39,17 @@ def cleanup():
     and then later reset FOREIGN_KEY_CHECKS flag
     """
     cur = BASE_CONN.cursor()
+    # cancel any unfinished transactions
+    cur.execute("ROLLBACK")
+    # start a transaction now
+    cur.execute("START TRANSACTION WITH CONSISTENT SNAPSHOT")
     cur.execute("SHOW DATABASES LIKE '{}\_%'".format(PREFIX))
     dbs = [x[0] for x in cur.fetchall()]
     cur.execute('SET FOREIGN_KEY_CHECKS=0') # unset foreign key check while deleting
     for db in dbs:
         cur.execute('DROP DATABASE `{}`'.format(db))
     cur.execute('SET FOREIGN_KEY_CHECKS=1') # set foreign key check back on
+    cur.execute("COMMIT")
 
 def setup_sample_db():
     """

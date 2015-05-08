@@ -8,13 +8,19 @@ from datajoint import DataJointError
 class Heading:
     """
     local class for relations' headings.
+    Heading contains the property attributes, which is an OrderedDict in which the keys are
+    the attribute names and the values are AttrTuples.
     """
     AttrTuple = namedtuple('AttrTuple',
-                           ('name', 'type', 'in_key', 'nullable', 'default', 'comment', 'autoincrement', 
-                            'numeric', 'string', 'is_blob', 'computation', 'dtype'))
+                           ('name', 'type', 'in_key', 'nullable', 'default',
+                            'comment', 'autoincrement', 'numeric', 'string', 'is_blob',
+                            'computation', 'dtype'))
+    AttrTuple.as_dict = AttrTuple._asdict  # rename the method into a nicer name
 
     def __init__(self, attributes):
-        # Input: attributes -list of dicts with attribute descriptions
+        """
+        :param attributes: a list of dicts with the same keys as AttrTuple
+        """
         self.attributes = OrderedDict([(q['name'], Heading.AttrTuple(**q)) for q in attributes])
 
     @property
@@ -91,7 +97,7 @@ class Heading:
         """
         cur = conn.query(
             'SHOW FULL COLUMNS FROM `{table_name}` IN `{dbname}`'.format(
-            table_name=table_name, dbname=dbname), asDict=True)
+                table_name=table_name, dbname=dbname), asDict=True)
         attributes = cur.fetchall()
 
         rename_map = {
@@ -145,7 +151,7 @@ class Heading:
                     field=attr['type'], dbname=dbname, table_name=table_name))
             attr.pop('Extra')
 
-            # fill out the dtype. All floats and non-nullable integers are turned into specific dtypes
+            # fill out dtype. All floats and non-nullable integers are turned into specific dtypes
             attr['dtype'] = object
             if attr['numeric']:
                 is_integer = bool(re.match(r'(tiny|small|medium|big)?int', attr['type']))
@@ -160,30 +166,29 @@ class Heading:
 
         return cls(attributes)
 
-    def pro(self, *attribute_list, **rename_dict):
+    def project(self, *attribute_list, **renamed_attributes):
         """
         derive a new heading by selecting, renaming, or computing attributes.
         In relational algebra these operators are known as project, rename, and expand.
         The primary key is always included.
         """
-        # include all if '*' is in attribute_set, always include primary key
-        attribute_set = set(self.names) if '*' in attribute_list \
-            else set(attribute_list).union(self.primary_key)
-
-        # report missing attributes
-        missing = attribute_set.difference(self.names)
+        # check missing attributes
+        missing = [a for a in attribute_list if a not in self.names]
         if missing:
-            raise DataJointError('Attributes %s are not found' % str(missing))
+            raise DataJointError('Attributes `%s` are not found' % '`, `'.join(missing))
 
-        # make attribute_list a list of dicts for initializing a Heading
-        attribute_list = [v._asdict() for k, v in self.attributes.items()
-                          if k in attribute_set and k not in rename_dict.values()]
+        # always add primary key attributes
+        attribute_list = self.primary_key + [a for a in attribute_list if a not in self.primary_key]
+
+        # convert attribute_list into a list of dicts but exclude renamed attributes
+        attribute_list = [v.as_dict() for k, v in self.attributes.items()
+                          if k in attribute_list and k not in renamed_attributes.values()]
 
         # add renamed and computed attributes
-        for new_name, computation in rename_dict.items():
+        for new_name, computation in renamed_attributes.items():
             if computation in self.names:
                 # renamed attribute
-                new_attr = self.attributes[computation]._asdict()
+                new_attr = self.attributes[computation].as_dict()
                 new_attr['name'] = new_name
                 new_attr['computation'] = '`' + computation + '`'
             else:
@@ -210,14 +215,14 @@ class Heading:
         join two headings
         """
         assert isinstance(other, Heading)
-        attribute_list = [v._asdict() for v in self.attributes.values()]
+        attribute_list = [v.as_dict() for v in self.attributes.values()]
         for name in other.names:
             if name not in self.names:
-                attribute_list.append(other.attributes[name]._asdict())
+                attribute_list.append(other.attributes[name].as_dict())
         return Heading(attribute_list)
 
     def resolve_computations(self):
         """
         Remove computations.  To be done after computations have been resolved in a subquery
         """
-        return Heading([dict(v._asdict(), computation=None) for v in self.attributes.values()])
+        return Heading([dict(v.as_dict(), computation=None) for v in self.attributes.values()])

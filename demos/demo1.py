@@ -62,14 +62,3 @@ class Scan(dj.Base):
     wavelength : smallint  # (nm)  laser wavelength
     mwatts: numeric(4,1)  # (mW) laser power to brain
     """
-
-
-class ScanInfo(dj.Base, dj.AutoPopulate):
-    definition = None
-    pop_rel = Session
-
-    def make_tuples(self, key):
-        info = (Session()*Scan() & key).pro('experiment_folder').fetch()
-        filename = os.path.join(info.experiment_folder, 'scan_%03', )
-
-
