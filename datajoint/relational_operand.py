@@ -309,7 +309,7 @@ class Projection(RelationalOperand):
     @property
     def sql(self):
         sql, heading = self._relation.sql
-        heading = heading.pro(self._projection_attributes, self._renamed_attributes)
+        heading = heading.project(self._projection_attributes, self._renamed_attributes)
         if self._group is not None:
             group_sql, group_heading = self._group.sql
             sql = ("(%s) NATURAL LEFT JOIN (%s) GROUP BY `%s`" %
