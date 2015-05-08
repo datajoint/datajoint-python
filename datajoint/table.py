@@ -26,7 +26,7 @@ class Table(Relation):
 
     def __init__(self, conn=None, dbname=None, class_name=None, definition=None):
         self.class_name = class_name
-        self.conn = conn
+        self._conn = conn
         self.dbname = dbname
         self.conn.load_headings(self.dbname)
 
@@ -42,13 +42,14 @@ class Table(Relation):
             else:
                 declare(conn, definition, class_name)
 
-    @property
-    def sql(self):
-        return self.full_table_name
 
     @property
-    def heading(self):
-        return self.conn.headings[self.dbname][self.table_name]
+    def conn(self):
+        return self._conn
+
+    @property
+    def sql(self):
+        return self.full_table_name, self.conn.headings[self.dbname][self.table_name]
 
     @property
     def full_table_name(self):
