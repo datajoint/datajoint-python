@@ -8,6 +8,7 @@ from nose.tools import assert_raises, assert_equal, assert_regexp_matches, asser
 from datajoint import DataJointError
 import numpy as np
 from numpy.testing import assert_array_equal
+from datajoint.table import Table
 
 def setup():
     """
@@ -122,3 +123,52 @@ class TestTableObject(object):
         self.relvar_blob.insert(t)
         x2 = self.relvar_blob.fetch()[0][1]
         assert_array_equal(x,x2, 'inserted blob does not match')
+
+class TestUnboundTables(object):
+    """
+    Test usages of Table objects not connected to a module.
+    """
+    def setup(self):
+        cleanup()
+        self.conn = Connection(**CONN_INFO)
+
+    def test_creation_from_definition(self):
+        definition = """
+        `dj_free`.Animals (manual)  # my animal table
+        animal_id   : int           # unique id for the animal
+        ---
+        animal_name : varchar(128)  # name of the animal
+        """
+        table = Table(self.conn, 'dj_free', 'Animals', definition)
+        table.declare()
+        assert_true('animal_id' in table.primary_key)
+
+    def test_reference_to_non_existant_table_should_fail(self):
+        definition = """
+        `dj_free`.Recordings (manual)  # recordings
+        -> `dj_free`.Animals
+        rec_session_id : int     # recording session identifier
+        """
+        table = Table(self.conn, 'dj_free', 'Recordings', definition)
+        assert_raises(DataJointError, table.declare)
+
+    def test_reference_to_existing_table(self):
+        definition1 = """
+        `dj_free`.Animals (manual)  # my animal table
+        animal_id   : int           # unique id for the animal
+        ---
+        animal_name : varchar(128)  # name of the animal
+        """
+        table1 = Table(self.conn, 'dj_free', 'Animals', definition1)
+        table1.declare()
+
+        definition2 = """
+        `dj_free`.Recordings (manual)  # recordings
+        -> `dj_free`.Animals
+        rec_session_id : int     # recording session identifier
+        """
+        table2 = Table(self.conn, 'dj_free', 'Recordings', definition2)
+        table2.declare()
+        assert_true('animal_id' in table2.primary_key)
+
+

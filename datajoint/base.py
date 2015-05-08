@@ -49,7 +49,7 @@ class Base(Table, metaclass=abc.ABCMeta):
         return '{}.{}'.format(self.__module__, self.class_name)
 
     @property
-    def access_name(self):
+    def ref_name(self):
         """
         :return: name by which this class should be accessible as
         """
@@ -58,7 +58,6 @@ class Base(Table, metaclass=abc.ABCMeta):
         else:
             parent = self.__module__.split('.')[-1]
         return parent + '.' + self.class_name
-
 
 
     def __init__(self): #TODO: support taking in conn obj

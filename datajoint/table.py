@@ -350,7 +350,12 @@ class Table(Relation):
         return Heading.AttrTuple(**attr_info)
 
     def get_base(self, module_name, class_name):
-        return None
+        m = re.match(r'`(\w+)`', module_name)
+        if m:
+            dbname = m.group(1)
+            return Table(self.conn, dbname, class_name)
+        else:
+            return None
 
     @property
     def ref_name(self):
@@ -367,12 +372,8 @@ class Table(Relation):
             raise DataJointError('Table definition is missing!')
         table_info, parents, referenced, field_defs, index_defs = self._parse_declaration()
         defined_name = table_info['module'] + '.' + table_info['className']
-        if self._use_package:
-            parent = self.__module__.split('.')[-2]
-        else:
-            parent = self.__module__.split('.')[-1]
-        expected_name = parent + '.' + self.class_name
-        if not defined_name == expected_name:
+
+        if not defined_name == self.ref_name:
             raise DataJointError('Table name {} does not match the declared'
                                  'name {}'.format(expected_name, defined_name))
 
@@ -466,7 +467,7 @@ class Table(Relation):
         # remove comment lines
         declaration = [x for x in declaration if not x.startswith('#')]
         ptrn = """
-        ^(?P<module>\w+)\.(?P<className>\w+)\s*     #  module.className
+        ^(?P<module>[\w\`]+)\.(?P<className>\w+)\s*     #  module.className
         \(\s*(?P<tier>\w+)\s*\)\s*                  #  (tier)
         \#\s*(?P<comment>.*)$                       #  comment
         """
