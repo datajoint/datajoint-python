@@ -19,7 +19,7 @@ class TestRelationalAlgebra(object):
     def test_mul(self):
         pass
 
-    def test_pro(self):
+    def test_project(self):
         pass
 
     def test_iand(self):
