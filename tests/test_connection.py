@@ -1,7 +1,9 @@
 """
 Collection of test cases to test connection module.
 """
+from .schemata import schema1
 from .schemata.schema1 import test1
+
 
 __author__ = 'eywalker'
 from . import (CONN_INFO, PREFIX, BASE_CONN, cleanup)
@@ -81,6 +83,8 @@ class TestConnectionWithoutBindings(object):
     """
     def setup(self):
         self.conn = dj.Connection(**CONN_INFO)
+        test1.__dict__.pop('conn', None)
+        schema1.__dict__.pop('conn', None)
         setup_sample_db()
 
     def teardown(self):
@@ -103,7 +107,10 @@ class TestConnectionWithoutBindings(object):
         self.check_binding(db_name, module)
 
     def test_bind_at_package_level(self):
-        pass
+        db_name = PREFIX + '_test1'
+        package = schema1.__name__
+        self.conn.bind(package, db_name)
+        self.check_binding(db_name, package)
 
     def test_bind_to_non_existing_database(self):
         """
