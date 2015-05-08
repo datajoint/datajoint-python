@@ -2,5 +2,5 @@ Connection
 ==========
 
 .. automodule:: datajoint.connection
-:members:
-        :inherited-members:
+    :members:
+    :inherited-members:
