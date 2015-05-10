@@ -246,3 +246,4 @@ class TestIterator(object):
             assert_equal(t[0], t2['matrix_id'], 'inserted and retrieved tuples do not match')
             assert_equal(t[2], t2['comment'], 'inserted and retrieved tuples do not match')
             assert_true(np.all(t[1] == t2['data']), 'inserted and retrieved tuples do not match')
+
