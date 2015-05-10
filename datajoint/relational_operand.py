@@ -127,7 +127,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         return cur.fetchone()[0]
 
     def __call__(self, *args, **kwargs):
-        return self(*args, **kwargs)
+        return self.fetch(*args, **kwargs)
 
     def fetch(self, offset=0, limit=None, order_by=None, descending=False):
         """
@@ -138,13 +138,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         :param descending: the list of attributes to order the results
         :return: the contents of the relation in the form of a structured numpy.array
         """
-        cur = self.cursor(offset, limit, order_by, descending)
-        heading = self.heading
-        ret = np.array(list(cur), dtype=heading.as_dtype)
-        for f in heading.blobs:
-            for i in range(len(ret)):
-                ret[i][f] = unpack(ret[i][f])
-        return ret
+        return np.array(list(self.__iter__(offset, limit, order_by, descending)), dtype=self.heading.as_dtype)
 
     def cursor(self, offset=0, limit=None, order_by=None, descending=False):
         """
@@ -183,17 +177,21 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         repr_string += ' (%d tuples)\n' % self.count
         return repr_string
         
-    def __iter__(self):
+    def __iter__(self, offset=0, limit=None, order_by=None, descending=False):
         """
-        iterator  yields primary key tuples
-        Example:
-        for key in relation:
-            (schema.Relation & key).fetch('field')
+        Iterator that yields individual tuples of the current table (as tuples).
+
+
+        :param offset: parameter passed to the :func:`cursor`
+        :param limit: parameter passed to the :func:`cursor`
+        :param order_by: parameter passed to the :func:`cursor`
+        :param descending: parameter passed to the :func:`cursor`
         """
-        cur, h = self.project().cursor()   # project
+        cur = self.cursor(offset, limit, order_by, descending)
+        do_unpack = tuple(h in self.heading.blobs for h in self.heading.names)
         q = cur.fetchone()
         while q:
-            yield np.array([q, ], dtype=h.as_dtype)
+            yield tuple(unpack(field) if up else field for up, field in zip(do_unpack, q))
             q = cur.fetchone()
 
     @property
