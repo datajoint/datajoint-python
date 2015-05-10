@@ -1,10 +1,14 @@
+import random
+import string
+
 __author__ = 'fabee'
 
 from .schemata.schema1 import test1, test4
 
 from . import BASE_CONN, CONN_INFO, PREFIX, cleanup
 from datajoint.connection import Connection
-from nose.tools import assert_raises, assert_equal, assert_regexp_matches, assert_false, assert_true, assert_list_equal
+from nose.tools import assert_raises, assert_equal, assert_regexp_matches, assert_false, assert_true, assert_list_equal,\
+    assert_tuple_equal
 from datajoint import DataJointError
 import numpy as np
 from numpy.testing import assert_array_equal
@@ -33,6 +37,9 @@ class TestTableObject(object):
         test1 - has conn and bounded
         """
         cleanup()  # drop all databases with PREFIX
+        test1.__dict__.pop('conn', None)
+        test4.__dict__.pop('conn', None) # make sure conn is not defined at schema level
+
         self.conn = Connection(**CONN_INFO)
         test1.conn = self.conn
         test4.conn = self.conn
@@ -171,4 +178,72 @@ class TestUnboundTables(object):
         table2.declare()
         assert_true('animal_id' in table2.primary_key)
 
+
+def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
+    return ''.join(random.choice(chars) for _ in range(size))
+
+class TestIterator(object):
+    def __init__(self):
+        self.relvar = None
+        self.setup()
+
+    """
+    Test cases for Iterators in Relations objects
+    """
+
+    def setup(self):
+        """
+        Create a connection object and prepare test modules
+        as follows:
+        test1 - has conn and bounded
+        """
+        cleanup()  # drop all databases with PREFIX
+        test4.__dict__.pop('conn', None) # make sure conn is not defined at schema level
+
+        self.conn = Connection(**CONN_INFO)
+        test4.conn = self.conn
+        self.conn.bind(test4.__name__, PREFIX + '_test4')
+        self.relvar_blob = test4.Matrix()
+
+    def teardown(self):
+        cleanup()
+
+
+    def test_blob_iteration(self):
+        "Tests the basic call of the iterator"
+
+        tuples = []
+        for i in range(10):
+
+            c = id_generator()
+
+            t = (i, np.random.randn(4,4,4), c)
+            self.relvar_blob.insert(t)
+            tuples.append(t)
+
+        for t, t2 in zip(tuples, self.relvar_blob):
+
+            assert_equal(t[0], t2[0], 'inserted and retrieved tuples do not match')
+            assert_equal(t[2], t2[2], 'inserted and retrieved tuples do not match')
+            assert_true(np.all(t[1] == t2[1]), 'inserted and retrieved tuples do not match')
+
+    def test_fetch(self):
+        tuples = []
+        for i in range(10):
+
+            c = id_generator()
+
+            t = (i, np.random.randn(4,4,4), c)
+            self.relvar_blob.insert(t)
+            tuples.append(t)
+
+        tuples2 = self.relvar_blob.fetch()
+        print(type(tuples2))
+        assert_true(isinstance(tuples2, np.ndarray), "Return value of fetch does not have proper type.")
+        assert_true(isinstance(tuples2[0], np.void), "Return value of fetch does not have proper type.")
+        for t, t2 in zip(tuples, tuples2):
+
+            assert_equal(t[0], t2['matrix_id'], 'inserted and retrieved tuples do not match')
+            assert_equal(t[2], t2['comment'], 'inserted and retrieved tuples do not match')
+            assert_true(np.all(t[1] == t2['data']), 'inserted and retrieved tuples do not match')
 

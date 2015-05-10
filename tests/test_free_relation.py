@@ -21,7 +21,7 @@ def setup():
     pass
 
 
-class TestBaseInstantiations(object):
+class TestRelationInstantiations(object):
     """
     Test cases for instantiating Relation objects
     """
@@ -89,7 +89,7 @@ class TestBaseInstantiations(object):
         s = schema2.test1.Subjects()
 
 
-class TestBaseDeclaration(object):
+class TestRelationDeclaration(object):
     """
     Test declaration (creation of table) from
     definition in Relation under various circumstances
@@ -147,7 +147,7 @@ class TestBaseDeclaration(object):
             s.declare()
 
 
-class TestBaseWithExistingTables(object):
+class TestRelationWithExistingTables(object):
     """
     Test base derivatives behaviors when some of the tables
     already exists in the database
@@ -201,20 +201,6 @@ class TestBaseWithExistingTables(object):
 @raises(TypeError)
 def test_instantiation_of_base_derivative_without_definition_should_fail():
     test1.Empty()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

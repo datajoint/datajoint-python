@@ -37,7 +37,12 @@ default = OrderedDict({
 })
 
 
-class Config(collections.MutableMapping):
+class Borg:
+    _shared_state = {}
+    def __init__(self):
+        self.__dict__ = self._shared_state
+
+class Config(Borg, collections.MutableMapping):
     """
     Stores datajoint settings. Behaves like a dictionary, but applies validator functions
     when certain keys are set.
@@ -47,6 +52,7 @@ class Config(collections.MutableMapping):
     """
 
     def __init__(self, *args, **kwargs):
+        Borg.__init__(self)
         self._conf = dict(default)
         self.update(dict(*args, **kwargs))  # use the free update to set keys
 
