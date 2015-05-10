@@ -33,7 +33,8 @@ class Relation(FreeRelation, metaclass=abc.ABCMeta):
     def definition(self):
         """
         :return: string containing the table declaration using the DataJoint Data Definition Language.
-        The DataJoint DDL is described at:  TODO
+
+        The DataJoint DDL is described at:  http://datajoint.github.com
         """
         pass
 
