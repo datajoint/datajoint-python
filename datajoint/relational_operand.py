@@ -9,6 +9,7 @@ from copy import copy
 from datajoint import DataJointError
 from .blob import unpack
 import logging
+import numpy.lib.recfunctions as rfn
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +139,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         :param descending: the list of attributes to order the results
         :return: the contents of the relation in the form of a structured numpy.array
         """
-        return np.array(list(self.__iter__(offset, limit, order_by, descending)), dtype=self.heading.as_dtype)
+        return np.atleast_1d(rfn.stack_arrays(list(self.__iter__(offset, limit, order_by, descending)), usemask=False))
 
     def cursor(self, offset=0, limit=None, order_by=None, descending=False):
         """
@@ -179,7 +180,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         
     def __iter__(self, offset=0, limit=None, order_by=None, descending=False):
         """
-        Iterator that yields individual tuples of the current table (as tuples).
+        Iterator that yields individual tuples of the current table (as record arrays).
 
 
         :param offset: parameter passed to the :func:`cursor`
@@ -191,7 +192,8 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         do_unpack = tuple(h in self.heading.blobs for h in self.heading.names)
         q = cur.fetchone()
         while q:
-            yield tuple(unpack(field) if up else field for up, field in zip(do_unpack, q))
+            yield np.array([tuple(unpack(field) if up else field for up, field in zip(do_unpack, q))],
+                           dtype=self.heading.as_dtype)[0]
             q = cur.fetchone()
 
     @property
