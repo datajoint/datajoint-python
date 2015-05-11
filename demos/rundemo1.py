@@ -10,6 +10,9 @@ import demo1
 s = demo1.Subject()
 e = demo1.Experiment()
 
+e.drop()
+s.drop()
+
 s.insert(dict(subject_id=1,
               real_id="George",
               species="monkey",
@@ -28,8 +31,8 @@ s.insert((12430, 'C0430', 'mouse', '2012-09-01', 'M'))
 s.insert((12431, 'C0431', 'mouse', '2012-09-01', 'F'))
 
 print('inserted keys into Subject:')
-for key in s:
-    print(key)
+for tup in s:
+    print(tup)
 
 e.insert(dict(subject_id=1,
               experiment=1,
@@ -40,3 +43,7 @@ e.insert(dict(subject_id=1,
               experiment=2,
               experiment_date="2014-08-28",
               experiment_notes="my second experiment"))
+
+# cleanup
+e.drop()
+s.drop()

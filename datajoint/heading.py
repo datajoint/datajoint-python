@@ -15,7 +15,7 @@ class Heading:
                            ('name', 'type', 'in_key', 'nullable', 'default',
                             'comment', 'autoincrement', 'numeric', 'string', 'is_blob',
                             'computation', 'dtype'))
-    AttrTuple.as_dict = AttrTuple._asdict  # rename the method into a nicer name
+    AttrTuple.as_dict = AttrTuple._asdict  # renaming to make public
 
     def __init__(self, attributes):
         """
@@ -97,7 +97,7 @@ class Heading:
         """
         cur = conn.query(
             'SHOW FULL COLUMNS FROM `{table_name}` IN `{dbname}`'.format(
-                table_name=table_name, dbname=dbname), asDict=True)
+                table_name=table_name, dbname=dbname), as_dict=True)
         attributes = cur.fetchall()
 
         rename_map = {

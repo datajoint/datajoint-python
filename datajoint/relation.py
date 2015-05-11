@@ -49,10 +49,7 @@ class Relation(FreeRelation, metaclass=abc.ABCMeta):
         """
         :return: name by which this class should be accessible as
         """
-        if self._use_package:
-            parent = self.__module__.split('.')[-2]
-        else:
-            parent = self.__module__.split('.')[-1]
+        parent = self.__module__.split('.')[-2 if self._use_package else -1]
         return parent + '.' + self.class_name
 
 
@@ -86,7 +83,6 @@ class Relation(FreeRelation, metaclass=abc.ABCMeta):
                 'Module {} is not bound to a database. See datajoint.connection.bind'.format(module_name))
         # initialize using super class's constructor
         super().__init__(conn, dbname, class_name)
-
 
     def get_base(self, module_name, class_name):
         """
