@@ -4,8 +4,10 @@ Created on Thu Aug 28 00:46:11 2014
 
 @author: dimitri
 """
-
+import logging
 import demo1
+
+logging.basicConfig(level=logging.INFO)
 
 s = demo1.Subject()
 e = demo1.Experiment()
@@ -30,9 +32,7 @@ s.insert((3, 'Dennis', 'monkey', '2012-09-01'))
 s.insert((12430, 'C0430', 'mouse', '2012-09-01', 'M'))
 s.insert((12431, 'C0431', 'mouse', '2012-09-01', 'F'))
 
-print('inserted keys into Subject:')
-for tup in s:
-    print(tup)
+print(s)
 
 e.insert(dict(subject_id=1,
               experiment=1,

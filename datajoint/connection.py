@@ -83,28 +83,6 @@ class Connection:
         """
         return self.conn_info == other.conn_info
 
-    def is_same(self, host, user):
-        """
-        true if the connection host and user name are the same
-        """
-        if host is None:
-            host = self.conn_info['host']
-            port = self.conn_info['port']
-        else:
-            try:
-                host, port = host.split(':')
-                port = int(port)
-            except ValueError:
-                port = default_port
-
-        if user is None:
-            user = self.conn_info['user']
-
-        return self.conn_info['host'] == host and \
-               self.conn_info['port'] == port and \
-               self.conn_info['user'] == user
-
-
     @property
     def is_connected(self):
         return self._conn.ping()

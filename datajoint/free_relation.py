@@ -112,8 +112,7 @@ class FreeRelation(RelationalOperand):
         """
         :return: name of the associated table
         """
-        self.conn.load_headings(self.dbname)
-        return self.conn.table_names[self.dbname][self.class_name]
+        return self.conn.table_names[self.dbname][self.class_name] if self.is_declared else None
 
     @property
     def primary_key(self):
@@ -197,10 +196,12 @@ class FreeRelation(RelationalOperand):
         Drops the table associated to this object.
         """
         # TODO: make cascading (issue #16)
-        self.conn.query('DROP TABLE %s' % self.full_table_name)
-        self.conn.clear_dependencies(dbname=self.dbname)
-        self.conn.load_headings(dbname=self.dbname, force=True)
-        logger.debug("Dropped table %s" % self.full_table_name)
+
+        if self.is_declared:
+            self.conn.query('DROP TABLE %s' % self.full_table_name)
+            self.conn.clear_dependencies(dbname=self.dbname)
+            self.conn.load_headings(dbname=self.dbname, force=True)
+            logger.info("Dropped table %s" % self.full_table_name)
 
     def set_table_comment(self, comment):
         """

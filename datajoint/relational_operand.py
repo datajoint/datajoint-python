@@ -42,6 +42,13 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         pass
 
     @property
+    def heading(self):
+        """
+        :return:  Heading object for the relation
+        """
+        return self.sql[1]
+
+    @property
     def restrictions(self):
         return self._restrictions
             
@@ -93,7 +100,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
                 d = alias_match.group_dict()
                 renamed_attributes.update({d['alias']: d['sql_expression']})
             else:
-                _attributes += attribute
+                _attributes.append(attribute)
         return Projection(self, _group, *_attributes, **renamed_attributes)
 
     def __iand__(self, restriction):
@@ -146,9 +153,9 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         :param descending: the list of attributes to order the results
         :return: the contents of the relation in the form of a structured numpy.array
         """
-        cur = self.cursor(offset, limit, order_by, descending)
-        ret = np.array(list(cur), dtype=self.heading.as_dtype)
-        for f in self.heading.blobs:
+        cur,  heading = self.cursor(offset, limit, order_by, descending)
+        ret = np.array(list(cur), dtype=heading.as_dtype)
+        for f in heading.blobs:
             for i in range(len(ret)):
                 ret[i][f] = unpack(ret[i][f])
         return ret
@@ -159,7 +166,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         :param limit: the maximum number of tuples to return
         :param order_by: the list of attributes to order the results. No ordering should be assumed if order_by=None.
         :param descending: the list of attributes to order the results
-        :return: cursor to the query
+        :return: cursor to the query and its heading
         """
         if offset and limit is None:
             raise DataJointError('')
@@ -174,16 +181,17 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             if offset:
                 sql += ' OFFSET %d' % offset
         logger.debug(sql)
-        return self.conn.query(sql)
+        return self.conn.query(sql), heading
 
     def __repr__(self):
         limit = 13 #TODO: move some of these display settings into the config
         width = 12
+        rel = self.project(*self.heading.non_blobs)
         template = '%%-%d.%ds' % (width, width)
-        repr_string = ' '.join([template % column for column in self.heading]) + '\n'
-        repr_string += ' '.join(['+' + '-' * (width - 2) + '+' for _ in self.heading]) + '\n'
-        tuples = self.project(*self.heading.non_blobs).fetch(limit=limit)
-        for tup in tuples:
+        columns = rel.heading.names
+        repr_string = ' '.join([template % column for column in columns]) + '\n'
+        repr_string += ' '.join(['+' + '-' * (width - 2) + '+' for _ in columns]) + '\n'
+        for tup in rel.fetch():
             repr_string += ' '.join([template % column for column in tup]) + '\n'
         if self.count > limit:
             repr_string += '...\n'
@@ -200,7 +208,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         cur, h = self.project().cursor()   # project
         q = cur.fetchone()
         while q:
-            yield np.array([q, ], dtype=h.asdtype)
+            yield np.array([q, ], dtype=h.as_dtype)
             q = cur.fetchone()
 
     @property
@@ -271,17 +279,15 @@ class Join(RelationalOperand):
         return self._rel1.conn
 
     @property
-    def heading(self):
-        return self._rel1.heading.join(self._rel2.heading)
-
-    @property
     def counter(self):
         self.subquery_counter += 1
         return self.subquery_counter
 
     @property
     def sql(self):
-        return '%s NATURAL JOIN %s as `_j%x`' % (self._rel1.sql, self._rel2.sql, self.counter)
+        [sql1, heading1] = self._rel1.sql
+        [sql2, heading2] = self._rel2.sql
+        return '%s NATURAL JOIN %s as `_j%x`' % (sql1, sql2, self.counter), heading1.join(heading2)
 
 
 class Projection(RelationalOperand):
@@ -309,7 +315,7 @@ class Projection(RelationalOperand):
     @property
     def sql(self):
         sql, heading = self._relation.sql
-        heading = heading.project(self._projection_attributes, self._renamed_attributes)
+        heading = heading.project(*self._projection_attributes, **self._renamed_attributes)
         if self._group is not None:
             group_sql, group_heading = self._group.sql
             sql = ("(%s) NATURAL LEFT JOIN (%s) GROUP BY `%s`" %
@@ -338,6 +344,6 @@ class Subquery(RelationalOperand):
 
     @property
     def sql(self):
-        return ('(SELECT ' + self._rel.heading.as_sql +
-                ' FROM ' + self._rel.sql + self._rel.where + ') as `_s%x`' % self.counter),\
-            self._rel.heading.clear_aliases()
+        sql, heading = self._rel.sql
+        return ('(SELECT ' + heading.as_sql +
+                ' FROM ' + sql + self._rel.where + ') as `_s%x`' % self.counter), heading.clear_aliases()
