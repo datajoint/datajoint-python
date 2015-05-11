@@ -210,7 +210,7 @@ class Heading:
 
         return Heading(attribute_list)
 
-    def join(self, other):
+    def __add__(self, other):
         """
         join two headings
         """
@@ -221,8 +221,8 @@ class Heading:
                 attribute_list.append(other.attributes[name].as_dict())
         return Heading(attribute_list)
 
-    def resolve_computations(self):
+    def resolve(self):
         """
-        Remove computations.  To be done after computations have been resolved in a subquery
+        Remove attribute computations after they have been resolved in a subquery
         """
         return Heading([dict(v.as_dict(), computation=None) for v in self.attributes.values()])

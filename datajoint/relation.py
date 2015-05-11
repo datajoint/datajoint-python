@@ -47,11 +47,10 @@ class Relation(FreeRelation, metaclass=abc.ABCMeta):
     @property
     def ref_name(self):
         """
-        :return: name by which this class should be accessible as
+        :return: name by which this class should be accessible
         """
         parent = self.__module__.split('.')[-2 if self._use_package else -1]
         return parent + '.' + self.class_name
-
 
     def __init__(self): #TODO: support taking in conn obj
         class_name = self.__class__.__name__
@@ -101,8 +100,8 @@ class Relation(FreeRelation, metaclass=abc.ABCMeta):
             ret = getattr(mod_obj, class_name)()
         except AttributeError:
             ret = FreeRelation(conn=self.conn,
-                        dbname=self.conn.mod_to_db[mod_obj.__name__],
-                        class_name=class_name)
+                               dbname=self.conn.mod_to_db[mod_obj.__name__],
+                               class_name=class_name)
         return ret
 
     @classmethod

@@ -28,7 +28,7 @@ class FreeRelation(RelationalOperand):
     even after tables are modified after the instance is created.
     """
 
-    def __init__(self, conn=None, dbname=None, class_name=None, definition=None):
+    def __init__(self, conn, dbname, class_name=None, definition=None):
         self.class_name = class_name
         self._conn = conn
         self.dbname = dbname
@@ -38,14 +38,21 @@ class FreeRelation(RelationalOperand):
             # register with a fake module, enclosed in back quotes
             # necessary for loading mechanism
             self.conn.bind('`{0}`'.format(dbname), dbname)
+        super().__init__(conn)
+
+    @property
+    def from_clause(self):
+        return self.full_table_name
+
+    @property
+    def heading(self):
+        self.declare()
+        return self.conn.headings[self.dbname][self.table_name]
+
 
     @property
     def definition(self):
         return self._definition
-
-    @property
-    def conn(self):
-        return self._conn
 
     @property
     def is_declared(self):
@@ -90,15 +97,6 @@ class FreeRelation(RelationalOperand):
 
         return '`{name}` {type} {default} COMMENT "{comment}",\n'.format(
             name=field.name, type=field.type, default=default, comment=field.comment)
-
-    @property
-    def sql(self):
-        return self.full_table_name, self.heading
-
-    @property
-    def heading(self):
-        self.declare()
-        return self.conn.headings[self.dbname][self.table_name]
 
     @property
     def full_table_name(self):
