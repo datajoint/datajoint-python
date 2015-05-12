@@ -28,7 +28,7 @@ class FreeRelation(RelationalOperand):
     even after tables are modified after the instance is created.
     """
 
-    def __init__(self, conn=None, dbname=None, class_name=None, definition=None):
+    def __init__(self, conn, dbname, class_name=None, definition=None):
         self.class_name = class_name
         self._conn = conn
         self.dbname = dbname
@@ -38,14 +38,21 @@ class FreeRelation(RelationalOperand):
             # register with a fake module, enclosed in back quotes
             # necessary for loading mechanism
             self.conn.bind('`{0}`'.format(dbname), dbname)
+        super().__init__(conn)
+
+    @property
+    def from_clause(self):
+        return self.full_table_name
+
+    @property
+    def heading(self):
+        self.declare()
+        return self.conn.headings[self.dbname][self.table_name]
+
 
     @property
     def definition(self):
         return self._definition
-
-    @property
-    def conn(self):
-        return self._conn
 
     @property
     def is_declared(self):
@@ -92,15 +99,6 @@ class FreeRelation(RelationalOperand):
             name=field.name, type=field.type, default=default, comment=field.comment)
 
     @property
-    def sql(self):
-        return self.full_table_name, self.heading
-
-    @property
-    def heading(self):
-        self.declare()
-        return self.conn.headings[self.dbname][self.table_name]
-
-    @property
     def full_table_name(self):
         """
         :return: full name of the associated table
@@ -112,9 +110,7 @@ class FreeRelation(RelationalOperand):
         """
         :return: name of the associated table
         """
-        return self.conn.table_names[self.dbname][self.class_name]
-
-
+        return self.conn.table_names[self.dbname][self.class_name] if self.is_declared else None
 
     @property
     def primary_key(self):
@@ -122,7 +118,6 @@ class FreeRelation(RelationalOperand):
         :return: primary key of the table
         """
         return self.heading.primary_key
-
 
     def iter_insert(self, iter, **kwargs):
         """
@@ -139,7 +134,7 @@ class FreeRelation(RelationalOperand):
 
         :param data: must be iterable, each row must be a valid argument for insert
         """
-        self.iter_insert(data.__iter__())
+        self.iter_insert(data.__iter__(), **kwargs)
 
     def insert(self, tup, ignore_errors=False, replace=False):  # TODO: in progress (issue #8)
         """
@@ -157,24 +152,26 @@ class FreeRelation(RelationalOperand):
         """
 
         if isinstance(tup, tuple) or isinstance(tup, list) or isinstance(tup, np.ndarray):
-            value_list = ','.join([repr(val) if not name in self.heading.blobs else '%s'
-                                    for name, val in zip(self.heading.names, tup)])
+            value_list = ','.join([repr(val) if name not in self.heading.blobs else '%s'
+                                   for name, val in zip(self.heading.names, tup)])
             args = tuple(pack(val) for name, val in zip(self.heading.names, tup) if name in self.heading.blobs)
             attribute_list = '`' + '`,`'.join(self.heading.names[0:len(tup)]) + '`'
 
         elif isinstance(tup, dict):
-            value_list = ','.join([repr(tup[name]) if not name in self.heading.blobs else '%s'
-                                    for name in self.heading.names if name in tup])
+            value_list = ','.join([repr(tup[name]) if name not in self.heading.blobs else '%s'
+                                   for name in self.heading.names if name in tup])
             args = tuple(pack(tup[name]) for name in self.heading.names
-                                if (name in tup and name in self.heading.blobs) )
-            attribute_list = '`' + '`,`'.join([name for name in self.heading.names if name in tup]) + '`'
+                         if name in tup and name in self.heading.blobs)
+            attribute_list = '`' + '`,`'.join(
+                [name for name in self.heading.names if name in tup]) + '`'
         elif isinstance(tup, np.void):
-            value_list = ','.join([repr(tup[name]) if not name in self.heading.blobs else '%s'
-                                    for name in self.heading.names if name in tup.dtype.fields])
+            value_list = ','.join([repr(tup[name]) if name not in self.heading.blobs else '%s'
+                                   for name in self.heading.names if name in tup.dtype.fields])
 
             args = tuple(pack(tup[name]) for name in self.heading.names
-                                if (name in tup.dtype.fields and name in self.heading.blobs) )
-            attribute_list = '`' + '`,`'.join([q for q in self.heading.names if q in tup.dtype.fields]) + '`'
+                         if name in tup.dtype.fields and name in self.heading.blobs)
+            attribute_list = '`' + '`,`'.join(
+                [q for q in self.heading.names if q in tup.dtype.fields]) + '`'
         else:
             raise DataJointError('Datatype %s cannot be inserted' % type(tup))
         if replace:
@@ -188,25 +185,26 @@ class FreeRelation(RelationalOperand):
         logger.info(sql)
         self.conn.query(sql, args=args)
 
-    def delete(self):  # TODO: (issues #14 and #15)
-        pass
+    def delete(self):
+        # TODO: make cascading (issue #15)
+        self.conn.query('DELETE FROM ' + self.from_clause + self.where_clause)
 
     def drop(self):
         """
         Drops the table associated to this object.
         """
         # TODO: make cascading (issue #16)
-        self.conn.query('DROP TABLE %s' % self.full_table_name)
-        self.conn.clear_dependencies(dbname=self.dbname)
-        self.conn.load_headings(dbname=self.dbname, force=True)
-        logger.debug("Dropped table %s" % self.full_table_name)
+
+        if self.is_declared:
+            self.conn.query('DROP TABLE %s' % self.full_table_name)
+            self.conn.clear_dependencies(dbname=self.dbname)
+            self.conn.load_headings(dbname=self.dbname, force=True)
+            logger.info("Dropped table %s" % self.full_table_name)
 
     def set_table_comment(self, comment):
         """
         Update the table comment in the table definition.
-
         :param comment: new comment as string
-
         """
         # TODO: add verification procedure (github issue #24)
         self.alter('COMMENT="%s"' % comment)
@@ -303,12 +301,11 @@ class FreeRelation(RelationalOperand):
         :return: groupdict with index info
         """
         line = line.strip()
-        index_ptrn = """
+        index_regexp = re.compile("""
         ^(?P<unique>UNIQUE)?\s*INDEX\s*      # [UNIQUE] INDEX
         \((?P<attributes>[^\)]+)\)$          # (attr1, attr2)
-        """
-        indexP = re.compile(index_ptrn, re.I + re.X)
-        m = indexP.match(line)
+        """, re.I + re.X)
+        m = index_regexp.match(line)
         assert m, 'Invalid index declaration "%s"' % line
         index_info = m.groupdict()
         attributes = re.split(r'\s*,\s*', index_info['attributes'].strip())
@@ -317,52 +314,9 @@ class FreeRelation(RelationalOperand):
             'Duplicate attributes in index declaration "%s"' % line
         return index_info
 
-    def _parse_attr_def(self, line, in_key=False):
-        """
-        Parse attribute definition line in the declaration and returns
-        an attribute tuple.
-
-        :param line: attribution line
-        :param in_key: set to True if attribute is in primary key set
-        :returns: attribute tuple
-        """
-        line = line.strip()
-        attr_ptrn = """
-        ^(?P<name>[a-z][a-z\d_]*)\s*             # field name
-        (=\s*(?P<default>\S+(\s+\S+)*?)\s*)?     # default value
-        :\s*(?P<type>\w[^\#]*[^\#\s])\s*         # datatype
-        (\#\s*(?P<comment>\S*(\s+\S+)*)\s*)?$    # comment
-        """
-
-        attrP = re.compile(attr_ptrn, re.I + re.X)
-        m = attrP.match(line)
-        assert m, 'Invalid field declaration "%s"' % line
-        attr_info = m.groupdict()
-        if not attr_info['comment']:
-            attr_info['comment'] = ''
-        if not attr_info['default']:
-            attr_info['default'] = ''
-        attr_info['nullable'] = attr_info['default'].lower() == 'null'
-        assert (not re.match(r'^bigint', attr_info['type'], re.I) or not attr_info['nullable']), \
-            'BIGINT attributes cannot be nullable in "%s"' % line
-
-        attr_info['in_key'] = in_key
-        attr_info['autoincrement'] = None
-        attr_info['numeric'] = None
-        attr_info['string'] = None
-        attr_info['is_blob'] = None
-        attr_info['computation'] = None
-        attr_info['dtype'] = None
-
-        return Heading.AttrTuple(**attr_info)
-
     def get_base(self, module_name, class_name):
         m = re.match(r'`(\w+)`', module_name)
-        if m:
-            dbname = m.group(1)
-            return FreeRelation(self.conn, dbname, class_name)
-        else:
-            return None
+        return FreeRelation(self.conn, m.group(1), class_name) if m else None
 
     @property
     def ref_name(self):
@@ -460,7 +414,6 @@ class FreeRelation(RelationalOperand):
             self.conn.query(sql)
             self.conn.load_headings(self.dbname, force=True)
 
-
     def _parse_declaration(self):
         """
         Parse declaration and create new SQL table accordingly.
@@ -507,9 +460,47 @@ class FreeRelation(RelationalOperand):
             elif re.match(r'^(unique\s+)?index[^:]*$', line):
                 index_defs.append(self._parse_index_def(line))
             elif fieldP.match(line):
-                field_defs.append(self._parse_attr_def(line, in_key))
+                field_defs.append(parse_attribute_definition(line, in_key))
             else:
                 raise DataJointError(
                     'Invalid table declaration line "%s"' % line)
 
         return table_info, parents, referenced, field_defs, index_defs
+
+
+def parse_attribute_definition(line, in_key=False):
+    """
+    Parse attribute definition line in the declaration and returns
+    an attribute tuple.
+
+    :param line: attribution line
+    :param in_key: set to True if attribute is in primary key set
+    :returns: attribute tuple
+    """
+    line = line.strip()
+    attribute_regexp = re.compile("""
+    ^(?P<name>[a-z][a-z\d_]*)\s*             # field name
+    (=\s*(?P<default>\S+(\s+\S+)*?)\s*)?     # default value
+    :\s*(?P<type>\w[^\#]*[^\#\s])\s*         # datatype
+    (\#\s*(?P<comment>\S*(\s+\S+)*)\s*)?$    # comment
+    """, re.X)
+    m = attribute_regexp.match(line)
+    assert m, 'Invalid field declaration "%s"' % line
+    attr_info = m.groupdict()
+    if not attr_info['comment']:
+        attr_info['comment'] = ''
+    if not attr_info['default']:
+        attr_info['default'] = ''
+    attr_info['nullable'] = attr_info['default'].lower() == 'null'
+    assert (not re.match(r'^bigint', attr_info['type'], re.I) or not attr_info['nullable']), \
+        'BIGINT attributes cannot be nullable in "%s"' % line
+
+    attr_info['in_key'] = in_key
+    attr_info['autoincrement'] = None
+    attr_info['numeric'] = None
+    attr_info['string'] = None
+    attr_info['is_blob'] = None
+    attr_info['computation'] = None
+    attr_info['dtype'] = None
+
+    return Heading.AttrTuple(**attr_info)
