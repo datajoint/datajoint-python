@@ -217,7 +217,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         for r in self._restrictions:
             negate = isinstance(r, Not)
             if negate:
-                r = r.restrictions
+                r = r.restriction
             if isinstance(r, dict) or isinstance(r, np.void):
                 r = make_condition(r)
             elif isinstance(r, np.ndarray) or isinstance(r, list):

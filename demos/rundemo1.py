@@ -7,7 +7,7 @@ Created on Thu Aug 28 00:46:11 2014
 import logging
 import demo1
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 s = demo1.Subject()
 e = demo1.Experiment()
@@ -61,6 +61,7 @@ e.insert(dict(subject_id=1,
 print(e)
 print(e*s)
 print(s & e)
+print(s - e)
 
 # cleanup
 e.drop()
