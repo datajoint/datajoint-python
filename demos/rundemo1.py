@@ -48,7 +48,6 @@ print(s)
 print(s.project())
 print(s.project(name='real_id', dob='date_of_birth', sex='sex') & 'sex="M"')
 
-
 e.insert(dict(subject_id=1,
               experiment=1,
               experiment_date="2014-08-28",
@@ -59,9 +58,9 @@ e.insert(dict(subject_id=1,
               experiment_date="2014-08-28",
               experiment_notes="my second experiment"))
 
-
 print(e)
 print(e*s)
+print(s & e)
 
 # cleanup
 e.drop()

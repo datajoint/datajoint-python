@@ -138,7 +138,8 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         :param descending: the list of attributes to order the results
         :return: the contents of the relation in the form of a structured numpy.array
         """
-        cur,  heading = self.cursor(offset, limit, order_by, descending)
+        cur = self.cursor(offset, limit, order_by, descending)
+        heading = self.heading
         ret = np.array(list(cur), dtype=heading.as_dtype)
         for f in heading.blobs:
             for i in range(len(ret)):
@@ -248,10 +249,10 @@ class Join(RelationalOperand):
     def __init__(self, arg1, arg2):
         if not isinstance(arg2, RelationalOperand):
             raise DataJointError('a relation can only be joined with another relation')
-        if arg1.conn == arg2.conn:
+        if arg1.conn != arg2.conn:
             raise DataJointError('Cannot join relations with different database connections')
-        self._arg1 = Subquery(arg1) if arg1.requires_subquery else arg1
-        self._arg2 = Subquery(arg1) if arg2.requires_subquery else arg2
+        self._arg1 = Subquery(arg1) if arg1.heading.computed else arg1
+        self._arg2 = Subquery(arg1) if arg2.heading.computed else arg2
         super().__init__(arg1.conn, self._arg1.restrictions + self._arg2.restrictions)
 
     @property
@@ -294,7 +295,7 @@ class Projection(RelationalOperand):
             self._arg = Subquery(arg)
         else:
             self._group = None
-            if arg.has_aliases:
+            if arg.heading.computed:
                 self._arg = Subquery(arg)
             else:
                 # project without subquery
@@ -303,7 +304,8 @@ class Projection(RelationalOperand):
 
     @property
     def heading(self):
-        return self._arg.heading.project(*self._attributes, **self._renamed_attributes)
+        h = self._arg.heading.project(*self._attributes, **self._renamed_attributes)
+        return h
 
     @property
     def from_clause(self):
@@ -314,6 +316,7 @@ class Projection(RelationalOperand):
                 self._arg.from_clause, self._group.from_clause,
                 '`,`'.join(self.heading.primary_key))
 
+
 class Subquery(RelationalOperand):
     """
     A Subquery encapsulates its argument in a SELECT statement, enabling its use as a subquery.
@@ -323,7 +326,6 @@ class Subquery(RelationalOperand):
 
     def __init__(self, arg):
         self._arg = arg
-        self._heading = arg.heading.resolve()
         super().__init__(arg.conn)
 
     @property
@@ -333,8 +335,8 @@ class Subquery(RelationalOperand):
 
     @property
     def from_clause(self):
-        return '(' + self._arg.make_select() + ') as `_s%x' % self.counter
+        return '(' + self._arg.make_select() + ') as `_s%x`' % self.counter
 
     @property
     def heading(self):
-        return self._arg.heading
+        return self._arg.heading.resolve()
