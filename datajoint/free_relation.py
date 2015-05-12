@@ -186,8 +186,8 @@ class FreeRelation(RelationalOperand):
         self.conn.query(sql, args=args)
 
     def delete(self):
-        # TODO: (issues #14 and #15)
-        pass
+        # TODO: make cascading (issue #15)
+        self.conn.query('DELETE FROM ' + self.from_clause + self.where_clause)
 
     def drop(self):
         """

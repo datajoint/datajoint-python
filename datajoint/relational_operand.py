@@ -283,7 +283,7 @@ class Projection(RelationalOperand):
         for attribute in attributes:
             alias_match = alias_parser.match(attribute)
             if alias_match:
-                d = alias_match.group_dict()
+                d = alias_match.groupdict()
                 self._renamed_attributes.update({d['alias']: d['sql_expression']})
             else:
                 self._attributes.append(attribute)
@@ -304,8 +304,7 @@ class Projection(RelationalOperand):
 
     @property
     def heading(self):
-        h = self._arg.heading.project(*self._attributes, **self._renamed_attributes)
-        return h
+        return self._arg.heading.project(*self._attributes, **self._renamed_attributes)
 
     @property
     def from_clause(self):
