@@ -15,7 +15,7 @@ class Heading:
                            ('name', 'type', 'in_key', 'nullable', 'default',
                             'comment', 'autoincrement', 'numeric', 'string', 'is_blob',
                             'computation', 'dtype'))
-    AttrTuple.as_dict = AttrTuple._asdict  # rename the method into a nicer name
+    AttrTuple.as_dict = AttrTuple._asdict  # renaming to make public
 
     def __init__(self, attributes):
         """
@@ -97,7 +97,7 @@ class Heading:
         """
         cur = conn.query(
             'SHOW FULL COLUMNS FROM `{table_name}` IN `{dbname}`'.format(
-                table_name=table_name, dbname=dbname), asDict=True)
+                table_name=table_name, dbname=dbname), as_dict=True)
         attributes = cur.fetchall()
 
         rename_map = {
@@ -210,7 +210,7 @@ class Heading:
 
         return Heading(attribute_list)
 
-    def join(self, other):
+    def __add__(self, other):
         """
         join two headings
         """
@@ -221,8 +221,8 @@ class Heading:
                 attribute_list.append(other.attributes[name].as_dict())
         return Heading(attribute_list)
 
-    def resolve_computations(self):
+    def resolve(self):
         """
-        Remove computations.  To be done after computations have been resolved in a subquery
+        Remove attribute computations after they have been resolved in a subquery
         """
         return Heading([dict(v.as_dict(), computation=None) for v in self.attributes.values()])
