@@ -6,7 +6,6 @@ import json
 import pprint
 from collections import OrderedDict
 
-__author__ = 'eywalker'
 import logging
 import collections
 from enum import Enum
