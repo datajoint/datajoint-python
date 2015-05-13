@@ -189,20 +189,14 @@ class RelationalOperand(metaclass=abc.ABCMeta):
     def __iter__(self):
         """
         Iterator that yields individual tuples of the current table dictionaries.
-
-
-        :param offset: parameter passed to the :func:`cursor`
-        :param limit: parameter passed to the :func:`cursor`
-        :param order_by: parameter passed to the :func:`cursor`
-        :param descending: parameter passed to the :func:`cursor`
         """
         cur = self.cursor()
         do_unpack = tuple(h in self.heading.blobs for h in self.heading.names)
-        q = cur.fetchone()
-        while q:
-            yield dict( (fieldname,unpack(field)) if up else (fieldname,field)
-                  for fieldname, up, field in zip(self.heading.names, do_unpack, q))
-            q = cur.fetchone()
+        values = cur.fetchone()
+        while values:
+            yield {field_name: unpack(value) if up else value
+                   for field_name, up, value in zip(self.heading.names, do_unpack, values)}
+            values = cur.fetchone()
 
     @property
     def where_clause(self):
