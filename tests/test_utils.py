@@ -23,7 +23,8 @@ def test_to_camel_case():
 
 def test_from_camel_case():
     assert_equal(from_camel_case('AllGroups'), 'all_groups')
-    assert_equal(from_camel_case('repNames'), 'rep_names')
+    with assert_raises(DataJointError):
+        from_camel_case('repNames')
     with assert_raises(DataJointError):
         from_camel_case('10_all')
     with assert_raises(DataJointError):

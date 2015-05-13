@@ -4,7 +4,7 @@ import os
 __author__ = "Dimitri Yatsenko, Edgar Walker, and Fabian Sinz at Baylor College of Medicine"
 __version__ = "0.2"
 __all__ = ['__author__', '__version__',
-           'Connection', 'Heading', 'Relation', 'Not',
+           'Connection', 'Heading', 'Relation', 'FreeRelation', 'Not',
            'AutoPopulate', 'conn', 'DataJointError', 'blob']
 
 
@@ -20,11 +20,8 @@ from .settings import Config, CONFIGVAR, LOCALCONFIG, logger, log_levels
 config = Config()
 local_config_file = os.environ.get(CONFIGVAR, None)
 if local_config_file is None:
-    local_config_file = os.path.expanduser(LOCALCONFIG)
-else:
-    local_config_file = os.path.expanduser(local_config_file)
-
-
+    local_config_file = LOCALCONFIG
+local_config_file = os.path.expanduser(local_config_file)
 
 try:
     logger.log(logging.INFO, "Loading local settings from {0:s}".format(local_config_file))
@@ -43,6 +40,4 @@ from .autopopulate import AutoPopulate
 from . import blob
 from .relational_operand import Not
 from .free_relation import FreeRelation
-
-
-#############################################################################
+from .heading import Heading

@@ -147,20 +147,18 @@ class RelationalOperand(metaclass=abc.ABCMeta):
                         for n, e in zip(attr_names, t)) for t in cur.fetchall()]
         else:
             ret = np.array(list(cur.fetchall()), dtype=self.heading.as_dtype)
-            for bname in self.heading.blobs:
-                ret[bname] = list(map(unpack, ret[bname]))
+            for blob_name in self.heading.blobs:
+                ret[blob_name] = list(map(unpack, ret[blob_name]))
         return ret
 
     def cursor(self, offset=0, limit=None, order_by=None, descending=False):
         """
-        :param offset: the number of tuples to skip in the returned result
-        :param limit: the maximum number of tuples to return
-        :param order_by: the list of attributes to order the results. No ordering should be assumed if order_by=None.
-        :param descending: the list of attributes to order the results
+        Return query cursor.
+        See Relation.fetch() for input description.
         :return: cursor to the query
         """
         if offset and limit is None:
-            raise DataJointError('offset cannot be set without setting a limit')
+            raise DataJointError('limit is required when offset is set')
         sql = self.make_select()
         if order_by is not None:
             sql += ' ORDER BY ' + ', '.join(order_by)
@@ -173,8 +171,6 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         logger.debug(sql)
         return self.conn.query(sql)
 
-
-
     def __repr__(self):
         limit = 7 #TODO: move some of these display settings into the config
         width = 14
@@ -182,7 +178,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         template = '%%-%d.%ds' % (width, width)
         columns = rel.heading.names
         repr_string = ' '.join([template % column for column in columns]) + '\n'
-        repr_string += ' '.join(['+' + '-' * (width - 2) + '+' for _ in columns]) + '\n'
+        repr_string += ' '.join(['+' + '-'*(width-2) + '+' for _ in columns]) + '\n'
         for tup in rel.fetch(limit=limit):
             repr_string += ' '.join([template % column for column in tup]) + '\n'
         if self.count > limit:
@@ -193,20 +189,15 @@ class RelationalOperand(metaclass=abc.ABCMeta):
     def __iter__(self):
         """
         Iterator that yields individual tuples of the current table dictionaries.
-
-
-        :param offset: parameter passed to the :func:`cursor`
-        :param limit: parameter passed to the :func:`cursor`
-        :param order_by: parameter passed to the :func:`cursor`
-        :param descending: parameter passed to the :func:`cursor`
         """
         cur = self.cursor()
-        do_unpack = tuple(h in self.heading.blobs for h in self.heading.names)
-        q = cur.fetchone()
-        while q:
-            yield dict( (fieldname,unpack(field)) if up else (fieldname,field)
-                  for fieldname, up, field in zip(self.heading.names, do_unpack, q))
-            q = cur.fetchone()
+        heading = self.heading  # construct once for efficiency
+        do_unpack = tuple(h in heading.blobs for h in self.heading.names)
+        values = cur.fetchone()
+        while values:
+            yield {field_name: unpack(value) if up else value
+                   for field_name, up, value in zip(heading.names, do_unpack, values)}
+            values = cur.fetchone()
 
     @property
     def where_clause(self):
