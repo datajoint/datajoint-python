@@ -191,11 +191,12 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         Iterator that yields individual tuples of the current table dictionaries.
         """
         cur = self.cursor()
-        do_unpack = tuple(h in self.heading.blobs for h in self.heading.names)
+        heading = self.heading  # construct once for efficiency
+        do_unpack = tuple(h in heading.blobs for h in self.heading.names)
         values = cur.fetchone()
         while values:
             yield {field_name: unpack(value) if up else value
-                   for field_name, up, value in zip(self.heading.names, do_unpack, values)}
+                   for field_name, up, value in zip(heading.names, do_unpack, values)}
             values = cur.fetchone()
 
     @property
