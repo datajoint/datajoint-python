@@ -1,3 +1,4 @@
+from _collections_abc import MutableMapping, Mapping
 import numpy as np
 import logging
 from . import DataJointError
@@ -138,9 +139,9 @@ class FreeRelation(RelationalOperand):
 
     def insert(self, tup, ignore_errors=False, replace=False):  # TODO: in progress (issue #8)
         """
-        Insert one data tuple, one data record, or one dictionary.
+        Insert one data record or one Mapping (like a dictionary).
 
-        :param tup: Data tuple, record, or dictionary.
+        :param tup: Data record, or a Mapping (like a dictionary).
         :param ignore_errors=False: Ignores errors if True.
         :param replace=False: Replaces data tuple if True.
 
@@ -151,20 +152,10 @@ class FreeRelation(RelationalOperand):
                            real_id = 1007, date_of_birth = "2014-09-01"))
         """
 
-        if isinstance(tup, tuple) or isinstance(tup, list) or isinstance(tup, np.ndarray):
-            value_list = ','.join([repr(val) if name not in self.heading.blobs else '%s'
-                                   for name, val in zip(self.heading.names, tup)])
-            args = tuple(pack(val) for name, val in zip(self.heading.names, tup) if name in self.heading.blobs)
-            attribute_list = '`' + '`,`'.join(self.heading.names[0:len(tup)]) + '`'
-
-        elif isinstance(tup, dict):
-            value_list = ','.join([repr(tup[name]) if name not in self.heading.blobs else '%s'
-                                   for name in self.heading.names if name in tup])
-            args = tuple(pack(tup[name]) for name in self.heading.names
-                         if name in tup and name in self.heading.blobs)
-            attribute_list = '`' + '`,`'.join(
-                [name for name in self.heading.names if name in tup]) + '`'
-        elif isinstance(tup, np.void):
+        if isinstance(tup, np.void):
+            for fieldname in tup.dtype.fields:
+                if not fieldname in self.heading.names:
+                    raise KeyError(u'{0:s} is not in the attribute list'.format(fieldname, ))
             value_list = ','.join([repr(tup[name]) if name not in self.heading.blobs else '%s'
                                    for name in self.heading.names if name in tup.dtype.fields])
 
@@ -172,6 +163,16 @@ class FreeRelation(RelationalOperand):
                          if name in tup.dtype.fields and name in self.heading.blobs)
             attribute_list = '`' + '`,`'.join(
                 [q for q in self.heading.names if q in tup.dtype.fields]) + '`'
+        elif isinstance(tup, Mapping):
+            for fieldname in tup.keys():
+                if not fieldname in self.heading.names:
+                    raise KeyError(u'{0:s} is not in the attribute list'.format(fieldname, ))
+            value_list = ','.join([repr(tup[name]) if name not in self.heading.blobs else '%s'
+                                   for name in self.heading.names if name in tup])
+            args = tuple(pack(tup[name]) for name in self.heading.names
+                         if name in tup and name in self.heading.blobs)
+            attribute_list = '`' + '`,`'.join(
+                [name for name in self.heading.names if name in tup]) + '`'
         else:
             raise DataJointError('Datatype %s cannot be inserted' % type(tup))
         if replace:

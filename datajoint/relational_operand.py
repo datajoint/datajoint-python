@@ -130,32 +130,35 @@ class RelationalOperand(metaclass=abc.ABCMeta):
     def __call__(self, *args, **kwargs):
         return self.fetch(*args, **kwargs)
 
-    def fetch(self, offset=0, limit=None, order_by=None, descending=False):
+    def fetch(self, offset=0, limit=None, order_by=None, descending=False, as_dict=False):
         """
         fetches the relation from the database table into an np.array and unpacks blob attributes.
         :param offset: the number of tuples to skip in the returned result
         :param limit: the maximum number of tuples to return
         :param order_by: the list of attributes to order the results. No ordering should be assumed if order_by=None.
         :param descending: the list of attributes to order the results
+        :param as_dict: returns a list of dictionaries instead of a record array
         :return: the contents of the relation in the form of a structured numpy.array
         """
-        tmp = list(self.__iter__(offset, limit, order_by, descending))
-
-        if len(tmp) > 0:
-            return np.atleast_1d(rfn.stack_arrays(tmp, usemask=False))
+        cur = self.cursor(offset, limit, order_by, descending)
+        if as_dict:
+            attr_names = self.heading.names
+            ret = [dict((n, unpack(e)) if n in self.heading.blobs else (n, e)
+                        for n, e in zip(attr_names, t)) for t in cur.fetchall()]
         else:
-            return np.empty((0,), dtype=self.heading.as_dtype)
+            ret = np.array(list(cur.fetchall()), dtype=self.heading.as_dtype)
+            for blob_name in self.heading.blobs:
+                ret[blob_name] = list(map(unpack, ret[blob_name]))
+        return ret
 
     def cursor(self, offset=0, limit=None, order_by=None, descending=False):
         """
-        :param offset: the number of tuples to skip in the returned result
-        :param limit: the maximum number of tuples to return
-        :param order_by: the list of attributes to order the results. No ordering should be assumed if order_by=None.
-        :param descending: the list of attributes to order the results
+        Return query cursor.
+        See Relation.fetch() for input description.
         :return: cursor to the query
         """
         if offset and limit is None:
-            raise DataJointError('offset cannot be set without setting a limit')
+            raise DataJointError('limit is required when offset is set')
         sql = self.make_select()
         if order_by is not None:
             sql += ' ORDER BY ' + ', '.join(order_by)
@@ -175,7 +178,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         template = '%%-%d.%ds' % (width, width)
         columns = rel.heading.names
         repr_string = ' '.join([template % column for column in columns]) + '\n'
-        repr_string += ' '.join(['+' + '-' * (width - 2) + '+' for _ in columns]) + '\n'
+        repr_string += ' '.join(['+' + '-'*(width-2) + '+' for _ in columns]) + '\n'
         for tup in rel.fetch(limit=limit):
             repr_string += ' '.join([template % column for column in tup]) + '\n'
         if self.count > limit:
@@ -183,9 +186,9 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         repr_string += ' (%d tuples)\n' % self.count
         return repr_string
         
-    def __iter__(self, offset=0, limit=None, order_by=None, descending=False):
+    def __iter__(self):
         """
-        Iterator that yields individual tuples of the current table (as record arrays).
+        Iterator that yields individual tuples of the current table dictionaries.
 
 
         :param offset: parameter passed to the :func:`cursor`
@@ -193,12 +196,12 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         :param order_by: parameter passed to the :func:`cursor`
         :param descending: parameter passed to the :func:`cursor`
         """
-        cur = self.cursor(offset, limit, order_by, descending)
+        cur = self.cursor()
         do_unpack = tuple(h in self.heading.blobs for h in self.heading.names)
         q = cur.fetchone()
         while q:
-            yield np.array([tuple(unpack(field) if up else field for up, field in zip(do_unpack, q))],
-                           dtype=self.heading.as_dtype)[0]
+            yield dict( (fieldname,unpack(field)) if up else (fieldname,field)
+                  for fieldname, up, field in zip(self.heading.names, do_unpack, q))
             q = cur.fetchone()
 
     @property
