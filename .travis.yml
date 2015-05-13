@@ -26,6 +26,6 @@ install:
   - conda info -a
 # command to run tests
 script:
-  - nosetests --with-coverage --cover-package=datajoint
+  - nosetests -vv --with-coverage --cover-package=datajoint
 after_success:
   - coveralls

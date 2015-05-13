@@ -9,6 +9,7 @@ from copy import copy
 from datajoint import DataJointError
 from .blob import unpack
 import logging
+import numpy.lib.recfunctions as rfn
 
 logger = logging.getLogger(__name__)
 
@@ -127,7 +128,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         return cur.fetchone()[0]
 
     def __call__(self, *args, **kwargs):
-        return self(*args, **kwargs)
+        return self.fetch(*args, **kwargs)
 
     def fetch(self, offset=0, limit=None, order_by=None, descending=False):
         """
@@ -138,13 +139,12 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         :param descending: the list of attributes to order the results
         :return: the contents of the relation in the form of a structured numpy.array
         """
-        cur = self.cursor(offset, limit, order_by, descending)
-        heading = self.heading
-        ret = np.array(list(cur), dtype=heading.as_dtype)
-        for f in heading.blobs:
-            for i in range(len(ret)):
-                ret[i][f] = unpack(ret[i][f])
-        return ret
+        tmp = list(self.__iter__(offset, limit, order_by, descending))
+
+        if len(tmp) > 0:
+            return np.atleast_1d(rfn.stack_arrays(tmp, usemask=False))
+        else:
+            return np.empty((0,), dtype=self.heading.as_dtype)
 
     def cursor(self, offset=0, limit=None, order_by=None, descending=False):
         """
@@ -183,17 +183,22 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         repr_string += ' (%d tuples)\n' % self.count
         return repr_string
         
-    def __iter__(self):
+    def __iter__(self, offset=0, limit=None, order_by=None, descending=False):
         """
-        iterator  yields primary key tuples
-        Example:
-        for key in relation:
-            (schema.Relation & key).fetch('field')
+        Iterator that yields individual tuples of the current table (as record arrays).
+
+
+        :param offset: parameter passed to the :func:`cursor`
+        :param limit: parameter passed to the :func:`cursor`
+        :param order_by: parameter passed to the :func:`cursor`
+        :param descending: parameter passed to the :func:`cursor`
         """
-        cur, h = self.project().cursor()   # project
+        cur = self.cursor(offset, limit, order_by, descending)
+        do_unpack = tuple(h in self.heading.blobs for h in self.heading.names)
         q = cur.fetchone()
         while q:
-            yield np.array([q, ], dtype=h.as_dtype)
+            yield np.array([tuple(unpack(field) if up else field for up, field in zip(do_unpack, q))],
+                           dtype=self.heading.as_dtype)[0]
             q = cur.fetchone()
 
     @property

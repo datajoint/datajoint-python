@@ -13,8 +13,10 @@ from enum import Enum
 
 LOCALCONFIG = 'dj_local_conf.json'
 CONFIGVAR = 'DJ_LOCAL_CONF'
+DEFAULT_PORT = 3306
 
 validators = collections.defaultdict(lambda: lambda value: True)
+validators['database.port'] = lambda a: isinstance(a, int)
 
 Role = Enum('Role', 'manual lookup imported computed job')
 role_to_prefix = {
@@ -34,10 +36,26 @@ default = OrderedDict({
     #
     'connection.init_function': None,
     #
+    'loglevel': 'DEBUG'
 })
 
+logger = logging.getLogger()
+log_levels = {
+    'INFO': logging.INFO,
+    'WARNING': logging.WARNING,
+    'CRITICAL': logging.CRITICAL,
+    'DEBUG': logging.DEBUG,
+    'ERROR': logging.ERROR,
+    None:  logging.NOTSET
+}
 
-class Config(collections.MutableMapping):
+
+class Borg:
+    _shared_state = {}
+    def __init__(self):
+        self.__dict__ = self._shared_state
+
+class Config(Borg, collections.MutableMapping):
     """
     Stores datajoint settings. Behaves like a dictionary, but applies validator functions
     when certain keys are set.
@@ -47,6 +65,7 @@ class Config(collections.MutableMapping):
     """
 
     def __init__(self, *args, **kwargs):
+        Borg.__init__(self)
         self._conf = dict(default)
         self.update(dict(*args, **kwargs))  # use the free update to set keys
 
@@ -71,7 +90,7 @@ class Config(collections.MutableMapping):
         return len(self._conf)
 
     def __str__(self):
-        return  pprint.pformat(self._conf, indent=4)
+        return pprint.pformat(self._conf, indent=4)
 
     def __repr__(self):
         return self.__str__()
@@ -100,6 +119,3 @@ class Config(collections.MutableMapping):
             self.update(json.load(fid))
 
 
-#############################################################################
-logger = logging.getLogger()
-logger.setLevel(logging.DEBUG) #set package wide logger level TODO:make this respond to environmental variable
