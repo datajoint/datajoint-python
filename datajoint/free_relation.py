@@ -194,7 +194,6 @@ class FreeRelation(RelationalOperand):
         Drops the table associated to this object.
         """
         # TODO: make cascading (issue #16)
-
         if self.is_declared:
             self.conn.query('DROP TABLE %s' % self.full_table_name)
             self.conn.clear_dependencies(dbname=self.dbname)
@@ -442,12 +441,11 @@ class FreeRelation(RelationalOperand):
         table_info['tier'] = Role[table_info['tier']]  # convert into enum
 
         in_key = True  # parse primary keys
-        field_ptrn = """
+        attribute_regexp = re.compile("""
         ^[a-z][a-z\d_]*\s*          # name
         (=\s*\S+(\s+\S+)*\s*)?      # optional defaults
         :\s*\w.*$                   # type, comment
-        """
-        fieldP = re.compile(field_ptrn, re.I + re.X)  # ignore case and verbose
+        """, re.I + re.X)  # ignore case and verbose
 
         for line in declaration[1:]:
             if line.startswith('---'):
@@ -455,11 +453,11 @@ class FreeRelation(RelationalOperand):
             elif line.startswith('->'):
                 # foreign key
                 module_name, class_name = line[2:].strip().split('.')
-                rel = self.get_base(module_name, class_name)
-                (parents if in_key else referenced).append(rel)
-            elif re.match(r'^(unique\s+)?index[^:]*$', line):
+                ref = parents if in_key else referenced
+                ref.append(self.get_base(module_name, class_name))
+            elif re.match(r'^(unique\s+)?index[^:]*$', line, re.I):
                 index_defs.append(self._parse_index_def(line))
-            elif fieldP.match(line):
+            elif attribute_regexp.match(line):
                 field_defs.append(parse_attribute_definition(line, in_key))
             else:
                 raise DataJointError(
@@ -485,7 +483,8 @@ def parse_attribute_definition(line, in_key=False):
     (\#\s*(?P<comment>\S*(\s+\S+)*)\s*)?$    # comment
     """, re.X)
     m = attribute_regexp.match(line)
-    assert m, 'Invalid field declaration "%s"' % line
+    if not m:
+        raise DataJointError('Invalid field declaration "%s"' % line)
     attr_info = m.groupdict()
     if not attr_info['comment']:
         attr_info['comment'] = ''
@@ -495,12 +494,13 @@ def parse_attribute_definition(line, in_key=False):
     assert (not re.match(r'^bigint', attr_info['type'], re.I) or not attr_info['nullable']), \
         'BIGINT attributes cannot be nullable in "%s"' % line
 
-    attr_info['in_key'] = in_key
-    attr_info['autoincrement'] = None
-    attr_info['numeric'] = None
-    attr_info['string'] = None
-    attr_info['is_blob'] = None
-    attr_info['computation'] = None
-    attr_info['dtype'] = None
-
-    return Heading.AttrTuple(**attr_info)
+    return Heading.AttrTuple(
+        in_key=in_key,
+        autoincrement=None,
+        numeric=None,
+        string=None,
+        is_blob=None,
+        computation=None,
+        dtype=None,
+        **attr_info
+    )

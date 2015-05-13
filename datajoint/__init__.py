@@ -4,7 +4,7 @@ import os
 __author__ = "Dimitri Yatsenko, Edgar Walker, and Fabian Sinz at Baylor College of Medicine"
 __version__ = "0.2"
 __all__ = ['__author__', '__version__',
-           'Connection', 'Heading', 'Relation', 'Not',
+           'Connection', 'Heading', 'Relation', 'FreeRelation', 'Not',
            'AutoPopulate', 'conn', 'DataJointError', 'blob']
 
 
@@ -43,6 +43,7 @@ from .autopopulate import AutoPopulate
 from . import blob
 from .relational_operand import Not
 from .free_relation import FreeRelation
+from .heading import Heading
 
 
 #############################################################################
