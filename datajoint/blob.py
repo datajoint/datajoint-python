@@ -6,8 +6,8 @@ from . import DataJointError
 mxClassID = collections.OrderedDict(
     # see http://www.mathworks.com/help/techdoc/apiref/mxclassid.html
     mxUNKNOWN_CLASS=None,
-    mxCELL_CLASS=None,   # not implemented
-    mxSTRUCT_CLASS=None,   # not implemented
+    mxCELL_CLASS=None,   # TODO: implement
+    mxSTRUCT_CLASS=None,   # TODO: implement
     mxLOGICAL_CLASS=np.dtype('bool'),
     mxCHAR_CLASS=np.dtype('c'),
     mxVOID_CLASS=None,
@@ -48,10 +48,9 @@ def pack(obj):
     if is_complex:
         blob += imaginary.tostring()
 
-    if len(blob) > 1000:
-        compressed = b'ZL123\0'+np.asarray(len(blob), dtype=np.uint64).tostring() + zlib.compress(blob)
-        if len(compressed) < len(blob):
-            blob = compressed
+    compressed = b'ZL123\0' + np.uint64(len(blob)).tostring() + zlib.compress(blob)
+    if len(compressed) < len(blob):
+        blob = compressed
     return blob
 
 

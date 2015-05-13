@@ -3,7 +3,7 @@ import re
 from .utils import to_camel_case
 from . import DataJointError
 from .heading import Heading
-from .settings import prefix_to_role, DEFAULT_PORT
+from .settings import prefix_to_role
 import logging
 from .erd import DBConnGraph
 from . import config
@@ -74,7 +74,6 @@ class Transaction(object):
         """
         return self.conn.is_connected and self.conn.in_transaction
 
-
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is None and exc_val is None and exc_tb is None:
             self.conn._commit_transaction()
@@ -83,7 +82,6 @@ class Transaction(object):
             self.conn._cancel_transaction()
             self.conn._in_transaction = False
             logger.debug("Transaction cancled because of an error.", exc_info=(exc_type, exc_val, exc_tb))
-
 
 
 class Connection(object):
@@ -108,9 +106,10 @@ class Connection(object):
             port = config['database.port']
         self.conn_info = dict(host=host, port=port, user=user, passwd=passwd)
         self._conn = pymysql.connect(init_command=init_fun, **self.conn_info)
-        # TODO Do something if connection cannot be established
         if self.is_connected:
             print("Connected", user + '@' + host + ':' + str(port))
+        else:
+            raise DataJointError('Connection failed.')
         self._conn.autocommit(True)
 
         self.db_to_mod = {}  # modules indexed by dbnames

@@ -13,7 +13,6 @@ from enum import Enum
 
 LOCALCONFIG = 'dj_local_conf.json'
 CONFIGVAR = 'DJ_LOCAL_CONF'
-DEFAULT_PORT = 3306
 
 validators = collections.defaultdict(lambda: lambda value: True)
 validators['database.port'] = lambda a: isinstance(a, int)
@@ -52,8 +51,10 @@ log_levels = {
 
 class Borg:
     _shared_state = {}
+
     def __init__(self):
         self.__dict__ = self._shared_state
+
 
 class Config(Borg, collections.MutableMapping):
     """
