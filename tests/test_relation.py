@@ -8,7 +8,7 @@ from .schemata.schema1 import test1, test4
 from . import BASE_CONN, CONN_INFO, PREFIX, cleanup
 from datajoint.connection import Connection
 from nose.tools import assert_raises, assert_equal, assert_regexp_matches, assert_false, assert_true, assert_list_equal,\
-    assert_tuple_equal
+    assert_tuple_equal, assert_dict_equal, raises
 from datajoint import DataJointError
 import numpy as np
 from numpy.testing import assert_array_equal
@@ -51,19 +51,21 @@ class TestTableObject(object):
     def teardown(self):
         cleanup()
 
-    def test_tuple_insert(self):
-        "Test whether tuple insert works"
-        testt = (1, 'Peter', 'mouse')
-        self.relvar.insert(testt)
-        testt2 = tuple((self.relvar & 'subject_id = 1').fetch()[0])
-        assert_equal(testt2, testt, "Inserted and fetched tuple do not match!")
 
-    def test_list_insert(self):
-        "Test whether tuple insert works"
-        testt = [1, 'Peter', 'mouse']
-        self.relvar.insert(testt)
-        testt2 = list((self.relvar & 'subject_id = 1').fetch()[0])
-        assert_equal(testt2, testt, "Inserted and fetched tuple do not match!")
+
+    # def test_tuple_insert(self):
+    #     "Test whether tuple insert works"
+    #     testt = (1, 'Peter', 'mouse')
+    #     self.relvar.insert(testt)
+    #     testt2 = tuple((self.relvar & 'subject_id = 1').fetch()[0])
+    #     assert_equal(testt2, testt, "Inserted and fetched tuple do not match!")
+
+    # def test_list_insert(self):
+    #     "Test whether tuple insert works"
+    #     testt = [1, 'Peter', 'mouse']
+    #     self.relvar.insert(testt)
+    #     testt2 = list((self.relvar & 'subject_id = 1').fetch()[0])
+    #     assert_equal(testt2, testt, "Inserted and fetched tuple do not match!")
 
     def test_record_insert(self):
         "Test whether record insert works"
@@ -83,6 +85,15 @@ class TestTableObject(object):
         testt2 = (self.relvar & 'subject_id = 2').fetch()[0]
         assert_equal((2, 'Klara', 'monkey'), tuple(testt2), "Inserted and fetched record do not match!")
 
+    @raises(KeyError)
+    def test_wrong_key_insert_records(self):
+        "Test whether record insert works"
+        tmp = np.array([('Klara', 2, 'monkey')],
+                       dtype=[('real_deal', 'O'), ('subject_id', '>i4'), ('species', 'O')])
+
+        self.relvar.insert(tmp[0])
+
+
     def test_dict_insert(self):
         "Test whether record insert works"
         tmp = {'real_id': 'Brunhilda',
@@ -93,6 +104,14 @@ class TestTableObject(object):
         testt2 = (self.relvar & 'subject_id = 3').fetch()[0]
         assert_equal((3, 'Brunhilda', 'human'), tuple(testt2), "Inserted and fetched record do not match!")
 
+    @raises(KeyError)
+    def test_wrong_key_insert(self):
+        "Test whether a correct error is generated when inserting wrong attribute name"
+        tmp = {'real_deal': 'Brunhilda',
+               'subject_database': 3,
+               'species': 'human'}
+
+        self.relvar.insert(tmp)
 
     def test_batch_insert(self):
         "Test whether record insert works"
@@ -126,7 +145,7 @@ class TestTableObject(object):
 
     def test_blob_insert(self):
         x = np.random.randn(10)
-        t = (0, x, 'this is a random image')
+        t = {'matrix_id':0, 'data':x, 'comment':'this is a random image'}
         self.relvar_blob.insert(t)
         x2 = self.relvar_blob.fetch()[0][1]
         assert_array_equal(x,x2, 'inserted blob does not match')
@@ -212,38 +231,62 @@ class TestIterator(object):
     def test_blob_iteration(self):
         "Tests the basic call of the iterator"
 
-        tuples = []
+        dicts = []
         for i in range(10):
 
             c = id_generator()
 
-            t = (i, np.random.randn(4,4,4), c)
+            t = {'matrix_id':i,
+                 'data': np.random.randn(4,4,4),
+                 'comment': c}
             self.relvar_blob.insert(t)
-            tuples.append(t)
+            dicts.append(t)
 
-        for t, t2 in zip(tuples, self.relvar_blob):
+        for t, t2 in zip(dicts, self.relvar_blob):
+            assert_true(isinstance(t2, dict), 'iterator does not return dict')
 
-            assert_equal(t[0], t2[0], 'inserted and retrieved tuples do not match')
-            assert_equal(t[2], t2[2], 'inserted and retrieved tuples do not match')
-            assert_true(np.all(t[1] == t2[1]), 'inserted and retrieved tuples do not match')
+            assert_equal(t['matrix_id'], t2['matrix_id'], 'inserted and retrieved tuples do not match')
+            assert_equal(t['comment'], t2['comment'], 'inserted and retrieved tuples do not match')
+            assert_true(np.all(t['data'] == t2['data']), 'inserted and retrieved tuples do not match')
 
     def test_fetch(self):
-        tuples = []
+        dicts = []
         for i in range(10):
 
             c = id_generator()
 
-            t = (i, np.random.randn(4,4,4), c)
+            t = {'matrix_id':i,
+                 'data': np.random.randn(4,4,4),
+                 'comment': c}
             self.relvar_blob.insert(t)
-            tuples.append(t)
+            dicts.append(t)
 
         tuples2 = self.relvar_blob.fetch()
-        print(type(tuples2))
         assert_true(isinstance(tuples2, np.ndarray), "Return value of fetch does not have proper type.")
         assert_true(isinstance(tuples2[0], np.void), "Return value of fetch does not have proper type.")
-        for t, t2 in zip(tuples, tuples2):
+        for t, t2 in zip(dicts, tuples2):
 
-            assert_equal(t[0], t2['matrix_id'], 'inserted and retrieved tuples do not match')
-            assert_equal(t[2], t2['comment'], 'inserted and retrieved tuples do not match')
-            assert_true(np.all(t[1] == t2['data']), 'inserted and retrieved tuples do not match')
+            assert_equal(t['matrix_id'], t2['matrix_id'], 'inserted and retrieved tuples do not match')
+            assert_equal(t['comment'], t2['comment'], 'inserted and retrieved tuples do not match')
+            assert_true(np.all(t['data'] == t2['data']), 'inserted and retrieved tuples do not match')
+
+    def test_fetch_dicts(self):
+        dicts = []
+        for i in range(10):
+
+            c = id_generator()
+
+            t = {'matrix_id':i,
+                 'data': np.random.randn(4,4,4),
+                 'comment': c}
+            self.relvar_blob.insert(t)
+            dicts.append(t)
+
+        tuples2 = self.relvar_blob.fetch(as_dict=True)
+        assert_true(isinstance(tuples2, list), "Return value of fetch with as_dict=True does not have proper type.")
+        assert_true(isinstance(tuples2[0], dict), "Return value of fetch with as_dict=True does not have proper type.")
+        for t, t2 in zip(dicts, tuples2):
+            assert_equal(t['matrix_id'], t2['matrix_id'], 'inserted and retrieved dicts do not match')
+            assert_equal(t['comment'], t2['comment'], 'inserted and retrieved dicts do not match')
+            assert_true(np.all(t['data'] == t2['data']), 'inserted and retrieved dicts do not match')
 

@@ -7,7 +7,7 @@ from datajoint import DataJointError
 
 class Heading:
     """
-    local class for relations' headings.
+    Local class for relations' headings.
     Heading contains the property attributes, which is an OrderedDict in which the keys are
     the attribute names and the values are AttrTuples.
     """

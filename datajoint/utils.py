@@ -1,5 +1,6 @@
 import re
 from . import DataJointError
+import collections
 
 
 def to_camel_case(s):
