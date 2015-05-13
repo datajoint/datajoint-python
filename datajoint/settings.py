@@ -16,6 +16,7 @@ CONFIGVAR = 'DJ_LOCAL_CONF'
 DEFAULT_PORT = 3306
 
 validators = collections.defaultdict(lambda: lambda value: True)
+validators['database.port'] = lambda a: isinstance(a, int)
 
 Role = Enum('Role', 'manual lookup imported computed job')
 role_to_prefix = {
@@ -89,7 +90,7 @@ class Config(Borg, collections.MutableMapping):
         return len(self._conf)
 
     def __str__(self):
-        return  pprint.pformat(self._conf, indent=4)
+        return pprint.pformat(self._conf, indent=4)
 
     def __repr__(self):
         return self.__str__()

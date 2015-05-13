@@ -55,7 +55,6 @@ class TestTableObject(object):
         "Test whether tuple insert works"
         testt = (1, 'Peter', 'mouse')
         self.relvar.insert(testt)
-        print(self.relvar)
         testt2 = tuple((self.relvar & 'subject_id = 1').fetch()[0])
         assert_equal(testt2, testt, "Inserted and fetched tuple do not match!")
 

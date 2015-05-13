@@ -7,7 +7,7 @@ import numpy as np
 
 __author__ = 'eywalker, fabee'
 from . import (CONN_INFO, PREFIX, BASE_CONN, cleanup)
-from nose.tools import assert_true, assert_raises, assert_equal
+from nose.tools import assert_true, assert_raises, assert_equal, raises
 import datajoint as dj
 from datajoint.utils import DataJointError
 
@@ -196,7 +196,6 @@ class TestContextManager(object):
         test1.__dict__.pop('conn', None)
 
         self.conn = dj.Connection(**CONN_INFO)
-        self.conn._conn.autocommit(False)
         test1.conn = self.conn
         self.conn.bind(test1.__name__, PREFIX + '_test1')
         self.relvar = test1.Subjects()
@@ -214,26 +213,17 @@ class TestContextManager(object):
                        dtype=[('subject_id', '>i4'), ('real_id', 'O'), ('species', 'O')])
 
         self.relvar.insert(tmp[0])
-        print(self.relvar)
         try:
             with self.conn.transaction():
                 self.relvar.insert(tmp[1])
                 raise DataJointError("Just to test")
         except DataJointError as e:
-            pass# testt2 = (self.relvar & 'subject_id = 2')#.fetch()
-        finally:
             pass
-        # print(testt2.fetch())
-        # testt2 = (self.relvar & 'subject_id = 2').fetch()
-        # with self.conn.transaction():
-        #     self.relvar.insert(tmp[0])
-        #     raise DataJointError("Just to test")
-        # except DataJointError:
-        #     testt2 = (self.relvar & 'subject_id = 2').fetch()
+
+        testt2 = (self.relvar & 'subject_id = 2').fetch()
         assert_equal(len(testt2), 0, "Length is not 0. Expected because rollback should have happened.")
 
 
-        # assert_equal(tuple(tmp[0]), tuple(testt2), "Inserted and fetched record do not match!")
 
 # class TestConnectionWithBindings(object):
 #     """

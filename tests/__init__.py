@@ -38,6 +38,7 @@ def cleanup():
     To deal with possible foreign key constraints, it will unset
     and then later reset FOREIGN_KEY_CHECKS flag
     """
+
     cur = BASE_CONN.cursor()
     # cancel any unfinished transactions
     cur.execute("ROLLBACK")
