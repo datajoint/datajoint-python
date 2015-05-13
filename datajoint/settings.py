@@ -13,6 +13,7 @@ from enum import Enum
 
 LOCALCONFIG = 'dj_local_conf.json'
 CONFIGVAR = 'DJ_LOCAL_CONF'
+DEFAULT_PORT = 3306
 
 validators = collections.defaultdict(lambda: lambda value: True)
 
@@ -34,7 +35,18 @@ default = OrderedDict({
     #
     'connection.init_function': None,
     #
+    'loglevel': 'DEBUG'
 })
+
+logger = logging.getLogger()
+log_levels = {
+    'INFO': logging.INFO,
+    'WARNING': logging.WARNING,
+    'CRITICAL': logging.CRITICAL,
+    'DEBUG': logging.DEBUG,
+    'ERROR': logging.ERROR,
+    None:  logging.NOTSET
+}
 
 
 class Borg:
@@ -106,6 +118,3 @@ class Config(Borg, collections.MutableMapping):
             self.update(json.load(fid))
 
 
-#############################################################################
-logger = logging.getLogger()
-logger.setLevel(logging.DEBUG) #set package wide logger level TODO:make this respond to environmental variable

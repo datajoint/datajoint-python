@@ -139,7 +139,12 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         :param descending: the list of attributes to order the results
         :return: the contents of the relation in the form of a structured numpy.array
         """
-        return np.atleast_1d(rfn.stack_arrays(list(self.__iter__(offset, limit, order_by, descending)), usemask=False))
+        tmp = list(self.__iter__(offset, limit, order_by, descending))
+
+        if len(tmp) > 0:
+            return np.atleast_1d(rfn.stack_arrays(tmp, usemask=False))
+        else:
+            return np.empty((0,), dtype=self.heading.as_dtype)
 
     def cursor(self, offset=0, limit=None, order_by=None, descending=False):
         """

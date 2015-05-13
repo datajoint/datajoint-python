@@ -16,13 +16,15 @@ class DataJointError(Exception):
 
 
 # ----------- loads local configuration from file ----------------
-from .settings import Config, logger, CONFIGVAR, LOCALCONFIG
+from .settings import Config, CONFIGVAR, LOCALCONFIG, logger, log_levels
 config = Config()
 local_config_file = os.environ.get(CONFIGVAR, None)
 if local_config_file is None:
     local_config_file = os.path.expanduser(LOCALCONFIG)
 else:
     local_config_file = os.path.expanduser(local_config_file)
+
+
 
 try:
     logger.log(logging.INFO, "Loading local settings from {0:s}".format(local_config_file))
@@ -31,6 +33,8 @@ except FileNotFoundError:
     logger.warn("Local config file {0:s} does not exist! Creating it.".format(local_config_file))
     config.save(local_config_file)
 
+logger.setLevel(log_levels[config['loglevel']])
+
 
 # ------------- flatten import hierarchy -------------------------
 from .connection import conn, Connection
@@ -38,3 +42,6 @@ from .relation import Relation
 from .autopopulate import AutoPopulate
 from . import blob
 from .relational_operand import Not
+from .free_relation import FreeRelation
+
+#############################################################################

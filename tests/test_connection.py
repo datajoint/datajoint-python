@@ -3,9 +3,9 @@ Collection of test cases to test connection module.
 """
 from .schemata import schema1
 from .schemata.schema1 import test1
+import numpy as np
 
-
-__author__ = 'eywalker'
+__author__ = 'eywalker, fabee'
 from . import (CONN_INFO, PREFIX, BASE_CONN, cleanup)
 from nose.tools import assert_true, assert_raises, assert_equal
 import datajoint as dj
@@ -157,11 +157,11 @@ class TestConnectionWithoutBindings(object):
         Test transaction commit
         """
         table_name = PREFIX + '_test1.subjects'
-        self.conn.start_transaction()
+        self.conn._start_transaction()
         self.conn.query("INSERT INTO {table} VALUES (0, 'dj_user', 'dj_user@example.com')".format(table=table_name))
         cur = BASE_CONN.cursor()
         assert_equal(cur.execute("SELECT * FROM {}".format(table_name)), 0)
-        self.conn.commit_transaction()
+        self.conn._commit_transaction()
         assert_equal(cur.execute("SELECT * FROM {}".format(table_name)), 1)
 
     def test_transaction_rollback(self):
@@ -169,14 +169,71 @@ class TestConnectionWithoutBindings(object):
         Test transaction rollback
         """
         table_name = PREFIX + '_test1.subjects'
-        self.conn.start_transaction()
+        self.conn._start_transaction()
         self.conn.query("INSERT INTO {table} VALUES (0, 'dj_user', 'dj_user@example.com')".format(table=table_name))
         cur = BASE_CONN.cursor()
         assert_equal(cur.execute("SELECT * FROM {}".format(table_name)), 0)
-        self.conn.cancel_transaction()
+        self.conn._cancel_transaction()
         assert_equal(cur.execute("SELECT * FROM {}".format(table_name)), 0)
 
 
+class TestContextManager(object):
+    def __init__(self):
+        self.relvar = None
+        self.setup()
+
+    """
+    Test cases for FreeRelation objects
+    """
+
+    def setup(self):
+        """
+        Create a connection object and prepare test modules
+        as follows:
+        test1 - has conn and bounded
+        """
+        cleanup()  # drop all databases with PREFIX
+        test1.__dict__.pop('conn', None)
+
+        self.conn = dj.Connection(**CONN_INFO)
+        self.conn._conn.autocommit(False)
+        test1.conn = self.conn
+        self.conn.bind(test1.__name__, PREFIX + '_test1')
+        self.relvar = test1.Subjects()
+
+    def teardown(self):
+        cleanup()
+
+    def test_active(self):
+        with self.conn.transaction() as tr:
+            assert_true(tr.is_active, "Transaction is not active")
+
+    def test_rollback(self):
+
+        tmp = np.array([(1,'Peter','mouse'),(2, 'Klara', 'monkey')],
+                       dtype=[('subject_id', '>i4'), ('real_id', 'O'), ('species', 'O')])
+
+        self.relvar.insert(tmp[0])
+        print(self.relvar)
+        try:
+            with self.conn.transaction():
+                self.relvar.insert(tmp[1])
+                raise DataJointError("Just to test")
+        except DataJointError as e:
+            pass# testt2 = (self.relvar & 'subject_id = 2')#.fetch()
+        finally:
+            pass
+        # print(testt2.fetch())
+        # testt2 = (self.relvar & 'subject_id = 2').fetch()
+        # with self.conn.transaction():
+        #     self.relvar.insert(tmp[0])
+        #     raise DataJointError("Just to test")
+        # except DataJointError:
+        #     testt2 = (self.relvar & 'subject_id = 2').fetch()
+        assert_equal(len(testt2), 0, "Length is not 0. Expected because rollback should have happened.")
+
+
+        # assert_equal(tuple(tmp[0]), tuple(testt2), "Inserted and fetched record do not match!")
 
 # class TestConnectionWithBindings(object):
 #     """

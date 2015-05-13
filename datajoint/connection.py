@@ -3,7 +3,7 @@ import re
 from .utils import to_camel_case
 from . import DataJointError
 from .heading import Heading
-from .settings import prefix_to_role
+from .settings import prefix_to_role, DEFAULT_PORT
 import logging
 from .erd import DBConnGraph
 from . import config
@@ -47,10 +47,57 @@ def conn_container():
 conn = conn_container()
 
 
-class Connection:
+class Transaction(object):
+    """
+    Class that defines a transaction. Mainly for use in a with statement.
+
+    :param conn: connection object that opens the transaction.
+    """
+
+    def __init__(self, conn):
+        self.conn = conn
+
+    def __enter__(self):
+        assert self.conn.is_connected, "Connection is not connected"
+        if self.conn.in_transaction:
+            raise DataJointError("Connection object already has an open transaction")
+
+        self.conn._in_transaction = True
+        self.conn._start_transaction()
+        return self
+
+    @property
+    def is_active(self):
+        """
+        :return: True if the transaction is active, i.e. the connection object is connected and
+                the transaction flag in it is True
+        """
+        return self.conn.is_connected and self.conn.in_transaction
+
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is None and exc_val is None and exc_tb is None:
+            self.conn._commit_transaction()
+            self.conn._in_transaction = False
+        else:
+            self.conn._cancel_transaction()
+            self.conn._in_transaction = False
+            logger.debug("Transaction cancled because of an error.", exc_info=(exc_type, exc_val, exc_tb))
+
+
+
+class Connection(object):
     """
     A dj.Connection object manages a connection to a database server.
-    It also catalogues modules, schemas, tables, and their dependencies (foreign keys)
+    It also catalogues modules, schemas, tables, and their dependencies (foreign keys).
+
+    Most of the parameters below should be set in the local configuration file.
+
+    :param host: host name
+    :param user: user name
+    :param passwd: password
+    :param init_fun: initialization function
+
     """
 
     def __init__(self, host, user, passwd, init_fun=None):
@@ -76,18 +123,25 @@ class Connection:
         self.parents = {}  # maps table names to their parent table names (primary foreign key)
         self.referenced = {}  # maps table names to table names they reference (non-primary foreign key
         self._graph = DBConnGraph(self)  # initialize an empty connection graph
+        self._in_transaction = False
 
     def __eq__(self, other):
-        """
-        true if the connection host, port, and user name are the same
-        """
         return self.conn_info == other.conn_info
 
     @property
     def is_connected(self):
+        """
+        Returns true if the object is connected to the database server.
+        """
         return self._conn.ping()
 
     def get_full_module_name(self, module):
+        """
+        Returns full module name of the module.
+
+        :param module: module for which the name is requested.
+        :return: full module name
+        """
         return '.'.join(self.root_package, module)
 
     def bind(self, module, dbname):
@@ -98,7 +152,9 @@ class Connection:
         If the database `dbname` does not exist in the server, attempts
         to create the database and then bind the module.
 
-        `dbname` should be a valid database identifier and not a match pattern.
+
+        :param module: module name.
+        :param dbname: database name. It should be a valid database identifier and not a match pattern.
         """
 
         if dbname in self.db_to_mod:
@@ -133,14 +189,17 @@ class Connection:
     def load_headings(self, dbname=None, force=False):
         """
         Load table information including roles and list of attributes for all
-        tables within dbname by examining respective TABLE STATUS
+        tables within dbname by examining respective table status.
 
         If dbname is not specified or None, will load headings for all
         databases that are bound to a module.
 
-        By default, the heading is NOT loaded again if it already exists.
+        By default, the heading is not loaded again if it already exists.
         Setting force=True will result in reloading of the heading even if one
         already exists.
+
+        :param dbname=None: database name
+        :param force=False: force reloading the heading
         """
         if dbname:
             self._load_headings(dbname, force)
@@ -152,11 +211,14 @@ class Connection:
     def _load_headings(self, dbname, force=False):
         """
         Load table information including roles and list of attributes for all
-        tables within dbname by examining respective TABLE STATUS
+        tables within dbname by examining respective table status.
 
-        By default, the heading is NOT loaded again if it already exists.
+        By default, the heading is not loaded again if it already exists.
         Setting force=True will result in reloading of the heading even if one
         already exists.
+
+        :param dbname: database name
+        :param force: force reloading the heading
         """
         if dbname not in self.headings or force:
             logger.info('Loading table definitions from `{dbname}`...'.format(dbname=dbname))
@@ -180,8 +242,10 @@ class Connection:
 
     def load_dependencies(self, dbname):  # TODO: Perhaps consider making this "private" by preceding with underscore?
         """
-        load dependencies (foreign keys) between tables by examining their
+        Load dependencies (foreign keys) between tables by examining their
         respective CREATE TABLE statements.
+
+        :param dbname: database name
         """
 
         foreign_key_regexp = re.compile(r"""
@@ -220,6 +284,9 @@ class Connection:
         """
         Clears dependency mapping originating from `dbname`. If `dbname` is not
         specified, dependencies for all databases will be cleared.
+
+
+        :param dbname: database name
         """
         if dbname is None:  # clear out all dependencies
             self.parents.clear()
@@ -232,16 +299,20 @@ class Connection:
                 if key in self.referenced:
                     self.referenced.pop(key)
 
-    def parents_of(self, child_table):
+    def parents_of(self, child_table): #TODO: this function is not clear to me after reading the docu
         """
         Returns a list of tables that are parents for the childTable based on
         primary foreign keys.
+
+        :param child_table: the child table
         """
         return self.parents.get(child_table, []).copy()
 
-    def children_of(self, parent_table):
+    def children_of(self, parent_table):#TODO: this function is not clear to me after reading the docu
         """
         Returns a list of tables for which parent_table is a parent (primary foreign key)
+
+        :param parent_table: parent table
         """
         return [child_table for child_table, parents in self.parents.items() if parent_table in parents]
 
@@ -249,12 +320,16 @@ class Connection:
         """
         Returns a list of tables that are referenced by non-primary foreign key
         by the referencing_table.
+
+        :param referencing_table: referencing table
         """
         return self.referenced.get(referencing_table, []).copy()
 
     def referencing(self, referenced_table):
         """
         Returns a list of tables that references referencedTable as non-primary foreign key
+
+        :param referenced_table: referenced table
         """
         return [referencing for referencing, referenced in self.referenced.items()
                 if referenced_table in referenced]
@@ -309,11 +384,32 @@ class Connection:
         cur.execute(query, args)
         return cur
 
-    def start_transaction(self):
+    def transaction(self):
+        """
+        Context manager to be used with python's with statement.
+
+        :return: a :class:`Transaction` object
+
+        :Example:
+
+        >>> conn = dj.conn()
+        >>> with conn.transaction() as tr:
+                ... # do magic
+        """
+        return Transaction(self)
+
+    @property
+    def in_transaction(self):
+        return self._in_transaction
+
+    def _start_transaction(self):
         self.query('START TRANSACTION WITH CONSISTENT SNAPSHOT')
+        logger.log(logging.INFO, "Transaction started")
 
-    def cancel_transaction(self):
+    def _cancel_transaction(self):
         self.query('ROLLBACK')
+        logger.log(logging.INFO, "Transaction cancelled. Rolling back ...")
 
-    def commit_transaction(self):
+    def _commit_transaction(self):
         self.query('COMMIT')
+        logger.log(logging.INFO, "Transaction commited and closed.")

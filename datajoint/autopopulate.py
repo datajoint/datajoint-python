@@ -42,7 +42,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         """
         if not isinstance(self.pop_rel, RelationalOperand):
             raise DataJointError('')
-        self.conn.cancel_transaction()
+        self.conn._cancel_transaction()
 
         unpopulated = self.pop_rel - self.target
         if not unpopulated.count:
@@ -50,23 +50,23 @@ class AutoPopulate(metaclass=abc.ABCMeta):
             if catch_errors:
                 error_keys, errors = [], []
             for key in unpopulated.fetch():
-                self.conn.start_transaction()
+                self.conn._start_transaction()
                 n = self(key).count
                 if n:  # already populated
-                    self.conn.cancel_transaction()
+                    self.conn._cancel_transaction()
                 else:
                     print('Populating:')
                     pprint.pprint(key)
                     try:
                         self.make_tuples(key)
                     except Exception as e:
-                        self.conn.cancel_transaction()
+                        self.conn._cancel_transaction()
                         if not catch_errors:
                             raise
                         print(e)
                         errors += [e]
                         error_keys += [key]
                     else:
-                        self.conn.commit_transaction()
+                        self.conn._commit_transaction()
         if catch_errors:
             return errors, error_keys
