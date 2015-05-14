@@ -13,6 +13,14 @@ from datajoint import DataJointError
 import numpy as np
 from numpy.testing import assert_array_equal
 from datajoint.free_relation import FreeRelation
+import numpy as np
+
+def trial_faker(n=10):
+    def iter():
+        for s in [1,2]:
+            for i in range(n):
+                yield dict(trial_id=i, subject_id=s, outcome=int(np.random.randint(10)), notes= 'no comment')
+    return iter()
 
 def setup():
     """
@@ -23,7 +31,7 @@ def setup():
 
 class TestTableObject(object):
     def __init__(self):
-        self.relvar = None
+        self.subjects = None
         self.setup()
 
     """
@@ -45,35 +53,40 @@ class TestTableObject(object):
         test4.conn = self.conn
         self.conn.bind(test1.__name__, PREFIX + '_test1')
         self.conn.bind(test4.__name__, PREFIX + '_test4')
-        self.relvar = test1.Subjects()
+        self.subjects = test1.Subjects()
         self.relvar_blob = test4.Matrix()
+        self.trials = test1.Trials()
 
     def teardown(self):
         cleanup()
 
+    def test_compound_restriction(self):
+        s = self.subjects
+        t = self.trials
+
+        s.insert(dict(subject_id=1, real_id='M' ))
+        s.insert(dict(subject_id=2, real_id='F' ))
+        t.iter_insert(trial_faker(20))
+
+        tM = t & (s & "real_id = 'M'")
+        t1 = t & ("subject_id = 1")
+
+        assert_equal(tM.count, t1.count, "Results of compound request does not have same length")
 
 
-    # def test_tuple_insert(self):
-    #     "Test whether tuple insert works"
-    #     testt = (1, 'Peter', 'mouse')
-    #     self.relvar.insert(testt)
-    #     testt2 = tuple((self.relvar & 'subject_id = 1').fetch()[0])
-    #     assert_equal(testt2, testt, "Inserted and fetched tuple do not match!")
+        for t1_item, tM_item in zip(sorted(t1, key = lambda item: item['trial_id']),
+                                    sorted(tM, key = lambda item: item['trial_id'])):
+            assert_dict_equal(t1_item, tM_item, 'Dictionary elements do not agree in compound statement')
 
-    # def test_list_insert(self):
-    #     "Test whether tuple insert works"
-    #     testt = [1, 'Peter', 'mouse']
-    #     self.relvar.insert(testt)
-    #     testt2 = list((self.relvar & 'subject_id = 1').fetch()[0])
-    #     assert_equal(testt2, testt, "Inserted and fetched tuple do not match!")
+
 
     def test_record_insert(self):
         "Test whether record insert works"
         tmp = np.array([(2, 'Klara', 'monkey')],
                        dtype=[('subject_id', '>i4'), ('real_id', 'O'), ('species', 'O')])
 
-        self.relvar.insert(tmp[0])
-        testt2 = (self.relvar & 'subject_id = 2').fetch()[0]
+        self.subjects.insert(tmp[0])
+        testt2 = (self.subjects & 'subject_id = 2').fetch()[0]
         assert_equal(tuple(tmp[0]), tuple(testt2), "Inserted and fetched record do not match!")
 
     def test_record_insert_different_order(self):
@@ -81,8 +94,8 @@ class TestTableObject(object):
         tmp = np.array([('Klara', 2, 'monkey')],
                        dtype=[('real_id', 'O'), ('subject_id', '>i4'), ('species', 'O')])
 
-        self.relvar.insert(tmp[0])
-        testt2 = (self.relvar & 'subject_id = 2').fetch()[0]
+        self.subjects.insert(tmp[0])
+        testt2 = (self.subjects & 'subject_id = 2').fetch()[0]
         assert_equal((2, 'Klara', 'monkey'), tuple(testt2), "Inserted and fetched record do not match!")
 
     @raises(KeyError)
@@ -91,7 +104,7 @@ class TestTableObject(object):
         tmp = np.array([('Klara', 2, 'monkey')],
                        dtype=[('real_deal', 'O'), ('subject_id', '>i4'), ('species', 'O')])
 
-        self.relvar.insert(tmp[0])
+        self.subjects.insert(tmp[0])
 
 
     def test_dict_insert(self):
@@ -100,8 +113,8 @@ class TestTableObject(object):
                'subject_id': 3,
                'species': 'human'}
 
-        self.relvar.insert(tmp)
-        testt2 = (self.relvar & 'subject_id = 3').fetch()[0]
+        self.subjects.insert(tmp)
+        testt2 = (self.subjects & 'subject_id = 3').fetch()[0]
         assert_equal((3, 'Brunhilda', 'human'), tuple(testt2), "Inserted and fetched record do not match!")
 
     @raises(KeyError)
@@ -111,19 +124,19 @@ class TestTableObject(object):
                'subject_database': 3,
                'species': 'human'}
 
-        self.relvar.insert(tmp)
+        self.subjects.insert(tmp)
 
     def test_batch_insert(self):
         "Test whether record insert works"
         tmp = np.array([('Klara', 2, 'monkey'), ('Brunhilda', 3, 'mouse'), ('Mickey', 1, 'human')],
                        dtype=[('real_id', 'O'), ('subject_id', '>i4'), ('species', 'O')])
 
-        self.relvar.batch_insert(tmp)
+        self.subjects.batch_insert(tmp)
 
         expected = np.array([(1, 'Mickey', 'human'), (2, 'Klara', 'monkey'),
                              (3, 'Brunhilda', 'mouse')],
                             dtype=[('subject_id', '<i4'), ('real_id', 'O'), ('species', 'O')])
-        delivered = self.relvar.fetch()
+        delivered = self.subjects.fetch()
 
         for e,d in zip(expected, delivered):
             assert_equal(tuple(e), tuple(d),'Inserted and fetched records do not match')
@@ -133,12 +146,12 @@ class TestTableObject(object):
         tmp = np.array([('Klara', 2, 'monkey'), ('Brunhilda', 3, 'mouse'), ('Mickey', 1, 'human')],
                        dtype=[('real_id', 'O'), ('subject_id', '>i4'), ('species', 'O')])
 
-        self.relvar.iter_insert(tmp.__iter__())
+        self.subjects.iter_insert(tmp.__iter__())
 
         expected = np.array([(1, 'Mickey', 'human'), (2, 'Klara', 'monkey'),
                              (3, 'Brunhilda', 'mouse')],
                             dtype=[('subject_id', '<i4'), ('real_id', 'O'), ('species', 'O')])
-        delivered = self.relvar.fetch()
+        delivered = self.subjects.fetch()
 
         for e,d in zip(expected, delivered):
             assert_equal(tuple(e), tuple(d),'Inserted and fetched records do not match')

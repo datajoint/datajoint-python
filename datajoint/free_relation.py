@@ -137,7 +137,7 @@ class FreeRelation(RelationalOperand):
         """
         self.iter_insert(data.__iter__(), **kwargs)
 
-    def insert(self, tup, ignore_errors=False, replace=False):  # TODO: in progress (issue #8)
+    def insert(self, tup, ignore_errors=False, replace=False):
         """
         Insert one data record or one Mapping (like a dictionary).
 
