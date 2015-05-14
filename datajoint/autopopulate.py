@@ -35,32 +35,33 @@ class AutoPopulate(metaclass=abc.ABCMeta):
     def target(self):
         return self
 
-    def populate(self, restrict=None, suppress_errors=False, error_list=None, reserve_jobs=False):
+    def populate(self, restriction=None, suppress_errors=False, error_list=None, reserve_jobs=False):
         """
-        rel.populate() will call rel.make_tuples(key) for every primary key in self.pop_rel
+        rel.populate() calls rel.make_tuples(key) for every primary key in self.pop_rel
         for which there is not already a tuple in rel.
         """
         if not isinstance(self.pop_rel, RelationalOperand):
             raise DataJointError('Invalid pop_rel value')
         self.conn._cancel_transaction()
-        unpopulated = self.pop_rel - self.target
-        if not unpopulated.count:
+        unpopulated = ((self.pop_rel & restriction) - self.target).project()
+        if not unpopulated:
             logger.info('Nothing to populate', flush=True)
-        for key in unpopulated.project().fetch():
-            self.conn._start_transaction()
-            if self & key:  # already populated
-                self.conn._cancel_transaction()
-            else:
-                print('Populating:')
-                pprint.pprint(key)
-                try:
-                    self.make_tuples(key)
-                except Exception as e:
+        else:
+            for key in unpopulated():
+                self.conn._start_transaction()
+                if key in self:  # already populated
                     self.conn._cancel_transaction()
-                    if not suppress_errors:
-                        raise
-                    print(e)
-                    if error_list is not None:
-                        error_list += (e, key)
                 else:
-                    self.conn._commit_transaction()
+                    print('Populating:')
+                    pprint.pprint(key)
+                    try:
+                        self.make_tuples(key)
+                    except Exception as e:
+                        self.conn._cancel_transaction()
+                        if not suppress_errors:
+                            raise
+                        print(e)
+                        if error_list is not None:
+                            error_list += (key, e)
+                    else:
+                        self.conn._commit_transaction()

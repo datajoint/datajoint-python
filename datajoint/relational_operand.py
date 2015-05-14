@@ -88,9 +88,10 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         in-place relational restriction or semijoin
         """
-        if self._restrictions is None:
-            self._restrictions = []
-        self._restrictions.append(restriction)
+        if restriction is not None:
+            if self._restrictions is None:
+                self._restrictions = []
+            self._restrictions.append(restriction)
         return self
 
     def __and__(self, restriction):
@@ -123,8 +124,17 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         return 'SELECT ' + attribute_spec + ' FROM ' + self.from_clause + self.where_clause
 
     def __len__(self):
+        """
+        number of tuples in the relation.  This also takes care of the truth value
+        """
         cur = self.conn.query(self.make_select('count(*)'))
         return cur.fetchone()[0]
+
+    def __contains__(self, item):
+        """
+        "item in relation" is equivalient to "len(relation & item)>0"
+        """
+        return len(self & item)>0
 
     def __call__(self, *args, **kwargs):
         """
