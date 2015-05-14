@@ -122,12 +122,14 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             attribute_spec = self.heading.as_sql
         return 'SELECT ' + attribute_spec + ' FROM ' + self.from_clause + self.where_clause
 
-    @property
-    def count(self):
+    def __len__(self):
         cur = self.conn.query(self.make_select('count(*)'))
         return cur.fetchone()[0]
 
     def __call__(self, *args, **kwargs):
+        """
+        calling a relation is equivalent to fetching from it
+        """
         return self.fetch(*args, **kwargs)
 
     def fetch(self, offset=0, limit=None, order_by=None, descending=False, as_dict=False):
@@ -183,7 +185,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             repr_string += ' '.join([template % column for column in tup]) + '\n'
         if self.count > limit:
             repr_string += '...\n'
-        repr_string += ' (%d tuples)\n' % self.count
+        repr_string += ' (%d tuples)\n' % len(self)
         return repr_string
         
     def __iter__(self):

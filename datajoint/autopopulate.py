@@ -35,38 +35,32 @@ class AutoPopulate(metaclass=abc.ABCMeta):
     def target(self):
         return self
 
-    def populate(self, catch_errors=False, reserve_jobs=False, restrict=None):
+    def populate(self, restrict=None, suppress_errors=False, error_list=None, reserve_jobs=False):
         """
         rel.populate() will call rel.make_tuples(key) for every primary key in self.pop_rel
         for which there is not already a tuple in rel.
         """
         if not isinstance(self.pop_rel, RelationalOperand):
-            raise DataJointError('')
+            raise DataJointError('Invalid pop_rel value')
         self.conn._cancel_transaction()
-
         unpopulated = self.pop_rel - self.target
         if not unpopulated.count:
             logger.info('Nothing to populate', flush=True)
-            if catch_errors:
-                error_keys, errors = [], []
-            for key in unpopulated.fetch():
-                self.conn._start_transaction()
-                n = self(key).count
-                if n:  # already populated
+        for key in unpopulated.project().fetch():
+            self.conn._start_transaction()
+            if self & key:  # already populated
+                self.conn._cancel_transaction()
+            else:
+                print('Populating:')
+                pprint.pprint(key)
+                try:
+                    self.make_tuples(key)
+                except Exception as e:
                     self.conn._cancel_transaction()
+                    if not suppress_errors:
+                        raise
+                    print(e)
+                    if error_list is not None:
+                        error_list += (e, key)
                 else:
-                    print('Populating:')
-                    pprint.pprint(key)
-                    try:
-                        self.make_tuples(key)
-                    except Exception as e:
-                        self.conn._cancel_transaction()
-                        if not catch_errors:
-                            raise
-                        print(e)
-                        errors += [e]
-                        error_keys += [key]
-                    else:
-                        self.conn._commit_transaction()
-        if catch_errors:
-            return errors, error_keys
+                    self.conn._commit_transaction()
