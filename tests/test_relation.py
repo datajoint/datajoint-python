@@ -15,12 +15,14 @@ from numpy.testing import assert_array_equal
 from datajoint.free_relation import FreeRelation
 import numpy as np
 
+
 def trial_faker(n=10):
     def iter():
-        for s in [1,2]:
+        for s in [1, 2]:
             for i in range(n):
                 yield dict(trial_id=i, subject_id=s, outcome=int(np.random.randint(10)), notes= 'no comment')
     return iter()
+
 
 def setup():
     """
@@ -46,7 +48,7 @@ class TestTableObject(object):
         """
         cleanup()  # drop all databases with PREFIX
         test1.__dict__.pop('conn', None)
-        test4.__dict__.pop('conn', None) # make sure conn is not defined at schema level
+        test4.__dict__.pop('conn', None)  # make sure conn is not defined at schema level
 
         self.conn = Connection(**CONN_INFO)
         test1.conn = self.conn
@@ -69,16 +71,14 @@ class TestTableObject(object):
         t.iter_insert(trial_faker(20))
 
         tM = t & (s & "real_id = 'M'")
-        t1 = t & ("subject_id = 1")
+        t1 = t & "subject_id = 1"
 
         assert_equal(tM.count, t1.count, "Results of compound request does not have same length")
 
-
-        for t1_item, tM_item in zip(sorted(t1, key = lambda item: item['trial_id']),
-                                    sorted(tM, key = lambda item: item['trial_id'])):
-            assert_dict_equal(t1_item, tM_item, 'Dictionary elements do not agree in compound statement')
-
-
+        for t1_item, tM_item in zip(sorted(t1, key=lambda item: item['trial_id']),
+                                    sorted(tM, key=lambda item: item['trial_id'])):
+            assert_dict_equal(t1_item, tM_item,
+                              'Dictionary elements do not agree in compound statement')
 
     def test_record_insert(self):
         "Test whether record insert works"
@@ -96,7 +96,8 @@ class TestTableObject(object):
 
         self.subjects.insert(tmp[0])
         testt2 = (self.subjects & 'subject_id = 2').fetch()[0]
-        assert_equal((2, 'Klara', 'monkey'), tuple(testt2), "Inserted and fetched record do not match!")
+        assert_equal((2, 'Klara', 'monkey'), tuple(testt2),
+                     "Inserted and fetched record do not match!")
 
     @raises(KeyError)
     def test_wrong_key_insert_records(self):

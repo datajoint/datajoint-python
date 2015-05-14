@@ -19,6 +19,7 @@ class Experiments(dj.Relation):
     species = "mouse"           : enum('mouse', 'monkey', 'human')   # species
     """
 
+
 # references to another schema
 class Conditions(dj.Relation):
     definition = """
@@ -27,12 +28,14 @@ class Conditions(dj.Relation):
     condition_name              : varchar(255)    # description of the condition
     """
 
+
 class FoodPreference(dj.Relation):
     definition = """
     test2.FoodPreference (manual)   # Food preference of each subject
     -> animals.Subjects
     preferred_food           : enum('banana', 'apple', 'oranges')
     """
+
 
 class Session(dj.Relation):
     definition = """

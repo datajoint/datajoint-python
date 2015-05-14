@@ -6,6 +6,7 @@ __author__ = 'eywalker'
 import datajoint as dj
 from .. import schema2
 
+
 class Subjects(dj.Relation):
     definition = """
     test1.Subjects (manual)     # Basic subject info
@@ -15,6 +16,7 @@ class Subjects(dj.Relation):
     real_id                     :  varchar(40)    #  real-world name
     species = "mouse"           : enum('mouse', 'monkey', 'human')   # species
     """
+
 
 class Trials(dj.Relation):
     definition = """
@@ -29,6 +31,7 @@ class Trials(dj.Relation):
     trial_ts=CURRENT_TIMESTAMP : timestamp    # automatic
     """
 
+
 # test reference to another table in same schema
 class Experiments(dj.Relation):
     definition = """
@@ -38,6 +41,7 @@ class Experiments(dj.Relation):
     ---
     exp_data_file   : varchar(255) # data file
     """
+
 
 # refers to a table in dj_test2 (bound to test2) but without a class
 class Sessions(dj.Relation):
@@ -50,6 +54,7 @@ class Sessions(dj.Relation):
     session_comment        : varchar(255)    # comment about the session
     """
 
+
 class Match(dj.Relation):
     definition = """
     test1.Match (manual)     # Match between subject and color
@@ -58,6 +63,7 @@ class Match(dj.Relation):
     dob    : date     # date of birth
     """
 
+
 # this tries to reference a table in database directly without ORM
 class TrainingSession(dj.Relation):
     definition = """
@@ -65,6 +71,7 @@ class TrainingSession(dj.Relation):
     -> `dj_test2`.Experimenter
     session_id    : int      # training session id
     """
+
 
 class Empty(dj.Relation):
     pass
