@@ -217,7 +217,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             return ' AND '.join(conditions)
 
         condition_string = []
-        for r in self._restrictions:
+        for r in self.restrictions:
             negate = isinstance(r, Not)
             if negate:
                 r = r.restriction
@@ -227,7 +227,8 @@ class RelationalOperand(metaclass=abc.ABCMeta):
                 r = '('+') OR ('.join([make_condition(q) for q in r])+')'
             elif isinstance(r, RelationalOperand):
                 common_attributes = ','.join([q for q in self.heading.names if r.heading.names])  
-                r = '(%s) in (SELECT %s FROM %s)' % (common_attributes, common_attributes, r.from_clause)
+                r = '(%s) in (SELECT %s FROM %s%s)' % (
+                    common_attributes, common_attributes, r.from_clause, r.where_clause)
                 
             assert isinstance(r, str), 'condition must be converted into a string'
             r = '('+r+')'

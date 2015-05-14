@@ -6,7 +6,6 @@ Created on Tue Aug 26 17:42:52 2014
 """
 
 import datajoint as dj
-import os
 
 print("Welcome to the database 'demo1'")
 

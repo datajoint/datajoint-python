@@ -6,7 +6,6 @@ __author__ = 'eywalker'
 import datajoint as dj
 
 
-
 class Subjects(dj.Relation):
     definition = """
     schema2.Subjects (manual)     # Basic subject info
