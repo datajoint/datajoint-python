@@ -1,6 +1,5 @@
 from .relational_operand import RelationalOperand
 from . import DataJointError
-import pprint
 import abc
 import logging
 
@@ -43,25 +42,22 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         if not isinstance(self.pop_rel, RelationalOperand):
             raise DataJointError('Invalid pop_rel value')
         self.conn._cancel_transaction()
-        unpopulated = ((self.pop_rel & restriction) - self.target).project()
-        if not unpopulated:
-            logger.info('Nothing to populate', flush=True)
-        else:
-            for key in unpopulated():
-                self.conn._start_transaction()
-                if key in self:  # already populated
+        unpopulated = (self.pop_rel - self.target) & restriction
+        for key in unpopulated.project():
+            self.conn._start_transaction()
+            if key in self.target:  # already populated
+                self.conn._cancel_transaction()
+            else:
+                print('Populating', key, flush=true)
+                try:
+                    self.make_tuples(key)
+                except Exception as e:
                     self.conn._cancel_transaction()
+                    if not suppress_errors:
+                        raise
+                    print(e)
+                    if error_list is not None:
+                        error_list += (key, e)
                 else:
-                    print('Populating:')
-                    pprint.pprint(key)
-                    try:
-                        self.make_tuples(key)
-                    except Exception as e:
-                        self.conn._cancel_transaction()
-                        if not suppress_errors:
-                            raise
-                        print(e)
-                        if error_list is not None:
-                            error_list += (key, e)
-                    else:
-                        self.conn._commit_transaction()
+                    self.conn._commit_transaction()
+        print('Done populating.')
