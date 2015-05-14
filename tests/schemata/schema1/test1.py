@@ -16,6 +16,19 @@ class Subjects(dj.Relation):
     species = "mouse"           : enum('mouse', 'monkey', 'human')   # species
     """
 
+class Trials(dj.Relation):
+    definition = """
+    test1.Trials (manual)                      # info about trials
+
+    -> test1.Subjects
+    trial_id                   : int
+    ---
+    outcome                    : int           # result of experiment
+
+    notes=""                   : varchar(4096) # other comments
+    trial_ts=CURRENT_TIMESTAMP : timestamp    # automatic
+    """
+
 # test reference to another table in same schema
 class Experiments(dj.Relation):
     definition = """
