@@ -6,6 +6,7 @@ Created on Thu Aug 28 00:46:11 2014
 """
 import logging
 import demo1
+from collections import namedtuple
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -32,22 +33,26 @@ subject.insert(dict(subject_id=2,
                     date_of_birth="2014-08-01",
                     caretaker="Joe"))
 
-subject.insert((3, 'Alice', 'monkey', '2012-09-01'))
-subject.insert((4, 'Dennis', 'monkey', '2012-09-01'))
-subject.insert((5, 'Warren', 'monkey', '2012-09-01'))
-subject.insert((6, 'Franky', 'monkey', '2012-09-01'))
-subject.insert((7, 'Simon', 'monkey', '2012-09-01', 'F'))
-subject.insert((8, 'Ferocious', 'monkey', '2012-09-01', 'M'))
-subject.insert((9, 'Simon', 'monkey', '2012-09-01', 'm'))
-subject.insert((10, 'Ferocious', 'monkey', '2012-09-01', 'F'))
-subject.insert((11, 'Simon', 'monkey', '2012-09-01', 'm'))
-subject.insert((12, 'Ferocious', 'monkey', '2012-09-01', 'M'))
-subject.insert((13, 'Dauntless', 'monkey', '2012-09-01', 'F'))
-subject.insert((14, 'Dawn', 'monkey', '2012-09-01', 'F'))
 
-subject.insert((12430, 'C0430', 'mouse', '2012-09-01', 'M'))
-subject.insert((12431, 'C0431', 'mouse', '2012-09-01', 'F'))
+def tup(*arg):
+    return dict(zip(subject.heading.names, arg))
 
+subject.insert(tup(3, 'Alice', 'monkey', '2012-09-01', 'M', 'Joe', ''))
+subject.insert(tup(4, 'Dennis', 'monkey', '2012-09-01', 'M', 'Joe', ''))
+subject.insert(tup(5, 'Warren', 'monkey', '2012-09-01', 'M', 'Joe', ''))
+subject.insert(tup(6, 'Franky', 'monkey', '2012-09-01', 'M', 'Joe', ''))
+subject.insert(tup(7, 'Simon', 'monkey', '2012-09-01', 'F', 'Joe', ''))
+subject.insert(tup(8, 'Ferocious', 'monkey', '2012-09-01', 'M', 'Joe', ''))
+subject.insert(tup(9, 'Simon', 'monkey', '2012-09-01', 'm', 'Joe', ''))
+subject.insert(tup(10, 'Ferocious', 'monkey', '2012-09-01', 'F', 'Joe', ''))
+subject.insert(tup(11, 'Simon', 'monkey', '2012-09-01', 'm', 'Joe', ''))
+subject.insert(tup(12, 'Ferocious', 'monkey', '2012-09-01', 'M', 'Joe', ''))
+subject.insert(tup(13, 'Dauntless', 'monkey', '2012-09-01', 'F', 'Joe', ''))
+subject.insert(tup(14, 'Dawn', 'monkey', '2012-09-01', 'F', 'Joe', ''))
+subject.insert(tup(12430, 'C0430', 'mouse', '2012-09-01', 'M', 'Joe', ''))
+subject.insert(tup(12431, 'C0431', 'mouse', '2012-09-01', 'F', 'Joe', ''))
+
+(subject & 'subject_id=1').fetch1()
 print(subject)
 print(subject.project())
 print(subject.project(name='real_id', dob='date_of_birth', sex='sex') & 'sex="M"')

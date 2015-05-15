@@ -149,7 +149,7 @@ class FreeRelation(RelationalOperand):
 
         if isinstance(tup, np.void):
             for fieldname in tup.dtype.fields:
-                if not fieldname in self.heading.names:
+                if fieldname not in self.heading.names:
                     raise KeyError(u'{0:s} is not in the attribute list'.format(fieldname, ))
             value_list = ','.join([repr(tup[name]) if name not in self.heading.blobs else '%s'
                                    for name in self.heading.names if name in tup.dtype.fields])
@@ -160,7 +160,7 @@ class FreeRelation(RelationalOperand):
                 [q for q in self.heading.names if q in tup.dtype.fields]) + '`'
         elif isinstance(tup, Mapping):
             for fieldname in tup.keys():
-                if not fieldname in self.heading.names:
+                if fieldname not in self.heading.names:
                     raise KeyError(u'{0:s} is not in the attribute list'.format(fieldname, ))
             value_list = ','.join([repr(tup[name]) if name not in self.heading.blobs else '%s'
                                    for name in self.heading.names if name in tup])
