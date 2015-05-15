@@ -85,13 +85,9 @@ class FreeRelation(RelationalOperand):
             default = 'NOT NULL'
             # if some default specified
             if field.default:
-                # enclose value in quotes (even numeric), except special SQL values
-                # or values already enclosed by the user
-                if field.default.upper() in mysql_constants or field.default[:1] in ["'", '"']:
-                    default = '%s DEFAULT %s' % (default, field.default)
-                else:
-                    default = '%s DEFAULT "%s"' % (default, field.default)
-
+                # enclose value in quotes except special SQL values or already enclosed
+                quote = field.default.upper() not in mysql_constants and field.default[0] not in '"\''
+                default += ' DEFAULT ' + ('"%s"' if quote else "%s") % field.default
         if any((c in r'\"' for c in field.comment)):
             raise DataJointError('Illegal characters in attribute comment "%s"' % field.comment)
 
@@ -350,7 +346,7 @@ class FreeRelation(RelationalOperand):
 
         if not defined_name == self.ref_name:
             raise DataJointError('Table name {} does not match the declared'
-                                 'name {}'.format(expected_name, defined_name))
+                                 'name {}'.format(self.ref_name, defined_name))
 
         # compile the CREATE TABLE statement
         # TODO: support prefix

@@ -1,6 +1,5 @@
 from .relational_operand import RelationalOperand
 from . import DataJointError
-import pprint
 import abc
 import logging
 
@@ -24,7 +23,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def make_tuples(self, key):
+    def _make_tuples(self, key):
         """
         Derived classes must implement method make_tuples that fetches data from parent tables, restricting by
         the given key, computes dependent attributes, and inserts the new tuples into self.
@@ -35,38 +34,32 @@ class AutoPopulate(metaclass=abc.ABCMeta):
     def target(self):
         return self
 
-    def populate(self, catch_errors=False, reserve_jobs=False, restrict=None):
+    def populate(self, restriction=None, suppress_errors=False, reserve_jobs=False):
         """
-        rel.populate() will call rel.make_tuples(key) for every primary key in self.pop_rel
+        rel.populate() calls rel._make_tuples(key) for every primary key in self.pop_rel
         for which there is not already a tuple in rel.
         """
+        error_list = [] if suppress_errors else None
         if not isinstance(self.pop_rel, RelationalOperand):
-            raise DataJointError('')
-        self.conn._cancel_transaction()
-
-        unpopulated = self.pop_rel - self.target
-        if not unpopulated.count:
-            logger.info('Nothing to populate', flush=True)
-            if catch_errors:
-                error_keys, errors = [], []
-            for key in unpopulated.fetch():
-                self.conn._start_transaction()
-                n = self(key).count
-                if n:  # already populated
+            raise DataJointError('Invalid pop_rel value')
+        self.conn._cancel_transaction()  # rollback previous transaction, if any
+        unpopulated = (self.pop_rel - self.target) & restriction
+        for key in unpopulated.project():
+            self.conn._start_transaction()
+            if key in self.target:  # already populated
+                self.conn._cancel_transaction()
+            else:
+                logger.info('Populating: ' + str(key))
+                try:
+                    self._make_tuples(key)
+                except Exception as error:
                     self.conn._cancel_transaction()
-                else:
-                    print('Populating:')
-                    pprint.pprint(key)
-                    try:
-                        self.make_tuples(key)
-                    except Exception as e:
-                        self.conn._cancel_transaction()
-                        if not catch_errors:
-                            raise
-                        print(e)
-                        errors += [e]
-                        error_keys += [key]
+                    if not suppress_errors:
+                        raise
                     else:
-                        self.conn._commit_transaction()
-        if catch_errors:
-            return errors, error_keys
+                        print(error)
+                        error_list.append((key, error))
+                else:
+                    self.conn._commit_transaction()
+        logger.info('Done populating.', flush=True)
+        return error_list

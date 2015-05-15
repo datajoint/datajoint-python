@@ -73,7 +73,7 @@ class TestTableObject(object):
         tM = t & (s & "real_id = 'M'")
         t1 = t & "subject_id = 1"
 
-        assert_equal(tM.count, t1.count, "Results of compound request does not have same length")
+        assert_equal(len(tM), len(t1), "Results of compound request does not have same length")
 
         for t1_item, tM_item in zip(sorted(t1, key=lambda item: item['trial_id']),
                                     sorted(tM, key=lambda item: item['trial_id'])):
