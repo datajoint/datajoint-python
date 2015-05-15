@@ -88,9 +88,10 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         in-place relational restriction or semijoin
         """
-        if self._restrictions is None:
-            self._restrictions = []
-        self._restrictions.append(restriction)
+        if restriction is not None:
+            if self._restrictions is None:
+                self._restrictions = []
+            self._restrictions.append(restriction)
         return self
 
     def __and__(self, restriction):
@@ -122,12 +123,23 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             attribute_spec = self.heading.as_sql
         return 'SELECT ' + attribute_spec + ' FROM ' + self.from_clause + self.where_clause
 
-    @property
-    def count(self):
+    def __len__(self):
+        """
+        number of tuples in the relation.  This also takes care of the truth value
+        """
         cur = self.conn.query(self.make_select('count(*)'))
         return cur.fetchone()[0]
 
+    def __contains__(self, item):
+        """
+        "item in relation" is equivalient to "len(relation & item)>0"
+        """
+        return len(self & item)>0
+
     def __call__(self, *args, **kwargs):
+        """
+        calling a relation is equivalent to fetching from it
+        """
         return self.fetch(*args, **kwargs)
 
     def fetch(self, offset=0, limit=None, order_by=None, descending=False, as_dict=False):
@@ -181,9 +193,9 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         repr_string += ' '.join(['+' + '-'*(width-2) + '+' for _ in columns]) + '\n'
         for tup in rel.fetch(limit=limit):
             repr_string += ' '.join([template % column for column in tup]) + '\n'
-        if self.count > limit:
+        if len(self) > limit:
             repr_string += '...\n'
-        repr_string += ' (%d tuples)\n' % self.count
+        repr_string += ' (%d tuples)\n' % len(self)
         return repr_string
         
     def __iter__(self):

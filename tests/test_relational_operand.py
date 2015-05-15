@@ -31,7 +31,7 @@ class TestRelationalAlgebra(object):
     def test_sub(self):
         pass
 
-    def test_count(self):
+    def test_len(self):
         pass
 
     def test_fetch(self):
