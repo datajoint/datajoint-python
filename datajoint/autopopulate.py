@@ -7,6 +7,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class AutoPopulate(metaclass=abc.ABCMeta):
     """
     AutoPopulate is a mixin class that adds the method populate() to a Relation class.
@@ -39,6 +40,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         rel.populate() calls rel._make_tuples(key) for every primary key in self.pop_rel
         for which there is not already a tuple in rel.
         """
+        assert not reserve_jobs, NotImplemented   # issue #5
         error_list = [] if suppress_errors else None
         if not isinstance(self.pop_rel, RelationalOperand):
             raise DataJointError('Invalid pop_rel value')
