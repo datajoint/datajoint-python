@@ -7,7 +7,7 @@ from .blob import pack
 from .heading import Heading
 import re
 from .settings import Role, role_to_prefix
-from .utils import from_camel_case, user_confirmation
+from .utils import from_camel_case, user_choice
 
 logger = logging.getLogger(__name__)
 
@@ -182,29 +182,23 @@ class FreeRelation(RelationalOperand):
         self.conn.query(sql, args=args)
 
     def delete(self):
-        if config['safemode'] and \
-                        user_confirmation(
-                            """You are about to delete data from a table. This operation cannot be undone.
-                            Do you want to proceed?""", ['y', 'n'], 'n') == 'n':
-            return
-        # TODO: make cascading (issue #15)
-        self.conn.query('DELETE FROM ' + self.from_clause + self.where_clause)
+        if not config['safemode'] or user_choice(
+                "You are about to delete data from a table. This operation cannot be undone.\n"
+                "Proceed?", 'no') == 'yes':
+            self.conn.query('DELETE FROM ' + self.from_clause + self.where_clause)  # TODO: make cascading (issue #15)
 
     def drop(self):
         """
         Drops the table associated to this object.
         """
-        if config['safemode'] and \
-                        user_confirmation(
-                            """You are about to drop an entire table. This operation cannot be undone.
-                            Do you want to proceed?""", ['y', 'n'], 'n') == 'n':
-            return
-        # TODO: make cascading (issue #16)
         if self.is_declared:
-            self.conn.query('DROP TABLE %s' % self.full_table_name)
-            self.conn.clear_dependencies(dbname=self.dbname)
-            self.conn.load_headings(dbname=self.dbname, force=True)
-            logger.info("Dropped table %s" % self.full_table_name)
+            if not config['safemode'] or user_choice(
+                    "You are about to drop an entire table. This operation cannot be undone.\n"
+                    "Proceed?", 'no') == 'yes':
+                self.conn.query('DROP TABLE %s' % self.full_table_name)  # TODO: make cascading (issue #16)
+                self.conn.clear_dependencies(dbname=self.dbname)
+                self.conn.load_headings(dbname=self.dbname, force=True)
+                logger.info("Dropped table %s" % self.full_table_name)
 
     def set_table_comment(self, comment):
         """
@@ -238,12 +232,11 @@ class FreeRelation(RelationalOperand):
 
         :param attr_name: Name of the attribute that is dropped.
         """
-        if config['safemode'] and \
-                        user_confirmation(
-                            """You are about to drop an attribute from a table. This operation cannot be undone.
-                            Do you want to proceed?""", ['y', 'n'], 'n') == 'n':
-            return
-        self._alter('DROP COLUMN `%s`' % attr_name)
+        if not config['safemode'] or user_choice(
+                "You are about to drop an attribute from a table."
+                "This operation cannot be undone.\n"
+                "Proceed?", 'no') == 'yes':
+            self._alter('DROP COLUMN `%s`' % attr_name)
 
     def alter_attribute(self, attr_name, new_definition):
         """
