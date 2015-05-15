@@ -185,7 +185,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
 
     def __repr__(self):
         limit = config['display.limit']
-        width = config['display.widht']
+        width = config['display.width']
         rel = self.project(*self.heading.non_blobs)
         template = '%%-%d.%ds' % (width, width)
         columns = rel.heading.names
