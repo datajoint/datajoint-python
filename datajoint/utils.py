@@ -52,5 +52,5 @@ def user_confirmation(infostring, choices, default=None):
     while not ((response in choices) or (default is not None and len(response.strip())==0)):
         response = input('Please answer (' + cho + '):')
     if default is not None and len(response.strip())==0:
-        response = choices[choices.index(default)]
+        response = default
     return response
