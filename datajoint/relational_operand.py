@@ -193,7 +193,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         repr_string += ' '.join(['+' + '-'*(width-2) + '+' for _ in columns]) + '\n'
         for tup in rel.fetch(limit=limit):
             repr_string += ' '.join([template % column for column in tup]) + '\n'
-        if self.count > limit:
+        if len(self) > limit:
             repr_string += '...\n'
         repr_string += ' (%d tuples)\n' % len(self)
         return repr_string
