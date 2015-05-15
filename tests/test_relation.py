@@ -89,6 +89,36 @@ class TestTableObject(object):
         testt2 = (self.subjects & 'subject_id = 2').fetch()[0]
         assert_equal(tuple(tmp[0]), tuple(testt2), "Inserted and fetched record do not match!")
 
+    def test_delete(self):
+        "Test whether delete works"
+        tmp = np.array([(2, 'Klara', 'monkey'), (1,'Peter', 'mouse')],
+                       dtype=[('subject_id', '>i4'), ('real_id', 'O'), ('species', 'O')])
+
+        self.subjects.batch_insert(tmp)
+        assert_true(len(self.subjects) == 2, 'Length does not match 2.')
+        self.subjects.delete()
+        assert_true(len(self.subjects) == 0, 'Length does not match 0.')
+
+    # def test_cascading_delete(self):
+    #     "Test whether delete works"
+    #     tmp = np.array([(2, 'Klara', 'monkey'), (1,'Peter', 'mouse')],
+    #                    dtype=[('subject_id', '>i4'), ('real_id', 'O'), ('species', 'O')])
+    #
+    #     self.subjects.batch_insert(tmp)
+    #
+    #     self.trials.insert(dict(subject_id=1, trial_id=1, outcome=0))
+    #     self.trials.insert(dict(subject_id=1, trial_id=2, outcome=1))
+    #     self.trials.insert(dict(subject_id=2, trial_id=3, outcome=2))
+    #     assert_true(len(self.subjects) == 2, 'Length does not match 2.')
+    #     assert_true(len(self.trials) == 3, 'Length does not match 3.')
+    #     (self.subjects & 'subject_id=1').delete()
+    #     assert_true(len(self.subjects) == 1, 'Length does not match 1.')
+    #     assert_true(len(self.trials) == 1, 'Length does not match 1.')
+
+
+
+
+
     def test_record_insert_different_order(self):
         "Test whether record insert works"
         tmp = np.array([('Klara', 2, 'monkey')],

@@ -6,7 +6,7 @@ import numpy as np
 import abc
 import re
 from copy import copy
-from datajoint import DataJointError
+from datajoint import DataJointError, config
 from .blob import unpack
 import logging
 import numpy.lib.recfunctions as rfn
@@ -184,8 +184,8 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         return self.conn.query(sql)
 
     def __repr__(self):
-        limit = 7 #TODO: move some of these display settings into the config
-        width = 14
+        limit = config['display.limit']
+        width = config['display.width']
         rel = self.project(*self.heading.non_blobs)
         template = '%%-%d.%ds' % (width, width)
         columns = rel.heading.names

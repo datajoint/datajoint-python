@@ -1,13 +1,13 @@
 from _collections_abc import MutableMapping, Mapping
 import numpy as np
 import logging
-from . import DataJointError
+from . import DataJointError, config
 from .relational_operand import RelationalOperand
 from .blob import pack
 from .heading import Heading
 import re
 from .settings import Role, role_to_prefix
-from .utils import from_camel_case
+from .utils import from_camel_case, user_confirmation
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,6 @@ class FreeRelation(RelationalOperand):
         self.declare()
         return self.conn.headings[self.dbname][self.table_name]
 
-
     @property
     def definition(self):
         return self._definition
@@ -73,7 +72,7 @@ class FreeRelation(RelationalOperand):
                     'FreeRelation could not be declared for %s' % self.class_name)
 
     @staticmethod
-    def _field_to_sql(field): #TODO move this into Attribute Tuple
+    def _field_to_sql(field):  # TODO move this into Attribute Tuple
         """
         Converts an attribute definition tuple into SQL code.
         :param field: attribute definition
@@ -183,6 +182,11 @@ class FreeRelation(RelationalOperand):
         self.conn.query(sql, args=args)
 
     def delete(self):
+        if config['safemode'] and \
+                        user_confirmation(
+                            """You are about to delete data from a table. This operation cannot be undone.
+                            Do you want to proceed?""", ['y', 'n'], 'n') == 'n':
+            return
         # TODO: make cascading (issue #15)
         self.conn.query('DELETE FROM ' + self.from_clause + self.where_clause)
 
@@ -190,6 +194,11 @@ class FreeRelation(RelationalOperand):
         """
         Drops the table associated to this object.
         """
+        if config['safemode'] and \
+                        user_confirmation(
+                            """You are about to drop an entire table. This operation cannot be undone.
+                            Do you want to proceed?""", ['y', 'n'], 'n') == 'n':
+            return
         # TODO: make cascading (issue #16)
         if self.is_declared:
             self.conn.query('DROP TABLE %s' % self.full_table_name)
@@ -229,6 +238,11 @@ class FreeRelation(RelationalOperand):
 
         :param attr_name: Name of the attribute that is dropped.
         """
+        if config['safemode'] and \
+                        user_confirmation(
+                            """You are about to drop an attribute from a table. This operation cannot be undone.
+                            Do you want to proceed?""", ['y', 'n'], 'n') == 'n':
+            return
         self._alter('DROP COLUMN `%s`' % attr_name)
 
     def alter_attribute(self, attr_name, new_definition):

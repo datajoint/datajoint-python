@@ -32,3 +32,25 @@ def from_camel_case(s):
         raise DataJointError(
             'ClassName must be alphanumeric in CamelCase, begin with a capital letter')
     return re.sub(r'(\B[A-Z])|(\b[A-Z])', convert, s)
+
+def user_confirmation(infostring, choices, default=None):
+    """
+    Prompts the user for confirmation.
+
+    :param infostring: Information to display to the user.
+    :param choices: an iterable of possible choices.
+    :param default=None: default choice
+    :return: the user's choice
+    """
+    print(infostring)
+    cho = list(choices)
+    if default is not None:
+        cho[cho.index(default)] += ' (default)'
+    cho = ', '.join(cho)
+
+    response = input('Please answer ' + cho)
+    while not ((response in choices) or (default is not None and len(response.strip())==0)):
+        response = input('Please answer (' + cho + '):')
+    if default is not None and len(response.strip())==0:
+        response = choices[choices.index(default)]
+    return response

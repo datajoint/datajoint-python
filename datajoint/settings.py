@@ -34,7 +34,12 @@ default = OrderedDict({
     #
     'connection.init_function': None,
     #
-    'loglevel': 'DEBUG'
+    'loglevel': 'DEBUG',
+    #
+    'safemode': False,
+    #
+    'display.limit': 7,
+    'display.width': 14
 })
 
 logger = logging.getLogger()
