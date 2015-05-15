@@ -34,11 +34,12 @@ class AutoPopulate(metaclass=abc.ABCMeta):
     def target(self):
         return self
 
-    def populate(self, restriction=None, suppress_errors=False, error_list=None, reserve_jobs=False):
+    def populate(self, restriction=None, suppress_errors=False, reserve_jobs=False):
         """
         rel.populate() calls rel.make_tuples(key) for every primary key in self.pop_rel
         for which there is not already a tuple in rel.
         """
+        error_list = [] if suppress_errors else None
         if not isinstance(self.pop_rel, RelationalOperand):
             raise DataJointError('Invalid pop_rel value')
         self.conn._cancel_transaction()
@@ -48,7 +49,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
             if key in self.target:  # already populated
                 self.conn._cancel_transaction()
             else:
-                print('Populating', key, flush=true)
+                print('Populating', key, flush=True)
                 try:
                     self.make_tuples(key)
                 except Exception as e:
@@ -56,8 +57,8 @@ class AutoPopulate(metaclass=abc.ABCMeta):
                     if not suppress_errors:
                         raise
                     print(e)
-                    if error_list is not None:
-                        error_list += (key, e)
+                    error_list.append((key, e))
                 else:
                     self.conn._commit_transaction()
         print('Done populating.')
+        return error_list
