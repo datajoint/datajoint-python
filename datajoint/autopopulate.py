@@ -23,7 +23,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def make_tuples(self, key):
+    def _make_tuples(self, key):
         """
         Derived classes must implement method make_tuples that fetches data from parent tables, restricting by
         the given key, computes dependent attributes, and inserts the new tuples into self.
@@ -36,29 +36,30 @@ class AutoPopulate(metaclass=abc.ABCMeta):
 
     def populate(self, restriction=None, suppress_errors=False, reserve_jobs=False):
         """
-        rel.populate() calls rel.make_tuples(key) for every primary key in self.pop_rel
+        rel.populate() calls rel._make_tuples(key) for every primary key in self.pop_rel
         for which there is not already a tuple in rel.
         """
         error_list = [] if suppress_errors else None
         if not isinstance(self.pop_rel, RelationalOperand):
             raise DataJointError('Invalid pop_rel value')
-        self.conn._cancel_transaction()
+        self.conn._cancel_transaction()  # rollback previous transaction, if any
         unpopulated = (self.pop_rel - self.target) & restriction
         for key in unpopulated.project():
             self.conn._start_transaction()
             if key in self.target:  # already populated
                 self.conn._cancel_transaction()
             else:
-                print('Populating', key, flush=True)
+                logger.info('Populating: ' + str(key))
                 try:
-                    self.make_tuples(key)
-                except Exception as e:
+                    self._make_tuples(key)
+                except Exception as error:
                     self.conn._cancel_transaction()
                     if not suppress_errors:
                         raise
-                    print(e)
-                    error_list.append((key, e))
+                    else:
+                        print(error)
+                        error_list.append((key, error))
                 else:
                     self.conn._commit_transaction()
-        print('Done populating.')
+        logger.info('Done populating.', flush=True)
         return error_list
