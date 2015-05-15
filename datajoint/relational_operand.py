@@ -134,13 +134,26 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         "item in relation" is equivalient to "len(relation & item)>0"
         """
-        return len(self & item)>0
+        return len(self & item) > 0
 
     def __call__(self, *args, **kwargs):
         """
         calling a relation is equivalent to fetching from it
         """
         return self.fetch(*args, **kwargs)
+
+    def fetch1(self):
+        """
+        This version of fetch is called when self is expected to contain exactly one tuple.
+        :return: the one tuple in the relation in the form of a dict
+        """
+        heading = self.heading
+        cur = self.cursor(as_dict=True)
+        ret = cur.fetchone()
+        if not ret or cur.fetchone():
+            raise DataJointError('fetch1 should only be used for relations with exactly one tuple')
+        ret = {k: unpack(v) if heading[k].is_blob else v for k, v in ret.items()}
+        return ret
 
     def fetch(self, offset=0, limit=None, order_by=None, descending=False, as_dict=False):
         """
@@ -152,18 +165,20 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         :param as_dict: returns a list of dictionaries instead of a record array
         :return: the contents of the relation in the form of a structured numpy.array
         """
-        cur = self.cursor(offset, limit, order_by, descending)
+        cur = self.cursor(offset=offset, limit=limit, order_by=order_by,
+                          descending=descending, as_dict=as_dict)
+        heading = self.heading
         if as_dict:
-            attr_names = self.heading.names
-            ret = [dict((n, unpack(e)) if n in self.heading.blobs else (n, e)
-                        for n, e in zip(attr_names, t)) for t in cur.fetchall()]
+            ret = [{k: unpack(v) if heading[k].is_blob else v
+                    for k, v in d.items()}
+                   for d in cur.fetchall()]
         else:
-            ret = np.array(list(cur.fetchall()), dtype=self.heading.as_dtype)
-            for blob_name in self.heading.blobs:
+            ret = np.array(list(cur.fetchall()), dtype=heading.as_dtype)
+            for blob_name in heading.blobs:
                 ret[blob_name] = list(map(unpack, ret[blob_name]))
         return ret
 
-    def cursor(self, offset=0, limit=None, order_by=None, descending=False):
+    def cursor(self, offset=0, limit=None, order_by=None, descending=False, as_dict=False):
         """
         Return query cursor.
         See Relation.fetch() for input description.
@@ -181,30 +196,30 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             if offset:
                 sql += ' OFFSET %d' % offset
         logger.debug(sql)
-        return self.conn.query(sql)
+        return self.conn.query(sql, as_dict=as_dict)
 
     def __repr__(self):
         limit = config['display.limit']
         width = config['display.width']
-        rel = self.project(*self.heading.non_blobs)
+        rel = self.project(*self.heading.non_blobs)  # project out blobs
         template = '%%-%d.%ds' % (width, width)
         columns = rel.heading.names
         repr_string = ' '.join([template % column for column in columns]) + '\n'
-        repr_string += ' '.join(['+' + '-'*(width-2) + '+' for _ in columns]) + '\n'
+        repr_string += ' '.join(['+' + '-' * (width - 2) + '+' for _ in columns]) + '\n'
         for tup in rel.fetch(limit=limit):
             repr_string += ' '.join([template % column for column in tup]) + '\n'
         if len(self) > limit:
             repr_string += '...\n'
         repr_string += ' (%d tuples)\n' % len(self)
         return repr_string
-        
+
     def __iter__(self):
         """
         Iterator that yields individual tuples of the current table dictionaries.
         """
         cur = self.cursor()
         heading = self.heading  # construct once for efficiency
-        do_unpack = tuple(h in heading.blobs for h in self.heading.names)
+        do_unpack = tuple(h in heading.blobs for h in heading.names)
         values = cur.fetchone()
         while values:
             yield {field_name: unpack(value) if up else value
@@ -218,7 +233,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         if not self.restrictions:
             return ''
-        
+
         def make_condition(arg):
             if isinstance(arg, dict):
                 conditions = ['`%s`=%s' % (k, repr(v)) for k, v in arg.items()]
@@ -236,16 +251,16 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             if isinstance(r, dict) or isinstance(r, np.void):
                 r = make_condition(r)
             elif isinstance(r, np.ndarray) or isinstance(r, list):
-                r = '('+') OR ('.join([make_condition(q) for q in r])+')'
+                r = '(' + ') OR ('.join([make_condition(q) for q in r]) + ')'
             elif isinstance(r, RelationalOperand):
-                common_attributes = ','.join([q for q in self.heading.names if r.heading.names])  
+                common_attributes = ','.join([q for q in self.heading.names if r.heading.names])
                 r = '(%s) in (SELECT %s FROM %s%s)' % (
                     common_attributes, common_attributes, r.from_clause, r.where_clause)
-                
+
             assert isinstance(r, str), 'condition must be converted into a string'
-            r = '('+r+')'
+            r = '(' + r + ')'
             if negate:
-                r = 'NOT '+r
+                r = 'NOT ' + r
             condition_string.append(r)
 
         return ' WHERE ' + ' AND '.join(condition_string)
@@ -255,6 +270,7 @@ class Not:
     """
     inverse restriction
     """
+
     def __init__(self, restriction):
         self.restriction = restriction
 
@@ -286,7 +302,6 @@ class Join(RelationalOperand):
 
 
 class Projection(RelationalOperand):
-
     def __init__(self, arg, group=None, *attributes, **renamed_attributes):
         """
         See RelationalOperand.project()

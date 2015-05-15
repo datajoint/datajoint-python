@@ -66,8 +66,8 @@ class TestTableObject(object):
         s = self.subjects
         t = self.trials
 
-        s.insert(dict(subject_id=1, real_id='M' ))
-        s.insert(dict(subject_id=2, real_id='F' ))
+        s.insert(dict(subject_id=1, real_id='M'))
+        s.insert(dict(subject_id=2, real_id='F'))
         t.iter_insert(trial_faker(20))
 
         tM = t & (s & "real_id = 'M'")
