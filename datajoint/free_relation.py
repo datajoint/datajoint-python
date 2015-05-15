@@ -147,27 +147,28 @@ class FreeRelation(RelationalOperand):
                            real_id = 1007, date_of_birth = "2014-09-01"))
         """
 
+        heading = self.heading
         if isinstance(tup, np.void):
             for fieldname in tup.dtype.fields:
-                if fieldname not in self.heading.names:
+                if fieldname not in heading:
                     raise KeyError(u'{0:s} is not in the attribute list'.format(fieldname, ))
-            value_list = ','.join([repr(tup[name]) if name not in self.heading.blobs else '%s'
-                                   for name in self.heading.names if name in tup.dtype.fields])
+            value_list = ','.join([repr(tup[name]) if not heading[name].is_blob else '%s'
+                                   for name in heading if name in tup.dtype.fields])
 
-            args = tuple(pack(tup[name]) for name in self.heading.names
-                         if name in tup.dtype.fields and name in self.heading.blobs)
+            args = tuple(pack(tup[name]) for name in heading
+                         if name in tup.dtype.fields and heading[name].is_blob)
             attribute_list = '`' + '`,`'.join(
-                [q for q in self.heading.names if q in tup.dtype.fields]) + '`'
+                [q for q in heading if q in tup.dtype.fields]) + '`'
         elif isinstance(tup, Mapping):
             for fieldname in tup.keys():
-                if fieldname not in self.heading.names:
+                if fieldname not in heading:
                     raise KeyError(u'{0:s} is not in the attribute list'.format(fieldname, ))
-            value_list = ','.join([repr(tup[name]) if name not in self.heading.blobs else '%s'
-                                   for name in self.heading.names if name in tup])
-            args = tuple(pack(tup[name]) for name in self.heading.names
-                         if name in tup and name in self.heading.blobs)
+            value_list = ','.join([repr(tup[name]) if not heading[name].is_blob else '%s'
+                                   for name in heading if name in tup])
+            args = tuple(pack(tup[name]) for name in heading
+                         if name in tup and heading[name].is_blob)
             attribute_list = '`' + '`,`'.join(
-                [name for name in self.heading.names if name in tup]) + '`'
+                [name for name in heading if name in tup]) + '`'
         else:
             raise DataJointError('Datatype %s cannot be inserted' % type(tup))
         if replace:
