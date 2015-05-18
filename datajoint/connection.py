@@ -248,7 +248,7 @@ class Connection(object):
         """
 
         foreign_key_regexp = re.compile(r"""
-        FOREIGN KEY\s+\((?P<attr1>[`\w ,]+)\)\s+   # list of keys in this table
+        FOREIGN\ KEY\s+\((?P<attr1>[`\w ,]+)\)\s+   # list of keys in this table
         REFERENCES\s+(?P<ref>[^\s]+)\s+             # table referenced
         \((?P<attr2>[`\w ,]+)\)                     # list of keys in the referenced table
         """, re.X)
