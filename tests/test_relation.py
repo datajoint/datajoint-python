@@ -56,6 +56,7 @@ class TestTableObject(object):
         self.conn.bind(test1.__name__, PREFIX + '_test1')
         self.conn.bind(test4.__name__, PREFIX + '_test4')
         self.subjects = test1.Subjects()
+        self.animals = test1.Animals()
         self.relvar_blob = test4.Matrix()
         self.trials = test1.Trials()
 
@@ -115,7 +116,8 @@ class TestTableObject(object):
     #     assert_true(len(self.subjects) == 1, 'Length does not match 1.')
     #     assert_true(len(self.trials) == 1, 'Length does not match 1.')
 
-
+    def test_short_hand_foreign_reference(self):
+        self.animals.heading;
 
 
 

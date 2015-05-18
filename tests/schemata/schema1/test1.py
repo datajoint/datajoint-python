@@ -17,6 +17,16 @@ class Subjects(dj.Relation):
     species = "mouse"           : enum('mouse', 'monkey', 'human')   # species
     """
 
+# test for shorthand
+class Animals(dj.Relation):
+    definition = """
+    test1.Animals (manual)      # Listing of all info
+
+    -> Subjects
+    ---
+    animal_dob      :date       # date of birth
+    """
+
 
 class Trials(dj.Relation):
     definition = """

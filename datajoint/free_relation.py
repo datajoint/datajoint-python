@@ -319,6 +319,8 @@ class FreeRelation(RelationalOperand):
         return index_info
 
     def get_base(self, module_name, class_name):
+        if not module_name:
+            module_name = r'`{dbname}`'.format(self.dbname)
         m = re.match(r'`(\w+)`', module_name)
         return FreeRelation(self.conn, m.group(1), class_name) if m else None
 
@@ -457,7 +459,12 @@ class FreeRelation(RelationalOperand):
                 in_key = False  # start parsing non-PK fields
             elif line.startswith('->'):
                 # foreign key
-                module_name, class_name = line[2:].strip().split('.')
+                if '.' in line[2:]:
+                    module_name, class_name = line[2:].strip().split('.')
+                else:
+                    # assume it's a shorthand
+                    module_name = ''
+                    class_name = line[2:].strip()
                 ref = parents if in_key else referenced
                 ref.append(self.get_base(module_name, class_name))
             elif re.match(r'^(unique\s+)?index[^:]*$', line, re.I):

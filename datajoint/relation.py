@@ -93,6 +93,9 @@ class Relation(FreeRelation, metaclass=abc.ABCMeta):
         :param class_name: class name
         :returns: the base relation
         """
+        if not module_name:
+            module_name = self.__module__.split('.')[-1]
+
         mod_obj = self.get_module(module_name)
         if not mod_obj:
             raise DataJointError('Module named {mod_name} was not found. Please make'
