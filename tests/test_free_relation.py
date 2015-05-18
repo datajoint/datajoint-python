@@ -81,8 +81,6 @@ class TestRelationInstantiations(object):
         assert_equal(s.conn, self.conn)
         assert_equal(s.definition, test1.Subjects.definition)
 
-
-
     def test_packagelevel_binding(self):
         schema2.conn = self.conn
         self.conn.bind(schema2.__name__, PREFIX + '_test1')
