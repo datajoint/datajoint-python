@@ -335,13 +335,12 @@ class FreeRelation(RelationalOperand):
         # add newly defined primary key fields
         for field in (f for f in field_defs if f.in_key):
             if field.nullable:
-                raise DataJointError('Primary key {} cannot be nullable'.format(
+                raise DataJointError('Primary key attribute {} cannot be nullable'.format(
                     field.name))
             if field.name in primary_key_fields:
-                raise DataJointError('Duplicate declaration of the primary key '
-                                     '{key}. Check to make sure that the key '
-                                     'is not declared already in referenced '
-                                     'tables'.format(key=field.name))
+                raise DataJointError('Duplicate declaration of the primary attribute {key}. '
+                                     'Ensure that the attribute is not already declared '
+                                     'in referenced tables'.format(key=field.name))
             primary_key_fields.add(field.name)
             sql += self._field_to_sql(field)
 
