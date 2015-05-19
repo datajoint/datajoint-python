@@ -16,7 +16,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
     """
 
     @abc.abstractproperty
-    def pop_rel(self):
+    def populate_relation(self):
         """
         Derived classes must implement the read-only property pop_rel (populate relation) which is the relational
         expression (a Relation object) that defines how keys are generated for the populate call.
@@ -42,10 +42,10 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         """
         assert not reserve_jobs, NotImplemented   # issue #5
         error_list = [] if suppress_errors else None
-        if not isinstance(self.pop_rel, RelationalOperand):
+        if not isinstance(self.populate_relation, RelationalOperand):
             raise DataJointError('Invalid pop_rel value')
         self.conn._cancel_transaction()  # rollback previous transaction, if any
-        unpopulated = (self.pop_rel - self.target) & restriction
+        unpopulated = (self.populate_relation - self.target) & restriction
         for key in unpopulated.project():
             self.conn._start_transaction()
             if key in self.target:  # already populated
