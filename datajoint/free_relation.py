@@ -201,6 +201,17 @@ class FreeRelation(RelationalOperand):
                 self.conn.load_headings(dbname=self.dbname, force=True)
                 logger.info("Dropped table %s" % self.full_table_name)
 
+    @property
+    def size_on_disk(self):
+        """
+        :return: size of data and indices in MiB taken by the table on the storage device
+        """
+        cur = self.conn.query(
+            'SHOW TABLE STATUS FROM `{dbname}` WHERE NAME="{table}"'.format(
+                dbname=self.dbname, table=self.table_name), as_dict=True)
+        ret = cur.fetchone()
+        return (ret['Data_length'] + ret['Index_length'])/1024**2
+
     def set_table_comment(self, comment):
         """
         Update the table comment in the table definition.
@@ -297,6 +308,7 @@ class FreeRelation(RelationalOperand):
         self.conn.load_headings(self.dbname, force=True)
         # TODO: place table definition sync mechanism
 
+    @staticmethod
     def _parse_index_def(self, line):
         """
         Parses index definition.
@@ -345,7 +357,6 @@ class FreeRelation(RelationalOperand):
                                  'name {}'.format(self.ref_name, defined_name))
 
         # compile the CREATE TABLE statement
-        # TODO: support prefix
         table_name = role_to_prefix[table_info['tier']] + from_camel_case(self.class_name)
         sql = 'CREATE TABLE `%s`.`%s` (\n' % (self.dbname, table_name)
 

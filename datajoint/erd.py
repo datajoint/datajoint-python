@@ -49,7 +49,7 @@ class RelGraph(DiGraph):
             logger.warning('No table to plot in ERD')
             return
         pos = pygraphviz_layout(self, prog='dot')
-        fig = plt.figure(figsize=[10,7])
+        fig = plt.figure(figsize=[10, 7])
         ax = fig.add_subplot(111)
         nx.draw_networkx_nodes(self, pos, node_size=200, node_color='g')
         text_dict = nx.draw_networkx_labels(self, pos, self.node_labels)
