@@ -309,7 +309,7 @@ class FreeRelation(RelationalOperand):
         # TODO: place table definition sync mechanism
 
     @staticmethod
-    def _parse_index_def(self, line):
+    def _parse_index_def(line):
         """
         Parses index definition.
 
