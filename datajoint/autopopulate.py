@@ -63,5 +63,5 @@ class AutoPopulate(metaclass=abc.ABCMeta):
                         error_list.append((key, error))
                 else:
                     self.conn._commit_transaction()
-        logger.info('Done populating.', flush=True)
+        logger.info('Done populating.')
         return error_list
