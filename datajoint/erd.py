@@ -63,7 +63,7 @@ class RelGraph(DiGraph):
         for node in nodes:
             self.node[node]['highlight'] = False
 
-    # TODO: make this taken in various config parameters for plotting
+    # TODO: make this take in various config parameters for plotting
     def plot(self):
         """
         Plots an entity relation diagram (ERD) among all nodes that is part
@@ -91,6 +91,9 @@ class RelGraph(DiGraph):
         xmin = apos[:, 0].min() - 100
         ax.set_xlim(xmin, xmax)
         ax.axis('off')  # hide axis
+
+    def __repr__(self):
+        pass
 
     def restrict_by_modules(self, modules, fill=False):
         """
