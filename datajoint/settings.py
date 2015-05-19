@@ -36,7 +36,7 @@ default = OrderedDict({
     #
     'loglevel': 'DEBUG',
     #
-    'safemode': False,
+    'safemode': True,
     #
     'display.limit': 7,
     'display.width': 14
@@ -78,6 +78,7 @@ class Config(Borg, collections.MutableMapping):
         return self._conf[key]
 
     def __setitem__(self, key, value):
+        logger.log(logging.INFO, u"Setting {0:s} to {1:s}".format(str(key), str(value)))
         if isinstance(value, collections.Mapping):
             raise ValueError("Nested settings are not supported!")
         if validators[key](value):

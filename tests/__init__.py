@@ -8,6 +8,7 @@ after the test.
 import pymysql
 import logging
 from os import environ
+import datajoint as dj
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -26,7 +27,7 @@ BASE_CONN.autocommit(True)
 
 def setup():
     cleanup()
-
+    dj.config['safemode'] = False
 
 def teardown():
     cleanup()
