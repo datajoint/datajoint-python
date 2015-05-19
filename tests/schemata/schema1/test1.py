@@ -38,7 +38,7 @@ class Trials(dj.Relation):
     outcome                    : int           # result of experiment
 
     notes=""                   : varchar(4096) # other comments
-    trial_ts=CURRENT_TIMESTAMP : timestamp    # automatic
+    trial_ts=CURRENT_TIMESTAMP : timestamp     # automatic
     """
 
 
@@ -47,7 +47,7 @@ class Experiments(dj.Relation):
     definition = """
     test1.Experiments (imported)   # Experiment info
     -> test1.Subjects
-    exp_id     : int            # unique id for experiment
+    exp_id     : int               # unique id for experiment
     ---
     exp_data_file   : varchar(255) # data file
     """
@@ -59,7 +59,7 @@ class Sessions(dj.Relation):
     test1.Sessions (manual)     # Experiment sessions
     -> test1.Subjects
     -> test2.Experimenter
-    session_id     : int       # unique session id
+    session_id     : int        # unique session id
     ---
     session_comment        : varchar(255)    # comment about the session
     """
