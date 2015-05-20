@@ -64,12 +64,7 @@ class Transaction(object):
         self.ignore_errors = ignore_errors
 
     def __enter__(self):
-        assert self.conn.is_connected, "Connection is not connected"
-        if self.conn.in_transaction:
-            raise DataJointError("Connection object already has an open transaction")
-
-        self.conn._in_transaction = True
-        self.conn._start_transaction()
+        self.conn.start_transaction()
         return self
 
     @property
@@ -78,7 +73,7 @@ class Transaction(object):
         :return: True if the transaction is active, i.e. the connection object is connected and
                 the transaction flag in it is True
         """
-        return self.conn.is_connected and self.conn.in_transaction
+        return self.conn.in_transaction
 
     def cancel(self):
         """
@@ -93,12 +88,10 @@ class Transaction(object):
         if exc_type is None:
             assert exc_type is None and exc_val is None and exc_tb is None, \
                 "Either all of exc_type, exc_val, exc_tb should be None, or neither of them"
-            self.conn._commit_transaction()
-            self.conn._in_transaction = False
+            self.conn.commit_transaction()
             return True
         else:
-            self.conn._cancel_transaction()
-            self.conn._in_transaction = False
+            self.conn.cancel_transaction()
             logger.debug("Transaction cancled because of an error.", exc_info=(exc_type, exc_val, exc_tb))
             return self._do_not_raise_error_again or self.ignore_errors # if True is returned, errors are not raised again
 
@@ -424,16 +417,22 @@ class Connection(object):
 
     @property
     def in_transaction(self):
+        self._in_transaction = self._in_transaction and self.is_connected
         return self._in_transaction
 
-    def _start_transaction(self):
+    def start_transaction(self):
+        if self.in_transaction:
+            raise DataJointError("Nested connections are not supported.")
         self.query('START TRANSACTION WITH CONSISTENT SNAPSHOT')
+        self._in_transaction = True
         logger.log(logging.INFO, "Transaction started")
 
-    def _cancel_transaction(self):
+    def cancel_transaction(self):
         self.query('ROLLBACK')
+        self._in_transaction = False
         logger.log(logging.INFO, "Transaction cancelled. Rolling back ...")
 
-    def _commit_transaction(self):
+    def commit_transaction(self):
         self.query('COMMIT')
+        self._in_transaction = False
         logger.log(logging.INFO, "Transaction commited and closed.")

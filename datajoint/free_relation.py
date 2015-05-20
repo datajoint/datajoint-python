@@ -186,7 +186,7 @@ class FreeRelation(RelationalOperand):
     def delete(self):
         if not config['safemode'] or user_choice(
                 "You are about to delete data from a table. This operation cannot be undone.\n"
-                "Proceed?", 'no') == 'yes':
+                "Proceed?", default='no') == 'yes':
             self.conn.query('DELETE FROM ' + self.from_clause + self.where_clause)  # TODO: make cascading (issue #15)
 
     def drop(self):
@@ -196,7 +196,7 @@ class FreeRelation(RelationalOperand):
         if self.is_declared:
             if not config['safemode'] or user_choice(
                     "You are about to drop an entire table. This operation cannot be undone.\n"
-                    "Proceed?", 'no') == 'yes':
+                    "Proceed?", default='no') == 'yes':
                 self.conn.query('DROP TABLE %s' % self.full_table_name)  # TODO: make cascading (issue #16)
                 self.conn.clear_dependencies(dbname=self.dbname)
                 self.conn.load_headings(dbname=self.dbname, force=True)
@@ -248,7 +248,7 @@ class FreeRelation(RelationalOperand):
         if not config['safemode'] or user_choice(
                 "You are about to drop an attribute from a table."
                 "This operation cannot be undone.\n"
-                "Proceed?", 'no') == 'yes':
+                "Proceed?", default='no') == 'yes':
             self._alter('DROP COLUMN `%s`' % attr_name)
 
     def alter_attribute(self, attr_name, new_definition):

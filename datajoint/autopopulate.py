@@ -55,20 +55,22 @@ class AutoPopulate(metaclass=abc.ABCMeta):
 
         unpopulated = (self.populate_relation - self.target) & restriction
 
+        max_attempts = 10
         for key in unpopulated.project():
             try:
-                while True:
+                for attempts in range(max_attempts):
                     try:
                         with self.conn.transaction():
-                            if not key in self.target:  # already populated
+                            if key not in self.target:  # already populated
                                 logger.info('Populating: ' + str(key))
                                 self._make_tuples(dict(key))
                         break
                     except TransactionError as tr_err:
-                        if suppress_errors:
-                            error_list.append((key,tr_err))
                         tr_err.resolve()
-                        logger.info('Resolved transaction error raised by {0:s}.'.format(tr_err.culprit))
+                        logger.info('Transaction error in {0:s}.'.format(tr_err.culprit))
+                else:
+                    raise DataJointError(
+                        '%s._make_tuples failed after multiple attempts, giving up' % self.__class__)
             except Exception as error:
                 if not suppress_errors:
                     raise
