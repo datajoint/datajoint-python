@@ -2,6 +2,7 @@ from _collections_abc import MutableMapping, Mapping
 import numpy as np
 import logging
 from . import DataJointError, config
+from .decorators import not_in_transaction
 from .relational_operand import RelationalOperand
 from .blob import pack
 from .heading import Heading
@@ -296,6 +297,7 @@ class FreeRelation(RelationalOperand):
         plt.show()
         """
 
+    @not_in_transaction
     def _alter(self, alter_statement):
         """
         Execute ALTER TABLE statement for this table. The schema
@@ -343,6 +345,7 @@ class FreeRelation(RelationalOperand):
         """
         return '`{0}`'.format(self.dbname) + '.' + self.class_name
 
+    @not_in_transaction
     def _declare(self):
         """
         Declares the table in the database if no table in the database matches this object.

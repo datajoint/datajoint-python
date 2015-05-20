@@ -78,10 +78,12 @@ class Transaction(object):
         if exc_type is None and exc_val is None and exc_tb is None:
             self.conn._commit_transaction()
             self.conn._in_transaction = False
+            return True
         else:
             self.conn._cancel_transaction()
             self.conn._in_transaction = False
             logger.debug("Transaction cancled because of an error.", exc_info=(exc_type, exc_val, exc_tb))
+            return False
 
 
 class Connection(object):

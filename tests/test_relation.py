@@ -9,7 +9,7 @@ from . import BASE_CONN, CONN_INFO, PREFIX, cleanup
 from datajoint.connection import Connection
 from nose.tools import assert_raises, assert_equal, assert_regexp_matches, assert_false, assert_true, assert_list_equal,\
     assert_tuple_equal, assert_dict_equal, raises
-from datajoint import DataJointError
+from datajoint import DataJointError, TransactionError
 import numpy as np
 from numpy.testing import assert_array_equal
 from datajoint.free_relation import FreeRelation
@@ -117,7 +117,7 @@ class TestTableObject(object):
     #     assert_true(len(self.trials) == 1, 'Length does not match 1.')
 
     def test_short_hand_foreign_reference(self):
-        self.animals.heading;
+        self.animals.heading
 
 
 
@@ -130,6 +130,27 @@ class TestTableObject(object):
         testt2 = (self.subjects & 'subject_id = 2').fetch()[0]
         assert_equal((2, 'Klara', 'monkey'), tuple(testt2),
                      "Inserted and fetched record do not match!")
+
+    @raises(TransactionError)
+    def test_transaction_error(self):
+        "Test whether declaration in transaction is prohibited"
+
+        tmp = np.array([('Klara', 2, 'monkey')],
+                       dtype=[('real_id', 'O'), ('subject_id', '>i4'), ('species', 'O')])
+        with self.conn.transaction() as tr:
+            self.subjects.insert(tmp[0])
+
+    def test_transaction_error2(self):
+        "If table is declared, we are allow to insert within a transaction"
+
+        tmp = np.array([('Klara', 2, 'monkey'), ('Klara', 3, 'monkey')],
+                       dtype=[('real_id', 'O'), ('subject_id', '>i4'), ('species', 'O')])
+        self.subjects.insert(tmp[0])
+        print(self.subjects)
+        with self.conn.transaction() as tr:
+            self.subjects.insert(tmp[1])
+
+
 
     @raises(KeyError)
     def test_wrong_key_insert_records(self):

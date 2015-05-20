@@ -15,6 +15,13 @@ class DataJointError(Exception):
     pass
 
 
+class TransactionError(DataJointError):
+    """
+    Base class for errors specific to DataJoint internal operation.
+    """
+    pass
+
+
 # ----------- loads local configuration from file ----------------
 from .settings import Config, CONFIGVAR, LOCALCONFIG, logger, log_levels
 config = Config()
