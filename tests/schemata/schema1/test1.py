@@ -42,6 +42,43 @@ class Trials(dj.Relation):
     """
 
 
+
+class SquaredScore(dj.Relation, dj.AutoPopulate):
+    definition = """
+    test1.SquaredScore (computed)         # cumulative outcome of trials
+
+    -> test1.Subjects
+    -> test1.Trials
+    ---
+    squared                    : int         # squared result of Trials outcome
+    """
+
+    @property
+    def populate_relation(self):
+        return Subjects() * Trials()
+
+    def _make_tuples(self, key):
+        tmp = (Trials() & key).fetch1()
+        tmp2 = SquaredSubtable() & key
+
+        self.insert(dict(key, squared=tmp['outcome']**2))
+
+        ss = SquaredSubtable()
+
+        for i in range(10):
+            key['dummy'] = i
+            ss.insert(key)
+
+class SquaredSubtable(dj.Relation):
+    definition = """
+    test1.SquaredSubtable (computed)         # cumulative outcome of trials
+
+    -> test1.SquaredScore
+    dummy                      : int         # dummy primary attribute
+    ---
+    """
+
+
 # test reference to another table in same schema
 class Experiments(dj.Relation):
     definition = """
