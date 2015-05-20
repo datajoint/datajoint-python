@@ -11,7 +11,7 @@ def _not_in_transaction(f, *args, **kwargs):
     if args[0]._conn.in_transaction:
         raise TransactionError(
             u"{0:s} is currently in transaction. Operation not allowed to avoid implicit commits.".format(
-                args[0].__class__.__name__))
+                args[0].__class__.__name__), f, args, kwargs)
     return f(*args, **kwargs)
 
 

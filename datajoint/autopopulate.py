@@ -1,9 +1,9 @@
 from .relational_operand import RelationalOperand
-from . import DataJointError
+from . import DataJointError, TransactionError
 import abc
 import logging
 
-#noinspection PyExceptionInherit,PyCallingNonCallable
+# noinspection PyExceptionInherit,PyCallingNonCallable
 
 logger = logging.getLogger(__name__)
 
@@ -39,31 +39,41 @@ class AutoPopulate(metaclass=abc.ABCMeta):
 
     def populate(self, restriction=None, suppress_errors=False, reserve_jobs=False):
         """
-        rel.populate() calls rel._make_tuples(key) for every primary key in self.pop_rel
+        rel.populate() calls rel._make_tuples(key) for every primary key in self.populate_relation
         for which there is not already a tuple in rel.
+
+        :param restriction: restriction on rel.populate_relation - target
+        :param suppress_errors: suppresses error if true
+        :param reserve_jobs: currently not implemented
         """
-        assert not reserve_jobs, NotImplemented   # issue #5
+        assert not reserve_jobs, NotImplemented  # issue #5
+
         error_list = [] if suppress_errors else None
+
         if not isinstance(self.populate_relation, RelationalOperand):
             raise DataJointError('Invalid populate_relation value')
-        self.conn._cancel_transaction()  # rollback previous transaction, if any
+
         unpopulated = (self.populate_relation - self.target) & restriction
+
         for key in unpopulated.project():
-            self.conn._start_transaction()
-            if key in self.target:  # already populated
-                self.conn._cancel_transaction()
-            else:
-                logger.info('Populating: ' + str(key))
-                try:
-                    self._make_tuples(key)
-                except Exception as error:
-                    self.conn._cancel_transaction()
-                    if not suppress_errors:
-                        raise
-                    else:
-                        print(error)
-                        error_list.append((key, error))
+            try:
+                while True:
+                    try:
+                        with self.conn.transaction():
+                            if not key in self.target:  # already populated
+                                logger.info('Populating: ' + str(key))
+                                self._make_tuples(dict(key))
+                        break
+                    except TransactionError as tr_err:
+                        if suppress_errors:
+                            error_list.append((key,tr_err))
+                        tr_err.resolve()
+                        logger.info('Resolved transaction error raised by {0:s}.'.format(tr_err.culprit))
+            except Exception as error:
+                if not suppress_errors:
+                    raise
                 else:
-                    self.conn._commit_transaction()
+                    print(error)
+                    error_list.append((key, error))
         logger.info('Done populating.')
         return error_list

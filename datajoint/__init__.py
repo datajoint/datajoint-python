@@ -19,7 +19,18 @@ class TransactionError(DataJointError):
     """
     Base class for errors specific to DataJoint internal operation.
     """
-    pass
+    def __init__(self, msg, f, args, kwargs):
+        super(TransactionError, self).__init__(msg)
+        self.operations = (f, args, kwargs)
+
+    def resolve(self):
+        f, args, kwargs = self.operations
+        return f(*args, **kwargs)
+
+    @property
+    def culprit(self):
+        return self.operations[0].__name__
+
 
 
 # ----------- loads local configuration from file ----------------

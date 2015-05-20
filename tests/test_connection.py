@@ -223,6 +223,19 @@ class TestContextManager(object):
         testt2 = (self.relvar & 'subject_id = 2').fetch()
         assert_equal(len(testt2), 0, "Length is not 0. Expected because rollback should have happened.")
 
+    def test_cancel(self):
+        """Tests cancelling a transaction"""
+        tmp = np.array([(1,'Peter','mouse'),(2, 'Klara', 'monkey')],
+                       dtype=[('subject_id', '>i4'), ('real_id', 'O'), ('species', 'O')])
+
+        self.relvar.insert(tmp[0])
+        with self.conn.transaction() as transaction:
+            self.relvar.insert(tmp[1])
+            transaction.cancel()
+
+        testt2 = (self.relvar & 'subject_id = 2').fetch()
+        assert_equal(len(testt2), 0, "Length is not 0. Expected because rollback should have happened.")
+
 
 
 # class TestConnectionWithBindings(object):

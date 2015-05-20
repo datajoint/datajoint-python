@@ -140,13 +140,50 @@ class TestTableObject(object):
         with self.conn.transaction() as tr:
             self.subjects.insert(tmp[0])
 
+    def test_transaction_suppress_error(self):
+        "Test whether ignore_errors ignores the errors."
+
+        tmp = np.array([('Klara', 2, 'monkey')],
+                       dtype=[('real_id', 'O'), ('subject_id', '>i4'), ('species', 'O')])
+        with self.conn.transaction(ignore_errors=True) as tr:
+            self.subjects.insert(tmp[0])
+
+
+    @raises(TransactionError)
+    def test_transaction_error_not_resolve(self):
+        "Test whether declaration in transaction is prohibited"
+
+        tmp = np.array([('Klara', 2, 'monkey'), ('Klara', 3, 'monkey')],
+                       dtype=[('real_id', 'O'), ('subject_id', '>i4'), ('species', 'O')])
+        try:
+            with self.conn.transaction() as tr:
+                self.subjects.insert(tmp[0])
+        except TransactionError as te:
+            pass
+        with self.conn.transaction() as tr:
+            self.subjects.insert(tmp[0])
+
+    def test_transaction_error_resolve(self):
+        "Test whether declaration in transaction is prohibited"
+
+        tmp = np.array([('Klara', 2, 'monkey'), ('Klara', 3, 'monkey')],
+                       dtype=[('real_id', 'O'), ('subject_id', '>i4'), ('species', 'O')])
+        try:
+            with self.conn.transaction() as tr:
+                self.subjects.insert(tmp[0])
+        except TransactionError as te:
+            te.resolve()
+
+        with self.conn.transaction() as tr:
+            self.subjects.insert(tmp[0])
+
     def test_transaction_error2(self):
-        "If table is declared, we are allow to insert within a transaction"
+        "If table is declared, we are allowed to insert within a transaction"
 
         tmp = np.array([('Klara', 2, 'monkey'), ('Klara', 3, 'monkey')],
                        dtype=[('real_id', 'O'), ('subject_id', '>i4'), ('species', 'O')])
         self.subjects.insert(tmp[0])
-        print(self.subjects)
+
         with self.conn.transaction() as tr:
             self.subjects.insert(tmp[1])
 
@@ -357,3 +394,65 @@ class TestIterator(object):
             assert_equal(t['comment'], t2['comment'], 'inserted and retrieved dicts do not match')
             assert_true(np.all(t['data'] == t2['data']), 'inserted and retrieved dicts do not match')
 
+
+
+class TestAutopopulate(object):
+    def __init__(self):
+        self.relvar = None
+        self.setup()
+
+    """
+    Test cases for Iterators in Relations objects
+    """
+
+    def setup(self):
+        """
+        Create a connection object and prepare test modules
+        as follows:
+        test1 - has conn and bounded
+        """
+        cleanup()  # drop all databases with PREFIX
+        test1.__dict__.pop('conn', None) # make sure conn is not defined at schema level
+
+        self.conn = Connection(**CONN_INFO)
+        test1.conn = self.conn
+        self.conn.bind(test1.__name__, PREFIX + '_test1')
+
+        self.subjects = test1.Subjects()
+        self.trials = test1.Trials()
+        self.squared = test1.SquaredScore()
+        self.dummy = test1.SquaredSubtable()
+        self.fill_relation()
+
+    def fill_relation(self):
+        tmp = np.array([('Klara', 2, 'monkey'), ('Peter', 3, 'mouse')],
+                       dtype=[('real_id', 'O'), ('subject_id', '>i4'), ('species', 'O')])
+        self.subjects.batch_insert(tmp)
+
+        for trial_id in range(1,11):
+            self.trials.insert(dict(subject_id=2, trial_id=trial_id, outcome=np.random.randint(0,10)))
+
+
+    def teardown(self):
+        cleanup()
+
+
+    def test_autopopulate(self):
+        self.squared.populate()
+        assert_equal(len(self.squared), 10)
+
+        for trial in self.trials*self.squared:
+            assert_equal(trial['outcome']**2, trial['squared'])
+
+    def test_autopopulate_restriction(self):
+        self.squared.populate(restriction='trial_id <= 5')
+        assert_equal(len(self.squared), 5)
+
+        for trial in self.trials*self.squared:
+            assert_equal(trial['outcome']**2, trial['squared'])
+
+
+    def test_autopopulate_transaction_error(self):
+        errors = self.squared.populate(suppress_errors=True)
+        assert_equal(len(errors), 1)
+        assert_true(isinstance(errors[0][1], TransactionError))
