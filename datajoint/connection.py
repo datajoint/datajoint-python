@@ -428,12 +428,15 @@ class Connection(object):
 
     def _start_transaction(self):
         self.query('START TRANSACTION WITH CONSISTENT SNAPSHOT')
+        self._in_transaction = True
         logger.log(logging.INFO, "Transaction started")
 
     def _cancel_transaction(self):
         self.query('ROLLBACK')
+        self._in_transaction = False
         logger.log(logging.INFO, "Transaction cancelled. Rolling back ...")
 
     def _commit_transaction(self):
         self.query('COMMIT')
+        self._in_transaction = False
         logger.log(logging.INFO, "Transaction commited and closed.")
