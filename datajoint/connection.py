@@ -267,7 +267,7 @@ class Connection(object):
         """
 
         foreign_key_regexp = re.compile(r"""
-        FOREIGN KEY\s+\((?P<attr1>[`\w ,]+)\)\s+   # list of keys in this table
+        FOREIGN\ KEY\s+\((?P<attr1>[`\w ,]+)\)\s+   # list of keys in this table
         REFERENCES\s+(?P<ref>[^\s]+)\s+             # table referenced
         \((?P<attr2>[`\w ,]+)\)                     # list of keys in the referenced table
         """, re.X)
@@ -317,37 +317,44 @@ class Connection(object):
                 if key in self.referenced:
                     self.referenced.pop(key)
 
-    def parents_of(self, child_table):  # TODO: this function is not clear to me after reading the docu
+    def parents_of(self, child_table):
         """
-        Returns a list of tables that are parents for the childTable based on
-        primary foreign keys.
+        Returns a list of tables that are parents of the specified child_table. Parent-child relationship is defined
+        based on the presence of primary-key foreign reference: table that holds a foreign key relation to another table
+        is the child table.
 
         :param child_table: the child table
+        :return: list of parent tables
         """
         return self.parents.get(child_table, []).copy()
 
-    def children_of(self, parent_table):  # TODO: this function is not clear to me after reading the docu
+    def children_of(self, parent_table):
         """
-        Returns a list of tables for which parent_table is a parent (primary foreign key)
+        Returns a list of tables for which parent_table is a parent (primary foreign key). Parent-child relationship
+        is defined based on the presence of primary-key foreign reference: table that holds a foreign key relation to
+        another table is the child table.
 
         :param parent_table: parent table
+        :return: list of child tables
         """
         return [child_table for child_table, parents in self.parents.items() if parent_table in parents]
 
     def referenced_by(self, referencing_table):
         """
-        Returns a list of tables that are referenced by non-primary foreign key
+        Returns a list of tables that are referenced by non-primary foreign key relation
         by the referencing_table.
 
         :param referencing_table: referencing table
+        :return: list of tables that are referenced by the target table
         """
         return self.referenced.get(referencing_table, []).copy()
 
     def referencing(self, referenced_table):
         """
-        Returns a list of tables that references referencedTable as non-primary foreign key
+        Returns a list of tables that references referenced_table as non-primary foreign key
 
         :param referenced_table: referenced table
+        :return: list of tables that refers to the target table
         """
         return [referencing for referencing, referenced in self.referenced.items()
                 if referenced_table in referenced]
@@ -365,7 +372,7 @@ class Connection(object):
         logger.info('Disconnecting {user}@{host}:{port}'.format(**self.conn_info))
         self._conn.close()
 
-    def erd(self, databases=None, tables=None, fill=True, reload=True):
+    def erd(self, databases=None, tables=None, fill=True, reload=False):
         """
         Creates Entity Relation Diagram for the database or specified subset of
         tables.
@@ -373,10 +380,7 @@ class Connection(object):
         Set `fill` to False to only display specified tables. (By default
         connection tables are automatically included)
         """
-        if reload:
-            self.load_headings()  # load all tables and relations for bound databases
-
-        self._graph.update_graph()  # update the graph
+        self._graph.update_graph(reload=reload)  # update the graph
 
         graph = self._graph.copy_graph()
         if databases:
@@ -385,7 +389,7 @@ class Connection(object):
         if tables:
             graph = graph.restrict_by_tables(tables, fill)
 
-        graph.plot()
+        return graph
 
     def query(self, query, args=(), as_dict=False):
         """

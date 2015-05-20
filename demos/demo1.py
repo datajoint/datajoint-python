@@ -55,9 +55,24 @@ class Scan(dj.Relation):
     definition = """
     demo1.Scan (manual)   # a two-photon imaging session
     -> demo1.Session
+    -> Config
     scan_id : tinyint  # two-photon session within this experiment
     ----
     depth  :   float    #  depth from surface
     wavelength : smallint  # (nm)  laser wavelength
     mwatts: numeric(4,1)  # (mW) laser power to brain
+    """
+
+class Config(dj.Relation):
+    definition = """
+    demo1.Config (manual) # configuration for scanner
+    config_id    : tinyint     # unique id for config setup
+    ---
+    ->ConfigParam
+    """
+
+class ConfigParam(dj.Relation):
+    definition = """
+    demo1.ConfigParam (lookup)   # params for configurations
+    param_set_id     : tinyint     # id for params
     """

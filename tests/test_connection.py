@@ -121,7 +121,8 @@ class TestConnectionWithoutBindings(object):
         cur = BASE_CONN.cursor()
 
         # Ensure target database doesn't exist
-        cur.execute("DROP DATABASE IF EXISTS `{}`".format(db_name))
+        if cur.execute("SHOW DATABASES LIKE '{}'".format(db_name)):
+            cur.execute("DROP DATABASE IF EXISTS `{}`".format(db_name))
         # Bind module to non-existing database
         self.conn.bind(module, db_name)
         # Check that target database was created

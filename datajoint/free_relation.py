@@ -261,40 +261,9 @@ class FreeRelation(RelationalOperand):
         sql = self.field_to_sql(parse_attribute_definition(new_definition))
         self._alter('CHANGE COLUMN `%s` %s' % (attr_name, sql[:-2]))
 
-    def erd(self, subset=None, prog='dot'):
+    def erd(self, subset=None):
         """
         Plot the schema's entity relationship diagram (ERD).
-        The layout programs can be 'dot' (default), 'neato', 'fdp', 'sfdp', 'circo', 'twopi'
-        """
-        if not subset:
-            g = self.graph
-        else:
-            g = self.graph.copy()
-        # todo: make erd work (github issue #7)
-        """
-         g = self.graph
-         else:
-         g = self.graph.copy()
-         for i in g.nodes():
-         if i not in subset:
-         g.remove_node(i)
-        def tablelist(tier):
-        return [i for i in g if self.tables[i].tier==tier]
-
-        pos=nx.graphviz_layout(g,prog=prog,args='')
-        plt.figure(figsize=(8,8))
-        nx.draw_networkx_edges(g, pos, alpha=0.3)
-        nx.draw_networkx_nodes(g, pos, nodelist=tablelist('manual'),
-        node_color='g', node_size=200, alpha=0.3)
-        nx.draw_networkx_nodes(g, pos, nodelist=tablelist('computed'),
-        node_color='r', node_size=200, alpha=0.3)
-        nx.draw_networkx_nodes(g, pos, nodelist=tablelist('imported'),
-        node_color='b', node_size=200, alpha=0.3)
-        nx.draw_networkx_nodes(g, pos, nodelist=tablelist('lookup'),
-        node_color='gray', node_size=120, alpha=0.3)
-        nx.draw_networkx_labels(g, pos, nodelist = subset, font_weight='bold', font_size=9)
-        nx.draw(g,pos,alpha=0,with_labels=false)
-        plt.show()
         """
 
     @not_in_transaction
@@ -311,7 +280,7 @@ class FreeRelation(RelationalOperand):
         # TODO: place table definition sync mechanism
 
     @staticmethod
-    def _parse_index_def(self, line):
+    def _parse_index_def(line):
         """
         Parses index definition.
 
@@ -390,8 +359,8 @@ class FreeRelation(RelationalOperand):
 
         # add secondary foreign key attributes
         for r in referenced:
-            keys = (x for x in r.heading.attrs.values() if x.in_key)
-            for field in keys:
+            for key in r.primary_key:
+                field = r.heading[key]
                 if field.name not in primary_key_fields | non_key_fields:
                     non_key_fields.add(field.name)
                     sql += self._field_to_sql(field)
