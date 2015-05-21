@@ -137,16 +137,16 @@ class TestTableObject(object):
 
         tmp = np.array([('Klara', 2, 'monkey')],
                        dtype=[('real_id', 'O'), ('subject_id', '>i4'), ('species', 'O')])
-        with self.conn.transaction() as tr:
-            self.subjects.insert(tmp[0])
+        self.conn.start_transaction()
+        self.subjects.insert(tmp[0])
 
-    def test_transaction_suppress_error(self):
-        "Test whether ignore_errors ignores the errors."
-
-        tmp = np.array([('Klara', 2, 'monkey')],
-                       dtype=[('real_id', 'O'), ('subject_id', '>i4'), ('species', 'O')])
-        with self.conn.transaction(ignore_errors=True) as tr:
-            self.subjects.insert(tmp[0])
+    # def test_transaction_suppress_error(self):
+    #     "Test whether ignore_errors ignores the errors."
+    #
+    #     tmp = np.array([('Klara', 2, 'monkey')],
+    #                    dtype=[('real_id', 'O'), ('subject_id', '>i4'), ('species', 'O')])
+    #     with self.conn.transaction(ignore_errors=True) as tr:
+    #         self.subjects.insert(tmp[0])
 
 
     @raises(TransactionError)
@@ -156,12 +156,13 @@ class TestTableObject(object):
         tmp = np.array([('Klara', 2, 'monkey'), ('Klara', 3, 'monkey')],
                        dtype=[('real_id', 'O'), ('subject_id', '>i4'), ('species', 'O')])
         try:
-            with self.conn.transaction() as tr:
-                self.subjects.insert(tmp[0])
-        except TransactionError as te:
-            pass
-        with self.conn.transaction() as tr:
+            self.conn.start_transaction()
             self.subjects.insert(tmp[0])
+        except TransactionError as te:
+            self.conn.cancel_transaction()
+
+        self.conn.start_transaction()
+        self.subjects.insert(tmp[0])
 
     def test_transaction_error_resolve(self):
         "Test whether declaration in transaction is prohibited"
@@ -169,13 +170,15 @@ class TestTableObject(object):
         tmp = np.array([('Klara', 2, 'monkey'), ('Klara', 3, 'monkey')],
                        dtype=[('real_id', 'O'), ('subject_id', '>i4'), ('species', 'O')])
         try:
-            with self.conn.transaction() as tr:
-                self.subjects.insert(tmp[0])
+            self.conn.start_transaction()
+            self.subjects.insert(tmp[0])
         except TransactionError as te:
+            self.conn.cancel_transaction()
             te.resolve()
 
-        with self.conn.transaction() as tr:
-            self.subjects.insert(tmp[0])
+        self.conn.start_transaction()
+        self.subjects.insert(tmp[0])
+        self.conn.commit_transaction()
 
     def test_transaction_error2(self):
         "If table is declared, we are allowed to insert within a transaction"
@@ -184,9 +187,9 @@ class TestTableObject(object):
                        dtype=[('real_id', 'O'), ('subject_id', '>i4'), ('species', 'O')])
         self.subjects.insert(tmp[0])
 
-        with self.conn.transaction() as tr:
-            self.subjects.insert(tmp[1])
-
+        self.conn.start_transaction()
+        self.subjects.insert(tmp[1])
+        self.conn.commit_transaction()
 
 
     @raises(KeyError)
@@ -422,9 +425,9 @@ class TestAutopopulate(object):
         self.trials = test1.Trials()
         self.squared = test1.SquaredScore()
         self.dummy = test1.SquaredSubtable()
-        self.fill_relation()
         self.dummy1 = test1.WrongImplementation()
         self.dummy2 = test1.ErrorGenerator()
+        self.fill_relation()
 
 
 
