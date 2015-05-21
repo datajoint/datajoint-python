@@ -39,6 +39,38 @@ class AutoPopulate(metaclass=abc.ABCMeta):
 
     def populate(self, restriction=None, suppress_errors=False, reserve_jobs=False):
         """
+        rel.populate() calls rel._make_tuples(key) for every primary key in self.pop_rel
+        for which there is not already a tuple in rel.
+        """
+        assert not reserve_jobs, NotImplemented   # issue #5
+        error_list = [] if suppress_errors else None
+        if not isinstance(self.populate_relation, RelationalOperand):
+            raise DataJointError('Invalid populate_relation value')
+        self.conn._cancel_transaction()  # rollback previous transaction, if any
+        unpopulated = (self.populate_relation - self.target) & restriction
+        for key in unpopulated.project():
+            self.conn._start_transaction()
+            if key in self.target:  # already populated
+                self.conn._cancel_transaction()
+            else:
+                logger.info('Populating: ' + str(key))
+                try:
+                    self._make_tuples(key)
+                except Exception as error:
+                    self.conn._cancel_transaction()
+                    if not suppress_errors:
+                        raise
+                    else:
+                        print(error)
+                        error_list.append((key, error))
+                else:
+                    self.conn._commit_transaction()
+        logger.info('Done populating.')
+        return error_list
+
+
+    def populate(self, restriction=None, suppress_errors=False, reserve_jobs=False):
+        """
         rel.populate() calls rel._make_tuples(key) for every primary key in self.populate_relation
         for which there is not already a tuple in rel.
 
@@ -59,20 +91,22 @@ class AutoPopulate(metaclass=abc.ABCMeta):
 
         unpopulated = (self.populate_relation - self.target) & restriction
 
+        max_attempts = 10
         for key in unpopulated.project():
             try:
-                while True:
+                for attempts in range(max_attempts):
                     try:
                         with self.conn.transaction():
-                            if not key in self.target:  # key not populated yet
+                            if key not in self.target:  # key not populated yet
                                 logger.info('Populating: ' + str(key))
                                 self._make_tuples(dict(key))
                         break
                     except TransactionError as tr_err:
-                        if suppress_errors:
-                            error_list.append((key,tr_err))
                         tr_err.resolve()
-                        logger.info('Resolved transaction error raised by {0:s}.'.format(tr_err.culprit))
+                        logger.info('Transaction error in {0:s}.'.format(tr_err.culprit))
+                else:
+                    raise DataJointError(
+                        '%s._make_tuples failed after multiple attempts, giving up' % self.__class__)
             except Exception as error:
                 if not suppress_errors:
                     raise

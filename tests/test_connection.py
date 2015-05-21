@@ -158,11 +158,11 @@ class TestConnectionWithoutBindings(object):
         Test transaction commit
         """
         table_name = PREFIX + '_test1.subjects'
-        self.conn._start_transaction()
+        self.conn.start_transaction()
         self.conn.query("INSERT INTO {table} VALUES (0, 'dj_user', 'dj_user@example.com')".format(table=table_name))
         cur = BASE_CONN.cursor()
         assert_equal(cur.execute("SELECT * FROM {}".format(table_name)), 0)
-        self.conn._commit_transaction()
+        self.conn.commit_transaction()
         assert_equal(cur.execute("SELECT * FROM {}".format(table_name)), 1)
 
     def test_transaction_rollback(self):
@@ -170,11 +170,11 @@ class TestConnectionWithoutBindings(object):
         Test transaction rollback
         """
         table_name = PREFIX + '_test1.subjects'
-        self.conn._start_transaction()
+        self.conn.start_transaction()
         self.conn.query("INSERT INTO {table} VALUES (0, 'dj_user', 'dj_user@example.com')".format(table=table_name))
         cur = BASE_CONN.cursor()
         assert_equal(cur.execute("SELECT * FROM {}".format(table_name)), 0)
-        self.conn._cancel_transaction()
+        self.conn.cancel_transaction()
         assert_equal(cur.execute("SELECT * FROM {}".format(table_name)), 0)
 
 
@@ -204,9 +204,9 @@ class TestContextManager(object):
     def teardown(self):
         cleanup()
 
-    def test_active(self):
-        with self.conn.transaction() as tr:
-            assert_true(tr.is_active, "Transaction is not active")
+    # def test_active(self):
+    #     with self.conn.transaction() as tr:
+    #         assert_true(tr.is_active, "Transaction is not active")
 
     def test_rollback(self):
 

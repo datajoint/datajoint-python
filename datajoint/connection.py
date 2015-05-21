@@ -48,59 +48,6 @@ def conn_container():
 conn = conn_container()
 
 
-class Transaction(object):
-    """
-    Class that defines a transaction. Mainly for use in a with statement.
-
-    :param ignore_errors=False: if True, all errors are not passed on. However, the transaction is still
-                          rolled back if an error is raised.
-
-    :param conn: connection object that opens the transaction.
-    """
-
-    def __init__(self, conn, ignore_errors=False):
-        self.conn = conn
-        self._do_not_raise_error_again = False
-        self.ignore_errors = ignore_errors
-
-    def __enter__(self):
-        assert self.conn.is_connected, "Connection is not connected"
-        if self.conn.in_transaction:
-            raise DataJointError("Connection object already has an open transaction")
-
-        self.conn._in_transaction = True
-        self.conn._start_transaction()
-        return self
-
-    @property
-    def is_active(self):
-        """
-        :return: True if the transaction is active, i.e. the connection object is connected and
-                the transaction flag in it is True
-        """
-        return self.conn.is_connected and self.conn.in_transaction
-
-    def cancel(self):
-        """
-        Cancels an ongoing transaction and rolls back.
-
-        """
-        self._do_not_raise_error_again = True
-        raise DataJointError("Transaction cancelled by user.")
-
-    def __exit__(self, exc_type, exc_val, exc_tb):  # TODO: assert XOR and only exc_type is None
-
-        if exc_type is None:
-            assert exc_type is None and exc_val is None and exc_tb is None, \
-                "Either all of exc_type, exc_val, exc_tb should be None, or neither of them"
-            self.conn._commit_transaction()
-            self.conn._in_transaction = False
-            return True
-        else:
-            self.conn._cancel_transaction()
-            self.conn._in_transaction = False
-            logger.debug("Transaction cancled because of an error.", exc_info=(exc_type, exc_val, exc_tb))
-            return self._do_not_raise_error_again or self.ignore_errors # if True is returned, errors are not raised again
 
 
 class Connection(object):
@@ -406,34 +353,26 @@ class Connection(object):
         cur.execute(query, args)
         return cur
 
-    def transaction(self, ignore_errors=False):
-        """
-        Context manager to be used with python's with statement.
-
-        :param ignore_errors=False: if True, all errors are not passed on. However, the transaction is still
-                              rolled back if an error is raised.
-        :return: a :class:`Transaction` object
-
-        :Example:
-
-        >>> conn = dj.conn()
-        >>> with conn.transaction() as tr:
-                ... # do magic
-        """
-        return Transaction(self, ignore_errors)
 
     @property
     def in_transaction(self):
+        self._in_transaction = self._in_transaction and self.is_connected
         return self._in_transaction
 
-    def _start_transaction(self):
+    def start_transaction(self):
+        if self.in_transaction:
+            raise DataJointError("Nested connections are not supported.")
         self.query('START TRANSACTION WITH CONSISTENT SNAPSHOT')
-        logger.log(logging.INFO, "Transaction started")
+        self._in_transaction = True
+        logger.info("Transaction started")
 
-    def _cancel_transaction(self):
+    def cancel_transaction(self):
         self.query('ROLLBACK')
-        logger.log(logging.INFO, "Transaction cancelled. Rolling back ...")
+        self._in_transaction = False
+        logger.info("Transaction cancelled. Rolling back ...")
 
-    def _commit_transaction(self):
+    def commit_transaction(self):
         self.query('COMMIT')
-        logger.log(logging.INFO, "Transaction commited and closed.")
+        self._in_transaction = False
+        logger.info("Transaction commited and closed.")
+
