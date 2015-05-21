@@ -69,6 +69,48 @@ class SquaredScore(dj.Relation, dj.AutoPopulate):
             key['dummy'] = i
             ss.insert(key)
 
+
+class WrongImplementation(dj.Relation, dj.AutoPopulate):
+    definition = """
+    test1.WrongImplementation (computed)         # ignore
+
+    -> test1.Subjects
+    -> test1.Trials
+    ---
+    dummy                    : int         # ignore
+    """
+
+    @property
+    def populate_relation(self):
+        return {'subject_id':2}
+
+    def _make_tuples(self, key):
+        pass
+
+
+
+class ErrorGenerator(dj.Relation, dj.AutoPopulate):
+    definition = """
+    test1.ErrorGenerator (computed)         # ignore
+
+    -> test1.Subjects
+    -> test1.Trials
+    ---
+    dummy                    : int         # ignore
+    """
+
+    @property
+    def populate_relation(self):
+        return Subjects() * Trials()
+
+    def _make_tuples(self, key):
+        raise Exception("This is for testing")
+
+
+
+
+
+
 class SquaredSubtable(dj.Relation):
     definition = """
     test1.SquaredSubtable (computed)         # cumulative outcome of trials

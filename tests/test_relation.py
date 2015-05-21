@@ -9,7 +9,7 @@ from . import BASE_CONN, CONN_INFO, PREFIX, cleanup
 from datajoint.connection import Connection
 from nose.tools import assert_raises, assert_equal, assert_regexp_matches, assert_false, assert_true, assert_list_equal,\
     assert_tuple_equal, assert_dict_equal, raises
-from datajoint import DataJointError, TransactionError
+from datajoint import DataJointError, TransactionError, AutoPopulate, Relation
 import numpy as np
 from numpy.testing import assert_array_equal
 from datajoint.free_relation import FreeRelation
@@ -423,6 +423,10 @@ class TestAutopopulate(object):
         self.squared = test1.SquaredScore()
         self.dummy = test1.SquaredSubtable()
         self.fill_relation()
+        self.dummy1 = test1.WrongImplementation()
+        self.dummy2 = test1.ErrorGenerator()
+
+
 
     def fill_relation(self):
         tmp = np.array([('Klara', 2, 'monkey'), ('Peter', 3, 'mouse')],
@@ -456,3 +460,30 @@ class TestAutopopulate(object):
         errors = self.squared.populate(suppress_errors=True)
         assert_equal(len(errors), 1)
         assert_true(isinstance(errors[0][1], TransactionError))
+
+    @raises(DataJointError)
+    def test_autopopulate_relation_check(self):
+
+        class dummy(AutoPopulate):
+
+            def populate_relation(self):
+                return None
+
+            def _make_tuples(self, key):
+                pass
+
+        du = dummy()
+        du.populate()    \
+
+    @raises(DataJointError)
+    def test_autopopulate_relation_check(self):
+        self.dummy1.populate()
+
+    @raises(Exception)
+    def test_autopopulate_relation_check(self):
+        self.dummy2.populate()\
+
+    @raises(Exception)
+    def test_autopopulate_relation_check2(self):
+        tmp = self.dummy2.populate(suppress_errors=True)
+        assert_equal(len(tmp), 1, 'Error list should have length 1.')
