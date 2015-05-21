@@ -60,7 +60,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
                 while True:
                     try:
                         with self.conn.transaction():
-                            if not key in self.target:  # already populated
+                            if not key in self.target:  # key not populated yet
                                 logger.info('Populating: ' + str(key))
                                 self._make_tuples(dict(key))
                         break
