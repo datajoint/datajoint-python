@@ -1,5 +1,5 @@
 from .relational_operand import RelationalOperand
-from . import DataJointError, TransactionError
+from . import DataJointError, TransactionError, Relation
 import abc
 import logging
 
@@ -49,6 +49,10 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         assert not reserve_jobs, NotImplemented  # issue #5
 
         error_list = [] if suppress_errors else None
+
+        if not isinstance(self, Relation):
+            raise DataJointError('Autopopulate is a mixin for Relation and must therefore subclass Relation')
+
 
         if not isinstance(self.populate_relation, RelationalOperand):
             raise DataJointError('Invalid populate_relation value')
