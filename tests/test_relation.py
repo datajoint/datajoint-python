@@ -426,7 +426,7 @@ class TestAutopopulate(object):
         self.squared = test1.SquaredScore()
         self.dummy = test1.SquaredSubtable()
         self.dummy1 = test1.WrongImplementation()
-        self.dummy2 = test1.ErrorGenerator()
+        self.error_generator = test1.ErrorGenerator()
         self.fill_relation()
 
 
@@ -482,7 +482,7 @@ class TestAutopopulate(object):
 
     @raises(Exception)
     def test_autopopulate_relation_check(self):
-        self.dummy2.populate()\
+        self.error_generator.populate()\
 
     @raises(Exception)
     def test_autopopulate_relation_check2(self):

@@ -71,7 +71,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
                             self._make_tuples(dict(key))
                             break
                         except TransactionError as tr_err:
-                            # self.conn.cancel_transaction()
+                            self.conn.cancel_transaction()
                             tr_err.resolve()
                             self.conn.start_transaction()
                             logger.info('Transaction error in {0:s}.'.format(tr_err.culprit))
@@ -86,7 +86,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
                         print(error)
                         error_list.append((key, error))
                 else:
-                    self.conn._commit_transaction()
+                    self.conn.commit_transaction()
         logger.info('Done populating.')
         return error_list
 

@@ -1,8 +1,7 @@
 from _collections_abc import MutableMapping, Mapping
 import numpy as np
 import logging
-from . import DataJointError, config
-from .decorators import not_in_transaction
+from . import DataJointError, config, TransactionError
 from .relational_operand import RelationalOperand
 from .blob import pack
 from .heading import Heading
@@ -266,7 +265,6 @@ class FreeRelation(RelationalOperand):
         Plot the schema's entity relationship diagram (ERD).
         """
 
-    @not_in_transaction
     def _alter(self, alter_statement):
         """
         Execute ALTER TABLE statement for this table. The schema
@@ -274,6 +272,11 @@ class FreeRelation(RelationalOperand):
 
         :param alter_statement: alter statement
         """
+        if self._conn.in_transaction:
+            raise TransactionError(
+                u"_alter is currently in transaction. Operation not allowed to avoid implicit commits.",
+                        self._alter, args=(alter_statement,))
+
         sql = 'ALTER TABLE %s %s' % (self.full_table_name, alter_statement)
         self.conn.query(sql)
         self.conn.load_headings(self.dbname, force=True)
@@ -314,11 +317,14 @@ class FreeRelation(RelationalOperand):
         """
         return '`{0}`'.format(self.dbname) + '.' + self.class_name
 
-    @not_in_transaction
     def _declare(self):
         """
         Declares the table in the database if no table in the database matches this object.
         """
+        if self._conn.in_transaction:
+            raise TransactionError(
+                u"_alter is currently in transaction. Operation not allowed to avoid implicit commits.", self._declare)
+
         if not self.definition:
             raise DataJointError('Table definition is missing!')
         table_info, parents, referenced, field_defs, index_defs = self._parse_declaration()
