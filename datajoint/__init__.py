@@ -21,20 +21,12 @@ class TransactionError(DataJointError):
     """
     def __init__(self, msg, f, args=None, kwargs=None):
         super(TransactionError, self).__init__(msg)
-        self.operations = (f, args, kwargs)
+        self.operations = (f, args if args is not None else tuple(),
+                           kwargs if kwargs is not None else {})
 
     def resolve(self):
         f, args, kwargs = self.operations
-        if args is None:
-            if kwargs is None:
-                return f()
-            else:
-                return f(**kwargs)
-        else:
-            if kwargs is None:
-                return f(*args)
-            else:
-                return f(*args, **kwargs)
+        return f(*args, **kwargs)
 
 
     @property
