@@ -77,13 +77,13 @@ class AutoPopulate(metaclass=abc.ABCMeta):
                             logger.info('Transaction error in {0:s}.'.format(tr_err.culprit))
                     else:
                         raise DataJointError(
-                            '%s._make_tuples failed after multiple attempts, giving up' % self.__class__)
+                            '%s._make_tuples failed after %i attempts, giving up' % (self.__class__,max_attempts))
                 except Exception as error:
                     self.conn.cancel_transaction()
                     if not suppress_errors:
                         raise
                     else:
-                        print(error)
+                        logger.error(error)
                         error_list.append((key, error))
                 else:
                     self.conn.commit_transaction()
