@@ -9,7 +9,7 @@ from . import BASE_CONN, CONN_INFO, PREFIX, cleanup
 from datajoint.connection import Connection
 from nose.tools import assert_raises, assert_equal, assert_regexp_matches, assert_false, assert_true, assert_list_equal,\
     assert_tuple_equal, assert_dict_equal, raises
-from datajoint import DataJointError, TransactionError
+from datajoint import DataJointError, TransactionError, AutoPopulate, Relation
 import numpy as np
 from numpy.testing import assert_array_equal
 from datajoint.free_relation import FreeRelation
@@ -137,16 +137,16 @@ class TestTableObject(object):
 
         tmp = np.array([('Klara', 2, 'monkey')],
                        dtype=[('real_id', 'O'), ('subject_id', '>i4'), ('species', 'O')])
-        with self.conn.transaction() as tr:
-            self.subjects.insert(tmp[0])
+        self.conn.start_transaction()
+        self.subjects.insert(tmp[0])
 
-    def test_transaction_suppress_error(self):
-        "Test whether ignore_errors ignores the errors."
-
-        tmp = np.array([('Klara', 2, 'monkey')],
-                       dtype=[('real_id', 'O'), ('subject_id', '>i4'), ('species', 'O')])
-        with self.conn.transaction(ignore_errors=True) as tr:
-            self.subjects.insert(tmp[0])
+    # def test_transaction_suppress_error(self):
+    #     "Test whether ignore_errors ignores the errors."
+    #
+    #     tmp = np.array([('Klara', 2, 'monkey')],
+    #                    dtype=[('real_id', 'O'), ('subject_id', '>i4'), ('species', 'O')])
+    #     with self.conn.transaction(ignore_errors=True) as tr:
+    #         self.subjects.insert(tmp[0])
 
 
     @raises(TransactionError)
@@ -156,12 +156,13 @@ class TestTableObject(object):
         tmp = np.array([('Klara', 2, 'monkey'), ('Klara', 3, 'monkey')],
                        dtype=[('real_id', 'O'), ('subject_id', '>i4'), ('species', 'O')])
         try:
-            with self.conn.transaction() as tr:
-                self.subjects.insert(tmp[0])
-        except TransactionError as te:
-            pass
-        with self.conn.transaction() as tr:
+            self.conn.start_transaction()
             self.subjects.insert(tmp[0])
+        except TransactionError as te:
+            self.conn.cancel_transaction()
+
+        self.conn.start_transaction()
+        self.subjects.insert(tmp[0])
 
     def test_transaction_error_resolve(self):
         "Test whether declaration in transaction is prohibited"
@@ -169,13 +170,15 @@ class TestTableObject(object):
         tmp = np.array([('Klara', 2, 'monkey'), ('Klara', 3, 'monkey')],
                        dtype=[('real_id', 'O'), ('subject_id', '>i4'), ('species', 'O')])
         try:
-            with self.conn.transaction() as tr:
-                self.subjects.insert(tmp[0])
+            self.conn.start_transaction()
+            self.subjects.insert(tmp[0])
         except TransactionError as te:
+            self.conn.cancel_transaction()
             te.resolve()
 
-        with self.conn.transaction() as tr:
-            self.subjects.insert(tmp[0])
+        self.conn.start_transaction()
+        self.subjects.insert(tmp[0])
+        self.conn.commit_transaction()
 
     def test_transaction_error2(self):
         "If table is declared, we are allowed to insert within a transaction"
@@ -184,9 +187,9 @@ class TestTableObject(object):
                        dtype=[('real_id', 'O'), ('subject_id', '>i4'), ('species', 'O')])
         self.subjects.insert(tmp[0])
 
-        with self.conn.transaction() as tr:
-            self.subjects.insert(tmp[1])
-
+        self.conn.start_transaction()
+        self.subjects.insert(tmp[1])
+        self.conn.commit_transaction()
 
 
     @raises(KeyError)
@@ -422,7 +425,11 @@ class TestAutopopulate(object):
         self.trials = test1.Trials()
         self.squared = test1.SquaredScore()
         self.dummy = test1.SquaredSubtable()
+        self.dummy1 = test1.WrongImplementation()
+        self.error_generator = test1.ErrorGenerator()
         self.fill_relation()
+
+
 
     def fill_relation(self):
         tmp = np.array([('Klara', 2, 'monkey'), ('Peter', 3, 'mouse')],
@@ -432,10 +439,8 @@ class TestAutopopulate(object):
         for trial_id in range(1,11):
             self.trials.insert(dict(subject_id=2, trial_id=trial_id, outcome=np.random.randint(0,10)))
 
-
     def teardown(self):
         cleanup()
-
 
     def test_autopopulate(self):
         self.squared.populate()
@@ -452,7 +457,34 @@ class TestAutopopulate(object):
             assert_equal(trial['outcome']**2, trial['squared'])
 
 
-    def test_autopopulate_transaction_error(self):
-        errors = self.squared.populate(suppress_errors=True)
-        assert_equal(len(errors), 1)
-        assert_true(isinstance(errors[0][1], TransactionError))
+    # def test_autopopulate_transaction_error(self):
+    #     errors = self.squared.populate(suppress_errors=True)
+    #     assert_equal(len(errors), 1)
+    #     assert_true(isinstance(errors[0][1], TransactionError))
+
+    @raises(DataJointError)
+    def test_autopopulate_relation_check(self):
+
+        class dummy(AutoPopulate):
+
+            def populate_relation(self):
+                return None
+
+            def _make_tuples(self, key):
+                pass
+
+        du = dummy()
+        du.populate()    \
+
+    @raises(DataJointError)
+    def test_autopopulate_relation_check(self):
+        self.dummy1.populate()
+
+    @raises(Exception)
+    def test_autopopulate_relation_check(self):
+        self.error_generator.populate()\
+
+    @raises(Exception)
+    def test_autopopulate_relation_check2(self):
+        tmp = self.dummy2.populate(suppress_errors=True)
+        assert_equal(len(tmp), 1, 'Error list should have length 1.')
