@@ -59,5 +59,5 @@ from .relation import Relation
 from .autopopulate import AutoPopulate
 from . import blob
 from .relational_operand import Not
-from .free_relation import FreeRelation
+from .relation import FreeRelation
 from .heading import Heading
