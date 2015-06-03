@@ -29,7 +29,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         self._restrictions = [] if restrictions is None else restrictions
 
     @property
-    def conn(self):
+    def connection(self):
         return self._conn
 
     @property
@@ -127,7 +127,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         number of tuples in the relation.  This also takes care of the truth value
         """
-        cur = self.conn.query(self.make_select('count(*)'))
+        cur = self.connection.query(self.make_select('count(*)'))
         return cur.fetchone()[0]
 
     def __contains__(self, item):
@@ -196,7 +196,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             if offset:
                 sql += ' OFFSET %d' % offset
         logger.debug(sql)
-        return self.conn.query(sql, as_dict=as_dict)
+        return self.connection.query(sql, as_dict=as_dict)
 
     def __repr__(self):
         limit = config['display.limit']
@@ -281,11 +281,11 @@ class Join(RelationalOperand):
     def __init__(self, arg1, arg2):
         if not isinstance(arg2, RelationalOperand):
             raise DataJointError('a relation can only be joined with another relation')
-        if arg1.conn != arg2.conn:
+        if arg1.connection != arg2.connection:
             raise DataJointError('Cannot join relations with different database connections')
         self._arg1 = Subquery(arg1) if arg1.heading.computed else arg1
         self._arg2 = Subquery(arg1) if arg2.heading.computed else arg2
-        super().__init__(arg1.conn, self._arg1.restrictions + self._arg2.restrictions)
+        super().__init__(arg1.connection, self._arg1.restrictions + self._arg2.restrictions)
 
     @property
     def counter(self):
@@ -318,9 +318,9 @@ class Projection(RelationalOperand):
                 self._renamed_attributes.update({d['alias']: d['sql_expression']})
             else:
                 self._attributes.append(attribute)
-        super().__init__(arg.conn)
+        super().__init__(arg.connection)
         if group:
-            if arg.conn != group.conn:
+            if arg.connection != group.connection:
                 raise DataJointError('Cannot join relations with different database connections')
             self._group = Subquery(group)
             self._arg = Subquery(arg)
@@ -356,7 +356,7 @@ class Subquery(RelationalOperand):
 
     def __init__(self, arg):
         self._arg = arg
-        super().__init__(arg.conn)
+        super().__init__(arg.connection)
 
     @property
     def counter(self):
