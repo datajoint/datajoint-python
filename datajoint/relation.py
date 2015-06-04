@@ -8,12 +8,13 @@ from .heading import Heading
 import re
 from .settings import Role, role_to_prefix
 from .utils import from_camel_case, user_choice
+from .connection import  conn
 import abc
 
 logger = logging.getLogger(__name__)
 
 
-class Relation(RelationalOperand, metaclass=abc.ABCMeta):
+class Relation(RelationalOperand):
     """
     A FreeRelation object is a relation associated with a table.
     A FreeRelation object provides insert and delete methods.
@@ -30,34 +31,44 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
     even after tables are modified after the instance is created.
     """
 
-    _connection = None  # connection information
-    _schema_name = None  # name of schema this relation belongs to
-    _heading = None  # heading information for this relation
-    _context = {}    # name reference lookup context
-
     # defines class properties
 
-    @property
-    def connection(self):
-        return self.__class__._connection
+
+    def __init__(self, table_name, schema_name=None, connection=None, definition=None, context=None):
+        self._table_name = table_name
+        self._schema_name = schema_name
+        if connection is None:
+            connection = conn()
+        self._connection = connection
+        self._definition = definition
+        if context is None:
+            context = {}
+        self._context = context
+        self._heading = None
 
     @property
     def schema_name(self):
-        return self.__class__._schema_name
+        return self._schema_name
 
     @property
-    def heading(self):
-        return self.__class__._heading
+    def connection(self):
+        return self._connection
 
-    @heading.setter
-    def heading(self, new_heading):
-        self.__class__._heading = new_heading
+    @property
+    def definition(self):
+        return self._definition
 
     @property
     def context(self):
-        return self.__class__._context
+        return self._context
 
-    # object properties
+    @property
+    def heading(self):
+        return self._heading
+
+    @heading.setter
+    def heading(self, new_heading):
+        self._heading = new_heading
 
     @property
     def table_prefix(self):
@@ -66,9 +77,17 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
     @property
     def table_name(self):
         """
+        TODO: allow table kind to be specified
         :return: name of the table. This is equal to table_prefix + class name with underscores
         """
-        return self.table_prefix + from_camel_case(self.__class__.__name__)
+        return self._table_name
+
+    @property
+    def definition(self):
+        return self._definition
+
+
+    # ============================== Shared implementations ==============================
 
     @property
     def full_table_name(self):
@@ -81,27 +100,25 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
     def from_clause(self):
         return self.full_table_name
 
-    @abc.abstractproperty
-    def definition(self):
-        pass
-
-    @classmethod
-    def load_heading(cls):
+    # TODO: consider if this should be a class method for derived classes
+    def load_heading(self, forced=False):
         """
         Load the heading information for this table. If the table does not exist in the database server, Heading will be
         set to None if the table is not yet defined in the database.
         """
         pass
+        # TODO: I want to be able to tell whether load_heading has already been attempted in the past... `self.heading is None` is not informative
+        # TODO: make sure to assign new heading to self.heading, not to self._heading or any other direct variables
 
     @property
     def is_declared(self):
+        #TODO: this implementation is rather expensive and stupid
+        # - if table is not declared yet, repeated call to this method causes loading attempt each time
+
         if self.heading is None:
             self.load_heading()
         return self.heading is not None
 
-
-    def __init__(self):
-        self.load_heading()
 
     def declare(self):
         """
@@ -467,8 +484,13 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
 
         return table_info, parents, referenced, field_defs, index_defs
 
-
     def lookup_name(self, name):
+        """
+        Lookup the referenced name in the context dictionary
+
+        e.g. for reference `common.Animals`, it will first check if `context` dictionary contains key
+        `common`. If found, it then checks for attribute `Animals` in `common`, and returns the result.
+        """
         parts = name.strip().split('.')
         try:
             ref = self.context.get(parts[0])
@@ -478,6 +500,106 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
             raise DataJointError('Foreign reference %s could not be resolved. Please make sure the name exists'
                                  'in the context of the class' % name)
         return ref
+
+class ClassRelation(Relation, metaclass=abc.ABCMeta):
+    """
+    A relation object that is handled at class level. All instances of the derived classes
+    share common connection and schema binding
+    """
+
+    _connection = None  # connection information
+    _schema_name = None  # name of schema this relation belongs to
+    _heading = None  # heading information for this relation
+    _context = None    # name reference lookup context
+
+    def __init__(self, schema_name=None, connection=None, context=None):
+        """
+        Use this constructor to specify class level
+        """
+        if schema_name is not None:
+            self.schema_name = schema_name
+
+        # TODO: Think about this implementation carefully
+        if connection is not None:
+            self.connection = connection
+        elif self.connection is None:
+            self.connection = conn()
+
+        if context is not None:
+            self.context = context
+        elif self.context is None:
+            self.context = {} # initialize with an empty dictionary
+
+    @property
+    def schema_name(self):
+        return self.__class__._schema_name
+
+    @schema_name.setter
+    def schema_name(self, new_schema_name):
+        if self.schema_name is not None:
+            logger.warn('Overriding associated schema for class %s'
+                        '- this will affect all existing instances!' % self.__class__.__name__)
+        self.__class__._schema_name = new_schema_name
+
+    @property
+    def connection(self):
+        return self.__class__._connection
+
+    @connection.setter
+    def connection(self, new_connection):
+        if self.connection is not None:
+            logger.warn('Overriding associated connection for class %s'
+                        '- this will affect all existing instances!' % self.__class__.__name__)
+        self.__class__._connection = new_connection
+
+    @property
+    def context(self):
+        # TODO: should this be a copy or the original?
+        return self.__class__._context.copy()
+
+    @context.setter
+    def context(self, new_context):
+        if self.context is not None:
+            logger.warn('Overriding associated reference context for class %s'
+                        '- this will affect all existing instances!' % self.__class__.__name__)
+        self.__class__._context = new_context
+
+    @property
+    def heading(self):
+        return self.__class__._heading
+
+    @heading.setter
+    def heading(self, new_heading):
+        self.__class__._heading = new_heading
+
+    @abc.abstractproperty
+    def definition(self):
+        """
+        Inheriting class must override this property with a valid table definition string
+        """
+        pass
+
+    @abc.abstractproperty
+    def table_prefix(self):
+        pass
+
+
+class ManualRelation(ClassRelation):
+    @property
+    def table_prefix(self):
+        return ""
+
+
+class AutoRelation(ClassRelation):
+    pass
+
+
+class ComputedRelation(AutoRelation):
+    @property
+    def table_prefix(self):
+        return "_"
+
+
 
 
 
