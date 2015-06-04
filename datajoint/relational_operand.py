@@ -9,7 +9,6 @@ from copy import copy
 from datajoint import DataJointError, config
 from .blob import unpack
 import logging
-import numpy.lib.recfunctions as rfn
 
 logger = logging.getLogger(__name__)
 
@@ -24,25 +23,43 @@ class RelationalOperand(metaclass=abc.ABCMeta):
     RelationalOperand operators are: restrict, pro, and join.
     """
 
-    def __init__(self, conn, restrictions=None):
-        self._conn = conn
-        self._restrictions = [] if restrictions is None else restrictions
-
-    @property
-    def connection(self):
-        return self._conn
+    _restrictions = None
 
     @property
     def restrictions(self):
         return self._restrictions
 
-    @abc.abstractproperty
-    def from_clause(self):
+    @property
+    def primary_key(self):
+        return self.heading.primary_key
+
+    # --------- abstract properties -----------
+
+    @property
+    @abc.abstractmethod
+    def connection(self):
+        """
+        :return: a datajoint.Connection object
+        """
         pass
 
-    @abc.abstractproperty
-    def heading(self):
+    @property
+    @abc.abstractmethod
+    def from_clause(self):
+        """
+        :return: a string containing the FROM clause of the SQL SELECT statement
+        """
         pass
+
+    @property
+    @abc.abstractmethod
+    def heading(self):
+        """
+        :return: a valid datajoint.Heading object
+        """
+        pass
+
+    # --------- relational operators -----------
 
     def __mul__(self, other):
         """
@@ -117,6 +134,8 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         inverted restriction aka antijoin
         """
         return self & Not(restriction)
+
+    # ------ data retrieval methods -----------
 
     def make_select(self, attribute_spec=None):
         if attribute_spec is None:
@@ -285,7 +304,11 @@ class Join(RelationalOperand):
             raise DataJointError('Cannot join relations with different database connections')
         self._arg1 = Subquery(arg1) if arg1.heading.computed else arg1
         self._arg2 = Subquery(arg1) if arg2.heading.computed else arg2
-        super().__init__(arg1.connection, self._arg1.restrictions + self._arg2.restrictions)
+        self._restrictions = self._arg1.restrictions + self._arg2.restrictions
+
+    @property
+    def connection(self):
+        return self._arg1.connection
 
     @property
     def counter(self):
@@ -318,7 +341,6 @@ class Projection(RelationalOperand):
                 self._renamed_attributes.update({d['alias']: d['sql_expression']})
             else:
                 self._attributes.append(attribute)
-        super().__init__(arg.connection)
         if group:
             if arg.connection != group.connection:
                 raise DataJointError('Cannot join relations with different database connections')
@@ -332,6 +354,10 @@ class Projection(RelationalOperand):
                 # project without subquery
                 self._arg = arg
                 self._restrictions = self._arg.restrictions
+
+    @property
+    def connection(self):
+        return self._arg.connection
 
     @property
     def heading(self):
@@ -356,7 +382,10 @@ class Subquery(RelationalOperand):
 
     def __init__(self, arg):
         self._arg = arg
-        super().__init__(arg.connection)
+
+    @property
+    def connection(self):
+        return self._arg.connection
 
     @property
     def counter(self):

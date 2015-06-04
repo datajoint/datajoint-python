@@ -1,124 +1,93 @@
-from _collections_abc import MutableMapping, Mapping
+from collections.abc import MutableMapping, Mapping
 import numpy as np
 import logging
+import re
+import abc
+
 from . import DataJointError, config, TransactionError
 from .relational_operand import RelationalOperand
 from .blob import pack
+from .utils import user_choice
+from .parsing import parse_attribute_definition, field_to_sql, parse_index_definition
 from .heading import Heading
-import re
-from .settings import Role, role_to_prefix
-from .utils import from_camel_case, user_choice
-from .connection import  conn
-import abc
 
 logger = logging.getLogger(__name__)
 
 
-class Relation(RelationalOperand):
+class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
     """
-    A FreeRelation object is a relation associated with a table.
-    A FreeRelation object provides insert and delete methods.
-    FreeRelation objects are only used internally and for debugging.
-    The table must already exist in the schema for its FreeRelation object to work.
-
-    The table associated with an instance of Relation is identified by its 'class name'.
-    property, which is a string in CamelCase. The actual table name is obtained
-    by converting className from CamelCase to underscore_separated_words and
-    prefixing according to the table's role.
-
-    Relation instances obtain their table's heading by looking it up in the connection
-    object. This ensures that Relation instances contain the current table definition
-    even after tables are modified after the instance is created.
+    BaseRelation is an abstract class that represents a base relation, i.e. a table in the database.
+    To make it a concrete class, override the abstract properties specifying the connection,
+    table name, database, context, and definition.
+    A BaseRelation implements insert and delete methods in addition to inherited relational operators.
+    It also loads table heading and dependencies from the database.
+    It also handles the table declaration based on its definition property
     """
 
-    # defines class properties
+    _heading = None
 
-
-    def __init__(self, table_name, schema_name=None, connection=None, definition=None, context=None):
-        self._table_name = table_name
-        self._schema_name = schema_name
-        if connection is None:
-            connection = conn()
-        self._connection = connection
-        self._definition = definition
-        if context is None:
-            context = {}
-        self._context = context
-        self._heading = None
+    # ---------- abstract properties ------------ #
+    @property
+    @abc.abstractmethod
+    def table_name(self):
+        """
+        :return: the name of the table in the database
+        """
+        pass
 
     @property
-    def schema_name(self):
-        return self._schema_name
+    @abc.abstractmethod
+    def database(self):
+        """
+        :return: string containing the database name on the server
+        """
+        pass
 
     @property
-    def connection(self):
-        return self._connection
-
-    @property
+    @abc.abstractmethod
     def definition(self):
-        return self._definition
+        """
+        :return: a string containing the table definition using the DataJoint DDL
+        """
+        pass
 
     @property
+    @abc.abstractmethod
     def context(self):
-        return self._context
+        """
+        :return: a dict with other relations that can be referenced by foreign keys
+        """
+        pass
+
+    # --------- base relation functionality --------- #
+    @property
+    def is_declared(self):
+        cur = self.query("SHOW DATABASES LIKE '{database}'".format(database=self.database))
+        return cur.rowcount == 1
 
     @property
     def heading(self):
+        """
+        Required by relational operand
+        :return: a datajoint.Heading object
+        """
+        if self._heading is None:
+            if not self.is_declared and self.definition:
+                self.declare()
+            if self.is_declared:
+                self._heading = Heading.init_from_database(
+                    self.connection, self.database, self.table_name)
+
         return self._heading
-
-    @heading.setter
-    def heading(self, new_heading):
-        self._heading = new_heading
-
-    @property
-    def table_prefix(self):
-        return ''
-
-    @property
-    def table_name(self):
-        """
-        TODO: allow table kind to be specified
-        :return: name of the table. This is equal to table_prefix + class name with underscores
-        """
-        return self._table_name
-
-    @property
-    def definition(self):
-        return self._definition
-
-
-    # ============================== Shared implementations ==============================
-
-    @property
-    def full_table_name(self):
-        """
-        :return: full name of the associated table
-        """
-        return '`%s`.`%s`' % (self.schema_name, self.table_name)
 
     @property
     def from_clause(self):
-        return self.full_table_name
-
-    # TODO: consider if this should be a class method for derived classes
-    def load_heading(self, forced=False):
         """
-        Load the heading information for this table. If the table does not exist in the database server, Heading will be
-        set to None if the table is not yet defined in the database.
+        Required by the Relational class, this property specifies the contents of the FROM clause 
+        for the SQL SELECT statements.
+        :return:
         """
-        pass
-        # TODO: I want to be able to tell whether load_heading has already been attempted in the past... `self.heading is None` is not informative
-        # TODO: make sure to assign new heading to self.heading, not to self._heading or any other direct variables
-
-    @property
-    def is_declared(self):
-        #TODO: this implementation is rather expensive and stupid
-        # - if table is not declared yet, repeated call to this method causes loading attempt each time
-
-        if self.heading is None:
-            self.load_heading()
-        return self.heading is not None
-
+        return '`%s`.`%s`' % (self.database, self.table_name)
 
     def declare(self):
         """
@@ -131,47 +100,15 @@ class Relation(RelationalOperand):
             # verify that declaration completed successfully
             if not self.is_declared:
                 raise DataJointError(
-                    'FreeRelation could not be declared for %s' % self.class_name)
+                    'BaseRelation could not be declared for %s' % self.class_name)
 
-    @staticmethod
-    def _field_to_sql(field):  # TODO move this into Attribute Tuple
-        """
-        Converts an attribute definition tuple into SQL code.
-        :param field: attribute definition
-        :rtype : SQL code
-        """
-        mysql_constants = ['CURRENT_TIMESTAMP']
-        if field.nullable:
-            default = 'DEFAULT NULL'
-        else:
-            default = 'NOT NULL'
-            # if some default specified
-            if field.default:
-                # enclose value in quotes except special SQL values or already enclosed
-                quote = field.default.upper() not in mysql_constants and field.default[0] not in '"\''
-                default += ' DEFAULT ' + ('"%s"' if quote else "%s") % field.default
-        if any((c in r'\"' for c in field.comment)):
-            raise DataJointError('Illegal characters in attribute comment "%s"' % field.comment)
-
-        return '`{name}` {type} {default} COMMENT "{comment}",\n'.format(
-            name=field.name, type=field.type, default=default, comment=field.comment)
-
-
-
-    @property
-    def primary_key(self):
-        """
-        :return: primary key of the table
-        """
-        return self.heading.primary_key
-
-    def iter_insert(self, iter, **kwargs):
+    def iter_insert(self, rows, **kwargs):
         """
         Inserts an entire batch of entries. Additional keyword arguments are passed to insert.
 
         :param iter: Must be an iterator that generates a sequence of valid arguments for insert.
         """
-        for row in iter:
+        for row in rows:
             self.insert(row, **kwargs)
 
     def batch_insert(self, data, **kwargs):
@@ -285,7 +222,7 @@ class Relation(RelationalOperand):
         """
         position = ' FIRST' if after is None else (
             ' AFTER %s' % after if after else '')
-        sql = self.field_to_sql(parse_attribute_definition(definition))
+        sql = field_to_sql(parse_attribute_definition(definition))
         self._alter('ADD COLUMN %s%s' % (sql[:-2], position))
 
     def drop_attribute(self, attr_name):
@@ -307,7 +244,7 @@ class Relation(RelationalOperand):
         :param attr_name: field that is redefined
         :param new_definition: new definition of the field
         """
-        sql = self.field_to_sql(parse_attribute_definition(new_definition))
+        sql = field_to_sql(parse_attribute_definition(new_definition))
         self._alter('CHANGE COLUMN `%s` %s' % (attr_name, sql[:-2]))
 
     def erd(self, subset=None):
@@ -333,28 +270,6 @@ class Relation(RelationalOperand):
         # TODO: place table definition sync mechanism
 
     @staticmethod
-    def _parse_index_def(line):
-        """
-        Parses index definition.
-
-        :param line: definition line
-        :return: groupdict with index info
-        """
-        line = line.strip()
-        index_regexp = re.compile("""
-        ^(?P<unique>UNIQUE)?\s*INDEX\s*      # [UNIQUE] INDEX
-        \((?P<attributes>[^\)]+)\)$          # (attr1, attr2)
-        """, re.I + re.X)
-        m = index_regexp.match(line)
-        assert m, 'Invalid index declaration "%s"' % line
-        index_info = m.groupdict()
-        attributes = re.split(r'\s*,\s*', index_info['attributes'].strip())
-        index_info['attributes'] = attributes
-        assert len(attributes) == len(set(attributes)), \
-            'Duplicate attributes in index declaration "%s"' % line
-        return index_info
-
-
     def _declare(self):
         """
         Declares the table in the database if no table in the database matches this object.
@@ -377,7 +292,7 @@ class Relation(RelationalOperand):
                 field = p.heading[key]
                 if field.name not in primary_key_fields:
                     primary_key_fields.add(field.name)
-                    sql += self._field_to_sql(field)
+                    sql += field_to_sql(field)
                 else:
                     logger.debug('Field definition of {} in {} ignored'.format(
                         field.name, p.full_class_name))
@@ -392,7 +307,7 @@ class Relation(RelationalOperand):
                                      'Ensure that the attribute is not already declared '
                                      'in referenced tables'.format(key=field.name))
             primary_key_fields.add(field.name)
-            sql += self._field_to_sql(field)
+            sql += field_to_sql(field)
 
         # add secondary foreign key attributes
         for r in referenced:
@@ -400,12 +315,12 @@ class Relation(RelationalOperand):
                 field = r.heading[key]
                 if field.name not in primary_key_fields | non_key_fields:
                     non_key_fields.add(field.name)
-                    sql += self._field_to_sql(field)
+                    sql += field_to_sql(field)
 
         # add dependent attributes
         for field in (f for f in field_defs if not f.in_key):
             non_key_fields.add(field.name)
-            sql += self._field_to_sql(field)
+            sql += field_to_sql(field)
 
         # add primary key declaration
         assert len(primary_key_fields) > 0, 'table must have a primary key'
@@ -475,7 +390,7 @@ class Relation(RelationalOperand):
                 ref_list = parents if in_key else referenced
                 ref_list.append(self.lookup_name(ref_name))
             elif re.match(r'^(unique\s+)?index[^:]*$', line, re.I):
-                index_defs.append(self._parse_index_def(line))
+                index_defs.append(parse_index_definition(line))
             elif attribute_regexp.match(line):
                 field_defs.append(parse_attribute_definition(line, in_key))
             else:
@@ -497,147 +412,8 @@ class Relation(RelationalOperand):
             for attr in parts[1:]:
                 ref = getattr(ref, attr)
         except (KeyError, AttributeError):
-            raise DataJointError('Foreign reference %s could not be resolved. Please make sure the name exists'
-                                 'in the context of the class' % name)
+            raise DataJointError(
+                'Foreign key reference to %s could not be resolved.'
+                'Please make sure the name exists'
+                'in the context of the class' % name)
         return ref
-
-class ClassRelation(Relation, metaclass=abc.ABCMeta):
-    """
-    A relation object that is handled at class level. All instances of the derived classes
-    share common connection and schema binding
-    """
-
-    _connection = None  # connection information
-    _schema_name = None  # name of schema this relation belongs to
-    _heading = None  # heading information for this relation
-    _context = None    # name reference lookup context
-
-    def __init__(self, schema_name=None, connection=None, context=None):
-        """
-        Use this constructor to specify class level
-        """
-        if schema_name is not None:
-            self.schema_name = schema_name
-
-        # TODO: Think about this implementation carefully
-        if connection is not None:
-            self.connection = connection
-        elif self.connection is None:
-            self.connection = conn()
-
-        if context is not None:
-            self.context = context
-        elif self.context is None:
-            self.context = {} # initialize with an empty dictionary
-
-    @property
-    def schema_name(self):
-        return self.__class__._schema_name
-
-    @schema_name.setter
-    def schema_name(self, new_schema_name):
-        if self.schema_name is not None:
-            logger.warn('Overriding associated schema for class %s'
-                        '- this will affect all existing instances!' % self.__class__.__name__)
-        self.__class__._schema_name = new_schema_name
-
-    @property
-    def connection(self):
-        return self.__class__._connection
-
-    @connection.setter
-    def connection(self, new_connection):
-        if self.connection is not None:
-            logger.warn('Overriding associated connection for class %s'
-                        '- this will affect all existing instances!' % self.__class__.__name__)
-        self.__class__._connection = new_connection
-
-    @property
-    def context(self):
-        # TODO: should this be a copy or the original?
-        return self.__class__._context.copy()
-
-    @context.setter
-    def context(self, new_context):
-        if self.context is not None:
-            logger.warn('Overriding associated reference context for class %s'
-                        '- this will affect all existing instances!' % self.__class__.__name__)
-        self.__class__._context = new_context
-
-    @property
-    def heading(self):
-        return self.__class__._heading
-
-    @heading.setter
-    def heading(self, new_heading):
-        self.__class__._heading = new_heading
-
-    @abc.abstractproperty
-    def definition(self):
-        """
-        Inheriting class must override this property with a valid table definition string
-        """
-        pass
-
-    @abc.abstractproperty
-    def table_prefix(self):
-        pass
-
-
-class ManualRelation(ClassRelation):
-    @property
-    def table_prefix(self):
-        return ""
-
-
-class AutoRelation(ClassRelation):
-    pass
-
-
-class ComputedRelation(AutoRelation):
-    @property
-    def table_prefix(self):
-        return "_"
-
-
-
-
-
-def parse_attribute_definition(line, in_key=False):
-    """
-    Parse attribute definition line in the declaration and returns
-    an attribute tuple.
-
-    :param line: attribution line
-    :param in_key: set to True if attribute is in primary key set
-    :returns: attribute tuple
-    """
-    line = line.strip()
-    attribute_regexp = re.compile("""
-    ^(?P<name>[a-z][a-z\d_]*)\s*             # field name
-    (=\s*(?P<default>\S+(\s+\S+)*?)\s*)?     # default value
-    :\s*(?P<type>\w[^\#]*[^\#\s])\s*         # datatype
-    (\#\s*(?P<comment>\S*(\s+\S+)*)\s*)?$    # comment
-    """, re.X)
-    m = attribute_regexp.match(line)
-    if not m:
-        raise DataJointError('Invalid field declaration "%s"' % line)
-    attr_info = m.groupdict()
-    if not attr_info['comment']:
-        attr_info['comment'] = ''
-    if not attr_info['default']:
-        attr_info['default'] = ''
-    attr_info['nullable'] = attr_info['default'].lower() == 'null'
-    assert (not re.match(r'^bigint', attr_info['type'], re.I) or not attr_info['nullable']), \
-        'BIGINT attributes cannot be nullable in "%s"' % line
-
-    return Heading.AttrTuple(
-        in_key=in_key,
-        autoincrement=None,
-        numeric=None,
-        string=None,
-        is_blob=None,
-        computation=None,
-        dtype=None,
-        **attr_info
-    )
