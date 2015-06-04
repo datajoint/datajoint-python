@@ -24,7 +24,7 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
     It also handles the table declaration based on its definition property
     """
 
-    _heading = None
+    __heading = None
 
     # ---------- abstract properties ------------ #
     @property
@@ -62,7 +62,11 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
     # --------- base relation functionality --------- #
     @property
     def is_declared(self):
-        cur = self.query("SHOW DATABASES LIKE '{database}'".format(database=self.database))
+        if self.__heading is not None:
+            return True
+        cur = self.query(
+            'SHOW TABLE STATUS FROM `{database}` WHERE name="{table_name}"'.format(
+                table_name=self.table_name))
         return cur.rowcount == 1
 
     @property
@@ -71,14 +75,13 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         Required by relational operand
         :return: a datajoint.Heading object
         """
-        if self._heading is None:
+        if self.__heading is None:
             if not self.is_declared and self.definition:
                 self.declare()
             if self.is_declared:
-                self._heading = Heading.init_from_database(
+                self.__heading = Heading.init_from_database(
                     self.connection, self.database, self.table_name)
-
-        return self._heading
+        return self.__heading
 
     @property
     def from_clause(self):
