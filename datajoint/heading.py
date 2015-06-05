@@ -91,13 +91,13 @@ class Heading:
         return iter(self.attributes)
 
     @classmethod
-    def init_from_database(cls, conn, dbname, table_name):
+    def init_from_database(cls, conn, database, table_name):
         """
         initialize heading from a database table
         """
         cur = conn.query(
-            'SHOW FULL COLUMNS FROM `{table_name}` IN `{dbname}`'.format(
-                table_name=table_name, dbname=dbname), as_dict=True)
+            'SHOW FULL COLUMNS FROM `{table_name}` IN `{database}`'.format(
+                table_name=table_name, database=database), as_dict=True)
         attributes = cur.fetchall()
 
         rename_map = {
@@ -147,8 +147,8 @@ class Heading:
 
             attr['computation'] = None
             if not (attr['numeric'] or attr['string'] or attr['is_blob']):
-                raise DataJointError('Unsupported field type {field} in `{dbname}`.`{table_name}`'.format(
-                    field=attr['type'], dbname=dbname, table_name=table_name))
+                raise DataJointError('Unsupported field type {field} in `{database}`.`{table_name}`'.format(
+                    field=attr['type'], database=database, table_name=table_name))
             attr.pop('Extra')
 
             # fill out dtype. All floats and non-nullable integers are turned into specific dtypes

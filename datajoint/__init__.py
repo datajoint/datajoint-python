@@ -5,6 +5,8 @@ __author__ = "Dimitri Yatsenko, Edgar Walker, and Fabian Sinz at Baylor College 
 __version__ = "0.2"
 __all__ = ['__author__', '__version__',
            'Connection', 'Heading', 'Relation', 'FreeRelation', 'Not',
+           'BaseRelation',
+           'ManualRelation', 'LookupRelation', 'ImportedRelation', 'ComputedRelation',
            'AutoPopulate', 'conn', 'DataJointError', 'blob']
 
 
@@ -28,11 +30,9 @@ class TransactionError(DataJointError):
         f, args, kwargs = self.operations
         return f(*args, **kwargs)
 
-
     @property
     def culprit(self):
         return self.operations[0].__name__
-
 
 
 # ----------- loads local configuration from file ----------------
@@ -55,9 +55,9 @@ logger.setLevel(log_levels[config['loglevel']])
 
 # ------------- flatten import hierarchy -------------------------
 from .connection import conn, Connection
-from .relation import Relation
+from .user_relations import ManualRelation, LookupRelation, ImportedRelation, ComputedRelation
+from .base_relation import BaseRelation
 from .autopopulate import AutoPopulate
 from . import blob
 from .relational_operand import Not
-from .relation import FreeRelation
 from .heading import Heading
