@@ -1,4 +1,4 @@
-The Python version of DataJoint is undergoing major revamping to match the features and capabilities of its more mature MATLAB counterpart. We expect to complete the revamp within a few weeks: August -- September, 2014.
+The Python version of DataJoint is undergoing major revamping to match the features and capabilities of its more mature MATLAB counterpart. We expect to complete the revamp within a few weeks: August -- September, 2015.
 
 DataJoint for Python is a high-level programming interface for relational databases designed to support data processing chains in science labs. DataJoint is built on the foundation of the relational data model and prescribes a consistent method for organizing, populating, and querying data.
 
