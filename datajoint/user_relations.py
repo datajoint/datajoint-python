@@ -1,30 +1,30 @@
-from .relation_class import RelationClass
+from .relations import ClassBoundRelation
 from .autopopulate import AutoPopulate
 from .utils import from_camel_case
 
 
-class ManualRelation(RelationClass):
+class Manual(ClassBoundRelation):
     @property
     @classmethod
     def table_name(cls):
         return from_camel_case(cls.__name__)
 
 
-class LookupRelation(RelationClass):
+class Lookup(ClassBoundRelation):
     @property
     @classmethod
     def table_name(cls):
         return '#' + from_camel_case(cls.__name__)
 
 
-class ImportedRelation(RelationClass, AutoPopulate):
+class Imported(ClassBoundRelation, AutoPopulate):
     @property
     @classmethod
     def table_name(cls):
         return "_" + from_camel_case(cls.__name__)
 
 
-class ComputedRelation(RelationClass, AutoPopulate):
+class Computed(ClassBoundRelation, AutoPopulate):
     @property
     @classmethod
     def table_name(cls):
