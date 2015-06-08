@@ -14,12 +14,12 @@ from .heading import Heading
 logger = logging.getLogger(__name__)
 
 
-class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
+class Relation(RelationalOperand, metaclass=abc.ABCMeta):
     """
-    BaseRelation is an abstract class that represents a base relation, i.e. a table in the database.
+    Relation is an abstract class that represents a base relation, i.e. a table in the database.
     To make it a concrete class, override the abstract properties specifying the connection,
     table name, database, context, and definition.
-    A BaseRelation implements insert and delete methods in addition to inherited relational operators.
+    A Relation implements insert and delete methods in addition to inherited relational operators.
     It also loads table heading and dependencies from the database.
     It also handles the table declaration based on its definition property
     """
@@ -103,7 +103,7 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
             # verify that declaration completed successfully
             if not self.is_declared:
                 raise DataJointError(
-                    'BaseRelation could not be declared for %s' % self.class_name)
+                    'Relation could not be declared for %s' % self.class_name)
 
     def iter_insert(self, rows, **kwargs):
         """

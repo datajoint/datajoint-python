@@ -3,7 +3,7 @@ import logging
 from collections import namedtuple
 import pymysql
 from .connection import conn
-from .base_relation import BaseRelation
+from .abstract_relation import Relation
 from . import DataJointError
 
 
@@ -17,7 +17,7 @@ SharedInfo = namedtuple(
 
 def schema(database, context, connection=None):
     """
-    Returns a schema decorator that can be used to associate a BaseRelation class to a
+    Returns a schema decorator that can be used to associate a Relation class to a
     specific database with :param name:. Name reference to other tables in the table definition
     will be resolved by looking up the corresponding key entry in the passed in context dictionary.
     It is most common to set context equal to the return value of call to locals() in the module.
@@ -27,7 +27,7 @@ def schema(database, context, connection=None):
     :param context: dictionary used to resolve (any) name references within the table definition string
     :param connection: connection object to the database server. If ommited, will try to establish connection according to
     config values
-    :return: a decorator function to be used on BaseRelation derivative classes
+    :return: a decorator function to be used on Relation derivative classes
     """
     if connection is None:
         connection = conn()
@@ -61,11 +61,11 @@ def schema(database, context, connection=None):
     return decorator
 
 
-class RelationClass(BaseRelation):
+class ClassBoundRelation(Relation):
     """
     Abstract class for dedicated table classes.
-    Subclasses of RelationClass are dedicated interfaces to a single table.
-    The main purpose of RelationClass is to encapsulated sharedInfo containing the table heading
+    Subclasses of ClassBoundRelation are dedicated interfaces to a single table.
+    The main purpose of ClassBoundRelation is to encapsulated sharedInfo containing the table heading
     and dependency information shared by all instances of
     """
 
