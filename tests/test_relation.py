@@ -4,6 +4,12 @@
 # __author__ = 'fabee'
 #
 # from .schemata.schema1 import test1, test4
+from .schemata.test1 import Subjects
+
+
+def test_instantiate_relation():
+    s = Subjects()
+
 #
 # from . import BASE_CONN, CONN_INFO, PREFIX, cleanup
 # from datajoint.connection import Connection

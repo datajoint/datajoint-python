@@ -43,3 +43,4 @@ from .autopopulate import AutoPopulate
 from . import blob
 from .relational_operand import Not
 from .heading import Heading
+from .relation import schema

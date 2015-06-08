@@ -1,22 +1,25 @@
-# """
-# Test 1 Schema definition
-# """
-# __author__ = 'eywalker'
-#
-# import datajoint as dj
+"""
+Test 1 Schema definition
+"""
+__author__ = 'eywalker'
+
+import datajoint as dj
 # from .. import schema2
-#
-#
-# class Subjects(dj.Relation):
-#     definition = """
-#     test1.Subjects (manual)     # Basic subject info
-#
-#     subject_id       : int      # unique subject id
-#     ---
-#     real_id                     :  varchar(40)    #  real-world name
-#     species = "mouse"           : enum('mouse', 'monkey', 'human')   # species
-#     """
-#
+from .. import PREFIX
+
+testschema = dj.schema(PREFIX + '_test1', locals())
+
+@testschema
+class Subjects(dj.Manual):
+    definition = """
+    # Basic subject info
+
+    subject_id       : int      # unique subject id
+    ---
+    real_id                     :  varchar(40)    #  real-world name
+    species = "mouse"           : enum('mouse', 'monkey', 'human')   # species
+    """
+
 # # test for shorthand
 # class Animals(dj.Relation):
 #     definition = """

@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 SharedInfo = namedtuple(
     'SharedInfo',
-    ('database', 'context', 'connection', 'heading', 'parents', 'children', 'references', 'referenced'))
+    ('database', 'context', 'connection', 'heading'))
 
 
 
@@ -101,13 +101,13 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         pass
 
-    @classproperty
-    @abc.abstractmethod
-    def database(cls):
-        """
-        :return: string containing the database name on the server
-        """
-        pass
+    # @classproperty
+    # @abc.abstractmethod
+    # def database(cls):
+    #     """
+    #     :return: string containing the database name on the server
+    #     """
+    #     pass
 
     @classproperty
     @abc.abstractmethod
@@ -117,13 +117,13 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         pass
 
-    @classproperty
-    @abc.abstractmethod
-    def context(cls):
-        """
-        :return: a dict with other relations that can be referenced by foreign keys
-        """
-        pass
+    # @classproperty
+    # @abc.abstractmethod
+    # def context(cls):
+    #     """
+    #     :return: a dict with other relations that can be referenced by foreign keys
+    #     """
+    #     pass
 
     # --------- base relation functionality --------- #
     @classproperty
@@ -132,7 +132,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
             return True
         cur = cls._shared_info.connection.query(
             'SHOW TABLE STATUS FROM `{database}` WHERE name="{table_name}"'.format(
-                table_name=cls.table_name))
+                database=cls.database , table_name=cls.table_name))
         return cur.rowcount == 1
 
     @classproperty
