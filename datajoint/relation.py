@@ -5,7 +5,7 @@ import logging
 import re
 import abc
 
-from . import DataJointError, config, TransactionError
+from . import DataJointError, config
 import pymysql
 from datajoint import DataJointError, conn
 from .relational_operand import RelationalOperand
@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 SharedInfo = namedtuple(
     'SharedInfo',
     ('database', 'context', 'connection', 'heading', 'parents', 'children', 'references', 'referenced'))
+
 
 
 class classproperty:
@@ -500,7 +501,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
 
         :return: the connection object
         """
-        return cls.connection
+        return cls._shared_info.connection
 
     @classproperty
     def database(cls):

@@ -17,7 +17,7 @@ def conn_container():
     """
     _connection = None  # persistent connection object used by dj.conn()
 
-    def conn_function(host=None, user=None, passwd=None, init_fun=None, reset=False):
+    def conn_function(host=None, user=None, passwd=None, init_fun=None, reset=False): # TODO: thin wrapping layer to mimic singleton
         """
         Manage a persistent connection object.
         This is one of several ways to configure and access a datajoint connection.

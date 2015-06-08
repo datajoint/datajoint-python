@@ -1,5 +1,5 @@
 from .relational_operand import RelationalOperand
-from . import DataJointError, TransactionError, Relation
+from . import DataJointError, Relation
 import abc
 import logging
 

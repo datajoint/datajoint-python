@@ -37,8 +37,8 @@ logger.setLevel(log_levels[config['loglevel']])
 
 # ------------- flatten import hierarchy -------------------------
 from .connection import conn, Connection
-from .user_relations import Manual, Lookup, Imported, Computed
 from .relation import Relation
+from .user_relations import Manual, Lookup, Imported, Computed
 from .autopopulate import AutoPopulate
 from . import blob
 from .relational_operand import Not
