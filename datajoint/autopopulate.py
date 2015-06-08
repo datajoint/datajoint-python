@@ -66,18 +66,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
             else:
                 logger.info('Populating: ' + str(key))
                 try:
-                    for attempts in range(max_attempts):
-                        try:
-                            self._make_tuples(dict(key))
-                            break
-                        except TransactionError as tr_err:
-                            self.conn.cancel_transaction()
-                            tr_err.resolve()
-                            self.conn.start_transaction()
-                            logger.info('Transaction error in {0:s}.'.format(tr_err.culprit))
-                    else:
-                        raise DataJointError(
-                            '%s._make_tuples failed after %i attempts, giving up' % (self.__class__,max_attempts))
+                    self._make_tuples(dict(key))
                 except Exception as error:
                     self.conn.cancel_transaction()
                     if not suppress_errors:

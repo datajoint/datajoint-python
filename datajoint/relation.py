@@ -334,9 +334,8 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         :param alter_statement: alter statement
         """
         if cls.connection.in_transaction:
-            raise TransactionError(
-                u"_alter is currently in transaction. Operation not allowed to avoid implicit commits.",
-                cls._alter, args=(alter_statement,))
+            raise DataJointError(
+                u"_alter is currently in transaction. Operation not allowed to avoid implicit commits.")
 
         sql = 'ALTER TABLE %s %s' % (cls.full_table_name, alter_statement)
         cls.connection.query(sql)
@@ -349,8 +348,8 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         Declares the table in the database if no table in the database matches this object.
         """
         if cls.connection.in_transaction:
-            raise TransactionError(
-                u"_declare is currently in transaction. Operation not allowed to avoid implicit commits.", cls._declare)
+            raise DataJointError(
+                u"_declare is currently in transaction. Operation not allowed to avoid implicit commits.")
 
         if not cls.definition:  # if empty definition was supplied
             raise DataJointError('Table definition is missing!')
