@@ -65,11 +65,8 @@ def schema(database, context, connection=None):
             context=context,
             connection=connection,
             heading=None,
-            parents=[],
-            children=[],
-            references=[],
-            referenced=[]
         )
+        cls.declare()
         return cls
 
     return decorator
