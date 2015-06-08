@@ -1,4 +1,4 @@
-from .relations import ClassBoundRelation
+from datajoint.relation import ClassBoundRelation
 from .autopopulate import AutoPopulate
 from .utils import from_camel_case
 

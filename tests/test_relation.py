@@ -12,7 +12,7 @@ from nose.tools import assert_raises, assert_equal, assert_regexp_matches, asser
 from datajoint import DataJointError, TransactionError, AutoPopulate, Relation
 import numpy as np
 from numpy.testing import assert_array_equal
-from datajoint.abstract_relation import FreeRelation
+from datajoint.relation import FreeRelation
 import numpy as np
 
 
