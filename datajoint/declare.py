@@ -149,8 +149,8 @@ def declare(relation):
                 primary_key_fields.add(field.name)
                 sql += field_to_sql(field)
             else:
-                logger.debug('Field definition of {} in {} ignored'.format(
-                    field.name, p.full_class_name))
+                logger.debug(
+                    'Field definition of {} in {} ignored'.format(field.name, p.full_class_name))
 
     # add newly defined primary key fields
     for field in (f for f in field_defs if f.in_key):

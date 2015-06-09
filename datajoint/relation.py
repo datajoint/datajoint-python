@@ -1,4 +1,4 @@
-from types import SimpleNamespace
+from collections import namedtuple
 from collections.abc import Mapping
 import numpy as np
 import logging
@@ -138,10 +138,10 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         self.iter_insert(data.__iter__(), **kwargs)
 
+    @property
     def full_table_name(self):
         return r"`{0:s}`.`{1:s}`".format(self.database, self.table_name)
 
-    @classmethod
     def insert(self, tup, ignore_errors=False, replace=False):
         """
         Insert one data record or one Mapping (like a dictionary).
