@@ -14,9 +14,6 @@ from .heading import Heading
 
 logger = logging.getLogger(__name__)
 
-TableLink = namedtuple('TableLink',
-                       ('database', 'context', 'connection', 'heading'))
-
 
 def schema(database, context, connection=None):
     """
@@ -47,13 +44,16 @@ def schema(database, context, connection=None):
         """
         The decorator declares the table and binds the class to the database table
         """
-        cls._table_link = TableLink(
-            database=database,
-            context=context,
-            connection=connection,
-            heading=Heading()
-        )
-        declare(cls())
+        cls.database = database
+        cls._connection = connection
+        cls._heading = Heading()
+        instance = cls() if isinstance(cls, type) else cls
+        if not cls.heading:
+            cls.connection.query(
+                declare(
+                    table_name=instance.full_table_name,
+                    definition=instance.definition,
+                    context=context))
         return cls
 
     return decorator
@@ -66,15 +66,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
     To make it a concrete class, override the abstract properties specifying the connection,
     table name, database, context, and definition.
     A Relation implements insert and delete methods in addition to inherited relational operators.
-    It also loads table heading and dependencies from the database.
-    It also handles the table declaration based on its definition property
     """
-
-    _table_link = None
-
-    def __init__(self):
-        if self._table_link is None:
-            raise DataJointError('The class must define _table_link')
 
     # ---------- abstract properties ------------ #
     @property
@@ -93,27 +85,17 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         pass
 
-    # -------------- table info ----------------- #
+    # -------------- required by RelationalOperand ----------------- #
     @property
     def connection(self):
-        return self._table_link.connection
-
-    @property
-    def database(self):
-        return self._table_link.database
-
-    @property
-    def context(self):
-        return self._table_link.context
+        return self._connection
 
     @property
     def heading(self):
-        heading = self._table_link.heading
-        if not heading:
-            heading.init_from_database(self.connection, self.database, self.table_name)
-        return heading
+        if not self._heading:
+            self._heading.init_from_database(self.connection, self.database, self.table_name)
+        return self._heading
 
-    # --------- SQL functionality --------- #
     @property
     def from_clause(self):
         """
@@ -130,6 +112,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         for row in rows:
             self.insert(row, **kwargs)
 
+    # --------- SQL functionality --------- #
     def batch_insert(self, data, **kwargs):
         """
         Inserts an entire batch of entries. Additional keyword arguments are passed to insert.
@@ -279,4 +262,4 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
             raise DataJointError("Table definition cannot be altered during a transaction.")
         sql = 'ALTER TABLE %s %s' % (self.full_table_name, alter_statement)
         self.connection.query(sql)
-        self._table_link.heading = None
+        self.heading.init_from_database(self.connection, self.database, self.table_name)

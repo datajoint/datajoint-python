@@ -2,8 +2,6 @@ import re
 import pyparsing as pp
 import logging
 
-from . import DataJointError
-
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +117,7 @@ def parse_declaration(cls):
     return table_info, parents, referenced, field_defs, index_defs
 
 
-def declare(relation):
+def declare(full_table_name,  definition, context):
     """
     Declares the table in the database if it does not exist already
     """

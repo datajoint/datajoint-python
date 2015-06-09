@@ -5,25 +5,25 @@ from .autopopulate import AutoPopulate
 from . import DataJointError
 
 
-class Manual(Relation, metaclass=abc.ABCMeta):
+class Manual(Relation):
     @property
     def table_name(self):
         return from_camel_case(self.__class__.__name__)
 
 
-class Lookup(Relation, metaclass=abc.ABCMeta):
+class Lookup(Relation):
     @property
     def table_name(self):
         return '#' + from_camel_case(self.__class__.__name__)
 
 
-class Imported(Relation, AutoPopulate, metaclass=abc.ABCMeta):
+class Imported(Relation, AutoPopulate):
     @property
     def table_name(self):
         return "_" + from_camel_case(self.__class__.__name__)
 
 
-class Computed(Relation, AutoPopulate, metaclass=abc.ABCMeta):
+class Computed(Relation, AutoPopulate):
     @property
     def table_name(self):
         return "__" + from_camel_case(self.__class__.__name__)
@@ -38,7 +38,7 @@ class Subordinate:
         return None
 
     def _make_tuples(self, key):
-        raise NotImplementedError('_make_tuples not defined.')
+        raise NotImplementedError('Subtables should not be populated directly.')
 
 
 # ---------------- utilities --------------------
