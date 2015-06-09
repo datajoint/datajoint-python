@@ -53,29 +53,29 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         if not isinstance(self.populate_relation, RelationalOperand):
             raise DataJointError('Invalid populate_relation value')
 
-        self.conn.cancel_transaction()  # rollback previous transaction, if any
+        self.connection.cancel_transaction()  # rollback previous transaction, if any
 
         if not isinstance(self, Relation):
             raise DataJointError('Autopopulate is a mixin for Relation and must therefore subclass Relation')
 
         unpopulated = (self.populate_relation - self.target) & restriction
         for key in unpopulated.project():
-            self.conn.start_transaction()
+            self.connection.start_transaction()
             if key in self.target:  # already populated
-                self.conn.cancel_transaction()
+                self.connection.cancel_transaction()
             else:
                 logger.info('Populating: ' + str(key))
                 try:
                     self._make_tuples(dict(key))
                 except Exception as error:
-                    self.conn.cancel_transaction()
+                    self.connection.cancel_transaction()
                     if not suppress_errors:
                         raise
                     else:
                         logger.error(error)
                         error_list.append((key, error))
                 else:
-                    self.conn.commit_transaction()
+                    self.connection.commit_transaction()
         logger.info('Done populating.')
         return error_list
 

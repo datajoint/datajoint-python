@@ -21,7 +21,6 @@ SharedInfo = namedtuple(
     ('database', 'context', 'connection', 'heading'))
 
 
-
 class classproperty:
     def __init__(self, getf):
         self._getf = getf
@@ -88,7 +87,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
 
     _shared_info = None
 
-    def __init__(self):  # TODO: Think about it
+    def __init__(self):
         if self._shared_info is None:
             raise DataJointError('The class must define _shared_info')
 
@@ -478,21 +477,8 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
     def lookup_name(cls, name):
         """
         Lookup the referenced name in the context dictionary
-
-        e.g. for reference `common.Animals`, it will first check if `context` dictionary contains key
-        `common`. If found, it then checks for attribute `Animals` in `common`, and returns the result.
         """
-        parts = name.strip().split('.')
-        try:
-            ref = cls.context.get(parts[0])
-            for attr in parts[1:]:
-                ref = getattr(ref, attr)
-        except (KeyError, AttributeError):
-            raise DataJointError(
-                'Foreign key reference to %s could not be resolved.'
-                'Please make sure the name exists'
-                'in the context of the class' % name)
-        return ref
+        return eval(name, locals=cls.context)
 
     @classproperty
     def connection(cls):

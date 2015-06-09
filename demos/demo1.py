@@ -1,9 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Tue Aug 26 17:42:52 2014
-
-@author: dimitri
-"""
 
 import datajoint as dj
 
