@@ -196,7 +196,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         :return: size of data and indices in MiB taken by the table on the storage device
         """
         ret = self.connection.query(
-            'SHOW TABLE STATUS FROM `(database}` WHERE NAME="{table}"'.format(
+            'SHOW TABLE STATUS FROM `{database}` WHERE NAME="{table}"'.format(
                 database=self.database, table=self.table_name), as_dict=True
         ).fetchone()
         return (ret['Data_length'] + ret['Index_length'])/1024**2
