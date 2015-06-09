@@ -18,6 +18,9 @@ CONN_INFO = {
     'user': environ.get('DJ_TEST_USER', 'datajoint'),
     'passwd': environ.get('DJ_TEST_PASSWORD', 'datajoint')
 }
+
+conn = dj.conn(**CONN_INFO)
+
 # Prefix for all databases used during testing
 PREFIX = environ.get('DJ_TEST_DB_PREFIX', 'dj')
 # Bare connection used for verification of query results
@@ -31,7 +34,6 @@ def setup():
 
 def teardown():
     cleanup()
-
 
 def cleanup():
     """
@@ -52,36 +54,36 @@ def cleanup():
         cur.execute('DROP DATABASE `{}`'.format(db))
     cur.execute('SET FOREIGN_KEY_CHECKS=1') # set foreign key check back on
     cur.execute("COMMIT")
-
-def setup_sample_db():
-    """
-    Helper method to setup databases with tables to be used
-    during the test
-    """
-    cur = BASE_CONN.cursor()
-    cur.execute("CREATE DATABASE IF NOT EXISTS `{}_test1`".format(PREFIX))
-    cur.execute("CREATE DATABASE IF NOT EXISTS `{}_test2`".format(PREFIX))
-    query1 = """
-    CREATE TABLE `{prefix}_test1`.`subjects`
-    (
-      subject_id      SMALLINT        COMMENT 'Unique subject ID',
-      subject_name    VARCHAR(255)    COMMENT 'Subject name',
-      subject_email   VARCHAR(255)    COMMENT 'Subject email address',
-      PRIMARY KEY (subject_id)
-    )
-    """.format(prefix=PREFIX)
-    cur.execute(query1)
-    query2 = """
-    CREATE TABLE `{prefix}_test2`.`experimenter`
-    (
-      experimenter_id       SMALLINT        COMMENT 'Unique experimenter ID',
-      experimenter_name     VARCHAR(255)    COMMENT 'Experimenter name',
-      PRIMARY KEY (experimenter_id)
-    )""".format(prefix=PREFIX)
-    cur.execute(query2)
-
-
-
-
-
-
+#
+# def setup_sample_db():
+#     """
+#     Helper method to setup databases with tables to be used
+#     during the test
+#     """
+#     cur = BASE_CONN.cursor()
+#     cur.execute("CREATE DATABASE IF NOT EXISTS `{}_test1`".format(PREFIX))
+#     cur.execute("CREATE DATABASE IF NOT EXISTS `{}_test2`".format(PREFIX))
+#     query1 = """
+#     CREATE TABLE `{prefix}_test1`.`subjects`
+#     (
+#       subject_id      SMALLINT        COMMENT 'Unique subject ID',
+#       subject_name    VARCHAR(255)    COMMENT 'Subject name',
+#       subject_email   VARCHAR(255)    COMMENT 'Subject email address',
+#       PRIMARY KEY (subject_id)
+#     )
+#     """.format(prefix=PREFIX)
+#     cur.execute(query1)
+#     query2 = """
+#     CREATE TABLE `{prefix}_test2`.`experimenter`
+#     (
+#       experimenter_id       SMALLINT        COMMENT 'Unique experimenter ID',
+#       experimenter_name     VARCHAR(255)    COMMENT 'Experimenter name',
+#       PRIMARY KEY (experimenter_id)
+#     )""".format(prefix=PREFIX)
+#     cur.execute(query2)
+#
+#
+#
+#
+#
+#

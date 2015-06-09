@@ -1,10 +1,13 @@
+from collections import namedtuple
 from collections.abc import MutableMapping, Mapping
 import numpy as np
 import logging
 import re
 import abc
 
-from . import DataJointError, config, TransactionError
+from . import DataJointError, config
+import pymysql
+from datajoint import DataJointError, conn
 from .relational_operand import RelationalOperand
 from .blob import pack
 from .utils import user_choice
@@ -12,6 +15,63 @@ from .parsing import parse_attribute_definition, field_to_sql, parse_index_defin
 from .heading import Heading
 
 logger = logging.getLogger(__name__)
+
+SharedInfo = namedtuple(
+    'SharedInfo',
+    ('database', 'context', 'connection', 'heading'))
+
+
+
+class classproperty:
+    def __init__(self, getf):
+        self._getf = getf
+
+    def __get__(self, instance, owner):
+        return self._getf(owner)
+
+
+def schema(database, context, connection=None):
+    """
+    Returns a schema decorator that can be used to associate a Relation class to a
+    specific database with :param name:. Name reference to other tables in the table definition
+    will be resolved by looking up the corresponding key entry in the passed in context dictionary.
+    It is most common to set context equal to the return value of call to locals() in the module.
+    For more details, please refer to the tutorial online.
+
+    :param database: name of the database to associate the decorated class with
+    :param context: dictionary used to resolve (any) name references within the table definition string
+    :param connection: connection object to the database server. If ommited, will try to establish connection according to
+    config values
+    :return: a decorator function to be used on Relation derivative classes
+    """
+    if connection is None:
+        connection = conn()
+
+    # if the database does not exist, create it
+    cur = connection.query("SHOW DATABASES LIKE '{database}'".format(database=database))
+    if cur.rowcount == 0:
+        logger.info("Database `{database}` could not be found. "
+                    "Attempting to create the database.".format(database=database))
+        try:
+            connection.query("CREATE DATABASE `{database}`".format(database=database))
+            logger.info('Created database `{database}`.'.format(database=database))
+        except pymysql.OperationalError:
+            raise DataJointError("Database named `{database}` was not defined, and"
+                                 "an attempt to create has failed. Check"
+                                 " permissions.".format(database=database))
+
+    def decorator(cls):
+        cls._shared_info = SharedInfo(
+            database=database,
+            context=context,
+            connection=connection,
+            heading=None,
+        )
+        cls.declare()
+        return cls
+
+    return decorator
+
 
 
 class Relation(RelationalOperand, metaclass=abc.ABCMeta):
@@ -26,103 +86,109 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
 
     __heading = None
 
+    _shared_info = None
+
+    def __init__(self):  # TODO: Think about it
+        if self._shared_info is None:
+            raise DataJointError('The class must define _shared_info')
+
     # ---------- abstract properties ------------ #
-    @property
+    @classproperty
     @abc.abstractmethod
-    def table_name(self):
+    def table_name(cls):
         """
         :return: the name of the table in the database
         """
         pass
 
-    @property
-    @abc.abstractmethod
-    def database(self):
-        """
-        :return: string containing the database name on the server
-        """
-        pass
+    # @classproperty
+    # @abc.abstractmethod
+    # def database(cls):
+    #     """
+    #     :return: string containing the database name on the server
+    #     """
+    #     pass
 
-    @property
+    @classproperty
     @abc.abstractmethod
-    def definition(self):
+    def definition(cls):
         """
         :return: a string containing the table definition using the DataJoint DDL
         """
         pass
 
-    @property
-    @abc.abstractmethod
-    def context(self):
-        """
-        :return: a dict with other relations that can be referenced by foreign keys
-        """
-        pass
+    # @classproperty
+    # @abc.abstractmethod
+    # def context(cls):
+    #     """
+    #     :return: a dict with other relations that can be referenced by foreign keys
+    #     """
+    #     pass
 
     # --------- base relation functionality --------- #
-    @property
-    def is_declared(self):
-        if self.__heading is not None:
+    @classproperty
+    def is_declared(cls):
+        if cls.__heading is not None:
             return True
-        cur = self.query(
+        cur = cls._shared_info.connection.query(
             'SHOW TABLE STATUS FROM `{database}` WHERE name="{table_name}"'.format(
-                table_name=self.table_name))
+                database=cls.database , table_name=cls.table_name))
         return cur.rowcount == 1
 
-    @property
-    def heading(self):
+    @classproperty
+    def heading(cls):
         """
         Required by relational operand
         :return: a datajoint.Heading object
         """
-        if self.__heading is None:
-            if not self.is_declared and self.definition:
-                self.declare()
-            if self.is_declared:
-                self.__heading = Heading.init_from_database(
-                    self.connection, self.database, self.table_name)
-        return self.__heading
+        if cls.__heading is None:
+            cls.__heading = Heading.init_from_database(cls.connection, cls.database, cls.table_name)
+        return cls.__heading
 
-    @property
-    def from_clause(self):
+    @classproperty
+    def from_clause(cls):
         """
         Required by the Relational class, this property specifies the contents of the FROM clause 
         for the SQL SELECT statements.
         :return:
         """
-        return '`%s`.`%s`' % (self.database, self.table_name)
+        return '`%s`.`%s`' % (cls.database, cls.table_name)
 
-    def declare(self):
+    @classmethod
+    def declare(cls):
         """
         Declare the table in database if it doesn't already exist.
 
         :raises: DataJointError if the table cannot be declared.
         """
-        if not self.is_declared:
-            self._declare()
-            # verify that declaration completed successfully
-            if not self.is_declared:
-                raise DataJointError(
-                    'Relation could not be declared for %s' % self.class_name)
+        if not cls.is_declared:
+            cls._declare()
 
-    def iter_insert(self, rows, **kwargs):
+    @classmethod
+    def iter_insert(cls, rows, **kwargs):
         """
         Inserts an entire batch of entries. Additional keyword arguments are passed to insert.
 
         :param iter: Must be an iterator that generates a sequence of valid arguments for insert.
         """
         for row in rows:
-            self.insert(row, **kwargs)
+            cls.insert(row, **kwargs)
 
-    def batch_insert(self, data, **kwargs):
+    @classmethod
+    def batch_insert(cls, data, **kwargs):
         """
         Inserts an entire batch of entries. Additional keyword arguments are passed to insert.
 
         :param data: must be iterable, each row must be a valid argument for insert
         """
-        self.iter_insert(data.__iter__(), **kwargs)
+        cls.iter_insert(data.__iter__(), **kwargs)
 
-    def insert(self, tup, ignore_errors=False, replace=False):
+    @classproperty
+    def full_table_name(cls):
+        return r"`{0:s}`.`{1:s}`".format(cls.database, cls.table_name)
+
+    @classmethod
+    def insert(cls, tup, ignore_errors=False, replace=False):
         """
         Insert one data record or one Mapping (like a dictionary).
 
@@ -137,7 +203,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
                            real_id = 1007, date_of_birth = "2014-09-01"))
         """
 
-        heading = self.heading
+        heading = cls.heading
         if isinstance(tup, np.void):
             for fieldname in tup.dtype.fields:
                 if fieldname not in heading:
@@ -167,10 +233,10 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
             sql = 'INSERT IGNORE'
         else:
             sql = 'INSERT'
-        sql += " INTO %s (%s) VALUES (%s)" % (self.full_table_name,
+        sql += " INTO %s (%s) VALUES (%s)" % (cls.full_table_name,
                                               attribute_list, value_list)
         logger.info(sql)
-        self.connection.query(sql, args=args)
+        cls.connection.query(sql, args=args)
 
     def delete(self):
         if not config['safemode'] or user_choice(
@@ -178,39 +244,41 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
                 "Proceed?", default='no') == 'yes':
             self.connection.query('DELETE FROM ' + self.from_clause + self.where_clause)  # TODO: make cascading (issue #15)
 
-    def drop(self):
+    @classmethod
+    def drop(cls):
         """
-        Drops the table associated to this object.
+        Drops the table associated to this class.
         """
-        if self.is_declared:
+        if cls.is_declared:
             if not config['safemode'] or user_choice(
                     "You are about to drop an entire table. This operation cannot be undone.\n"
                     "Proceed?", default='no') == 'yes':
-                self.connection.query('DROP TABLE %s' % self.full_table_name)  # TODO: make cascading (issue #16)
-                self.connection.clear_dependencies(dbname=self.dbname)
-                self.connection.load_headings(dbname=self.dbname, force=True)
-                logger.info("Dropped table %s" % self.full_table_name)
+                cls.connection.query('DROP TABLE %s' % cls.full_table_name)  # TODO: make cascading (issue #16)
+                # cls.connection.clear_dependencies(dbname=cls.dbname) #TODO: reimplement because clear_dependencies will be gone
+                # cls.connection.load_headings(dbname=cls.dbname, force=True) #TODO: reimplement because load_headings is gone
+                logger.info("Dropped table %s" % cls.full_table_name)
 
-    @property
-    def size_on_disk(self):
+    @classproperty
+    def size_on_disk(cls):
         """
         :return: size of data and indices in MiB taken by the table on the storage device
         """
-        cur = self.connection.query(
+        cur = cls.connection.query(
             'SHOW TABLE STATUS FROM `{dbname}` WHERE NAME="{table}"'.format(
-                dbname=self.dbname, table=self.table_name), as_dict=True)
+                dbname=cls.dbname, table=cls.table_name), as_dict=True)
         ret = cur.fetchone()
         return (ret['Data_length'] + ret['Index_length'])/1024**2
 
-    def set_table_comment(self, comment):
+    @classmethod
+    def set_table_comment(cls, comment):
         """
         Update the table comment in the table definition.
         :param comment: new comment as string
         """
-        # TODO: add verification procedure (github issue #24)
-        self.alter('COMMENT="%s"' % comment)
+        cls.alter('COMMENT="%s"' % comment)
 
-    def add_attribute(self, definition, after=None):
+    @classmethod
+    def add_attribute(cls, definition, after=None):
         """
         Add a new attribute to the table. A full line from the table definition
         is passed in as definition.
@@ -226,9 +294,10 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         position = ' FIRST' if after is None else (
             ' AFTER %s' % after if after else '')
         sql = field_to_sql(parse_attribute_definition(definition))
-        self._alter('ADD COLUMN %s%s' % (sql[:-2], position))
+        cls._alter('ADD COLUMN %s%s' % (sql[:-2], position))
 
-    def drop_attribute(self, attr_name):
+    @classmethod
+    def drop_attribute(cls, attr_name):
         """
         Drops the attribute attrName from this table.
 
@@ -238,9 +307,10 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
                 "You are about to drop an attribute from a table."
                 "This operation cannot be undone.\n"
                 "Proceed?", default='no') == 'yes':
-            self._alter('DROP COLUMN `%s`' % attr_name)
+            cls._alter('DROP COLUMN `%s`' % attr_name)
 
-    def alter_attribute(self, attr_name, new_definition):
+    @classmethod
+    def alter_attribute(cls, attr_name, new_definition):
         """
         Alter the definition of the field attr_name in this table using the new definition.
 
@@ -248,44 +318,45 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         :param new_definition: new definition of the field
         """
         sql = field_to_sql(parse_attribute_definition(new_definition))
-        self._alter('CHANGE COLUMN `%s` %s' % (attr_name, sql[:-2]))
+        cls._alter('CHANGE COLUMN `%s` %s' % (attr_name, sql[:-2]))
 
-    def erd(self, subset=None):
+    @classmethod
+    def erd(cls, subset=None):
         """
         Plot the schema's entity relationship diagram (ERD).
         """
 
-    def _alter(self, alter_statement):
+    @classmethod
+    def _alter(cls, alter_statement):
         """
         Execute ALTER TABLE statement for this table. The schema
         will be reloaded within the connection object.
 
         :param alter_statement: alter statement
         """
-        if self._conn.in_transaction:
-            raise TransactionError(
-                u"_alter is currently in transaction. Operation not allowed to avoid implicit commits.",
-                        self._alter, args=(alter_statement,))
+        if cls.connection.in_transaction:
+            raise DataJointError(
+                u"_alter is currently in transaction. Operation not allowed to avoid implicit commits.")
 
-        sql = 'ALTER TABLE %s %s' % (self.full_table_name, alter_statement)
-        self.connection.query(sql)
-        self.connection.load_headings(self.dbname, force=True)
+        sql = 'ALTER TABLE %s %s' % (cls.full_table_name, alter_statement)
+        cls.connection.query(sql)
+        cls.connection.load_headings(cls.dbname, force=True)
         # TODO: place table definition sync mechanism
 
-    @staticmethod
-    def _declare(self):
+    @classmethod
+    def _declare(cls):
         """
         Declares the table in the database if no table in the database matches this object.
         """
-        if self.connection.in_transaction:
-            raise TransactionError(
-                u"_declare is currently in transaction. Operation not allowed to avoid implicit commits.", self._declare)
+        if cls.connection.in_transaction:
+            raise DataJointError(
+                u"_declare is currently in transaction. Operation not allowed to avoid implicit commits.")
 
-        if not self.definition: # if empty definition was supplied
+        if not cls.definition:  # if empty definition was supplied
             raise DataJointError('Table definition is missing!')
-        table_info, parents, referenced, field_defs, index_defs = self._parse_declaration()
+        table_info, parents, referenced, field_defs, index_defs = cls._parse_declaration()
 
-        sql = 'CREATE TABLE %s (\n' % self.full_table_name
+        sql = 'CREATE TABLE %s (\n' % cls.full_table_name
 
         # add inherited primary key fields
         primary_key_fields = set()
@@ -349,15 +420,16 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         sql = '%s\n) ENGINE = InnoDB, COMMENT "%s"' % (
             sql[:-2], table_info['comment'])
 
-        # make sure that the table does not alredy exist
-        self.load_heading()
-        if not self.is_declared:
-            # execute declaration
-            logger.debug('\n<SQL>\n' + sql + '</SQL>\n\n')
-            self.connection.query(sql)
-            self.load_heading()
+        # # make sure that the table does not alredy exist
+        # cls.load_heading()
+        # if not cls.is_declared:
+        #     # execute declaration
+        #     logger.debug('\n<SQL>\n' + sql + '</SQL>\n\n')
+        #     cls.connection.query(sql)
+        #     cls.load_heading()
 
-    def _parse_declaration(self):
+    @classmethod
+    def _parse_declaration(cls):
         """
         Parse declaration and create new SQL table accordingly.
         """
@@ -365,7 +437,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         referenced = []
         index_defs = []
         field_defs = []
-        declaration = re.split(r'\s*\n\s*', self.definition.strip())
+        declaration = re.split(r'\s*\n\s*', cls.definition.strip())
 
         # remove comment lines
         declaration = [x for x in declaration if not x.startswith('#')]
@@ -391,7 +463,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
                 # foreign key
                 ref_name = line[2:].strip()
                 ref_list = parents if in_key else referenced
-                ref_list.append(self.lookup_name(ref_name))
+                ref_list.append(cls.lookup_name(ref_name))
             elif re.match(r'^(unique\s+)?index[^:]*$', line, re.I):
                 index_defs.append(parse_index_definition(line))
             elif attribute_regexp.match(line):
@@ -402,7 +474,8 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
 
         return table_info, parents, referenced, field_defs, index_defs
 
-    def lookup_name(self, name):
+    @classmethod
+    def lookup_name(cls, name):
         """
         Lookup the referenced name in the context dictionary
 
@@ -411,7 +484,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         parts = name.strip().split('.')
         try:
-            ref = self.context.get(parts[0])
+            ref = cls.context.get(parts[0])
             for attr in parts[1:]:
                 ref = getattr(ref, attr)
         except (KeyError, AttributeError):
@@ -420,3 +493,20 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
                 'Please make sure the name exists'
                 'in the context of the class' % name)
         return ref
+
+    @classproperty
+    def connection(cls):
+        """
+        Returns the connection object of the class
+
+        :return: the connection object
+        """
+        return cls._shared_info.connection
+
+    @classproperty
+    def database(cls):
+        return cls._shared_info.database
+
+    @classproperty
+    def context(cls):
+        return cls._shared_info.context

@@ -17,24 +17,6 @@ class DataJointError(Exception):
     pass
 
 
-class TransactionError(DataJointError):
-    """
-    Base class for errors specific to DataJoint internal operation.
-    """
-    def __init__(self, msg, f, args=None, kwargs=None):
-        super(TransactionError, self).__init__(msg)
-        self.operations = (f, args if args is not None else tuple(),
-                           kwargs if kwargs is not None else {})
-
-    def resolve(self):
-        f, args, kwargs = self.operations
-        return f(*args, **kwargs)
-
-    @property
-    def culprit(self):
-        return self.operations[0].__name__
-
-
 # ----------- loads local configuration from file ----------------
 from .settings import Config, CONFIGVAR, LOCALCONFIG, logger, log_levels
 config = Config()
@@ -55,9 +37,10 @@ logger.setLevel(log_levels[config['loglevel']])
 
 # ------------- flatten import hierarchy -------------------------
 from .connection import conn, Connection
+from .relation import Relation
 from .user_relations import Manual, Lookup, Imported, Computed
-from .abstract_relation import Relation
 from .autopopulate import AutoPopulate
 from . import blob
 from .relational_operand import Not
 from .heading import Heading
+from .relation import schema
