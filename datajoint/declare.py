@@ -13,7 +13,7 @@ def compile_attribute(line, in_key=False):
     Convert attribute definition from DataJoint format to SQL
     :param line: attribution line
     :param in_key: set to True if attribute is in primary key set
-    :returns: attribute name and sql code for its declaration
+    :returns: (name, sql) -- attribute name and sql code for its declaration
     """
     quoted = pp.Or(pp.QuotedString('"'), pp.QuotedString("'"))
     colon = pp.Literal(':').suppress()

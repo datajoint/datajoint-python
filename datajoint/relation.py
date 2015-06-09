@@ -5,13 +5,13 @@ import logging
 import abc
 import pymysql
 
-
 from . import DataJointError, config, conn
 from .declare import declare
 from .relational_operand import RelationalOperand
 from .blob import pack
 from .utils import user_choice
 from .heading import Heading
+from .declare import compile_attribute
 
 logger = logging.getLogger(__name__)
 
@@ -210,7 +210,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
             if not config['safemode'] or user_choice(
                     "You are about to drop an entire table. This operation cannot be undone.\n"
                     "Proceed?", default='no') == 'yes':
-                self.connection.query('DROP TABLE %s' % cls.full_table_name)  # TODO: make cascading (issue #16)
+                self.connection.query('DROP TABLE %s' % self.full_table_name)  # TODO: make cascading (issue #16)
                 # cls.connection.clear_dependencies(dbname=cls.dbname) #TODO: reimplement because clear_dependencies will be gone
                 # cls.connection.load_headings(dbname=cls.dbname, force=True) #TODO: reimplement because load_headings is gone
                 logger.info("Dropped table %s" % cls.full_table_name)
@@ -219,22 +219,20 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         :return: size of data and indices in MiB taken by the table on the storage device
         """
-        cur = cls.connection.query(
-            'SHOW TABLE STATUS FROM `{dbname}` WHERE NAME="{table}"'.format(
-                dbname=cls.dbname, table=cls.table_name), as_dict=True)
-        ret = cur.fetchone()
+        ret = self.connection.query(
+            'SHOW TABLE STATUS FROM `(database}` WHERE NAME="{table}"'.format(
+                database=self.database, table=self.table_name), as_dict=True
+        ).fetchone()
         return (ret['Data_length'] + ret['Index_length'])/1024**2
 
-    @classmethod
-    def set_table_comment(cls, comment):
+    def set_table_comment(self, comment):
         """
         Update the table comment in the table definition.
         :param comment: new comment as string
         """
-        cls.alter('COMMENT="%s"' % comment)
+        self._alter('COMMENT="%s"' % comment)
 
-    @classmethod
-    def add_attribute(cls, definition, after=None):
+    def add_attribute(self, definition, after=None):
         """
         Add a new attribute to the table. A full line from the table definition
         is passed in as definition.
@@ -249,51 +247,45 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         position = ' FIRST' if after is None else (
             ' AFTER %s' % after if after else '')
-        sql = field_to_sql(parse_attribute_definition(definition))
-        cls._alter('ADD COLUMN %s%s' % (sql[:-2], position))
+        sql = compile_attribute(definition)[1]
+        self._alter('ADD COLUMN %s%s' % (sql, position))
 
-    @classmethod
-    def drop_attribute(cls, attr_name):
+    def drop_attribute(self, attribute_name):
         """
         Drops the attribute attrName from this table.
-
-        :param attr_name: Name of the attribute that is dropped.
+        :param attribute_name: Name of the attribute that is dropped.
         """
         if not config['safemode'] or user_choice(
                 "You are about to drop an attribute from a table."
                 "This operation cannot be undone.\n"
                 "Proceed?", default='no') == 'yes':
-            cls._alter('DROP COLUMN `%s`' % attr_name)
+            self._alter('DROP COLUMN `%s`' % attribute_name)
 
-    @classmethod
-    def alter_attribute(cls, attr_name, new_definition):
+    def alter_attribute(self, attribute_name, definition):
         """
         Alter the definition of the field attr_name in this table using the new definition.
 
-        :param attr_name: field that is redefined
-        :param new_definition: new definition of the field
+        :param attribute_name: field that is redefined
+        :param definition: new definition of the field
         """
-        sql = field_to_sql(parse_attribute_definition(new_definition))
-        cls._alter('CHANGE COLUMN `%s` %s' % (attr_name, sql[:-2]))
+        sql = compile_attribute(definition)[1]
+        self._alter('CHANGE COLUMN `%s` %s' % (attribute_name, sql))
 
-    @classmethod
-    def erd(cls, subset=None):
+    def erd(self, subset=None):
         """
         Plot the schema's entity relationship diagram (ERD).
         """
+        NotImplemented
 
-    @classmethod
-    def _alter(cls, alter_statement):
+    def _alter(self, alter_statement):
         """
         Execute ALTER TABLE statement for this table. The schema
         will be reloaded within the connection object.
 
         :param alter_statement: alter statement
         """
-        if cls.connection.in_transaction:
+        if self.connection.in_transaction:
             raise DataJointError("Table definition cannot be altered during a transaction.")
-
-        sql = 'ALTER TABLE %s %s' % (cls.full_table_name, alter_statement)
-        cls.connection.query(sql)
-        cls.connection.load_headings(cls.dbname, force=True)
-        # TODO: place table definition sync mechanism
+        sql = 'ALTER TABLE %s %s' % (self.full_table_name, alter_statement)
+        self.connection.query(sql)
+        self._table_info.heading = None

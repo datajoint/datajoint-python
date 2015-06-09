@@ -4,23 +4,23 @@ from .autopopulate import AutoPopulate
 from . import DataJointError
 
 class Manual(Relation):
-    def table_name(cls):
-        return from_camel_case(cls.__name__)
+    def table_name(self):
+        return from_camel_case(self.__class__.__name__)
 
 
 class Lookup(Relation):
-    def table_name(cls):
-        return '#' + from_camel_case(cls.__name__)
+    def table_name(self):
+        return '#' + from_camel_case(self.__class__.__name__)
 
 
 class Imported(Relation, AutoPopulate):
-    def table_name(cls):
-        return "_" + from_camel_case(cls.__name__)
+    def table_name(self):
+        return "_" + from_camel_case(self.__class__.__name__)
 
 
 class Computed(Relation, AutoPopulate):
-    def table_name(cls):
-        return "__" + from_camel_case(cls.__name__)
+    def table_name(self):
+        return "__" + from_camel_case(self.__class__.__name__)
 
 
 def from_camel_case(s):
