@@ -37,7 +37,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
     def target(self):
         return self
 
-    def populate(self, restriction=None, suppress_errors=False, reserve_jobs=False, max_attempts=10):
+    def populate(self, restriction=None, suppress_errors=False, reserve_jobs=False):
         """
         rel.populate() calls rel._make_tuples(key) for every primary key in self.populate_relation
         for which there is not already a tuple in rel.
@@ -45,7 +45,6 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         :param restriction: restriction on rel.populate_relation - target
         :param suppress_errors: suppresses error if true
         :param reserve_jobs: currently not implemented
-        :param max_attempts: maximal number of times a TransactionError is caught before populate gives up
         """
 
         assert not reserve_jobs, NotImplemented   # issue #5
@@ -56,7 +55,8 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         self.connection.cancel_transaction()  # rollback previous transaction, if any
 
         if not isinstance(self, Relation):
-            raise DataJointError('Autopopulate is a mixin for Relation and must therefore subclass Relation')
+            raise DataJointError(
+                'AutoPopulate is a mixin for Relation and must therefore subclass Relation')
 
         unpopulated = (self.populate_relation - self.target) & restriction
         for key in unpopulated.project():
