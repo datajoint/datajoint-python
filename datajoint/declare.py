@@ -32,7 +32,7 @@ def compile_attribute(line, in_key=False):
     match = {k: v.strip() for k, v in match.items()}
     match['nullable'] = match['default'].lower() == 'null'
 
-    sql_literals = ['CURRENT_TIMESTAMP']   # not to be enclosed in quotes
+    literals = ['CURRENT_TIMESTAMP']   # not to be enclosed in quotes
     assert not re.match(r'^bigint', match['type'], re.I) or not match['nullable'], \
         'BIGINT attributes cannot be nullable in "%s"' % line    # TODO: This was a MATLAB limitation. Handle this correctly.
     if match['nullable']:
@@ -41,12 +41,12 @@ def compile_attribute(line, in_key=False):
         match['default'] = 'DEFAULT NULL'  # nullable attributes default to null
     else:
         if match['default']:
-            quote = match['default'].upper() not in sql_literals and match['default'][0] not in '"\''
+            quote = match['default'].upper() not in literals and match['default'][0] not in '"\''
             match['default'] = ('NOT NULL DEFAULT ' +
                                 ('"%s"' if quote else "%s") % match['default'])
         else:
             match['default'] = 'NOT NULL'
-    match['comment'] = match['comment'].replace('"','\\"')   # escape double quotes in comment
+    match['comment'] = match['comment'].replace('"', '\\"')   # escape double quotes in comment
     sql = ('`{name}` {type} {default}' + (' COMMENT "{comment}"' if match['comment'] else '')
            ).format(**match)
     return match['name'], sql
@@ -110,7 +110,7 @@ def parse_declaration(cls):
             ref_list = parents if in_key else referenced
             ref_list.append(eval(ref_name, locals=cls.context))
         elif re.match(r'^(unique\s+)?index[^:]*$', line, re.I):
-            index_defs.append(parse_index_definition(line))
+            index_defs.append(parse_index(line))
         elif attribute_regexp.match(line):
             field_defs.append(parse_attribute_definition(line, in_key))
         else:
@@ -119,23 +119,23 @@ def parse_declaration(cls):
     return table_info, parents, referenced, field_defs, index_defs
 
 
-def declare(base_relation):
+def declare(relation):
     """
     Declares the table in the database if it does not exist already
     """
-    cur = base_relation.connection.query(
+    cur = relation.connection.query(
         'SHOW TABLE STATUS FROM `{database}` WHERE name="{table_name}"'.format(
-            database=base_relation.database, table_name=base_relation.table_name))
+            database=relation.database, table_name=relation.table_name))
     if cur.rowcount:
         return
 
-    if base_relation.connection.in_transaction:
+    if relation.connection.in_transaction:
         raise DataJointError("Tables cannot be declared during a transaction.")
 
-    if not base_relation.definition:
-        raise DataJointError('Table definition is missing.')
+    if not relation.definition:
+        raise DataJointError('Missing table definition.')
 
-    table_info, parents, referenced, field_defs, index_defs = cls._parse_declaration()
+    table_info, parents, referenced, field_defs, index_defs = parse_declaration()
 
     sql = 'CREATE TABLE %s (\n' % cls.full_table_name
 

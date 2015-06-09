@@ -3,26 +3,32 @@ from datajoint.relation import Relation
 from .autopopulate import AutoPopulate
 from . import DataJointError
 
+
 class Manual(Relation):
+    @property
     def table_name(self):
         return from_camel_case(self.__class__.__name__)
 
 
 class Lookup(Relation):
+    @property
     def table_name(self):
         return '#' + from_camel_case(self.__class__.__name__)
 
 
 class Imported(Relation, AutoPopulate):
+    @property
     def table_name(self):
         return "_" + from_camel_case(self.__class__.__name__)
 
 
 class Computed(Relation, AutoPopulate):
+    @property
     def table_name(self):
         return "__" + from_camel_case(self.__class__.__name__)
 
 
+# ---------------- utilities --------------------
 def from_camel_case(s):
     """
     Convert names in camel case into underscore (_) separated names

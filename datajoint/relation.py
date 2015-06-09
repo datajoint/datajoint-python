@@ -1,4 +1,4 @@
-from collections import namedtuple
+from types import SimpleNamespace
 from collections.abc import Mapping
 import numpy as np
 import logging
@@ -6,18 +6,16 @@ import abc
 import pymysql
 
 from . import DataJointError, config, conn
-from .declare import declare
+from .declare import declare, compile_attribute
 from .relational_operand import RelationalOperand
 from .blob import pack
 from .utils import user_choice
 from .heading import Heading
-from .declare import compile_attribute
 
 logger = logging.getLogger(__name__)
 
-TableLink = namedtuple(
-    'TableLink',
-    ('database', 'context', 'connection', 'heading'))
+TableLink = namedtuple('TableLink',
+                       ('database', 'context', 'connection', 'heading'))
 
 
 def schema(database, context, connection=None):
@@ -49,11 +47,11 @@ def schema(database, context, connection=None):
         """
         The decorator declares the table and binds the class to the database table
         """
-        cls._table_info = TableLink(
+        cls._table_link = TableLink(
             database=database,
             context=context,
             connection=connection,
-            heading=None
+            heading=Heading()
         )
         declare(cls())
         return cls
@@ -72,11 +70,11 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
     It also handles the table declaration based on its definition property
     """
 
-    _table_info = None
+    _table_link = None
 
     def __init__(self):
-        if self._table_info is None:
-            raise DataJointError('The class must define _table_info')
+        if self._table_link is None:
+            raise DataJointError('The class must define _table_link')
 
     # ---------- abstract properties ------------ #
     @property
@@ -85,7 +83,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         :return: the name of the table in the database
         """
-        pass
+        raise NotImplementedError('Relation subclasses must define property table_name')
 
     @property
     @abc.abstractmethod
@@ -98,37 +96,34 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
     # -------------- table info ----------------- #
     @property
     def connection(self):
-        return self._table_info.connection
+        return self._table_link.connection
 
     @property
     def database(self):
-        return self._table_info.database
+        return self._table_link.database
 
     @property
     def context(self):
-        return self._table_info.context
+        return self._table_link.context
 
     @property
     def heading(self):
-        if self._table_info.heading is None:
-            self._table_info.heading = Heading.init_from_database(
-                self.connection, self.database, self.table_name)
-        return self._table_info.heading
-
+        heading = self._table_link.heading
+        if not heading:
+            heading.init_from_database(self.connection, self.database, self.table_name)
+        return heading
 
     # --------- SQL functionality --------- #
     @property
     def from_clause(self):
         """
-        Required by the Relational class, this property specifies the contents of the FROM clause 
-        for the SQL SELECT statements.
-        :return:
+        :return: the FROM clause of SQL SELECT statements.
         """
         return self.full_table_name
 
     def iter_insert(self, rows, **kwargs):
         """
-        Inserts an entire batch of entries. Additional keyword arguments are passed to insert.
+        Inserts a collection of tuples. Additional keyword arguments are passed to insert.
 
         :param iter: Must be an iterator that generates a sequence of valid arguments for insert.
         """
@@ -172,18 +167,16 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
 
             args = tuple(pack(tup[name]) for name in heading
                          if name in tup.dtype.fields and heading[name].is_blob)
-            attribute_list = '`' + '`,`'.join(
-                [q for q in heading if q in tup.dtype.fields]) + '`'
+            attribute_list = '`' + '`,`'.join(q for q in heading if q in tup.dtype.fields) + '`'
         elif isinstance(tup, Mapping):
             for fieldname in tup.keys():
                 if fieldname not in heading:
                     raise KeyError(u'{0:s} is not in the attribute list'.format(fieldname, ))
-            value_list = ','.join([repr(tup[name]) if not heading[name].is_blob else '%s'
-                                   for name in heading if name in tup])
+            value_list = ','.join(repr(tup[name]) if not heading[name].is_blob else '%s'
+                                  for name in heading if name in tup)
             args = tuple(pack(tup[name]) for name in heading
                          if name in tup and heading[name].is_blob)
-            attribute_list = '`' + '`,`'.join(
-                [name for name in heading if name in tup]) + '`'
+            attribute_list = '`' + '`,`'.join(name for name in heading if name in tup) + '`'
         else:
             raise DataJointError('Datatype %s cannot be inserted' % type(tup))
         if replace:
@@ -213,7 +206,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
                 self.connection.query('DROP TABLE %s' % self.full_table_name)  # TODO: make cascading (issue #16)
                 # cls.connection.clear_dependencies(dbname=cls.dbname) #TODO: reimplement because clear_dependencies will be gone
                 # cls.connection.load_headings(dbname=cls.dbname, force=True) #TODO: reimplement because load_headings is gone
-                logger.info("Dropped table %s" % cls.full_table_name)
+                logger.info("Dropped table %s" % self.full_table_name)
 
     def size_on_disk(self):
         """
@@ -263,7 +256,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
 
     def alter_attribute(self, attribute_name, definition):
         """
-        Alter the definition of the field attr_name in this table using the new definition.
+        Alter attribute definition
 
         :param attribute_name: field that is redefined
         :param definition: new definition of the field
@@ -279,13 +272,11 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
 
     def _alter(self, alter_statement):
         """
-        Execute ALTER TABLE statement for this table. The schema
-        will be reloaded within the connection object.
-
+        Execute an ALTER TABLE statement.
         :param alter_statement: alter statement
         """
         if self.connection.in_transaction:
             raise DataJointError("Table definition cannot be altered during a transaction.")
         sql = 'ALTER TABLE %s %s' % (self.full_table_name, alter_statement)
         self.connection.query(sql)
-        self._table_info.heading = None
+        self._table_link.heading = None

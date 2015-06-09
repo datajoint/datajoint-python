@@ -1,11 +1,6 @@
 import pymysql
-import re
-from .utils import to_camel_case
 from . import DataJointError
-from .heading import Heading
-from .settings import prefix_to_role
 import logging
-from .erd import DBConnGraph
 from . import config
 
 logger = logging.getLogger(__name__)

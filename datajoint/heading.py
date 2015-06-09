@@ -17,11 +17,13 @@ class Heading:
                             'computation', 'dtype'))
     AttrTuple.as_dict = AttrTuple._asdict  # renaming to make public
 
-    def __init__(self, attributes):
+    def __init__(self, attributes=None):
         """
         :param attributes: a list of dicts with the same keys as AttrTuple
         """
-        self.attributes = OrderedDict([(q['name'], Heading.AttrTuple(**q)) for q in attributes])
+        if attributes:
+            attributes = OrderedDict([(q['name'], Heading.AttrTuple(**q)) for q in attributes])
+        self.attributes = attributes
 
     @property
     def names(self):
@@ -90,8 +92,7 @@ class Heading:
     def __iter__(self):
         return iter(self.attributes)
 
-    @classmethod
-    def init_from_database(cls, conn, database, table_name):
+    def init_from_database(self, conn, database, table_name):
         """
         initialize heading from a database table
         """
@@ -163,8 +164,7 @@ class Heading:
                     t = re.sub(r' unsigned$', '', t)   # remove unsigned
                     assert (t, is_unsigned) in numeric_types, 'dtype not found for type %s' % t
                     attr['dtype'] = numeric_types[(t, is_unsigned)]
-
-        return cls(attributes)
+        self.attributes = OrderedDict([(q['name'], Heading.AttrTuple(**q)) for q in attributes])
 
     def project(self, *attribute_list, **renamed_attributes):
         """
