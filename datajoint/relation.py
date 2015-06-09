@@ -16,8 +16,8 @@ from .heading import Heading
 
 logger = logging.getLogger(__name__)
 
-SharedInfo = namedtuple(
-    'SharedInfo',
+TableInfo = namedtuple(
+    'TableInfo',
     ('database', 'context', 'connection', 'heading'))
 
 
@@ -60,11 +60,11 @@ def schema(database, context, connection=None):
                                  " permissions.".format(database=database))
 
     def decorator(cls):
-        cls._shared_info = SharedInfo(
+        cls._table_info = TableInfo(
             database=database,
             context=context,
             connection=connection,
-            heading=None,
+            heading=None
         )
         cls.declare()
         return cls
@@ -85,11 +85,28 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
 
     __heading = None
 
-    _shared_info = None
+    _table_info = None
 
     def __init__(self):
-        if self._shared_info is None:
-            raise DataJointError('The class must define _shared_info')
+        if self._table_info is None:
+            raise DataJointError('The class must define _table_info')
+
+    @classproperty
+    def connection(cls):
+        """
+        Returns the connection object of the class
+
+        :return: the connection object
+        """
+        return cls._table_info.connection
+
+    @classproperty
+    def database(cls):
+        return cls._table_info.database
+
+    @classproperty
+    def context(cls):
+        return cls._table_info.context
 
     # ---------- abstract properties ------------ #
     @classproperty
@@ -100,14 +117,6 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         pass
 
-    # @classproperty
-    # @abc.abstractmethod
-    # def database(cls):
-    #     """
-    #     :return: string containing the database name on the server
-    #     """
-    #     pass
-
     @classproperty
     @abc.abstractmethod
     def definition(cls):
@@ -116,20 +125,12 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         pass
 
-    # @classproperty
-    # @abc.abstractmethod
-    # def context(cls):
-    #     """
-    #     :return: a dict with other relations that can be referenced by foreign keys
-    #     """
-    #     pass
-
-    # --------- base relation functionality --------- #
+    # --------- SQL functionality --------- #
     @classproperty
     def is_declared(cls):
         if cls.__heading is not None:
             return True
-        cur = cls._shared_info.connection.query(
+        cur = cls._table_info.connection.query(
             'SHOW TABLE STATUS FROM `{database}` WHERE name="{table_name}"'.format(
                 database=cls.database , table_name=cls.table_name))
         return cur.rowcount == 1
@@ -151,7 +152,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         for the SQL SELECT statements.
         :return:
         """
-        return '`%s`.`%s`' % (cls.database, cls.table_name)
+        return cls.full_table_name
 
     @classmethod
     def declare(cls):
@@ -413,13 +414,13 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
             implicit_indices.append(fk_source.primary_key)
 
         # for index in indexDefs:
-        # TODO: finish this up...
+        # TODO: add index declaration
 
         # close the declaration
         sql = '%s\n) ENGINE = InnoDB, COMMENT "%s"' % (
             sql[:-2], table_info['comment'])
 
-        # # make sure that the table does not alredy exist
+        # # make sure that the table does not already exist
         # cls.load_heading()
         # if not cls.is_declared:
         #     # execute declaration
@@ -462,37 +463,12 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
                 # foreign key
                 ref_name = line[2:].strip()
                 ref_list = parents if in_key else referenced
-                ref_list.append(cls.lookup_name(ref_name))
+                ref_list.append(eval(ref_name, locals=cls.context))
             elif re.match(r'^(unique\s+)?index[^:]*$', line, re.I):
                 index_defs.append(parse_index_definition(line))
             elif attribute_regexp.match(line):
                 field_defs.append(parse_attribute_definition(line, in_key))
             else:
-                raise DataJointError(
-                    'Invalid table declaration line "%s"' % line)
+                raise DataJointError('Invalid table declaration line "%s"' % line)
 
         return table_info, parents, referenced, field_defs, index_defs
-
-    @classmethod
-    def lookup_name(cls, name):
-        """
-        Lookup the referenced name in the context dictionary
-        """
-        return eval(name, locals=cls.context)
-
-    @classproperty
-    def connection(cls):
-        """
-        Returns the connection object of the class
-
-        :return: the connection object
-        """
-        return cls._shared_info.connection
-
-    @classproperty
-    def database(cls):
-        return cls._shared_info.database
-
-    @classproperty
-    def context(cls):
-        return cls._shared_info.context

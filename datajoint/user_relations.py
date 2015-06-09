@@ -1,7 +1,6 @@
 import re
 from datajoint.relation import Relation, classproperty
 from .autopopulate import AutoPopulate
-from .utils import from_camel_case
 from . import DataJointError
 
 class Manual(Relation):
@@ -26,7 +25,6 @@ class Computed(Relation, AutoPopulate):
     @classproperty
     def table_name(cls):
         return "__" + from_camel_case(cls.__name__)
-
 
 
 def from_camel_case(s):
