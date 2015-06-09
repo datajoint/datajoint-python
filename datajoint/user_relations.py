@@ -1,28 +1,24 @@
 import re
-from datajoint.relation import Relation, classproperty
+from datajoint.relation import Relation
 from .autopopulate import AutoPopulate
 from . import DataJointError
 
 class Manual(Relation):
-    @classproperty
     def table_name(cls):
         return from_camel_case(cls.__name__)
 
 
 class Lookup(Relation):
-    @classproperty
     def table_name(cls):
         return '#' + from_camel_case(cls.__name__)
 
 
 class Imported(Relation, AutoPopulate):
-    @classproperty
     def table_name(cls):
         return "_" + from_camel_case(cls.__name__)
 
 
 class Computed(Relation, AutoPopulate):
-    @classproperty
     def table_name(cls):
         return "__" + from_camel_case(cls.__name__)
 
