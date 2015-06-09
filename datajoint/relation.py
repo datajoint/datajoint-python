@@ -168,7 +168,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
             sql = 'INSERT IGNORE'
         else:
             sql = 'INSERT'
-        sql += " INTO %s (%s) VALUES (%s)" % (self.from_caluse, attribute_list, value_list)
+        sql += " INTO %s (%s) VALUES (%s)" % (self.from_clause, attribute_list, value_list)
         logger.info(sql)
         self.connection.query(sql, args=args)
 
