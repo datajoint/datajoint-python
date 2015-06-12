@@ -2,6 +2,8 @@ import re
 import pyparsing as pp
 import logging
 
+from  . import DataJointError
+
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +16,7 @@ def declare(full_table_name,  definition, context):
     # split definition into lines
     definition = re.split(r'\s*\n\s*', definition.strip())
 
-    table_comment = definition.pop(0)[1:] if definition[0].startswith('#') else ''
+    table_comment = definition.pop(0)[1:].strip() if definition[0].startswith('#') else ''
 
     in_key = True  # parse primary keys
     primary_key = []
@@ -35,7 +37,7 @@ def declare(full_table_name,  definition, context):
                 'FOREIGN KEY ({primary_key})'
                 ' REFERENCES {ref} ({primary_key})'
                 ' ON UPDATE CASCADE ON DELETE RESTRICT'.format(
-                    primary_key='`' + '`,`'.join(primary_key) + '`', ref=ref.full_table_name)
+                    primary_key='`' + '`,`'.join(ref.primary_key) + '`', ref=ref.full_table_name)
             )
             for name in ref.primary_key:
                 if in_key and name not in primary_key:
@@ -54,8 +56,11 @@ def declare(full_table_name,  definition, context):
                 attribute_sql.append(sql)
 
     # compile SQL
+    if not primary_key:
+        raise DataJointError('Table must have a primary key')
     sql = 'CREATE TABLE %s (\n  ' % full_table_name
-    sql += ',  \n'.join(attribute_sql)
+    sql += ',\n  '.join(attribute_sql)
+    sql += ',\n  PRIMARY KEY (`' + '`,`'.join(primary_key) + '`)'
     if foreign_key_sql:
         sql += ',  \n' + ',  \n'.join(foreign_key_sql)
     if index_sql:

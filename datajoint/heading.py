@@ -22,7 +22,6 @@ class Heading:
             """
             return OrderedDict((name, self[i]) for i, name in enumerate(self._fields))
 
-
         def sql(self):
             """
             Convert attribute tuple into its SQL CREATE TABLE clause.
@@ -41,8 +40,6 @@ class Heading:
                 raise DataJointError('Illegal characters in attribute comment "%s"' % self.comment)
             return '`{name}` {type} {default} COMMENT "{comment}"'.format(
                 name=self.name, type=self.type, default=default, comment=self.comment)
-
-
 
     def __init__(self, attributes=None):
         """

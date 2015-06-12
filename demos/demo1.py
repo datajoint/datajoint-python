@@ -20,12 +20,16 @@ class Subject(dj.Manual):
     animal_notes=""             : varchar(4096)                 # strain, genetic manipulations, etc
     """
 
+s = Subject()
+p = s.primary_key
+
 
 @schema
 class Experiment(dj.Manual):
     definition = """
     # Basic subject info
-    -> demo1.Subject
+    
+    -> Subject
     experiment          : smallint   # experiment number for this subject
     ---
     experiment_folder               : varchar(255) # folder path
@@ -40,7 +44,7 @@ class Session(dj.Manual):
     definition = """
     # a two-photon imaging session
 
-    -> demo1.Experiment
+    -> Experiment
     session_id    : tinyint  # two-photon session within this experiment
     -----------
     setup      : tinyint   # experimental setup
@@ -53,8 +57,7 @@ class Scan(dj.Manual):
     definition = """
     # a two-photon imaging session
 
-    -> demo1.Session
-    -> Config
+    -> Session
     scan_id : tinyint  # two-photon session within this experiment
     ----
     depth  :   float    #  depth from surface
@@ -62,20 +65,3 @@ class Scan(dj.Manual):
     mwatts: numeric(4,1)  # (mW) laser power to brain
     """
 
-@schema
-class Config(dj.Manual):
-    definition = """
-    # configuration for scanner
-
-    config_id    : tinyint     # unique id for config setup
-    ---
-    ->ConfigParam
-    """
-
-@schema
-class ConfigParam(dj.Manual):
-    definition = """
-    # params for configurations
-
-    param_set_id     : tinyint     # id for params
-    """
