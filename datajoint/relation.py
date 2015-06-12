@@ -48,10 +48,10 @@ def schema(database, context, connection=None):
         cls._connection = connection
         cls._heading = Heading()
         instance = cls() if isinstance(cls, type) else cls
-        if not cls.heading:
-            cls.connection.query(
+        if not instance.heading:
+            connection.query(
                 declare(
-                    table_name=instance.full_table_name,
+                    full_table_name=instance.full_table_name,
                     definition=instance.definition,
                     context=context))
         return cls
@@ -92,7 +92,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
 
     @property
     def heading(self):
-        if not self._heading:
+        if not self._heading and self.is_declared:
             self._heading.init_from_database(self.connection, self.database, self.table_name)
         return self._heading
 
@@ -113,6 +113,13 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
             self.insert(row, **kwargs)
 
     # --------- SQL functionality --------- #
+    @property
+    def is_declared(self):
+        cur = self.connection.query(
+            'SHOW TABLES in `{database}`LIKE "{table_name}"'.format(
+                database=self.database, table_name=self.table_name))
+        return cur.rowcount>0
+
     def batch_insert(self, data, **kwargs):
         """
         Inserts an entire batch of entries. Additional keyword arguments are passed to insert.
@@ -193,7 +200,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
 
     def size_on_disk(self):
         """
-        :return: size of data and indices in MiB taken by the table on the storage device
+        :return: size of data and indices in GiB taken by the table on the storage device
         """
         ret = self.connection.query(
             'SHOW TABLE STATUS FROM `{database}` WHERE NAME="{table}"'.format(

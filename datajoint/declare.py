@@ -6,6 +6,66 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+
+def declare(full_table_name,  definition, context):
+    """
+    Parse declaration and create new SQL table accordingly.
+    """
+    # split definition into lines
+    definition = re.split(r'\s*\n\s*', definition.strip())
+
+    table_comment = definition.pop(0)[1:] if definition[0].startswith('#') else ''
+
+    in_key = True  # parse primary keys
+    primary_key = []
+    attributes = []
+    attribute_sql = []
+    foreign_key_sql = []
+    index_sql = []
+
+    for line in definition:
+        if line.startswith('#'):  # additional comments are ignored
+            pass
+        elif line.startswith('---'):
+            in_key = False  # start parsing dependent attributes
+        elif line.startswith('->'):
+            # foreign key
+            ref = eval(line[2:], context)()
+            foreign_key_sql.append(
+                'FOREIGN KEY ({primary_key})'
+                ' REFERENCES {ref} ({primary_key})'
+                ' ON UPDATE CASCADE ON DELETE RESTRICT'.format(
+                    primary_key='`' + '`,`'.join(primary_key) + '`', ref=ref.full_table_name)
+            )
+            for name in ref.primary_key:
+                if in_key and name not in primary_key:
+                    primary_key.append(name)
+                if name not in attributes:
+                    attributes.append(name)
+                    attribute_sql.append(ref.heading[name].sql())
+        elif re.match(r'^(unique\s+)?index[^:]*$', line, re.I):   # index
+            index_sql.append(line)  # the SQL syntax is identical to DataJoint's
+        else:
+            name, sql = compile_attribute(line, in_key)
+            if in_key and name not in primary_key:
+                primary_key.append(name)
+            if name not in attributes:
+                attributes.append(name)
+                attribute_sql.append(sql)
+
+    # compile SQL
+    sql = 'CREATE TABLE %s (\n  ' % full_table_name
+    sql += ',  \n'.join(attribute_sql)
+    if foreign_key_sql:
+        sql += ',  \n' + ',  \n'.join(foreign_key_sql)
+    if index_sql:
+        sql += ',  \n' + ',  \n'.join(index_sql)
+    sql += '\n) ENGINE = InnoDB, COMMENT "%s"' % table_comment
+    return sql
+
+
+
+
 def compile_attribute(line, in_key=False):
     """
     Convert attribute definition from DataJoint format to SQL
@@ -31,8 +91,6 @@ def compile_attribute(line, in_key=False):
     match['nullable'] = match['default'].lower() == 'null'
 
     literals = ['CURRENT_TIMESTAMP']   # not to be enclosed in quotes
-    assert not re.match(r'^bigint', match['type'], re.I) or not match['nullable'], \
-        'BIGINT attributes cannot be nullable in "%s"' % line    # TODO: This was a MATLAB limitation. Handle this correctly.
     if match['nullable']:
         if in_key:
             raise DataJointError('Primary key attributes cannot be nullable in line %s' % line)
@@ -48,162 +106,3 @@ def compile_attribute(line, in_key=False):
     sql = ('`{name}` {type} {default}' + (' COMMENT "{comment}"' if match['comment'] else '')
            ).format(**match)
     return match['name'], sql
-
-
-def parse_index(line):
-    """
-    Parses index definition.
-
-    :param line: definition line
-    :return: groupdict with index info
-    """
-    line = line.strip()
-    index_regexp = re.compile("""
-    ^(?P<unique>UNIQUE)?\s*INDEX\s*      # [UNIQUE] INDEX
-    \((?P<attributes>[^\)]+)\)$          # (attr1, attr2)
-    """, re.I + re.X)
-    m = index_regexp.match(line)
-    assert m, 'Invalid index declaration "%s"' % line
-    index_info = m.groupdict()
-    attributes = re.split(r'\s*,\s*', index_info['attributes'].strip())
-    index_info['attributes'] = attributes
-    assert len(attributes) == len(set(attributes)), \
-        'Duplicate attributes in index declaration "%s"' % line
-    return index_info
-
-
-def parse_declaration(cls):
-    """
-    Parse declaration and create new SQL table accordingly.
-    """
-    parents = []
-    referenced = []
-    index_defs = []
-    field_defs = []
-    declaration = re.split(r'\s*\n\s*', cls.definition.strip())
-
-    # remove comment lines
-    declaration = [x for x in declaration if not x.startswith('#')]
-    ptrn = """
-    \#\s*(?P<comment>.*)$                       #  comment
-    """
-    p = re.compile(ptrn, re.X)
-    table_info = p.search(declaration[0]).groupdict()
-
-    #table_info['tier'] = Role[table_info['tier']]  # convert into enum
-
-    in_key = True  # parse primary keys
-    attribute_regexp = re.compile("""
-    ^[a-z][a-z\d_]*\s*          # name
-    (=\s*\S+(\s+\S+)*\s*)?      # optional defaults
-    :\s*\w.*$                   # type, comment
-    """, re.I + re.X)  # ignore case and verbose
-
-    for line in declaration[1:]:
-        if line.startswith('---'):
-            in_key = False  # start parsing non-PK fields
-        elif line.startswith('->'):
-            # foreign key
-            ref_name = line[2:].strip()
-            ref_list = parents if in_key else referenced
-            ref_list.append(eval(ref_name, locals=cls.context))
-        elif re.match(r'^(unique\s+)?index[^:]*$', line, re.I):
-            index_defs.append(parse_index(line))
-        elif attribute_regexp.match(line):
-            field_defs.append(parse_attribute_definition(line, in_key))
-        else:
-            raise DataJointError('Invalid table declaration line "%s"' % line)
-
-    return table_info, parents, referenced, field_defs, index_defs
-
-
-def declare(full_table_name,  definition, context):
-    """
-    Declares the table in the database if it does not exist already
-    """
-    cur = relation.connection.query(
-        'SHOW TABLE STATUS FROM `{database}` WHERE name="{table_name}"'.format(
-            database=relation.database, table_name=relation.table_name))
-    if cur.rowcount:
-        return
-
-    if relation.connection.in_transaction:
-        raise DataJointError("Tables cannot be declared during a transaction.")
-
-    if not relation.definition:
-        raise DataJointError('Missing table definition.')
-
-    table_info, parents, referenced, field_defs, index_defs = parse_declaration()
-
-    sql = 'CREATE TABLE %s (\n' % cls.full_table_name
-
-    # add inherited primary key fields
-    primary_key_fields = set()
-    non_key_fields = set()
-    for p in parents:
-        for key in p.primary_key:
-            field = p.heading[key]
-            if field.name not in primary_key_fields:
-                primary_key_fields.add(field.name)
-                sql += field_to_sql(field)
-            else:
-                logger.debug(
-                    'Field definition of {} in {} ignored'.format(field.name, p.full_class_name))
-
-    # add newly defined primary key fields
-    for field in (f for f in field_defs if f.in_key):
-        if field.nullable:
-            raise DataJointError('Primary key attribute {} cannot be nullable'.format(
-                field.name))
-        if field.name in primary_key_fields:
-            raise DataJointError('Duplicate declaration of the primary attribute {key}. '
-                                 'Ensure that the attribute is not already declared '
-                                 'in referenced tables'.format(key=field.name))
-        primary_key_fields.add(field.name)
-        sql += field_to_sql(field)
-
-    # add secondary foreign key attributes
-    for r in referenced:
-        for key in r.primary_key:
-            field = r.heading[key]
-            if field.name not in primary_key_fields | non_key_fields:
-                non_key_fields.add(field.name)
-                sql += field_to_sql(field)
-
-    # add dependent attributes
-    for field in (f for f in field_defs if not f.in_key):
-        non_key_fields.add(field.name)
-        sql += field_to_sql(field)
-
-    # add primary key declaration
-    assert len(primary_key_fields) > 0, 'table must have a primary key'
-    keys = ', '.join(primary_key_fields)
-    sql += 'PRIMARY KEY (%s),\n' % keys
-
-    # add foreign key declarations
-    for ref in parents + referenced:
-        keys = ', '.join(ref.primary_key)
-        sql += 'FOREIGN KEY (%s) REFERENCES %s (%s) ON UPDATE CASCADE ON DELETE RESTRICT,\n' % \
-               (keys, ref.full_table_name, keys)
-
-    # add secondary index declarations
-    # gather implicit indexes due to foreign keys first
-    implicit_indices = []
-    for fk_source in parents + referenced:
-        implicit_indices.append(fk_source.primary_key)
-
-    # for index in indexDefs:
-    # TODO: add index declaration
-
-    # close the declaration
-    sql = '%s\n) ENGINE = InnoDB, COMMENT "%s"' % (
-        sql[:-2], table_info['comment'])
-
-    # # make sure that the table does not already exist
-    # cls.load_heading()
-    # if not cls.is_declared:
-    #     # execute declaration
-    #     logger.debug('\n<SQL>\n' + sql + '</SQL>\n\n')
-    #     cls.connection.query(sql)
-    #     cls.load_heading()
-
