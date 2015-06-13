@@ -22,7 +22,7 @@ CONN_INFO = {
 conn = dj.conn(**CONN_INFO)
 
 # Prefix for all databases used during testing
-PREFIX = environ.get('DJ_TEST_DB_PREFIX', 'dj')
+PREFIX = environ.get('DJ_TEST_DB_PREFIX', 'djtest')
 # Bare connection used for verification of query results
 BASE_CONN = pymysql.connect(**CONN_INFO)
 BASE_CONN.autocommit(True)
@@ -33,7 +33,18 @@ def setup():
     dj.config['safemode'] = False
 
 def teardown():
-    cleanup()
+    cur = BASE_CONN.cursor()
+    # cancel any unfinished transactions
+    cur.execute("ROLLBACK")
+    # start a transaction now
+    cur.execute("START TRANSACTION WITH CONSISTENT SNAPSHOT")
+    cur.execute("SHOW DATABASES LIKE '{}\_%'".format(PREFIX))
+    dbs = [x[0] for x in cur.fetchall()]
+    cur.execute('SET FOREIGN_KEY_CHECKS=0') # unset foreign key check while deleting
+    for db in dbs:
+        cur.execute('DROP DATABASE `{}`'.format(db))
+    cur.execute('SET FOREIGN_KEY_CHECKS=1') # set foreign key check back on
+    cur.execute("COMMIT")
 
 def cleanup():
     """
@@ -51,7 +62,10 @@ def cleanup():
     dbs = [x[0] for x in cur.fetchall()]
     cur.execute('SET FOREIGN_KEY_CHECKS=0') # unset foreign key check while deleting
     for db in dbs:
-        cur.execute('DROP DATABASE `{}`'.format(db))
+        cur.execute("USE %s" % (db))
+        cur.execute("SHOW TABLES")
+        for table in [x[0] for x in cur.fetchall()]:
+            cur.execute('DELETE FROM `{}`'.format(table))
     cur.execute('SET FOREIGN_KEY_CHECKS=1') # set foreign key check back on
     cur.execute("COMMIT")
 #
