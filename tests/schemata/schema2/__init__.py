@@ -1,2 +1,2 @@
-__author__ = 'eywalker'
-from .test1 import *
+# __author__ = 'eywalker'
+# from .test1 import *
