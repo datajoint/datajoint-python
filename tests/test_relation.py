@@ -127,68 +127,7 @@ class TestTableObject(object):
         testt2 = (self.subjects & 'subject_id = 2').fetch()[0]
         assert_equal((2, 'Klara', 'monkey'), tuple(testt2),
                      "Inserted and fetched record do not match!")
-#
-#     @raises(TransactionError)
-#     def test_transaction_error(self):
-#         "Test whether declaration in transaction is prohibited"
-#
-#         tmp = np.array([('Klara', 2, 'monkey')],
-#                        dtype=[('real_id', 'O'), ('subject_id', '>i4'), ('species', 'O')])
-#         self.conn.start_transaction()
-#         self.subjects.insert(tmp[0])
-#
-#     # def test_transaction_suppress_error(self):
-#     #     "Test whether ignore_errors ignores the errors."
-#     #
-#     #     tmp = np.array([('Klara', 2, 'monkey')],
-#     #                    dtype=[('real_id', 'O'), ('subject_id', '>i4'), ('species', 'O')])
-#     #     with self.conn.transaction(ignore_errors=True) as tr:
-#     #         self.subjects.insert(tmp[0])
-#
-#
-#     @raises(TransactionError)
-#     def test_transaction_error_not_resolve(self):
-#         "Test whether declaration in transaction is prohibited"
-#
-#         tmp = np.array([('Klara', 2, 'monkey'), ('Klara', 3, 'monkey')],
-#                        dtype=[('real_id', 'O'), ('subject_id', '>i4'), ('species', 'O')])
-#         try:
-#             self.conn.start_transaction()
-#             self.subjects.insert(tmp[0])
-#         except TransactionError as te:
-#             self.conn.cancel_transaction()
-#
-#         self.conn.start_transaction()
-#         self.subjects.insert(tmp[0])
-#
-#     def test_transaction_error_resolve(self):
-#         "Test whether declaration in transaction is prohibited"
-#
-#         tmp = np.array([('Klara', 2, 'monkey'), ('Klara', 3, 'monkey')],
-#                        dtype=[('real_id', 'O'), ('subject_id', '>i4'), ('species', 'O')])
-#         try:
-#             self.conn.start_transaction()
-#             self.subjects.insert(tmp[0])
-#         except TransactionError as te:
-#             self.conn.cancel_transaction()
-#             te.resolve()
-#
-#         self.conn.start_transaction()
-#         self.subjects.insert(tmp[0])
-#         self.conn.commit_transaction()
-#
-#     def test_transaction_error2(self):
-#         "If table is declared, we are allowed to insert within a transaction"
-#
-#         tmp = np.array([('Klara', 2, 'monkey'), ('Klara', 3, 'monkey')],
-#                        dtype=[('real_id', 'O'), ('subject_id', '>i4'), ('species', 'O')])
-#         self.subjects.insert(tmp[0])
-#
-#         self.conn.start_transaction()
-#         self.subjects.insert(tmp[1])
-#         self.conn.commit_transaction()
-#
-#
+
     @raises(KeyError)
     def test_wrong_key_insert_records(self):
         "Test whether record insert works"
@@ -197,8 +136,7 @@ class TestTableObject(object):
 
         self.subjects.insert(tmp[0])
 
-#
-    def test_dict_insert(self):
+        def test_dict_insert(self):
         "Test whether record insert works"
         tmp = {'real_id': 'Brunhilda',
                'subject_id': 3,
