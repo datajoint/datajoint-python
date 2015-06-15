@@ -27,7 +27,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
 
     @property
     def restrictions(self):
-        return self._restrictions
+        return [] if self._restrictions is None else self._restrictions
 
     @property
     def primary_key(self):
