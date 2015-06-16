@@ -28,7 +28,7 @@ p = s.primary_key
 class Experiment(dj.Manual):
     definition = """
     # Basic subject info
-    
+
     -> Subject
     experiment          : smallint   # experiment number for this subject
     ---
