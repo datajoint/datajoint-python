@@ -4,7 +4,6 @@
 # __author__ = 'fabee'
 #
 # from .schemata.schema1 import test1, test4
-<<<<<<< Updated upstream
 import random
 import string
 import pymysql
@@ -12,17 +11,6 @@ from datajoint import DataJointError
 from .schemata.test1 import Subjects, Animals, Matrix, Trials, SquaredScore, SquaredSubtable, WrongImplementation, \
     ErrorGenerator, testschema
 from . import BASE_CONN, CONN_INFO, PREFIX, cleanup
-=======
-from .schemata.test1 import Subjects
-
-
-def test_instantiate_relation():
-    s = Subjects()
-    print(s)
-
-#
-# from . import BASE_CONN, CONN_INFO, PREFIX, cleanup
->>>>>>> Stashed changes
 # from datajoint.connection import Connection
 from nose.tools import assert_raises, assert_equal, assert_regexp_matches, assert_false, assert_true, assert_list_equal,\
     assert_tuple_equal, assert_dict_equal, raises
@@ -149,14 +137,14 @@ class TestTableObject(object):
         self.subjects.insert(tmp[0])
 
         def test_dict_insert(self):
-        "Test whether record insert works"
-        tmp = {'real_id': 'Brunhilda',
-               'subject_id': 3,
-               'species': 'human'}
+            "Test whether record insert works"
+            tmp = {'real_id': 'Brunhilda',
+                   'subject_id': 3,
+                   'species': 'human'}
 
-        self.subjects.insert(tmp)
-        testt2 = (self.subjects & 'subject_id = 3').fetch()[0]
-        assert_equal((3, 'Brunhilda', 'human'), tuple(testt2), "Inserted and fetched record do not match!")
+            self.subjects.insert(tmp)
+            testt2 = (self.subjects & 'subject_id = 3').fetch()[0]
+            assert_equal((3, 'Brunhilda', 'human'), tuple(testt2), "Inserted and fetched record do not match!")
 
     @raises(KeyError)
     def test_wrong_key_insert(self):

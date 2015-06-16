@@ -37,7 +37,6 @@ def teardown():
     # cancel any unfinished transactions
     cur.execute("ROLLBACK")
     # start a transaction now
-    cur.execute("START TRANSACTION WITH CONSISTENT SNAPSHOT")
     cur.execute("SHOW DATABASES LIKE '{}\_%'".format(PREFIX))
     dbs = [x[0] for x in cur.fetchall()]
     cur.execute('SET FOREIGN_KEY_CHECKS=0') # unset foreign key check while deleting
