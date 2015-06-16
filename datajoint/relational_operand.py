@@ -5,10 +5,12 @@ classes for relational algebra
 import numpy as np
 import abc
 import re
+from collections import OrderedDict
 from copy import copy
 from datajoint import DataJointError, config
-from .blob import unpack
 import logging
+
+from .blob import unpack
 
 logger = logging.getLogger(__name__)
 
@@ -171,8 +173,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         ret = cur.fetchone()
         if not ret or cur.fetchone():
             raise DataJointError('fetch1 should only be used for relations with exactly one tuple')
-        ret = {k: unpack(v) if heading[k].is_blob else v for k, v in ret.items()}
-        return ret
+        return OrderedDict((k, unpack(v) if heading[k].is_blob else v) for k, v in ret.items())
 
     def fetch(self, offset=0, limit=None, order_by=None, descending=False, as_dict=False):
         """
@@ -188,8 +189,8 @@ class RelationalOperand(metaclass=abc.ABCMeta):
                           descending=descending, as_dict=as_dict)
         heading = self.heading
         if as_dict:
-            ret = [{k: unpack(v) if heading[k].is_blob else v
-                    for k, v in d.items()}
+            ret = [OrderedDict((k, unpack(v) if heading[k].is_blob else v)
+                    for k, v in d.items())
                    for d in cur.fetchall()]
         else:
             ret = np.array(list(cur.fetchall()), dtype=heading.as_dtype)
@@ -255,7 +256,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
 
         def make_condition(arg):
             if isinstance(arg, dict):
-                conditions = ['`%s`=%s' % (k, repr(v)) for k, v in arg.items()]
+                conditions = ['`%s`=%s' % (k, repr(v)) for k, v in arg.items() if k in self.heading]
             elif isinstance(arg, np.void):
                 conditions = ['`%s`=%s' % (k, arg[k]) for k in arg.dtype.fields]
             else:

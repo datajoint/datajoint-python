@@ -1,4 +1,3 @@
-from collections import namedtuple
 from collections.abc import Mapping
 import numpy as np
 import logging
