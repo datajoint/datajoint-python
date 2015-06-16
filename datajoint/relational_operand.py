@@ -117,10 +117,8 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         relational restriction or semijoin
         """
-        if self._restrictions is None:
-            self._restrictions = []
-        ret = copy(self)  # todo: why not deepcopy it?
-        ret._restrictions = list(ret._restrictions)  # copy restriction
+        ret = copy(self)
+        ret._restrictions = list(ret.restrictions)  # copy restriction list
         ret &= restriction
         return ret
 
