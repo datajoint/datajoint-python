@@ -12,9 +12,9 @@ testschema = dj.schema(PREFIX + '_test1', locals())
 @testschema
 class Subjects(dj.Manual):
     definition = """
-    # Basic subject info
+    #Basic subject info
 
-    subject_id       : int      # unique subject id
+    subject_id                  : int      # unique subject id
     ---
     real_id                     :  varchar(40)    #  real-world name
     species = "mouse"           : enum('mouse', 'monkey', 'human')   # species
