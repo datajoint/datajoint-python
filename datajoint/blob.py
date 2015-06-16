@@ -24,6 +24,7 @@ mxClassID = collections.OrderedDict(
     mxFUNCTION_CLASS=None)
 
 reverseClassID = {v: i for i, v in enumerate(mxClassID.values())}
+dtypeList = list(mxClassID.values())
 
 
 def pack(obj):
@@ -41,6 +42,7 @@ def pack(obj):
         obj, imaginary = np.real(obj), np.imag(obj)
 
     type_number = reverseClassID[obj.dtype]
+    assert dtypeList[type_number] is obj.dtype, 'ambigous or unknown array type'
     blob += np.asarray(type_number, dtype=np.uint32).tostring()
     blob += np.int8(is_complex).tostring() + b'\0\0\0'
     blob += obj.tostring()
@@ -72,7 +74,8 @@ def unpack(blob):
     p += 8
     array_shape = np.fromstring(blob[p:p+8*dimensions], dtype=np.uint64)
     p += 8 * dimensions
-    mx_type, dtype = [q for q in mxClassID.items()][np.fromstring(blob[p:p+4], dtype=np.uint32)[0]]
+    type_number = np.fromstring(blob[p:p+4], dtype=np.uint32)[0]
+    dtype = dtypeList[type_number]
     if dtype is None:
         raise DataJointError('Unsupported MATLAB data type '+mx_type+' in blob')
     p += 4
