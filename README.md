@@ -6,3 +6,6 @@ DataJoint was initially developed in 2009 by Dimitri Yatsenko in Andreas Tolias'
 
 To install datajoint using pip just run:
 ```pip install git+https://github.com/datajoint/datajoint-python```
+
+
+[![Join the chat at https://gitter.im/datajoint/datajoint-python](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/datajoint/datajoint-python?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
