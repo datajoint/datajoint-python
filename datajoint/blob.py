@@ -1,29 +1,30 @@
 import zlib
-import collections
+from collections import OrderedDict
 import numpy as np
 from . import DataJointError
 
-mxClassID = collections.OrderedDict(
+mxClassID = OrderedDict((
     # see http://www.mathworks.com/help/techdoc/apiref/mxclassid.html
-    mxUNKNOWN_CLASS=None,
-    mxCELL_CLASS=None,   # TODO: implement
-    mxSTRUCT_CLASS=None,   # TODO: implement
-    mxLOGICAL_CLASS=np.dtype('bool'),
-    mxCHAR_CLASS=np.dtype('c'),
-    mxVOID_CLASS=None,
-    mxDOUBLE_CLASS=np.dtype('float64'),
-    mxSINGLE_CLASS=np.dtype('float32'),
-    mxINT8_CLASS=np.dtype('int8'),
-    mxUINT8_CLASS=np.dtype('uint8'),
-    mxINT16_CLASS=np.dtype('int16'),
-    mxUINT16_CLASS=np.dtype('uint16'),
-    mxINT32_CLASS=np.dtype('int32'),
-    mxUINT32_CLASS=np.dtype('uint32'),
-    mxINT64_CLASS=np.dtype('int64'),
-    mxUINT64_CLASS=np.dtype('uint64'),
-    mxFUNCTION_CLASS=None)
+    ('mxUNKNOWN_CLASS', None),
+    ('mxCELL_CLASS', None),   # TODO: implement
+    ('mxSTRUCT_CLASS', None),   # TODO: implement
+    ('mxLOGICAL_CLASS', np.dtype('bool')),
+    ('mxCHAR_CLASS', np.dtype('c')),
+    ('mxVOID_CLASS', None),
+    ('mxDOUBLE_CLASS', np.dtype('float64')),
+    ('mxSINGLE_CLASS', np.dtype('float32')),
+    ('mxINT8_CLASS', np.dtype('int8')),
+    ('mxUINT8_CLASS', np.dtype('uint8')),
+    ('mxINT16_CLASS', np.dtype('int16')),
+    ('mxUINT16_CLASS', np.dtype('uint16')),
+    ('mxINT32_CLASS', np.dtype('int32')),
+    ('mxUINT32_CLASS', np.dtype('uint32')),
+    ('mxINT64_CLASS', np.dtype('int64')),
+    ('mxUINT64_CLASS', np.dtype('uint64')),
+    ('mxFUNCTION_CLASS', None)))
 
 reverseClassID = {v: i for i, v in enumerate(mxClassID.values())}
+dtypeList = list(mxClassID.values())
 
 
 def pack(obj):
@@ -41,6 +42,7 @@ def pack(obj):
         obj, imaginary = np.real(obj), np.imag(obj)
 
     type_number = reverseClassID[obj.dtype]
+    assert dtypeList[type_number] is obj.dtype, 'ambigous or unknown array type'
     blob += np.asarray(type_number, dtype=np.uint32).tostring()
     blob += np.int8(is_complex).tostring() + b'\0\0\0'
     blob += obj.tostring()
@@ -72,9 +74,10 @@ def unpack(blob):
     p += 8
     array_shape = np.fromstring(blob[p:p+8*dimensions], dtype=np.uint64)
     p += 8 * dimensions
-    mx_type, dtype = [q for q in mxClassID.items()][np.fromstring(blob[p:p+4], dtype=np.uint32)[0]]
+    type_number = np.fromstring(blob[p:p+4], dtype=np.uint32)[0]
+    dtype = dtypeList[type_number]
     if dtype is None:
-        raise DataJointError('Unsupported MATLAB data type '+mx_type+' in blob')
+        raise DataJointError('Unsupported MATLAB data type '+type_number+' in blob')
     p += 4
     is_complex = np.fromstring(blob[p:p+4], dtype=np.uint32)[0]
     p += 4
