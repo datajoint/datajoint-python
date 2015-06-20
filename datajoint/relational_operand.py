@@ -188,8 +188,8 @@ class RelationalOperand(metaclass=abc.ABCMeta):
                           descending=descending, as_dict=as_dict)
         heading = self.heading
         if as_dict:
-            ret = [OrderedDict((name, unpack(ret[name]) if heading[name].is_blob else ret[name])
-                    for name in self.heading.names)
+            ret = [OrderedDict((name, unpack(d[name]) if heading[name].is_blob else d[name])
+                               for name in self.heading.names)
                    for d in cur.fetchall()]
         else:
             ret = np.array(list(cur.fetchall()), dtype=heading.as_dtype)
