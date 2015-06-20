@@ -12,7 +12,7 @@ from .schemata.test1 import Subjects, Animals, Matrix, Trials, SquaredScore, Squ
     ErrorGenerator, testschema
 from . import BASE_CONN, CONN_INFO, PREFIX, cleanup
 # from datajoint.connection import Connection
-from nose.tools import assert_raises, assert_equal, assert_regexp_matches, assert_false, assert_true, assert_list_equal,\
+from nose.tools import assert_raises, assert_equal, assert_regexp_matches, assert_false, assert_true, assert_list_equal, \
     assert_tuple_equal, assert_dict_equal, raises
 # from datajoint import DataJointError, TransactionError, AutoPopulate, Relation
 import numpy as np
@@ -26,7 +26,8 @@ def trial_faker(n=10):
     def iter():
         for s in [1, 2]:
             for i in range(n):
-                yield dict(trial_id=i, subject_id=s, outcome=int(np.random.randint(10)), notes= 'no comment')
+                yield dict(trial_id=i, subject_id=s, outcome=int(np.random.randint(10)), notes='no comment')
+
     return iter()
 
 
@@ -50,12 +51,25 @@ class TestTableObject(object):
         self.animals = Animals()
         self.relvar_blob = Matrix()
         self.trials = Trials()
+        self.score = SquaredScore()
+        self.subtable = SquaredSubtable()
 
+    def test_table_name_manual(self):
+        assert_true(not self.subjects.table_name.startswith('#') and
+                    not self.subjects.table_name.startswith('_') and not self.subjects.table_name.startswith('__'))
 
+    def test_table_name_computed(self):
+        assert_true(self.score.table_name.startswith('__'))
+
+    def test_population_relation_subordinate(self):
+        assert_true(self.subtable.populate_relation is None)
+
+    @raises(NotImplementedError)
+    def test_make_tubles_not_implemented_subordinate(self):
+        self.subtable._make_tuples(None)
 
     def test_instantiate_relation(self):
         s = Subjects()
-
 
     def teardown(self):
         cleanup()
@@ -89,35 +103,36 @@ class TestTableObject(object):
 
     def test_delete(self):
         "Test whether delete works"
-        tmp = np.array([(2, 'Klara', 'monkey'), (1,'Peter', 'mouse')],
+        tmp = np.array([(2, 'Klara', 'monkey'), (1, 'Peter', 'mouse')],
                        dtype=[('subject_id', '>i4'), ('real_id', 'O'), ('species', 'O')])
 
         self.subjects.batch_insert(tmp)
         assert_true(len(self.subjects) == 2, 'Length does not match 2.')
         self.subjects.delete()
         assert_true(len(self.subjects) == 0, 'Length does not match 0.')
-#
-#     # def test_cascading_delete(self):
-#     #     "Test whether delete works"
-#     #     tmp = np.array([(2, 'Klara', 'monkey'), (1,'Peter', 'mouse')],
-#     #                    dtype=[('subject_id', '>i4'), ('real_id', 'O'), ('species', 'O')])
-#     #
-#     #     self.subjects.batch_insert(tmp)
-#     #
-#     #     self.trials.insert(dict(subject_id=1, trial_id=1, outcome=0))
-#     #     self.trials.insert(dict(subject_id=1, trial_id=2, outcome=1))
-#     #     self.trials.insert(dict(subject_id=2, trial_id=3, outcome=2))
-#     #     assert_true(len(self.subjects) == 2, 'Length does not match 2.')
-#     #     assert_true(len(self.trials) == 3, 'Length does not match 3.')
-#     #     (self.subjects & 'subject_id=1').delete()
-#     #     assert_true(len(self.subjects) == 1, 'Length does not match 1.')
-#     #     assert_true(len(self.trials) == 1, 'Length does not match 1.')
-#
-#     def test_short_hand_foreign_reference(self):
-#         self.animals.heading
-#
-#
-#
+
+    #
+    #     # def test_cascading_delete(self):
+    #     #     "Test whether delete works"
+    #     #     tmp = np.array([(2, 'Klara', 'monkey'), (1,'Peter', 'mouse')],
+    #     #                    dtype=[('subject_id', '>i4'), ('real_id', 'O'), ('species', 'O')])
+    #     #
+    #     #     self.subjects.batch_insert(tmp)
+    #     #
+    #     #     self.trials.insert(dict(subject_id=1, trial_id=1, outcome=0))
+    #     #     self.trials.insert(dict(subject_id=1, trial_id=2, outcome=1))
+    #     #     self.trials.insert(dict(subject_id=2, trial_id=3, outcome=2))
+    #     #     assert_true(len(self.subjects) == 2, 'Length does not match 2.')
+    #     #     assert_true(len(self.trials) == 3, 'Length does not match 3.')
+    #     #     (self.subjects & 'subject_id=1').delete()
+    #     #     assert_true(len(self.subjects) == 1, 'Length does not match 1.')
+    #     #     assert_true(len(self.trials) == 1, 'Length does not match 1.')
+    #
+    #     def test_short_hand_foreign_reference(self):
+    #         self.animals.heading
+    #
+    #
+    #
     def test_record_insert_different_order(self):
         "Test whether record insert works"
         tmp = np.array([('Klara', 2, 'monkey')],
@@ -154,7 +169,8 @@ class TestTableObject(object):
                'species': 'human'}
 
         self.subjects.insert(tmp)
-#
+
+    #
     def test_batch_insert(self):
         "Test whether record insert works"
         tmp = np.array([('Klara', 2, 'monkey'), ('Brunhilda', 3, 'mouse'), ('Mickey', 1, 'human')],
@@ -167,9 +183,10 @@ class TestTableObject(object):
                             dtype=[('subject_id', '<i4'), ('real_id', 'O'), ('species', 'O')])
         delivered = self.subjects.fetch()
 
-        for e,d in zip(expected, delivered):
-            assert_equal(tuple(e), tuple(d),'Inserted and fetched records do not match')
-#
+        for e, d in zip(expected, delivered):
+            assert_equal(tuple(e), tuple(d), 'Inserted and fetched records do not match')
+        #
+
     def test_iter_insert(self):
         "Test whether record insert works"
         tmp = np.array([('Klara', 2, 'monkey'), ('Brunhilda', 3, 'mouse'), ('Mickey', 1, 'human')],
@@ -182,15 +199,18 @@ class TestTableObject(object):
                             dtype=[('subject_id', '<i4'), ('real_id', 'O'), ('species', 'O')])
         delivered = self.subjects.fetch()
 
-        for e,d in zip(expected, delivered):
-            assert_equal(tuple(e), tuple(d),'Inserted and fetched records do not match')
-#
+        for e, d in zip(expected, delivered):
+            assert_equal(tuple(e), tuple(d), 'Inserted and fetched records do not match')
+        #
+
     def test_blob_insert(self):
         x = np.random.randn(10)
-        t = {'matrix_id':0, 'data':x, 'comment':'this is a random image'}
+        t = {'matrix_id': 0, 'data': x, 'comment': 'this is a random image'}
         self.relvar_blob.insert(t)
         x2 = self.relvar_blob.fetch()[0][1]
-        assert_array_equal(x,x2, 'inserted blob does not match')
+        assert_array_equal(x, x2, 'inserted blob does not match')
+
+
 #
 # class TestUnboundTables(object):
 #     """
@@ -243,6 +263,7 @@ class TestTableObject(object):
 def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for _ in range(size))
 
+
 class TestIterator(object):
     def __init__(self):
         self.relvar = None
@@ -263,18 +284,18 @@ class TestIterator(object):
 
     def teardown(self):
         cleanup()
-#
-#
+
+    #
+    #
     def test_blob_iteration(self):
         "Tests the basic call of the iterator"
 
         dicts = []
         for i in range(10):
-
             c = id_generator()
 
-            t = {'matrix_id':i,
-                 'data': np.random.randn(4,4,4),
+            t = {'matrix_id': i,
+                 'data': np.random.randn(4, 4, 4),
                  'comment': c}
             self.relvar_blob.insert(t)
             dicts.append(t)
@@ -289,11 +310,10 @@ class TestIterator(object):
     def test_fetch(self):
         dicts = []
         for i in range(10):
-
             c = id_generator()
 
-            t = {'matrix_id':i,
-                 'data': np.random.randn(4,4,4),
+            t = {'matrix_id': i,
+                 'data': np.random.randn(4, 4, 4),
                  'comment': c}
             self.relvar_blob.insert(t)
             dicts.append(t)
@@ -302,7 +322,6 @@ class TestIterator(object):
         assert_true(isinstance(tuples2, np.ndarray), "Return value of fetch does not have proper type.")
         assert_true(isinstance(tuples2[0], np.void), "Return value of fetch does not have proper type.")
         for t, t2 in zip(dicts, tuples2):
-
             assert_equal(t['matrix_id'], t2['matrix_id'], 'inserted and retrieved tuples do not match')
             assert_equal(t['comment'], t2['comment'], 'inserted and retrieved tuples do not match')
             assert_true(np.all(t['data'] == t2['data']), 'inserted and retrieved tuples do not match')
@@ -310,11 +329,10 @@ class TestIterator(object):
     def test_fetch_dicts(self):
         dicts = []
         for i in range(10):
-
             c = id_generator()
 
-            t = {'matrix_id':i,
-                 'data': np.random.randn(4,4,4),
+            t = {'matrix_id': i,
+                 'data': np.random.randn(4, 4, 4),
                  'comment': c}
             self.relvar_blob.insert(t)
             dicts.append(t)
@@ -359,8 +377,8 @@ class TestAutopopulate:
                        dtype=[('real_id', 'O'), ('subject_id', '>i4'), ('species', 'O')])
         self.subjects.batch_insert(tmp)
 
-        for trial_id in range(1,11):
-            self.trials.insert(dict(subject_id=2, trial_id=trial_id, outcome=np.random.randint(0,10)))
+        for trial_id in range(1, 11):
+            self.trials.insert(dict(subject_id=2, trial_id=trial_id, outcome=np.random.randint(0, 10)))
 
     def teardown(self):
         cleanup()
@@ -369,21 +387,20 @@ class TestAutopopulate:
         self.squared.populate()
         assert_equal(len(self.squared), 10)
 
-        for trial in self.trials*self.squared:
-            assert_equal(trial['outcome']**2, trial['squared'])
+        for trial in self.trials * self.squared:
+            assert_equal(trial['outcome'] ** 2, trial['squared'])
 
     def test_autopopulate_restriction(self):
         self.squared.populate(restriction='trial_id <= 5')
         assert_equal(len(self.squared), 5)
 
-        for trial in self.trials*self.squared:
-            assert_equal(trial['outcome']**2, trial['squared'])
+        for trial in self.trials * self.squared:
+            assert_equal(trial['outcome'] ** 2, trial['squared'])
 
     @raises(DataJointError)
     def test_autopopulate_relation_check(self):
         @testschema
         class dummy(dj.Computed):
-
             def populate_relation(self):
                 return None
 
@@ -391,7 +408,7 @@ class TestAutopopulate:
                 pass
 
         du = dummy()
-        du.populate()    \
+        du.populate()
 
     @raises(DataJointError)
     def test_autopopulate_relation_check(self):
@@ -399,7 +416,7 @@ class TestAutopopulate:
 
     @raises(Exception)
     def test_autopopulate_relation_check(self):
-        self.error_generator.populate()\
+        self.error_generator.populate()
 
     @raises(Exception)
     def test_autopopulate_relation_check2(self):
