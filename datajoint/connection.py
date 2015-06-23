@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 import pymysql
 from . import DataJointError
 import logging
@@ -127,3 +128,17 @@ class Connection:
         self.query('COMMIT')
         self._in_transaction = False
         logger.info("Transaction committed and closed.")
+
+
+    #-------- context manager for transactions
+    @contextmanager
+    def transaction(self):
+        try:
+            self.start_transaction()
+            yield self
+        except:
+            self.cancel_transaction()
+            raise
+        else:
+            self.commit_transaction()
+

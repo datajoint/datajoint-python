@@ -79,3 +79,12 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         logger.info('Done populating.')
         return error_list
 
+
+    def progress(self):
+        """
+        report progress of populating this table
+        """
+        total = len(self.populate_relation)
+        remaining = len(self.populate_relation - self.target)
+        print('Remaining %d of %d (%2.1f%%)' % (remaining, total, 100*remaining/total)
+              if remaining else 'Complete', flush=True)

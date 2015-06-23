@@ -107,7 +107,6 @@ class Config(Borg, collections.MutableMapping):
         :param filename: filename of the local JSON settings file. If None, the local config file is used.
         """
         if filename is None:
-            import datajoint as dj
             filename = LOCALCONFIG
         with open(filename, 'w') as fid:
             json.dump(self._conf, fid, indent=4)
@@ -119,8 +118,7 @@ class Config(Borg, collections.MutableMapping):
         :param filename=None: filename of the local JSON settings file. If None, the local config file is used.
         """
         if filename is None:
-            import datajoint as dj
-            filename = dj.config['config.file']
+            filename = LOCALCONFIG
         with open(filename, 'r') as fid:
             self.update(json.load(fid))
 

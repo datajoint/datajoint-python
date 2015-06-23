@@ -12,116 +12,122 @@ testschema = dj.schema(PREFIX + '_test1', locals())
 @testschema
 class Subjects(dj.Manual):
     definition = """
-    # Basic subject info
+    #Basic subject info
 
-    subject_id       : int      # unique subject id
+    subject_id                  : int      # unique subject id
     ---
     real_id                     :  varchar(40)    #  real-world name
     species = "mouse"           : enum('mouse', 'monkey', 'human')   # species
     """
 
-# # test for shorthand
-# class Animals(dj.Relation):
-#     definition = """
-#     test1.Animals (manual)      # Listing of all info
-#
-#     -> Subjects
-#     ---
-#     animal_dob      :date       # date of birth
-#     """
-#
-#
-# class Trials(dj.Relation):
-#     definition = """
-#     test1.Trials (manual)                      # info about trials
-#
-#     -> test1.Subjects
-#     trial_id                   : int
-#     ---
-#     outcome                    : int           # result of experiment
-#
-#     notes=""                   : varchar(4096) # other comments
-#     trial_ts=CURRENT_TIMESTAMP : timestamp     # automatic
-#     """
-#
-#
-#
-# class SquaredScore(dj.Relation, dj.AutoPopulate):
-#     definition = """
-#     test1.SquaredScore (computed)         # cumulative outcome of trials
-#
-#     -> test1.Subjects
-#     -> test1.Trials
-#     ---
-#     squared                    : int         # squared result of Trials outcome
-#     """
-#
-#     @property
-#     def populate_relation(self):
-#         return Subjects() * Trials()
-#
-#     def _make_tuples(self, key):
-#         tmp = (Trials() & key).fetch1()
-#         tmp2 = SquaredSubtable() & key
-#
-#         self.insert(dict(key, squared=tmp['outcome']**2))
-#
-#         ss = SquaredSubtable()
-#
-#         for i in range(10):
-#             key['dummy'] = i
-#             ss.insert(key)
-#
-#
-# class WrongImplementation(dj.Relation, dj.AutoPopulate):
-#     definition = """
-#     test1.WrongImplementation (computed)         # ignore
-#
-#     -> test1.Subjects
-#     -> test1.Trials
-#     ---
-#     dummy                    : int         # ignore
-#     """
-#
-#     @property
-#     def populate_relation(self):
-#         return {'subject_id':2}
-#
-#     def _make_tuples(self, key):
-#         pass
-#
-#
-#
-# class ErrorGenerator(dj.Relation, dj.AutoPopulate):
-#     definition = """
-#     test1.ErrorGenerator (computed)         # ignore
-#
-#     -> test1.Subjects
-#     -> test1.Trials
-#     ---
-#     dummy                    : int         # ignore
-#     """
-#
-#     @property
-#     def populate_relation(self):
-#         return Subjects() * Trials()
-#
-#     def _make_tuples(self, key):
-#         raise Exception("This is for testing")
-#
-#
-#
-#
-#
-#
-# class SquaredSubtable(dj.Relation):
-#     definition = """
-#     test1.SquaredSubtable (computed)         # cumulative outcome of trials
-#
-#     -> test1.SquaredScore
-#     dummy                      : int         # dummy primary attribute
-#     ---
-#     """
+# test for shorthand
+@testschema
+class Animals(dj.Manual):
+    definition = """
+    # Listing of all info
+
+    -> Subjects
+    ---
+    animal_dob      :date       # date of birth
+    """
+
+@testschema
+class Trials(dj.Manual):
+    definition = """
+    # info about trials
+
+    -> Subjects
+    trial_id                   : int
+    ---
+    outcome                    : int           # result of experiment
+
+    notes=""                   : varchar(4096) # other comments
+    trial_ts=CURRENT_TIMESTAMP : timestamp     # automatic
+    """
+
+@testschema
+class Matrix(dj.Manual):
+    definition = """
+    # Some numpy array
+
+    matrix_id       : int       # unique matrix id
+    ---
+    data                        :  longblob   #  data
+    comment                     :  varchar(1000) # comment
+    """
+
+
+@testschema
+class SquaredScore(dj.Computed):
+    definition = """
+    # cumulative outcome of trials
+
+    -> Subjects
+    -> Trials
+    ---
+    squared                    : int         # squared result of Trials outcome
+    """
+
+    @property
+    def populate_relation(self):
+        return Subjects() * Trials()
+
+    def _make_tuples(self, key):
+        tmp = (Trials() & key).fetch1()
+        tmp2 = SquaredSubtable() & key
+
+        self.insert(dict(key, squared=tmp['outcome']**2))
+
+        ss = SquaredSubtable()
+
+        for i in range(10):
+            key['dummy'] = i
+            ss.insert(key)
+
+@testschema
+class WrongImplementation(dj.Computed):
+    definition = """
+    # ignore
+
+    -> Subjects
+    -> Trials
+    ---
+    dummy                    : int         # ignore
+    """
+
+    @property
+    def populate_relation(self):
+        return {'subject_id':2}
+
+    def _make_tuples(self, key):
+        pass
+
+class ErrorGenerator(dj.Computed):
+    definition = """
+    # ignore
+
+    -> Subjects
+    -> Trials
+    ---
+    dummy                    : int         # ignore
+    """
+
+    @property
+    def populate_relation(self):
+        return Subjects() * Trials()
+
+    def _make_tuples(self, key):
+        raise Exception("This is for testing")
+
+@testschema
+class SquaredSubtable(dj.Subordinate, dj.Manual):
+    definition = """
+    # cumulative outcome of trials
+
+    -> SquaredScore
+    dummy                      : int         # dummy primary attribute
+    ---
+    """
 #
 #
 # # test reference to another table in same schema
