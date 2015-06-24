@@ -5,11 +5,12 @@ classes for relational algebra
 import numpy as np
 import abc
 import re
+from collections import OrderedDict
 from copy import copy
 from datajoint import DataJointError, config
-from .blob import unpack
 import logging
-import numpy.lib.recfunctions as rfn
+
+from .blob import unpack
 
 logger = logging.getLogger(__name__)
 
@@ -24,25 +25,43 @@ class RelationalOperand(metaclass=abc.ABCMeta):
     RelationalOperand operators are: restrict, pro, and join.
     """
 
-    def __init__(self, conn, restrictions=None):
-        self._conn = conn
-        self._restrictions = [] if restrictions is None else restrictions
-
-    @property
-    def conn(self):
-        return self._conn
+    _restrictions = None
 
     @property
     def restrictions(self):
-        return self._restrictions
+        return [] if self._restrictions is None else self._restrictions
 
-    @abc.abstractproperty
+    @property
+    def primary_key(self):
+        return self.heading.primary_key
+
+    # --------- abstract properties -----------
+
+    @property
+    @abc.abstractmethod
+    def connection(self):
+        """
+        :return: a datajoint.Connection object
+        """
+        pass
+
+    @property
+    @abc.abstractmethod
     def from_clause(self):
+        """
+        :return: a string containing the FROM clause of the SQL SELECT statement
+        """
         pass
 
-    @abc.abstractproperty
+    @property
+    @abc.abstractmethod
     def heading(self):
+        """
+        :return: a valid datajoint.Heading object
+        """
         pass
+
+    # --------- relational operators -----------
 
     def __mul__(self, other):
         """
@@ -98,10 +117,8 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         relational restriction or semijoin
         """
-        if self._restrictions is None:
-            self._restrictions = []
-        ret = copy(self)  # todo: why not deepcopy it?
-        ret._restrictions = list(ret._restrictions)  # copy restriction
+        ret = copy(self)
+        ret._restrictions = list(ret.restrictions)  # copy restriction list
         ret &= restriction
         return ret
 
@@ -118,6 +135,8 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         return self & Not(restriction)
 
+    # ------ data retrieval methods -----------
+
     def make_select(self, attribute_spec=None):
         if attribute_spec is None:
             attribute_spec = self.heading.as_sql
@@ -127,7 +146,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         number of tuples in the relation.  This also takes care of the truth value
         """
-        cur = self.conn.query(self.make_select('count(*)'))
+        cur = self.connection.query(self.make_select('count(*)'))
         return cur.fetchone()[0]
 
     def __contains__(self, item):
@@ -152,8 +171,8 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         ret = cur.fetchone()
         if not ret or cur.fetchone():
             raise DataJointError('fetch1 should only be used for relations with exactly one tuple')
-        ret = {k: unpack(v) if heading[k].is_blob else v for k, v in ret.items()}
-        return ret
+        return OrderedDict((name, unpack(ret[name]) if heading[name].is_blob else ret[name])
+                           for name in self.heading.names)
 
     def fetch(self, offset=0, limit=None, order_by=None, descending=False, as_dict=False):
         """
@@ -169,8 +188,8 @@ class RelationalOperand(metaclass=abc.ABCMeta):
                           descending=descending, as_dict=as_dict)
         heading = self.heading
         if as_dict:
-            ret = [{k: unpack(v) if heading[k].is_blob else v
-                    for k, v in d.items()}
+            ret = [OrderedDict((name, unpack(d[name]) if heading[name].is_blob else d[name])
+                               for name in self.heading.names)
                    for d in cur.fetchall()]
         else:
             ret = np.array(list(cur.fetchall()), dtype=heading.as_dtype)
@@ -196,7 +215,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             if offset:
                 sql += ' OFFSET %d' % offset
         logger.debug(sql)
-        return self.conn.query(sql, as_dict=as_dict)
+        return self.connection.query(sql, as_dict=as_dict)
 
     def __repr__(self):
         limit = config['display.limit']
@@ -236,7 +255,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
 
         def make_condition(arg):
             if isinstance(arg, dict):
-                conditions = ['`%s`=%s' % (k, repr(v)) for k, v in arg.items()]
+                conditions = ['`%s`=%s' % (k, repr(v)) for k, v in arg.items() if k in self.heading]
             elif isinstance(arg, np.void):
                 conditions = ['`%s`=%s' % (k, arg[k]) for k in arg.dtype.fields]
             else:
@@ -281,11 +300,15 @@ class Join(RelationalOperand):
     def __init__(self, arg1, arg2):
         if not isinstance(arg2, RelationalOperand):
             raise DataJointError('a relation can only be joined with another relation')
-        if arg1.conn != arg2.conn:
+        if arg1.connection != arg2.connection:
             raise DataJointError('Cannot join relations with different database connections')
         self._arg1 = Subquery(arg1) if arg1.heading.computed else arg1
         self._arg2 = Subquery(arg1) if arg2.heading.computed else arg2
-        super().__init__(arg1.conn, self._arg1.restrictions + self._arg2.restrictions)
+        self._restrictions = self._arg1.restrictions + self._arg2.restrictions
+
+    @property
+    def connection(self):
+        return self._arg1.connection
 
     @property
     def counter(self):
@@ -318,9 +341,8 @@ class Projection(RelationalOperand):
                 self._renamed_attributes.update({d['alias']: d['sql_expression']})
             else:
                 self._attributes.append(attribute)
-        super().__init__(arg.conn)
         if group:
-            if arg.conn != group.conn:
+            if arg.connection != group.connection:
                 raise DataJointError('Cannot join relations with different database connections')
             self._group = Subquery(group)
             self._arg = Subquery(arg)
@@ -332,6 +354,10 @@ class Projection(RelationalOperand):
                 # project without subquery
                 self._arg = arg
                 self._restrictions = self._arg.restrictions
+
+    @property
+    def connection(self):
+        return self._arg.connection
 
     @property
     def heading(self):
@@ -356,7 +382,10 @@ class Subquery(RelationalOperand):
 
     def __init__(self, arg):
         self._arg = arg
-        super().__init__(arg.conn)
+
+    @property
+    def connection(self):
+        return self._arg.connection
 
     @property
     def counter(self):

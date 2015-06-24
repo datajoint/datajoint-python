@@ -11,17 +11,46 @@ class Heading:
     Heading contains the property attributes, which is an OrderedDict in which the keys are
     the attribute names and the values are AttrTuples.
     """
-    AttrTuple = namedtuple('AttrTuple',
+
+    class AttrTuple(namedtuple('AttrTuple',
                            ('name', 'type', 'in_key', 'nullable', 'default',
                             'comment', 'autoincrement', 'numeric', 'string', 'is_blob',
-                            'computation', 'dtype'))
-    AttrTuple.as_dict = AttrTuple._asdict  # renaming to make public
+                            'computation', 'dtype'))):
+        def _asdict(self):
+            """
+            for some reason the inherted _asdict does not work after subclassing from namedtuple
+            """
+            return OrderedDict((name, self[i]) for i, name in enumerate(self._fields))
 
-    def __init__(self, attributes):
+        def sql(self):
+            """
+            Convert attribute tuple into its SQL CREATE TABLE clause.
+            :rtype : SQL code
+            """
+            literals = ['CURRENT_TIMESTAMP']
+            if self.nullable:
+                default = 'DEFAULT NULL'
+            else:
+                default = 'NOT NULL'
+                if self.default:
+                    # enclose value in quotes except special SQL values or already enclosed
+                    quote = self.default.upper() not in literals and self.default[0] not in '"\''
+                    default += ' DEFAULT ' + ('"%s"' if quote else "%s") % self.default
+            if any((c in r'\"' for c in self.comment)):
+                raise DataJointError('Illegal characters in attribute comment "%s"' % self.comment)
+            return '`{name}` {type} {default} COMMENT "{comment}"'.format(
+                name=self.name, type=self.type, default=default, comment=self.comment)
+
+    def __init__(self, attributes=None):
         """
         :param attributes: a list of dicts with the same keys as AttrTuple
         """
-        self.attributes = OrderedDict([(q['name'], Heading.AttrTuple(**q)) for q in attributes])
+        if attributes:
+            attributes = OrderedDict([(q['name'], Heading.AttrTuple(**q)) for q in attributes])
+        self.attributes = attributes
+
+    def __bool__(self):
+        return self.attributes is not None
 
     @property
     def names(self):
@@ -52,12 +81,14 @@ class Heading:
         return self.attributes[name]
 
     def __repr__(self):
-        autoincrement_string = {False: '', True: ' auto_increment'}
-        return '\n'.join(['%-20s : %-28s # %s' % (
-            k if v.default is None else '%s="%s"' % (k, v.default),
-            '%s%s' % (v.type, autoincrement_string[v.autoincrement]),
-            v.comment)
-            for k, v in self.attributes.items()])
+        if self.attributes is None:
+            return 'Empty heading'
+        else:
+            return '\n'.join(['%-20s : %-28s # %s' % (
+                k if v.default is None else '%s="%s"' % (k, v.default),
+                '%s%s' % (v.type, 'auto_increment' if v.autoincrement else ''),
+                v.comment)
+                for k, v in self.attributes.items()])
 
     @property
     def as_dtype(self):
@@ -90,14 +121,14 @@ class Heading:
     def __iter__(self):
         return iter(self.attributes)
 
-    @classmethod
-    def init_from_database(cls, conn, dbname, table_name):
+    def init_from_database(self, conn, database, table_name):
         """
-        initialize heading from a database table
+        initialize heading from a database table.  The table must exist already.
         """
         cur = conn.query(
-            'SHOW FULL COLUMNS FROM `{table_name}` IN `{dbname}`'.format(
-                table_name=table_name, dbname=dbname), as_dict=True)
+            'SHOW FULL COLUMNS FROM `{table_name}` IN `{database}`'.format(
+                table_name=table_name, database=database), as_dict=True)
+
         attributes = cur.fetchall()
 
         rename_map = {
@@ -147,8 +178,8 @@ class Heading:
 
             attr['computation'] = None
             if not (attr['numeric'] or attr['string'] or attr['is_blob']):
-                raise DataJointError('Unsupported field type {field} in `{dbname}`.`{table_name}`'.format(
-                    field=attr['type'], dbname=dbname, table_name=table_name))
+                raise DataJointError('Unsupported field type {field} in `{database}`.`{table_name}`'.format(
+                    field=attr['type'], database=database, table_name=table_name))
             attr.pop('Extra')
 
             # fill out dtype. All floats and non-nullable integers are turned into specific dtypes
@@ -163,8 +194,7 @@ class Heading:
                     t = re.sub(r' unsigned$', '', t)   # remove unsigned
                     assert (t, is_unsigned) in numeric_types, 'dtype not found for type %s' % t
                     attr['dtype'] = numeric_types[(t, is_unsigned)]
-
-        return cls(attributes)
+        self.attributes = OrderedDict([(q['name'], Heading.AttrTuple(**q)) for q in attributes])
 
     def project(self, *attribute_list, **renamed_attributes):
         """
@@ -181,14 +211,14 @@ class Heading:
         attribute_list = self.primary_key + [a for a in attribute_list if a not in self.primary_key]
 
         # convert attribute_list into a list of dicts but exclude renamed attributes
-        attribute_list = [v.as_dict() for k, v in self.attributes.items()
+        attribute_list = [v._asdict() for k, v in self.attributes.items()
                           if k in attribute_list and k not in renamed_attributes.values()]
 
         # add renamed and computed attributes
         for new_name, computation in renamed_attributes.items():
             if computation in self.names:
                 # renamed attribute
-                new_attr = self.attributes[computation].as_dict()
+                new_attr = self.attributes[computation]._asdict()
                 new_attr['name'] = new_name
                 new_attr['computation'] = '`' + computation + '`'
             else:
@@ -215,14 +245,14 @@ class Heading:
         join two headings
         """
         assert isinstance(other, Heading)
-        attribute_list = [v.as_dict() for v in self.attributes.values()]
+        attribute_list = [v._asdict() for v in self.attributes.values()]
         for name in other.names:
             if name not in self.names:
-                attribute_list.append(other.attributes[name].as_dict())
+                attribute_list.append(other.attributes[name]._asdict())
         return Heading(attribute_list)
 
     def resolve(self):
         """
         Remove attribute computations after they have been resolved in a subquery
         """
-        return Heading([dict(v.as_dict(), computation=None) for v in self.attributes.values()])
+        return Heading([dict(v._asdict(), computation=None) for v in self.attributes.values()])

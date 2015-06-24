@@ -8,7 +8,7 @@ __author__ = 'Fabian Sinz'
 
 from nose.tools import assert_true, assert_raises, assert_equal, raises, assert_dict_equal
 import datajoint as dj
-
+import os
 
 def test_load_save():
     dj.config.save('tmp.json')
@@ -65,3 +65,13 @@ def test_save():
     assert_true(os.path.isfile(settings.LOCALCONFIG))
     if moved:
         os.rename(tmpfile, settings.LOCALCONFIG)
+
+def test_load_save():
+
+    filename_old = dj.settings.LOCALCONFIG
+    filename = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(50)) + '.json'
+    dj.settings.LOCALCONFIG = filename
+    dj.config.save()
+    dj.config.load(filename=filename)
+    dj.settings.LOCALCONFIG = filename_old
+    os.remove(filename)

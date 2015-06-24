@@ -1,144 +1,271 @@
-import importlib
-import abc
-from types import ModuleType
-from . import DataJointError
-from .free_relation import FreeRelation
+from collections.abc import Mapping
+import numpy as np
 import logging
+import abc
+import pymysql
 
+from . import DataJointError, config, conn
+from .declare import declare, compile_attribute
+from .relational_operand import RelationalOperand
+from .blob import pack
+from .utils import user_choice
+from .heading import Heading
 
 logger = logging.getLogger(__name__)
 
 
-class Relation(FreeRelation, metaclass=abc.ABCMeta):
+def schema(database, context, connection=None):
     """
-    Relation is a Table that implements data definition functions.
-    It is an abstract class with the abstract property 'definition'.
+    Returns a decorator that can be used to associate a Relation class to a database.
 
-    Example for a usage of Relation::
-
-        import datajoint as dj
-
-
-        class Subjects(dj.Relation):
-            definition = '''
-            test1.Subjects (manual)                                    # Basic subject info
-            subject_id            : int                                # unique subject id
-            ---
-            real_id               : varchar(40)                        #  real-world name
-            species = "mouse"     : enum('mouse', 'monkey', 'human')   # species
-            '''
-
+    :param database: name of the database to associate the decorated class with
+    :param context: dictionary for looking up foreign keys references, usually set to locals()
+    :param connection: Connection object. Defaults to datajoint.conn()
+    :return: a decorator for Relation subclasses
     """
-    @abc.abstractproperty
+    if connection is None:
+        connection = conn()
+
+    # if the database does not exist, create it
+    cur = connection.query("SHOW DATABASES LIKE '{database}'".format(database=database))
+    if cur.rowcount == 0:
+        logger.info("Database `{database}` could not be found. "
+                    "Attempting to create the database.".format(database=database))
+        try:
+            connection.query("CREATE DATABASE `{database}`".format(database=database))
+            logger.info('Created database `{database}`.'.format(database=database))
+        except pymysql.OperationalError:
+            raise DataJointError("Database named `{database}` was not defined, and"
+                                 "an attempt to create has failed. Check"
+                                 " permissions.".format(database=database))
+
+    def decorator(cls):
+        """
+        The decorator declares the table and binds the class to the database table
+        """
+        cls.database = database
+        cls._connection = connection
+        cls._heading = Heading()
+        instance = cls() if isinstance(cls, type) else cls
+        if not instance.heading:
+            connection.query(
+                declare(
+                    full_table_name=instance.full_table_name,
+                    definition=instance.definition,
+                    context=context))
+        return cls
+
+    return decorator
+
+
+
+class Relation(RelationalOperand, metaclass=abc.ABCMeta):
+    """
+    Relation is an abstract class that represents a base relation, i.e. a table in the database.
+    To make it a concrete class, override the abstract properties specifying the connection,
+    table name, database, context, and definition.
+    A Relation implements insert and delete methods in addition to inherited relational operators.
+    """
+
+    # ---------- abstract properties ------------ #
+    @property
+    @abc.abstractmethod
+    def table_name(self):
+        """
+        :return: the name of the table in the database
+        """
+        raise NotImplementedError('Relation subclasses must define property table_name')
+
+    @property
+    @abc.abstractmethod
     def definition(self):
         """
-        :return: string containing the table declaration using the DataJoint Data Definition Language.
-
-        The DataJoint DDL is described at:  http://datajoint.github.com
+        :return: a string containing the table definition using the DataJoint DDL
         """
         pass
 
+    # -------------- required by RelationalOperand ----------------- #
     @property
-    def full_class_name(self):
-        """
-        :return: full class name including the entire package hierarchy
-        """
-        return '{}.{}'.format(self.__module__, self.class_name)
+    def connection(self):
+        return self._connection
 
     @property
-    def ref_name(self):
+    def heading(self):
+        if not self._heading and self.is_declared:
+            self._heading.init_from_database(self.connection, self.database, self.table_name)
+        return self._heading
+
+    @property
+    def from_clause(self):
         """
-        :return: name by which this class should be accessible
+        :return: the FROM clause of SQL SELECT statements.
         """
-        parent = self.__module__.split('.')[-2 if self._use_package else -1]
-        return parent + '.' + self.class_name
+        return self.full_table_name
 
-    def __init__(self): #TODO: support taking in conn obj
-        class_name = self.__class__.__name__
-        module_name = self.__module__
-        mod_obj = importlib.import_module(module_name)
-        self._use_package = False
-        # first, find the conn object
-        try:
-            conn = mod_obj.conn
-        except AttributeError:
-            try:
-                # check if database bound at the package level instead
-                pkg_obj = importlib.import_module(mod_obj.__package__)
-                conn = pkg_obj.conn
-                self._use_package = True
-            except AttributeError:
-                raise DataJointError(
-                    "Please define object 'conn' in '{}' or in its containing package.".format(module_name))
-        # now use the conn object to determine the dbname this belongs to
-        try:
-            if self._use_package:
-                # the database is bound to the package
-                pkg_name = '.'.join(module_name.split('.')[:-1])
-                dbname = conn.mod_to_db[pkg_name]
-            else:
-                dbname = conn.mod_to_db[module_name]
-        except KeyError:
-            raise DataJointError(
-                'Module {} is not bound to a database. See datajoint.connection.bind'.format(module_name))
-        # initialize using super class's constructor
-        super().__init__(conn, dbname, class_name)
-
-    def get_base(self, module_name, class_name):
+    def iter_insert(self, rows, **kwargs):
         """
-        Loads the base relation from the module.  If the base relation is not defined in
-        the module, then construct it using Relation constructor.
+        Inserts a collection of tuples. Additional keyword arguments are passed to insert.
 
-        :param module_name: module name
-        :param class_name: class name
-        :returns: the base relation
+        :param iter: Must be an iterator that generates a sequence of valid arguments for insert.
         """
-        if not module_name:
-            module_name = self.__module__.split('.')[-1]
+        for row in rows:
+            self.insert(row, **kwargs)
 
-        mod_obj = self.get_module(module_name)
-        if not mod_obj:
-            raise DataJointError('Module named {mod_name} was not found. Please make'
-                                 ' sure that it is in the path or you import the module.'.format(mod_name=module_name))
-        try:
-            ret = getattr(mod_obj, class_name)()
-        except AttributeError:
-            ret = FreeRelation(conn=self.conn,
-                               dbname=self.conn.mod_to_db[mod_obj.__name__],
-                               class_name=class_name)
-        return ret
+    # --------- SQL functionality --------- #
+    @property
+    def is_declared(self):
+        cur = self.connection.query(
+            'SHOW TABLES in `{database}`LIKE "{table_name}"'.format(
+                database=self.database, table_name=self.table_name))
+        return cur.rowcount>0
 
-    @classmethod
-    def get_module(cls, module_name):
+    def batch_insert(self, data, **kwargs):
         """
-        Resolve short name reference to a module and return the corresponding module object
+        Inserts an entire batch of entries. Additional keyword arguments are passed to insert.
 
-        :param module_name: short name for the module, whose reference is to be resolved
-        :return: resolved module object. If no module matches the short name, `None` will be returned
-
-        The module_name resolution steps in the following order:
-
-        1. Global reference to a module of the same name defined in the module that contains this Relation derivative.
-           This is the recommended use case.
-        2. Module of the same name defined in the package containing this Relation derivative. This will only look for the
-           most immediate containing package (e.g. if this class is contained in package.subpackage.module, it will
-           check within `package.subpackage` but not inside `package`).
-        3. Globally accessible module with the same name.
+        :param data: must be iterable, each row must be a valid argument for insert
         """
-        # from IPython import embed
-        # embed()
-        mod_obj = importlib.import_module(cls.__module__)
-        if cls.__module__.split('.')[-1] == module_name:
-            return mod_obj
-        attr = getattr(mod_obj, module_name, None)
-        if isinstance(attr, ModuleType):
-            return attr
-        if mod_obj.__package__:
-            try:
-                return importlib.import_module('.' + module_name, mod_obj.__package__)
-            except ImportError:
-                pass
-        try:
-            return importlib.import_module(module_name)
-        except ImportError:
-            return None
+        self.iter_insert(data.__iter__(), **kwargs)
+
+    @property
+    def full_table_name(self):
+        return r"`{0:s}`.`{1:s}`".format(self.database, self.table_name)
+
+    def insert(self, tup, ignore_errors=False, replace=False):
+        """
+        Insert one data record or one Mapping (like a dictionary).
+
+        :param tup: Data record, or a Mapping (like a dictionary).
+        :param ignore_errors=False: Ignores errors if True.
+        :param replace=False: Replaces data tuple if True.
+
+        Example::
+
+            b = djtest.Subject()
+            b.insert(dict(subject_id = 7, species="mouse",\\
+                           real_id = 1007, date_of_birth = "2014-09-01"))
+        """
+
+        heading = self.heading
+        if isinstance(tup, np.void):
+            for fieldname in tup.dtype.fields:
+                if fieldname not in heading:
+                    raise KeyError(u'{0:s} is not in the attribute list'.format(fieldname, ))
+            value_list = ','.join([repr(tup[name]) if not heading[name].is_blob else '%s'
+                                   for name in heading if name in tup.dtype.fields])
+
+            args = tuple(pack(tup[name]) for name in heading
+                         if name in tup.dtype.fields and heading[name].is_blob)
+            attribute_list = '`' + '`,`'.join(q for q in heading if q in tup.dtype.fields) + '`'
+        elif isinstance(tup, Mapping):
+            for fieldname in tup.keys():
+                if fieldname not in heading:
+                    raise KeyError(u'{0:s} is not in the attribute list'.format(fieldname, ))
+            value_list = ','.join(repr(tup[name]) if not heading[name].is_blob else '%s'
+                                  for name in heading if name in tup)
+            args = tuple(pack(tup[name]) for name in heading
+                         if name in tup and heading[name].is_blob)
+            attribute_list = '`' + '`,`'.join(name for name in heading if name in tup) + '`'
+        else:
+            raise DataJointError('Datatype %s cannot be inserted' % type(tup))
+        if replace:
+            sql = 'REPLACE'
+        elif ignore_errors:
+            sql = 'INSERT IGNORE'
+        else:
+            sql = 'INSERT'
+        sql += " INTO %s (%s) VALUES (%s)" % (self.from_clause, attribute_list, value_list)
+        logger.info(sql)
+        self.connection.query(sql, args=args)
+
+    def delete(self):
+        if not config['safemode'] or user_choice(
+                "You are about to delete data from a table. This operation cannot be undone.\n"
+                "Proceed?", default='no') == 'yes':
+            self.connection.query('DELETE FROM ' + self.from_clause + self.where_clause)  # TODO: make cascading (issue #15)
+
+    def drop(self):
+        """
+        Drops the table associated to this class.
+        """
+        if self.is_declared:
+            if not config['safemode'] or user_choice(
+                    "You are about to drop an entire table. This operation cannot be undone.\n"
+                    "Proceed?", default='no') == 'yes':
+                self.connection.query('DROP TABLE %s' % self.full_table_name)  # TODO: make cascading (issue #16)
+                # cls.connection.clear_dependencies(dbname=cls.dbname) #TODO: reimplement because clear_dependencies will be gone
+                # cls.connection.load_headings(dbname=cls.dbname, force=True) #TODO: reimplement because load_headings is gone
+                logger.info("Dropped table %s" % self.full_table_name)
+
+    def size_on_disk(self):
+        """
+        :return: size of data and indices in GiB taken by the table on the storage device
+        """
+        ret = self.connection.query(
+            'SHOW TABLE STATUS FROM `{database}` WHERE NAME="{table}"'.format(
+                database=self.database, table=self.table_name), as_dict=True
+        ).fetchone()
+        return (ret['Data_length'] + ret['Index_length'])/1024**2
+
+    def set_table_comment(self, comment):
+        """
+        Update the table comment in the table definition.
+        :param comment: new comment as string
+        """
+        self._alter('COMMENT="%s"' % comment)
+
+    def add_attribute(self, definition, after=None):
+        """
+        Add a new attribute to the table. A full line from the table definition
+        is passed in as definition.
+
+        The definition can specify where to place the new attribute. Use after=None
+        to add the attribute as the first attribute or after='attribute' to place it
+        after an existing attribute.
+
+        :param definition: table definition
+        :param after=None: After which attribute of the table the new attribute is inserted.
+                           If None, the attribute is inserted in front.
+        """
+        position = ' FIRST' if after is None else (
+            ' AFTER %s' % after if after else '')
+        sql = compile_attribute(definition)[1]
+        self._alter('ADD COLUMN %s%s' % (sql, position))
+
+    def drop_attribute(self, attribute_name):
+        """
+        Drops the attribute attrName from this table.
+        :param attribute_name: Name of the attribute that is dropped.
+        """
+        if not config['safemode'] or user_choice(
+                "You are about to drop an attribute from a table."
+                "This operation cannot be undone.\n"
+                "Proceed?", default='no') == 'yes':
+            self._alter('DROP COLUMN `%s`' % attribute_name)
+
+    def alter_attribute(self, attribute_name, definition):
+        """
+        Alter attribute definition
+
+        :param attribute_name: field that is redefined
+        :param definition: new definition of the field
+        """
+        sql = compile_attribute(definition)[1]
+        self._alter('CHANGE COLUMN `%s` %s' % (attribute_name, sql))
+
+    def erd(self, subset=None):
+        """
+        Plot the schema's entity relationship diagram (ERD).
+        """
+        NotImplemented
+
+    def _alter(self, alter_statement):
+        """
+        Execute an ALTER TABLE statement.
+        :param alter_statement: alter statement
+        """
+        if self.connection.in_transaction:
+            raise DataJointError("Table definition cannot be altered during a transaction.")
+        sql = 'ALTER TABLE %s %s' % (self.full_table_name, alter_statement)
+        self.connection.query(sql)
+        self.heading.init_from_database(self.connection, self.database, self.table_name)

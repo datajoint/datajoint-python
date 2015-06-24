@@ -1,28 +1,19 @@
+from contextlib import contextmanager
 import pymysql
-import re
-from .utils import to_camel_case
 from . import DataJointError
-from .heading import Heading
-from .settings import prefix_to_role
 import logging
-from .erd import DBConnGraph
 from . import config
 
 logger = logging.getLogger(__name__)
-
-# The following two regular expression are equivalent but one works in python
-# and the other works in MySQL
-table_name_regexp_sql = re.compile('^(#|_|__|~)?[a-z][a-z0-9_]*$')
-table_name_regexp = re.compile('^(|#|_|__|~)[a-z][a-z0-9_]*$')  # MySQL does not accept this but MariaDB does
 
 
 def conn_container():
     """
     creates a persistent connections for everyone to use
     """
-    _connObj = None  # persistent connection object used by dj.conn()
+    _connection = None  # persistent connection object used by dj.conn()
 
-    def conn_function(host=None, user=None, passwd=None, init_fun=None, reset=False):
+    def conn_function(host=None, user=None, passwd=None, init_fun=None, reset=False): # TODO: thin wrapping layer to mimic singleton
         """
         Manage a persistent connection object.
         This is one of several ways to configure and access a datajoint connection.
@@ -30,8 +21,8 @@ def conn_container():
 
         Set rest=True to reset the persistent connection object
         """
-        nonlocal _connObj
-        if not _connObj or reset:
+        nonlocal _connection
+        if not _connection or reset:
             host = host if host is not None else config['database.host']
             user = user if user is not None else config['database.user']
             passwd = passwd if passwd is not None else config['database.password']
@@ -39,18 +30,16 @@ def conn_container():
             if passwd is None: passwd = input("Please enter database password: ")
 
             init_fun = init_fun if init_fun is not None else config['connection.init_function']
-            _connObj = Connection(host, user, passwd, init_fun)
-        return _connObj
+            _connection = Connection(host, user, passwd, init_fun)
+        return _connection
 
     return conn_function
 
-# The function conn is used by others to obtain the package wide persistent connection object
+# The function conn is used by others to obtain a connection object
 conn = conn_container()
 
 
-
-
-class Connection(object):
+class Connection:
     """
     A dj.Connection object manages a connection to a database server.
     It also catalogues modules, schemas, tables, and their dependencies (foreign keys).
@@ -73,22 +62,15 @@ class Connection(object):
         self.conn_info = dict(host=host, port=port, user=user, passwd=passwd)
         self._conn = pymysql.connect(init_command=init_fun, **self.conn_info)
         if self.is_connected:
-            print("Connected", user + '@' + host + ':' + str(port))
+            logger.info("Connected " + user + '@' + host + ':' + str(port))
         else:
             raise DataJointError('Connection failed.')
         self._conn.autocommit(True)
-
-        self.db_to_mod = {}  # modules indexed by dbnames
-        self.mod_to_db = {}  # database names indexed by modules
-        self.table_names = {}  # tables names indexed by [dbname][class_name]
-        self.headings = {}  # contains headings indexed by [dbname][table_name]
-        self.tableInfo = {}  # table information indexed by [dbname][table_name]
-
-        # dependencies from foreign keys
-        self.parents = {}  # maps table names to their parent table names (primary foreign key)
-        self.referenced = {}  # maps table names to table names they reference (non-primary foreign key
-        self._graph = DBConnGraph(self)  # initialize an empty connection graph
         self._in_transaction = False
+
+    def __del__(self):
+        logger.info('Disconnecting {user}@{host}:{port}'.format(**self.conn_info))
+        self._conn.close()
 
     def __eq__(self, other):
         return self.conn_info == other.conn_info
@@ -100,216 +82,6 @@ class Connection(object):
         """
         return self._conn.ping()
 
-    def get_full_module_name(self, module):
-        """
-        Returns full module name of the module.
-
-        :param module: module for which the name is requested.
-        :return: full module name
-        """
-        return '.'.join(self.root_package, module)
-
-    def bind(self, module, dbname):
-        """
-        Binds the `module` name to the database named `dbname`.
-        Throws an error if `dbname` is already bound to another module.
-
-        If the database `dbname` does not exist in the server, attempts
-        to create the database and then bind the module.
-
-
-        :param module: module name.
-        :param dbname: database name. It should be a valid database identifier and not a match pattern.
-        """
-
-        if dbname in self.db_to_mod:
-            raise DataJointError('Database `%s` is already bound to module `%s`'
-                                 % (dbname, self.db_to_mod[dbname]))
-
-        cur = self.query("SHOW DATABASES LIKE '{dbname}'".format(dbname=dbname))
-        count = cur.rowcount
-
-        if count == 1:
-            # Database exists
-            self.db_to_mod[dbname] = module
-            self.mod_to_db[module] = dbname
-        elif count == 0:
-            # Database doesn't exist, attempt to create
-            logger.info("Database `{dbname}` could not be found. "
-                        "Attempting to create the database.".format(dbname=dbname))
-            try:
-                self.query("CREATE DATABASE `{dbname}`".format(dbname=dbname))
-                logger.info('Created database `{dbname}`.'.format(dbname=dbname))
-                self.db_to_mod[dbname] = module
-                self.mod_to_db[module] = dbname
-            except pymysql.OperationalError:
-                raise DataJointError("Database named `{dbname}` was not defined, and"
-                                     " an attempt to create has failed. Check"
-                                     " permissions.".format(dbname=dbname))
-        else:
-            raise DataJointError("Database name {dbname} matched more than one "
-                                 "existing databases. Database name should not be "
-                                 "a pattern.".format(dbname=dbname))
-
-    def load_headings(self, dbname=None, force=False):
-        """
-        Load table information including roles and list of attributes for all
-        tables within dbname by examining respective table status.
-
-        If dbname is not specified or None, will load headings for all
-        databases that are bound to a module.
-
-        By default, the heading is not loaded again if it already exists.
-        Setting force=True will result in reloading of the heading even if one
-        already exists.
-
-        :param dbname=None: database name
-        :param force=False: force reloading the heading
-        """
-        if dbname:
-            self._load_headings(dbname, force)
-            return
-
-        for dbname in self.db_to_mod:
-            self._load_headings(dbname, force)
-
-    def _load_headings(self, dbname, force=False):
-        """
-        Load table information including roles and list of attributes for all
-        tables within dbname by examining respective table status.
-
-        By default, the heading is not loaded again if it already exists.
-        Setting force=True will result in reloading of the heading even if one
-        already exists.
-
-        :param dbname: database name
-        :param force: force reloading the heading
-        """
-        if dbname not in self.headings or force:
-            logger.info('Loading table definitions from `{dbname}`...'.format(dbname=dbname))
-            self.table_names[dbname] = {}
-            self.headings[dbname] = {}
-            self.tableInfo[dbname] = {}
-
-            cur = self.query('SHOW TABLE STATUS FROM `{dbname}` WHERE name REGEXP "{sqlPtrn}"'.format(
-                dbname=dbname, sqlPtrn=table_name_regexp_sql.pattern), as_dict=True)
-
-            for info in cur:
-                info = {k.lower(): v for k, v in info.items()}  # lowercase it
-                table_name = info.pop('name')
-                # look up role by table name prefix
-                role = prefix_to_role[table_name_regexp.match(table_name).group(1)]
-                class_name = to_camel_case(table_name)
-                self.table_names[dbname][class_name] = table_name
-                self.tableInfo[dbname][table_name] = dict(info, role=role)
-                self.headings[dbname][table_name] = Heading.init_from_database(self, dbname, table_name)
-            self.load_dependencies(dbname)
-
-    def load_dependencies(self, dbname):  # TODO: Perhaps consider making this "private" by preceding with underscore?
-        """
-        Load dependencies (foreign keys) between tables by examining their
-        respective CREATE TABLE statements.
-
-        :param dbname: database name
-        """
-
-        foreign_key_regexp = re.compile(r"""
-        FOREIGN\ KEY\s+\((?P<attr1>[`\w ,]+)\)\s+   # list of keys in this table
-        REFERENCES\s+(?P<ref>[^\s]+)\s+             # table referenced
-        \((?P<attr2>[`\w ,]+)\)                     # list of keys in the referenced table
-        """, re.X)
-
-        logger.info('Loading dependencies for `{dbname}`'.format(dbname=dbname))
-
-        for tabName in self.tableInfo[dbname]:
-            cur = self.query('SHOW CREATE TABLE `{dbname}`.`{tabName}`'.format(dbname=dbname, tabName=tabName),
-                             as_dict=True)
-            table_def = cur.fetchone()
-            full_table_name = '`%s`.`%s`' % (dbname, tabName)
-            self.parents[full_table_name] = []
-            self.referenced[full_table_name] = []
-
-            for m in foreign_key_regexp.finditer(table_def["Create Table"]):  # iterate through foreign key statements
-                assert m.group('attr1') == m.group('attr2'), \
-                    'Foreign keys must link identically named attributes'
-                attrs = m.group('attr1')
-                attrs = re.split(r',\s+', re.sub(r'`(.*?)`', r'\1', attrs))  # remove ` around attrs and split into list
-                pk = self.headings[dbname][tabName].primary_key
-                is_primary = all([k in pk for k in attrs])
-                ref = m.group('ref')  # referenced table
-
-                if not re.search(r'`\.`', ref):  # if referencing other table in same schema
-                    ref = '`%s`.%s' % (dbname, ref)  # convert to full-table name
-
-                (self.parents if is_primary else self.referenced)[full_table_name].append(ref)
-                self.parents.setdefault(ref, [])
-                self.referenced.setdefault(ref, [])
-
-    def clear_dependencies(self, dbname=None):
-        """
-        Clears dependency mapping originating from `dbname`. If `dbname` is not
-        specified, dependencies for all databases will be cleared.
-
-
-        :param dbname: database name
-        """
-        if dbname is None:  # clear out all dependencies
-            self.parents.clear()
-            self.referenced.clear()
-        else:
-            table_keys = ('`%s`.`%s`' % (dbname, tblName) for tblName in self.tableInfo[dbname])
-            for key in table_keys:
-                if key in self.parents:
-                    self.parents.pop(key)
-                if key in self.referenced:
-                    self.referenced.pop(key)
-
-    def parents_of(self, child_table):
-        """
-        Returns a list of tables that are parents of the specified child_table. Parent-child relationship is defined
-        based on the presence of primary-key foreign reference: table that holds a foreign key relation to another table
-        is the child table.
-
-        :param child_table: the child table
-        :return: list of parent tables
-        """
-        return self.parents.get(child_table, []).copy()
-
-    def children_of(self, parent_table):
-        """
-        Returns a list of tables for which parent_table is a parent (primary foreign key). Parent-child relationship
-        is defined based on the presence of primary-key foreign reference: table that holds a foreign key relation to
-        another table is the child table.
-
-        :param parent_table: parent table
-        :return: list of child tables
-        """
-        return [child_table for child_table, parents in self.parents.items() if parent_table in parents]
-
-    def referenced_by(self, referencing_table):
-        """
-        Returns a list of tables that are referenced by non-primary foreign key relation
-        by the referencing_table.
-
-        :param referencing_table: referencing table
-        :return: list of tables that are referenced by the target table
-        """
-        return self.referenced.get(referencing_table, []).copy()
-
-    def referencing(self, referenced_table):
-        """
-        Returns a list of tables that references referenced_table as non-primary foreign key
-
-        :param referenced_table: referenced table
-        :return: list of tables that refers to the target table
-        """
-        return [referencing for referencing, referenced in self.referenced.items()
-                if referenced_table in referenced]
-
-    # TODO: Reimplement __str__
-    def __str__(self):
-        return self.__repr__()  # placeholder until more suitable __str__ is implemented
-
     def __repr__(self):
         connected = "connected" if self.is_connected else "disconnected"
         return "DataJoint connection ({connected}) {user}@{host}:{port}".format(
@@ -318,25 +90,6 @@ class Connection(object):
     def __del__(self):
         logger.info('Disconnecting {user}@{host}:{port}'.format(**self.conn_info))
         self._conn.close()
-
-    def erd(self, databases=None, tables=None, fill=True, reload=False):
-        """
-        Creates Entity Relation Diagram for the database or specified subset of
-        tables.
-
-        Set `fill` to False to only display specified tables. (By default
-        connection tables are automatically included)
-        """
-        self._graph.update_graph(reload=reload)  # update the graph
-
-        graph = self._graph.copy_graph()
-        if databases:
-            graph = graph.restrict_by_modules(databases, fill)
-
-        if tables:
-            graph = graph.restrict_by_tables(tables, fill)
-
-        return graph
 
     def query(self, query, args=(), as_dict=False):
         """
@@ -353,7 +106,7 @@ class Connection(object):
         cur.execute(query, args)
         return cur
 
-
+    # ---------- transaction processing ------------------
     @property
     def in_transaction(self):
         self._in_transaction = self._in_transaction and self.is_connected
@@ -374,5 +127,18 @@ class Connection(object):
     def commit_transaction(self):
         self.query('COMMIT')
         self._in_transaction = False
-        logger.info("Transaction commited and closed.")
+        logger.info("Transaction committed and closed.")
+
+
+    #-------- context manager for transactions
+    @contextmanager
+    def transaction(self):
+        try:
+            self.start_transaction()
+            yield self
+        except:
+            self.cancel_transaction()
+            raise
+        else:
+            self.commit_transaction()
 

@@ -1,5 +1,5 @@
 from .relational_operand import RelationalOperand
-from . import DataJointError, TransactionError, Relation
+from . import DataJointError, Relation
 import abc
 import logging
 
@@ -37,7 +37,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
     def target(self):
         return self
 
-    def populate(self, restriction=None, suppress_errors=False, reserve_jobs=False, max_attempts=10):
+    def populate(self, restriction=None, suppress_errors=False, reserve_jobs=False):
         """
         rel.populate() calls rel._make_tuples(key) for every primary key in self.populate_relation
         for which there is not already a tuple in rel.
@@ -45,7 +45,6 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         :param restriction: restriction on rel.populate_relation - target
         :param suppress_errors: suppresses error if true
         :param reserve_jobs: currently not implemented
-        :param max_attempts: maximal number of times a TransactionError is caught before populate gives up
         """
 
         assert not reserve_jobs, NotImplemented   # issue #5
@@ -53,40 +52,39 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         if not isinstance(self.populate_relation, RelationalOperand):
             raise DataJointError('Invalid populate_relation value')
 
-        self.conn.cancel_transaction()  # rollback previous transaction, if any
+        self.connection.cancel_transaction()  # rollback previous transaction, if any
 
         if not isinstance(self, Relation):
-            raise DataJointError('Autopopulate is a mixin for Relation and must therefore subclass Relation')
+            raise DataJointError(
+                'AutoPopulate is a mixin for Relation and must therefore subclass Relation')
 
         unpopulated = (self.populate_relation - self.target) & restriction
         for key in unpopulated.project():
-            self.conn.start_transaction()
+            self.connection.start_transaction()
             if key in self.target:  # already populated
-                self.conn.cancel_transaction()
+                self.connection.cancel_transaction()
             else:
                 logger.info('Populating: ' + str(key))
                 try:
-                    for attempts in range(max_attempts):
-                        try:
-                            self._make_tuples(dict(key))
-                            break
-                        except TransactionError as tr_err:
-                            self.conn.cancel_transaction()
-                            tr_err.resolve()
-                            self.conn.start_transaction()
-                            logger.info('Transaction error in {0:s}.'.format(tr_err.culprit))
-                    else:
-                        raise DataJointError(
-                            '%s._make_tuples failed after %i attempts, giving up' % (self.__class__,max_attempts))
+                    self._make_tuples(dict(key))
                 except Exception as error:
-                    self.conn.cancel_transaction()
+                    self.connection.cancel_transaction()
                     if not suppress_errors:
                         raise
                     else:
                         logger.error(error)
                         error_list.append((key, error))
                 else:
-                    self.conn.commit_transaction()
+                    self.connection.commit_transaction()
         logger.info('Done populating.')
         return error_list
 
+
+    def progress(self):
+        """
+        report progress of populating this table
+        """
+        total = len(self.populate_relation)
+        remaining = len(self.populate_relation - self.target)
+        print('Remaining %d of %d (%2.1f%%)' % (remaining, total, 100*remaining/total)
+              if remaining else 'Complete', flush=True)
