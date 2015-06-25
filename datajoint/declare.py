@@ -2,7 +2,7 @@ import re
 import pyparsing as pp
 import logging
 
-from  . import DataJointError
+from . import DataJointError
 
 
 logger = logging.getLogger(__name__)
@@ -67,8 +67,6 @@ def declare(full_table_name,  definition, context):
         sql += ',  \n' + ',  \n'.join(index_sql)
     sql += '\n) ENGINE = InnoDB, COMMENT "%s"' % table_comment
     return sql
-
-
 
 
 def compile_attribute(line, in_key=False):

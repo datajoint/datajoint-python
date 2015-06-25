@@ -53,10 +53,10 @@ def schema(database, context, connection=None):
                     full_table_name=instance.full_table_name,
                     definition=instance.definition,
                     context=context))
+        connection.erd.load_dependencies(connection, instance.full_table_name, instance.primary_key)
         return cls
 
     return decorator
-
 
 
 class Relation(RelationalOperand, metaclass=abc.ABCMeta):
@@ -111,13 +111,31 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         for row in rows:
             self.insert(row, **kwargs)
 
+    # ------------- dependencies ---------- #
+    @property
+    def parents(self):
+        return self.connection.erd.parents[self.full_table_name]
+
+    @property
+    def children(self):
+        return self.connection.erd.children[self.full_table_name]
+
+    @property
+    def references(self):
+        return self.connection.erd.references[self.full_table_name]
+
+    @property
+    def referenced(self):
+        return self.connection.erd.referenced[self.full_table_name]
+
+
     # --------- SQL functionality --------- #
     @property
     def is_declared(self):
         cur = self.connection.query(
             'SHOW TABLES in `{database}`LIKE "{table_name}"'.format(
                 database=self.database, table_name=self.table_name))
-        return cur.rowcount>0
+        return cur.rowcount > 0
 
     def batch_insert(self, data, **kwargs):
         """
