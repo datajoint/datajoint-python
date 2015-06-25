@@ -1,18 +1,99 @@
-import re
 import logging
-
+import pyparsing as pp
+import re
 import networkx as nx
 from networkx import DiGraph
 from networkx import pygraphviz_layout
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import transforms
+from collections import defaultdict
 
-from .utils import to_camel_case
 from . import DataJointError
 
 
 logger = logging.getLogger(__name__)
+
+
+class ERD:
+    _parents = defaultdict(set)
+    _children = defaultdict(set)
+    _references = defaultdict(set)
+    _referenced = defaultdict(set)
+
+    def load_dependencies(self, connection, full_table_name, primary_key):
+        # fetch the CREATE TABLE statement
+        cur = connection.query('SHOW CREATE TABLE %s' % full_table_name)
+        create_statement = cur.fetchone()
+        if not create_statement:
+            raise DataJointError('Could not load the definition table %s' % full_table_name)
+        create_statement = create_statement[1].split('\n')
+
+        # build foreign key parser
+        database = full_table_name.split('.')[0].strip('`')
+        add_database = lambda string, loc, toc: ['`{database}`.`{table}`'.format(database=database, table=toc[0])]
+
+        parser = pp.CaselessLiteral('CONSTRAINT').suppress()
+        parser += pp.QuotedString('`').suppress()
+        parser += pp.CaselessLiteral('FOREIGN KEY').suppress()
+        parser += pp.QuotedString('(', endQuoteChar=')').setResultsName('attributes')
+        parser += pp.CaselessLiteral('REFERENCES')
+        parser += pp.Or([
+            pp.QuotedString('`').setParseAction(add_database),
+            pp.Combine(pp.QuotedString('`', unquoteResults=False) +
+                       '.' + pp.QuotedString('`', unquoteResults=False))
+            ]).setResultsName('referenced_table')
+        parser += pp.QuotedString('(', endQuoteChar=')').setResultsName('referenced_attributes')
+
+        # parse foreign keys
+        for line in create_statement:
+            try:
+                result = parser.parseString(line)
+            except pp.ParseException:
+                pass
+            else:
+                if result.referenced_attributes != result.attributes:
+                    raise DataJointError(
+                        "%s's foreign key refers to differently named attributes in %s"
+                        % (self.__class__.__name__, result.referenced_table))
+                if all(q in primary_key for q in [s.strip('` ') for s in result.attributes.split(',')]):
+                    self._parents[full_table_name].add(result.referenced_table)
+                    self._children[result.referenced_table].add(full_table_name)
+                else:
+                    self._referenced[full_table_name].add(result.referenced_table)
+                    self._references[result.referenced_table].add(full_table_name)
+
+    @property
+    def parents(self):
+        return self._parents
+
+    @property
+    def children(self):
+        return self._children
+
+    @property
+    def references(self):
+        return self._references
+
+    @property
+    def referenced(self):
+        return self._referenced
+
+
+
+
+def to_camel_case(s):
+    """
+    Convert names with under score (_) separation
+    into camel case names.
+    Example:
+    >>>to_camel_case("table_name")
+        "TableName"
+    """
+    def to_upper(match):
+        return match.group(0)[-1].upper()
+    return re.sub('(^|[_\W])+[a-zA-Z]', to_upper, s)
+
 
 
 class RelGraph(DiGraph):
