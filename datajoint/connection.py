@@ -3,6 +3,7 @@ import pymysql
 from . import DataJointError
 import logging
 from . import config
+from .erd import ERD
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,7 @@ class Connection:
     """
 
     def __init__(self, host, user, passwd, init_fun=None):
+        self.erd = ERD()
         if ':' in host:
             host, port = host.split(':')
             port = int(port)

@@ -6,8 +6,8 @@ from . import DataJointError
 mxClassID = OrderedDict((
     # see http://www.mathworks.com/help/techdoc/apiref/mxclassid.html
     ('mxUNKNOWN_CLASS', None),
-    ('mxCELL_CLASS', None),   # TODO: implement
-    ('mxSTRUCT_CLASS', None),   # TODO: implement
+    ('mxCELL_CLASS', None),
+    ('mxSTRUCT_CLASS', None),
     ('mxLOGICAL_CLASS', np.dtype('bool')),
     ('mxCHAR_CLASS', np.dtype('c')),
     ('mxVOID_CLASS', None),
@@ -23,7 +23,7 @@ mxClassID = OrderedDict((
     ('mxUINT64_CLASS', np.dtype('uint64')),
     ('mxFUNCTION_CLASS', None)))
 
-reverseClassID = {v: i for i, v in enumerate(mxClassID.values())}
+reverseClassID = {dtype: i for i, dtype in enumerate(mxClassID.values())}
 dtypeList = list(mxClassID.values())
 
 
