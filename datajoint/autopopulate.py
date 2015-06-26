@@ -13,11 +13,11 @@ class AutoPopulate(metaclass=abc.ABCMeta):
     """
     AutoPopulate is a mixin class that adds the method populate() to a Relation class.
     Auto-populated relations must inherit from both Relation and AutoPopulate,
-    must define the property populate_relation, and must define the callback method _make_tuples.
+    must define the property populated_from, and must define the callback method _make_tuples.
     """
 
     @property
-    def populate_relation(self):
+    def populated_from(self):
         """
         :return: the relation whose primary key values are passed, sequentially, to the
         _make_tuples method when populate() is called.
@@ -45,18 +45,18 @@ class AutoPopulate(metaclass=abc.ABCMeta):
 
     def populate(self, restriction=None, suppress_errors=False, reserve_jobs=False):
         """
-        rel.populate() calls rel._make_tuples(key) for every primary key in self.populate_relation
+        rel.populate() calls rel._make_tuples(key) for every primary key in self.populated_from
         for which there is not already a tuple in rel.
 
-        :param restriction: restriction on rel.populate_relation - target
+        :param restriction: restriction on rel.populated_from - target
         :param suppress_errors: suppresses error if true
         :param reserve_jobs: currently not implemented
         """
 
         assert not reserve_jobs, NotImplemented   # issue #5
         error_list = [] if suppress_errors else None
-        if not isinstance(self.populate_relation, RelationalOperand):
-            raise DataJointError('Invalid populate_relation value')
+        if not isinstance(self.populated_from, RelationalOperand):
+            raise DataJointError('Invalid populated_from value')
 
         self.connection.cancel_transaction()  # rollback previous transaction, if any
 
@@ -64,7 +64,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
             raise DataJointError(
                 'AutoPopulate is a mixin for Relation and must therefore subclass Relation')
 
-        unpopulated = (self.populate_relation - self.target) & restriction
+        unpopulated = (self.populated_from - self.target) & restriction
         for key in unpopulated.project():
             self.connection.start_transaction()
             if key in self.target:  # already populated
@@ -90,7 +90,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         """
         report progress of populating this table
         """
-        total = len(self.populate_relation)
-        remaining = len(self.populate_relation - self.target)
+        total = len(self.populated_from)
+        remaining = len(self.populated_from - self.target)
         print('Remaining %d of %d (%2.1f%%)' % (remaining, total, 100*remaining/total)
               if remaining else 'Complete', flush=True)
