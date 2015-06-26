@@ -14,13 +14,13 @@ def conn_container():
     """
     _connection = None  # persistent connection object used by dj.conn()
 
-    def conn_function(host=None, user=None, passwd=None, init_fun=None, reset=False): # TODO: thin wrapping layer to mimic singleton
+    def conn_function(host=None, user=None, passwd=None, init_fun=None, reset=False):
         """
         Manage a persistent connection object.
         This is one of several ways to configure and access a datajoint connection.
         Users may customize their own connection manager.
 
-        Set rest=True to reset the persistent connection object
+        Set reset=True to reset the persistent connection object with new connection parameters
         """
         nonlocal _connection
         if not _connection or reset:
@@ -108,7 +108,7 @@ class Connection:
         cur.execute(query, args)
         return cur
 
-    # ---------- transaction processing ------------------
+    # ---------- transaction processing
     @property
     def in_transaction(self):
         self._in_transaction = self._in_transaction and self.is_connected
@@ -131,8 +131,7 @@ class Connection:
         self._in_transaction = False
         logger.info("Transaction committed and closed.")
 
-
-    #-------- context manager for transactions
+    # -------- context manager for transactions
     @contextmanager
     def transaction(self):
         try:

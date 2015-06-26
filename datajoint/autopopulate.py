@@ -1,8 +1,9 @@
+import abc
+import logging
 from .relational_operand import RelationalOperand
 from . import DataJointError
 from .relation import Relation, FreeRelation, schema
-import abc
-import logging
+from . import jobs
 
 # noinspection PyExceptionInherit,PyCallingNonCallable
 
@@ -53,37 +54,39 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         :param suppress_errors: suppresses error if true
         :param reserve_jobs: currently not implemented
         """
-
-        assert not reserve_jobs, NotImplemented   # issue #5
         error_list = [] if suppress_errors else None
         if not isinstance(self.populated_from, RelationalOperand):
             raise DataJointError('Invalid populated_from value')
 
-        self.connection.cancel_transaction()  # rollback previous transaction, if any
-
-        if not isinstance(self, Relation):
-            raise DataJointError(
-                'AutoPopulate is a mixin for Relation and must therefore subclass Relation')
+        if self.connection.in_transaction:
+            raise DataJointError('Populate cannot be called during a transaction.')
 
         unpopulated = (self.populated_from - self.target) & restriction
         for key in unpopulated.project():
-            self.connection.start_transaction()
-            if key in self.target:  # already populated
-                self.connection.cancel_transaction()
-            else:
-                logger.info('Populating: ' + str(key))
-                try:
-                    self._make_tuples(dict(key))
-                except Exception as error:
+            if not reserve_jobs or jobs.reserve(self.target.full_table_name, key):
+                self.connection.start_transaction()
+                if key in self.target:  # already populated
                     self.connection.cancel_transaction()
-                    if not suppress_errors:
-                        raise
-                    else:
-                        logger.error(error)
-                        error_list.append((key, error))
+                    if reserve_jobs:
+                        jobs.complete(self.target.full_table_name, key)
                 else:
-                    self.connection.commit_transaction()
-        logger.info('Done populating.')
+                    logger.info('Populating: ' + str(key))
+                    try:
+                        self._make_tuples(dict(key))
+                    except Exception as error:
+                        self.connection.cancel_transaction()
+                        if reserve_jobs:
+                            jobs.log_error(self.target.full_table_name, key,
+                                           error_message=str(error))
+                        if not suppress_errors:
+                            raise
+                        else:
+                            logger.error(error)
+                            error_list.append((key, error))
+                    else:
+                        self.connection.commit_transaction()
+                        if reserve_jobs:
+                            jobs.complete(self.target.full_table_name, key)
         return error_list
 
     def progress(self):
