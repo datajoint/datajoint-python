@@ -53,7 +53,7 @@ def schema(database, context, connection=None):
                     full_table_name=instance.full_table_name,
                     definition=instance.definition,
                     context=context))
-        connection.erd.load_dependencies(connection, instance.full_table_name, instance.primary_key)
+        connection.erd.load_dependencies(connection, instance.full_table_name)
         return cls
 
     return decorator
@@ -192,11 +192,17 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         logger.info(sql)
         self.connection.query(sql, args=args)
 
-    def delete(self):
+    def delete_quick(self):
+        """
+        delete without cascading and without prompting
+        """
+        self.connection.query('DELETE FROM ' + self.from_clause + self.where_clause)
+
+    def delete(self):  # TODO: impelment cascading (issue #15)
         if not config['safemode'] or user_choice(
                 "You are about to delete data from a table. This operation cannot be undone.\n"
                 "Proceed?", default='no') == 'yes':
-            self.connection.query('DELETE FROM ' + self.from_clause + self.where_clause)  # TODO: make cascading (issue #15)
+            self.delete_quick()
 
     def drop(self):
         """

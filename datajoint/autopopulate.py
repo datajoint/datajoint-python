@@ -1,6 +1,6 @@
 from .relational_operand import RelationalOperand
-from . import DataJointError, Relation
-from .relation import FreeRelation
+from . import DataJointError
+from .relation import Relation, FreeRelation, schema
 import abc
 import logging
 
@@ -15,6 +15,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
     Auto-populated relations must inherit from both Relation and AutoPopulate,
     must define the property populated_from, and must define the callback method _make_tuples.
     """
+    _jobs = None
 
     @property
     def populated_from(self):
@@ -84,7 +85,6 @@ class AutoPopulate(metaclass=abc.ABCMeta):
                     self.connection.commit_transaction()
         logger.info('Done populating.')
         return error_list
-
 
     def progress(self):
         """

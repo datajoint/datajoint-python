@@ -21,7 +21,7 @@ class ERD:
     _references = defaultdict(list)
     _referenced = defaultdict(list)
 
-    def load_dependencies(self, connection, full_table_name, primary_key):
+    def load_dependencies(self, connection, full_table_name):
         # fetch the CREATE TABLE statement
         cur = connection.query('SHOW CREATE TABLE %s' % full_table_name)
         create_statement = cur.fetchone()
@@ -29,29 +29,44 @@ class ERD:
             raise DataJointError('Could not load the definition table %s' % full_table_name)
         create_statement = create_statement[1].split('\n')
 
-        # build foreign key parser
+        # build foreign key fk_parser
         database = full_table_name.split('.')[0].strip('`')
         add_database = lambda string, loc, toc: ['`{database}`.`{table}`'.format(database=database, table=toc[0])]
 
-        parser = pp.CaselessLiteral('CONSTRAINT').suppress()
-        parser += pp.QuotedString('`').suppress()
-        parser += pp.CaselessLiteral('FOREIGN KEY').suppress()
-        parser += pp.QuotedString('(', endQuoteChar=')').setResultsName('attributes')
-        parser += pp.CaselessLiteral('REFERENCES')
-        parser += pp.Or([
+        # primary key parser
+        pk_parser = pp.CaselessLiteral('PRIMARY KEY')
+        pk_parser += pp.QuotedString('(', endQuoteChar=')').setResultsName('primary_key')
+
+        # foreign key parser
+        fk_parser = pp.CaselessLiteral('CONSTRAINT').suppress()
+        fk_parser += pp.QuotedString('`').suppress()
+        fk_parser += pp.CaselessLiteral('FOREIGN KEY').suppress()
+        fk_parser += pp.QuotedString('(', endQuoteChar=')').setResultsName('attributes')
+        fk_parser += pp.CaselessLiteral('REFERENCES')
+        fk_parser += pp.Or([
             pp.QuotedString('`').setParseAction(add_database),
             pp.Combine(pp.QuotedString('`', unquoteResults=False) +
                        '.' + pp.QuotedString('`', unquoteResults=False))
             ]).setResultsName('referenced_table')
-        parser += pp.QuotedString('(', endQuoteChar=')').setResultsName('referenced_attributes')
+        fk_parser += pp.QuotedString('(', endQuoteChar=')').setResultsName('referenced_attributes')
 
         # parse foreign keys
+        primary_key = None
         for line in create_statement:
+            if primary_key is None:
+                try:
+                    result = pk_parser.parseString(line)
+                except pp.ParseException:
+                    pass
+                else:
+                    primary_key = [s.strip(' `') for s in result.primary_key.split(',')]
             try:
-                result = parser.parseString(line)
+                result = fk_parser.parseString(line)
             except pp.ParseException:
                 pass
             else:
+                if not primary_key:
+                    raise DataJointErrr('No primary key found %s' % full_table_name)
                 if result.referenced_attributes != result.attributes:
                     raise DataJointError(
                         "%s's foreign key refers to differently named attributes in %s"
