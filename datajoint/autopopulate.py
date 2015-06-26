@@ -1,5 +1,6 @@
 from .relational_operand import RelationalOperand
 from . import DataJointError, Relation
+from .relation import FreeRelation
 import abc
 import logging
 
@@ -12,17 +13,22 @@ class AutoPopulate(metaclass=abc.ABCMeta):
     """
     AutoPopulate is a mixin class that adds the method populate() to a Relation class.
     Auto-populated relations must inherit from both Relation and AutoPopulate,
-    must define the property pop_rel, and must define the callback method make_tuples.
+    must define the property populate_relation, and must define the callback method _make_tuples.
     """
 
-    @abc.abstractproperty
+    @property
     def populate_relation(self):
         """
-        Derived classes must implement the read-only property populate_relation, which is the
-        relational expression that defines how keys are generated for the populate call.
-        By default, populate relation is the join of the primary dependencies of the table.
+        :return: the relation whose primary key values are passed, sequentially, to the
+        _make_tuples method when populate() is called.
+        The default value is the join of the parent relations. Users may override to change
+        the granularity or the scope of populate() calls.
         """
-        pass
+        parents = [FreeRelation(self.target.connection, rel) for rel in self.target.parents]
+        ret = parents.pop(0)
+        while parents:
+            ret *= parents.pop(0)
+        return ret
 
     @abc.abstractmethod
     def _make_tuples(self, key):

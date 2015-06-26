@@ -16,10 +16,10 @@ logger = logging.getLogger(__name__)
 
 
 class ERD:
-    _parents = defaultdict(set)
-    _children = defaultdict(set)
-    _references = defaultdict(set)
-    _referenced = defaultdict(set)
+    _parents = defaultdict(list)
+    _children = defaultdict(list)
+    _references = defaultdict(list)
+    _referenced = defaultdict(list)
 
     def load_dependencies(self, connection, full_table_name, primary_key):
         # fetch the CREATE TABLE statement
@@ -57,11 +57,11 @@ class ERD:
                         "%s's foreign key refers to differently named attributes in %s"
                         % (self.__class__.__name__, result.referenced_table))
                 if all(q in primary_key for q in [s.strip('` ') for s in result.attributes.split(',')]):
-                    self._parents[full_table_name].add(result.referenced_table)
-                    self._children[result.referenced_table].add(full_table_name)
+                    self._parents[full_table_name].append(result.referenced_table)
+                    self._children[result.referenced_table].append(full_table_name)
                 else:
-                    self._referenced[full_table_name].add(result.referenced_table)
-                    self._references[result.referenced_table].add(full_table_name)
+                    self._referenced[full_table_name].append(result.referenced_table)
+                    self._references[result.referenced_table].append(full_table_name)
 
     @property
     def parents(self):
@@ -78,8 +78,6 @@ class ERD:
     @property
     def referenced(self):
         return self._referenced
-
-
 
 
 def to_camel_case(s):

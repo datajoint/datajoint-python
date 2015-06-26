@@ -151,19 +151,15 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
 
     def insert(self, tup, ignore_errors=False, replace=False):
         """
-        Insert one data record or one Mapping (like a dictionary).
+        Insert one data record or one Mapping (like a dict).
 
-        :param tup: Data record, or a Mapping (like a dictionary).
+        :param tup: Data record, or a Mapping (like a dict).
         :param ignore_errors=False: Ignores errors if True.
         :param replace=False: Replaces data tuple if True.
 
         Example::
-
-            b = djtest.Subject()
-            b.insert(dict(subject_id = 7, species="mouse",\\
-                           real_id = 1007, date_of_birth = "2014-09-01"))
+            rel.insert(dict(subject_id = 7, species="mouse", date_of_birth = "2014-09-01"))
         """
-
         heading = self.heading
         if isinstance(tup, np.void):
             for fieldname in tup.dtype.fields:
@@ -287,3 +283,25 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         sql = 'ALTER TABLE %s %s' % (self.full_table_name, alter_statement)
         self.connection.query(sql)
         self.heading.init_from_database(self.connection, self.database, self.table_name)
+
+
+class FreeRelation(Relation):
+    """
+    A relation with no definition. Its table must already exist in the database.
+    """
+    definition = None
+
+    def __init__(self, connection, full_table_name):
+        [database, table_name] = full_table_name.split('.')
+        self.database = database.strip('`')
+        self._table_name = table_name.strip('`')
+        self._heading = Heading()
+        self._connection = connection
+
+    @property
+    def connection(self):
+        return self._connection
+
+    @property
+    def table_name(self):
+        return self._table_name
