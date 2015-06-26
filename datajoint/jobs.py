@@ -18,16 +18,16 @@ def get_jobs_table(database):
         class JobsRelation(Relation):
             definition = """
             # the job reservation table
-            table_name      : varchar(255)          # className of the table
-            key_hash        : char(32)              # key hash
+            table_name:  varchar(255)          # className of the table
+            key_hash:    char(32)              # key hash
             ---
-            status            : enum('reserved','error','ignore')# if tuple is missing, the job is available
-            key=null          : blob                  # structure containing the key
-            error_message=""  : varchar(1023)         # error message returned if failed
-            error_stack=null  : blob                  # error stack if failed
-            host=""           : varchar(255)          # system hostname
-            pid=0             : int unsigned          # system process id
-            timestamp=CURRENT_TIMESTAMP : timestamp    # automatic timestamp
+            status:            enum('reserved','error','ignore')# if tuple is missing, the job is available
+            key=null:          blob                  # structure containing the key
+            error_message="":  varchar(1023)         # error message returned if failed
+            error_stack=null:  blob                  # error stack if failed
+            host="":           varchar(255)          # system hostname
+            pid=0:             int unsigned          # system process id
+            timestamp=CURRENT_TIMESTAMP: timestamp    # automatic timestamp
             """
 
             @property
@@ -79,7 +79,10 @@ def complete(full_table_name, key):
     entry.delete_quick()
 
 
-def log_error(full_table_name, key, error_message, error_stack=None):
+def error(full_table_name, key, error_message):
+    """
+    if an error occurs, leave an entry describing the problem
+    """
     database, table_name = split_name(full_table_name)
     job_key = dict(table_name=table_name, key_hash=key_hash(key))
     jobs = get_jobs_table(database)

@@ -76,8 +76,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
                     except Exception as error:
                         self.connection.cancel_transaction()
                         if reserve_jobs:
-                            jobs.log_error(self.target.full_table_name, key,
-                                           error_message=str(error))
+                            jobs.error(self.target.full_table_name, key, error_message=str(error))
                         if not suppress_errors:
                             raise
                         else:
