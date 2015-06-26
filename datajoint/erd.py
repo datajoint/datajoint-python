@@ -66,7 +66,7 @@ class ERD:
                 pass
             else:
                 if not primary_key:
-                    raise DataJointErrr('No primary key found %s' % full_table_name)
+                    raise DataJointError('No primary key found %s' % full_table_name)
                 if result.referenced_attributes != result.attributes:
                     raise DataJointError(
                         "%s's foreign key refers to differently named attributes in %s"

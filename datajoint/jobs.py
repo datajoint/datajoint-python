@@ -14,20 +14,21 @@ def get_jobs_table(database):
         self.lookup = {}
 
     if database not in self.lookup:
+        
         @schema(database, context={})
         class JobsRelation(Relation):
             definition = """
             # the job reservation table
-            table_name:  varchar(255)          # className of the table
-            key_hash:    char(32)              # key hash
+            table_name:  varchar(255)   # className of the table
+            key_hash:    char(32)       # key hash
             ---
-            status:            enum('reserved','error','ignore')# if tuple is missing, the job is available
-            key=null:          blob                  # structure containing the key
+            status: enum('reserved','error','ignore') # if tuple is missing, the job is available
+            key=null:          blob # structure containing the key
             error_message="":  varchar(1023)         # error message returned if failed
             error_stack=null:  blob                  # error stack if failed
             host="":           varchar(255)          # system hostname
             pid=0:             int unsigned          # system process id
-            timestamp=CURRENT_TIMESTAMP: timestamp    # automatic timestamp
+            timestamp=CURRENT_TIMESTAMP: timestamp   # automatic timestamp
             """
 
             @property
@@ -50,11 +51,13 @@ def key_hash(key):
     return hashed.hexdigest()
 
 
-def reserve(full_table_name, key):
+def reserve(reserve_jobs, full_table_name, key):
     """
     Insert a reservation record in the jobs table
     :return: True if reserved job successfully
     """
+    if not reserve_jobs:
+        return True
     database, table_name = split_name(full_table_name)
     jobs = get_jobs_table(database)
     job_key = dict(table_name=table_name, key_hash=key_hash(key))
@@ -69,25 +72,27 @@ def reserve(full_table_name, key):
     return success
 
 
-def complete(full_table_name, key):
+def complete(reserve_jobs, full_table_name, key):
     """
     upon job completion the job entry is removed
     """
-    database, table_name = split_name(full_table_name)
-    job_key = dict(table_name=table_name, key_hash=key_hash(key))
-    entry = get_jobs_table(full_table_name) & job_key
-    entry.delete_quick()
+    if reserve_jobs:
+        database, table_name = split_name(full_table_name)
+        job_key = dict(table_name=table_name, key_hash=key_hash(key))
+        entry = get_jobs_table(full_table_name) & job_key
+        entry.delete_quick()
 
 
-def error(full_table_name, key, error_message):
+def error(reserve_jobs, full_table_name, key, error_message):
     """
     if an error occurs, leave an entry describing the problem
     """
-    database, table_name = split_name(full_table_name)
-    job_key = dict(table_name=table_name, key_hash=key_hash(key))
-    jobs = get_jobs_table(database)
-    jobs.insert(dict(job_key,
-                     status="error",
-                     host=os.uname(),
-                     pid=os.getpid(),
-                     error_message=error_message), replace=True)
+    if reserve_jobs:
+        database, table_name = split_name(full_table_name)
+        job_key = dict(table_name=table_name, key_hash=key_hash(key))
+        jobs = get_jobs_table(database)
+        jobs.insert(dict(job_key,
+                         status="error",
+                         host=os.uname(),
+                         pid=os.getpid(),
+                         error_message=error_message), replace=True)
