@@ -112,7 +112,6 @@ class ERD:
         return sorted(ret.keys(), key=ret.__getitem__)
 
 
-
 def to_camel_case(s):
     """
     Convert names with under score (_) separation

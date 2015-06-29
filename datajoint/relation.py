@@ -136,8 +136,9 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         in order of dependence.
         This is helpful for cascading delete or drop operations.
         """
-        return [FreeRelation(self.connection, table)
-                for table in self.connection.erd.get_descendants(self.full_table_name)]
+        relations = (FreeRelation(self.connection, table)
+                     for table in self.connection.erd.get_descendants(self.full_table_name))
+        return [relation for relation in relations if relation.is_declared]
 
     # --------- SQL functionality --------- #
     @property
@@ -249,69 +250,11 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         ).fetchone()
         return (ret['Data_length'] + ret['Index_length'])/1024**2
 
-    def set_table_comment(self, comment):
-        """
-        Update the table comment in the table definition.
-        :param comment: new comment as string
-        """
-        self._alter('COMMENT="%s"' % comment)
-
-    def add_attribute(self, definition, after=None):
-        """
-        Add a new attribute to the table. A full line from the table definition
-        is passed in as definition.
-
-        The definition can specify where to place the new attribute. Use after=None
-        to add the attribute as the first attribute or after='attribute' to place it
-        after an existing attribute.
-
-        :param definition: table definition
-        :param after=None: After which attribute of the table the new attribute is inserted.
-                           If None, the attribute is inserted in front.
-        """
-        position = ' FIRST' if after is None else (
-            ' AFTER %s' % after if after else '')
-        sql = compile_attribute(definition)[1]
-        self._alter('ADD COLUMN %s%s' % (sql, position))
-
-    def drop_attribute(self, attribute_name):
-        """
-        Drops the attribute attrName from this table.
-        :param attribute_name: Name of the attribute that is dropped.
-        """
-        if not config['safemode'] or user_choice(
-                "You are about to drop an attribute from a table."
-                "This operation cannot be undone.\n"
-                "Proceed?", default='no') == 'yes':
-            self._alter('DROP COLUMN `%s`' % attribute_name)
-
-    def alter_attribute(self, attribute_name, definition):
-        """
-        Alter attribute definition
-
-        :param attribute_name: field that is redefined
-        :param definition: new definition of the field
-        """
-        sql = compile_attribute(definition)[1]
-        self._alter('CHANGE COLUMN `%s` %s' % (attribute_name, sql))
-
     def erd(self, subset=None):
         """
         Plot the schema's entity relationship diagram (ERD).
         """
         NotImplemented
-
-    def _alter(self, alter_statement):
-        """
-        Execute an ALTER TABLE statement.
-        :param alter_statement: alter statement
-        """
-        if self.connection.in_transaction:
-            raise DataJointError("Table definition cannot be altered during a transaction.")
-        sql = 'ALTER TABLE %s %s' % (self.full_table_name, alter_statement)
-        self.connection.query(sql)
-        self.heading.init_from_database(self.connection, self.database, self.table_name)
-
 
 class FreeRelation(Relation):
     """

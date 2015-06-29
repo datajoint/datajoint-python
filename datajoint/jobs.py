@@ -14,7 +14,6 @@ def get_jobs_table(database):
         self.lookup = {}
 
     if database not in self.lookup:
-
         @schema(database, context={})
         class JobsRelation(Relation):
             definition = """
@@ -38,6 +37,7 @@ def get_jobs_table(database):
         self.lookup[database] = JobsRelation()
 
     return self.lookup[database]
+
 
 def split_name(full_table_name):
     [database, table_name] = full_table_name.split('.')
