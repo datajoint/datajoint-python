@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from collections import defaultdict
 import numpy as np
 import logging
 import abc
@@ -128,6 +129,15 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
     def referenced(self):
         return self.connection.erd.referenced[self.full_table_name]
 
+    @property
+    def descendants(self):
+        """
+        :return: list of relation objects for all children and references, recursively,
+        in order of dependence.
+        This is helpful for cascading delete or drop operations.
+        """
+        return [FreeRelation(self.connection, table)
+                for table in self.connection.erd.get_descendants(self.full_table_name)]
 
     # --------- SQL functionality --------- #
     @property
@@ -204,18 +214,30 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
                 "Proceed?", default='no') == 'yes':
             self.delete_quick()
 
-    def drop(self):
+    def drop_quick(self):
         """
-        Drops the table associated to this class.
+        Drops the table associated with this relation without cascading and without user prompt.
         """
         if self.is_declared:
-            if not config['safemode'] or user_choice(
-                    "You are about to drop an entire table. This operation cannot be undone.\n"
-                    "Proceed?", default='no') == 'yes':
-                self.connection.query('DROP TABLE %s' % self.full_table_name)  # TODO: make cascading (issue #16)
-                # cls.connection.clear_dependencies(dbname=cls.dbname) #TODO: reimplement because clear_dependencies will be gone
-                # cls.connection.load_headings(dbname=cls.dbname, force=True) #TODO: reimplement because load_headings is gone
-                logger.info("Dropped table %s" % self.full_table_name)
+            self.connection.query('DROP TABLE %s' % self.full_table_name)
+            logger.info("Dropped table %s" % self.full_table_name)
+
+    def drop(self):
+        """
+        Drop the table and all tables that reference it, recursively.
+        User is prompted before.
+        """
+        do_drop = True
+        relations = self.descendants
+        if not config['safemode']:
+            print('The following tables are about to be dropped:')
+            for relation in relations:
+                print(relation.full_table_name, '(%d tuples)' % len(relation))
+            do_drop = user_choice("Proceed?", default='no') == 'yes'
+        if do_drop:
+            while relations:
+                relations.pop().drop_quick()
+            print('Dropped tables..')
 
     def size_on_disk(self):
         """

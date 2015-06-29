@@ -94,6 +94,24 @@ class ERD:
     def referenced(self):
         return self._referenced
 
+    def get_descendants(self, full_table_name):
+        """
+        :param full_table_name: a table name in the format `database`.`table_name`
+        :return: list of all children and references, in order of dependence.
+        This is helpful for cascading delete or drop operations.
+        """
+        ret = defaultdict(lambda: 0)
+
+        def recurse(full_table_name, level):
+            if level > ret[full_table_name]:
+                ret[full_table_name] = level
+            for child in self.children[full_table_name] + self.references[full_table_name]:
+                recurse(child, level+1)
+
+        recurse(full_table_name, 0)
+        return sorted(ret.keys(), key=ret.__getitem__)
+
+
 
 def to_camel_case(s):
     """

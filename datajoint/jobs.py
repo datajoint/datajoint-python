@@ -14,7 +14,7 @@ def get_jobs_table(database):
         self.lookup = {}
 
     if database not in self.lookup:
-        
+
         @schema(database, context={})
         class JobsRelation(Relation):
             definition = """
