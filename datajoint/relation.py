@@ -208,11 +208,24 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         self.connection.query('DELETE FROM ' + self.from_clause + self.where_clause)
 
-    def delete(self):  # TODO: impelment cascading (issue #15)
-        if not config['safemode'] or user_choice(
-                "You are about to delete data from a table. This operation cannot be undone.\n"
-                "Proceed?", default='no') == 'yes':
-            self.delete_quick()
+    def delete(self):
+        """
+        Delete the contents of the table and its dependent tables, recursively.
+        User is prompted for confirmation if config['safemode']
+        """
+        relations = self.descendants
+        if self.restrictions and len(relations)>1:
+            raise NotImplementedError('Restricted cascading deletes are not yet implemented')
+        do_delete = True
+        if config['safemode']:
+            print('The contents of the following tables are about to be deleted:')
+            for relation in relations:
+                print(relation.full_table_name, '(%d tuples)'' % len(relation)')
+            do_delete = user_choice("Proceed?", default='no') == 'yes'
+        if do_delete:
+            with self.connection.transaction:
+                while relations:
+                    relations.pop().delete_quick()
 
     def drop_quick(self):
         """

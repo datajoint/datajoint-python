@@ -1,13 +1,9 @@
 """
 Collection of test cases to test core module.
 """
-from datajoint.user_relations import from_camel_case
-
-__author__ = 'eywalker'
 from nose.tools import assert_true, assert_raises, assert_equal
-# from datajoint.utils import to_camel_case, from_camel_case
+from datajoint.user_relations import from_camel_case
 from datajoint import DataJointError
-
 
 def setup():
     pass

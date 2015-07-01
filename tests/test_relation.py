@@ -1,48 +1,41 @@
 import random
 import string
-from datajoint import DataJointError
-from .schemata.test1 import Subjects, Animals, Matrix, Trials, SquaredScore, SquaredSubtable, WrongImplementation, \
-    ErrorGenerator, testschema
-from . import BASE_CONN, CONN_INFO, PREFIX, cleanup
-from nose.tools import assert_raises, assert_equal, assert_regexp_matches, assert_false, assert_true, assert_list_equal, \
-    assert_tuple_equal, assert_dict_equal, raises
-# from datajoint import DataJointError, TransactionError, AutoPopulate, Relation
-import numpy as np
 from numpy.testing import assert_array_equal
 import numpy as np
+from nose.tools import assert_raises, assert_equal, assert_regexp_matches, \
+    assert_false, assert_true, assert_list_equal, \
+    assert_tuple_equal, assert_dict_equal, raises
+
+from datajoint import DataJointError
+from .schemas import Subjects, Animals, Matrix, Trials, SquaredScore, SquaredSubtable, \
+    ErrorGenerator, schema
+
 import datajoint as dj
 
-def trial_faker(n=10):
-    def iter():
-        for s in [1, 2]:
-            for i in range(n):
-                yield dict(trial_id=i, subject_id=s, outcome=int(np.random.randint(10)), notes='no comment')
 
-    return iter()
+class TestRelation:
+    """
+    Test creation of relations, their dependencies
+    """
 
-
-class TestTableObject(object):
     def __init__(self):
-        self.subjects = None
-        self.setup()
-
-    """
-    Test cases for FreeRelation objects
-    """
-
-    def setup(self):
         """
         Create a connection object and prepare test modules
         as follows:
         test1 - has conn and bounded
         """
-        cleanup()  # delete everything from all tables of databases with PREFIX
         self.subjects = Subjects()
         self.animals = Animals()
-        self.relvar_blob = Matrix()
+        self.matrix = Matrix()
         self.trials = Trials()
         self.score = SquaredScore()
         self.subtable = SquaredSubtable()
+
+    def setup(self):
+        pass
+
+    def teardown(self):
+        self.subjects.delete()
 
     def test_table_name_manual(self):
         assert_true(not self.subjects.table_name.startswith('#') and
@@ -50,6 +43,7 @@ class TestTableObject(object):
 
     def test_table_name_computed(self):
         assert_true(self.score.table_name.startswith('__'))
+        assert_true(self.subtable.table_name.startswith('__'))
 
     def test_population_relation_subordinate(self):
         assert_true(self.subtable.populated_from is None)
@@ -61,16 +55,22 @@ class TestTableObject(object):
     def test_instantiate_relation(self):
         s = Subjects()
 
-    def teardown(self):
-        cleanup()
-
     def test_compound_restriction(self):
         s = self.subjects
         t = self.trials
 
         s.insert(dict(subject_id=1, real_id='M'))
         s.insert(dict(subject_id=2, real_id='F'))
-        t.iter_insert(trial_faker(20))
+
+        # insert trials
+        n_trials = 20
+        for subject_id in [1, 2]:
+            for trial_id in range(n_trials):
+                t.insert(
+                    trial_id=trial_id,
+                    subject_id=subject_id,
+                    outcome=int(np.random.randint(10)),
+                    notes='no comment')
 
         tM = t & (s & "real_id = 'M'")
         t1 = t & "subject_id = 1"
@@ -196,60 +196,11 @@ class TestTableObject(object):
     def test_blob_insert(self):
         x = np.random.randn(10)
         t = {'matrix_id': 0, 'data': x, 'comment': 'this is a random image'}
-        self.relvar_blob.insert(t)
-        x2 = self.relvar_blob.fetch()[0][1]
+        self.matrix.insert(t)
+        x2 = self.matrix.fetch()[0][1]
         assert_array_equal(x, x2, 'inserted blob does not match')
 
 
-#
-# class TestUnboundTables(object):
-#     """
-#     Test usages of FreeRelation objects not connected to a module.
-#     """
-#     def setup(self):
-#         cleanup()
-#         self.conn = Connection(**CONN_INFO)
-#
-#     def test_creation_from_definition(self):
-#         definition = """
-#         `dj_free`.Animals (manual)  # my animal table
-#         animal_id   : int           # unique id for the animal
-#         ---
-#         animal_name : varchar(128)  # name of the animal
-#         """
-#         table = FreeRelation(self.conn, 'dj_free', 'Animals', definition)
-#         table.declare()
-#         assert_true('animal_id' in table.primary_key)
-#
-#     def test_reference_to_non_existant_table_should_fail(self):
-#         definition = """
-#         `dj_free`.Recordings (manual)  # recordings
-#         -> `dj_free`.Animals
-#         rec_session_id : int     # recording session identifier
-#         """
-#         table = FreeRelation(self.conn, 'dj_free', 'Recordings', definition)
-#         assert_raises(DataJointError, table.declare)
-#
-#     def test_reference_to_existing_table(self):
-#         definition1 = """
-#         `dj_free`.Animals (manual)  # my animal table
-#         animal_id   : int           # unique id for the animal
-#         ---
-#         animal_name : varchar(128)  # name of the animal
-#         """
-#         table1 = FreeRelation(self.conn, 'dj_free', 'Animals', definition1)
-#         table1.declare()
-#
-#         definition2 = """
-#         `dj_free`.Recordings (manual)  # recordings
-#         -> `dj_free`.Animals
-#         rec_session_id : int     # recording session identifier
-#         """
-#         table2 = FreeRelation(self.conn, 'dj_free', 'Recordings', definition2)
-#         table2.declare()
-#         assert_true('animal_id' in table2.primary_key)
-#
-#
 def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for _ in range(size))
 
@@ -269,33 +220,33 @@ class TestIterator(object):
         as follows:
         test1 - has conn and bounded
         """
-        cleanup()  # drop all databases with PREFIX
-        self.relvar_blob = Matrix()
+        self.matrix = Matrix()
 
     def teardown(self):
-        cleanup()
+        pass
 
     #
     #
     def test_blob_iteration(self):
-        "Tests the basic call of the iterator"
-
+        """Tests the basic call of the iterator"""
         dicts = []
         for i in range(10):
             c = id_generator()
-
             t = {'matrix_id': i,
                  'data': np.random.randn(4, 4, 4),
                  'comment': c}
-            self.relvar_blob.insert(t)
+            self.matrix.insert(t)
             dicts.append(t)
 
-        for t, t2 in zip(dicts, self.relvar_blob):
+        for t, t2 in zip(dicts, self.matrix):
             assert_true(isinstance(t2, dict), 'iterator does not return dict')
 
-            assert_equal(t['matrix_id'], t2['matrix_id'], 'inserted and retrieved tuples do not match')
-            assert_equal(t['comment'], t2['comment'], 'inserted and retrieved tuples do not match')
-            assert_true(np.all(t['data'] == t2['data']), 'inserted and retrieved tuples do not match')
+            assert_equal(t['matrix_id'], t2['matrix_id'],
+                         'inserted and retrieved tuples do not match')
+            assert_equal(t['comment'], t2['comment'],
+                         'inserted and retrieved tuples do not match')
+            assert_true(np.all(t['data'] == t2['data']),
+                        'inserted and retrieved tuples do not match')
 
     def test_fetch(self):
         dicts = []
@@ -305,10 +256,10 @@ class TestIterator(object):
             t = {'matrix_id': i,
                  'data': np.random.randn(4, 4, 4),
                  'comment': c}
-            self.relvar_blob.insert(t)
+            self.matrix.insert(t)
             dicts.append(t)
 
-        tuples2 = self.relvar_blob.fetch()
+        tuples2 = self.matrix.fetch()
         assert_true(isinstance(tuples2, np.ndarray), "Return value of fetch does not have proper type.")
         assert_true(isinstance(tuples2[0], np.void), "Return value of fetch does not have proper type.")
         for t, t2 in zip(dicts, tuples2):
@@ -324,16 +275,21 @@ class TestIterator(object):
             t = {'matrix_id': i,
                  'data': np.random.randn(4, 4, 4),
                  'comment': c}
-            self.relvar_blob.insert(t)
+            self.matrix.insert(t)
             dicts.append(t)
 
-        tuples2 = self.relvar_blob.fetch(as_dict=True)
-        assert_true(isinstance(tuples2, list), "Return value of fetch with as_dict=True does not have proper type.")
-        assert_true(isinstance(tuples2[0], dict), "Return value of fetch with as_dict=True does not have proper type.")
+        tuples2 = self.matrix.fetch(as_dict=True)
+        assert_true(isinstance(tuples2, list),
+                    "Return value of fetch with as_dict=True does not have proper type.")
+        assert_true(isinstance(tuples2[0], dict),
+                    "Return value of fetch with as_dict=True does not have proper type.")
         for t, t2 in zip(dicts, tuples2):
-            assert_equal(t['matrix_id'], t2['matrix_id'], 'inserted and retrieved dicts do not match')
-            assert_equal(t['comment'], t2['comment'], 'inserted and retrieved dicts do not match')
-            assert_true(np.all(t['data'] == t2['data']), 'inserted and retrieved dicts do not match')
+            assert_equal(t['matrix_id'], t2['matrix_id'],
+                         'inserted and retrieved dicts do not match')
+            assert_equal(t['comment'], t2['comment'],
+                         'inserted and retrieved dicts do not match')
+            assert_true(np.all(t['data'] == t2['data']),
+                        'inserted and retrieved dicts do not match')
 
 
 #
@@ -352,15 +308,16 @@ class TestAutopopulate:
         as follows:
         test1 - has conn and bounded
         """
-        cleanup()  # drop all databases with PREFIX
-
         self.subjects = Subjects()
         self.trials = Trials()
         self.squared = SquaredScore()
         self.dummy = SquaredSubtable()
-        self.dummy1 = WrongImplementation()
         self.error_generator = ErrorGenerator()
         self.fill_relation()
+
+    def teardown(self):
+        self.error_generator.delete_quick()
+
 
     def fill_relation(self):
         tmp = np.array([('Klara', 2, 'monkey'), ('Peter', 3, 'mouse')],
@@ -371,7 +328,7 @@ class TestAutopopulate:
             self.trials.insert(dict(subject_id=2, trial_id=trial_id, outcome=np.random.randint(0, 10)))
 
     def teardown(self):
-        cleanup()
+        pass
 
     def test_autopopulate(self):
         self.squared.populate()
@@ -389,15 +346,15 @@ class TestAutopopulate:
 
     @raises(DataJointError)
     def test_autopopulate_relation_check(self):
-        @testschema
-        class dummy(dj.Computed):
+        @schema
+        class Dummy(dj.Computed):
             def populated_from(self):
                 return None
 
             def _make_tuples(self, key):
                 pass
 
-        du = dummy()
+        du = Dummy()
         du.populate()
 
     @raises(DataJointError)

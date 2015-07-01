@@ -117,8 +117,9 @@ class Connection:
         logger.info("Transaction committed and closed.")
 
     # -------- context manager for transactions
+    @property
     @contextmanager
-    def transaction(self):
+    def transaction(self):    # TODO: make a property since it does not take any arguments
         try:
             self.start_transaction()
             yield self
