@@ -16,12 +16,17 @@ logger = logging.getLogger(__name__)
 
 
 class ERD:
+    _checked_dependencies = set()
     _parents = defaultdict(list)
     _children = defaultdict(list)
     _references = defaultdict(list)
     _referenced = defaultdict(list)
 
     def load_dependencies(self, connection, full_table_name):
+        # check if already loaded.  Use clear_dependencies before reloading
+        if full_table_name in self._checked_dependencies:
+            return
+        self._checked_dependencies.add(full_table_name)
         # fetch the CREATE TABLE statement
         cur = connection.query('SHOW CREATE TABLE %s' % full_table_name)
         create_statement = cur.fetchone()
@@ -78,7 +83,8 @@ class ERD:
                     self._referenced[full_table_name].append(result.referenced_table)
                     self._references[result.referenced_table].append(full_table_name)
 
-    def clear_dependency(self, full_table_name):
+    def clear_dependencies(self, full_table_name):
+        self._checked_dependencies.remove(full_table_name)
         for ref in self.children.pop(full_table_name):
             self.parents.remove(ref)
         for ref in self.references.pop(full_table_name):

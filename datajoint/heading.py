@@ -49,6 +49,9 @@ class Heading:
             attributes = OrderedDict([(q['name'], Heading.AttrTuple(**q)) for q in attributes])
         self.attributes = attributes
 
+    def reset(self):
+        self.attributes = None
+
     def __bool__(self):
         return self.attributes is not None
 

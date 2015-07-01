@@ -7,7 +7,7 @@ from nose.tools import assert_raises, assert_equal, assert_regexp_matches, \
     assert_tuple_equal, assert_dict_equal, raises
 
 from datajoint import DataJointError
-from .schemas import Subjects, Animals, Matrix, Trials, SquaredScore, SquaredSubtable, \
+from .schema import Subjects, Animals, Matrix, Trials, SquaredScore, SquaredSubtable, \
     ErrorGenerator, schema
 
 import datajoint as dj

@@ -43,6 +43,6 @@ def teardown_package():
     conn = dj.conn(**CONN_INFO)
     conn.query('SET FOREIGN_KEY_CHECKS=0')
     cur = conn.query('SHOW DATABASES LIKE "{}\_%%"'.format(PREFIX))
-    for db in cur.fetchone():
-        conn.query('DROP DATABASE `{}`'.format(db))
+    for db in cur.fetchall():
+        conn.query('DROP DATABASE `{}`'.format(db[0]))
     conn.query('SET FOREIGN_KEY_CHECKS=1')
