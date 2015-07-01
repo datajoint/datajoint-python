@@ -175,17 +175,16 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         if isinstance(tup, np.void):
             for fieldname in tup.dtype.fields:
                 if fieldname not in heading:
-                    raise KeyError(u'{0:s} is not in the attribute list'.format(fieldname, ))
+                    raise KeyError(u'{0:s} is not in the attribute list'.format(fieldname))
             value_list = ','.join([repr(tup[name]) if not heading[name].is_blob else '%s'
                                    for name in heading if name in tup.dtype.fields])
-
             args = tuple(pack(tup[name]) for name in heading
                          if name in tup.dtype.fields and heading[name].is_blob)
             attribute_list = '`' + '`,`'.join(q for q in heading if q in tup.dtype.fields) + '`'
         elif isinstance(tup, Mapping):
             for fieldname in tup.keys():
                 if fieldname not in heading:
-                    raise KeyError(u'{0:s} is not in the attribute list'.format(fieldname, ))
+                    raise KeyError(u'{0:s} is not in the attribute list'.format(fieldname))
             value_list = ','.join(repr(tup[name]) if not heading[name].is_blob else '%s'
                                   for name in heading if name in tup)
             args = tuple(pack(tup[name]) for name in heading
@@ -205,7 +204,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
 
     def delete_quick(self):
         """
-        delete without cascading and without prompting
+        delete without cascading and without user prompt
         """
         self.connection.query('DELETE FROM ' + self.from_clause + self.where_clause)
 
@@ -221,16 +220,17 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         if self.is_declared:
             self.connection.query('DROP TABLE %s' % self.full_table_name)
+            self.connection.erd.clear_dependency(self.full_table_name)
             logger.info("Dropped table %s" % self.full_table_name)
 
     def drop(self):
         """
         Drop the table and all tables that reference it, recursively.
-        User is prompted before.
+        User is prompted for confirmation if config['safemode']
         """
         do_drop = True
         relations = self.descendants
-        if not config['safemode']:
+        if config['safemode']:
             print('The following tables are about to be dropped:')
             for relation in relations:
                 print(relation.full_table_name, '(%d tuples)' % len(relation))

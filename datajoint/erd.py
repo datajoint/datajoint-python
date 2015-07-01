@@ -78,6 +78,12 @@ class ERD:
                     self._referenced[full_table_name].append(result.referenced_table)
                     self._references[result.referenced_table].append(full_table_name)
 
+    def clear_dependency(self, full_table_name):
+        for ref in self.children.pop(full_table_name):
+            self.parents.remove(ref)
+        for ref in self.references.pop(full_table_name):
+            self.referenced.remove(ref)
+
     @property
     def parents(self):
         return self._parents
