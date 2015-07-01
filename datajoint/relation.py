@@ -244,7 +244,8 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         if self.is_declared:
             self.connection.query('DROP TABLE %s' % self.full_table_name)
             self.connection.erd.clear_dependencies(self.full_table_name)
-            self.heading.reset()
+            if self._heading:
+                self._heading.reset()
             logger.info("Dropped table %s" % self.full_table_name)
 
     def drop(self):
