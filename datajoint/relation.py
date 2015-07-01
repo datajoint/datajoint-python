@@ -250,12 +250,6 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         ).fetchone()
         return (ret['Data_length'] + ret['Index_length'])/1024**2
 
-    def erd(self, subset=None):
-        """
-        Plot the schema's entity relationship diagram (ERD).
-        """
-        NotImplemented
-
 class FreeRelation(Relation):
     """
     A relation with no definition. Its table must already exist in the database.

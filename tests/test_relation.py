@@ -1,17 +1,9 @@
-# import random
-# import string
-#
-# __author__ = 'fabee'
-#
-# from .schemata.schema1 import test1, test4
 import random
 import string
-import pymysql
 from datajoint import DataJointError
 from .schemata.test1 import Subjects, Animals, Matrix, Trials, SquaredScore, SquaredSubtable, WrongImplementation, \
     ErrorGenerator, testschema
 from . import BASE_CONN, CONN_INFO, PREFIX, cleanup
-# from datajoint.connection import Connection
 from nose.tools import assert_raises, assert_equal, assert_regexp_matches, assert_false, assert_true, assert_list_equal, \
     assert_tuple_equal, assert_dict_equal, raises
 # from datajoint import DataJointError, TransactionError, AutoPopulate, Relation
@@ -20,8 +12,6 @@ from numpy.testing import assert_array_equal
 import numpy as np
 import datajoint as dj
 
-#
-#
 def trial_faker(n=10):
     def iter():
         for s in [1, 2]:
@@ -62,7 +52,7 @@ class TestTableObject(object):
         assert_true(self.score.table_name.startswith('__'))
 
     def test_population_relation_subordinate(self):
-        assert_true(self.subtable.populate_relation is None)
+        assert_true(self.subtable.populated_from is None)
 
     @raises(NotImplementedError)
     def test_make_tubles_not_implemented_subordinate(self):
@@ -401,7 +391,7 @@ class TestAutopopulate:
     def test_autopopulate_relation_check(self):
         @testschema
         class dummy(dj.Computed):
-            def populate_relation(self):
+            def populated_from(self):
                 return None
 
             def _make_tuples(self, key):
