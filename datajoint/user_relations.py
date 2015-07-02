@@ -6,7 +6,7 @@ import re
 import abc
 from datajoint.relation import Relation
 from .autopopulate import AutoPopulate
-from . import DataJointError
+from datajoint.utils import from_camel_case
 
 
 class Manual(Relation):
@@ -98,7 +98,6 @@ class Subordinate:
         raise NotImplementedError('Subtables should not be populated directly.')
 
 
-# ---------------- utilities --------------------
 def from_camel_case(s):
     """
     Convert names in camel case into underscore (_) separated names

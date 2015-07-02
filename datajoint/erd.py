@@ -1,16 +1,16 @@
 import logging
-import pyparsing as pp
 import re
+from collections import defaultdict
+
+import pyparsing as pp
 import networkx as nx
 from networkx import DiGraph
 from networkx import pygraphviz_layout
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import transforms
-from collections import defaultdict
 
 from . import DataJointError
-
 
 logger = logging.getLogger(__name__)
 

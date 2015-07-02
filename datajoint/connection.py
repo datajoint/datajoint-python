@@ -62,7 +62,7 @@ class Connection:
         self.conn_info = dict(host=host, port=port, user=user, passwd=passwd)
         self._conn = pymysql.connect(init_command=init_fun, **self.conn_info)
         if self.is_connected:
-            logger.info("Connected " + user + '@' + host + ':' + str(port))
+            logger.info("Connected {user}@{host}:{port}".format(**self.conn_info))
         else:
             raise DataJointError('Connection failed.')
         self._conn.autocommit(True)
@@ -76,6 +76,11 @@ class Connection:
     def __eq__(self, other):
         return self.conn_info == other.conn_info
 
+    def __repr__(self):
+        connected = "connected" if self.is_connected else "disconnected"
+        return "DataJoint connection ({connected}) {user}@{host}:{port}".format(
+            connected=connected, **self.conn_info)
+
     @property
     def is_connected(self):
         """
@@ -83,15 +88,9 @@ class Connection:
         """
         return self._conn.ping()
 
-    def __repr__(self):
-        connected = "connected" if self.is_connected else "disconnected"
-        return "DataJoint connection ({connected}) {user}@{host}:{port}".format(
-            connected=connected, **self.conn_info)
-
-
     def query(self, query, args=(), as_dict=False):
         """
-        Execute the specified query and return the tuple generator.
+        Execute the specified query and return the tuple generator (cursor).
 
         :param query: mysql query
         :param args: additional arguments for the pymysql.cursor

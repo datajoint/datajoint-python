@@ -83,6 +83,9 @@ class Heading:
     def computed(self):
         return [k for k, v in self.attributes.items() if v.computation]
 
+    def __bool__(self):
+        return self.attributes is not None
+
     def __getitem__(self, name):
         """shortcut to the attribute"""
         return self.attributes[name]
@@ -104,7 +107,7 @@ class Heading:
         """
         return np.dtype(dict(
             names=self.names,
-            formats=[v.dtype for k, v in self.attributes.items()]))
+            formats=[v.dtype for v in self.attributes.values()]))
 
     @property
     def as_sql(self):

@@ -6,5 +6,10 @@
 .DS_Store
 __*__
 .idea
-datajoint.egg-info/
 *.pyc
+.python-version
+*.egg-info/
+dist/
+build/
+MANIFEST
+.vagrant/
