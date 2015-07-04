@@ -16,12 +16,12 @@ logger = logging.getLogger(__name__)
 
 
 class ERD:
-    _parents = defaultdict(set)
-    _children = defaultdict(set)
-    _references = defaultdict(set)
-    _referenced = defaultdict(set)
+    _parents = defaultdict(list)
+    _children = defaultdict(list)
+    _references = defaultdict(list)
+    _referenced = defaultdict(list)
 
-    def load_dependencies(self, connection, full_table_name, primary_key):
+    def load_dependencies(self, connection, full_table_name):
         # fetch the CREATE TABLE statement
         cur = connection.query('SHOW CREATE TABLE %s' % full_table_name)
         create_statement = cur.fetchone()
@@ -29,39 +29,60 @@ class ERD:
             raise DataJointError('Could not load the definition table %s' % full_table_name)
         create_statement = create_statement[1].split('\n')
 
-        # build foreign key parser
+        # build foreign key fk_parser
         database = full_table_name.split('.')[0].strip('`')
         add_database = lambda string, loc, toc: ['`{database}`.`{table}`'.format(database=database, table=toc[0])]
 
-        parser = pp.CaselessLiteral('CONSTRAINT').suppress()
-        parser += pp.QuotedString('`').suppress()
-        parser += pp.CaselessLiteral('FOREIGN KEY').suppress()
-        parser += pp.QuotedString('(', endQuoteChar=')').setResultsName('attributes')
-        parser += pp.CaselessLiteral('REFERENCES')
-        parser += pp.Or([
+        # primary key parser
+        pk_parser = pp.CaselessLiteral('PRIMARY KEY')
+        pk_parser += pp.QuotedString('(', endQuoteChar=')').setResultsName('primary_key')
+
+        # foreign key parser
+        fk_parser = pp.CaselessLiteral('CONSTRAINT').suppress()
+        fk_parser += pp.QuotedString('`').suppress()
+        fk_parser += pp.CaselessLiteral('FOREIGN KEY').suppress()
+        fk_parser += pp.QuotedString('(', endQuoteChar=')').setResultsName('attributes')
+        fk_parser += pp.CaselessLiteral('REFERENCES')
+        fk_parser += pp.Or([
             pp.QuotedString('`').setParseAction(add_database),
             pp.Combine(pp.QuotedString('`', unquoteResults=False) +
                        '.' + pp.QuotedString('`', unquoteResults=False))
             ]).setResultsName('referenced_table')
-        parser += pp.QuotedString('(', endQuoteChar=')').setResultsName('referenced_attributes')
+        fk_parser += pp.QuotedString('(', endQuoteChar=')').setResultsName('referenced_attributes')
 
         # parse foreign keys
+        primary_key = None
         for line in create_statement:
+            if primary_key is None:
+                try:
+                    result = pk_parser.parseString(line)
+                except pp.ParseException:
+                    pass
+                else:
+                    primary_key = [s.strip(' `') for s in result.primary_key.split(',')]
             try:
-                result = parser.parseString(line)
+                result = fk_parser.parseString(line)
             except pp.ParseException:
                 pass
             else:
+                if not primary_key:
+                    raise DataJointError('No primary key found %s' % full_table_name)
                 if result.referenced_attributes != result.attributes:
                     raise DataJointError(
                         "%s's foreign key refers to differently named attributes in %s"
                         % (self.__class__.__name__, result.referenced_table))
                 if all(q in primary_key for q in [s.strip('` ') for s in result.attributes.split(',')]):
-                    self._parents[full_table_name].add(result.referenced_table)
-                    self._children[result.referenced_table].add(full_table_name)
+                    self._parents[full_table_name].append(result.referenced_table)
+                    self._children[result.referenced_table].append(full_table_name)
                 else:
-                    self._referenced[full_table_name].add(result.referenced_table)
-                    self._references[result.referenced_table].add(full_table_name)
+                    self._referenced[full_table_name].append(result.referenced_table)
+                    self._references[result.referenced_table].append(full_table_name)
+
+    def clear_dependency(self, full_table_name):
+        for ref in self.children.pop(full_table_name):
+            self.parents.remove(ref)
+        for ref in self.references.pop(full_table_name):
+            self.referenced.remove(ref)
 
     @property
     def parents(self):
@@ -79,7 +100,22 @@ class ERD:
     def referenced(self):
         return self._referenced
 
+    def get_descendants(self, full_table_name):
+        """
+        :param full_table_name: a table name in the format `database`.`table_name`
+        :return: list of all children and references, in order of dependence.
+        This is helpful for cascading delete or drop operations.
+        """
+        ret = defaultdict(lambda: 0)
 
+        def recurse(full_table_name, level):
+            if level > ret[full_table_name]:
+                ret[full_table_name] = level
+            for child in self.children[full_table_name] + self.references[full_table_name]:
+                recurse(child, level+1)
+
+        recurse(full_table_name, 0)
+        return sorted(ret.keys(), key=ret.__getitem__)
 
 
 def to_camel_case(s):

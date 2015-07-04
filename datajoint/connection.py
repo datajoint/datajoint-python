@@ -8,36 +8,21 @@ from .erd import ERD
 logger = logging.getLogger(__name__)
 
 
-def conn_container():
+def conn(host=None, user=None, passwd=None, init_fun=None, reset=False):
     """
-    creates a persistent connections for everyone to use
+    Returns a persistent connection object to be shared by multiple modules.
+    If the connection is not yet established or reset=True, a new connection is set up.
+    If connection information is not provided, it is taken from config.
     """
-    _connection = None  # persistent connection object used by dj.conn()
-
-    def conn_function(host=None, user=None, passwd=None, init_fun=None, reset=False): # TODO: thin wrapping layer to mimic singleton
-        """
-        Manage a persistent connection object.
-        This is one of several ways to configure and access a datajoint connection.
-        Users may customize their own connection manager.
-
-        Set rest=True to reset the persistent connection object
-        """
-        nonlocal _connection
-        if not _connection or reset:
-            host = host if host is not None else config['database.host']
-            user = user if user is not None else config['database.user']
-            passwd = passwd if passwd is not None else config['database.password']
-
-            if passwd is None: passwd = input("Please enter database password: ")
-
-            init_fun = init_fun if init_fun is not None else config['connection.init_function']
-            _connection = Connection(host, user, passwd, init_fun)
-        return _connection
-
-    return conn_function
-
-# The function conn is used by others to obtain a connection object
-conn = conn_container()
+    if not hasattr(conn, 'connection') or reset:
+        host = host if host is not None else config['database.host']
+        user = user if user is not None else config['database.user']
+        passwd = passwd if passwd is not None else config['database.password']
+        if passwd is None:
+            passwd = input("Please enter database password: ")
+        init_fun = init_fun if init_fun is not None else config['connection.init_function']
+        conn.connection = Connection(host, user, passwd, init_fun)
+    return conn.connection
 
 
 class Connection:
@@ -108,7 +93,7 @@ class Connection:
         cur.execute(query, args)
         return cur
 
-    # ---------- transaction processing ------------------
+    # ---------- transaction processing
     @property
     def in_transaction(self):
         self._in_transaction = self._in_transaction and self.is_connected
@@ -131,8 +116,7 @@ class Connection:
         self._in_transaction = False
         logger.info("Transaction committed and closed.")
 
-
-    #-------- context manager for transactions
+    # -------- context manager for transactions
     @contextmanager
     def transaction(self):
         try:

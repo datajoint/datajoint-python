@@ -1,6 +1,3 @@
-from datajoint import DataJointError
-
-__author__ = 'fabee'
 import numpy as np
 from datajoint.blob import pack, unpack
 from numpy.testing import assert_array_equal, raises
@@ -18,10 +15,6 @@ def test_pack():
 
     x = np.int16(np.random.randn(1, 2, 3))
     assert_array_equal(x, unpack(pack(x)), "Arrays do not match!")
-
-@raises(DataJointError)
-def test_error():
-    pack(dict())
 
 def test_complex():
     z = np.random.randn(8, 10) + 1j*np.random.randn(8,10)

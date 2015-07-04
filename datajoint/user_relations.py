@@ -34,7 +34,7 @@ class Subordinate:
     Mix-in to make computed tables subordinate
     """
     @property
-    def populate_relation(self):
+    def populated_from(self):
         return None
 
     def _make_tuples(self, key):

@@ -5,7 +5,7 @@ __author__ = "Dimitri Yatsenko, Edgar Walker, and Fabian Sinz at Baylor College 
 __version__ = "0.2"
 __all__ = ['__author__', '__version__',
            'Connection', 'Heading', 'Relation', 'FreeRelation', 'Not',
-           'Relation',
+           'Relation', 'schema',
            'Manual', 'Lookup', 'Imported', 'Computed',
            'AutoPopulate', 'conn', 'DataJointError', 'blob']
 
