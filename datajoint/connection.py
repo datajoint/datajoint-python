@@ -1,3 +1,8 @@
+"""
+This module hosts the Connection class that manages the connection to the mysql database via
+`pymysql`, and the `conn` function that provides access to a persistent connection in datajoint.
+
+"""
 from contextlib import contextmanager
 import pymysql
 from . import DataJointError
@@ -12,7 +17,15 @@ def conn(host=None, user=None, passwd=None, init_fun=None, reset=False):
     """
     Returns a persistent connection object to be shared by multiple modules.
     If the connection is not yet established or reset=True, a new connection is set up.
-    If connection information is not provided, it is taken from config.
+    If connection information is not provided, it is taken from config which takes the
+    information from dj_local_conf.json. If the password is not specified in that file
+    datajoint prompts for the password.
+
+    :param host: hostname
+    :param user: mysql user
+    :param passwd: mysql password
+    :param init_fun: initialization function
+    :param reset: whether the connection should be reseted or not
     """
     if not hasattr(conn, 'connection') or reset:
         host = host if host is not None else config['database.host']
@@ -74,16 +87,15 @@ class Connection:
         return "DataJoint connection ({connected}) {user}@{host}:{port}".format(
             connected=connected, **self.conn_info)
 
-    def __del__(self):
-        logger.info('Disconnecting {user}@{host}:{port}'.format(**self.conn_info))
-        self._conn.close()
 
     def query(self, query, args=(), as_dict=False):
         """
         Execute the specified query and return the tuple generator.
 
-        If as_dict is set to True, the returned cursor objects returns
-        query results as dictionary.
+        :param query: mysql query
+        :param args: additional arguments for the pymysql.cursor
+        :param as_dict: If as_dict is set to True, the returned cursor objects returns
+                        query results as dictionary.
         """
         cursor = pymysql.cursors.DictCursor if as_dict else pymysql.cursors.Cursor
         cur = self._conn.cursor(cursor=cursor)
@@ -96,10 +108,18 @@ class Connection:
     # ---------- transaction processing
     @property
     def in_transaction(self):
+        """
+        :return: True if there is an open transaction.
+        """
         self._in_transaction = self._in_transaction and self.is_connected
         return self._in_transaction
 
     def start_transaction(self):
+        """
+        Starts a transaction error.
+
+        :raise DataJointError: if there is an ongoing transaction.
+        """
         if self.in_transaction:
             raise DataJointError("Nested connections are not supported.")
         self.query('START TRANSACTION WITH CONSISTENT SNAPSHOT')
@@ -107,11 +127,19 @@ class Connection:
         logger.info("Transaction started")
 
     def cancel_transaction(self):
+        """
+        Cancels the current transaction and rolls back all changes made during the transaction.
+
+        """
         self.query('ROLLBACK')
         self._in_transaction = False
         logger.info("Transaction cancelled. Rolling back ...")
 
     def commit_transaction(self):
+        """
+        Commit all changes made during the transaction and close it.
+
+        """
         self.query('COMMIT')
         self._in_transaction = False
         logger.info("Transaction committed and closed.")
@@ -119,6 +147,18 @@ class Connection:
     # -------- context manager for transactions
     @contextmanager
     def transaction(self):
+        """
+        Context manager for transactions. Opens an transaction and closes it after the with statement.
+        If an error is caught during the transaction, the commits are automatically rolled back. All
+        errors are raised again.
+
+        Example:
+        >>> import datajoint as dj
+        >>> with dj.conn().transaction() as conn:
+        >>>     # transaction is open here
+
+
+        """
         try:
             self.start_transaction()
             yield self

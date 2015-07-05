@@ -1,3 +1,4 @@
+"""autopopulate containing the dj.AutoPopulate class. See `dj.AutoPopulate` for more info."""
 import abc
 import logging
 from .relational_operand import RelationalOperand
@@ -22,9 +23,9 @@ class AutoPopulate(metaclass=abc.ABCMeta):
     def populated_from(self):
         """
         :return: the relation whose primary key values are passed, sequentially, to the
-        _make_tuples method when populate() is called.
-        The default value is the join of the parent relations. Users may override to change
-        the granularity or the scope of populate() calls.
+                `_make_tuples` method when populate() is called.The default value is the
+                join of the parent relations. Users may override to change the granularity
+                or the scope of populate() calls.
         """
         parents = [FreeRelation(self.target.connection, rel) for rel in self.target.parents]
         ret = parents.pop(0)
