@@ -59,14 +59,14 @@ class TestRelation:
         s = self.subjects
         t = self.trials
 
-        s.insert(dict(subject_id=1, real_id='M'))
-        s.insert(dict(subject_id=2, real_id='F'))
+        s.insert1(dict(subject_id=1, real_id='M'))
+        s.insert1(dict(subject_id=2, real_id='F'))
 
         # insert trials
         n_trials = 20
         for subject_id in [1, 2]:
             for trial_id in range(n_trials):
-                t.insert(
+                t.insert1(
                     trial_id=trial_id,
                     subject_id=subject_id,
                     outcome=int(np.random.randint(10)),
@@ -87,7 +87,7 @@ class TestRelation:
         tmp = np.array([(2, 'Klara', 'monkey')],
                        dtype=[('subject_id', '>i4'), ('real_id', 'O'), ('species', 'O')])
 
-        self.subjects.insert(tmp[0])
+        self.subjects.insert1(tmp[0])
         testt2 = (self.subjects & 'subject_id = 2').fetch()[0]
         assert_equal(tuple(tmp[0]), tuple(testt2), "Inserted and fetched record do not match!")
 
@@ -128,7 +128,7 @@ class TestRelation:
         tmp = np.array([('Klara', 2, 'monkey')],
                        dtype=[('real_id', 'O'), ('subject_id', '>i4'), ('species', 'O')])
 
-        self.subjects.insert(tmp[0])
+        self.subjects.insert1(tmp[0])
         testt2 = (self.subjects & 'subject_id = 2').fetch()[0]
         assert_equal((2, 'Klara', 'monkey'), tuple(testt2),
                      "Inserted and fetched record do not match!")
@@ -139,7 +139,7 @@ class TestRelation:
         tmp = np.array([('Klara', 2, 'monkey')],
                        dtype=[('real_deal', 'O'), ('subject_id', '>i4'), ('species', 'O')])
 
-        self.subjects.insert(tmp[0])
+        self.subjects.insert1(tmp[0])
 
         def test_dict_insert(self):
             "Test whether record insert works"
@@ -158,7 +158,7 @@ class TestRelation:
                'subject_database': 3,
                'species': 'human'}
 
-        self.subjects.insert(tmp)
+        self.subjects.insert1(tmp)
 
     #
     def test_batch_insert(self):
@@ -196,7 +196,7 @@ class TestRelation:
     def test_blob_insert(self):
         x = np.random.randn(10)
         t = {'matrix_id': 0, 'data': x, 'comment': 'this is a random image'}
-        self.matrix.insert(t)
+        self.matrix.insert1(t)
         x2 = self.matrix.fetch()[0][1]
         assert_array_equal(x, x2, 'inserted blob does not match')
 
@@ -235,7 +235,7 @@ class TestIterator(object):
             t = {'matrix_id': i,
                  'data': np.random.randn(4, 4, 4),
                  'comment': c}
-            self.matrix.insert(t)
+            self.matrix.insert1(t)
             dicts.append(t)
 
         for t, t2 in zip(dicts, self.matrix):
@@ -256,7 +256,7 @@ class TestIterator(object):
             t = {'matrix_id': i,
                  'data': np.random.randn(4, 4, 4),
                  'comment': c}
-            self.matrix.insert(t)
+            self.matrix.insert1(t)
             dicts.append(t)
 
         tuples2 = self.matrix.fetch()
@@ -275,7 +275,7 @@ class TestIterator(object):
             t = {'matrix_id': i,
                  'data': np.random.randn(4, 4, 4),
                  'comment': c}
-            self.matrix.insert(t)
+            self.matrix.insert1(t)
             dicts.append(t)
 
         tuples2 = self.matrix.fetch(as_dict=True)
@@ -325,7 +325,7 @@ class TestAutopopulate:
         self.subjects.batch_insert(tmp)
 
         for trial_id in range(1, 11):
-            self.trials.insert(dict(subject_id=2, trial_id=trial_id, outcome=np.random.randint(0, 10)))
+            self.trials.insert1(dict(subject_id=2, trial_id=trial_id, outcome=np.random.randint(0, 10)))
 
     def teardown(self):
         pass

@@ -60,10 +60,10 @@ class SquaredScore(dj.Computed):
 
     def _make_tuples(self, key):
         outcome = (Trials() & key).fetch1()['outcome']
-        self.insert(dict(key, squared=outcome**2))
+        self.insert1(dict(key, squared=outcome ** 2))
         ss = SquaredSubtable()
         for i in range(10):
-            ss.insert(dict(key, dummy=i))
+            ss.insert1(dict(key, dummy=i))
 
 
 @schema

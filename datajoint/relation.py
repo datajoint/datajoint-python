@@ -113,14 +113,6 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         return self.full_table_name
 
-    def iter_insert(self, rows, **kwargs):
-        """
-        Inserts a collection of tuples. Additional keyword arguments are passed to insert.
-
-        :param iter: Must be an iterator that generates a sequence of valid arguments for insert.
-        """
-        for row in rows:
-            self.insert(row, **kwargs)
 
     # ------------- dependencies ---------- #
     @property
@@ -158,19 +150,21 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
                 database=self.database, table_name=self.table_name))
         return cur.rowcount > 0
 
-    def batch_insert(self, data, **kwargs):
+    def insert(self, rows, **kwargs):
         """
-        Inserts an entire batch of entries. Additional keyword arguments are passed to insert.
+        Inserts a collection of tuples. Additional keyword arguments are passed to insert.
 
-        :param data: must be iterable, each row must be a valid argument for insert
+        :param iter: Must be an iterator that generates a sequence of valid arguments for insert.
         """
-        self.iter_insert(data.__iter__(), **kwargs)
+        for row in rows:
+            self.insert1(row, **kwargs)
+
 
     @property
     def full_table_name(self):
         return r"`{0:s}`.`{1:s}`".format(self.database, self.table_name)
 
-    def insert(self, tup, ignore_errors=False, replace=False):
+    def insert1(self, tup, ignore_errors=False, replace=False):
         """
         Insert one data record or one Mapping (like a dict).
 
