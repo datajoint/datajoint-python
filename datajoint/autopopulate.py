@@ -28,6 +28,8 @@ class AutoPopulate(metaclass=abc.ABCMeta):
                 or the scope of populate() calls.
         """
         parents = [FreeRelation(self.target.connection, rel) for rel in self.target.parents]
+        if not parents:
+            raise DataJointError('A relation must have parent relations to be able to be populated')
         ret = parents.pop(0)
         while parents:
             ret *= parents.pop(0)

@@ -1,12 +1,11 @@
 from collections.abc import Mapping
-from collections import defaultdict
 import numpy as np
 import logging
 import abc
 import pymysql
 
 from . import DataJointError, config, conn
-from .declare import declare, compile_attribute
+from .declare import declare
 from .relational_operand import RelationalOperand
 from .blob import pack
 from .utils import user_choice
@@ -42,19 +41,16 @@ def schema(database, context, connection=None):
 
     def decorator(cls):
         """
-        The decorator declares the table and binds the class to the database table
+        The decorator binds its argument class object to a database
+        :param cls: class to be decorated
         """
+        # class-level attributes
         cls.database = database
         cls._connection = connection
         cls._heading = Heading()
-        instance = cls() if isinstance(cls, type) else cls
-        if not instance.heading:
-            connection.query(
-                declare(
-                    full_table_name=instance.full_table_name,
-                    definition=instance.definition,
-                    context=context))
-        connection.erd.load_dependencies(connection, instance.full_table_name)
+        cls._context = context
+        # trigger table declaration by requesting the heading from an instance
+        cls().heading
         return cls
 
     return decorator
@@ -67,6 +63,8 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
     table name, database, context, and definition.
     A Relation implements insert and delete methods in addition to inherited relational operators.
     """
+    _heading = None
+    _context = None
 
     # ---------- abstract properties ------------ #
     @property
@@ -92,8 +90,20 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
 
     @property
     def heading(self):
-        if not self._heading and self.is_declared:
-            self._heading.init_from_database(self.connection, self.database, self.table_name)
+        """
+        Get the table headng.
+        If the table is not declared, attempts to declare it and return heading.
+        :return:
+        """
+        if self._heading is None:
+            self._heading = Heading()  # instance-level heading
+        if not self._heading:
+            if not self.is_declared:
+                self.connection.query(
+                    declare(self.full_table_name, self.definition, self._context))
+            if self.is_declared:
+                self.connection.erd.load_dependencies(self.connection, self.full_table_name)
+                self._heading.init_from_database(self.connection, self.database, self.table_name)
         return self._heading
 
     @property
@@ -208,11 +218,24 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         self.connection.query('DELETE FROM ' + self.from_clause + self.where_clause)
 
-    def delete(self):  # TODO: impelment cascading (issue #15)
-        if not config['safemode'] or user_choice(
-                "You are about to delete data from a table. This operation cannot be undone.\n"
-                "Proceed?", default='no') == 'yes':
-            self.delete_quick()
+    def delete(self):
+        """
+        Delete the contents of the table and its dependent tables, recursively.
+        User is prompted for confirmation if config['safemode']
+        """
+        relations = self.descendants
+        if self.restrictions and len(relations)>1:
+            raise NotImplementedError('Restricted cascading deletes are not yet implemented')
+        do_delete = True
+        if config['safemode']:
+            print('The contents of the following tables are about to be deleted:')
+            for relation in relations:
+                print(relation.full_table_name, '(%d tuples)'' % len(relation)')
+            do_delete = user_choice("Proceed?", default='no') == 'yes'
+        if do_delete:
+            with self.connection.transaction:
+                while relations:
+                    relations.pop().delete_quick()
 
     def drop_quick(self):
         """
@@ -220,7 +243,9 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         if self.is_declared:
             self.connection.query('DROP TABLE %s' % self.full_table_name)
-            self.connection.erd.clear_dependency(self.full_table_name)
+            self.connection.erd.clear_dependencies(self.full_table_name)
+            if self._heading:
+                self._heading.reset()
             logger.info("Dropped table %s" % self.full_table_name)
 
     def drop(self):
@@ -254,14 +279,17 @@ class FreeRelation(Relation):
     """
     A relation with no definition. Its table must already exist in the database.
     """
-    definition = None
-
-    def __init__(self, connection, full_table_name):
+    def __init__(self, connection, full_table_name, definition=None, context=None):
         [database, table_name] = full_table_name.split('.')
         self.database = database.strip('`')
         self._table_name = table_name.strip('`')
-        self._heading = Heading()
         self._connection = connection
+        self._definition = definition
+        self._context = context
+
+    @property
+    def definition(self):
+        return self._definition
 
     @property
     def connection(self):

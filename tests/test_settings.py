@@ -67,7 +67,6 @@ def test_save():
         os.rename(tmpfile, settings.LOCALCONFIG)
 
 def test_load_save():
-
     filename_old = dj.settings.LOCALCONFIG
     filename = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(50)) + '.json'
     dj.settings.LOCALCONFIG = filename

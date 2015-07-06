@@ -145,6 +145,7 @@ class Connection:
         logger.info("Transaction committed and closed.")
 
     # -------- context manager for transactions
+    @property
     @contextmanager
     def transaction(self):
         """
@@ -154,7 +155,7 @@ class Connection:
 
         Example:
         >>> import datajoint as dj
-        >>> with dj.conn().transaction() as conn:
+        >>> with dj.conn().transaction as conn:
         >>>     # transaction is open here
 
 
