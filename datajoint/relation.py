@@ -113,6 +113,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         return self.full_table_name
 
+
     # ------------- dependencies ---------- #
     @property
     def parents(self):
@@ -206,7 +207,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
                 pairs = zip(heading, tup)
                 value_list = ','.join('%s' if heading[name].is_blob else repr(value) for name, value in pairs)
                 attribute_list = '`' + '`,`'.join(heading.names) + '`'
-                args = tuple(pack(vallue) for name, value in pairs if heading[name].is_blob)
+                args = tuple(pack(value) for name, value in pairs if heading[name].is_blob)
         if replace:
             sql = 'REPLACE'
         elif ignore_errors:

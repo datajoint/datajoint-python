@@ -75,10 +75,10 @@ class TestTransactions:
 
         self.relation.delete()
         with self.conn.transaction:
-            self.relation.insert(tmp[0])
+            self.relation.insert1(tmp[0])
         try:
             with self.conn.transaction:
-                self.relation.insert(tmp[1])
+                self.relation.insert1(tmp[1])
                 raise DataJointError("Testing rollback")
         except DataJointError:
             pass
@@ -94,9 +94,9 @@ class TestTransactions:
             (2, 'Klara', 'monkey')
         ],  self.relation.heading.as_dtype)
         self.relation.delete_quick()
-        self.relation.insert(tmp[0])
+        self.relation.insert1(tmp[0])
         self.conn.start_transaction()
-        self.relation.insert(tmp[1])
+        self.relation.insert1(tmp[1])
         self.conn.cancel_transaction()
         assert_equal(len(self.relation), 1,
                      "Length is not 1. Expected because rollback should have happened.")

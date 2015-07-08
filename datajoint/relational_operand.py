@@ -95,6 +95,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
     def aggregate(self, _group, *attributes, **renamed_attributes):
         """
         Relational aggregation operator
+
         :param group:  relation whose tuples can be used in aggregation operators
         :param extensions:
         :return: a relation representing the aggregation/projection operator result
@@ -102,6 +103,18 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         if _group is not None and not isinstance(_group, RelationalOperand):
             raise DataJointError('The second argument must be a relation or None')
         return Projection(self, _group, *attributes, **renamed_attributes)
+
+    def group_by(self, *attributes, sortby=None):
+        r = self.project(*attributes).fetch()
+        dtype2 = np.dtype({name:r.dtype.fields[name] for name in attributes})
+        r2 = np.unique(np.ndarray(r.shape, dtype2, r, 0, r.strides))
+        r2.sort(order=sortby if sortby is not None else attributes)
+        for nk in r2:
+            restr = ' and '.join(["%s='%s'" % (fn, str(v)) for fn, v in zip(r2.dtype.names, nk)])
+            if len(nk) == 1:
+                yield nk[0], self & restr
+            else:
+                yield nk, self & restr
 
     def __iand__(self, restriction):
         """

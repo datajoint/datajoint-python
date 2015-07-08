@@ -1,3 +1,13 @@
+"""
+DataJoint for Python is a high-level programming interface for MySQL databases
+to support data processing chains in science labs. DataJoint is built on the
+foundation of the relational data model and prescribes a consistent method for
+organizing, populating, and querying data.
+
+DataJoint is free software under the LGPL License. In addition, we request
+that any use of DataJoint leading to a publication be acknowledged in the publication.
+"""
+
 import logging
 import os
 

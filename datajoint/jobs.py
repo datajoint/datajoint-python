@@ -7,6 +7,7 @@ from .relation import Relation, schema
 
 def get_jobs_table(database):
     """
+
     :return: the base relation of the job reservation table for database
     """
     self = get_jobs_table
