@@ -52,6 +52,9 @@ class Heading:
     def reset(self):
         self.attributes = None
 
+    def __len__(self):
+        return 0 if self.attributes is None else len(self.attributes)
+
     def __bool__(self):
         return self.attributes is not None
 
