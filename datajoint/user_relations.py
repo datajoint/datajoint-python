@@ -13,6 +13,7 @@ class Manual(Relation):
     """
     Inherit from this class if the table's values are entered manually.
     """
+
     @property
     def table_name(self):
         """
@@ -27,6 +28,7 @@ class Lookup(Relation):
     currently equivalent to defining the table as Manual and serves semantic
     purposes only.
     """
+
     @property
     def table_name(self):
         """
@@ -34,12 +36,21 @@ class Lookup(Relation):
         """
         return '#' + from_camel_case(self.__class__.__name__)
 
+    def prepare(self):
+        """
+        Checks whether the instance has a property called `content` and inserts its elements.
+        """
+        if hasattr(self, 'content'):
+            for row in self.content:
+                self.insert1(row, ignore_errors=True)
+
 
 class Imported(Relation, AutoPopulate):
     """
     Inherit from this class if the table's values are imported from external data sources.
     The inherited class must at least provide the function `_make_tuples`.
     """
+
     @property
     def table_name(self):
         """
@@ -53,6 +64,7 @@ class Computed(Relation, AutoPopulate):
     Inherit from this class if the table's values are computed from other relations in the schema.
     The inherited class must at least provide the function `_make_tuples`.
     """
+
     @property
     def table_name(self):
         """
@@ -65,6 +77,7 @@ class Subordinate:
     """
     Mix-in to make computed tables subordinate
     """
+
     @property
     def populated_from(self):
         """
@@ -95,6 +108,7 @@ def from_camel_case(s):
     >>>from_camel_case("TableName")
         "table_name"
     """
+
     def convert(match):
         return ('_' if match.groups()[0] else '') + match.group(0).lower()
 
@@ -102,4 +116,3 @@ def from_camel_case(s):
         raise DataJointError(
             'ClassName must be alphanumeric in CamelCase, begin with a capital letter')
     return re.sub(r'(\B[A-Z])|(\b[A-Z])', convert, s)
-

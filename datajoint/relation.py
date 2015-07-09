@@ -50,7 +50,9 @@ def schema(database, context, connection=None):
         cls._heading = Heading()
         cls._context = context
         # trigger table declaration by requesting the heading from an instance
-        cls().heading
+        inst = cls()
+        inst.heading
+        inst.prepare()
         return cls
 
     return decorator
@@ -268,6 +270,15 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
                 database=self.database, table=self.table_name), as_dict=True
         ).fetchone()
         return (ret['Data_length'] + ret['Index_length'])/1024**2
+
+    # --------- functionality used by the decorator ---------
+    def prepare(self):
+        """
+        This function is overriden by the user_relation subclasses. It is called on an instance
+        once when the class object is created and prepares the table depending on the tier.
+        """
+        pass
+
 
 class FreeRelation(Relation):
     """
