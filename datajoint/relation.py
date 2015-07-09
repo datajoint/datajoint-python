@@ -50,9 +50,9 @@ def schema(database, context, connection=None):
         cls._heading = Heading()
         cls._context = context
         # trigger table declaration by requesting the heading from an instance
-        inst = cls()
-        inst.heading
-        inst.prepare()
+        instance = cls()
+        instance.heading    # trigger table declaration
+        instance.prepare()
         return cls
 
     return decorator
@@ -278,19 +278,19 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
     @property
     def size_on_disk(self):
         """
-        :return: size of data and indices in GiB taken by the table on the storage device
+        :return: size of data and indices in bytes on the storage device
         """
         ret = self.connection.query(
             'SHOW TABLE STATUS FROM `{database}` WHERE NAME="{table}"'.format(
                 database=self.database, table=self.table_name), as_dict=True
         ).fetchone()
-        return (ret['Data_length'] + ret['Index_length'])/1024**2
+        return ret['Data_length'] + ret['Index_length']
 
     # --------- functionality used by the decorator ---------
     def prepare(self):
         """
-        This function is overriden by the user_relation subclasses. It is called on an instance
-        once when the class object is created and prepares the table depending on the tier.
+        This method is overridden by the user_relations subclasses. It is called on an instance
+        once when the class is declared.
         """
         pass
 

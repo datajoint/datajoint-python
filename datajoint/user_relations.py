@@ -38,11 +38,10 @@ class Lookup(Relation):
 
     def prepare(self):
         """
-        Checks whether the instance has a property called `content` and inserts its elements.
+        Checks whether the instance has a property called `contents` and inserts its elements.
         """
         if hasattr(self, 'contents'):
-            for row in self.contents:
-                self.insert1(row, ignore_errors=True)
+            self.insert(self.contents, ignore_errors=True)
 
 
 class Imported(Relation, AutoPopulate):
