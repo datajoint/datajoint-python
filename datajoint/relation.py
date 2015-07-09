@@ -273,6 +273,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
                 relations.pop().drop_quick()
             print('Tables dropped.')
 
+    @property
     def size_on_disk(self):
         """
         :return: size of data and indices in GiB taken by the table on the storage device
