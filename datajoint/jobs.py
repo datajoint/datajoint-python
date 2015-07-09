@@ -5,12 +5,13 @@ import pymysql
 from .relation import Relation, schema
 
 
-def get_jobs_table(database):
+def get_jobs(database):
     """
-
     :return: the base relation of the job reservation table for database
     """
-    self = get_jobs_table
+
+    # cache for containing an instance
+    self = get_jobs
     if not hasattr(self, 'lookup'):
         self.lookup = {}
 
@@ -64,12 +65,12 @@ def reserve(reserve_jobs, full_table_name, key):
     if not reserve_jobs:
         return True
     database, table_name = split_name(full_table_name)
-    jobs = get_jobs_table(database)
+    jobs = get_jobs(database)
     job_key = dict(table_name=table_name, key_hash=key_hash(key))
     if jobs & job_key:
         return False
     try:
-        jobs.insert(dict(job_key, status="reserved", host=os.uname().nodename, pid=os.getpid()))
+        jobs.insert1(dict(job_key, status="reserved", host=os.uname().nodename, pid=os.getpid()))
     except pymysql.err.IntegrityError:
         success = False
     else:
@@ -87,7 +88,7 @@ def complete(reserve_jobs, full_table_name, key):
     if reserve_jobs:
         database, table_name = split_name(full_table_name)
         job_key = dict(table_name=table_name, key_hash=key_hash(key))
-        entry = get_jobs_table(full_table_name) & job_key
+        entry = get_jobs(database) & job_key
         entry.delete_quick()
 
 
@@ -103,7 +104,7 @@ def error(reserve_jobs, full_table_name, key, error_message):
     if reserve_jobs:
         database, table_name = split_name(full_table_name)
         job_key = dict(table_name=table_name, key_hash=key_hash(key))
-        jobs = get_jobs_table(database)
+        jobs = get_jobs(database)
         jobs.insert(dict(job_key,
                          status="error",
                          host=os.uname(),

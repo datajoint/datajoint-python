@@ -236,12 +236,14 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
             raise NotImplementedError('Restricted cascading deletes are not yet implemented')
         do_delete = True
         if config['safemode']:
+            do_delete = False
             print('The contents of the following tables are about to be deleted:')
             for relation in relations:
                 count = len(relation)
                 if count:
+                    do_delete = True
                     print(relation.full_table_name, '(%d tuples)' % count)
-            do_delete = user_choice("Proceed?", default='no') == 'yes'
+            do_delete = do_delete and user_choice("Proceed?", default='no') == 'yes'
         if do_delete:
             with self.connection.transaction:
                 while relations:

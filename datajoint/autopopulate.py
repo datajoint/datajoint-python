@@ -95,5 +95,5 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         """
         total = len(self.populated_from)
         remaining = len(self.populated_from - self.target)
-        print('Remaining %d of %d (%2.1f%%)' % (remaining, total, 100*remaining/total)
+        print('Completed %d of %d (%2.1f%%)' % (total-remaining, total, 100-100*remaining/total)
               if remaining else 'Complete', flush=True)
