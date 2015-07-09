@@ -105,8 +105,9 @@ def error(reserve_jobs, full_table_name, key, error_message):
         database, table_name = split_name(full_table_name)
         job_key = dict(table_name=table_name, key_hash=key_hash(key))
         jobs = get_jobs(database)
-        jobs.insert(dict(job_key,
+
+        jobs.insert1(dict(job_key,
                          status="error",
-                         host=os.uname(),
+                         host=os.uname().nodename,
                          pid=os.getpid(),
                          error_message=error_message), replace=True)
