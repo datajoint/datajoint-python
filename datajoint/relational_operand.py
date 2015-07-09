@@ -152,7 +152,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
 
     def __contains__(self, item):
         """
-        "item in relation" is equivalient to "len(relation & item)>0"
+        "item in relation" is equivalent to "len(relation & item)>0"
         """
         return len(self & item) > 0
 

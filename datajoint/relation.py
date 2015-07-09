@@ -152,33 +152,33 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
                 database=self.database, table_name=self.table_name))
         return cur.rowcount > 0
 
+    @property
+    def full_table_name(self):
+        return r"`{0:s}`.`{1:s}`".format(self.database, self.table_name)
+
     def insert(self, rows, **kwargs):
         """
-        Inserts a collection of tuples. Additional keyword arguments are passed to insert.
+        Inserts a collection of tuples. Additional keyword arguments are passed to insert1.
 
         :param iter: Must be an iterator that generates a sequence of valid arguments for insert.
         """
         for row in rows:
             self.insert1(row, **kwargs)
 
-
-    @property
-    def full_table_name(self):
-        return r"`{0:s}`.`{1:s}`".format(self.database, self.table_name)
-
     def insert1(self, tup, ignore_errors=False, replace=False):
         """
         Insert one data record or one Mapping (like a dict).
 
-        :param tup: Data record, or a Mapping (like a dict).
+        :param tup: Data record, a Mapping (like a dict), or a list or tuple with ordered values.
         :param ignore_errors=False: Ignores errors if True.
         :param replace=False: Replaces data tuple if True.
 
         Example::
-            rel.insert(dict(subject_id = 7, species="mouse", date_of_birth = "2014-09-01"))
+            relation.insert1(dict(subject_id=7, species="mouse", date_of_birth="2014-09-01"))
         """
         heading = self.heading
-        if isinstance(tup, np.void):
+
+        if isinstance(tup, np.void):    # np.array insert
             for fieldname in tup.dtype.fields:
                 if fieldname not in heading:
                     raise KeyError(u'{0:s} is not in the attribute list'.format(fieldname))
@@ -187,7 +187,8 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
             args = tuple(pack(tup[name]) for name in heading
                          if name in tup.dtype.fields and heading[name].is_blob)
             attribute_list = '`' + '`,`'.join(q for q in heading if q in tup.dtype.fields) + '`'
-        elif isinstance(tup, Mapping):
+
+        elif isinstance(tup, Mapping):   #  dict-based insert
             for fieldname in tup.keys():
                 if fieldname not in heading:
                     raise KeyError(u'{0:s} is not in the attribute list'.format(fieldname))
@@ -196,8 +197,19 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
             args = tuple(pack(tup[name]) for name in heading
                          if name in tup and heading[name].is_blob)
             attribute_list = '`' + '`,`'.join(name for name in heading if name in tup) + '`'
-        else:
-            raise DataJointError('Datatype %s cannot be inserted' % type(tup))
+
+        else:    # positional insert
+            try:
+                if len(tup) != len(self.heading):
+                    raise DataJointError(
+                        'Tuple size does not match the number of relation attributes')
+            except TypeError:
+                raise DataJointError('Datatype %s cannot be inserted' % type(tup))
+            else:
+                pairs = zip(heading, tup)
+                value_list = ','.join('%s' if heading[name].is_blob else repr(value) for name, value in pairs)
+                attribute_list = '`' + '`,`'.join(heading.names) + '`'
+                args = tuple(pack(value) for name, value in pairs if heading[name].is_blob)
         if replace:
             sql = 'REPLACE'
         elif ignore_errors:
@@ -226,7 +238,9 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         if config['safemode']:
             print('The contents of the following tables are about to be deleted:')
             for relation in relations:
-                print(relation.full_table_name, '(%d tuples)'' % len(relation)')
+                count = len(relation)
+                if count:
+                    print(relation.full_table_name, '(%d tuples)' % count)
             do_delete = user_choice("Proceed?", default='no') == 'yes'
         if do_delete:
             with self.connection.transaction:
@@ -259,7 +273,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         if do_drop:
             while relations:
                 relations.pop().drop_quick()
-            print('Dropped tables..')
+            print('Tables dropped.')
 
     def size_on_disk(self):
         """
