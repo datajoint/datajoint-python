@@ -40,8 +40,8 @@ class Lookup(Relation):
         """
         Checks whether the instance has a property called `content` and inserts its elements.
         """
-        if hasattr(self, 'content'):
-            for row in self.content:
+        if hasattr(self, 'contents'):
+            for row in self.contents:
                 self.insert1(row, ignore_errors=True)
 
 
