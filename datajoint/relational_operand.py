@@ -104,7 +104,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             raise DataJointError('The second argument must be a relation or None')
         return Projection(self, _group, *attributes, **renamed_attributes)
 
-    def __iand__(self, restriction):
+    def _restrict(self, restriction):
         """
         in-place relational restriction or semijoin
         """
@@ -113,6 +113,12 @@ class RelationalOperand(metaclass=abc.ABCMeta):
                 self._restrictions = []
             self._restrictions.append(restriction)
         return self
+
+    def __iand__(self, restriction):
+        """
+        in-place relational restriction or semijoin
+        """
+        return self._restrict(restriction)
 
     def __and__(self, restriction):
         """
@@ -372,6 +378,15 @@ class Projection(RelationalOperand):
             return "(%s) NATURAL LEFT JOIN (%s) GROUP BY `%s`" % (
                 self._arg.from_clause, self._group.from_clause,
                 '`,`'.join(self.heading.primary_key))
+
+    def _restrict(self, restriction):
+        """
+        Projection is enclosed in Subquery when restricted if it has renamed attributes
+        """
+        if self.heading.computed:
+            return Subquery(self) & restriction
+        else:
+            return super()._restrict(restriction)
 
 
 class Subquery(RelationalOperand):
