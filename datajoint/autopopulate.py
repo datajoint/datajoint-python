@@ -11,6 +11,12 @@ from . import jobs
 logger = logging.getLogger(__name__)
 
 
+def batches(iter, n=1):
+    iter_len = len(iter)
+    for start in range(0, iter_len, n):
+        yield iter[start:min(start + n, iter_len)]
+
+
 class AutoPopulate(metaclass=abc.ABCMeta):
     """
     AutoPopulate is a mixin class that adds the method populate() to a Relation class.
@@ -48,7 +54,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
     def target(self):
         return self
 
-    def populate(self, restriction=None, suppress_errors=False, reserve_jobs=False):
+    def populate(self, restriction=None, suppress_errors=False, reserve_jobs=False, batch=1):
         """
         rel.populate() calls rel._make_tuples(key) for every primary key in self.populated_from
         for which there is not already a tuple in rel.
@@ -56,6 +62,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         :param restriction: restriction on rel.populated_from - target
         :param suppress_errors: suppresses error if true
         :param reserve_jobs: currently not implemented
+        :param batch: batch size of a single job
         """
         error_list = [] if suppress_errors else None
         if not isinstance(self.populated_from, RelationalOperand):
@@ -95,5 +102,5 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         """
         total = len(self.populated_from)
         remaining = len(self.populated_from - self.target)
-        print('Completed %d of %d (%2.1f%%)' % (total-remaining, total, 100-100*remaining/total)
+        print('Completed %d of %d (%2.1f%%)' % (total - remaining, total, 100 - 100 * remaining / total)
               if remaining else 'Complete', flush=True)
