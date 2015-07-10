@@ -247,6 +247,20 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             values = cur.fetchone()
 
     @property
+    def tuples(self):
+        """
+        Iterator that returns the contents of the database as tuples.
+        """
+        cur = self.cursor()
+        heading = self.heading  # construct once for efficiency
+        do_unpack = tuple(h in heading.blobs for h in heading.names)
+        values = cur.fetchone()
+        while values:
+            yield tuple(unpack(value) if up else value for up, value in zip(do_unpack, values))
+            values = cur.fetchone()
+
+
+    @property
     def where_clause(self):
         """
         convert the restriction into an SQL WHERE

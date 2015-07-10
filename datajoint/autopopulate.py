@@ -11,25 +11,6 @@ from . import jobs
 logger = logging.getLogger(__name__)
 
 
-def batches(iter, n=1):
-    iter_len = len(iter)
-    for start in range(0, iter_len, n):
-        yield iter[start:min(start + n, iter_len)]
-
-
-def reserved_batches(rel, reserve_jobs, full_table_name, n=1):
-    ret = []
-    for key in rel:
-        if jobs.reserve(reserve_jobs, full_table_name, key):
-            ret.append(key)
-        if len(ret) == n:
-            yield ret
-            ret = []
-    else:
-        if len(ret) > 0:
-            yield ret
-
-
 class AutoPopulate(metaclass=abc.ABCMeta):
     """
     AutoPopulate is a mixin class that adds the method populate() to a Relation class.
@@ -67,7 +48,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
     def target(self):
         return self
 
-    def populate(self, restriction=None, suppress_errors=False, reserve_jobs=False, batch_size=1):
+    def populate(self, restriction=None, suppress_errors=False, reserve_jobs=False, batch=1):
         """
         rel.populate() calls rel._make_tuples(key) for every primary key in self.populated_from
         for which there is not already a tuple in rel.
@@ -75,7 +56,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         :param restriction: restriction on rel.populated_from - target
         :param suppress_errors: suppresses error if true
         :param reserve_jobs: currently not implemented
-        :param batch_size: batch size of a single job
+        :param batch: batch size of a single job
         """
         error_list = [] if suppress_errors else None
         if not isinstance(self.populated_from, RelationalOperand):
@@ -86,8 +67,8 @@ class AutoPopulate(metaclass=abc.ABCMeta):
 
         full_table_name = self.target.full_table_name
         unpopulated = (self.populated_from - self.target) & restriction
-        for batch in reserved_batches(unpopulated.project(), reserve_jobs, full_table_name, n=batch_size):
-            for key in batch:
+        for key in unpopulated.project():
+            if jobs.reserve(reserve_jobs, full_table_name, key):
                 self.connection.start_transaction()
                 if key in self.target:  # already populated
                     self.connection.cancel_transaction()
