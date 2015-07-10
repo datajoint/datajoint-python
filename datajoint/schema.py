@@ -4,7 +4,6 @@ import logging
 from . import DataJointError, conn
 from .heading import Heading
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -59,4 +58,3 @@ class schema:
     @property
     def jobs(self):
         return self.connection.jobs[self.database]
-

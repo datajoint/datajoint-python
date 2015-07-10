@@ -18,6 +18,7 @@ class JobRelation(Relation):
     """
     A base relation with no definition. Allows reserving jobs
     """
+
     def __init__(self, connection, database):
         self.database = database
         self._table_name = '~jobs'
@@ -46,7 +47,6 @@ class JobRelation(Relation):
     @property
     def table_name(self):
         return self._table_name
-
 
     def reserve(self, table_name, key):
         """
@@ -93,8 +93,8 @@ class JobRelation(Relation):
                  pid=os.getpid(),
                  error_message=error_message), replace=True)
 
-class JobManager:
 
+class JobManager:
     def __init__(self, connection):
         self.connection = connection
         self._jobs = {}

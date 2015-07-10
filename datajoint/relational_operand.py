@@ -168,6 +168,41 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         return self.fetch(*args, **kwargs)
 
+    def cursor(self, offset=0, limit=None, order_by=None, descending=False, as_dict=False):
+        """
+        Return query cursor.
+        See Relation.fetch() for input description.
+        :return: cursor to the query
+        """
+        if offset and limit is None:
+            raise DataJointError('limit is required when offset is set')
+        sql = self.make_select()
+        if order_by is not None:
+            sql += ' ORDER BY ' + ', '.join(order_by)
+            if descending:
+                sql += ' DESC'
+        if limit is not None:
+            sql += ' LIMIT %d' % limit
+            if offset:
+                sql += ' OFFSET %d' % offset
+        logger.debug(sql)
+        return self.connection.query(sql, as_dict=as_dict)
+
+    def __repr__(self):
+        limit = config['display.limit']
+        width = config['display.width']
+        rel = self.project(*self.heading.non_blobs)  # project out blobs
+        template = '%%-%d.%ds' % (width, width)
+        columns = rel.heading.names
+        repr_string = ' '.join([template % column for column in columns]) + '\n'
+        repr_string += ' '.join(['+' + '-' * (width - 2) + '+' for _ in columns]) + '\n'
+        for tup in rel.fetch(limit=limit):
+            repr_string += ' '.join([template % column for column in tup]) + '\n'
+        if len(self) > limit:
+            repr_string += '...\n'
+        repr_string += ' (%d tuples)\n' % len(self)
+        return repr_string
+
     def fetch1(self):
         """
         This version of fetch is called when self is expected to contain exactly one tuple.
@@ -204,53 +239,36 @@ class RelationalOperand(metaclass=abc.ABCMeta):
                 ret[blob_name] = list(map(unpack, ret[blob_name]))
         return ret
 
-    def cursor(self, offset=0, limit=None, order_by=None, descending=False, as_dict=False):
+    def values(self, offset=0, limit=None, order_by=None, descending=False, as_dict=False):
         """
-        Return query cursor.
-        See Relation.fetch() for input description.
-        :return: cursor to the query
+        Iterator that returns the contents of the database.
         """
-        if offset and limit is None:
-            raise DataJointError('limit is required when offset is set')
-        sql = self.make_select()
-        if order_by is not None:
-            sql += ' ORDER BY ' + ', '.join(order_by)
-            if descending:
-                sql += ' DESC'
-        if limit is not None:
-            sql += ' LIMIT %d' % limit
-            if offset:
-                sql += ' OFFSET %d' % offset
-        logger.debug(sql)
-        return self.connection.query(sql, as_dict=as_dict)
+        cur = self.cursor(offset=offset, limit=limit, order_by=order_by,
+                          descending=descending, as_dict=as_dict)
+        heading = self.heading
+        do_unpack = tuple(h in heading.blobs for h in heading.names)
+        values = cur.fetchone()
+        while values:
+            if as_dict:
+                yield OrderedDict((field_name, unpack(values[field_name])) if up else (field_name, values[field_name])
+                                  for field_name, up in zip(heading.names, do_unpack))
 
-    def __repr__(self):
-        limit = config['display.limit']
-        width = config['display.width']
-        rel = self.project(*self.heading.non_blobs)  # project out blobs
-        template = '%%-%d.%ds' % (width, width)
-        columns = rel.heading.names
-        repr_string = ' '.join([template % column for column in columns]) + '\n'
-        repr_string += ' '.join(['+' + '-' * (width - 2) + '+' for _ in columns]) + '\n'
-        for tup in rel.fetch(limit=limit):
-            repr_string += ' '.join([template % column for column in tup]) + '\n'
-        if len(self) > limit:
-            repr_string += '...\n'
-        repr_string += ' (%d tuples)\n' % len(self)
-        return repr_string
+            else:
+                yield tuple(unpack(value) if up else value for up, value in zip(do_unpack, values))
+
+            values = cur.fetchone()
 
     def __iter__(self):
         """
         Iterator that yields individual tuples of the current table dictionaries.
         """
-        cur = self.cursor()
-        heading = self.heading  # construct once for efficiency
-        do_unpack = tuple(h in heading.blobs for h in heading.names)
-        values = cur.fetchone()
-        while values:
-            yield {field_name: unpack(value) if up else value
-                   for field_name, up, value in zip(heading.names, do_unpack, values)}
-            values = cur.fetchone()
+        yield from self.values(as_dict=True)
+
+    def keys(self, *args, **kwargs):
+        """
+        Iterator that returns primary keys.
+        """
+        yield from self.project().values(*args, **kwargs)
 
     @property
     def where_clause(self):
