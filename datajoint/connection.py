@@ -5,10 +5,11 @@ This module hosts the Connection class that manages the connection to the mysql 
 """
 from contextlib import contextmanager
 import pymysql
-from . import DataJointError
 import logging
-from . import config
+from collections import defaultdict
+from . import DataJointError, config
 from .erd import ERD
+from .jobs import JobManager
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,6 @@ class Connection:
     :param user: user name
     :param passwd: password
     :param init_fun: initialization function
-
     """
 
     def __init__(self, host, user, passwd, init_fun=None):
@@ -67,6 +67,7 @@ class Connection:
             raise DataJointError('Connection failed.')
         self._conn.autocommit(True)
         self._in_transaction = False
+        self.jobs = JobManager(self)
 
     def __del__(self):
         logger.info('Disconnecting {user}@{host}:{port}'.format(**self.conn_info))
@@ -168,4 +169,3 @@ class Connection:
             raise
         else:
             self.commit_transaction()
-

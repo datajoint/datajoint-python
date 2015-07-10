@@ -3,7 +3,7 @@ import abc
 import logging
 from .relational_operand import RelationalOperand
 from . import DataJointError
-from .relation import Relation, FreeRelation, schema
+from .relation import Relation, FreeRelation
 from . import jobs
 
 # noinspection PyExceptionInherit,PyCallingNonCallable
@@ -64,21 +64,24 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         if self.connection.in_transaction:
             raise DataJointError('Populate cannot be called during a transaction.')
 
-        full_table_name = self.target.full_table_name
+        jobs = self.connection.jobs[self.target.database]
+        table_name = self.target.table_name
         unpopulated = (self.populated_from - self.target) & restriction
         for key in unpopulated.project():
-            if jobs.reserve(reserve_jobs, full_table_name, key):
+            if not reserve_jobs or jobs.reserve(table_name, key):
                 self.connection.start_transaction()
                 if key in self.target:  # already populated
                     self.connection.cancel_transaction()
-                    jobs.complete(reserve_jobs, full_table_name, key)
+                    if reserve_jobs:
+                        jobs.complete(table_name, key)
                 else:
                     logger.info('Populating: ' + str(key))
                     try:
                         self._make_tuples(dict(key))
                     except Exception as error:
                         self.connection.cancel_transaction()
-                        jobs.error(reserve_jobs, full_table_name, key, error_message=str(error))
+                        if reserve_jobs:
+                            jobs.error(table_name, key, error_message=str(error))
                         if not suppress_errors:
                             raise
                         else:
@@ -86,7 +89,8 @@ class AutoPopulate(metaclass=abc.ABCMeta):
                             error_list.append((key, error))
                     else:
                         self.connection.commit_transaction()
-                        jobs.complete(reserve_jobs, full_table_name, key)
+                        if reserve_jobs:
+                            jobs.complete(table_name, key)
         return error_list
 
     def progress(self):
