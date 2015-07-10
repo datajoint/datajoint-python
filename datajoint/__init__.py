@@ -18,8 +18,7 @@ __all__ = ['__author__', '__version__',
            'Connection', 'Heading', 'Relation', 'FreeRelation', 'Not',
            'Relation', 'schema',
            'Manual', 'Lookup', 'Imported', 'Computed',
-           'get_jobs',
-           'conn', 'DataJointError', 'blob']
+           'conn', 'DataJointError']
 
 
 class DataJointError(Exception):
@@ -51,8 +50,6 @@ logger.setLevel(log_levels[config['loglevel']])
 from .connection import conn, Connection
 from .relation import Relation
 from .user_relations import Manual, Lookup, Imported, Computed, Subordinate
-from .jobs import get_jobs
-from . import blob
 from .relational_operand import Not
 from .heading import Heading
-from .relation import schema
+from .schema import schema

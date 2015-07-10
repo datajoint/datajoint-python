@@ -2,9 +2,8 @@ from collections.abc import Mapping
 import numpy as np
 import logging
 import abc
-import pymysql
 
-from . import DataJointError, config, conn
+from . import DataJointError, config
 from .declare import declare
 from .relational_operand import RelationalOperand
 from .blob import pack
@@ -12,50 +11,6 @@ from .utils import user_choice
 from .heading import Heading
 
 logger = logging.getLogger(__name__)
-
-
-def schema(database, context, connection=None):
-    """
-    Returns a decorator that can be used to associate a Relation class to a database.
-
-    :param database: name of the database to associate the decorated class with
-    :param context: dictionary for looking up foreign keys references, usually set to locals()
-    :param connection: Connection object. Defaults to datajoint.conn()
-    :return: a decorator for Relation subclasses
-    """
-    if connection is None:
-        connection = conn()
-
-    # if the database does not exist, create it
-    cur = connection.query("SHOW DATABASES LIKE '{database}'".format(database=database))
-    if cur.rowcount == 0:
-        logger.info("Database `{database}` could not be found. "
-                    "Attempting to create the database.".format(database=database))
-        try:
-            connection.query("CREATE DATABASE `{database}`".format(database=database))
-            logger.info('Created database `{database}`.'.format(database=database))
-        except pymysql.OperationalError:
-            raise DataJointError("Database named `{database}` was not defined, and"
-                                 "an attempt to create has failed. Check"
-                                 " permissions.".format(database=database))
-
-    def decorator(cls):
-        """
-        The decorator binds its argument class object to a database
-        :param cls: class to be decorated
-        """
-        # class-level attributes
-        cls.database = database
-        cls._connection = connection
-        cls._heading = Heading()
-        cls._context = context
-        # trigger table declaration by requesting the heading from an instance
-        instance = cls()
-        instance.heading    # trigger table declaration
-        instance.prepare()
-        return cls
-
-    return decorator
 
 
 class Relation(RelationalOperand, metaclass=abc.ABCMeta):
@@ -114,7 +69,6 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         :return: the FROM clause of SQL SELECT statements.
         """
         return self.full_table_name
-
 
     # ------------- dependencies ---------- #
     @property
@@ -299,12 +253,10 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
 
 class FreeRelation(Relation):
     """
-    A relation with no definition. Its table must already exist in the database.
+    A base relation without a dedicated class.  The table name is explicitly set.
     """
     def __init__(self, connection, full_table_name, definition=None, context=None):
-        [database, table_name] = full_table_name.split('.')
-        self.database = database.strip('`')
-        self._table_name = table_name.strip('`')
+        self.database, self._table_name = (s.strip('`') for s in full_table_name.split('.'))
         self._connection = connection
         self._definition = definition
         self._context = context
