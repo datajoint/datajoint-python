@@ -58,5 +58,5 @@ class schema:
 
     @property
     def jobs(self):
-        return get_jobs(self.connection, self.database)
+        return self.connection.jobs[self.database]
 
