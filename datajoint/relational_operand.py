@@ -297,7 +297,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             elif isinstance(r, np.ndarray) or isinstance(r, list):
                 r = '(' + ') OR ('.join([make_condition(q) for q in r]) + ')'
             elif isinstance(r, RelationalOperand):
-                common_attributes = ','.join([q for q in self.heading.names if r.heading.names])
+                common_attributes = ','.join([q for q in self.heading.names if q in r.heading.names])
                 r = '(%s) in (SELECT %s FROM %s%s)' % (
                     common_attributes, common_attributes, r.from_clause, r.where_clause)
 

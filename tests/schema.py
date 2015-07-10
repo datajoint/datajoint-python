@@ -14,10 +14,10 @@ class User(dj.Manual):
     username: varchar(12)
     """
 
-    def fill(self):
-        names = [['Jake'], ['Cathryn'], ['Shan'], ['Fabian'], ['Edgar'], ['George'], ['Dimitri']]
-        self.insert(names)
-        return names
+    def prepare(self):
+        self.insert(
+            [['Jake'], ['Cathryn'], ['Shan'], ['Fabian'], ['Edgar'], ['George'], ['Dimitri']],
+            ignore_errors=True)
 
 @schema
 class Subject(dj.Manual):
@@ -31,15 +31,13 @@ class Subject(dj.Manual):
     unique index (real_id, species)
     """
 
-    def fill(self):
-        data = [
-            [1551, '', 'mouse', '2015-04-01', 'genetically engineered super mouse'],
-            [1, 'Curious George', 'monkey', '2008-06-30', ''],
-            [1552, '', 'mouse', '2015-06-15', ''],
-            [1553, '', 'mouse', '2016-07-01', '']
-        ]
-        self.insert(data)
-        return data
+    def prepare(self):
+        self.insert([
+        [1551, '', 'mouse', '2015-04-01', 'genetically engineered super mouse'],
+        [1, 'Curious George', 'monkey', '2008-06-30', ''],
+        [1552, '', 'mouse', '2015-06-15', ''],
+        [1553, '', 'mouse', '2016-07-01', '']
+        ], ignore_errors=True)
 
 @schema
 class Experiment(dj.Imported):
