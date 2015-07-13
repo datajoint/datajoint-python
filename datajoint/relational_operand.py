@@ -304,6 +304,24 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         return ' WHERE ' + ' AND '.join(condition_string)
 
 
+    def __getitem__(self, item):
+        if isinstance(item, str):
+            return self.project(item)
+        elif isinstance(item, dict):
+            return self.project(**item)
+        elif isinstance(item, list) or isinstance(item, tuple):
+            return self.project(*item)
+        elif isinstance(item, slice):
+            tmp = list(self.heading.attributes.keys())
+            start = tmp.index(item.start) if isinstance(item.start, str) else item.start
+            stop = tmp.index(item.stop) if isinstance(item.stop, str) else item.stop
+            item = slice(start, stop, item.step)
+            return self.project(*tmp[item])
+        elif isinstance(item, int):
+            return self.project(list(self.heading.attributes.keys())[item])
+
+
+
 class Not:
     """
     inverse restriction
@@ -363,6 +381,7 @@ class Projection(RelationalOperand):
         if group:
             if arg.connection != group.connection:
                 raise DataJointError('Cannot join relations with different database connections')
+            # TODO: don't Subquery if not necessary (if does not have some types of restrictions)
             self._group = Subquery(group)
             self._arg = Subquery(arg)
         else:
