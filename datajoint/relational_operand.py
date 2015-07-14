@@ -303,23 +303,25 @@ class RelationalOperand(metaclass=abc.ABCMeta):
 
         return ' WHERE ' + ' AND '.join(condition_string)
 
+    def __getitem__(self, item): # TODO: implement dj.key and primary key return
 
-    def __getitem__(self, item):
+        attr_keys = list(self.heading.attributes.keys())
+
         if isinstance(item, str):
-            return self.project(item)
-        elif isinstance(item, dict):
-            return self.project(**item)
+            args = (item,)
         elif isinstance(item, list) or isinstance(item, tuple):
-            return self.project(*item)
+            args = item
         elif isinstance(item, slice):
-            tmp = list(self.heading.attributes.keys())
-            start = tmp.index(item.start) if isinstance(item.start, str) else item.start
-            stop = tmp.index(item.stop) if isinstance(item.stop, str) else item.stop
+            start = attr_keys.index(item.start) if isinstance(item.start, str) else item.start
+            stop = attr_keys.index(item.stop) if isinstance(item.stop, str) else item.stop
             item = slice(start, stop, item.step)
-            return self.project(*tmp[item])
+            args = attr_keys[item]
         elif isinstance(item, int):
-            return self.project(list(self.heading.attributes.keys())[item])
-
+            args = attr_keys[item]
+        else:
+            raise DataJointError("Index must be a slice, a tuple, a list, or a string.")
+        tmp = self.project(*args).fetch()
+        return tuple(tmp[e] for e in args)
 
 
 class Not:

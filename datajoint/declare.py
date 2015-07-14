@@ -66,7 +66,7 @@ def declare(full_table_name,  definition, context):
     # compile SQL
     if not primary_key:
         raise DataJointError('Table must have a primary key')
-    sql = 'CREATE TABLE %s (\n  ' % full_table_name
+    sql = 'CREATE TABLE IF NOT EXISTS %s (\n  ' % full_table_name
     sql += ',\n  '.join(attribute_sql)
     sql += ',\n  PRIMARY KEY (`' + '`,`'.join(primary_key) + '`)'
     if foreign_key_sql:

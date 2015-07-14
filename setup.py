@@ -11,5 +11,5 @@ setup(
     url='https://github.com/datajoint/datajoint-python',
     packages=['datajoint'],
     requires=['numpy', 'pymysql', 'networkx', 'matplotlib', 'sphinx_rtd_theme', 'mock', 'json'],
-    license = "MIT",
+    license = "GNU LGPL",
 )
