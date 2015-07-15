@@ -8,16 +8,14 @@ from . import PREFIX, CONN_INFO
 
 schema = dj.schema(PREFIX + '_test1', locals(), connection=dj.conn(**CONN_INFO))
 
+
 @schema
-class User(dj.Manual):
+class User(dj.Lookup):
     definition = """      # lab members
     username: varchar(12)
     """
+    contents = [['Jake'], ['Cathryn'], ['Shan'], ['Fabian'], ['Edgar'], ['George'], ['Dimitri']]
 
-    def prepare(self):
-        self.insert(
-            [['Jake'], ['Cathryn'], ['Shan'], ['Fabian'], ['Edgar'], ['George'], ['Dimitri']],
-            ignore_errors=True)
 
 @schema
 class Subject(dj.Manual):
@@ -31,13 +29,15 @@ class Subject(dj.Manual):
     unique index (real_id, species)
     """
 
+    contents = [
+        [1551, '1551', 'mouse', '2015-04-01', 'genetically engineered super mouse'],
+        [10, 'Curious George', 'monkey', '2008-06-30', ''],
+        [1552, '1552', 'mouse', '2015-06-15', ''],
+        [1553, '1553', 'mouse', '2016-07-01', '']]
+
     def prepare(self):
-        self.insert([
-        [1551, '', 'mouse', '2015-04-01', 'genetically engineered super mouse'],
-        [1, 'Curious George', 'monkey', '2008-06-30', ''],
-        [1552, '', 'mouse', '2015-06-15', ''],
-        [1553, '', 'mouse', '2016-07-01', '']
-        ], ignore_errors=True)
+        self.insert(self.contents, ignore_errors=True)
+
 
 @schema
 class Experiment(dj.Imported):
@@ -66,6 +66,7 @@ class Experiment(dj.Imported):
                      experiment_date=(date.today()-timedelta(random.expovariate(1/30))).isoformat(),
                      username=random.choice(users)))
 
+
 @schema
 class Trial(dj.Imported):
     definition = """   # a trial within an experiment
@@ -86,6 +87,7 @@ class Trial(dj.Imported):
                      start_time=random.random()*1e9
                      ))
 
+
 @schema
 class Ephys(dj.Imported):
     definition = """    # some kind of electrophysiological recording
@@ -103,7 +105,8 @@ class Ephys(dj.Imported):
                    sampling_frequency=16000,
                    duration=random.expovariate(1/30))
         self.insert1(row)
-        EphysChannel().fill(number_samples=round(row.duration*row.sampling_frequency))
+        EphysChannel().fill(key, number_samples=round(row.duration*row.sampling_frequency))
+
 
 @schema
 class EphysChannel(dj.Subordinate, dj.Imported):

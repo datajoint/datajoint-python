@@ -119,13 +119,13 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         for row in rows:
             self.insert1(row, **kwargs)
 
-    def insert1(self, tup, ignore_errors=False, replace=False):
+    def insert1(self, tup, replace=False, ignore_errors=False):
         """
         Insert one data record or one Mapping (like a dict).
 
         :param tup: Data record, a Mapping (like a dict), or a list or tuple with ordered values.
-        :param ignore_errors=False: Ignores errors if True.
         :param replace=False: Replaces data tuple if True.
+        :param ignore_errors=False: If True, ignore errors: e.g. constraint violations or duplicates
 
         Example::
             relation.insert1(dict(subject_id=7, species="mouse", date_of_birth="2014-09-01"))
