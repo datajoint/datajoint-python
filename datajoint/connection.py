@@ -7,8 +7,9 @@ from contextlib import contextmanager
 import pymysql
 import logging
 from collections import defaultdict
-from . import DataJointError, config
-from .erd import ERD
+from . import config
+from . import DataJointError
+from .erd import ERM
 from .jobs import JobManager
 
 logger = logging.getLogger(__name__)
@@ -53,7 +54,7 @@ class Connection:
     """
 
     def __init__(self, host, user, passwd, init_fun=None):
-        self.erd = ERD()
+        self.erm = ERM(self)
         if ':' in host:
             host, port = host.split(':')
             port = int(port)
@@ -62,7 +63,7 @@ class Connection:
         self.conn_info = dict(host=host, port=port, user=user, passwd=passwd)
         self._conn = pymysql.connect(init_command=init_fun, **self.conn_info)
         if self.is_connected:
-            logger.info("Connected " + user + '@' + host + ':' + str(port))
+            logger.info("Connected {user}@{host}:{port}".format(**self.conn_info))
         else:
             raise DataJointError('Connection failed.')
         self._conn.autocommit(True)
@@ -76,6 +77,11 @@ class Connection:
     def __eq__(self, other):
         return self.conn_info == other.conn_info
 
+    def __repr__(self):
+        connected = "connected" if self.is_connected else "disconnected"
+        return "DataJoint connection ({connected}) {user}@{host}:{port}".format(
+            connected=connected, **self.conn_info)
+
     @property
     def is_connected(self):
         """
@@ -83,15 +89,9 @@ class Connection:
         """
         return self._conn.ping()
 
-    def __repr__(self):
-        connected = "connected" if self.is_connected else "disconnected"
-        return "DataJoint connection ({connected}) {user}@{host}:{port}".format(
-            connected=connected, **self.conn_info)
-
-
     def query(self, query, args=(), as_dict=False):
         """
-        Execute the specified query and return the tuple generator.
+        Execute the specified query and return the tuple generator (cursor).
 
         :param query: mysql query
         :param args: additional arguments for the pymysql.cursor

@@ -3,7 +3,8 @@ import numpy as np
 import logging
 import abc
 
-from . import DataJointError, config
+from . import config
+from . import DataJointError
 from .declare import declare
 from .relational_operand import RelationalOperand
 from .blob import pack
@@ -48,7 +49,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
     @property
     def heading(self):
         """
-        Get the table headng.
+        Get the table heading.
         If the table is not declared, attempts to declare it and return heading.
         :return:
         """
@@ -59,7 +60,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
                 self.connection.query(
                     declare(self.full_table_name, self.definition, self._context))
             if self.is_declared:
-                self.connection.erd.load_dependencies(self.connection, self.full_table_name)
+                self.connection.erm.load_dependencies(self.full_table_name)
                 self._heading.init_from_database(self.connection, self.database, self.table_name)
         return self._heading
 
@@ -73,19 +74,19 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
     # ------------- dependencies ---------- #
     @property
     def parents(self):
-        return self.connection.erd.parents[self.full_table_name]
+        return self.connection.erm.parents[self.full_table_name]
 
     @property
     def children(self):
-        return self.connection.erd.children[self.full_table_name]
+        return self.connection.erm.children[self.full_table_name]
 
     @property
     def references(self):
-        return self.connection.erd.references[self.full_table_name]
+        return self.connection.erm.references[self.full_table_name]
 
     @property
     def referenced(self):
-        return self.connection.erd.referenced[self.full_table_name]
+        return self.connection.erm.referenced[self.full_table_name]
 
     @property
     def descendants(self):
@@ -95,7 +96,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         This is helpful for cascading delete or drop operations.
         """
         relations = (FreeRelation(self.connection, table)
-                     for table in self.connection.erd.get_descendants(self.full_table_name))
+                     for table in self.connection.erm.get_descendants(self.full_table_name))
         return [relation for relation in relations if relation.is_declared]
 
     # --------- SQL functionality --------- #
@@ -209,7 +210,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         if self.is_declared:
             self.connection.query('DROP TABLE %s' % self.full_table_name)
-            self.connection.erd.clear_dependencies(self.full_table_name)
+            self.connection.erm.clear_dependencies(self.full_table_name)
             if self._heading:
                 self._heading.reset()
             logger.info("Dropped table %s" % self.full_table_name)

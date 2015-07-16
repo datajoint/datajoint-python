@@ -18,15 +18,13 @@ __all__ = ['__author__', '__version__',
            'Connection', 'Heading', 'Relation', 'FreeRelation', 'Not',
            'Relation', 'schema',
            'Manual', 'Lookup', 'Imported', 'Computed',
-           'conn', 'DataJointError']
-
+           'conn']
 
 class DataJointError(Exception):
     """
     Base class for errors specific to DataJoint internal operation.
     """
     pass
-
 
 # ----------- loads local configuration from file ----------------
 from .settings import Config, CONFIGVAR, LOCALCONFIG, logger, log_levels
@@ -53,3 +51,4 @@ from .user_relations import Manual, Lookup, Imported, Computed, Subordinate
 from .relational_operand import Not
 from .heading import Heading
 from .schema import schema
+

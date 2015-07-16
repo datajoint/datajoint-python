@@ -7,7 +7,8 @@ import abc
 import re
 from collections import OrderedDict
 from copy import copy
-from datajoint import DataJointError, config
+from . import config
+from . import DataJointError
 import logging
 
 from .blob import unpack
