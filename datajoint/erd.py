@@ -43,7 +43,7 @@ class ERM:
         cur = self._conn.query('SHOW CREATE TABLE %s' % full_table_name)
         create_statement = cur.fetchone()
         if not create_statement:
-            raise DataJointError('Could not load the definition table %s' % full_table_name)
+            raise DataJointError('Could not load the definition for %s' % full_table_name)
         create_statement = create_statement[1].split('\n')
 
         # build foreign key fk_parser
