@@ -18,9 +18,16 @@ pip3 install --upgrade pip
 
 cd "$PROJECT"
 
-if [ -f "$PROJECT/misc/requirements.txt" ]; then
+# Install minimal requirement for running the package
+if [ -f "$PROJECT/requirements.txt" ]; then
   echo "Installing Python packages"
-  pip3 install -r "$PROJECT/misc/requirements.txt"
+  pip3 install -r "$PROJECT/requirements.txt"
+fi
+
+# Install additional development requirements
+if [ -f "$PROJECT/misc/dev-requirements.txt" ]; then
+  echo "Installing Python packages"
+  pip3 install -r "$PROJECT/misc/dev-requirements.txt"
 fi
 
 echo "Setting up database connections"
