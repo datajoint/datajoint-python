@@ -39,7 +39,7 @@ def declare(full_table_name, definition, context):
             in_key = False  # start parsing dependent attributes
         elif line.startswith('->'):
             # foreign key
-            ref = eval(line[2:], context)() # TODO: surround this with try...except... to give a better error message
+            ref = eval(line[2:], context)()  # TODO: surround this with try...except... to give a better error message
             foreign_key_sql.append(
                 'FOREIGN KEY ({primary_key})'
                 ' REFERENCES {ref} ({primary_key})'
@@ -65,7 +65,7 @@ def declare(full_table_name, definition, context):
     # compile SQL
     if not primary_key:
         raise DataJointError('Table must have a primary key')
-    sql = 'CREATE TABLE %s (\n  ' % full_table_name
+    sql = 'CREATE TABLE IF NOT EXISTS %s (\n  ' % full_table_name
     sql += ',\n  '.join(attribute_sql)
     sql += ',\n  PRIMARY KEY (`' + '`,`'.join(primary_key) + '`)'
     if foreign_key_sql:

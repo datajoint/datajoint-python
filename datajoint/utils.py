@@ -42,8 +42,10 @@ def to_camel_case(s):
     >>>to_camel_case("table_name")
         "TableName"
     """
+
     def to_upper(match):
         return match.group(0)[-1].upper()
+
     return re.sub('(^|[_\W])+[a-zA-Z]', to_upper, s)
 
 
@@ -63,7 +65,3 @@ def from_camel_case(s):
         raise DataJointError(
             'ClassName must be alphanumeric in CamelCase, begin with a capital letter')
     return re.sub(r'(\B[A-Z])|(\b[A-Z])', convert, s)
-
-
-
-

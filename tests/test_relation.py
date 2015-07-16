@@ -7,7 +7,7 @@ from nose.tools import assert_raises, assert_equal, \
     assert_tuple_equal, assert_dict_equal, raises
 
 from . import schema
-
+import datajoint as dj
 
 class TestRelation:
     """

@@ -105,7 +105,7 @@ class Ephys(dj.Imported):
                    sampling_frequency=16000,
                    duration=random.expovariate(1/30))
         self.insert1(row)
-        EphysChannel().fill(key, number_samples=round(row.duration*row.sampling_frequency))
+        EphysChannel().fill(key, number_samples=round(row.duration * row.sampling_frequency))
 
 
 @schema

@@ -8,6 +8,7 @@ import re
 from collections import OrderedDict
 from copy import copy
 from . import config
+from . import key as PRIMARY_KEY
 from . import DataJointError
 import logging
 
@@ -310,6 +311,41 @@ class RelationalOperand(metaclass=abc.ABCMeta):
 
         return ' WHERE ' + ' AND '.join(condition_string)
 
+    def __getitem__(self, item): # TODO: implement dj.key and primary key return
+
+        attr_keys = list(self.heading.attributes.keys())
+        key_index = None
+
+        # prepare arguments for project
+        if isinstance(item, str):
+            args = (item,)
+        elif item is PRIMARY_KEY:  # this one we return directly, since it is easy
+            return self.project().fetch()
+        elif isinstance(item, list) or isinstance(item, tuple):
+            args = tuple(i for i in item if not i is PRIMARY_KEY)
+            if PRIMARY_KEY in item:
+                key_index = item.index(PRIMARY_KEY)
+        elif isinstance(item, slice):
+            start = attr_keys.index(item.start) if isinstance(item.start, str) else item.start
+            stop = attr_keys.index(item.stop) if isinstance(item.stop, str) else item.stop
+            item = slice(start, stop, item.step)
+            args = attr_keys[item]
+        elif isinstance(item, int):
+            args = attr_keys[item]
+        else:
+            raise DataJointError("Index must be a slice, a tuple, a list, or a string.")
+
+        tmp = self.project(*args).fetch()
+        if key_index is None:
+            return tuple(tmp[e] for e in args)
+        else:
+            retval = [tmp[e] for e in args]
+
+            dtype2 = np.dtype({name: tmp.dtype.fields[name] for name in self.primary_key})
+            tmp2 = np.unique(np.ndarray(tmp.shape, dtype2, tmp, 0, tmp.strides))
+            retval.insert(key_index, tmp2)
+            return retval
+
 
 class Not:
     """
@@ -370,6 +406,7 @@ class Projection(RelationalOperand):
         if group:
             if arg.connection != group.connection:
                 raise DataJointError('Cannot join relations with different database connections')
+            # TODO: don't Subquery if not necessary (if does not have some types of restrictions)
             self._group = Subquery(group)
             self._arg = Subquery(arg)
         else:
