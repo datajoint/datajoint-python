@@ -1,8 +1,7 @@
-
-import re
-from collections import OrderedDict, namedtuple
 import numpy as np
-from datajoint import DataJointError
+from . import DataJointError
+from collections import namedtuple, OrderedDict
+import re
 
 
 class Attribute(namedtuple('Attribute',
@@ -15,6 +14,7 @@ class Attribute(namedtuple('Attribute',
         """
         return OrderedDict((name, self[i]) for i, name in enumerate(self._fields))
 
+    @property
     def sql(self):
         """
         Convert attribute tuple into its SQL CREATE TABLE clause.

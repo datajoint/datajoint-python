@@ -18,9 +18,9 @@ pip3 install --upgrade pip
 
 cd "$PROJECT"
 
-if [ -f "requirements.txt" ]; then
+if [ -f "$PROJECT/misc/requirements.txt" ]; then
   echo "Installing Python packages"
-  pip3 install -r requirements.txt
+  pip3 install -r "$PROJECT/misc/requirements.txt"
 fi
 
 echo "Setting up database connections"
@@ -30,4 +30,4 @@ sudo debconf-set-selections <<< 'mysql-server mysql-server/root_password_again p
 sudo apt-get install -y mysql-server 2> /dev/null
 sudo apt-get install -y mysql-client 2> /dev/null
 
-mysql -uroot -proot < db_setup.sql
+mysql -uroot -proot < "$PROJECT/misc/db_setup.sql"

@@ -7,8 +7,9 @@ from contextlib import contextmanager
 import pymysql
 import logging
 from collections import defaultdict
-from . import DataJointError, config
-from .erd import ERD
+from . import config
+from . import DataJointError
+from .erd import ERM
 from .jobs import JobManager
 
 logger = logging.getLogger(__name__)
@@ -53,7 +54,7 @@ class Connection:
     """
 
     def __init__(self, host, user, passwd, init_fun=None):
-        self.erd = ERD()
+        self.erm = ERM(self)
         if ':' in host:
             host, port = host.split(':')
             port = int(port)

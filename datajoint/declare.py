@@ -8,7 +8,6 @@ import logging
 
 from . import DataJointError
 
-
 logger = logging.getLogger(__name__)
 
 

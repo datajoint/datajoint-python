@@ -1,7 +1,8 @@
 import pymysql
 import logging
 
-from . import DataJointError, conn
+from . import conn
+from . import DataJointError
 from .heading import Heading
 
 logger = logging.getLogger(__name__)

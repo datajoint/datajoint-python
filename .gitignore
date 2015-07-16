@@ -5,7 +5,7 @@
 */*.pyc
 .DS_Store
 __*__
-.idea
+.idea/
 *.pyc
 .python-version
 *.egg-info/

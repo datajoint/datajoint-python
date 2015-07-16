@@ -3,6 +3,7 @@ import pprint
 import random
 import string
 from datajoint import settings
+import utils
 
 __author__ = 'Fabian Sinz'
 
