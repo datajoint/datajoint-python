@@ -1,3 +1,7 @@
+"""
+Provides serialization methods for numpy.ndarrays that ensure compatibility with Matlab.
+"""
+
 import zlib
 from collections import OrderedDict
 import numpy as np
@@ -29,7 +33,10 @@ dtypeList = list(mxClassID.values())
 
 def pack(obj):
     """
-    packs an object into a blob to be compatible with mym.mex
+    Packs an object into a blob to be compatible with mym.mex
+
+    :param obj: object to be packed
+    :type obj: numpy.ndarray
     """
     if not isinstance(obj, np.ndarray):
         raise DataJointError("Only numpy arrays can be saved in blobs")
@@ -58,9 +65,16 @@ def pack(obj):
 
 def unpack(blob):
     """
-    unpack blob into a numpy array
+    Unpacks blob  data into a numpy array.
+
+    :param blob: mysql blob
+    :returns: unpacked data
+    :rtype: numpy.ndarray
     """
     # decompress if necessary
+    if blob is None:
+        return None
+
     if blob[0:5] == b'ZL123':
         blob_length = np.fromstring(blob[6:14], dtype=np.uint64)[0]
         blob = zlib.decompress(blob[14:])

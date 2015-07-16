@@ -95,6 +95,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
     def aggregate(self, _group, *attributes, **renamed_attributes):
         """
         Relational aggregation operator
+
         :param group:  relation whose tuples can be used in aggregation operators
         :param extensions:
         :return: a relation representing the aggregation/projection operator result
@@ -103,7 +104,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             raise DataJointError('The second argument must be a relation or None')
         return Projection(self, _group, *attributes, **renamed_attributes)
 
-    def __iand__(self, restriction):
+    def _restrict(self, restriction):
         """
         in-place relational restriction or semijoin
         """
@@ -112,6 +113,12 @@ class RelationalOperand(metaclass=abc.ABCMeta):
                 self._restrictions = []
             self._restrictions.append(restriction)
         return self
+
+    def __iand__(self, restriction):
+        """
+        in-place relational restriction or semijoin
+        """
+        return self._restrict(restriction)
 
     def __and__(self, restriction):
         """
@@ -151,7 +158,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
 
     def __contains__(self, item):
         """
-        "item in relation" is equivalient to "len(relation & item)>0"
+        "item in relation" is equivalent to "len(relation & item)>0"
         """
         return len(self & item) > 0
 
@@ -160,6 +167,41 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         calling a relation is equivalent to fetching from it
         """
         return self.fetch(*args, **kwargs)
+
+    def cursor(self, offset=0, limit=None, order_by=None, descending=False, as_dict=False):
+        """
+        Return query cursor.
+        See Relation.fetch() for input description.
+        :return: cursor to the query
+        """
+        if offset and limit is None:
+            raise DataJointError('limit is required when offset is set')
+        sql = self.make_select()
+        if order_by is not None:
+            sql += ' ORDER BY ' + ', '.join(order_by)
+            if descending:
+                sql += ' DESC'
+        if limit is not None:
+            sql += ' LIMIT %d' % limit
+            if offset:
+                sql += ' OFFSET %d' % offset
+        logger.debug(sql)
+        return self.connection.query(sql, as_dict=as_dict)
+
+    def __repr__(self):
+        limit = config['display.limit']
+        width = config['display.width']
+        rel = self.project(*self.heading.non_blobs)  # project out blobs
+        template = '%%-%d.%ds' % (width, width)
+        columns = rel.heading.names
+        repr_string = ' '.join([template % column for column in columns]) + '\n'
+        repr_string += ' '.join(['+' + '-' * (width - 2) + '+' for _ in columns]) + '\n'
+        for tup in rel.fetch(limit=limit):
+            repr_string += ' '.join([template % column for column in tup]) + '\n'
+        if len(self) > limit:
+            repr_string += '...\n'
+        repr_string += ' (%d tuples)\n' % len(self)
+        return repr_string
 
     def fetch1(self):
         """
@@ -197,53 +239,36 @@ class RelationalOperand(metaclass=abc.ABCMeta):
                 ret[blob_name] = list(map(unpack, ret[blob_name]))
         return ret
 
-    def cursor(self, offset=0, limit=None, order_by=None, descending=False, as_dict=False):
+    def values(self, offset=0, limit=None, order_by=None, descending=False, as_dict=False):
         """
-        Return query cursor.
-        See Relation.fetch() for input description.
-        :return: cursor to the query
+        Iterator that returns the contents of the database.
         """
-        if offset and limit is None:
-            raise DataJointError('limit is required when offset is set')
-        sql = self.make_select()
-        if order_by is not None:
-            sql += ' ORDER BY ' + ', '.join(order_by)
-            if descending:
-                sql += ' DESC'
-        if limit is not None:
-            sql += ' LIMIT %d' % limit
-            if offset:
-                sql += ' OFFSET %d' % offset
-        logger.debug(sql)
-        return self.connection.query(sql, as_dict=as_dict)
+        cur = self.cursor(offset=offset, limit=limit, order_by=order_by,
+                          descending=descending, as_dict=as_dict)
+        heading = self.heading
+        do_unpack = tuple(h in heading.blobs for h in heading.names)
+        values = cur.fetchone()
+        while values:
+            if as_dict:
+                yield OrderedDict((field_name, unpack(values[field_name])) if up else (field_name, values[field_name])
+                                  for field_name, up in zip(heading.names, do_unpack))
 
-    def __repr__(self):
-        limit = config['display.limit']
-        width = config['display.width']
-        rel = self.project(*self.heading.non_blobs)  # project out blobs
-        template = '%%-%d.%ds' % (width, width)
-        columns = rel.heading.names
-        repr_string = ' '.join([template % column for column in columns]) + '\n'
-        repr_string += ' '.join(['+' + '-' * (width - 2) + '+' for _ in columns]) + '\n'
-        for tup in rel.fetch(limit=limit):
-            repr_string += ' '.join([template % column for column in tup]) + '\n'
-        if len(self) > limit:
-            repr_string += '...\n'
-        repr_string += ' (%d tuples)\n' % len(self)
-        return repr_string
+            else:
+                yield tuple(unpack(value) if up else value for up, value in zip(do_unpack, values))
+
+            values = cur.fetchone()
 
     def __iter__(self):
         """
         Iterator that yields individual tuples of the current table dictionaries.
         """
-        cur = self.cursor()
-        heading = self.heading  # construct once for efficiency
-        do_unpack = tuple(h in heading.blobs for h in heading.names)
-        values = cur.fetchone()
-        while values:
-            yield {field_name: unpack(value) if up else value
-                   for field_name, up, value in zip(heading.names, do_unpack, values)}
-            values = cur.fetchone()
+        yield from self.values(as_dict=True)
+
+    def keys(self, *args, **kwargs):
+        """
+        Iterator that returns primary keys.
+        """
+        yield from self.project().values(*args, **kwargs)
 
     @property
     def where_clause(self):
@@ -272,7 +297,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             elif isinstance(r, np.ndarray) or isinstance(r, list):
                 r = '(' + ') OR ('.join([make_condition(q) for q in r]) + ')'
             elif isinstance(r, RelationalOperand):
-                common_attributes = ','.join([q for q in self.heading.names if r.heading.names])
+                common_attributes = ','.join([q for q in self.heading.names if q in r.heading.names])
                 r = '(%s) in (SELECT %s FROM %s%s)' % (
                     common_attributes, common_attributes, r.from_clause, r.where_clause)
 
@@ -371,6 +396,15 @@ class Projection(RelationalOperand):
             return "(%s) NATURAL LEFT JOIN (%s) GROUP BY `%s`" % (
                 self._arg.from_clause, self._group.from_clause,
                 '`,`'.join(self.heading.primary_key))
+
+    def _restrict(self, restriction):
+        """
+        Projection is enclosed in Subquery when restricted if it has renamed attributes
+        """
+        if self.heading.computed:
+            return Subquery(self) & restriction
+        else:
+            return super()._restrict(restriction)
 
 
 class Subquery(RelationalOperand):

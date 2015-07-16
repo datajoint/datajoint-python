@@ -1,13 +1,24 @@
+"""
+DataJoint for Python is a high-level programming interface for MySQL databases
+to support data processing chains in science labs. DataJoint is built on the
+foundation of the relational data model and prescribes a consistent method for
+organizing, populating, and querying data.
+
+DataJoint is free software under the LGPL License. In addition, we request
+that any use of DataJoint leading to a publication be acknowledged in the publication.
+"""
+
 import logging
 import os
 
 __author__ = "Dimitri Yatsenko, Edgar Walker, and Fabian Sinz at Baylor College of Medicine"
 __version__ = "0.2"
 __all__ = ['__author__', '__version__',
+           'config',
            'Connection', 'Heading', 'Relation', 'FreeRelation', 'Not',
-           'Relation',
+           'Relation', 'schema',
            'Manual', 'Lookup', 'Imported', 'Computed',
-           'AutoPopulate', 'conn', 'DataJointError', 'blob']
+           'conn', 'DataJointError']
 
 
 class DataJointError(Exception):
@@ -39,8 +50,6 @@ logger.setLevel(log_levels[config['loglevel']])
 from .connection import conn, Connection
 from .relation import Relation
 from .user_relations import Manual, Lookup, Imported, Computed, Subordinate
-from .autopopulate import AutoPopulate
-from . import blob
 from .relational_operand import Not
 from .heading import Heading
-from .relation import schema
+from .schema import schema

@@ -1,17 +1,12 @@
 """
 Collection of test cases to test connection module.
 """
-from tests.schemata.test1 import Subjects
 
-__author__ = 'eywalker, fabee'
-from . import CONN_INFO, PREFIX, BASE_CONN, cleanup
 from nose.tools import assert_true, assert_raises, assert_equal, raises
 import datajoint as dj
-from datajoint import DataJointError
 import numpy as np
-
-def setup():
-    cleanup()
+from datajoint import DataJointError
+from . import CONN_INFO, PREFIX
 
 
 def test_dj_conn():
@@ -24,88 +19,86 @@ def test_dj_conn():
 
 def test_persistent_dj_conn():
     """
-    conn() method should provide persistent connection
-    across calls.
+    conn() method should provide persistent connection across calls.
+    Setting reset=True should create a new persistent connection.
     """
     c1 = dj.conn(**CONN_INFO)
     c2 = dj.conn()
+    c3 = dj.conn(**CONN_INFO)
+    c4 = dj.conn(reset=True, **CONN_INFO)
+    c5 = dj.conn(**CONN_INFO)
     assert_true(c1 is c2)
-
-
-def test_dj_conn_reset():
-    """
-    Passing in reset=True should allow for new persistent
-    connection to be created.
-    """
-    c1 = dj.conn(**CONN_INFO)
-    c2 = dj.conn(reset=True, **CONN_INFO)
-    assert_true(c1 is not c2)
+    assert_true(c1 is c3)
+    assert_true(c1 is not c4)
+    assert_true(c4 is c5)
 
 
 def test_repr():
     c1 = dj.conn(**CONN_INFO)
-    assert_true('disconnected' not in c1.__repr__() and 'connected' in c1.__repr__())
-
-def test_del():
-    c1 = dj.conn(**CONN_INFO)
-    assert_true('disconnected' not in c1.__repr__() and 'connected' in c1.__repr__())
-    del c1
+    assert_true('disconnected' not in repr(c1) and 'connected' in repr(c1))
 
 
+class TestTransactions:
+    """
+    test transaction management
+    """
 
-class TestContextManager(object):
+    schema = dj.schema(PREFIX + '_transactions', locals(), connection=dj.conn(**CONN_INFO))
+
+    @schema
+    class Subjects(dj.Manual):
+        definition = """
+        #Basic subject
+        subject_id                  : int      # unique subject id
+        ---
+        real_id                     :  varchar(40)    #  real-world name
+        species = "mouse"           : enum('mouse', 'monkey', 'human')   # species
+        """
+
     def __init__(self):
-        self.relvar = None
-        self.setup()
-
-    """
-    Test cases for FreeRelation objects
-    """
-
-    def setup(self):
-        """
-        Create a connection object and prepare test modules
-        as follows:
-        test1 - has conn and bounded
-        """
-        cleanup()  # drop all databases with PREFIX
-        self.conn = dj.conn()
-        self.relvar = Subjects()
+        self.relation = self.Subjects()
+        self.conn = dj.conn(**CONN_INFO)
 
     def teardown(self):
-        cleanup()
+        self.relation.delete_quick()
 
     def test_active(self):
-        with self.conn.transaction() as conn:
+        with self.conn.transaction as conn:
             assert_true(conn.in_transaction, "Transaction is not active")
 
-    def test_rollback(self):
+    def test_transaction_rollback(self):
+        """Test transaction cancellation using a with statement"""
+        tmp = np.array([
+            (1, 'Peter', 'mouse'),
+            (2, 'Klara', 'monkey')
+        ],  self.relation.heading.as_dtype)
 
-        tmp = np.array([(1,'Peter','mouse'),(2, 'Klara', 'monkey')],
-                       dtype=[('subject_id', '>i4'), ('real_id', 'O'), ('species', 'O')])
-
-        self.relvar.insert(tmp[0])
+        self.relation.delete()
+        with self.conn.transaction:
+            self.relation.insert1(tmp[0])
         try:
-            with self.conn.transaction():
-                self.relvar.insert(tmp[1])
-                raise DataJointError("Just to test")
-        except DataJointError as e:
+            with self.conn.transaction:
+                self.relation.insert1(tmp[1])
+                raise DataJointError("Testing rollback")
+        except DataJointError:
             pass
-        testt2 = (self.relvar & 'subject_id = 2').fetch()
-        assert_equal(len(testt2), 0, "Length is not 0. Expected because rollback should have happened.")
+        assert_equal(len(self.relation), 1,
+                     "Length is not 1. Expected because rollback should have happened.")
+        assert_equal(len(self.relation & 'subject_id = 2'), 0,
+                     "Length is not 0. Expected because rollback should have happened.")
 
     def test_cancel(self):
-        """Tests cancelling a transaction"""
-        tmp = np.array([(1,'Peter','mouse'),(2, 'Klara', 'monkey')],
-                       dtype=[('subject_id', '>i4'), ('real_id', 'O'), ('species', 'O')])
-
-        self.relvar.insert(tmp[0])
-        with self.conn.transaction() as conn:
-            self.relvar.insert(tmp[1])
-            conn.cancel_transaction()
-
-        testt2 = (self.relvar & 'subject_id = 2').fetch()
-        assert_equal(len(testt2), 0, "Length is not 0. Expected because rollback should have happened.")
-
-
-
+        """Tests cancelling a transaction explicitly"""
+        tmp = np.array([
+            (1, 'Peter', 'mouse'),
+            (2, 'Klara', 'monkey')
+        ],  self.relation.heading.as_dtype)
+        self.relation.delete_quick()
+        self.relation.insert1(tmp[0])
+        self.conn.start_transaction()
+        self.relation.insert1(tmp[1])
+        self.conn.cancel_transaction()
+        assert_equal(len(self.relation), 1,
+                     "Length is not 1. Expected because rollback should have happened.")
+        assert_equal(len(self.relation & 'subject_id = 2'), 0,
+                     "Length is not 0. Expected because rollback should have happened.")

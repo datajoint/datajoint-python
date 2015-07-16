@@ -11,10 +11,11 @@ API:
 .. toctree::
    :maxdepth: 2
 
+   tiers.rst
    relation.rst
-   relational_operand.rst
    connection.rst
-
+   blob.rst
+   declare.rst
 
 Indices and tables
 ==================

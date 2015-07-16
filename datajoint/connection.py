@@ -1,43 +1,42 @@
+"""
+This module hosts the Connection class that manages the connection to the mysql database via
+`pymysql`, and the `conn` function that provides access to a persistent connection in datajoint.
+
+"""
 from contextlib import contextmanager
 import pymysql
-from . import DataJointError
 import logging
-from . import config
+from collections import defaultdict
+from . import DataJointError, config
 from .erd import ERD
+from .jobs import JobManager
 
 logger = logging.getLogger(__name__)
 
 
-def conn_container():
+def conn(host=None, user=None, passwd=None, init_fun=None, reset=False):
     """
-    creates a persistent connections for everyone to use
+    Returns a persistent connection object to be shared by multiple modules.
+    If the connection is not yet established or reset=True, a new connection is set up.
+    If connection information is not provided, it is taken from config which takes the
+    information from dj_local_conf.json. If the password is not specified in that file
+    datajoint prompts for the password.
+
+    :param host: hostname
+    :param user: mysql user
+    :param passwd: mysql password
+    :param init_fun: initialization function
+    :param reset: whether the connection should be reseted or not
     """
-    _connection = None  # persistent connection object used by dj.conn()
-
-    def conn_function(host=None, user=None, passwd=None, init_fun=None, reset=False): # TODO: thin wrapping layer to mimic singleton
-        """
-        Manage a persistent connection object.
-        This is one of several ways to configure and access a datajoint connection.
-        Users may customize their own connection manager.
-
-        Set rest=True to reset the persistent connection object
-        """
-        nonlocal _connection
-        if not _connection or reset:
-            host = host if host is not None else config['database.host']
-            user = user if user is not None else config['database.user']
-            passwd = passwd if passwd is not None else config['database.password']
-
-            if passwd is None: passwd = input("Please enter database password: ")
-
-            init_fun = init_fun if init_fun is not None else config['connection.init_function']
-            _connection = Connection(host, user, passwd, init_fun)
-        return _connection
-
-    return conn_function
-
-# The function conn is used by others to obtain a connection object
-conn = conn_container()
+    if not hasattr(conn, 'connection') or reset:
+        host = host if host is not None else config['database.host']
+        user = user if user is not None else config['database.user']
+        passwd = passwd if passwd is not None else config['database.password']
+        if passwd is None:
+            passwd = input("Please enter database password: ")
+        init_fun = init_fun if init_fun is not None else config['connection.init_function']
+        conn.connection = Connection(host, user, passwd, init_fun)
+    return conn.connection
 
 
 class Connection:
@@ -51,7 +50,6 @@ class Connection:
     :param user: user name
     :param passwd: password
     :param init_fun: initialization function
-
     """
 
     def __init__(self, host, user, passwd, init_fun=None):
@@ -69,6 +67,7 @@ class Connection:
             raise DataJointError('Connection failed.')
         self._conn.autocommit(True)
         self._in_transaction = False
+        self.jobs = JobManager(self)
 
     def __del__(self):
         logger.info('Disconnecting {user}@{host}:{port}'.format(**self.conn_info))
@@ -89,16 +88,15 @@ class Connection:
         return "DataJoint connection ({connected}) {user}@{host}:{port}".format(
             connected=connected, **self.conn_info)
 
-    def __del__(self):
-        logger.info('Disconnecting {user}@{host}:{port}'.format(**self.conn_info))
-        self._conn.close()
 
     def query(self, query, args=(), as_dict=False):
         """
         Execute the specified query and return the tuple generator.
 
-        If as_dict is set to True, the returned cursor objects returns
-        query results as dictionary.
+        :param query: mysql query
+        :param args: additional arguments for the pymysql.cursor
+        :param as_dict: If as_dict is set to True, the returned cursor objects returns
+                        query results as dictionary.
         """
         cursor = pymysql.cursors.DictCursor if as_dict else pymysql.cursors.Cursor
         cur = self._conn.cursor(cursor=cursor)
@@ -108,13 +106,21 @@ class Connection:
         cur.execute(query, args)
         return cur
 
-    # ---------- transaction processing ------------------
+    # ---------- transaction processing
     @property
     def in_transaction(self):
+        """
+        :return: True if there is an open transaction.
+        """
         self._in_transaction = self._in_transaction and self.is_connected
         return self._in_transaction
 
     def start_transaction(self):
+        """
+        Starts a transaction error.
+
+        :raise DataJointError: if there is an ongoing transaction.
+        """
         if self.in_transaction:
             raise DataJointError("Nested connections are not supported.")
         self.query('START TRANSACTION WITH CONSISTENT SNAPSHOT')
@@ -122,19 +128,39 @@ class Connection:
         logger.info("Transaction started")
 
     def cancel_transaction(self):
+        """
+        Cancels the current transaction and rolls back all changes made during the transaction.
+
+        """
         self.query('ROLLBACK')
         self._in_transaction = False
         logger.info("Transaction cancelled. Rolling back ...")
 
     def commit_transaction(self):
+        """
+        Commit all changes made during the transaction and close it.
+
+        """
         self.query('COMMIT')
         self._in_transaction = False
         logger.info("Transaction committed and closed.")
 
-
-    #-------- context manager for transactions
+    # -------- context manager for transactions
+    @property
     @contextmanager
     def transaction(self):
+        """
+        Context manager for transactions. Opens an transaction and closes it after the with statement.
+        If an error is caught during the transaction, the commits are automatically rolled back. All
+        errors are raised again.
+
+        Example:
+        >>> import datajoint as dj
+        >>> with dj.conn().transaction as conn:
+        >>>     # transaction is open here
+
+
+        """
         try:
             self.start_transaction()
             yield self
@@ -143,4 +169,3 @@ class Connection:
             raise
         else:
             self.commit_transaction()
-

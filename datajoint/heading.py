@@ -5,49 +5,56 @@ import numpy as np
 from datajoint import DataJointError
 
 
+class Attribute(namedtuple('Attribute',
+                           ('name', 'type', 'in_key', 'nullable', 'default',
+                            'comment', 'autoincrement', 'numeric', 'string', 'is_blob',
+                            'computation', 'dtype'))):
+    def _asdict(self):
+        """
+        for some reason the inherted _asdict does not work after subclassing from namedtuple
+        """
+        return OrderedDict((name, self[i]) for i, name in enumerate(self._fields))
+
+    def sql(self):
+        """
+        Convert attribute tuple into its SQL CREATE TABLE clause.
+        :rtype : SQL code
+        """
+        literals = ['CURRENT_TIMESTAMP']
+        if self.nullable:
+            default = 'DEFAULT NULL'
+        else:
+            default = 'NOT NULL'
+            if self.default:
+                # enclose value in quotes except special SQL values or already enclosed
+                quote = self.default.upper() not in literals and self.default[0] not in '"\''
+                default += ' DEFAULT ' + ('"%s"' if quote else "%s") % self.default
+        if any((c in r'\"' for c in self.comment)):
+            raise DataJointError('Illegal characters in attribute comment "%s"' % self.comment)
+        return '`{name}` {type} {default} COMMENT "{comment}"'.format(
+            name=self.name, type=self.type, default=default, comment=self.comment)
+
+
 class Heading:
     """
     Local class for relations' headings.
     Heading contains the property attributes, which is an OrderedDict in which the keys are
-    the attribute names and the values are AttrTuples.
+    the attribute names and the values are Attributes.
     """
-
-    class AttrTuple(namedtuple('AttrTuple',
-                           ('name', 'type', 'in_key', 'nullable', 'default',
-                            'comment', 'autoincrement', 'numeric', 'string', 'is_blob',
-                            'computation', 'dtype'))):
-        def _asdict(self):
-            """
-            for some reason the inherted _asdict does not work after subclassing from namedtuple
-            """
-            return OrderedDict((name, self[i]) for i, name in enumerate(self._fields))
-
-        def sql(self):
-            """
-            Convert attribute tuple into its SQL CREATE TABLE clause.
-            :rtype : SQL code
-            """
-            literals = ['CURRENT_TIMESTAMP']
-            if self.nullable:
-                default = 'DEFAULT NULL'
-            else:
-                default = 'NOT NULL'
-                if self.default:
-                    # enclose value in quotes except special SQL values or already enclosed
-                    quote = self.default.upper() not in literals and self.default[0] not in '"\''
-                    default += ' DEFAULT ' + ('"%s"' if quote else "%s") % self.default
-            if any((c in r'\"' for c in self.comment)):
-                raise DataJointError('Illegal characters in attribute comment "%s"' % self.comment)
-            return '`{name}` {type} {default} COMMENT "{comment}"'.format(
-                name=self.name, type=self.type, default=default, comment=self.comment)
 
     def __init__(self, attributes=None):
         """
-        :param attributes: a list of dicts with the same keys as AttrTuple
+        :param attributes: a list of dicts with the same keys as Attribute
         """
         if attributes:
-            attributes = OrderedDict([(q['name'], Heading.AttrTuple(**q)) for q in attributes])
+            attributes = OrderedDict([(q['name'], Attribute(**q)) for q in attributes])
         self.attributes = attributes
+
+    def reset(self):
+        self.attributes = None
+
+    def __len__(self):
+        return 0 if self.attributes is None else len(self.attributes)
 
     def __bool__(self):
         return self.attributes is not None
@@ -194,7 +201,7 @@ class Heading:
                     t = re.sub(r' unsigned$', '', t)   # remove unsigned
                     assert (t, is_unsigned) in numeric_types, 'dtype not found for type %s' % t
                     attr['dtype'] = numeric_types[(t, is_unsigned)]
-        self.attributes = OrderedDict([(q['name'], Heading.AttrTuple(**q)) for q in attributes])
+        self.attributes = OrderedDict([(q['name'], Attribute(**q)) for q in attributes])
 
     def project(self, *attribute_list, **renamed_attributes):
         """

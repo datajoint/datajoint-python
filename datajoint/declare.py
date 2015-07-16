@@ -1,3 +1,7 @@
+"""
+This module hosts functions to convert DataJoint table definitions into mysql table definitions, and to
+declare the corresponding mysql tables.
+"""
 import re
 import pyparsing as pp
 import logging
@@ -12,6 +16,10 @@ logger = logging.getLogger(__name__)
 def declare(full_table_name,  definition, context):
     """
     Parse declaration and create new SQL table accordingly.
+
+    :param full_table_name: full name of the table
+    :param definition: DataJoint table definition
+    :param context: dictionary of objects that might be referred to in the table. Usually this will be locals()
     """
     # split definition into lines
     definition = re.split(r'\s*\n\s*', definition.strip())
@@ -72,6 +80,7 @@ def declare(full_table_name,  definition, context):
 def compile_attribute(line, in_key=False):
     """
     Convert attribute definition from DataJoint format to SQL
+
     :param line: attribution line
     :param in_key: set to True if attribute is in primary key set
     :returns: (name, sql) -- attribute name and sql code for its declaration
