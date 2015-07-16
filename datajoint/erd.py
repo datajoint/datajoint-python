@@ -22,7 +22,7 @@ class ERM:
 
     Represents known relation between tables
     """
-    #_checked_dependencies = set()
+    # _checked_dependencies = set()
 
     def __init__(self, conn):
         self._conn = conn
@@ -30,7 +30,6 @@ class ERM:
         self._referenced = dict()
         self._children = defaultdict(list)
         self._references = defaultdict(list)
-
 
     def load_dependencies(self, full_table_name):
         # check if already loaded.  Use clear_dependencies before reloading

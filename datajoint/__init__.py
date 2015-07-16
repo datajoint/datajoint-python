@@ -20,6 +20,13 @@ __all__ = ['__author__', '__version__',
            'Manual', 'Lookup', 'Imported', 'Computed',
            'conn']
 
+# define an object that identifies the primary key in RelationalOperand.__getitem__
+class PrimaryKey: pass
+
+
+key = PrimaryKey
+
+
 class DataJointError(Exception):
     """
     Base class for errors specific to DataJoint internal operation.
@@ -51,4 +58,3 @@ from .user_relations import Manual, Lookup, Imported, Computed, Subordinate
 from .relational_operand import Not
 from .heading import Heading
 from .schema import schema
-
