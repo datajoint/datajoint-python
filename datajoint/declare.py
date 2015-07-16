@@ -8,12 +8,10 @@ import logging
 
 from . import DataJointError
 
-
 logger = logging.getLogger(__name__)
 
 
-
-def declare(full_table_name,  definition, context):
+def declare(full_table_name, definition, context):
     """
     Parse declaration and create new SQL table accordingly.
 
@@ -24,6 +22,7 @@ def declare(full_table_name,  definition, context):
     # split definition into lines
     definition = re.split(r'\s*\n\s*', definition.strip())
 
+    # check for optional table comment
     table_comment = definition.pop(0)[1:].strip() if definition[0].startswith('#') else ''
 
     in_key = True  # parse primary keys
@@ -40,7 +39,7 @@ def declare(full_table_name,  definition, context):
             in_key = False  # start parsing dependent attributes
         elif line.startswith('->'):
             # foreign key
-            ref = eval(line[2:], context)()
+            ref = eval(line[2:], context)()  # TODO: surround this with try...except... to give a better error message
             foreign_key_sql.append(
                 'FOREIGN KEY ({primary_key})'
                 ' REFERENCES {ref} ({primary_key})'
@@ -52,7 +51,7 @@ def declare(full_table_name,  definition, context):
                     primary_key.append(name)
                 if name not in attributes:
                     attributes.append(name)
-                    attribute_sql.append(ref.heading[name].sql())
+                    attribute_sql.append(ref.heading[name].sql)
         elif re.match(r'^(unique\s+)?index[^:]*$', line, re.I):   # index
             index_sql.append(line)  # the SQL syntax is identical to DataJoint's
         else:

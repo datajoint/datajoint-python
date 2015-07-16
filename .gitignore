@@ -5,6 +5,11 @@
 */*.pyc
 .DS_Store
 __*__
-.idea
-datajoint.egg-info/
+.idea/
 *.pyc
+.python-version
+*.egg-info/
+dist/
+build/
+MANIFEST
+.vagrant/

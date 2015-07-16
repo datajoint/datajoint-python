@@ -7,7 +7,9 @@ import abc
 import re
 from collections import OrderedDict
 from copy import copy
-from datajoint import DataJointError, config
+from . import config
+from . import key as PRIMARY_KEY
+from . import DataJointError
 import logging
 
 from .blob import unpack
@@ -104,7 +106,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             raise DataJointError('The second argument must be a relation or None')
         return Projection(self, _group, *attributes, **renamed_attributes)
 
-    def __iand__(self, restriction):
+    def _restrict(self, restriction):
         """
         in-place relational restriction or semijoin
         """
@@ -113,6 +115,12 @@ class RelationalOperand(metaclass=abc.ABCMeta):
                 self._restrictions = []
             self._restrictions.append(restriction)
         return self
+
+    def __iand__(self, restriction):
+        """
+        in-place relational restriction or semijoin
+        """
+        return self._restrict(restriction)
 
     def __and__(self, restriction):
         """
@@ -291,7 +299,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             elif isinstance(r, np.ndarray) or isinstance(r, list):
                 r = '(' + ') OR ('.join([make_condition(q) for q in r]) + ')'
             elif isinstance(r, RelationalOperand):
-                common_attributes = ','.join([q for q in self.heading.names if r.heading.names])
+                common_attributes = ','.join([q for q in self.heading.names if q in r.heading.names])
                 r = '(%s) in (SELECT %s FROM %s%s)' % (
                     common_attributes, common_attributes, r.from_clause, r.where_clause)
 
@@ -306,11 +314,17 @@ class RelationalOperand(metaclass=abc.ABCMeta):
     def __getitem__(self, item): # TODO: implement dj.key and primary key return
 
         attr_keys = list(self.heading.attributes.keys())
+        key_index = None
 
+        # prepare arguments for project
         if isinstance(item, str):
             args = (item,)
+        elif item is PRIMARY_KEY:  # this one we return directly, since it is easy
+            return self.project().fetch()
         elif isinstance(item, list) or isinstance(item, tuple):
-            args = item
+            args = tuple(i for i in item if not i is PRIMARY_KEY)
+            if PRIMARY_KEY in item:
+                key_index = item.index(PRIMARY_KEY)
         elif isinstance(item, slice):
             start = attr_keys.index(item.start) if isinstance(item.start, str) else item.start
             stop = attr_keys.index(item.stop) if isinstance(item.stop, str) else item.stop
@@ -320,8 +334,17 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             args = attr_keys[item]
         else:
             raise DataJointError("Index must be a slice, a tuple, a list, or a string.")
+
         tmp = self.project(*args).fetch()
-        return tuple(tmp[e] for e in args)
+        if key_index is None:
+            return tuple(tmp[e] for e in args)
+        else:
+            retval = [tmp[e] for e in args]
+
+            dtype2 = np.dtype({name: tmp.dtype.fields[name] for name in self.primary_key})
+            tmp2 = np.unique(np.ndarray(tmp.shape, dtype2, tmp, 0, tmp.strides))
+            retval.insert(key_index, tmp2)
+            return retval
 
 
 class Not:
@@ -411,6 +434,15 @@ class Projection(RelationalOperand):
             return "(%s) NATURAL LEFT JOIN (%s) GROUP BY `%s`" % (
                 self._arg.from_clause, self._group.from_clause,
                 '`,`'.join(self.heading.primary_key))
+
+    def _restrict(self, restriction):
+        """
+        Projection is enclosed in Subquery when restricted if it has renamed attributes
+        """
+        if self.heading.computed:
+            return Subquery(self) & restriction
+        else:
+            return super()._restrict(restriction)
 
 
 class Subquery(RelationalOperand):

@@ -48,7 +48,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
     def target(self):
         return self
 
-    def populate(self, restriction=None, suppress_errors=False, reserve_jobs=False, batch=1):
+    def populate(self, restriction=None, suppress_errors=False, reserve_jobs=False):
         """
         rel.populate() calls rel._make_tuples(key) for every primary key in self.populated_from
         for which there is not already a tuple in rel.

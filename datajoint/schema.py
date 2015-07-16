@@ -1,7 +1,8 @@
 import pymysql
 import logging
 
-from . import DataJointError, conn
+from . import conn
+from . import DataJointError
 from .heading import Heading
 
 logger = logging.getLogger(__name__)
@@ -51,7 +52,7 @@ class schema:
 
         # trigger table declaration by requesting the heading from an instance
         instance = cls()
-        instance.heading  # trigger table declaration
+        instance.heading
         instance.prepare()
         return cls
 

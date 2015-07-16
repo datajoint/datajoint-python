@@ -1,3 +1,10 @@
+from operator import itemgetter
+from numpy.testing import assert_array_equal
+import numpy as np
+
+from . import schema
+import datajoint as dj
+
 # """
 # Collection of test cases to test relational methods
 # """
@@ -45,3 +52,29 @@
 #
 #     def test_not(self):
 #         pass
+
+class TestRelationalOperand:
+    def __init__(self):
+        self.subject = schema.Subject()
+
+    def test_getitem(self):
+        """Testing RelationalOperand.__getitem__"""
+
+        np.testing.assert_array_equal(sorted(self.subject.project().fetch(), key=itemgetter(0)),
+                                      sorted(self.subject[dj.key], key=itemgetter(0)),
+                                      'Primary key is not returned correctly')
+
+        tmp = self.subject.fetch(order_by=['subject_id'])
+
+        for column, field in zip(self.subject[:], [e[0] for e in tmp.dtype.descr]):
+            np.testing.assert_array_equal(sorted(tmp[field]), sorted(column), 'slice : does not work correctly')
+
+        subject_notes, key, real_id = self.subject['subject_notes', dj.key, 'real_id']
+
+        np.testing.assert_array_equal(sorted(subject_notes), sorted(tmp['subject_notes']))
+        np.testing.assert_array_equal(sorted(real_id), sorted(tmp['real_id']))
+        np.testing.assert_array_equal(sorted(key, key=itemgetter(0)),
+                                      sorted(self.subject.project().fetch(), key=itemgetter(0)))
+
+        for column, field in zip(self.subject['subject_id'::2], [e[0] for e in tmp.dtype.descr][::2]):
+            np.testing.assert_array_equal(sorted(tmp[field]), sorted(column), 'slice : does not work correctly')
