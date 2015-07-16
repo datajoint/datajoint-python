@@ -71,8 +71,7 @@ class JobRelation(Relation):
     def complete(self, table_name, key):
         """
         Log a completed job.  When a job is completed, its reservation entry is deleted.
-        :param reserve_jobs: if True, use job reservation
-        :param full_table_name: `database`.`table_name`
+        :param table_name: `database`.`table_name`
         :param key: the dict of the job's primary key
         """
         job_key = dict(table_name=table_name, key_hash=key_hash(key))
@@ -82,8 +81,7 @@ class JobRelation(Relation):
         """
         Log an error message.  The job reservation is replaced with an error entry.
         if an error occurs, leave an entry describing the problem
-        :param reserve_jobs: if True, use job reservation
-        :param full_table_name: `database`.`table_name`
+        :param table_name: `database`.`table_name`
         :param key: the dict of the job's primary key
         :param error_message: string error message
         """

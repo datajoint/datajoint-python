@@ -72,6 +72,9 @@ def unpack(blob):
     :rtype: numpy.ndarray
     """
     # decompress if necessary
+    if blob is None:
+        return None
+
     if blob[0:5] == b'ZL123':
         blob_length = np.fromstring(blob[6:14], dtype=np.uint64)[0]
         blob = zlib.decompress(blob[14:])
