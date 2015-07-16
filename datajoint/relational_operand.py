@@ -252,9 +252,10 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         values = cur.fetchone()
         while values:
             if as_dict:
-                yield OrderedDict((field_name, unpack(values[field_name])) if up else (field_name, values[field_name])
-                                  for field_name, up in zip(heading.names, do_unpack))
-
+                yield OrderedDict(
+                    (field_name, unpack(values[field_name]))
+                    if up else (field_name, values[field_name])
+                    for field_name, up in zip(heading.names, do_unpack))
             else:
                 yield tuple(unpack(value) if up else value for up, value in zip(do_unpack, values))
 
@@ -311,40 +312,42 @@ class RelationalOperand(metaclass=abc.ABCMeta):
 
         return ' WHERE ' + ' AND '.join(condition_string)
 
-    def __getitem__(self, item): # TODO: implement dj.key and primary key return
+    def __getitem__(self, item):
+        """
+        Fetch attributes as separate outputs.
+        datajoint.key is a special value that requests the entire primary key
+        :return: tuple with an entry for each element of item
 
-        attr_keys = self.heading.names
-        key_index = None
-
-        # prepare arguments for project
-        if isinstance(item, str):
-            args = (item,)
-        elif item is PRIMARY_KEY:  # this one we return directly, since it is easy
-            return self.project().fetch()
-        elif isinstance(item, list) or isinstance(item, tuple):
-            args = tuple(i for i in item if not i is PRIMARY_KEY)
-            if PRIMARY_KEY in item:
-                key_index = item.index(PRIMARY_KEY)
-        elif isinstance(item, slice):
-            start = attr_keys.index(item.start) if isinstance(item.start, str) else item.start
-            stop = attr_keys.index(item.stop) if isinstance(item.stop, str) else item.stop
-            item = slice(start, stop, item.step)
-            args = attr_keys[item]
+        Examples:
+        a, b = relation['a', 'b']
+        a, b, key = relation['a', 'b', datajoint.key]
+        results = relation['a':'z']    # return attributes a-z as a tuple
+        results = relation[:-1]   # return all but the last attribute
+        """
+        single_output = isinstance(item, str) or item is PRIMARY_KEY or isinstance(item, int)
+        if isinstance(item, str) or item is PRIMARY_KEY:
+            item = (item,)
         elif isinstance(item, int):
-            args = attr_keys[item]
-        else:
-            raise DataJointError("Index must be a slice, a tuple, a list, or a string.")
-
-        tmp = self.project(*args).fetch()
-        if key_index is None:
-            return tuple(tmp[e] for e in args)
-        else:
-            retval = [tmp[e] for e in args]
-
-            dtype2 = np.dtype({name: tmp.dtype.fields[name] for name in self.primary_key})
-            tmp2 = np.unique(np.ndarray(tmp.shape, dtype2, tmp, 0, tmp.strides))
-            retval.insert(key_index, tmp2)
-            return retval
+            item = (self.heading.names[item],)
+        elif isinstance(item, slice):
+            attributes = self.heading.names
+            start = attributes.index(item.start) if isinstance(item.start, str) else item.start
+            stop = attributes.index(item.stop) if isinstance(item.stop, str) else item.stop
+            item = attributes[slice(start, stop, item.step)]
+        try:
+            attributes = tuple(i for i in item if i is not PRIMARY_KEY)
+        except TypeError:
+            raise DataJointError("Index must be a slice, a tuple, a list, a string.")
+        result = self.project(*attributes).fetch()
+        return_values = [
+            np.ndarray(result.shape,
+                       np.dtype({name: result.dtype.fields[name] for name in self.primary_key}),
+                       result, 0, result.strides)
+            if attribute is PRIMARY_KEY
+            else result[attribute]
+            for attribute in item
+            ]
+        return return_values[0] if single_output else return_values
 
 
 class Not:
