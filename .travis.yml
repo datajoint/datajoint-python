@@ -5,7 +5,7 @@ python: 3.4
 services: mysql
 install:
   - pip install -r requirements.txt
-  - pip install nose nose-cv python-coveralls
+  - pip install nose nose-cov python-coveralls
 # command to run tests
 script:
   - nosetests -vv --with-coverage --cover-package=datajoint
