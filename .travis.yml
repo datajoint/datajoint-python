@@ -1,29 +1,16 @@
 language: python
+env:
+  - DJ_TEST_HOST="127.0.0.1"
+  - DJ_TEST_USER="root"
+  - DJ_TEST_PASSWORD=""
+  - DJ_HOST="127.0.0.1"
+  - DJ_USER="root"
+  - DJ_PASSWORD=""
 python: 3.4
 services: mysql
-env:
-  - DJ_TEST_HOST="127.0.0.1" DJ_TEST_USER="root" DJ_TEST_PASSWORD="" DJ_HOST="127.0.0.1" DJ_USER="root" DJ_PASSWORD=""
-before_install:
-  - sudo apt-get install -qq libatlas-dev libatlas-base-dev liblapack-dev gfortran
-  - sudo apt-get update
-  # You may want to periodically update this, although the conda update
-  # conda line below will keep everything up-to-date.  We do this
-  # conditionally because it saves us some downloading if the version is
-  # the same.
-  - wget http://repo.continuum.io/miniconda/Miniconda3-3.4.2-Linux-x86_64.sh -O miniconda.sh;
-  - bash miniconda.sh -b -p $HOME/miniconda
-  - export PATH="$HOME/miniconda/bin:$PATH"
-  - hash -r
-  - conda update -q --yes conda
-  - conda config --set always_yes yes --set changeps1 no
-  # Useful for debugging any issues with conda
-  - conda info -a
 install:
-  # Replace dep1 dep2 ... with your dependencies
-  - conda create -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy setuptools pip
-  - source activate test-environment
-  - pip install nose nose-cov python-coveralls pymysql networkx matplotlib
-  - conda info -a
+  - pip install -r requirements.txt
+  - pip install nose nose-cv python-coveralls
 # command to run tests
 script:
   - nosetests -vv --with-coverage --cover-package=datajoint
