@@ -313,7 +313,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
 
     def __getitem__(self, item): # TODO: implement dj.key and primary key return
 
-        attr_keys = list(self.heading.attributes.keys())
+        attr_keys = self.heading.names
         key_index = None
 
         # prepare arguments for project

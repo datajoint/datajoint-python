@@ -3,6 +3,7 @@ Test schema definition
 """
 
 import random
+import numpy as np
 import datajoint as dj
 from . import PREFIX, CONN_INFO
 
@@ -52,14 +53,15 @@ class Experiment(dj.Imported):
     entry_time=CURRENT_TIMESTAMP :timestamp   # automatic timestamp
     """
 
+    fake_experiments_per_subject = 5
+
     def _make_tuples(self, key):
         """
         populate with random data
         """
         from datetime import date, timedelta
-        experiments_per_subject = 5
         users = User().fetch()['username']
-        for experiment_id in range(experiments_per_subject):
+        for experiment_id in range(self.fake_experiments_per_subject):
             self.insert1(
                 dict(key,
                      experiment_id=experiment_id,
@@ -102,10 +104,11 @@ class Ephys(dj.Imported):
         populate with random data
         """
         row = dict(key,
-                   sampling_frequency=16000,
-                   duration=random.expovariate(1/30))
+                   sampling_frequency=6000,
+                   duration=np.minimum(2, random.expovariate(1)))
         self.insert1(row)
-        EphysChannel().fill(key, number_samples=round(row.duration * row.sampling_frequency))
+        number_samples = round(row['duration'] * row['sampling_frequency']);
+        EphysChannel().fill(key, number_samples=number_samples)
 
 
 @schema
@@ -121,8 +124,7 @@ class EphysChannel(dj.Subordinate, dj.Imported):
         """
         populate random trace of specified length
         """
-        import numpy as np
-        for channel in range(16):
+        for channel in range(2):
             self.insert1(
                 dict(key,
                      channel=channel,
