@@ -11,7 +11,7 @@ from networkx import DiGraph
 from networkx import pygraphviz_layout
 import matplotlib.pyplot as plt
 from . import DataJointError
-from utils import to_camel_case
+from .utils import to_camel_case
 
 logger = logging.getLogger(__name__)
 

@@ -3,7 +3,7 @@ Collection of test cases to test core module.
 """
 from nose.tools import assert_true, assert_raises, assert_equal
 from datajoint import DataJointError
-from utils import from_camel_case
+from utils import from_camel_case, to_camel_case
 
 
 def setup():
@@ -24,3 +24,10 @@ def test_from_camel_case():
         from_camel_case('hello world')
     with assert_raises(DataJointError):
         from_camel_case('#baisc_names')
+
+
+def test_to_camel_case():
+    assert_equal(to_camel_case('all_groups'), 'AllGroups')
+    assert_equal(to_camel_case('hello'), 'Hello')
+    assert_equal(to_camel_case('this_is_a_sample_case'), 'ThisIsASampleCase')
+    assert_equal(to_camel_case('This_is_Mixed'), 'ThisIsMixed')

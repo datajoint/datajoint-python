@@ -4,7 +4,7 @@ Hosts the table tiers, user relations should be derived from.
 
 from datajoint.relation import Relation
 from .autopopulate import AutoPopulate
-from utils import from_camel_case
+from .utils import from_camel_case
 
 
 class Manual(Relation):
