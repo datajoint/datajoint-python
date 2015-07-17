@@ -113,7 +113,10 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         if restriction is not None:
             if self._restrictions is None:
                 self._restrictions = []
-            self._restrictions.append(restriction)
+            if isinstance(restriction, list):
+                self._restrictions.extend(restriction)
+            else:
+                self._restrictions.append(restriction)
         return self
 
     def __iand__(self, restriction):
@@ -414,12 +417,14 @@ class Projection(RelationalOperand):
             self._arg = Subquery(arg)
         else:
             self._group = None
-            if arg.heading.computed:
-                self._arg = Subquery(arg)
-            else:
-                # project without subquery
+            if arg.heading.computed or\
+                    (isinstance(arg.restrictions, RelationalOperand) and \
+                    all(attr in self._attributes for attr in arg.restrictions.heading.names)) :
+                # can simply the expression because all restrictions attrs are projected out anyway!
                 self._arg = arg
                 self._restrictions = self._arg.restrictions
+            else:
+                self._arg = Subquery(arg)
 
     @property
     def connection(self):

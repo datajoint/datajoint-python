@@ -61,6 +61,7 @@ class Experiment(dj.Imported):
         """
         from datetime import date, timedelta
         users = User().fetch()['username']
+        random.seed('Amazing Seed')
         for experiment_id in range(self.fake_experiments_per_subject):
             self.insert1(
                 dict(key,
@@ -82,6 +83,7 @@ class Trial(dj.Imported):
         """
         populate with random data (pretend reading from raw files)
         """
+        random.seed('Amazing Seed')
         for trial_id in range(10):
             self.insert1(
                 dict(key,
@@ -103,6 +105,7 @@ class Ephys(dj.Imported):
         """
         populate with random data
         """
+        random.seed('Amazing seed')
         row = dict(key,
                    sampling_frequency=6000,
                    duration=np.minimum(2, random.expovariate(1)))
@@ -124,6 +127,7 @@ class EphysChannel(dj.Subordinate, dj.Imported):
         """
         populate random trace of specified length
         """
+        random.seed('Amazing seed')
         for channel in range(2):
             self.insert1(
                 dict(key,

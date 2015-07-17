@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from collections import defaultdict
 import numpy as np
 import logging
 import abc
@@ -82,10 +83,16 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
 
     @property
     def references(self):
+        """
+        :return: list of tables that this tables refers to
+        """
         return self.connection.erm.references[self.full_table_name]
 
     @property
     def referenced(self):
+        """
+        :return: list of tables for which this table is referenced by
+        """
         return self.connection.erm.referenced[self.full_table_name]
 
     @property
@@ -187,22 +194,35 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         User is prompted for confirmation if config['safemode']
         """
         relations = self.descendants
-        if self.restrictions and len(relations)>1:
-            raise NotImplementedError('Restricted cascading deletes are not yet implemented')
-        do_delete = True
+        #if self.restrictions and len(relations)>1:
+        #    raise NotImplementedError('Restricted cascading deletes are not yet implemented')
+        restrict_by_me = defaultdict(lambda: False)
+        rel_by_name = {r.full_table_name:r for r in relations}
+        for r in relations:
+            for ref in r.references:
+                restrict_by_me[ref] = True
+
+        if self.restrictions is not None:
+            restrict_by_me[self.full_table_name] = True
+            rel_by_name[self.full_table_name]._restrict(self.restrictions)
+
+        for r in relations:
+            for dep in (r.children + r.references):
+                rel_by_name[dep]._restrict(r.project() if restrict_by_me[r.full_table_name] else r.restrictions)
+
         if config['safemode']:
-            do_delete = False
+            do_delete = False # indicate if there is anything to delete
             print('The contents of the following tables are about to be deleted:')
             for relation in relations:
                 count = len(relation)
                 if count:
                     do_delete = True
                     print(relation.full_table_name, '(%d tuples)' % count)
-            do_delete = do_delete and user_choice("Proceed?", default='no') == 'yes'
-        if do_delete:
-            with self.connection.transaction:
-                while relations:
-                    relations.pop().delete_quick()
+            if not do_delete or user_choice("Proceed?", default='no') != 'yes':
+                return
+        with self.connection.transaction:
+            while relations:
+                relations.pop().delete_quick()
 
     def drop_quick(self):
         """
