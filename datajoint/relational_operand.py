@@ -113,7 +113,10 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         if restriction is not None:
             if self._restrictions is None:
                 self._restrictions = []
-            self._restrictions.append(restriction)
+            if isinstance(restriction, list):
+                self._restrictions.extend(restriction)
+            else:
+                self._restrictions.append(restriction)
         return self
 
     def __iand__(self, restriction):
