@@ -253,12 +253,11 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         while values:
             if as_dict:
                 yield OrderedDict(
-                    (field_name, unpack(values[field_name]))
-                    if up else (field_name, values[field_name])
+                    (field_name, unpack(values[field_name])) if up
+                    else (field_name, values[field_name])
                     for field_name, up in zip(heading.names, do_unpack))
             else:
                 yield tuple(unpack(value) if up else value for up, value in zip(do_unpack, values))
-
             values = cur.fetchone()
 
     def __iter__(self):
