@@ -250,7 +250,7 @@ class Heading:
 
         return Heading(attribute_list)
 
-    def __add__(self, other):
+    def join(self, other, left):
         """
         join two headings
         """
@@ -258,7 +258,10 @@ class Heading:
         attribute_list = [v._asdict() for v in self.attributes.values()]
         for name in other.names:
             if name not in self.names:
-                attribute_list.append(other.attributes[name]._asdict())
+                attribute = other.attributes[name]._asdict();
+                if left:
+                    attribute['in_key'] = False
+                attribute_list.append(attribute)
         return Heading(attribute_list)
 
     def resolve(self):

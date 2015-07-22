@@ -1,17 +1,12 @@
-"""
-classes for relational algebra
-"""
-
 import numpy as np
 import abc
 import re
 from collections import OrderedDict
 from copy import copy
+import logging
 from . import config
 from . import key as PRIMARY_KEY
 from . import DataJointError
-import logging
-
 from .blob import unpack
 
 logger = logging.getLogger(__name__)
@@ -88,23 +83,21 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         Each attribute can only be used once in attributes or renamed_attributes.  Therefore, the projected
         relation cannot have more attributes than the original relation.
         """
-        # if the first attribute is a relation, it will be aggregated
-        group = None
-        if attributes and isinstance(attributes[0], RelationalOperand):
-            group = attributes.pop[0]
-        return Projection(self, group, *attributes, **renamed_attributes)
+        return Projection(self, *attributes, **renamed_attributes)
 
-    def aggregate(self, _group, *attributes, **renamed_attributes):
+    def aggregate(self, group, *attributes, **renamed_attributes):
         """
         Relational aggregation operator
 
         :param group:  relation whose tuples can be used in aggregation operators
-        :param extensions:
+        :param attributes:
+        :param renamed_attributes:
         :return: a relation representing the aggregation/projection operator result
         """
-        if _group is not None and not isinstance(_group, RelationalOperand):
-            raise DataJointError('The second argument must be a relation or None')
-        return Projection(self, _group, *attributes, **renamed_attributes)
+        if not isinstance(group, RelationalOperand):
+            raise DataJointError('The second argument must be a relation')
+        ret = Projection(Join(self, group, left=True), *attributes, **renamed_attributes)
+        ret.heading.set_primary_key(self.primary_key)
 
     def _restrict(self, restriction):
         """
@@ -152,7 +145,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
     def make_select(self, attribute_spec=None):
         if attribute_spec is None:
             attribute_spec = self.heading.as_sql
-        return 'SELECT ' + attribute_spec + ' FROM ' + self.from_clause + self.where_clause
+        return 'SELECT %s FROM %s%s' % (attribute_spec, self.from_clause, self.where_clause)
 
     def __len__(self):
         """
@@ -292,7 +285,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
                 raise DataJointError('invalid restriction type')
             return ' AND '.join(conditions)
 
-        condition_string = []
+        conditions = []
         for r in self.restrictions:
             negate = isinstance(r, Not)
             if negate:
@@ -303,16 +296,15 @@ class RelationalOperand(metaclass=abc.ABCMeta):
                 r = '(' + ') OR ('.join([make_condition(q) for q in r]) + ')'
             elif isinstance(r, RelationalOperand):
                 common_attributes = ','.join([q for q in self.heading.names if q in r.heading.names])
-                r = '(%s) in (SELECT %s FROM %s%s)' % (
-                    common_attributes, common_attributes, r.from_clause, r.where_clause)
+                r = '(%s) %sin (SELECT %s FROM %s%s)' % (
+                    common_attributes, "not " if negate else "",
+                    common_attributes, r.from_clause, r.where_clause)
+                negate = False
 
             assert isinstance(r, str), 'condition must be converted into a string'
-            r = '(' + r + ')'
-            if negate:
-                r = 'NOT ' + r
-            condition_string.append(r)
+            conditions.append('%s(%s)' % ('not ' if negate else '', r))
 
-        return ' WHERE ' + ' AND '.join(condition_string)
+        return ' WHERE ' + ' AND '.join(conditions)
 
     def __getitem__(self, item):
         """
@@ -362,9 +354,12 @@ class Not:
 
 
 class Join(RelationalOperand):
+    """
+    Relational join
+    """
     __counter = 0
 
-    def __init__(self, arg1, arg2):
+    def __init__(self, arg1, arg2, left=False):
         if not isinstance(arg2, RelationalOperand):
             raise DataJointError('a relation can only be joined with another relation')
         if arg1.connection != arg2.connection:
@@ -372,6 +367,7 @@ class Join(RelationalOperand):
         self._arg1 = Subquery(arg1) if arg1.heading.computed else arg1
         self._arg2 = Subquery(arg1) if arg2.heading.computed else arg2
         self._restrictions = self._arg1.restrictions + self._arg2.restrictions
+        self._left = left
 
     @property
     def connection(self):
@@ -384,21 +380,22 @@ class Join(RelationalOperand):
 
     @property
     def heading(self):
-        return self._arg1.heading + self._arg2.heading
+        return self._arg1.heading.join(self._arg2.heading, left=self._left)
 
     @property
     def from_clause(self):
-        return '%s NATURAL JOIN %s' % (self._arg1.from_clause, self._arg2.from_clause)
+        return '%s NATURAL %sJOIN %s' % (
+            self._arg1.from_clause, "LEFT " if self._left else "", self._arg2.from_clause)
 
 
 class Projection(RelationalOperand):
-    def __init__(self, arg, group=None, *attributes, **renamed_attributes):
+    def __init__(self, arg, *attributes, **renamed_attributes):
         """
         See RelationalOperand.project()
         """
+        # parse attributes in the form 'sql_expression -> new_attribute'
         alias_parser = re.compile(
             '^\s*(?P<sql_expression>\S(.*\S)?)\s*->\s*(?P<alias>[a-z][a-z_0-9]*)\s*$')
-        # expand extended attributes in the form 'sql_expression -> new_attribute'
         self._attributes = []
         self._renamed_attributes = renamed_attributes
         for attribute in attributes:
@@ -408,21 +405,13 @@ class Projection(RelationalOperand):
                 self._renamed_attributes.update({d['alias']: d['sql_expression']})
             else:
                 self._attributes.append(attribute)
-        if group is not None:
-            if arg.connection != group.connection:
-                raise DataJointError('Cannot join relations with different database connections')
-            self._group = group if not group.restrictions and not group.heading.computed else Subquery(group)
-            self._arg = arg
+
+        # enclose original query if necessary
+        if  arg.heading.computed:
+            self._arg = Subquery(arg)
         else:
-            self._group = None
-            if arg.heading.computed or\
-                    (isinstance(arg.restrictions, RelationalOperand) and \
-                    all(attr in self._attributes for attr in arg.restrictions.heading.names)) :
-                # can simply the expression because all restrictions attrs are projected out anyway!
-                self._arg = arg
-                self._restrictions = self._arg.restrictions
-            else:
-                self._arg = Subquery(arg)
+            self._arg = arg
+            self._restrictions = arg.restrictions
 
     @property
     def connection(self):
@@ -434,12 +423,7 @@ class Projection(RelationalOperand):
 
     @property
     def from_clause(self):
-        if self._group is None:
-            return self._arg.from_clause
-        else:
-            return "(%s) NATURAL LEFT JOIN (%s) GROUP BY `%s`" % (
-                self._arg.from_clause, self._group.from_clause,
-                '`,`'.join(self.heading.primary_key))
+        return self._arg.from_clause
 
     def _restrict(self, restriction):
         """
