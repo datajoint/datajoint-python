@@ -1,6 +1,7 @@
 """autopopulate containing the dj.AutoPopulate class. See `dj.AutoPopulate` for more info."""
 import abc
 import logging
+import datetime
 from .relational_operand import RelationalOperand
 from . import DataJointError
 from .relation import Relation, FreeRelation
@@ -100,5 +101,8 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         """
         total = len(self.populated_from)
         remaining = len(self.populated_from - self.target)
-        print('Completed %d of %d (%2.1f%%)' % (total - remaining, total, 100 - 100 * remaining / total)
-              if remaining else 'Complete', flush=True)
+        print('Completed %d of %d (%2.1f%%)   %s' %
+              (total - remaining, total, 100 - 100 * remaining / total,
+               datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d %H:%M:%S')
+               ) if remaining
+              else 'Complete', flush=True)
