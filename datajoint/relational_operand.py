@@ -408,12 +408,11 @@ class Projection(RelationalOperand):
                 self._renamed_attributes.update({d['alias']: d['sql_expression']})
             else:
                 self._attributes.append(attribute)
-        if group:
+        if group is not None:
             if arg.connection != group.connection:
                 raise DataJointError('Cannot join relations with different database connections')
-            # TODO: don't Subquery if not necessary (if does not have some types of restrictions)
-            self._group = Subquery(group)
-            self._arg = Subquery(arg)
+            self._group = group if not group.restrictions and not group.heading.computed else Subquery(group)
+            self._arg = arg
         else:
             self._group = None
             if arg.heading.computed or\
