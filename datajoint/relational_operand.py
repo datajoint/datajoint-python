@@ -58,6 +58,14 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         pass
 
+    @property
+    def select_fields(self):
+        """
+        :return: string specifying the attributes to return
+        """
+        return self.heading.as_sql
+
+
     # --------- relational operators -----------
 
     def __mul__(self, other):
@@ -142,10 +150,9 @@ class RelationalOperand(metaclass=abc.ABCMeta):
 
     # ------ data retrieval methods -----------
 
-    def make_select(self, attribute_spec=None):
-        if attribute_spec is None:
-            attribute_spec = self.heading.as_sql
-        return 'SELECT %s FROM %s%s' % (attribute_spec, self.from_clause, self.where_clause)
+    def make_select(self, select_fields=None):
+        return 'SELECT %s FROM %s%s' % (
+            select_fields if select_fields else self.select_fields, self.from_clause, self.where_clause)
 
     def __len__(self):
         """
@@ -368,6 +375,7 @@ class Join(RelationalOperand):
         self._arg2 = Subquery(arg1) if arg2.heading.computed else arg2
         self._restrictions = self._arg1.restrictions + self._arg2.restrictions
         self._left = left
+        self._heading = self._arg1.heading.join(self._arg2.heading, left=left)
 
     @property
     def connection(self):
@@ -380,7 +388,7 @@ class Join(RelationalOperand):
 
     @property
     def heading(self):
-        return self._arg1.heading.join(self._arg2.heading, left=self._left)
+        return self._heading
 
     @property
     def from_clause(self):
@@ -407,7 +415,7 @@ class Projection(RelationalOperand):
                 self._attributes.append(attribute)
 
         # enclose original query if necessary
-        if  arg.heading.computed:
+        if arg.heading.computed:
             self._arg = Subquery(arg)
         else:
             self._arg = arg

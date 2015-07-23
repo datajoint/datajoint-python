@@ -72,6 +72,10 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         return self.full_table_name
 
+    @property
+    def select_fields(self):
+        return '*'
+
     # ------------- dependencies ---------- #
     @property
     def parents(self):
