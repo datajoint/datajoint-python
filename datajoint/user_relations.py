@@ -93,6 +93,21 @@ class Subordinate:
 
         :raises: NotImplementedError
         """
-        raise NotImplementedError('Subtables should not be populated directly.')
+        raise NotImplementedError(
+            'This table is subordinate: it cannot be populated directly. Refer to its parent table.')
+
+    def progress(self):
+        """
+        Overrides the `progress` method because subtables should not be populated directly.
+        """
+        raise NotImplementedError(
+            'This table is subordinate: it cannot be populated directly. Refer to its parent table.')
+
+    def populate(self, *args, **kwargs):
+        raise NotImplementedError(
+            'This table is subordinate: it cannot be populated directly. Refer to its parent table.')
+
+
+
 
 
