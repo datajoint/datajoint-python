@@ -107,40 +107,16 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         ret = Projection(Join(self, group, left=True), *attributes, **renamed_attributes)
         ret.heading.set_primary_key(self.primary_key)
 
-    def _restrict(self, restriction):
-        """
-        in-place relational restriction or semijoin
-        """
-        if restriction is not None:
-            if self._restrictions is None:
-                self._restrictions = []
-            if isinstance(restriction, list):
-                self._restrictions.extend(restriction)
-            else:
-                self._restrictions.append(restriction)
-        return self
-
-    def __iand__(self, restriction):
-        """
-        in-place relational restriction or semijoin
-        """
-        return self._restrict(restriction)
-
     def __and__(self, restriction):
         """
         relational restriction or semijoin
         """
+        if not restriction:
+            return self
         ret = copy(self)
         ret._restrictions = list(ret.restrictions)  # copy restriction list
-        ret &= restriction
+        ret._restrictions.append(restriction)
         return ret
-
-    def __isub__(self, restriction):
-        """
-        in-place antijoin (inverted restriction)
-        """
-        self &= Not(restriction)
-        return self
 
     def __sub__(self, restriction):
         """
@@ -433,14 +409,12 @@ class Projection(RelationalOperand):
     def from_clause(self):
         return self._arg.from_clause
 
-    def _restrict(self, restriction):
+    def __and__(self, restriction):
         """
-        Projection is enclosed in Subquery when restricted if it has renamed attributes
+        When projection has renamed attributes, it must be enclosed in a subquery before restriction
         """
-        if self.heading.computed:
-            return Subquery(self) & restriction
-        else:
-            return super()._restrict(restriction)
+        if restriction:
+            return Subquery(self) & restriction if self.heading.computed else super().__and__(restriction)
 
 
 class Subquery(RelationalOperand):
