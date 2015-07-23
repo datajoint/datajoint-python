@@ -69,7 +69,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         jobs = self.connection.jobs[self.target.database]
         table_name = self.target.table_name
         unpopulated = (self.populated_from - self.target) & restriction
-        for key in unpopulated.project():
+        for key in unpopulated.fetch.keys():
             if not reserve_jobs or jobs.reserve(table_name, key):
                 self.connection.start_transaction()
                 if key in self.target:  # already populated
