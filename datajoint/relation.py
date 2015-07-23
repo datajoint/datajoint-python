@@ -1,5 +1,4 @@
-from collections.abc import Mapping
-from collections import defaultdict
+from collections import Mapping
 import numpy as np
 import logging
 import abc
@@ -198,21 +197,19 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         User is prompted for confirmation if config['safemode']
         """
         relations = self.descendants
-        #if self.restrictions and len(relations)>1:
-        #    raise NotImplementedError('Restricted cascading deletes are not yet implemented')
-        restrict_by_me = defaultdict(lambda: False)
+        restrict_by_me = set()
         rel_by_name = {r.full_table_name:r for r in relations}
         for r in relations:
             for ref in r.references:
-                restrict_by_me[ref] = True
+                restrict_by_me.add(ref)
 
-        if self.restrictions is not None:
-            restrict_by_me[self.full_table_name] = True
-            rel_by_name[self.full_table_name]._restrict(self.restrictions)
+        if self.restrictions:
+            restrict_by_me.add(self.full_table_name)
+            rel_by_name[self.full_table_name] &= self.restrictions
 
         for r in relations:
             for dep in (r.children + r.references):
-                rel_by_name[dep]._restrict(r.project() if restrict_by_me[r.full_table_name] else r.restrictions)
+                rel_by_name[dep] &= r.project() if r.full_table_name in restrict_by_me else r.restrictions
 
         if config['safemode']:
             do_delete = False # indicate if there is anything to delete

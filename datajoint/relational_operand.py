@@ -115,7 +115,10 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             return self
         ret = copy(self)
         ret._restrictions = list(ret.restrictions)  # copy restriction list
-        ret._restrictions.append(restriction)
+        if isinstance(restriction, list):
+            ret._restricitons.extend(restriction)
+        else:
+            ret._restrictions.append(restriction)
         return ret
 
     def __sub__(self, restriction):
