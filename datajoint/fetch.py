@@ -1,8 +1,11 @@
 from collections import OrderedDict
+import itertools
 from .blob import unpack
 import numpy as np
 from datajoint import DataJointError
 from . import key as PRIMARY_KEY
+from collections import abc
+
 
 def prepare_attributes(relation, item):
     if isinstance(item, str) or item is PRIMARY_KEY:
@@ -20,43 +23,35 @@ def prepare_attributes(relation, item):
         raise DataJointError("Index must be a slice, a tuple, a list, a string.")
     return item, attributes
 
-class FetchQuery:
 
+class Fetch:
     def __init__(self, relation):
         """
 
         """
+
         self.behavior = dict(
-            offset=0, limit=None, order_by=None, descending=False, as_dict=False, map=None
+            offset=0, limit=None, order_by=None, as_dict=False
         )
         self._relation = relation
-
 
     def from_to(self, fro, to):
         self.behavior['offset'] = fro
         self.behavior['limit'] = to - fro
         return self
 
-    def order_by(self, order_by):
-        self.behavior['order_by'] = order_by
+    def order_by(self, *args):
+
+        if len(args) > 0:
+            self.behavior['order_by'] = self.behavior['order_by'] if self.behavior['order_by'] is not None else []
+            self.behavior['order_by'].extend(args)
         return self
 
     def as_dict(self):
         self.behavior['as_dict'] = True
 
-    def ascending(self):
-        self.behavior['descending'] = False
-        return self
 
-    def descending(self):
-        self.behavior['descending'] = True
-        return self
-
-    def apply(self, f):
-        self.behavior['map'] = f
-        return self
-
-    def limit_by(self, limit):
+    def limit_to(self, limit):
         self.behavior['limit'] = limit
         return self
 
@@ -78,9 +73,7 @@ class FetchQuery:
         """
         behavior = dict(self.behavior, **kwargs)
 
-        cur = self._relation.cursor(offset=behavior['offset'], limit=behavior['limit'],
-                                    order_by=behavior['order_by'], descending=behavior['descending'],
-                                    as_dict=behavior['as_dict'])
+        cur = self._relation.cursor(**behavior)
 
         heading = self._relation.heading
         if behavior['as_dict']:
@@ -92,22 +85,15 @@ class FetchQuery:
             for blob_name in heading.blobs:
                 ret[blob_name] = list(map(unpack, ret[blob_name]))
 
-        if behavior['map'] is not None:
-            f = behavior['map']
-            for i in range(len(ret)):
-                ret[i] = f(ret[i])
-
         return ret
 
     def __iter__(self):
         """
         Iterator that returns the contents of the database.
         """
-        behavior = self.behavior
+        behavior = dict(self.behavior)
 
-        cur = self._relation.cursor(offset=behavior['offset'], limit=behavior['limit'],
-                                    order_by=behavior['order_by'], descending=behavior['descending'],
-                                    as_dict=behavior['as_dict'])
+        cur = self._relation.cursor(**behavior)
 
         heading = self._relation.heading
         do_unpack = tuple(h in heading.blobs for h in heading.names)
@@ -126,10 +112,10 @@ class FetchQuery:
         """
         Iterator that returns primary keys.
         """
+        b = dict(self.behavior, **kwargs)
         if 'as_dict' not in kwargs:
-            kwargs['as_dict'] = True
-        yield from self._relation.project().fetch.set_behavior(**kwargs)
-
+            b['as_dict'] = True
+        yield from self._relation.project().fetch.set_behavior(**b)
 
     def __getitem__(self, item):
         """
@@ -146,7 +132,7 @@ class FetchQuery:
         single_output = isinstance(item, str) or item is PRIMARY_KEY or isinstance(item, int)
         item, attributes = prepare_attributes(self._relation, item)
 
-        result = self._relation.project(*attributes).fetch()
+        result = self._relation.project(*attributes).fetch(**self.behavior)
         return_values = [
             np.ndarray(result.shape,
                        np.dtype({name: result.dtype.fields[name] for name in self._relation.primary_key}),
@@ -158,8 +144,7 @@ class FetchQuery:
         return return_values[0] if single_output else return_values
 
 
-class Fetch1Query:
-
+class Fetch1:
     def __init__(self, relation):
         self._relation = relation
 
