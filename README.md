@@ -1,8 +1,9 @@
 [![Build Status](https://travis-ci.org/eywalker/datajoint-python.svg?branch=master)](https://travis-ci.org/eywalker/datajoint-python)
 [![Coverage Status](https://coveralls.io/repos/datajoint/datajoint-python/badge.svg?branch=master&service=github)](https://coveralls.io/github/datajoint/datajoint-python?branch=master)
-[![Join the chat at https://gitter.im/datajoint/datajoint-python](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/datajoint/datajoint-python?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![PyPI version](https://badge.fury.io/py/datajoint.svg)](http://badge.fury.io/py/datajoint)
 [![Requirements Status](https://requires.io/github/datajoint/datajoint-python/requirements.svg?branch=master)](https://requires.io/github/datajoint/datajoint-python/requirements/?branch=master)
+[![Documentation Status](https://readthedocs.org/projects/datajoint-python/badge/?version=latest)](https://readthedocs.org/projects/datajoint-python/?badge=latest)
+[![Join the chat at https://gitter.im/datajoint/datajoint-python](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/datajoint/datajoint-python?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 # Welcome to DataJoint for Python!
 The Python version of DataJoint is undergoing major revamping to match the features and capabilities of its more mature MATLAB counterpart. We expect to complete the revamp within a few weeks: August -- September, 2015.
