@@ -6,7 +6,6 @@ This module hosts the Connection class that manages the connection to the mysql 
 from contextlib import contextmanager
 import pymysql
 import logging
-from collections import defaultdict
 from . import config
 from . import DataJointError
 from .erd import ERM

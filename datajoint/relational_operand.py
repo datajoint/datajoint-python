@@ -1,13 +1,11 @@
 import numpy as np
 import abc
 import re
-from collections import OrderedDict
 from copy import copy
 import logging
 from . import config
-from . import key as PRIMARY_KEY
 from . import DataJointError
-from .blob import unpack
+from .fetch import FetchQuery, Fetch1Query
 
 logger = logging.getLogger(__name__)
 
@@ -188,71 +186,11 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         return repr_string
 
     def fetch1(self):
-        """
-        This version of fetch is called when self is expected to contain exactly one tuple.
-        :return: the one tuple in the relation in the form of a dict
-        """
-        heading = self.heading
-        cur = self.cursor(as_dict=True)
-        ret = cur.fetchone()
-        if not ret or cur.fetchone():
-            raise DataJointError('fetch1 should only be used for relations with exactly one tuple')
-        return OrderedDict((name, unpack(ret[name]) if heading[name].is_blob else ret[name])
-                           for name in self.heading.names)
+        return Fetch1Query(self)
 
-    def fetch(self, offset=0, limit=None, order_by=None, descending=False, as_dict=False):
-        """
-        fetches the relation from the database table into an np.array and unpacks blob attributes.
-        :param offset: the number of tuples to skip in the returned result
-        :param limit: the maximum number of tuples to return
-        :param order_by: the list of attributes to order the results. No ordering should be assumed if order_by=None.
-        :param descending: the list of attributes to order the results
-        :param as_dict: returns a list of dictionaries instead of a record array
-        :return: the contents of the relation in the form of a structured numpy.array
-        """
-        cur = self.cursor(offset=offset, limit=limit, order_by=order_by,
-                          descending=descending, as_dict=as_dict)
-        heading = self.heading
-        if as_dict:
-            ret = [OrderedDict((name, unpack(d[name]) if heading[name].is_blob else d[name])
-                               for name in self.heading.names)
-                   for d in cur.fetchall()]
-        else:
-            ret = np.array(list(cur.fetchall()), dtype=heading.as_dtype)
-            for blob_name in heading.blobs:
-                ret[blob_name] = list(map(unpack, ret[blob_name]))
-        return ret
-
-    def values(self, offset=0, limit=None, order_by=None, descending=False, as_dict=False):
-        """
-        Iterator that returns the contents of the database.
-        """
-        cur = self.cursor(offset=offset, limit=limit, order_by=order_by,
-                          descending=descending, as_dict=as_dict)
-        heading = self.heading
-        do_unpack = tuple(h in heading.blobs for h in heading.names)
-        values = cur.fetchone()
-        while values:
-            if as_dict:
-                yield OrderedDict(
-                    (field_name, unpack(values[field_name])) if up
-                    else (field_name, values[field_name])
-                    for field_name, up in zip(heading.names, do_unpack))
-            else:
-                yield tuple(unpack(value) if up else value for up, value in zip(do_unpack, values))
-            values = cur.fetchone()
-
-    def __iter__(self):
-        """
-        Iterator that yields individual tuples of the current table dictionaries.
-        """
-        yield from self.values(as_dict=True)
-
-    def keys(self, *args, **kwargs):
-        """
-        Iterator that returns primary keys.
-        """
-        yield from self.project().values(*args, **kwargs)
+    @property
+    def fetch(self):
+        return FetchQuery(self)
 
     @property
     def where_clause(self):
@@ -291,43 +229,6 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             conditions.append('%s(%s)' % ('not ' if negate else '', r))
 
         return ' WHERE ' + ' AND '.join(conditions)
-
-    def __getitem__(self, item):
-        """
-        Fetch attributes as separate outputs.
-        datajoint.key is a special value that requests the entire primary key
-        :return: tuple with an entry for each element of item
-
-        Examples:
-        a, b = relation['a', 'b']
-        a, b, key = relation['a', 'b', datajoint.key]
-        results = relation['a':'z']    # return attributes a-z as a tuple
-        results = relation[:-1]   # return all but the last attribute
-        """
-        single_output = isinstance(item, str) or item is PRIMARY_KEY or isinstance(item, int)
-        if isinstance(item, str) or item is PRIMARY_KEY:
-            item = (item,)
-        elif isinstance(item, int):
-            item = (self.heading.names[item],)
-        elif isinstance(item, slice):
-            attributes = self.heading.names
-            start = attributes.index(item.start) if isinstance(item.start, str) else item.start
-            stop = attributes.index(item.stop) if isinstance(item.stop, str) else item.stop
-            item = attributes[slice(start, stop, item.step)]
-        try:
-            attributes = tuple(i for i in item if i is not PRIMARY_KEY)
-        except TypeError:
-            raise DataJointError("Index must be a slice, a tuple, a list, a string.")
-        result = self.project(*attributes).fetch()
-        return_values = [
-            np.ndarray(result.shape,
-                       np.dtype({name: result.dtype.fields[name] for name in self.primary_key}),
-                       result, 0, result.strides)
-            if attribute is PRIMARY_KEY
-            else result[attribute]
-            for attribute in item
-            ]
-        return return_values[0] if single_output else return_values
 
 
 class Not:
