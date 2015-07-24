@@ -181,18 +181,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             raise DataJointError('limit is required when offset is set')
         sql = self.make_select()
         if order_by is not None:
-            order_attr, order = [], []
-            for a in order_by:
-                a = [e.strip() for e in a.split('=')]
-                if len(a) == 1:
-                    order_attr.append(a[0])
-                    order.append('ASC')
-                else:
-                    order_attr.append(a[0])
-                    order.append(a[1])
-
-            sql += ' ORDER BY ' + ', '.join(['`%s` %s' % (attr, val) for attr, val in
-                                            zip(order_attr, order)])
+            sql += ' ORDER BY ' + ', '.join(order_by)
 
         if limit is not None:
             sql += ' LIMIT %d' % limit

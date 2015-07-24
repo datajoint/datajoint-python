@@ -40,7 +40,7 @@ class TestFetch:
         langs = schema.Language.contents
 
         for ord_name, ord_lang in itertools.product(*2 * [['ASC', 'DESC']]):
-            cur = self.lang.fetch.order_by('name=' + ord_name, 'language=' + ord_lang)()
+            cur = self.lang.fetch.order_by('name ' + ord_name, 'language ' + ord_lang)()
             langs.sort(key=itemgetter(2), reverse=ord_lang == 'DESC')
             langs.sort(key=itemgetter(1), reverse=ord_name == 'DESC')
             for c, l in zip(cur, langs):
@@ -50,7 +50,7 @@ class TestFetch:
         """Tests order_by sorting order with defaults"""
         langs = schema.Language.contents
 
-        cur = self.lang.fetch.order_by('language', 'name=DESC')()
+        cur = self.lang.fetch.order_by('language', 'name DESC')()
         langs.sort(key=itemgetter(1), reverse=True)
         langs.sort(key=itemgetter(2), reverse=False)
 
@@ -61,7 +61,7 @@ class TestFetch:
         """Tests order_by sorting order passing it to __call__"""
         langs = schema.Language.contents
 
-        cur = self.lang.fetch(order_by=['language', 'name=DESC'])
+        cur = self.lang.fetch(order_by=['language', 'name DESC'])
         langs.sort(key=itemgetter(1), reverse=True)
         langs.sort(key=itemgetter(2), reverse=False)
         for c, l in zip(cur, langs):
@@ -71,7 +71,7 @@ class TestFetch:
         """Test the limit_to function """
         langs = schema.Language.contents
 
-        cur = self.lang.fetch.limit_to(4)(order_by=['language', 'name=DESC'])
+        cur = self.lang.fetch.limit_to(4)(order_by=['language', 'name DESC'])
         langs.sort(key=itemgetter(1), reverse=True)
         langs.sort(key=itemgetter(2), reverse=False)
         assert_equal(len(cur), 4, 'Length is not correct')
@@ -82,7 +82,7 @@ class TestFetch:
         """Test the from_to function """
         langs = schema.Language.contents
 
-        cur = self.lang.fetch.from_to(2, 6)(order_by=['language', 'name=DESC'])
+        cur = self.lang.fetch.from_to(2, 6)(order_by=['language', 'name DESC'])
         langs.sort(key=itemgetter(1), reverse=True)
         langs.sort(key=itemgetter(2), reverse=False)
         assert_equal(len(cur), 4, 'Length is not correct')
@@ -93,7 +93,7 @@ class TestFetch:
         """Test iterator"""
         langs = schema.Language.contents
 
-        cur = self.lang.fetch.order_by('language', 'name=DESC')
+        cur = self.lang.fetch.order_by('language', 'name DESC')
         langs.sort(key=itemgetter(1), reverse=True)
         langs.sort(key=itemgetter(2), reverse=False)
         for (_, name, lang), (_, tname, tlang) in list(zip(cur, langs)):
@@ -105,8 +105,8 @@ class TestFetch:
         langs.sort(key=itemgetter(1), reverse=True)
         langs.sort(key=itemgetter(2), reverse=False)
 
-        cur = self.lang.fetch.order_by('language', 'name=DESC')['entry_id']
-        cur2 = [e['entry_id'] for e in self.lang.fetch.order_by('language', 'name=DESC').keys()]
+        cur = self.lang.fetch.order_by('language', 'name DESC')['entry_id']
+        cur2 = [e['entry_id'] for e in self.lang.fetch.order_by('language', 'name DESC').keys()]
 
         keys, _, _ = list(zip(*langs))
         for k, c, c2 in zip(keys, cur, cur2):
@@ -128,6 +128,6 @@ class TestFetch:
 
     def test_overwrite(self):
         """Test whether order_by overwrites duplicates"""
-        f = self.lang.fetch.order_by('name =   DeSc ')
+        f = self.lang.fetch.order_by('name    DeSc ')
         f2 = f.order_by('name')
         assert_true(f2.behavior['order_by'] == ['name'], 'order_by attribute was not overwritten')

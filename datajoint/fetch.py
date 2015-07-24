@@ -56,9 +56,10 @@ class Fetch:
     def order_by(self, *args):
         if len(args) > 0:
             self.behavior['order_by'] = self.behavior['order_by'] if self.behavior['order_by'] is not None else []
+            namepat = re.compile(r"\s*(?P<name>\w+).*")
             for a in args: # remove duplicates
-                name = a.split('=')[0].strip()
-                pat = re.compile(r"%s\s*(=\s*(DESC|ASC)\s*|)?$" % (name,), re.I)
+                name = namepat.match(a).group('name')
+                pat = re.compile(r"%s(\s*$|\s+(\S*\s*)*$)" % (name,))
                 self.behavior['order_by'] = [e for e in self.behavior['order_by'] if not pat.match(e)]
             self.behavior['order_by'].extend(args)
         return self
