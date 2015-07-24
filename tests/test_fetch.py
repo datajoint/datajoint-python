@@ -119,3 +119,15 @@ class TestFetch:
         dat = (self.lang & key).fetch1()
         for k, (ke, c) in zip(true, dat.items()):
             assert_true(k == c == (self.lang & key).fetch1[ke], 'Values are not the same')
+
+    def test_copy(self):
+        """Test whether modifications copy the object"""
+        f = self.lang.fetch
+        f2 = f.order_by('name')
+        assert_true(f.behavior['order_by'] is None and len(f2.behavior['order_by']) == 1, 'Object was not copied')
+
+    def test_overwrite(self):
+        """Test whether order_by overwrites duplicates"""
+        f = self.lang.fetch.order_by('name =   DeSc ')
+        f2 = f.order_by('name')
+        assert_true(f2.behavior['order_by'] == ['name'], 'order_by attribute was not overwritten')

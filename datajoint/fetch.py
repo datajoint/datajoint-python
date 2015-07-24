@@ -1,5 +1,7 @@
 from collections import OrderedDict
+from functools import wraps
 import itertools
+import re
 from .blob import unpack
 import numpy as np
 from datajoint import DataJointError
@@ -23,38 +25,56 @@ def prepare_attributes(relation, item):
         raise DataJointError("Index must be a slice, a tuple, a list, a string.")
     return item, attributes
 
+def copy_first(f):
+    @wraps(f)
+    def ret(*args, **kwargs):
+        args = list(args)
+        args[0] = args[0].__class__(args[0]) # call copy constructor
+        return f(*args, **kwargs)
+
+    return ret
 
 class Fetch:
     def __init__(self, relation):
-        """
+        if isinstance(relation, Fetch): # copy constructor
+            self.behavior = dict(relation.behavior)
+            self._relation = relation._relation
+        else:
+            self.behavior = dict(
+                offset=0, limit=None, order_by=None, as_dict=False
+            )
+            self._relation = relation
 
-        """
 
-        self.behavior = dict(
-            offset=0, limit=None, order_by=None, as_dict=False
-        )
-        self._relation = relation
-
+    @copy_first
     def from_to(self, fro, to):
         self.behavior['offset'] = fro
         self.behavior['limit'] = to - fro
         return self
 
+    @copy_first
     def order_by(self, *args):
-
         if len(args) > 0:
             self.behavior['order_by'] = self.behavior['order_by'] if self.behavior['order_by'] is not None else []
+            for a in args: # remove duplicates
+                name = a.split('=')[0].strip()
+                pat = re.compile(r"%s\s*(=\s*(DESC|ASC)\s*|)?$" % (name,), re.I)
+                self.behavior['order_by'] = [e for e in self.behavior['order_by'] if not pat.match(e)]
             self.behavior['order_by'].extend(args)
         return self
 
+    @copy_first
     def as_dict(self):
         self.behavior['as_dict'] = True
+        return self
 
 
+    @copy_first
     def limit_to(self, limit):
         self.behavior['limit'] = limit
         return self
 
+    @copy_first
     def set_behavior(self, **kwargs):
         self.behavior.update(kwargs)
         return self
