@@ -102,8 +102,8 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         if not isinstance(group, RelationalOperand):
             raise DataJointError('The second argument must be a relation')
-        ret = Projection(Join(self, group, left=True), *attributes, **renamed_attributes)
-        ret.heading.set_primary_key(self.primary_key)
+        return Projection(Join(self, group, left=True), *attributes,
+                          _aggregate=True, **renamed_attributes)
 
     def __and__(self, restriction):
         """
@@ -185,6 +185,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         repr_string += ' (%d tuples)\n' % len(self)
         return repr_string
 
+    @property
     def fetch1(self):
         return Fetch1Query(self)
 
@@ -276,7 +277,7 @@ class Join(RelationalOperand):
 
 
 class Projection(RelationalOperand):
-    def __init__(self, arg, *attributes, **renamed_attributes):
+    def __init__(self, arg, *attributes, _aggregate=False, **renamed_attributes):
         """
         See RelationalOperand.project()
         """
@@ -292,6 +293,7 @@ class Projection(RelationalOperand):
                 self._renamed_attributes.update({d['alias']: d['sql_expression']})
             else:
                 self._attributes.append(attribute)
+        self._aggregate = _aggregate
 
         # enclose original query if necessary
         if arg.heading.computed:
@@ -310,7 +312,8 @@ class Projection(RelationalOperand):
 
     @property
     def from_clause(self):
-        return self._arg.from_clause
+        return self._arg.from_clause + (
+            ' GROUP BY (`%s`)' % '`,`'.join(self.primary_key) if self._aggregate else '')
 
     def __and__(self, restriction):
         """
