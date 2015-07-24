@@ -286,8 +286,8 @@ class RelationalOperand(metaclass=abc.ABCMeta):
                     common_attributes, "not " if negate else "",
                     common_attributes, r.from_clause, r.where_clause)
                 negate = False
-
-            assert isinstance(r, str), 'condition must be converted into a string'
+            if not isinstance(r, str):
+                raise DataJointError('Invalid restriction object')
             conditions.append('%s(%s)' % ('not ' if negate else '', r))
 
         return ' WHERE ' + ' AND '.join(conditions)
@@ -334,7 +334,6 @@ class Not:
     """
     inverse restriction
     """
-
     def __init__(self, restriction):
         self.restriction = restriction
 
