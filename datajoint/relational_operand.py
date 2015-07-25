@@ -63,6 +63,9 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         return self.heading.as_sql
 
+    @property
+    def _grouped(self):
+        return False
 
     # --------- relational operators -----------
 
@@ -102,8 +105,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         if not isinstance(group, RelationalOperand):
             raise DataJointError('The second argument must be a relation')
-        return Projection(Join(self, group, left=True), *attributes,
-                          _aggregate=True, **renamed_attributes)
+        return Aggregation(Join(self, group, left=True), *attributes, **renamed_attributes)
 
     def __and__(self, restriction):
         """
@@ -128,8 +130,12 @@ class RelationalOperand(metaclass=abc.ABCMeta):
     # ------ data retrieval methods -----------
 
     def make_select(self, select_fields=None):
-        return 'SELECT %s FROM %s%s' % (
-            select_fields if select_fields else self.select_fields, self.from_clause, self.where_clause)
+        return 'SELECT {fields} FROM {from_}{where}{group}'.format(
+            fields=select_fields if select_fields else self.select_fields,
+            from_=self.from_clause,
+            where=self.where_clause,
+            group=' GROUP BY (`%s`)' % '`,`'.join(self.primary_key) if self._grouped else ''
+            )
 
     def __len__(self):
         """
@@ -312,8 +318,7 @@ class Projection(RelationalOperand):
 
     @property
     def from_clause(self):
-        return self._arg.from_clause + (
-            ' GROUP BY (`%s`)' % '`,`'.join(self.primary_key) if self._aggregate else '')
+        return self._arg.from_clause
 
     def __and__(self, restriction):
         """
@@ -321,6 +326,12 @@ class Projection(RelationalOperand):
         """
         if restriction:
             return Subquery(self) & restriction if self.heading.computed else super().__and__(restriction)
+
+
+class Aggregation(Projection):
+    @property
+    def _grouped(self):
+        return True
 
 
 class Subquery(RelationalOperand):
