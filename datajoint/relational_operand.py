@@ -152,12 +152,6 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         return len(self & item) > 0
 
-    def __call__(self, *args, **kwargs):
-        """
-        calling a relation is equivalent to fetching from it
-        """
-        return self.fetch(*args, **kwargs)
-
     def cursor(self, offset=0, limit=None, order_by=None, descending=False, as_dict=False):
         """
         Return query cursor.
