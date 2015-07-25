@@ -5,12 +5,12 @@ classes for relational algebra
 import numpy as np
 import abc
 import re
-from collections import OrderedDict
 from copy import copy
-from datajoint import DataJointError, config
+from . import config
+from . import DataJointError
 import logging
 
-from .blob import unpack
+from .fetch import Fetch, Fetch1
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +111,10 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         if restriction is not None:
             if self._restrictions is None:
                 self._restrictions = []
-            self._restrictions.append(restriction)
+            if isinstance(restriction, list):
+                self._restrictions.extend(restriction)
+            else:
+                self._restrictions.append(restriction)
         return self
 
     def __iand__(self, restriction):
@@ -168,7 +171,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         return self.fetch(*args, **kwargs)
 
-    def cursor(self, offset=0, limit=None, order_by=None, descending=False, as_dict=False):
+    def cursor(self, offset=0, limit=None, order_by=None, as_dict=False):
         """
         Return query cursor.
         See Relation.fetch() for input description.
@@ -179,8 +182,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         sql = self.make_select()
         if order_by is not None:
             sql += ' ORDER BY ' + ', '.join(order_by)
-            if descending:
-                sql += ' DESC'
+
         if limit is not None:
             sql += ' LIMIT %d' % limit
             if offset:
@@ -203,72 +205,13 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         repr_string += ' (%d tuples)\n' % len(self)
         return repr_string
 
+    @property
     def fetch1(self):
-        """
-        This version of fetch is called when self is expected to contain exactly one tuple.
-        :return: the one tuple in the relation in the form of a dict
-        """
-        heading = self.heading
-        cur = self.cursor(as_dict=True)
-        ret = cur.fetchone()
-        if not ret or cur.fetchone():
-            raise DataJointError('fetch1 should only be used for relations with exactly one tuple')
-        return OrderedDict((name, unpack(ret[name]) if heading[name].is_blob else ret[name])
-                           for name in self.heading.names)
+        return Fetch1(self)
 
-    def fetch(self, offset=0, limit=None, order_by=None, descending=False, as_dict=False):
-        """
-        fetches the relation from the database table into an np.array and unpacks blob attributes.
-        :param offset: the number of tuples to skip in the returned result
-        :param limit: the maximum number of tuples to return
-        :param order_by: the list of attributes to order the results. No ordering should be assumed if order_by=None.
-        :param descending: the list of attributes to order the results
-        :param as_dict: returns a list of dictionaries instead of a record array
-        :return: the contents of the relation in the form of a structured numpy.array
-        """
-        cur = self.cursor(offset=offset, limit=limit, order_by=order_by,
-                          descending=descending, as_dict=as_dict)
-        heading = self.heading
-        if as_dict:
-            ret = [OrderedDict((name, unpack(d[name]) if heading[name].is_blob else d[name])
-                               for name in self.heading.names)
-                   for d in cur.fetchall()]
-        else:
-            ret = np.array(list(cur.fetchall()), dtype=heading.as_dtype)
-            for blob_name in heading.blobs:
-                ret[blob_name] = list(map(unpack, ret[blob_name]))
-        return ret
-
-    def values(self, offset=0, limit=None, order_by=None, descending=False, as_dict=False):
-        """
-        Iterator that returns the contents of the database.
-        """
-        cur = self.cursor(offset=offset, limit=limit, order_by=order_by,
-                          descending=descending, as_dict=as_dict)
-        heading = self.heading
-        do_unpack = tuple(h in heading.blobs for h in heading.names)
-        values = cur.fetchone()
-        while values:
-            if as_dict:
-                yield OrderedDict((field_name, unpack(values[field_name])) if up else (field_name, values[field_name])
-                                  for field_name, up in zip(heading.names, do_unpack))
-
-            else:
-                yield tuple(unpack(value) if up else value for up, value in zip(do_unpack, values))
-
-            values = cur.fetchone()
-
-    def __iter__(self):
-        """
-        Iterator that yields individual tuples of the current table dictionaries.
-        """
-        yield from self.values(as_dict=True)
-
-    def keys(self, *args, **kwargs):
-        """
-        Iterator that returns primary keys.
-        """
-        yield from self.project().values(*args, **kwargs)
+    @property
+    def fetch(self):
+        return Fetch(self)
 
     @property
     def where_clause(self):
@@ -308,24 +251,6 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             condition_string.append(r)
 
         return ' WHERE ' + ' AND '.join(condition_string)
-
-
-    def __getitem__(self, item):
-        if isinstance(item, str):
-            return self.project(item)
-        elif isinstance(item, dict):
-            return self.project(**item)
-        elif isinstance(item, list) or isinstance(item, tuple):
-            return self.project(*item)
-        elif isinstance(item, slice):
-            tmp = list(self.heading.attributes.keys())
-            start = tmp.index(item.start) if isinstance(item.start, str) else item.start
-            stop = tmp.index(item.stop) if isinstance(item.stop, str) else item.stop
-            item = slice(start, stop, item.step)
-            return self.project(*tmp[item])
-        elif isinstance(item, int):
-            return self.project(list(self.heading.attributes.keys())[item])
-
 
 
 class Not:
@@ -392,12 +317,14 @@ class Projection(RelationalOperand):
             self._arg = Subquery(arg)
         else:
             self._group = None
-            if arg.heading.computed:
-                self._arg = Subquery(arg)
-            else:
-                # project without subquery
+            if arg.heading.computed or \
+                    (isinstance(arg.restrictions, RelationalOperand) and \
+                             all(attr in self._attributes for attr in arg.restrictions.heading.names)):
+                # can simply the expression because all restrictions attrs are projected out anyway!
                 self._arg = arg
                 self._restrictions = self._arg.restrictions
+            else:
+                self._arg = Subquery(arg)
 
     @property
     def connection(self):

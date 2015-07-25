@@ -1,28 +1,37 @@
+from matplotlib import transforms
+
+import numpy as np
+
 import logging
-import pyparsing as pp
 import re
+from collections import defaultdict
+import pyparsing as pp
 import networkx as nx
 from networkx import DiGraph
 from networkx import pygraphviz_layout
-import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import transforms
-from collections import defaultdict
-
 from . import DataJointError
-
+from .utils import to_camel_case
 
 logger = logging.getLogger(__name__)
 
 
-class ERD:
-    _checked_dependencies = set()
-    _parents = dict()
-    _referenced = dict()
-    _children = defaultdict(list)
-    _references = defaultdict(list)
+class ERM:
+    """
+    Entity Relation Map
 
-    def load_dependencies(self, connection, full_table_name):
+    Represents known relation between tables
+    """
+    # _checked_dependencies = set()
+
+    def __init__(self, conn):
+        self._conn = conn
+        self._parents = dict()
+        self._referenced = dict()
+        self._children = defaultdict(list)
+        self._references = defaultdict(list)
+
+    def load_dependencies(self, full_table_name):
         # check if already loaded.  Use clear_dependencies before reloading
         if full_table_name in self._parents:
             return
@@ -30,10 +39,10 @@ class ERD:
         self._referenced[full_table_name] = list()
 
         # fetch the CREATE TABLE statement
-        cur = connection.query('SHOW CREATE TABLE %s' % full_table_name)
+        cur = self._conn.query('SHOW CREATE TABLE %s' % full_table_name)
         create_statement = cur.fetchone()
         if not create_statement:
-            raise DataJointError('Could not load the definition table %s' % full_table_name)
+            raise DataJointError('Could not load the definition for %s' % full_table_name)
         create_statement = create_statement[1].split('\n')
 
         # build foreign key fk_parser
@@ -125,20 +134,6 @@ class ERD:
 
         recurse(full_table_name, 0)
         return sorted(ret.keys(), key=ret.__getitem__)
-
-
-def to_camel_case(s):
-    """
-    Convert names with under score (_) separation
-    into camel case names.
-    Example:
-    >>>to_camel_case("table_name")
-        "TableName"
-    """
-    def to_upper(match):
-        return match.group(0)[-1].upper()
-    return re.sub('(^|[_\W])+[a-zA-Z]', to_upper, s)
-
 
 
 class RelGraph(DiGraph):

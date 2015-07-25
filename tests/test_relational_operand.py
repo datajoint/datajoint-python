@@ -1,3 +1,10 @@
+from operator import itemgetter
+from numpy.testing import assert_array_equal
+import numpy as np
+
+from . import schema
+import datajoint as dj
+
 # """
 # Collection of test cases to test relational methods
 # """
@@ -45,3 +52,4 @@
 #
 #     def test_not(self):
 #         pass
+

@@ -1,9 +1,11 @@
 from collections.abc import Mapping
+from collections import defaultdict
 import numpy as np
 import logging
 import abc
 
-from . import DataJointError, config
+from . import config
+from . import DataJointError
 from .declare import declare
 from .relational_operand import RelationalOperand
 from .blob import pack
@@ -48,7 +50,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
     @property
     def heading(self):
         """
-        Get the table headng.
+        Get the table heading.
         If the table is not declared, attempts to declare it and return heading.
         :return:
         """
@@ -59,7 +61,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
                 self.connection.query(
                     declare(self.full_table_name, self.definition, self._context))
             if self.is_declared:
-                self.connection.erd.load_dependencies(self.connection, self.full_table_name)
+                self.connection.erm.load_dependencies(self.full_table_name)
                 self._heading.init_from_database(self.connection, self.database, self.table_name)
         return self._heading
 
@@ -73,19 +75,25 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
     # ------------- dependencies ---------- #
     @property
     def parents(self):
-        return self.connection.erd.parents[self.full_table_name]
+        return self.connection.erm.parents[self.full_table_name]
 
     @property
     def children(self):
-        return self.connection.erd.children[self.full_table_name]
+        return self.connection.erm.children[self.full_table_name]
 
     @property
     def references(self):
-        return self.connection.erd.references[self.full_table_name]
+        """
+        :return: list of tables that this tables refers to
+        """
+        return self.connection.erm.references[self.full_table_name]
 
     @property
     def referenced(self):
-        return self.connection.erd.referenced[self.full_table_name]
+        """
+        :return: list of tables for which this table is referenced by
+        """
+        return self.connection.erm.referenced[self.full_table_name]
 
     @property
     def descendants(self):
@@ -95,7 +103,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         This is helpful for cascading delete or drop operations.
         """
         relations = (FreeRelation(self.connection, table)
-                     for table in self.connection.erd.get_descendants(self.full_table_name))
+                     for table in self.connection.erm.get_descendants(self.full_table_name))
         return [relation for relation in relations if relation.is_declared]
 
     # --------- SQL functionality --------- #
@@ -186,22 +194,35 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         User is prompted for confirmation if config['safemode']
         """
         relations = self.descendants
-        if self.restrictions and len(relations)>1:
-            raise NotImplementedError('Restricted cascading deletes are not yet implemented')
-        do_delete = True
+        #if self.restrictions and len(relations)>1:
+        #    raise NotImplementedError('Restricted cascading deletes are not yet implemented')
+        restrict_by_me = defaultdict(lambda: False)
+        rel_by_name = {r.full_table_name:r for r in relations}
+        for r in relations:
+            for ref in r.references:
+                restrict_by_me[ref] = True
+
+        if self.restrictions is not None:
+            restrict_by_me[self.full_table_name] = True
+            rel_by_name[self.full_table_name]._restrict(self.restrictions)
+
+        for r in relations:
+            for dep in (r.children + r.references):
+                rel_by_name[dep]._restrict(r.project() if restrict_by_me[r.full_table_name] else r.restrictions)
+
         if config['safemode']:
-            do_delete = False
+            do_delete = False # indicate if there is anything to delete
             print('The contents of the following tables are about to be deleted:')
             for relation in relations:
                 count = len(relation)
                 if count:
                     do_delete = True
                     print(relation.full_table_name, '(%d tuples)' % count)
-            do_delete = do_delete and user_choice("Proceed?", default='no') == 'yes'
-        if do_delete:
-            with self.connection.transaction:
-                while relations:
-                    relations.pop().delete_quick()
+            if not do_delete or user_choice("Proceed?", default='no') != 'yes':
+                return
+        with self.connection.transaction:
+            while relations:
+                relations.pop().delete_quick()
 
     def drop_quick(self):
         """
@@ -209,7 +230,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         if self.is_declared:
             self.connection.query('DROP TABLE %s' % self.full_table_name)
-            self.connection.erd.clear_dependencies(self.full_table_name)
+            self.connection.erm.clear_dependencies(self.full_table_name)
             if self._heading:
                 self._heading.reset()
             logger.info("Dropped table %s" % self.full_table_name)

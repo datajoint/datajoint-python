@@ -2,11 +2,9 @@
 Hosts the table tiers, user relations should be derived from.
 """
 
-import re
-import abc
 from datajoint.relation import Relation
 from .autopopulate import AutoPopulate
-from . import DataJointError
+from .utils import from_camel_case
 
 
 class Manual(Relation):
@@ -95,23 +93,21 @@ class Subordinate:
 
         :raises: NotImplementedError
         """
-        raise NotImplementedError('Subtables should not be populated directly.')
+        raise NotImplementedError(
+            'This table is subordinate: it cannot be populated directly. Refer to its parent table.')
+
+    def progress(self):
+        """
+        Overrides the `progress` method because subtables should not be populated directly.
+        """
+        raise NotImplementedError(
+            'This table is subordinate: it cannot be populated directly. Refer to its parent table.')
+
+    def populate(self, *args, **kwargs):
+        raise NotImplementedError(
+            'This table is subordinate: it cannot be populated directly. Refer to its parent table.')
 
 
-# ---------------- utilities --------------------
-def from_camel_case(s):
-    """
-    Convert names in camel case into underscore (_) separated names
 
-    Example:
-    >>>from_camel_case("TableName")
-        "table_name"
-    """
 
-    def convert(match):
-        return ('_' if match.groups()[0] else '') + match.group(0).lower()
 
-    if not re.match(r'[A-Z][a-zA-Z0-9]*', s):
-        raise DataJointError(
-            'ClassName must be alphanumeric in CamelCase, begin with a capital letter')
-    return re.sub(r'(\B[A-Z])|(\b[A-Z])', convert, s)
