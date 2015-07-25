@@ -105,7 +105,9 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         if not isinstance(group, RelationalOperand):
             raise DataJointError('The second argument must be a relation')
-        return Aggregation(Join(self, group, left=True), *attributes, **renamed_attributes)
+        return Aggregation(
+            Join(self, Subquery(group), left=True),
+            *attributes, **renamed_attributes)
 
     def __and__(self, restriction):
         """
@@ -115,8 +117,8 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             return self
         ret = copy(self)
         ret._restrictions = list(ret.restrictions)  # copy restriction list
-        if isinstance(restriction, list):
-            ret._restricitons.extend(restriction)
+        if isinstance(restriction, list) or isinstance(restriction, tuple):
+            ret._restrictions.extend(restriction)
         else:
             ret._restrictions.append(restriction)
         return ret
@@ -134,7 +136,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             fields=select_fields if select_fields else self.select_fields,
             from_=self.from_clause,
             where=self.where_clause,
-            group=' GROUP BY (`%s`)' % '`,`'.join(self.primary_key) if self._grouped else ''
+            group=' GROUP BY `%s`' % '`,`'.join(self.primary_key) if self._grouped else ''
             )
 
     def __len__(self):
@@ -180,7 +182,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         columns = rel.heading.names
         repr_string = ' '.join([template % column for column in columns]) + '\n'
         repr_string += ' '.join(['+' + '-' * (width - 2) + '+' for _ in columns]) + '\n'
-        for tup in rel.fetch(limit=limit):
+        for tup in rel.fetch.limit_by(limit):
             repr_string += ' '.join([template % column for column in tup]) + '\n'
         if len(self) > limit:
             repr_string += '...\n'
@@ -223,9 +225,11 @@ class RelationalOperand(metaclass=abc.ABCMeta):
                 r = '(' + ') OR ('.join([make_condition(q) for q in r]) + ')'
             elif isinstance(r, RelationalOperand):
                 common_attributes = ','.join([q for q in self.heading.names if q in r.heading.names])
-                r = '(%s) %sin (SELECT %s FROM %s%s)' % (
-                    common_attributes, "not " if negate else "",
-                    common_attributes, r.from_clause, r.where_clause)
+                r = '({fields}) {not_}in (SELECT {fields} FROM {from_}{where})'.format(
+                    fields=common_attributes,
+                    not_="not " if negate else "",
+                    from_=r.from_clause,
+                    where=r.where_clause)
                 negate = False
             if not isinstance(r, str):
                 raise DataJointError('Invalid restriction object')
@@ -274,8 +278,14 @@ class Join(RelationalOperand):
 
     @property
     def from_clause(self):
-        return '%s NATURAL %sJOIN %s' % (
-            self._arg1.from_clause, "LEFT " if self._left else "", self._arg2.from_clause)
+        return '{from1} NATURAL {left}JOIN {from2}'.format(
+            from1=self._arg1.from_clause,
+            left="LEFT " if self._left else "",
+            from2=self._arg2.from_clause)
+
+    @property
+    def select_fields(self):
+        return '*'
 
 
 class Projection(RelationalOperand):
@@ -352,6 +362,10 @@ class Subquery(RelationalOperand):
     @property
     def from_clause(self):
         return '(' + self._arg.make_select() + ') as `_s%x`' % self.counter
+
+    @property
+    def select_fields(self):
+        return '*'
 
     @property
     def heading(self):
