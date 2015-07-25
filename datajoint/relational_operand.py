@@ -10,7 +10,7 @@ from . import config
 from . import DataJointError
 import logging
 
-from .fetch import FetchQuery, Fetch1Query
+from .fetch import Fetch, Fetch1
 
 logger = logging.getLogger(__name__)
 
@@ -171,7 +171,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         return self.fetch(*args, **kwargs)
 
-    def cursor(self, offset=0, limit=None, order_by=None, descending=False, as_dict=False):
+    def cursor(self, offset=0, limit=None, order_by=None, as_dict=False):
         """
         Return query cursor.
         See Relation.fetch() for input description.
@@ -182,8 +182,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         sql = self.make_select()
         if order_by is not None:
             sql += ' ORDER BY ' + ', '.join(order_by)
-            if descending:
-                sql += ' DESC'
+
         if limit is not None:
             sql += ' LIMIT %d' % limit
             if offset:
@@ -206,12 +205,13 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         repr_string += ' (%d tuples)\n' % len(self)
         return repr_string
 
+    @property
     def fetch1(self):
-        return Fetch1Query(self)
+        return Fetch1(self)
 
     @property
     def fetch(self):
-        return FetchQuery(self)
+        return Fetch(self)
 
     @property
     def where_clause(self):
@@ -251,8 +251,6 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             condition_string.append(r)
 
         return ' WHERE ' + ' AND '.join(condition_string)
-
-
 
 
 class Not:
@@ -319,9 +317,9 @@ class Projection(RelationalOperand):
             self._arg = Subquery(arg)
         else:
             self._group = None
-            if arg.heading.computed or\
+            if arg.heading.computed or \
                     (isinstance(arg.restrictions, RelationalOperand) and \
-                    all(attr in self._attributes for attr in arg.restrictions.heading.names)) :
+                             all(attr in self._attributes for attr in arg.restrictions.heading.names)):
                 # can simply the expression because all restrictions attrs are projected out anyway!
                 self._arg = arg
                 self._restrictions = self._arg.restrictions
