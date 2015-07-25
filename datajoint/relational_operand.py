@@ -141,6 +141,8 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         number of tuples in the relation.  This also takes care of the truth value
         """
+        if self._grouped:
+            return len(Subquery(self))
         cur = self.connection.query(self.make_select('count(*)'))
         return cur.fetchone()[0]
 
