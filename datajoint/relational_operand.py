@@ -5,7 +5,8 @@ from copy import copy
 import logging
 from . import config
 from . import DataJointError
-from .fetch import FetchQuery, Fetch1Query
+
+from .fetch import Fetch, Fetch1
 
 logger = logging.getLogger(__name__)
 
@@ -165,8 +166,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         sql = self.make_select()
         if order_by is not None:
             sql += ' ORDER BY ' + ', '.join(order_by)
-            if descending:
-                sql += ' DESC'
+
         if limit is not None:
             sql += ' LIMIT %d' % limit
             if offset:
@@ -191,11 +191,11 @@ class RelationalOperand(metaclass=abc.ABCMeta):
 
     @property
     def fetch1(self):
-        return Fetch1Query(self)
+        return Fetch1(self)
 
     @property
     def fetch(self):
-        return FetchQuery(self)
+        return Fetch(self)
 
     @property
     def where_clause(self):
@@ -307,7 +307,6 @@ class Projection(RelationalOperand):
                 self._attributes.append(attribute)
         self._aggregate = _aggregate
 
-        # enclose original query if necessary
         if arg.heading.computed:
             self._arg = Subquery(arg)
         else:

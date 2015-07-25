@@ -39,6 +39,26 @@ class Subject(dj.Manual):
     def prepare(self):
         self.insert(self.contents, ignore_errors=True)
 
+@schema
+class Language(dj.Lookup):
+
+    definition = """
+    # languages spoken by some of the developers
+
+    entry_id    : int
+    ---
+    name        : varchar(40) # name of the developer
+    language    : varchar(40) # language
+    """
+
+    contents = [
+            (0, 'Fabian', 'English'),
+            (1, 'Edgar', 'English'),
+            (2, 'Dimitri', 'English'),
+            (3, 'Dimitri', 'Ukrainian'),
+            (4, 'Fabian', 'German'),
+            (5, 'Edgar', 'Japanese'),
+        ]
 
 @schema
 class Experiment(dj.Imported):
