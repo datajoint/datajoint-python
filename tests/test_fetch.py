@@ -67,22 +67,22 @@ class TestFetch:
         for c, l in zip(cur, langs):
             assert_true(np.all([cc == ll for cc, ll in zip(c, l)]), 'Sorting order is different')
 
-    def test_limit_to(self):
-        """Test the limit_to function """
+    def test_limit(self):
+        """Test the limit function """
         langs = schema.Language.contents
 
-        cur = self.lang.fetch.limit_to(4)(order_by=['language', 'name DESC'])
+        cur = self.lang.fetch.limit(4)(order_by=['language', 'name DESC'])
         langs.sort(key=itemgetter(0), reverse=True)
         langs.sort(key=itemgetter(1), reverse=False)
         assert_equal(len(cur), 4, 'Length is not correct')
         for c, l in list(zip(cur, langs))[:4]:
             assert_true(np.all([cc == ll for cc, ll in zip(c, l)]), 'Sorting order is different')
 
-    def test_from_to(self):
-        """Test the from_to function """
+    def test_limit_offset(self):
+        """Test the limit and offset functions together"""
         langs = schema.Language.contents
 
-        cur = self.lang.fetch.from_to(2, 6)(order_by=['language', 'name DESC'])
+        cur = self.lang.fetch(offset=2, limit=4, order_by=['language', 'name DESC'])
         langs.sort(key=itemgetter(0), reverse=True)
         langs.sort(key=itemgetter(1), reverse=False)
         assert_equal(len(cur), 4, 'Length is not correct')
