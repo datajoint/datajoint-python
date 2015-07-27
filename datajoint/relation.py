@@ -265,7 +265,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         return ret['Data_length'] + ret['Index_length']
 
     # --------- functionality used by the decorator ---------
-    def prepare(self):
+    def _prepare(self):
         """
         This method is overridden by the user_relations subclasses. It is called on an instance
         once when the class is declared.

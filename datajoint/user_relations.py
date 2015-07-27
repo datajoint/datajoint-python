@@ -34,7 +34,7 @@ class Lookup(Relation):
         """
         return '#' + from_camel_case(self.__class__.__name__)
 
-    def prepare(self):
+    def _prepare(self):
         """
         Checks whether the instance has a property called `contents` and inserts its elements.
         """

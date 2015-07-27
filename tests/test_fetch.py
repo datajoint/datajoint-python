@@ -41,8 +41,8 @@ class TestFetch:
 
         for ord_name, ord_lang in itertools.product(*2 * [['ASC', 'DESC']]):
             cur = self.lang.fetch.order_by('name ' + ord_name, 'language ' + ord_lang)()
-            langs.sort(key=itemgetter(2), reverse=ord_lang == 'DESC')
-            langs.sort(key=itemgetter(1), reverse=ord_name == 'DESC')
+            langs.sort(key=itemgetter(1), reverse=ord_lang == 'DESC')
+            langs.sort(key=itemgetter(0), reverse=ord_name == 'DESC')
             for c, l in zip(cur, langs):
                 assert_true(np.all(cc == ll for cc, ll in zip(c, l)), 'Sorting order is different')
 
@@ -51,8 +51,8 @@ class TestFetch:
         langs = schema.Language.contents
 
         cur = self.lang.fetch.order_by('language', 'name DESC')()
-        langs.sort(key=itemgetter(1), reverse=True)
-        langs.sort(key=itemgetter(2), reverse=False)
+        langs.sort(key=itemgetter(0), reverse=True)
+        langs.sort(key=itemgetter(1), reverse=False)
 
         for c, l in zip(cur, langs):
             assert_true(np.all([cc == ll for cc, ll in zip(c, l)]), 'Sorting order is different')
@@ -62,29 +62,29 @@ class TestFetch:
         langs = schema.Language.contents
 
         cur = self.lang.fetch(order_by=['language', 'name DESC'])
-        langs.sort(key=itemgetter(1), reverse=True)
-        langs.sort(key=itemgetter(2), reverse=False)
+        langs.sort(key=itemgetter(0), reverse=True)
+        langs.sort(key=itemgetter(1), reverse=False)
         for c, l in zip(cur, langs):
             assert_true(np.all([cc == ll for cc, ll in zip(c, l)]), 'Sorting order is different')
 
-    def test_limit_to(self):
-        """Test the limit_to function """
+    def test_limit(self):
+        """Test the limit function """
         langs = schema.Language.contents
 
-        cur = self.lang.fetch.limit_to(4)(order_by=['language', 'name DESC'])
-        langs.sort(key=itemgetter(1), reverse=True)
-        langs.sort(key=itemgetter(2), reverse=False)
+        cur = self.lang.fetch.limit(4)(order_by=['language', 'name DESC'])
+        langs.sort(key=itemgetter(0), reverse=True)
+        langs.sort(key=itemgetter(1), reverse=False)
         assert_equal(len(cur), 4, 'Length is not correct')
         for c, l in list(zip(cur, langs))[:4]:
             assert_true(np.all([cc == ll for cc, ll in zip(c, l)]), 'Sorting order is different')
 
-    def test_from_to(self):
-        """Test the from_to function """
+    def test_limit_offset(self):
+        """Test the limit and offset functions together"""
         langs = schema.Language.contents
 
-        cur = self.lang.fetch.from_to(2, 6)(order_by=['language', 'name DESC'])
-        langs.sort(key=itemgetter(1), reverse=True)
-        langs.sort(key=itemgetter(2), reverse=False)
+        cur = self.lang.fetch(offset=2, limit=4, order_by=['language', 'name DESC'])
+        langs.sort(key=itemgetter(0), reverse=True)
+        langs.sort(key=itemgetter(1), reverse=False)
         assert_equal(len(cur), 4, 'Length is not correct')
         for c, l in list(zip(cur, langs[2:6])):
             assert_true(np.all([cc == ll for cc, ll in zip(c, l)]), 'Sorting order is different')
@@ -94,27 +94,26 @@ class TestFetch:
         langs = schema.Language.contents
 
         cur = self.lang.fetch.order_by('language', 'name DESC')
-        langs.sort(key=itemgetter(1), reverse=True)
-        langs.sort(key=itemgetter(2), reverse=False)
-        for (_, name, lang), (_, tname, tlang) in list(zip(cur, langs)):
+        langs.sort(key=itemgetter(0), reverse=True)
+        langs.sort(key=itemgetter(1), reverse=False)
+        for (name, lang), (tname, tlang) in list(zip(cur, langs)):
             assert_true(name == tname and lang == tlang, 'Values are not the same')
 
     def test_keys(self):
         """test key iterator"""
         langs = schema.Language.contents
-        langs.sort(key=itemgetter(1), reverse=True)
-        langs.sort(key=itemgetter(2), reverse=False)
+        langs.sort(key=itemgetter(0), reverse=True)
+        langs.sort(key=itemgetter(1), reverse=False)
 
-        cur = self.lang.fetch.order_by('language', 'name DESC')['entry_id']
-        cur2 = [e['entry_id'] for e in self.lang.fetch.order_by('language', 'name DESC').keys()]
+        cur = self.lang.fetch.order_by('language', 'name DESC')['name','language']
+        cur2 = list(self.lang.fetch.order_by('language', 'name DESC').keys())
 
-        keys, _, _ = list(zip(*langs))
-        for k, c, c2 in zip(keys, cur, cur2):
-            assert_true(k == c == c2, 'Values are not the same')
+        for c, c2 in zip(zip(*cur), cur2):
+            assert_true(c == tuple(c2.values()), 'Values are not the same')
 
     def test_fetch1(self):
-        key = {'entry_id': 0}
-        true = schema.Language.contents[0]
+        key = {'name': 'Edgar', 'language':'Japanese'}
+        true = schema.Language.contents[-1]
 
         dat = (self.lang & key).fetch1()
         for k, (ke, c) in zip(true, dat.items()):
@@ -126,8 +125,3 @@ class TestFetch:
         f2 = f.order_by('name')
         assert_true(f.behavior['order_by'] is None and len(f2.behavior['order_by']) == 1, 'Object was not copied')
 
-    def test_overwrite(self):
-        """Test whether order_by overwrites duplicates"""
-        f = self.lang.fetch.order_by('name    DeSc ')
-        f2 = f.order_by('name')
-        assert_true(f2.behavior['order_by'] == ['name'], 'order_by attribute was not overwritten')
