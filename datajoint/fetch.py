@@ -2,6 +2,7 @@ from collections import OrderedDict
 from functools import wraps
 import itertools
 import re
+import warnings
 from .blob import unpack
 import numpy as np
 from datajoint import DataJointError
@@ -41,16 +42,10 @@ class Fetch:
             self._relation = relation._relation
         else:
             self.behavior = dict(
-                offset=0, limit=None, order_by=None, as_dict=False
+                offset=None, limit=None, order_by=None, as_dict=False
             )
             self._relation = relation
 
-
-    @copy_first
-    def from_to(self, fro, to):
-        self.behavior['offset'] = fro
-        self.behavior['limit'] = to - fro
-        return self
 
     @copy_first
     def order_by(self, *args):
@@ -71,9 +66,17 @@ class Fetch:
 
 
     @copy_first
-    def limit_to(self, limit):
+    def limit(self, limit):
         self.behavior['limit'] = limit
         return self
+
+    @copy_first
+    def offset(self, offset):
+        if self.behavior['limit'] is None:
+            warnings.warn('You should supply a limit together with an offset,')
+        self.behavior['offset'] = offset
+        return self
+
 
     @copy_first
     def set_behavior(self, **kwargs):
@@ -93,7 +96,9 @@ class Fetch:
 
         """
         behavior = dict(self.behavior, **kwargs)
-
+        if behavior['limit'] is None and behavior['offset'] is not None:
+            warnings.warn('Offset set, but no limit. Setting limit to a large number. Consider setting a limit yourself.')
+            behavior['limit'] = 2*len(self._relation)
         cur = self._relation.cursor(**behavior)
 
         heading = self._relation.heading

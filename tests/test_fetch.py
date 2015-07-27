@@ -71,7 +71,7 @@ class TestFetch:
         """Test the limit_to function """
         langs = schema.Language.contents
 
-        cur = self.lang.fetch.limit_to(4)(order_by=['language', 'name DESC'])
+        cur = self.lang.fetch.limit(4)(order_by=['language', 'name DESC'])
         langs.sort(key=itemgetter(1), reverse=True)
         langs.sort(key=itemgetter(2), reverse=False)
         assert_equal(len(cur), 4, 'Length is not correct')
@@ -82,7 +82,7 @@ class TestFetch:
         """Test the from_to function """
         langs = schema.Language.contents
 
-        cur = self.lang.fetch.from_to(2, 6)(order_by=['language', 'name DESC'])
+        cur = self.lang.fetch(offset=2, limit=4, order_by=['language', 'name DESC'])
         langs.sort(key=itemgetter(1), reverse=True)
         langs.sort(key=itemgetter(2), reverse=False)
         assert_equal(len(cur), 4, 'Length is not correct')
