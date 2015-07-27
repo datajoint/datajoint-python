@@ -53,7 +53,7 @@ class schema:
         # trigger table declaration by requesting the heading from an instance
         instance = cls()
         instance.heading
-        instance.prepare()
+        instance._prepare()
         return cls
 
     @property
