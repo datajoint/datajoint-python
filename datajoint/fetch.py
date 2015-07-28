@@ -174,11 +174,13 @@ class Fetch:
         repr_string += ' '.join(['+' + '-' * (width - 2) + '+' for _ in columns]) + '\n'
         for tup in rel.fetch(limit=limit):
             repr_string += ' '.join([template % column for column in tup]) + '\n'
-        if len(self._relation) > limit:
+        if len(rel) > limit:
             repr_string += '...\n'
-        repr_string += ' (%d tuples)\n' % len(self._relation)
+        repr_string += ' (%d tuples)\n' % len(rel)
         return repr_string
 
+    def __len__(self):
+        return len(self._relation)
 
 class Fetch1:
     def __init__(self, relation):
