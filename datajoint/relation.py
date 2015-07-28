@@ -285,6 +285,9 @@ class FreeRelation(Relation):
         self._definition = definition
         self._context = context
 
+    def __repr__(self):
+        return "FreeRelation(`%s`.`%s`)" % (self.database, self._table_name)
+
     @property
     def definition(self):
         return self._definition
