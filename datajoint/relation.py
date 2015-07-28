@@ -107,7 +107,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         return [relation for relation in relations if relation.is_declared]
 
     def _repr_helper(self):
-        return self.full_table_name
+        return "%s.%s()" % (self.__module__, self.__class__.__name__)
 
     # --------- SQL functionality --------- #
     @property
