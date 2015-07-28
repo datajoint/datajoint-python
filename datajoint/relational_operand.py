@@ -143,7 +143,17 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         inverted restriction aka antijoin
         """
-        return self & Not(restriction)
+        return \
+            self & Not(restriction)
+
+    def _repr_helper(self):
+        return "None"
+
+    def __repr__(self):
+        ret = self._repr_helper()
+        if self._restrictions:
+            ret += ' & %r' % self._restrictions
+        return ret
 
     # ------ data retrieval methods -----------
 
@@ -189,21 +199,6 @@ class RelationalOperand(metaclass=abc.ABCMeta):
                 sql += ' OFFSET %d' % offset
         logger.debug(sql)
         return self.connection.query(sql, as_dict=as_dict)
-
-    def __repr__(self):
-        limit = config['display.limit']
-        width = config['display.width']
-        rel = self.project(*self.heading.non_blobs)  # project out blobs
-        template = '%%-%d.%ds' % (width, width)
-        columns = rel.heading.names
-        repr_string = ' '.join([template % column for column in columns]) + '\n'
-        repr_string += ' '.join(['+' + '-' * (width - 2) + '+' for _ in columns]) + '\n'
-        for tup in rel.fetch(limit=limit):
-            repr_string += ' '.join([template % column for column in tup]) + '\n'
-        if len(self) > limit:
-            repr_string += '...\n'
-        repr_string += ' (%d tuples)\n' % len(self)
-        return repr_string
 
     @property
     def fetch1(self):
@@ -273,6 +268,9 @@ class Join(RelationalOperand):
         self._arg1 = Subquery(arg1) if arg1.heading.computed else arg1
         self._arg2 = Subquery(arg1) if arg2.heading.computed else arg2
         self._restrictions = self._arg1.restrictions + self._arg2.restrictions
+
+    def _repr_helper(self):
+        return "(%r) * (%r)" % (self._arg1, self._arg2)
 
     @property
     def connection(self):
@@ -352,6 +350,10 @@ class Projection(RelationalOperand):
         else:
             return super()._restrict(restriction)
 
+    def _repr_helper(self):
+        # TODO: create better repr
+        return "project(%r, %r)" % (self._arg, self._attributes)
+
 
 class Subquery(RelationalOperand):
     """
@@ -379,3 +381,6 @@ class Subquery(RelationalOperand):
     @property
     def heading(self):
         return self._arg.heading.resolve()
+
+    def _repr_helper(self):
+        return "%r" % self._arg

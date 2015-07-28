@@ -106,6 +106,9 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
                      for table in self.connection.erm.get_descendants(self.full_table_name))
         return [relation for relation in relations if relation.is_declared]
 
+    def _repr_helper(self):
+        return self.full_table_name
+
     # --------- SQL functionality --------- #
     @property
     def is_declared(self):
