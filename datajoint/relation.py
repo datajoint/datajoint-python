@@ -106,6 +106,9 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
                      for table in self.connection.erm.get_descendants(self.full_table_name))
         return [relation for relation in relations if relation.is_declared]
 
+    def _repr_helper(self):
+        return "%s.%s()" % (self.__module__, self.__class__.__name__)
+
     # --------- SQL functionality --------- #
     @property
     def is_declared(self):
@@ -281,6 +284,9 @@ class FreeRelation(Relation):
         self._connection = connection
         self._definition = definition
         self._context = context
+
+    def __repr__(self):
+        return "FreeRelation(`%s`.`%s`)" % (self.database, self._table_name)
 
     @property
     def definition(self):

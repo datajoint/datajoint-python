@@ -125,3 +125,11 @@ class TestFetch:
         f2 = f.order_by('name')
         assert_true(f.behavior['order_by'] is None and len(f2.behavior['order_by']) == 1, 'Object was not copied')
 
+    def test_repr(self):
+        """Test string representation of fetch, returning table preview"""
+        repr = self.subject.fetch.__repr__()
+        n = len(repr.strip().split('\n'))
+        limit = dj.config['display.limit']
+        # 3 lines are used for headers (2) and summary statement (1)
+        assert_true(n - 3 <= limit)
+

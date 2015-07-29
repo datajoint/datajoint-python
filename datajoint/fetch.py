@@ -8,6 +8,7 @@ import numpy as np
 from datajoint import DataJointError
 from . import key as PRIMARY_KEY
 from collections import abc
+from . import config
 
 
 def prepare_attributes(relation, item):
@@ -35,7 +36,9 @@ def copy_first(f):
 
     return ret
 
+
 class Fetch:
+
     def __init__(self, relation):
         if isinstance(relation, Fetch): # copy constructor
             self.behavior = dict(relation.behavior)
@@ -45,7 +48,6 @@ class Fetch:
                 offset=None, limit=None, order_by=None, as_dict=False
             )
             self._relation = relation
-
 
     @copy_first
     def order_by(self, *args):
@@ -162,6 +164,23 @@ class Fetch:
             ]
         return return_values[0] if single_output else return_values
 
+    def __repr__(self):
+        limit = config['display.limit']
+        width = config['display.width']
+        rel = self._relation.project(*self._relation.heading.non_blobs)  # project out blobs
+        template = '%%-%d.%ds' % (width, width)
+        columns = rel.heading.names
+        repr_string = ' '.join([template % column for column in columns]) + '\n'
+        repr_string += ' '.join(['+' + '-' * (width - 2) + '+' for _ in columns]) + '\n'
+        for tup in rel.fetch(limit=limit):
+            repr_string += ' '.join([template % column for column in tup]) + '\n'
+        if len(rel) > limit:
+            repr_string += '...\n'
+        repr_string += ' (%d tuples)\n' % len(rel)
+        return repr_string
+
+    def __len__(self):
+        return len(self._relation)
 
 class Fetch1:
     def __init__(self, relation):
