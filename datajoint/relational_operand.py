@@ -3,7 +3,6 @@ import abc
 import re
 from copy import copy
 import logging
-from . import config
 from . import DataJointError
 
 from .fetch import Fetch, Fetch1
@@ -130,7 +129,14 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         return self & Not(restriction)
 
-    # ------ data retrieval methods -----------
+    def _repr_helper(self):
+        return "None"
+
+    def __repr__(self):
+        ret = self._repr_helper()
+        if self._restrictions:
+            ret += ' & %r' % self._restrictions
+        return ret
 
     def make_select(self, select_fields=None):
         return 'SELECT {fields} FROM {from_}{where}{group}'.format(
@@ -173,21 +179,6 @@ class RelationalOperand(metaclass=abc.ABCMeta):
                 sql += ' OFFSET %d' % offset
         logger.debug(sql)
         return self.connection.query(sql, as_dict=as_dict)
-
-    def __repr__(self):
-        limit = config['display.limit']
-        width = config['display.width']
-        rel = self.project(*self.heading.non_blobs)  # project out blobs
-        template = '%%-%d.%ds' % (width, width)
-        columns = rel.heading.names
-        repr_string = ' '.join([template % column for column in columns]) + '\n'
-        repr_string += ' '.join(['+' + '-' * (width - 2) + '+' for _ in columns]) + '\n'
-        for tup in rel.fetch.limit_by(limit):
-            repr_string += ' '.join([template % column for column in tup]) + '\n'
-        if len(self) > limit:
-            repr_string += '...\n'
-        repr_string += ' (%d tuples)\n' % len(self)
-        return repr_string
 
     @property
     def fetch1(self):
@@ -262,6 +253,9 @@ class Join(RelationalOperand):
         self._restrictions = self._arg1.restrictions + self._arg2.restrictions
         self._left = left
         self._heading = self._arg1.heading.join(self._arg2.heading, left=left)
+
+    def _repr_helper(self):
+        return "(%r) * (%r)" % (self._arg1, self._arg2)
 
     @property
     def connection(self):
@@ -338,6 +332,10 @@ class Aggregation(Projection):
     def _grouped(self):
         return True
 
+    def _repr_helper(self):
+        # TODO: create better repr
+        return "project(%r, %r)" % (self._arg, self._attributes)
+
 
 class Subquery(RelationalOperand):
     """
@@ -369,3 +367,6 @@ class Subquery(RelationalOperand):
     @property
     def heading(self):
         return self._arg.heading.resolve()
+
+    def _repr_helper(self):
+        return "%r" % self._arg

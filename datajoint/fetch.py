@@ -1,13 +1,11 @@
 from collections import OrderedDict
 from functools import wraps
-import itertools
-import re
 import warnings
 from .blob import unpack
 import numpy as np
 from datajoint import DataJointError
 from . import key as PRIMARY_KEY
-from collections import abc
+from . import config
 
 
 def prepare_attributes(relation, item):
@@ -26,18 +24,21 @@ def prepare_attributes(relation, item):
         raise DataJointError("Index must be a slice, a tuple, a list, a string.")
     return item, attributes
 
+
 def copy_first(f):
     @wraps(f)
     def ret(*args, **kwargs):
         args = list(args)
-        args[0] = args[0].__class__(args[0]) # call copy constructor
+        args[0] = args[0].__class__(args[0])  # call copy constructor
         return f(*args, **kwargs)
 
     return ret
 
+
 class Fetch:
+
     def __init__(self, relation):
-        if isinstance(relation, Fetch): # copy constructor
+        if isinstance(relation, Fetch):  # copy constructor
             self.behavior = dict(relation.behavior)
             self._relation = relation._relation
         else:
@@ -45,7 +46,6 @@ class Fetch:
                 offset=None, limit=None, order_by=None, as_dict=False
             )
             self._relation = relation
-
 
     @copy_first
     def order_by(self, *args):
@@ -162,6 +162,23 @@ class Fetch:
             ]
         return return_values[0] if single_output else return_values
 
+    def __repr__(self):
+        limit = config['display.limit']
+        width = config['display.width']
+        rel = self._relation.project(*self._relation.heading.non_blobs)  # project out blobs
+        template = '%%-%d.%ds' % (width, width)
+        columns = rel.heading.names
+        repr_string = ' '.join([template % column for column in columns]) + '\n'
+        repr_string += ' '.join(['+' + '-' * (width - 2) + '+' for _ in columns]) + '\n'
+        for tup in rel.fetch(limit=limit):
+            repr_string += ' '.join([template % column for column in tup]) + '\n'
+        if len(rel) > limit:
+            repr_string += '...\n'
+        repr_string += ' (%d tuples)\n' % len(rel)
+        return repr_string
+
+    def __len__(self):
+        return len(self._relation)
 
 class Fetch1:
     def __init__(self, relation):
