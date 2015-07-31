@@ -26,6 +26,9 @@ def prepare_attributes(relation, item):
 
 
 def copy_first(f):
+    """
+    decorates methods that return an altered copy of self
+    """
     @wraps(f)
     def ret(*args, **kwargs):
         args = list(args)
@@ -70,7 +73,6 @@ class Fetch:
         self.behavior['offset'] = offset
         return self
 
-
     @copy_first
     def set_behavior(self, **kwargs):
         self.behavior.update(kwargs)
@@ -90,7 +92,8 @@ class Fetch:
         """
         behavior = dict(self.behavior, **kwargs)
         if behavior['limit'] is None and behavior['offset'] is not None:
-            warnings.warn('Offset set, but no limit. Setting limit to a large number. Consider setting a limit yourself.')
+            warnings.warn('Offset set, but no limit. Setting limit to a large number. '
+                          'Consider setting a limit explicitly.')
             behavior['limit'] = 2*len(self._relation)
         cur = self._relation.cursor(**behavior)
 
@@ -180,7 +183,9 @@ class Fetch:
     def __len__(self):
         return len(self._relation)
 
+
 class Fetch1:
+
     def __init__(self, relation):
         self._relation = relation
 

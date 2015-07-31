@@ -35,7 +35,7 @@ def declare(full_table_name, definition, context):
     for line in definition:
         if line.startswith('#'):  # additional comments are ignored
             pass
-        elif line.startswith('---'):
+        elif line.startswith('---') or line.startswith('___'):
             in_key = False  # start parsing dependent attributes
         elif line.startswith('->'):
             # foreign key

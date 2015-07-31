@@ -224,8 +224,8 @@ class RelationalOperand(metaclass=abc.ABCMeta):
                 negate = False
             if not isinstance(r, str):
                 raise DataJointError('Invalid restriction object')
-            conditions.append('%s(%s)' % ('not ' if negate else '', r))
-
+            if r:
+                conditions.append('%s(%s)' % ('not ' if negate else '', r))
         return ' WHERE ' + ' AND '.join(conditions)
 
 

@@ -332,7 +332,7 @@ class RelGraph(DiGraph):
         s = {node}
         if ups > 0:
             for x in self.predecessors_iter(node):
-                if x == prev:
+                if x != prev:
                     continue
                 s.update(self.up_down_neighbors(x, ups-1, downs, node))
         if downs > 0:
