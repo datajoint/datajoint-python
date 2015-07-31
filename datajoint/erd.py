@@ -232,22 +232,19 @@ class RelGraph(DiGraph):
         Set directed=True to follow only outgoing edges.
         """
         s = {node}
-        if n < 1:
-            return s
         if n == 1:
             s.update(self.predecessors(node))
             s.update(self.successors(node))
-            return s
-        if not directed:
-            for x in self.predecesors_iter():
-                if x == prev:  # skip prev point
-                    continue
-                s.update(self.n_neighbors(x, n-1, prev))
-        for x in self.succesors_iter():
-            if x == prev:
-                continue
-            s.update(self.n_neighbors(x, n-1, prev))
+        elif n > 1:
+            if not directed:
+                for x in self.predecesors_iter():
+                    if x != prev:  # skip prev point
+                        s.update(self.n_neighbors(x, n-1, prev))
+            for x in self.succesors_iter():
+                if x != prev:
+                    s.update(self.n_neighbors(x, n-1, prev))
         return s
+
 
 class ERM(RelGraph):
     """
@@ -276,9 +273,7 @@ class ERM(RelGraph):
         # create primary key foreign connections
         for table, parents in self._parents.items():
             mod, cls = (x.strip('`') for x in table.split('.'))
-
-            self.add_node(table, label=table,
-                         mod=mod, cls=cls)
+            self.add_node(table, label=table, mod=mod, cls=cls)
             for parent in parents:
                 self.add_edge(parent, table, rel='parent')
 
