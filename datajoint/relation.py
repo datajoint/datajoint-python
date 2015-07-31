@@ -75,6 +75,11 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
     def select_fields(self):
         return '*'
 
+    def erd(self, *args, **kwargs):
+        erd = self.connection.erd()
+        nodes = erd.up_down_neighbors(self.full_table_name)
+        return erd.restrict_by_tables(nodes)
+
     # ------------- dependencies ---------- #
     @property
     def parents(self):

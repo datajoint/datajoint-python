@@ -15,127 +15,6 @@ from .utils import to_camel_case
 
 logger = logging.getLogger(__name__)
 
-
-class ERM:
-    """
-    Entity Relation Map
-
-    Represents known relation between tables
-    """
-    # _checked_dependencies = set()
-
-    def __init__(self, conn):
-        self._conn = conn
-        self._parents = dict()
-        self._referenced = dict()
-        self._children = defaultdict(list)
-        self._references = defaultdict(list)
-
-    def load_dependencies(self, full_table_name):
-        # check if already loaded.  Use clear_dependencies before reloading
-        if full_table_name in self._parents:
-            return
-        self._parents[full_table_name] = list()
-        self._referenced[full_table_name] = list()
-
-        # fetch the CREATE TABLE statement
-        cur = self._conn.query('SHOW CREATE TABLE %s' % full_table_name)
-        create_statement = cur.fetchone()
-        if not create_statement:
-            raise DataJointError('Could not load the definition for %s' % full_table_name)
-        create_statement = create_statement[1].split('\n')
-
-        # build foreign key fk_parser
-        database = full_table_name.split('.')[0].strip('`')
-        add_database = lambda string, loc, toc: ['`{database}`.`{table}`'.format(database=database, table=toc[0])]
-
-        # primary key parser
-        pk_parser = pp.CaselessLiteral('PRIMARY KEY')
-        pk_parser += pp.QuotedString('(', endQuoteChar=')').setResultsName('primary_key')
-
-        # foreign key parser
-        fk_parser = pp.CaselessLiteral('CONSTRAINT').suppress()
-        fk_parser += pp.QuotedString('`').suppress()
-        fk_parser += pp.CaselessLiteral('FOREIGN KEY').suppress()
-        fk_parser += pp.QuotedString('(', endQuoteChar=')').setResultsName('attributes')
-        fk_parser += pp.CaselessLiteral('REFERENCES')
-        fk_parser += pp.Or([
-            pp.QuotedString('`').setParseAction(add_database),
-            pp.Combine(pp.QuotedString('`', unquoteResults=False) +
-                       '.' + pp.QuotedString('`', unquoteResults=False))
-            ]).setResultsName('referenced_table')
-        fk_parser += pp.QuotedString('(', endQuoteChar=')').setResultsName('referenced_attributes')
-
-        # parse foreign keys
-        primary_key = None
-        for line in create_statement:
-            if primary_key is None:
-                try:
-                    result = pk_parser.parseString(line)
-                except pp.ParseException:
-                    pass
-                else:
-                    primary_key = [s.strip(' `') for s in result.primary_key.split(',')]
-            try:
-                result = fk_parser.parseString(line)
-            except pp.ParseException:
-                pass
-            else:
-                if not primary_key:
-                    raise DataJointError('No primary key found %s' % full_table_name)
-                if result.referenced_attributes != result.attributes:
-                    raise DataJointError(
-                        "%s's foreign key refers to differently named attributes in %s"
-                        % (self.__class__.__name__, result.referenced_table))
-                if all(q in primary_key for q in [s.strip('` ') for s in result.attributes.split(',')]):
-                    self._parents[full_table_name].append(result.referenced_table)
-                    self._children[result.referenced_table].append(full_table_name)
-                else:
-                    self._referenced[full_table_name].append(result.referenced_table)
-                    self._references[result.referenced_table].append(full_table_name)
-
-    def clear_dependencies(self, full_table_name):
-        for ref in self._parents.pop(full_table_name, []):
-            if full_table_name in self._children[ref]:
-                self._children[ref].remove(full_table_name)
-        for ref in self._referenced.pop(full_table_name, []):
-            if full_table_name in self._references[ref]:
-                self._references[ref].remove(full_table_name)
-
-    @property
-    def parents(self):
-        return self._parents
-
-    @property
-    def children(self):
-        return self._children
-
-    @property
-    def references(self):
-        return self._references
-
-    @property
-    def referenced(self):
-        return self._referenced
-
-    def get_descendants(self, full_table_name):
-        """
-        :param full_table_name: a table name in the format `database`.`table_name`
-        :return: list of all children and references, in order of dependence.
-        This is helpful for cascading delete or drop operations.
-        """
-        ret = defaultdict(lambda: 0)
-
-        def recurse(full_table_name, level):
-            if level > ret[full_table_name]:
-                ret[full_table_name] = level
-            for child in self.children[full_table_name] + self.references[full_table_name]:
-                recurse(child, level+1)
-
-        recurse(full_table_name, 0)
-        return sorted(ret.keys(), key=ret.__getitem__)
-
-
 class RelGraph(DiGraph):
     """
     A directed graph representing relations between tables within and across
@@ -214,7 +93,8 @@ class RelGraph(DiGraph):
         ax.axis('off')  # hide axis
 
     def __repr__(self):
-        pass
+        #TODO: provide string version of ERD
+        return "RelGraph: to be implemented"
 
     def restrict_by_modules(self, modules, fill=False):
         """
@@ -238,11 +118,11 @@ class RelGraph(DiGraph):
         """
         nodes = [n for n in self.nodes() if self.node[n].get('label') in tables]
         if fill:
-            nodes =  self.fill_connection_nodes(nodes)
+            nodes = self.fill_connection_nodes(nodes)
         return self.subgraph(nodes)
 
     def restrict_by_tables_in_module(self, module, tables, fill=False):
-        nodes = [n for n in self.nodes() if self.node[n].get('mod') and \
+        nodes = [n for n in self.nodes() if self.node[n].get('mod') in module and
                  self.node[n].get('cls') in tables]
         if fill:
             nodes =  self.fill_connection_nodes(nodes)
@@ -307,7 +187,7 @@ class RelGraph(DiGraph):
             s.update(self.descendants(c))
         return s
 
-    def up_down_neighbors(self, node, ups, downs, prev=None):
+    def up_down_neighbors(self, node, ups=2, downs=2, _prev=None):
         """
         Returns a set of all nodes that can be reached from the specified node by
         moving up and down the ancestry tree with specific number of ups and downs.
@@ -326,26 +206,24 @@ class RelGraph(DiGraph):
         :param node: node to base all discovery on
         :param ups: number of times to go up the ancestry tree (go up to parent)
         :param downs: number of times to go down the ancestry tree (go down to children)
-        :param prev: previously visited node. This will be excluded from up down search in this recursion
+        :param _prev: previously visited node. This will be excluded from up down search in this recursion
         :return: a set of all nodes that can be reached within specified numbers of ups and downs from the source node
         """
         s = {node}
         if ups > 0:
             for x in self.predecessors_iter(node):
-                if x != prev:
-                    continue
-                s.update(self.up_down_neighbors(x, ups-1, downs, node))
+                if x != _prev:
+                    s.update(self.up_down_neighbors(x, ups-1, downs, node))
         if downs > 0:
             for x in self.successors_iter(node):
-                if x == prev:
-                    continue
-                s.update(self.up_down_neighbors(x, ups, downs-1, node))
+                if x != _prev:
+                    s.update(self.up_down_neighbors(x, ups, downs-1, node))
         return s
 
-    def n_neighbors(self, node, n, prev=None):
+    def n_neighbors(self, node, n, directed=False, prev=None):
         """
         Returns a set of n degree neighbors for the
-        specified node. The set with contain the node itself.
+        specified node. The set will contain the node itself.
 
         n degree neighbors are defined as node that can be reached
         within n edges from the root node.
@@ -360,85 +238,169 @@ class RelGraph(DiGraph):
             s.update(self.predecessors(node))
             s.update(self.successors(node))
             return s
-        for x in self.predecesors_iter():
-            if x == prev:  # skip prev point
-                continue
-            s.update(self.n_neighbors(x, n-1, prev))
+        if not directed:
+            for x in self.predecesors_iter():
+                if x == prev:  # skip prev point
+                    continue
+                s.update(self.n_neighbors(x, n-1, prev))
         for x in self.succesors_iter():
             if x == prev:
                 continue
             s.update(self.n_neighbors(x, n-1, prev))
         return s
 
-
-
-class DBConnGraph(RelGraph):
+class ERM(RelGraph):
     """
-    Represents relational structure of the databases and tables associated with a connection object
+    Entity Relation Map
+
+    Represents known relation between tables
     """
+    # _checked_dependencies = set()
+
     def __init__(self, conn, *args, **kwargs):
-        """
-        Initializes graph associated with a connection object
-        :param conn: connection object for which the relational graph is to be constructed
-        """
-        # this is calling the networkx.DiGraph initializer
         super().__init__(*args, **kwargs)
+        self._conn = conn
+        self._parents = dict()
+        self._referenced = dict()
+        self._children = defaultdict(list)
+        self._references = defaultdict(list)
         if conn.is_connected:
             self._conn = conn
         else:
             raise DataJointError('The connection is broken') #TODO: make better exception message
         self.update_graph()
 
-    def full_table_to_class(self, full_table_name):
-        """
-        Converts full table reference of form `database`.`table` into the corresponding
-        module_name.class_name format. For the module name, only the actual name of the module is used, with
-        all of its package reference removed.
-        :param full_table_name: full name of the table in the form `database`.`table`
-        :return: name in the form of module_name.class_name if corresponding module and class exists
-        """
-        full_table_ptrn = re.compile(r'`(.*)`\.`(.*)`')
-        m = full_table_ptrn.match(full_table_name)
-        dbname = m.group(1)
-        table_name = m.group(2)
-        mod_name = self._conn.db_to_mod[dbname]
-        mod_name = mod_name.split('.')[-1]
-        class_name = to_camel_case(table_name)
-        return '{}.{}'.format(mod_name, class_name)
-
     def update_graph(self, reload=False):
-        """
-        Update the connection graph. Set reload=True to cause the connection object's
-        table heading information to be reloaded as well
-        """
-        if reload:
-            self._conn.load_headings(force=True)
-
         self.clear()
 
         # create primary key foreign connections
-        for table, parents in self._conn.parents.items():
-            label = self.full_table_to_class(table)
-            mod, cls = label.split('.')
+        for table, parents in self._parents.items():
+            mod, cls = (x.strip('`') for x in table.split('.'))
 
-            self.add_node(table, label=label,
-                          mod=mod, cls=cls)
+            self.add_node(table, label=table,
+                         mod=mod, cls=cls)
             for parent in parents:
                 self.add_edge(parent, table, rel='parent')
 
         # create non primary key foreign connections
-        for table, referenced in self._conn.referenced.items():
+        for table, referenced in self._referenced.items():
             for ref in referenced:
                 self.add_edge(ref, table, rel='referenced')
 
-    def copy_graph(self):
+    def copy_graph(self, *args, **kwargs):
         """
         Return copy of the graph represented by this object at the
         time of call. Note that the returned graph is no longer
         bound to a connection.
         """
-        return RelGraph(self)
+        return RelGraph(self, *args, **kwargs)
 
     def subgraph(self, *args, **kwargs):
         return RelGraph(self).subgraph(*args, **kwargs)
+
+    def load_dependencies(self, full_table_name):
+        # check if already loaded.  Use clear_dependencies before reloading
+        if full_table_name in self._parents:
+            return
+        self._parents[full_table_name] = list()
+        self._referenced[full_table_name] = list()
+
+        # fetch the CREATE TABLE statement
+        cur = self._conn.query('SHOW CREATE TABLE %s' % full_table_name)
+        create_statement = cur.fetchone()
+        if not create_statement:
+            raise DataJointError('Could not load the definition for %s' % full_table_name)
+        create_statement = create_statement[1].split('\n')
+
+        # build foreign key fk_parser
+        database = full_table_name.split('.')[0].strip('`')
+        add_database = lambda string, loc, toc: ['`{database}`.`{table}`'.format(database=database, table=toc[0])]
+
+        # primary key parser
+        pk_parser = pp.CaselessLiteral('PRIMARY KEY')
+        pk_parser += pp.QuotedString('(', endQuoteChar=')').setResultsName('primary_key')
+
+        # foreign key parser
+        fk_parser = pp.CaselessLiteral('CONSTRAINT').suppress()
+        fk_parser += pp.QuotedString('`').suppress()
+        fk_parser += pp.CaselessLiteral('FOREIGN KEY').suppress()
+        fk_parser += pp.QuotedString('(', endQuoteChar=')').setResultsName('attributes')
+        fk_parser += pp.CaselessLiteral('REFERENCES')
+        fk_parser += pp.Or([
+            pp.QuotedString('`').setParseAction(add_database),
+            pp.Combine(pp.QuotedString('`', unquoteResults=False) +
+                       '.' + pp.QuotedString('`', unquoteResults=False))
+            ]).setResultsName('referenced_table')
+        fk_parser += pp.QuotedString('(', endQuoteChar=')').setResultsName('referenced_attributes')
+
+        # parse foreign keys
+        primary_key = None
+        for line in create_statement:
+            if primary_key is None:
+                try:
+                    result = pk_parser.parseString(line)
+                except pp.ParseException:
+                    pass
+                else:
+                    primary_key = [s.strip(' `') for s in result.primary_key.split(',')]
+            try:
+                result = fk_parser.parseString(line)
+            except pp.ParseException:
+                pass
+            else:
+                if not primary_key:
+                    raise DataJointError('No primary key found %s' % full_table_name)
+                if result.referenced_attributes != result.attributes:
+                    raise DataJointError(
+                        "%s's foreign key refers to differently named attributes in %s"
+                        % (self.__class__.__name__, result.referenced_table))
+                if all(q in primary_key for q in [s.strip('` ') for s in result.attributes.split(',')]):
+                    self._parents[full_table_name].append(result.referenced_table)
+                    self._children[result.referenced_table].append(full_table_name)
+                else:
+                    self._referenced[full_table_name].append(result.referenced_table)
+                    self._references[result.referenced_table].append(full_table_name)
+
+        self.update_graph()
+
+    def clear_dependencies(self, full_table_name):
+        for ref in self._parents.pop(full_table_name, []):
+            if full_table_name in self._children[ref]:
+                self._children[ref].remove(full_table_name)
+        for ref in self._referenced.pop(full_table_name, []):
+            if full_table_name in self._references[ref]:
+                self._references[ref].remove(full_table_name)
+
+    @property
+    def parents(self):
+        return self._parents
+
+    @property
+    def children(self):
+        return self._children
+
+    @property
+    def references(self):
+        return self._references
+
+    @property
+    def referenced(self):
+        return self._referenced
+
+    def get_descendants(self, full_table_name):
+        """
+        :param full_table_name: a table name in the format `database`.`table_name`
+        :return: list of all children and references, in order of dependence.
+        This is helpful for cascading delete or drop operations.
+        """
+        ret = defaultdict(lambda: 0)
+
+        def recurse(full_table_name, level):
+            if level > ret[full_table_name]:
+                ret[full_table_name] = level
+            for child in self.children[full_table_name] + self.references[full_table_name]:
+                recurse(child, level+1)
+
+        recurse(full_table_name, 0)
+        return sorted(ret.keys(), key=ret.__getitem__)
 

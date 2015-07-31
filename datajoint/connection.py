@@ -53,7 +53,6 @@ class Connection:
     """
 
     def __init__(self, host, user, passwd, init_fun=None):
-        self.erm = ERM(self)
         if ':' in host:
             host, port = host.split(':')
             port = int(port)
@@ -68,6 +67,7 @@ class Connection:
         self._conn.autocommit(True)
         self._in_transaction = False
         self.jobs = JobManager(self)
+        self.erm = ERM(self)
 
     def __del__(self):
         logger.info('Disconnecting {user}@{host}:{port}'.format(**self.conn_info))
@@ -80,6 +80,9 @@ class Connection:
         connected = "connected" if self.is_connected else "disconnected"
         return "DataJoint connection ({connected}) {user}@{host}:{port}".format(
             connected=connected, **self.conn_info)
+
+    def erd(self, *args, **kwargs):
+        return self.erm.copy_graph(*args, **kwargs)
 
     @property
     def is_connected(self):
