@@ -114,16 +114,17 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         relational restriction or semijoin
         """
-        if not restriction:
-            return self
+        # make a copy
         ret = copy(self)
-        ret._restrictions = list(ret.restrictions)  # copy restriction list
-        restrictions = restriction \
-            if isinstance(restriction, list) or isinstance(restriction, tuple) \
-            else [restriction]
-        for restriction in restrictions:
-            if restriction not in ret._restrictions:
-                ret._restrictions.append(restriction)
+        ret._restrictions = list(ret.restrictions)
+        # apply restrictions, if any
+        if isinstance(restriction, RelationalOperand) or restriction:
+            restrictions = restriction \
+                if isinstance(restriction, list) or isinstance(restriction, tuple) \
+                else [restriction]
+            for restriction in restrictions:
+                if restriction not in ret._restrictions:
+                    ret._restrictions.append(restriction)
         return ret
 
     def __sub__(self, restriction):
@@ -329,9 +330,9 @@ class Projection(RelationalOperand):
         """
         When projection has renamed attributes, it must be enclosed in a subquery before restriction
         """
-        return super().__and__(restriction) \
-            if not restriction or not self.heading.computed \
-            else Subquery(self) & restriction
+        has_restriction = isinstance(restriction, RelationalOperand) or restriction
+        do_subquery = has_restriction and self.heading.computed
+        return Subquery(self) & restriction if do_subquery else super().__and__(restriction)
 
 
 class Aggregation(Projection):
