@@ -1,4 +1,4 @@
-from collections import Mapping
+from collections import Mapping, OrderedDict
 import numpy as np
 import logging
 import abc
@@ -108,11 +108,13 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         :return: list of relation objects for all children and references, recursively,
         in order of dependence.
+        Does not include self.
         This is helpful for cascading delete or drop operations.
         """
         relations = (FreeRelation(self.connection, table)
                      for table in self.connection.erm.get_descendants(self.full_table_name))
         return [relation for relation in relations if relation.is_declared]
+
 
     def _repr_helper(self):
         return "%s.%s()" % (self.__module__, self.__class__.__name__)
@@ -206,23 +208,23 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         relations = self.descendants
         restrict_by_me = set()
-        rel_by_name = {r.full_table_name:r for r in relations}
         for r in relations:
             for ref in r.references:
                 restrict_by_me.add(ref)
+        relations = OrderedDict((r.full_table_name, r) for r in relations)
 
         if self.restrictions:
             restrict_by_me.add(self.full_table_name)
-            rel_by_name[self.full_table_name] &= self.restrictions
+            relations[self.full_table_name] &= self.restrictions
 
-        for r in relations:
+        for r in relations.values():
             for dep in (r.children + r.references):
-                rel_by_name[dep] &= r.project() if r.full_table_name in restrict_by_me else r.restrictions
+                relations[dep] &= r.project() if r.full_table_name in restrict_by_me else r.restrictions
 
         if config['safemode']:
             do_delete = False # indicate if there is anything to delete
             print('The contents of the following tables are about to be deleted:')
-            for relation in relations:
+            for relation in relations.values():
                 count = len(relation)
                 if count:
                     do_delete = True
@@ -230,8 +232,8 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
             if not do_delete or user_choice("Proceed?", default='no') != 'yes':
                 return
         with self.connection.transaction:
-            while relations:
-                relations.pop().delete_quick()
+            for r in reversed(list(relations.values())):
+                r.delete_quick()
 
     def drop_quick(self):
         """

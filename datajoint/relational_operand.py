@@ -20,11 +20,12 @@ class RelationalOperand(metaclass=abc.ABCMeta):
     RelationalOperand operators are: restrict, pro, and join.
     """
 
-    _restrictions = None
+    _restrictions = []
 
     @property
     def restrictions(self):
-        return [] if self._restrictions is None else self._restrictions
+        assert self._restrictions is not None
+        return self._restrictions
 
     @property
     def primary_key(self):
@@ -117,10 +118,12 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             return self
         ret = copy(self)
         ret._restrictions = list(ret.restrictions)  # copy restriction list
-        if isinstance(restriction, list) or isinstance(restriction, tuple):
-            ret._restrictions.extend(restriction)
-        else:
-            ret._restrictions.append(restriction)
+        restrictions = restriction \
+            if isinstance(restriction, list) or isinstance(restriction, tuple) \
+            else [restriction]
+        for restriction in restrictions:
+            if restriction not in ret._restrictions:
+                ret._restrictions.append(restriction)
         return ret
 
     def __sub__(self, restriction):
