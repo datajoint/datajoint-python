@@ -132,8 +132,9 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         return self & Not(restriction)
 
+    @abc.abstractmethod
     def _repr_helper(self):
-        return "None"
+        pass
 
     def __repr__(self):
         ret = self._repr_helper()
@@ -286,7 +287,7 @@ class Join(RelationalOperand):
 
 
 class Projection(RelationalOperand):
-    def __init__(self, arg, *attributes, _aggregate=False, **renamed_attributes):
+    def __init__(self, arg, *attributes, **renamed_attributes):
         """
         See RelationalOperand.project()
         """
@@ -302,13 +303,15 @@ class Projection(RelationalOperand):
                 self._renamed_attributes.update({d['alias']: d['sql_expression']})
             else:
                 self._attributes.append(attribute)
-        self._aggregate = _aggregate
 
         if arg.heading.computed:
             self._arg = Subquery(arg)
         else:
             self._arg = arg
             self._restrictions = arg.restrictions
+
+    def _repr_helper(self):
+        return "(%r).project(%r)" % (self._arg, self._attributes)
 
     @property
     def connection(self):
@@ -326,18 +329,15 @@ class Projection(RelationalOperand):
         """
         When projection has renamed attributes, it must be enclosed in a subquery before restriction
         """
-        if restriction:
-            return Subquery(self) & restriction if self.heading.computed else super().__and__(restriction)
+        return super().__and__(restriction) \
+            if not restriction or not self.heading.computed \
+            else Subquery(self) & restriction
 
 
 class Aggregation(Projection):
     @property
     def _grouped(self):
         return True
-
-    def _repr_helper(self):
-        # TODO: create better repr
-        return "project(%r, %r)" % (self._arg, self._attributes)
 
 
 class Subquery(RelationalOperand):

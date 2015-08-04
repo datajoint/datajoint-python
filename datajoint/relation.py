@@ -209,31 +209,32 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         relations = self.descendants
         restrict_by_me = set()
         for r in relations:
-            for ref in r.references:
-                restrict_by_me.add(ref)
+            restrict_by_me.update(r.references)
         relations = OrderedDict((r.full_table_name, r) for r in relations)
 
         if self.restrictions:
             restrict_by_me.add(self.full_table_name)
             relations[self.full_table_name] &= self.restrictions
 
-        for r in relations.values():
+        for name in relations:
+            r = relations[name]
             for dep in (r.children + r.references):
-                relations[dep] &= r.project() if r.full_table_name in restrict_by_me else r.restrictions
+                relations[dep] &= r.project() if name in restrict_by_me else r.restrictions
 
-        if config['safemode']:
-            do_delete = False # indicate if there is anything to delete
-            print('The contents of the following tables are about to be deleted:')
-            for relation in relations.values():
-                count = len(relation)
-                if count:
-                    do_delete = True
+        do_delete = False # indicate if there is anything to delete
+        print('The contents of the following tables are about to be deleted:')
+        for relation in relations.values():
+            count = len(relation)
+            if count:
+                do_delete = True
+                if config['safemode']:
                     print(relation.full_table_name, '(%d tuples)' % count)
-            if not do_delete or user_choice("Proceed?", default='no') != 'yes':
-                return
-        with self.connection.transaction:
-            for r in reversed(list(relations.values())):
-                r.delete_quick()
+            else:
+                relations.pop(relation.full_table_name)
+        if do_delete and (not config['safemode'] or user_choice("Proceed?", default='no') == 'yes'):
+            with self.connection.transaction:
+                for r in reversed(list(relations.values())):
+                    r.delete_quick()
 
     def drop_quick(self):
         """
