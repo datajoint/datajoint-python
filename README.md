@@ -1,3 +1,4 @@
+[![DOI](https://zenodo.org/badge/16774/datajoint/datajoint-python.svg)](https://zenodo.org/badge/latestdoi/16774/datajoint/datajoint-python)
 [![Build Status](https://travis-ci.org/eywalker/datajoint-python.svg?branch=master)](https://travis-ci.org/eywalker/datajoint-python)
 [![Coverage Status](https://coveralls.io/repos/datajoint/datajoint-python/badge.svg?branch=master&service=github)](https://coveralls.io/github/datajoint/datajoint-python?branch=master)
 [![PyPI version](https://badge.fury.io/py/datajoint.svg)](http://badge.fury.io/py/datajoint)
