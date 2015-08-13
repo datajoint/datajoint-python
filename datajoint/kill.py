@@ -1,6 +1,7 @@
 import pymysql
 from . import conn
 
+
 def kill(restriction=None, connection=None):
     """
     view and kill database connections.
@@ -26,7 +27,10 @@ def kill(restriction=None, connection=None):
         print('  ID USER         STATE         TIME  INFO')
         print('+--+ +----------+ +-----------+ +--+')
         for process in  connection.query(query, as_dict=True).fetchall():
-            print('{ID:>4d} {USER:<12s} {STATE:<12s} {TIME:>5d}  {INFO}'.format(**process))
+            try:
+                print('{ID:>4d} {USER:<12s} {STATE:<12s} {TIME:>5d}  {INFO}'.format(**process))
+            except TypeError as err:
+                print(process)
 
         response = input('process to kill or "q" to quit)')
         if response == 'q':

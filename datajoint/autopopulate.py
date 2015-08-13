@@ -4,8 +4,7 @@ import logging
 import datetime
 from .relational_operand import RelationalOperand
 from . import DataJointError
-from .relation import Relation, FreeRelation
-from . import jobs
+from .relation import FreeRelation
 
 # noinspection PyExceptionInherit,PyCallingNonCallable
 
@@ -47,6 +46,10 @@ class AutoPopulate(metaclass=abc.ABCMeta):
 
     @property
     def target(self):
+        """
+        relation to be populated.
+        Typically, AutoPopulate are mixed into a Relation object and the target is self.
+        """
         return self
 
     def populate(self, restriction=None, suppress_errors=False, reserve_jobs=False):
@@ -68,7 +71,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
 
         jobs = self.connection.jobs[self.target.database]
         table_name = self.target.table_name
-        unpopulated = (self.populated_from - self.target) & restriction
+        unpopulated = (self.populated_from & restriction) - self.target.project()
         for key in unpopulated.fetch.keys():
             if not reserve_jobs or jobs.reserve(table_name, key):
                 self.connection.start_transaction()
@@ -95,14 +98,17 @@ class AutoPopulate(metaclass=abc.ABCMeta):
                             jobs.complete(table_name, key)
         return error_list
 
-    def progress(self):
+    def progress(self, restriction=None, display=True):
         """
         report progress of populating this table
+        :return: remaining, total -- tuples to be populated
         """
-        total = len(self.populated_from)
-        remaining = len(self.populated_from - self.target)
-        print('Completed %d of %d (%2.1f%%)   %s' %
-              (total - remaining, total, 100 - 100 * remaining / total,
-               datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d %H:%M:%S')
-               ) if remaining
-              else 'Complete', flush=True)
+        total = len(self.populated_from & restriction)
+        remaining = len((self.populated_from & restriction) - self.target.project())
+        if display:
+            print('%-20s' % self.__class__.__name__, flush=True, end=': ')
+            print('Completed %d of %d (%2.1f%%)   %s' %
+                  (total - remaining, total, 100 - 100 * remaining / (total+1e-12),
+                   datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d %H:%M:%S')
+                   ), flush=True)
+        return remaining, total

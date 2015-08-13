@@ -221,7 +221,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
             for dep in (r.children + r.references):
                 relations[dep] &= r.project() if name in restrict_by_me else r.restrictions
 
-        do_delete = False # indicate if there is anything to delete
+        do_delete = False  # indicate if there is anything to delete
         print('The contents of the following tables are about to be deleted:')
         for relation in relations.values():
             count = len(relation)
