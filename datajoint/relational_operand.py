@@ -20,11 +20,12 @@ class RelationalOperand(metaclass=abc.ABCMeta):
     RelationalOperand operators are: restrict, pro, and join.
     """
 
-    _restrictions = None
+    _restrictions = []
 
     @property
     def restrictions(self):
-        return [] if self._restrictions is None else self._restrictions
+        assert self._restrictions is not None
+        return self._restrictions
 
     @property
     def primary_key(self):
@@ -113,14 +114,17 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         relational restriction or semijoin
         """
-        if not restriction:
-            return self
+        # make a copy
         ret = copy(self)
-        ret._restrictions = list(ret.restrictions)  # copy restriction list
-        if isinstance(restriction, list) or isinstance(restriction, tuple):
-            ret._restrictions.extend(restriction)
-        else:
-            ret._restrictions.append(restriction)
+        ret._restrictions = list(ret.restrictions)
+        # apply restrictions, if any
+        if isinstance(restriction, RelationalOperand) or restriction:
+            restrictions = restriction \
+                if isinstance(restriction, list) or isinstance(restriction, tuple) \
+                else [restriction]
+            for restriction in restrictions:
+                if restriction not in ret._restrictions:
+                    ret._restrictions.append(restriction)
         return ret
 
     def __sub__(self, restriction):
@@ -129,8 +133,9 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         return self & Not(restriction)
 
+    @abc.abstractmethod
     def _repr_helper(self):
-        return "None"
+        pass
 
     def __repr__(self):
         ret = self._repr_helper()
@@ -224,8 +229,8 @@ class RelationalOperand(metaclass=abc.ABCMeta):
                 negate = False
             if not isinstance(r, str):
                 raise DataJointError('Invalid restriction object')
-            conditions.append('%s(%s)' % ('not ' if negate else '', r))
-
+            if r:
+                conditions.append('%s(%s)' % ('not ' if negate else '', r))
         return ' WHERE ' + ' AND '.join(conditions)
 
 
@@ -249,7 +254,7 @@ class Join(RelationalOperand):
         if arg1.connection != arg2.connection:
             raise DataJointError('Cannot join relations with different database connections')
         self._arg1 = Subquery(arg1) if arg1.heading.computed else arg1
-        self._arg2 = Subquery(arg1) if arg2.heading.computed else arg2
+        self._arg2 = Subquery(arg2) if arg2.heading.computed else arg2
         self._restrictions = self._arg1.restrictions + self._arg2.restrictions
         self._left = left
         self._heading = self._arg1.heading.join(self._arg2.heading, left=left)
@@ -283,7 +288,7 @@ class Join(RelationalOperand):
 
 
 class Projection(RelationalOperand):
-    def __init__(self, arg, *attributes, _aggregate=False, **renamed_attributes):
+    def __init__(self, arg, *attributes, **renamed_attributes):
         """
         See RelationalOperand.project()
         """
@@ -299,13 +304,15 @@ class Projection(RelationalOperand):
                 self._renamed_attributes.update({d['alias']: d['sql_expression']})
             else:
                 self._attributes.append(attribute)
-        self._aggregate = _aggregate
 
         if arg.heading.computed:
             self._arg = Subquery(arg)
         else:
             self._arg = arg
             self._restrictions = arg.restrictions
+
+    def _repr_helper(self):
+        return "(%r).project(%r)" % (self._arg, self._attributes)
 
     @property
     def connection(self):
@@ -323,18 +330,15 @@ class Projection(RelationalOperand):
         """
         When projection has renamed attributes, it must be enclosed in a subquery before restriction
         """
-        if restriction:
-            return Subquery(self) & restriction if self.heading.computed else super().__and__(restriction)
+        has_restriction = isinstance(restriction, RelationalOperand) or restriction
+        do_subquery = has_restriction and self.heading.computed
+        return Subquery(self) & restriction if do_subquery else super().__and__(restriction)
 
 
 class Aggregation(Projection):
     @property
     def _grouped(self):
         return True
-
-    def _repr_helper(self):
-        # TODO: create better repr
-        return "project(%r, %r)" % (self._arg, self._attributes)
 
 
 class Subquery(RelationalOperand):

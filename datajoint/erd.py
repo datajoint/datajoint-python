@@ -212,14 +212,12 @@ class RelGraph(DiGraph):
         s = {node}
         if ups > 0:
             for x in self.predecessors_iter(node):
-                if x == _prev:
-                    continue
-                s.update(self.up_down_neighbors(x, ups-1, downs, node))
+                if x != _prev:
+                    s.update(self.up_down_neighbors(x, ups-1, downs, node))
         if downs > 0:
             for x in self.successors_iter(node):
-                if x == _prev:
-                    continue
-                s.update(self.up_down_neighbors(x, ups, downs-1, node))
+                if x != _prev:
+                    s.update(self.up_down_neighbors(x, ups, downs-1, node))
         return s
 
     def n_neighbors(self, node, n, directed=False, prev=None):
@@ -234,22 +232,19 @@ class RelGraph(DiGraph):
         Set directed=True to follow only outgoing edges.
         """
         s = {node}
-        if n < 1:
-            return s
         if n == 1:
             s.update(self.predecessors(node))
             s.update(self.successors(node))
-            return s
-        if not directed:
-            for x in self.predecesors_iter():
-                if x == prev:  # skip prev point
-                    continue
-                s.update(self.n_neighbors(x, n-1, prev))
-        for x in self.succesors_iter():
-            if x == prev:
-                continue
-            s.update(self.n_neighbors(x, n-1, prev))
+        elif n > 1:
+            if not directed:
+                for x in self.predecesors_iter():
+                    if x != prev:  # skip prev point
+                        s.update(self.n_neighbors(x, n-1, prev))
+            for x in self.succesors_iter():
+                if x != prev:
+                    s.update(self.n_neighbors(x, n-1, prev))
         return s
+
 
 class ERM(RelGraph):
     """
@@ -278,9 +273,7 @@ class ERM(RelGraph):
         # create primary key foreign connections
         for table, parents in self._parents.items():
             mod, cls = (x.strip('`') for x in table.split('.'))
-
-            self.add_node(table, label=table,
-                         mod=mod, cls=cls)
+            self.add_node(table, label=table, mod=mod, cls=cls)
             for parent in parents:
                 self.add_edge(parent, table, rel='parent')
 
