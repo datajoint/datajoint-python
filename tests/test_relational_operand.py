@@ -1,6 +1,7 @@
 import datajoint as dj
 from . import PREFIX, CONN_INFO
 import random
+import numpy as np
 from nose.tools import assert_raises, assert_equal, \
     assert_false, assert_true, assert_list_equal, \
     assert_tuple_equal, assert_dict_equal, raises
@@ -158,10 +159,61 @@ class TestRelational:
         assert_equal(set(x.primary_key).union(y.primary_key), set(rel.primary_key),
                      'incorrect join primary_key')
 
+        # Test join with common attributes
+        cond = A() & 'cond_in_a=1'
+        x = B() & cond
+        y = D()
+        rel = x*y
+        assert_true(len(rel) >= len(x) and len(rel) >= len(y), 'incorrect join')
+        assert_false(rel - cond, 'incorrect join, restriction, or antijoin')
+        assert_equal(set(x.heading.names).union(y.heading.names), set(rel.heading.names),
+                     'incorrect join heading')
+        assert_equal(set(x.primary_key).union(y.primary_key), set(rel.primary_key),
+                     'incorrect join primary_key')
+
+        # test renamed join
+        x = B().project(i='id_a')   # rename the common attribute to achieve full cartesian product
+        y = D()
+        rel = x*y
+        assert_equal(len(rel), len(x)*len(y),
+                     'incorrect join')
+        assert_equal(set(x.heading.names).union(y.heading.names), set(rel.heading.names),
+                     'incorrect join heading')
+        assert_equal(set(x.primary_key).union(y.primary_key), set(rel.primary_key),
+                     'incorrect join primary_key')
+
+        # test the % notation
+        x = B() % ['id_a->a']
+        y = D()
+        rel = x*y
+        assert_equal(len(rel), len(x)*len(y),
+                     'incorrect join')
+        assert_equal(set(x.heading.names).union(y.heading.names), set(rel.heading.names),
+                     'incorrect join heading')
+        assert_equal(set(x.primary_key).union(y.primary_key), set(rel.primary_key),
+                     'incorrect join primary_key')
+
+        # test pairing
+        # Approach 1
+        x = A().project(a1='id_a', c1='cond_in_a') & 'c1=0'
+        y = A().project(a2='id_a', c2='cond_in_a') & 'c2=1'
+        rel = x*y & 'c1=0' & 'c2=1'
+        assert_equal(len(x)+len(y), len(A()))
+        assert_equal(len(rel), len(x)*len(y), 'incorrect pairing')
+        # Approach 2
+        x = (A() & 'cond_in_a=0').project(a1='id_a')
+        y = (A() & 'cond_in_a=1').project(a2='id_a')
+        assert_equal(len(rel), len(x*y))
+
     @staticmethod
     def test_project():
-        pass
+        x = A().project(a='id_a')  # rename
+        assert_equal(x.heading.names, ['a'], 'renaming does not work')
+        x = A().project(a='(id_a)')  # extend
+        assert_equal(set(x.heading.names), set(('id_a', 'a')), 'extend does not work')
 
     @staticmethod
     def test_aggregate():
-        pass
+        x = B().aggregate(C(), 'n', computed='count(id_c)')
+        assert_equal(len(x), len(B()))
+

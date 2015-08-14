@@ -254,7 +254,7 @@ class Join(RelationalOperand):
         if arg1.connection != arg2.connection:
             raise DataJointError('Cannot join relations with different database connections')
         self._arg1 = Subquery(arg1) if arg1.heading.computed else arg1
-        self._arg2 = Subquery(arg1) if arg2.heading.computed else arg2
+        self._arg2 = Subquery(arg2) if arg2.heading.computed else arg2
         self._restrictions = self._arg1.restrictions + self._arg2.restrictions
         self._left = left
         self._heading = self._arg1.heading.join(self._arg2.heading, left=left)
