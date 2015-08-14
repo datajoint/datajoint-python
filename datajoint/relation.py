@@ -1,5 +1,4 @@
-from collections.abc import Mapping
-from collections import defaultdict
+from collections import Mapping
 import numpy as np
 import logging
 import abc
@@ -72,6 +71,15 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         return self.full_table_name
 
+    @property
+    def select_fields(self):
+        return '*'
+
+    def erd(self, *args, **kwargs):
+        erd = self.connection.erd()
+        nodes = erd.up_down_neighbors(self.full_table_name)
+        return erd.restrict_by_tables(nodes)
+
     # ------------- dependencies ---------- #
     @property
     def parents(self):
@@ -105,6 +113,9 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         relations = (FreeRelation(self.connection, table)
                      for table in self.connection.erm.get_descendants(self.full_table_name))
         return [relation for relation in relations if relation.is_declared]
+
+    def _repr_helper(self):
+        return "%s.%s()" % (self.__module__, self.__class__.__name__)
 
     # --------- SQL functionality --------- #
     @property
@@ -194,21 +205,19 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         User is prompted for confirmation if config['safemode']
         """
         relations = self.descendants
-        #if self.restrictions and len(relations)>1:
-        #    raise NotImplementedError('Restricted cascading deletes are not yet implemented')
-        restrict_by_me = defaultdict(lambda: False)
+        restrict_by_me = set()
         rel_by_name = {r.full_table_name:r for r in relations}
         for r in relations:
             for ref in r.references:
-                restrict_by_me[ref] = True
+                restrict_by_me.add(ref)
 
-        if self.restrictions is not None:
-            restrict_by_me[self.full_table_name] = True
-            rel_by_name[self.full_table_name]._restrict(self.restrictions)
+        if self.restrictions:
+            restrict_by_me.add(self.full_table_name)
+            rel_by_name[self.full_table_name] &= self.restrictions
 
         for r in relations:
             for dep in (r.children + r.references):
-                rel_by_name[dep]._restrict(r.project() if restrict_by_me[r.full_table_name] else r.restrictions)
+                rel_by_name[dep] &= r.project() if r.full_table_name in restrict_by_me else r.restrictions
 
         if config['safemode']:
             do_delete = False # indicate if there is anything to delete
@@ -264,7 +273,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         return ret['Data_length'] + ret['Index_length']
 
     # --------- functionality used by the decorator ---------
-    def prepare(self):
+    def _prepare(self):
         """
         This method is overridden by the user_relations subclasses. It is called on an instance
         once when the class is declared.
@@ -281,6 +290,9 @@ class FreeRelation(Relation):
         self._connection = connection
         self._definition = definition
         self._context = context
+
+    def __repr__(self):
+        return "FreeRelation(`%s`.`%s`)" % (self.database, self._table_name)
 
     @property
     def definition(self):

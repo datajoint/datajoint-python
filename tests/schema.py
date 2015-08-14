@@ -36,9 +36,28 @@ class Subject(dj.Manual):
         [1552, '1552', 'mouse', '2015-06-15', ''],
         [1553, '1553', 'mouse', '2016-07-01', '']]
 
-    def prepare(self):
+    def _prepare(self):
         self.insert(self.contents, ignore_errors=True)
 
+@schema
+class Language(dj.Lookup):
+
+    definition = """
+    # languages spoken by some of the developers
+
+    name        : varchar(40) # name of the developer
+    language    : varchar(40) # language
+    ---
+    """
+
+    contents = [
+            ('Fabian', 'English'),
+            ('Edgar', 'English'),
+            ('Dimitri', 'English'),
+            ('Dimitri', 'Ukrainian'),
+            ('Fabian', 'German'),
+            ('Edgar', 'Japanese'),
+        ]
 
 @schema
 class Experiment(dj.Imported):
