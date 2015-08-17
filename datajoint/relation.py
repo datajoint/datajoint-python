@@ -1,5 +1,4 @@
-from collections.abc import Mapping
-from collections import defaultdict
+from collections import Mapping, OrderedDict
 import numpy as np
 import logging
 import abc
@@ -72,6 +71,15 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         return self.full_table_name
 
+    @property
+    def select_fields(self):
+        return '*'
+
+    def erd(self, *args, **kwargs):
+        erd = self.connection.erd()
+        nodes = erd.up_down_neighbors(self.full_table_name)
+        return erd.restrict_by_tables(nodes)
+
     # ------------- dependencies ---------- #
     @property
     def parents(self):
@@ -100,11 +108,13 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         :return: list of relation objects for all children and references, recursively,
         in order of dependence.
+        Does not include self.
         This is helpful for cascading delete or drop operations.
         """
         relations = (FreeRelation(self.connection, table)
                      for table in self.connection.erm.get_descendants(self.full_table_name))
         return [relation for relation in relations if relation.is_declared]
+
 
     def _repr_helper(self):
         return "%s.%s()" % (self.__module__, self.__class__.__name__)
@@ -197,35 +207,34 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         User is prompted for confirmation if config['safemode']
         """
         relations = self.descendants
-        #if self.restrictions and len(relations)>1:
-        #    raise NotImplementedError('Restricted cascading deletes are not yet implemented')
-        restrict_by_me = defaultdict(lambda: False)
-        rel_by_name = {r.full_table_name:r for r in relations}
+        restrict_by_me = set()
         for r in relations:
-            for ref in r.references:
-                restrict_by_me[ref] = True
+            restrict_by_me.update(r.references)
+        relations = OrderedDict((r.full_table_name, r) for r in relations)
 
-        if self.restrictions is not None:
-            restrict_by_me[self.full_table_name] = True
-            rel_by_name[self.full_table_name]._restrict(self.restrictions)
+        if self.restrictions:
+            restrict_by_me.add(self.full_table_name)
+            relations[self.full_table_name] &= self.restrictions
 
-        for r in relations:
+        for name in relations:
+            r = relations[name]
             for dep in (r.children + r.references):
-                rel_by_name[dep]._restrict(r.project() if restrict_by_me[r.full_table_name] else r.restrictions)
+                relations[dep] &= r.project() if name in restrict_by_me else r.restrictions
 
-        if config['safemode']:
-            do_delete = False # indicate if there is anything to delete
-            print('The contents of the following tables are about to be deleted:')
-            for relation in relations:
-                count = len(relation)
-                if count:
-                    do_delete = True
+        do_delete = False  # indicate if there is anything to delete
+        print('The contents of the following tables are about to be deleted:')
+        for relation in relations.values():
+            count = len(relation)
+            if count:
+                do_delete = True
+                if config['safemode']:
                     print(relation.full_table_name, '(%d tuples)' % count)
-            if not do_delete or user_choice("Proceed?", default='no') != 'yes':
-                return
-        with self.connection.transaction:
-            while relations:
-                relations.pop().delete_quick()
+            else:
+                relations.pop(relation.full_table_name)
+        if do_delete and (not config['safemode'] or user_choice("Proceed?", default='no') == 'yes'):
+            with self.connection.transaction:
+                for r in reversed(list(relations.values())):
+                    r.delete_quick()
 
     def drop_quick(self):
         """

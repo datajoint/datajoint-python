@@ -5,3 +5,4 @@ networkx
 matplotlib
 sphinx_rtd_theme
 mock
+pygraphviz==1.3rc1

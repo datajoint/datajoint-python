@@ -39,6 +39,7 @@ class Subject(dj.Manual):
     def _prepare(self):
         self.insert(self.contents, ignore_errors=True)
 
+
 @schema
 class Language(dj.Lookup):
 
@@ -57,7 +58,8 @@ class Language(dj.Lookup):
             ('Dimitri', 'Ukrainian'),
             ('Fabian', 'German'),
             ('Edgar', 'Japanese'),
-        ]
+    ]
+
 
 @schema
 class Experiment(dj.Imported):
@@ -129,7 +131,7 @@ class Ephys(dj.Imported):
                    sampling_frequency=6000,
                    duration=np.minimum(2, random.expovariate(1)))
         self.insert1(row)
-        number_samples = round(row['duration'] * row['sampling_frequency']);
+        number_samples = round(row['duration'] * row['sampling_frequency'])
         EphysChannel().fill(key, number_samples=number_samples)
 
 

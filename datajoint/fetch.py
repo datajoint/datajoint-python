@@ -1,13 +1,10 @@
 from collections import OrderedDict
 from functools import wraps
-import itertools
-import re
 import warnings
 from .blob import unpack
 import numpy as np
 from datajoint import DataJointError
 from . import key as PRIMARY_KEY
-from collections import abc
 from . import config
 
 
@@ -27,11 +24,15 @@ def prepare_attributes(relation, item):
         raise DataJointError("Index must be a slice, a tuple, a list, a string.")
     return item, attributes
 
+
 def copy_first(f):
+    """
+    decorates methods that return an altered copy of self
+    """
     @wraps(f)
     def ret(*args, **kwargs):
         args = list(args)
-        args[0] = args[0].__class__(args[0]) # call copy constructor
+        args[0] = args[0].__class__(args[0])  # call copy constructor
         return f(*args, **kwargs)
 
     return ret
@@ -40,7 +41,7 @@ def copy_first(f):
 class Fetch:
 
     def __init__(self, relation):
-        if isinstance(relation, Fetch): # copy constructor
+        if isinstance(relation, Fetch):  # copy constructor
             self.behavior = dict(relation.behavior)
             self._relation = relation._relation
         else:
@@ -72,7 +73,6 @@ class Fetch:
         self.behavior['offset'] = offset
         return self
 
-
     @copy_first
     def set_behavior(self, **kwargs):
         self.behavior.update(kwargs)
@@ -92,7 +92,8 @@ class Fetch:
         """
         behavior = dict(self.behavior, **kwargs)
         if behavior['limit'] is None and behavior['offset'] is not None:
-            warnings.warn('Offset set, but no limit. Setting limit to a large number. Consider setting a limit yourself.')
+            warnings.warn('Offset set, but no limit. Setting limit to a large number. '
+                          'Consider setting a limit explicitly.')
             behavior['limit'] = 2*len(self._relation)
         cur = self._relation.cursor(**behavior)
 
@@ -182,7 +183,9 @@ class Fetch:
     def __len__(self):
         return len(self._relation)
 
+
 class Fetch1:
+
     def __init__(self, relation):
         self._relation = relation
 

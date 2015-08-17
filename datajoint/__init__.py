@@ -18,7 +18,7 @@ __all__ = ['__author__', '__version__',
            'Connection', 'Heading', 'Relation', 'FreeRelation', 'Not',
            'Relation', 'schema',
            'Manual', 'Lookup', 'Imported', 'Computed',
-           'conn']
+           'conn', 'kill']
 
 # define an object that identifies the primary key in RelationalOperand.__getitem__
 class PrimaryKey: pass
@@ -58,3 +58,4 @@ from .user_relations import Manual, Lookup, Imported, Computed, Subordinate
 from .relational_operand import Not
 from .heading import Heading
 from .schema import schema
+from .kill import kill

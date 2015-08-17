@@ -1,10 +1,10 @@
 """
-This module hosts the Connection class that manages the connection to the mysql database via
-`pymysql`, and the `conn` function that provides access to a persistent connection in datajoint.
-
+This module hosts the Connection class that manages the connection to the mysql database,
+ and the `conn` function that provides access to a persistent connection in datajoint.
 """
+
 from contextlib import contextmanager
-import pymysql
+import pymysql as connector
 import logging
 from . import config
 from . import DataJointError
@@ -53,14 +53,13 @@ class Connection:
     """
 
     def __init__(self, host, user, passwd, init_fun=None):
-        self.erm = ERM(self)
         if ':' in host:
             host, port = host.split(':')
             port = int(port)
         else:
             port = config['database.port']
         self.conn_info = dict(host=host, port=port, user=user, passwd=passwd)
-        self._conn = pymysql.connect(init_command=init_fun, **self.conn_info)
+        self._conn = connector.connect(**self.conn_info)
         if self.is_connected:
             logger.info("Connected {user}@{host}:{port}".format(**self.conn_info))
         else:
@@ -68,6 +67,7 @@ class Connection:
         self._conn.autocommit(True)
         self._in_transaction = False
         self.jobs = JobManager(self)
+        self.erm = ERM(self)
 
     def __del__(self):
         logger.info('Disconnecting {user}@{host}:{port}'.format(**self.conn_info))
@@ -81,6 +81,9 @@ class Connection:
         return "DataJoint connection ({connected}) {user}@{host}:{port}".format(
             connected=connected, **self.conn_info)
 
+    def erd(self, *args, **kwargs):
+        return self.erm.copy_graph(*args, **kwargs)
+
     @property
     def is_connected(self):
         """
@@ -93,11 +96,11 @@ class Connection:
         Execute the specified query and return the tuple generator (cursor).
 
         :param query: mysql query
-        :param args: additional arguments for the pymysql.cursor
+        :param args: additional arguments for the connector.cursor
         :param as_dict: If as_dict is set to True, the returned cursor objects returns
                         query results as dictionary.
         """
-        cursor = pymysql.cursors.DictCursor if as_dict else pymysql.cursors.Cursor
+        cursor = connector.cursors.DictCursor if as_dict else connector.cursors.Cursor
         cur = self._conn.cursor(cursor=cursor)
 
         # Log the query
