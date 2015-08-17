@@ -246,7 +246,6 @@ class Join(RelationalOperand):
     """
     Relational join
     """
-    __counter = 0
 
     def __init__(self, arg1, arg2, left=False):
         if not isinstance(arg2, RelationalOperand):
@@ -265,11 +264,6 @@ class Join(RelationalOperand):
     @property
     def connection(self):
         return self._arg1.connection
-
-    @property
-    def counter(self):
-        self.__counter += 1
-        return self.__counter
 
     @property
     def heading(self):
