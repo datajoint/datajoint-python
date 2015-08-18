@@ -11,6 +11,20 @@ schema = dj.schema(PREFIX + '_test1', locals(), connection=dj.conn(**CONN_INFO))
 
 
 @schema
+class Auto(dj.Lookup):
+    definition = """
+    id  :int auto_increment
+    ---
+    name :varchar(12)
+    """
+    contents = (
+        dict(name="Godel"),
+        dict(name="Escher"),
+        dict(name="Bach")
+    )
+
+
+@schema
 class User(dj.Lookup):
     definition = """      # lab members
     username: varchar(12)
