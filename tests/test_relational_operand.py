@@ -216,6 +216,18 @@ class TestRelational:
         assert_equal(set(x.heading.names), set(('id_a', 'a')),
                      'extend does not work')
 
+        # projection after restriction
+        assert_equal(
+            len(D() & (L() & 'cond_in_l')) + len(D() - (L() & 'cond_in_l')),
+            len(D()),
+            'failed semijoin or antijoin'
+        )
+        assert_equal(
+            len((D() - (L() & 'cond_in_l')).project()),
+            len(D() - (L() & 'cond_in_l')),
+            'projection altered the cardinality of a restricted relation'
+        )
+
     @staticmethod
     def test_aggregate():
         x = B().aggregate(C(), 'n', count='count(id_c)', mean='avg(value)', max='max(value)')

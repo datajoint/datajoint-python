@@ -301,7 +301,7 @@ class Projection(RelationalOperand):
             else:
                 self._attributes.append(attribute)
 
-        if arg.heading.computed:
+        if arg.heading.computed or arg.restrictions:
             self._arg = Subquery(arg)
         else:
             self._arg = arg
