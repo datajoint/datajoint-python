@@ -194,13 +194,15 @@ class TestRelational:
                      'incorrect join primary_key')
 
         # test pairing
-        # Approach 1
-        x = A().project(a1='id_a', c1='cond_in_a') & 'c1=0'
-        y = A().project(a2='id_a', c2='cond_in_a') & 'c2=1'
+        # Approach 1: join then restrict
+        x = A().project(a1='id_a', c1='cond_in_a')
+        y = A().project(a2='id_a', c2='cond_in_a')
         rel = x*y & 'c1=0' & 'c2=1'
-        assert_equal(len(x)+len(y), len(A()))
-        assert_equal(len(rel), len(x)*len(y), 'incorrect pairing')
-        # Approach 2
+        assert_equal(len(x & 'c1=0')+len(y & 'c2=1'), len(A()),
+                     'incorrect restriction')
+        assert_equal(len(rel), len(x & 'c1=0')*len(y & 'c2=1'),
+                     'incorrect pairing')
+        # Approach 2: restrict then join
         x = (A() & 'cond_in_a=0').project(a1='id_a')
         y = (A() & 'cond_in_a=1').project(a2='id_a')
         assert_equal(len(rel), len(x*y))
@@ -208,12 +210,23 @@ class TestRelational:
     @staticmethod
     def test_project():
         x = A().project(a='id_a')  # rename
-        assert_equal(x.heading.names, ['a'], 'renaming does not work')
+        assert_equal(x.heading.names, ['a'],
+                     'renaming does not work')
         x = A().project(a='(id_a)')  # extend
-        assert_equal(set(x.heading.names), set(('id_a', 'a')), 'extend does not work')
+        assert_equal(set(x.heading.names), set(('id_a', 'a')),
+                     'extend does not work')
 
     @staticmethod
     def test_aggregate():
-        x = B().aggregate(C(), 'n', computed='count(id_c)')
+        x = B().aggregate(C(), 'n', count='count(id_c)', mean='avg(value)', max='max(value)')
         assert_equal(len(x), len(B()))
-
+        for n, count, mean, max, key in zip(*x.fetch['n', 'count', 'mean', 'max', dj.key]):
+            assert_equal(n, count, 'aggregation failed (count)')
+            values = (C() & key).fetch['value']
+            assert_true(bool(len(values)) == bool(n),
+                        'aggregation failed (restriction)')
+            if n:
+                assert_true(np.isclose(mean, values.mean(), rtol=1e-4, atol=1e-5),
+                            "aggregation failed (mean)")
+                assert_true(np.isclose(max, values.max(), rtol=1e-4, atol=1e-5),
+                            "aggregation failed (max)")

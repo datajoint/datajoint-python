@@ -118,7 +118,9 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         ret = copy(self)
         ret._restrictions = list(ret.restrictions)
         # apply restrictions, if any
-        if isinstance(restriction, RelationalOperand) or restriction:
+        if isinstance(restriction, RelationalOperand) \
+                or isinstance(restriction, np.void) \
+                or restriction:
             restrictions = restriction \
                 if isinstance(restriction, list) or isinstance(restriction, tuple) \
                 else [restriction]
@@ -246,7 +248,6 @@ class Join(RelationalOperand):
     """
     Relational join
     """
-    __counter = 0
 
     def __init__(self, arg1, arg2, left=False):
         if not isinstance(arg2, RelationalOperand):
@@ -265,11 +266,6 @@ class Join(RelationalOperand):
     @property
     def connection(self):
         return self._arg1.connection
-
-    @property
-    def counter(self):
-        self.__counter += 1
-        return self.__counter
 
     @property
     def heading(self):
