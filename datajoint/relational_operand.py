@@ -118,7 +118,9 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         ret = copy(self)
         ret._restrictions = list(ret.restrictions)
         # apply restrictions, if any
-        if isinstance(restriction, RelationalOperand) or restriction:
+        if isinstance(restriction, RelationalOperand) \
+                or isinstance(restriction, np.void) \
+                or restriction:
             restrictions = restriction \
                 if isinstance(restriction, list) or isinstance(restriction, tuple) \
                 else [restriction]
