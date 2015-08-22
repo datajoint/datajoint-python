@@ -45,19 +45,37 @@ class schema:
         The decorator binds its argument class object to a database
         :param cls: class to be decorated
         """
-        # class-level attributes
-        cls.database = self.database
-        cls._connection = self.connection
-        cls._heading = Heading()
-        cls._context = self.context
 
-        # trigger table declaration by requesting the heading from an instance
-        instance = cls()
-        instance.heading
-        instance._prepare()
+        def process_class(cls):
+            # class-level attributes
+            cls.database = self.database
+            cls._connection = self.connection
+            cls._heading = Heading()
+            cls._context = self.context
+
+            # trigger table declaration by requesting the heading from an instance
+            instance = cls()
+            instance.heading
+            instance._prepare()
+
+        if issubclass(cls, Sub):
+            raise DataJointError(
+                'Subordinate relations need not be assigned to a schema directly')
+
+        process_class(cls)
+
+        # assign _master in all subtables and declare them too
+        for sub in cls.__dict__.values():
+            if issubclass(sub, Sub):
+                sub._master = self
+                process_class(sub)
 
         return cls
 
     @property
     def jobs(self):
+        """
+        schema.jobs provides a view of the job reservation table for the schema
+        :return:
+        """
         return self.connection.jobs[self.database]

@@ -95,3 +95,39 @@ class Computed(Relation, AutoPopulate, metaclass=MasterMeta):
         :returns: the table name of the table formatted for mysql.
         """
         return "__" + from_camel_case(self.__class__.__name__)
+
+
+class Subordinate:
+    """
+    Mix-in to make computed tables subordinate
+    """
+
+    @property
+    def populated_from(self):
+        """
+        Overrides the `populate_from` property because subtables should not be populated
+        directly.
+        :return: None
+        """
+        return None
+
+    def _make_tuples(self, key):
+        """
+        Overrides the `_make_tuples` property because subtables should not be populated
+        directly. Raises an error if this method is called (usually from populate of the
+        inheriting object).
+        :raises: NotImplementedError
+        """
+        raise NotImplementedError(
+            'This table is subordinate: it cannot be populated directly. Refer to its parent table.')
+
+    def progress(self):
+        """
+        Overrides the `progress` method because subtables should not be populated directly.
+        """
+        raise NotImplementedError(
+            'This table is subordinate: it cannot be populated directly. Refer to its parent table.')
+
+    def populate(self, *args, **kwargs):
+        raise NotImplementedError(
+            'This table is subordinate: it cannot be populated directly. Refer to its parent table.')
