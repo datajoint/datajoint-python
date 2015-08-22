@@ -5,9 +5,37 @@ Hosts the table tiers, user relations should be derived from.
 from datajoint.relation import Relation
 from .autopopulate import AutoPopulate
 from .utils import from_camel_case
+from . import DataJointError
 
 
-class Manual(Relation):
+class Sub(Relation):
+
+    @property
+    def master(self):
+        if not hasattr(self, '_master'):
+            raise DataJointError(
+                'subordinate relations must be declared inside a base relation class')
+        return self._master
+
+    @property
+    def table_name(self):
+        return self.master.table_name + '__' + from_camel_case(self.__class__.__name__)
+
+
+class MasterMeta(type):
+    """
+    The metaclass for master relations.  Assigns the class into the _master property of all
+    properties of type Sub.
+    """
+    def __new__(cls, name, parents, dct):
+        for value in dct.values():
+            if issubclass(value, Sub):
+                value._master = cls
+        return super().__new__(cls, name, parents, dct)
+
+
+
+class Manual(Relation, metaclass=MasterMeta):
     """
     Inherit from this class if the table's values are entered manually.
     """
@@ -20,7 +48,7 @@ class Manual(Relation):
         return from_camel_case(self.__class__.__name__)
 
 
-class Lookup(Relation):
+class Lookup(ClassedRelation):
     """
     Inherit from this class if the table's values are for lookup. This is
     currently equivalent to defining the table as Manual and serves semantic
@@ -42,7 +70,7 @@ class Lookup(Relation):
             self.insert(self.contents, ignore_errors=True)
 
 
-class Imported(Relation, AutoPopulate):
+class Imported(ClassedRelation, AutoPopulate):
     """
     Inherit from this class if the table's values are imported from external data sources.
     The inherited class must at least provide the function `_make_tuples`.
@@ -56,7 +84,7 @@ class Imported(Relation, AutoPopulate):
         return "_" + from_camel_case(self.__class__.__name__)
 
 
-class Computed(Relation, AutoPopulate):
+class Computed(ClassedRelation, AutoPopulate):
     """
     Inherit from this class if the table's values are computed from other relations in the schema.
     The inherited class must at least provide the function `_make_tuples`.
@@ -70,42 +98,19 @@ class Computed(Relation, AutoPopulate):
         return "__" + from_camel_case(self.__class__.__name__)
 
 
-class Subordinate:
+class Subordinate(dj.Relation):
     """
-    Mix-in to make computed tables subordinate
+    Subordinate relation is declared within another relation class
+
+    :input master: instance of the master relation containing the suborinate relation
     """
 
-    @property
-    def populated_from(self):
-        """
-        Overrides the `populate_from` property because subtables should not be populated
-        directly.
+    def __init__(self, master):
+        self._master = master
 
-        :return: None
-        """
-        return None
+    def table_name(self):
+        return self._master.table_name + '__' + from_camel_case(self.__class__.__name__)
 
-    def _make_tuples(self, key):
-        """
-        Overrides the `_make_tuples` property because subtables should not be populated
-        directly. Raises an error if this method is called (usually from populate of the
-        inheriting object).
-
-        :raises: NotImplementedError
-        """
-        raise NotImplementedError(
-            'This table is subordinate: it cannot be populated directly. Refer to its parent table.')
-
-    def progress(self):
-        """
-        Overrides the `progress` method because subtables should not be populated directly.
-        """
-        raise NotImplementedError(
-            'This table is subordinate: it cannot be populated directly. Refer to its parent table.')
-
-    def populate(self, *args, **kwargs):
-        raise NotImplementedError(
-            'This table is subordinate: it cannot be populated directly. Refer to its parent table.')
 
 
 

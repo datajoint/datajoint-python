@@ -4,7 +4,8 @@ import logging
 from . import conn
 from . import DataJointError
 from .heading import Heading
-
+from .user_relations import Sub
+from .autopopulate import AutoPopulate
 logger = logging.getLogger(__name__)
 
 
@@ -54,6 +55,7 @@ class schema:
         instance = cls()
         instance.heading
         instance._prepare()
+
         return cls
 
     @property
