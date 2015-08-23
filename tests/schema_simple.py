@@ -57,7 +57,7 @@ class L(dj.Lookup):
     ---
     cond_in_l :tinyint
     """
-    contents = ((i, i % 3 >= i % 5) for i in range(30))
+    contents = [(i, i % 3 >= i % 5) for i in range(30)]
 
 
 @schema
@@ -103,5 +103,4 @@ class E(dj.Computed):
         for i, ref in enumerate(references):
             if random.getrandbits(1):
                 sub.insert1(dict(key, id_f=i, **ref))
-
 

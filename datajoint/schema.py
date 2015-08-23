@@ -45,35 +45,37 @@ class schema:
         :param cls: class to be decorated
         """
 
-        def process_class(cls):
+        def process_relation_class(class_object, context):
             """
-            assign schema properties to the relation class
+            assign schema properties to the relation class and declare the table
             """
-            cls.database = self.database
-            cls._connection = self.connection
-            cls._heading = Heading()
-            cls._context = self.context
-
-            # trigger table declaration by requesting the heading from an instance
-            instance = cls()
-            instance.heading
+            class_object.database = self.database
+            class_object._connection = self.connection
+            class_object._heading = Heading()
+            class_object._context = context
+            instance = class_object()
+            instance.heading  # trigger table declaration
             instance._prepare()
 
         if issubclass(cls, Sub):
             raise DataJointError(
                 'Subordinate relations need not be assigned to a schema directly')
 
-        process_class(cls)
+        process_relation_class(cls, context=self.context)
 
-        # assign _master in all subordinates; declare subordinate relations
-        for sub in (cls.__getattribute__(sub) for sub in dir(cls)):
-            if type(sub) is type:
-                if issubclass(sub, Sub):
-                    sub._master = self
-                    process_class(sub)
+        #  Process subordinate relations
+        for name in (name for name in dir(cls) if not name.startswith('_')):
+            sub = getattr(cls, name)
+            try:
+                is_sub = issubclass(sub, Sub)
+            except TypeError:
+                pass
+            else:
+                if is_sub:
+                    sub._master = cls
+                    process_relation_class(sub, context=dict(self.context, **{cls.__name__: cls}))
                 elif issubclass(sub, Relation):
                     raise DataJointError('Subordinate relations must subclass from datajoint.Sub')
-
         return cls
 
     @property

@@ -18,7 +18,7 @@ class TestRelation:
         self.experiment = schema.Experiment()
         self.trial = schema.Trial()
         self.ephys = schema.Ephys()
-        self.channel = schema.EphysChannel()
+        self.channel = schema.Ephys.Channel()
 
     def test_contents(self):
         """

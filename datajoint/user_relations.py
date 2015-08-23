@@ -19,7 +19,7 @@ class Sub(Relation):
 
     @property
     def table_name(self):
-        return self.master.table_name + '__' + from_camel_case(self.__class__.__name__)
+        return self.master().table_name + '__' + from_camel_case(self.__class__.__name__)
 
 
 class Manual(Relation):

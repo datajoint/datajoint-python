@@ -3,13 +3,15 @@ from nose.tools import assert_raises, assert_equal, \
     assert_false, assert_true, assert_list_equal, \
     assert_tuple_equal, assert_dict_equal, raises
 import datajoint as dj
-from .schema_simple import A, B, C, D, E, F, L
+from .schema_simple import A, B, D, E, L
 
 
 def setup():
     """
     module-level test setup
     """
+    A()._prepare()
+    L()._prepare()
     B().populate()
     D().populate()
     E().populate()
@@ -24,10 +26,10 @@ class TestRelational:
         assert_false(E().progress(display=False)[0], 'E incompletely populated')
 
         assert_true(len(B()) == 40, 'B populated incorrectly')
-        assert_true(len(C()) > 0, 'C populated incorrectly')
+        assert_true(len(B.C()) > 0, 'C populated incorrectly')
         assert_true(len(D()) == 40, 'D populated incorrectly')
         assert_true(len(E()) == len(B())*len(D())/len(A()), 'E populated incorrectly')
-        assert_true(len(F()) > 0, 'F populated incorrectly')
+        assert_true(len(E.F()) > 0, 'F populated incorrectly')
 
     @staticmethod
     def test_join():
@@ -119,11 +121,11 @@ class TestRelational:
 
     @staticmethod
     def test_aggregate():
-        x = B().aggregate(C(), 'n', count='count(id_c)', mean='avg(value)', max='max(value)')
+        x = B().aggregate(B.C(), 'n', count='count(id_c)', mean='avg(value)', max='max(value)')
         assert_equal(len(x), len(B()))
         for n, count, mean, max_, key in zip(*x.fetch['n', 'count', 'mean', 'max', dj.key]):
             assert_equal(n, count, 'aggregation failed (count)')
-            values = (C() & key).fetch['value']
+            values = (B.C() & key).fetch['value']
             assert_true(bool(len(values)) == bool(n),
                         'aggregation failed (restriction)')
             if n:
