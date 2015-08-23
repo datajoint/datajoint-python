@@ -29,9 +29,17 @@ class B(dj.Computed):
     n :smallint # number samples
     """
 
+    class C(dj.Sub):
+        definition = """
+        -> B
+        id_c :int
+        ---
+        value :float  # normally distributed variables according to parameters in B
+        """
+
     def _make_tuples(self, key):
         random.seed(str(key))
-        sub = C()
+        sub = B.C()
         for i in range(4):
             key['id_b'] = i
             mu = random.normalvariate(0, 10)
@@ -40,16 +48,6 @@ class B(dj.Computed):
             self.insert1(dict(key, mu=mu, sigma=sigma, n=n))
             for j in range(n):
                 sub.insert1(dict(key, id_c=j, value=random.normalvariate(mu, sigma)))
-
-
-@schema
-class C(dj.Subordinate, dj.Computed):
-    definition = """
-    -> B
-    id_c :int
-    ---
-    value :float  # normally distributed variables according to parameters in B
-    """
 
 
 @schema
@@ -88,22 +86,22 @@ class E(dj.Computed):
     -> L
     """
 
+    class F(dj.Sub):
+        definition = """
+        -> E
+        id_f :int
+        ---
+        -> B.C
+        """
+
     def _make_tuples(self, key):
         random.seed(str(key))
         self.insert1(dict(key, **random.choice(list(L().fetch.keys()))))
-        sub = F()
-        references = list((C() & key).fetch.keys())
+        sub = E.F()
+        references = list((B.C() & key).fetch.keys())
         random.shuffle(references)
         for i, ref in enumerate(references):
             if random.getrandbits(1):
                 sub.insert1(dict(key, id_f=i, **ref))
 
 
-@schema
-class F(dj.Subordinate, dj.Computed):
-    definition = """
-    -> E
-    id_f :int
-    ---
-    -> C
-    """

@@ -22,19 +22,7 @@ class Sub(Relation):
         return self.master.table_name + '__' + from_camel_case(self.__class__.__name__)
 
 
-class MasterMeta(type):
-    """
-    The metaclass for master relations.  Assigns the class into the _master property of all
-    properties of type Sub.
-    """
-    def __new__(cls, name, parents, dct):
-        for value in dct.values():
-            if issubclass(value, Sub):
-                value._master = cls
-        return super().__new__(cls, name, parents, dct)
-
-
-class Manual(Relation, metaclass=MasterMeta):
+class Manual(Relation):
     """
     Inherit from this class if the table's values are entered manually.
     """
@@ -69,7 +57,7 @@ class Lookup(Relation):
             self.insert(self.contents, ignore_errors=True)
 
 
-class Imported(Relation, AutoPopulate, metaclass=MasterMeta):
+class Imported(Relation, AutoPopulate):
     """
     Inherit from this class if the table's values are imported from external data sources.
     The inherited class must at least provide the function `_make_tuples`.
@@ -83,7 +71,7 @@ class Imported(Relation, AutoPopulate, metaclass=MasterMeta):
         return "_" + from_camel_case(self.__class__.__name__)
 
 
-class Computed(Relation, AutoPopulate, metaclass=MasterMeta):
+class Computed(Relation, AutoPopulate):
     """
     Inherit from this class if the table's values are computed from other relations in the schema.
     The inherited class must at least provide the function `_make_tuples`.
@@ -99,7 +87,8 @@ class Computed(Relation, AutoPopulate, metaclass=MasterMeta):
 
 class Subordinate:
     """
-    Mix-in to make computed tables subordinate
+    Mix-in to make computed tables subordinate.
+    This class is DEPRECATED and will be removed in a future version. Use dj.Sub instead.
     """
 
     @property

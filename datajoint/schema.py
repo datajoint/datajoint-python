@@ -1,11 +1,10 @@
 import pymysql
 import logging
 
-from . import conn
-from . import DataJointError
+from . import conn, DataJointError
 from .heading import Heading
+from .relation import Relation
 from .user_relations import Sub
-from .autopopulate import AutoPopulate
 logger = logging.getLogger(__name__)
 
 
@@ -47,7 +46,9 @@ class schema:
         """
 
         def process_class(cls):
-            # class-level attributes
+            """
+            assign schema properties to the relation class
+            """
             cls.database = self.database
             cls._connection = self.connection
             cls._heading = Heading()
@@ -64,11 +65,14 @@ class schema:
 
         process_class(cls)
 
-        # assign _master in all subtables and declare them too
-        for sub in cls.__dict__.values():
-            if issubclass(sub, Sub):
-                sub._master = self
-                process_class(sub)
+        # assign _master in all subordinates; declare subordinate relations
+        for sub in (cls.__getattribute__(sub) for sub in dir(cls)):
+            if type(sub) is type:
+                if issubclass(sub, Sub):
+                    sub._master = self
+                    process_class(sub)
+                elif issubclass(sub, Relation):
+                    raise DataJointError('Subordinate relations must subclass from datajoint.Sub')
 
         return cls
 
@@ -76,6 +80,6 @@ class schema:
     def jobs(self):
         """
         schema.jobs provides a view of the job reservation table for the schema
-        :return:
+        :return: jobs relation
         """
         return self.connection.jobs[self.database]

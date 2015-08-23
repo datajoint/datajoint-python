@@ -136,36 +136,29 @@ class Ephys(dj.Imported):
     duration           :double  # (s)
     """
 
+    class Channel(dj.Sub):
+        definition = """     # subtable containing individual channels
+        -> Ephys
+        channel    :tinyint unsigned   # channel number within Ephys
+        ----
+        voltage    :longblob
+        """
+
     def _make_tuples(self, key):
         """
         populate with random data
         """
-        random.seed('Amazing seed')
+        random.seed(str(key))
         row = dict(key,
                    sampling_frequency=6000,
                    duration=np.minimum(2, random.expovariate(1)))
         self.insert1(row)
         number_samples = round(row['duration'] * row['sampling_frequency'])
-        EphysChannel().fill(key, number_samples=number_samples)
-
-
-@schema
-class EphysChannel(dj.Subordinate, dj.Imported):
-    definition = """     # subtable containing individual channels
-    -> Ephys
-    channel    :tinyint unsigned   # channel number within Ephys
-    ----
-    voltage    :longblob
-    """
-
-    def fill(self, key, number_samples):
-        """
-        populate random trace of specified length
-        """
-        random.seed('Amazing seed')
+        sub = Ephys.Channel()
         for channel in range(2):
-            self.insert1(
+            sub.insert1(
                 dict(key,
                      channel=channel,
-                     voltage=np.float32(np.random.randn(number_samples))
-                     ))
+                     voltage=np.float32(np.random.randn(number_samples))))
+
+
