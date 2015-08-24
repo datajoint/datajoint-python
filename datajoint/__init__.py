@@ -17,7 +17,7 @@ __all__ = ['__author__', '__version__',
            'config',
            'Connection', 'Heading', 'Relation', 'FreeRelation', 'Not',
            'Relation', 'schema',
-           'Manual', 'Lookup', 'Imported', 'Computed', 'Sub'
+           'Manual', 'Lookup', 'Imported', 'Computed', 'Sub',
            'conn', 'kill']
 
 

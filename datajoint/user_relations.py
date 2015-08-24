@@ -83,4 +83,3 @@ class Computed(Relation, AutoPopulate):
         :returns: the table name of the table formatted for mysql.
         """
         return "__" + from_camel_case(self.__class__.__name__)
-    
