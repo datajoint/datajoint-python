@@ -5,6 +5,21 @@ Hosts the table tiers, user relations should be derived from.
 from datajoint.relation import Relation
 from .autopopulate import AutoPopulate
 from .utils import from_camel_case
+from . import DataJointError
+
+
+class Sub(Relation):
+
+    @property
+    def master(self):
+        if not hasattr(self, '_master'):
+            raise DataJointError(
+                'subordinate relations must be declared inside a base relation class')
+        return self._master
+
+    @property
+    def table_name(self):
+        return self.master().table_name + '__' + from_camel_case(self.__class__.__name__)
 
 
 class Manual(Relation):
@@ -72,7 +87,8 @@ class Computed(Relation, AutoPopulate):
 
 class Subordinate:
     """
-    Mix-in to make computed tables subordinate
+    Mix-in to make computed tables subordinate.
+    This class is DEPRECATED and will be removed in a future version. Use dj.Sub instead.
     """
 
     @property
@@ -80,7 +96,6 @@ class Subordinate:
         """
         Overrides the `populate_from` property because subtables should not be populated
         directly.
-
         :return: None
         """
         return None
@@ -90,7 +105,6 @@ class Subordinate:
         Overrides the `_make_tuples` property because subtables should not be populated
         directly. Raises an error if this method is called (usually from populate of the
         inheriting object).
-
         :raises: NotImplementedError
         """
         raise NotImplementedError(
@@ -106,8 +120,3 @@ class Subordinate:
     def populate(self, *args, **kwargs):
         raise NotImplementedError(
             'This table is subordinate: it cannot be populated directly. Refer to its parent table.')
-
-
-
-
-

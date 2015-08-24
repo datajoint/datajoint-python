@@ -8,7 +8,7 @@ subject = schema.Subject()
 experiment = schema.Experiment()
 trial = schema.Trial()
 ephys = schema.Ephys()
-channel = schema.EphysChannel()
+channel = schema.Ephys.Channel()
 
 
 class TestDeclare:
