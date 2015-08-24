@@ -1,10 +1,10 @@
 import pymysql
 import logging
 
-from . import conn
-from . import DataJointError
+from . import conn, DataJointError
 from .heading import Heading
-
+from .relation import Relation
+from .user_relations import Part
 logger = logging.getLogger(__name__)
 
 
@@ -44,18 +44,43 @@ class schema:
         The decorator binds its argument class object to a database
         :param cls: class to be decorated
         """
-        # class-level attributes
-        cls.database = self.database
-        cls._connection = self.connection
-        cls._heading = Heading()
-        cls._context = self.context
 
-        # trigger table declaration by requesting the heading from an instance
-        instance = cls()
-        instance.heading
-        instance._prepare()
+        def process_relation_class(class_object, context):
+            """
+            assign schema properties to the relation class and declare the table
+            """
+            class_object.database = self.database
+            class_object._connection = self.connection
+            class_object._heading = Heading()
+            class_object._context = context
+            instance = class_object()
+            instance.heading  # trigger table declaration
+            instance._prepare()
+
+        if issubclass(cls, Part):
+            raise DataJointError('The schema decorator should not apply to part relations')
+
+        process_relation_class(cls, context=self.context)
+
+        #  Process subordinate relations
+        for name in (name for name in dir(cls) if not name.startswith('_')):
+            part = getattr(cls, name)
+            try:
+                is_sub = issubclass(part, Part)
+            except TypeError:
+                pass
+            else:
+                if is_sub:
+                    part._master = cls
+                    process_relation_class(part, context=dict(self.context, **{cls.__name__: cls}))
+                elif issubclass(part, Relation):
+                    raise DataJointError('Part relations must subclass from datajoint.Part')
         return cls
 
     @property
     def jobs(self):
+        """
+        schema.jobs provides a view of the job reservation table for the schema
+        :return: jobs relation
+        """
         return self.connection.jobs[self.database]
