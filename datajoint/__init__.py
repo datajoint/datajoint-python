@@ -17,7 +17,7 @@ __all__ = ['__author__', '__version__',
            'config',
            'Connection', 'Heading', 'Relation', 'FreeRelation', 'Not',
            'Relation', 'schema',
-           'Manual', 'Lookup', 'Imported', 'Computed', 'Sub',
+           'Manual', 'Lookup', 'Imported', 'Computed', 'Sub'
            'conn', 'kill']
 
 
@@ -55,7 +55,7 @@ logger.setLevel(log_levels[config['loglevel']])
 # ------------- flatten import hierarchy -------------------------
 from .connection import conn, Connection
 from .relation import Relation
-from .user_relations import Manual, Lookup, Imported, Computed, Sub, Subordinate
+from .user_relations import Manual, Lookup, Imported, Computed, Sub
 from .relational_operand import Not
 from .heading import Heading
 from .schema import schema
