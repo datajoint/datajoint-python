@@ -29,7 +29,7 @@ class B(dj.Computed):
     n :smallint # number samples
     """
 
-    class C(dj.Sub):
+    class C(dj.Part):
         definition = """
         -> B
         id_c :int
@@ -46,8 +46,7 @@ class B(dj.Computed):
             sigma = random.lognormvariate(0, 4)
             n = random.randint(0, 10)
             self.insert1(dict(key, mu=mu, sigma=sigma, n=n))
-            for j in range(n):
-                sub.insert1(dict(key, id_c=j, value=random.normalvariate(mu, sigma)))
+            sub.insert((dict(key, id_c=j, value=random.normalvariate(mu, sigma)) for j in range(n)))
 
 
 @schema
@@ -70,7 +69,7 @@ class D(dj.Computed):
     """
 
     def _make_tuples(self, key):
-        # connect to random L
+        # make reference to a random tuple from L
         random.seed(str(key))
         lookup = list(L().fetch.keys())
         for i in range(4):
@@ -86,7 +85,7 @@ class E(dj.Computed):
     -> L
     """
 
-    class F(dj.Sub):
+    class F(dj.Part):
         definition = """
         -> E
         id_f :int
@@ -103,4 +102,3 @@ class E(dj.Computed):
         for i, ref in enumerate(references):
             if random.getrandbits(1):
                 sub.insert1(dict(key, id_f=i, **ref))
-

@@ -8,13 +8,13 @@ from .utils import from_camel_case
 from . import DataJointError
 
 
-class Sub(Relation):
+class Part(Relation):
 
     @property
     def master(self):
         if not hasattr(self, '_master'):
             raise DataJointError(
-                'subordinate relations must be declared inside a base relation class')
+                'Part relations must be declared inside a base relation class')
         return self._master
 
     @property

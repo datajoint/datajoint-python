@@ -66,13 +66,12 @@ class Language(dj.Lookup):
     """
 
     contents = [
-            ('Fabian', 'English'),
-            ('Edgar', 'English'),
-            ('Dimitri', 'English'),
-            ('Dimitri', 'Ukrainian'),
-            ('Fabian', 'German'),
-            ('Edgar', 'Japanese'),
-    ]
+        ('Fabian', 'English'),
+        ('Edgar', 'English'),
+        ('Dimitri', 'English'),
+        ('Dimitri', 'Ukrainian'),
+        ('Fabian', 'German'),
+        ('Edgar', 'Japanese')]
 
 
 @schema
@@ -136,7 +135,7 @@ class Ephys(dj.Imported):
     duration           :double  # (s)
     """
 
-    class Channel(dj.Sub):
+    class Channel(dj.Part):
         definition = """     # subtable containing individual channels
         -> Ephys
         channel    :tinyint unsigned   # channel number within Ephys
@@ -154,7 +153,7 @@ class Ephys(dj.Imported):
                    duration=np.minimum(2, random.expovariate(1)))
         self.insert1(row)
         number_samples = round(row['duration'] * row['sampling_frequency'])
-        sub = Ephys.Channel()
+        sub = self.Channel()
         for channel in range(2):
             sub.insert1(
                 dict(key,

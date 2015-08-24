@@ -4,7 +4,7 @@ import logging
 from . import conn, DataJointError
 from .heading import Heading
 from .relation import Relation
-from .user_relations import Sub
+from .user_relations import Part
 logger = logging.getLogger(__name__)
 
 
@@ -57,25 +57,24 @@ class schema:
             instance.heading  # trigger table declaration
             instance._prepare()
 
-        if issubclass(cls, Sub):
-            raise DataJointError(
-                'Subordinate relations need not be assigned to a schema directly')
+        if issubclass(cls, Part):
+            raise DataJointError('The schema decorator should not apply to part relations')
 
         process_relation_class(cls, context=self.context)
 
         #  Process subordinate relations
         for name in (name for name in dir(cls) if not name.startswith('_')):
-            sub = getattr(cls, name)
+            part = getattr(cls, name)
             try:
-                is_sub = issubclass(sub, Sub)
+                is_sub = issubclass(part, Part)
             except TypeError:
                 pass
             else:
                 if is_sub:
-                    sub._master = cls
-                    process_relation_class(sub, context=dict(self.context, **{cls.__name__: cls}))
-                elif issubclass(sub, Relation):
-                    raise DataJointError('Subordinate relations must subclass from datajoint.Sub')
+                    part._master = cls
+                    process_relation_class(part, context=dict(self.context, **{cls.__name__: cls}))
+                elif issubclass(part, Relation):
+                    raise DataJointError('Part relations must subclass from datajoint.Part')
         return cls
 
     @property
