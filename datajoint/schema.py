@@ -45,15 +45,15 @@ class schema:
         :param cls: class to be decorated
         """
 
-        def process_relation_class(class_object, context):
+        def process_relation_class(relation_class, context):
             """
             assign schema properties to the relation class and declare the table
             """
-            class_object.database = self.database
-            class_object._connection = self.connection
-            class_object._heading = Heading()
-            class_object._context = context
-            instance = class_object()
+            relation_class.database = self.database
+            relation_class._connection = self.connection
+            relation_class._heading = Heading()
+            relation_class._context = context
+            instance = relation_class()
             instance.heading  # trigger table declaration
             instance._prepare()
 

@@ -16,16 +16,16 @@ __version__ = "0.2"
 __all__ = ['__author__', '__version__',
            'config',
            'Connection', 'Heading', 'Relation', 'FreeRelation', 'Not',
-           'Relation', 'schema',
-           'Manual', 'Lookup', 'Imported', 'Computed', 'Part',
+           'schema',
+           'Relation', 'Manual', 'Lookup', 'Imported', 'Computed', 'Part',
            'conn', 'kill']
 
 
-# define an object that identifies the primary key in RelationalOperand.__getitem__
-class PrimaryKey:
+class key:
+    """
+    object that allows requesting the primary key in Fetch.__getitem__
+    """
     pass
-
-key = PrimaryKey
 
 
 class DataJointError(Exception):
