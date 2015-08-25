@@ -53,9 +53,7 @@ class schema:
             relation_class._connection = self.connection
             relation_class._heading = Heading()
             relation_class._context = context
-            instance = relation_class()
-            instance.heading  # trigger table declaration
-            instance._prepare()
+            relation_class().declare()
 
         if issubclass(cls, Part):
             raise DataJointError('The schema decorator should not apply to part relations')
@@ -63,6 +61,7 @@ class schema:
         process_relation_class(cls, context=self.context)
 
         #  Process subordinate relations
+        parts = list()
         for name in (name for name in dir(cls) if not name.startswith('_')):
             part = getattr(cls, name)
             try:
@@ -71,10 +70,17 @@ class schema:
                 pass
             else:
                 if is_sub:
+                    parts.append(part)
                     part._master = cls
                     process_relation_class(part, context=dict(self.context, **{cls.__name__: cls}))
                 elif issubclass(part, Relation):
                     raise DataJointError('Part relations must subclass from datajoint.Part')
+
+        # invoke _prepare()
+        cls()._prepare()
+        for part in parts:
+            part()._prepare()
+
         return cls
 
     @property

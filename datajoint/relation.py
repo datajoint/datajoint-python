@@ -56,13 +56,19 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         if self._heading is None:
             self._heading = Heading()  # instance-level heading
         if not self._heading:
-            if not self.is_declared:
-                self.connection.query(
-                    declare(self.full_table_name, self.definition, self._context))
-            if self.is_declared:
-                self.connection.erm.load_dependencies(self.full_table_name)
-                self._heading.init_from_database(self.connection, self.database, self.table_name)
+            self.declare()
         return self._heading
+
+    def declare(self):
+        """
+        load the table heading. If the table is not declared, use self.definition to declare
+        """
+        if not self.is_declared:
+            self.connection.query(
+                declare(self.full_table_name, self.definition, self._context))
+        if self.is_declared:
+            self.connection.erm.load_dependencies(self.full_table_name)
+            self._heading.init_from_database(self.connection, self.database, self.table_name)
 
     @property
     def from_clause(self):
@@ -115,7 +121,6 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
                      for table in self.connection.erm.get_descendants(self.full_table_name))
         return [relation for relation in relations if relation.is_declared]
 
-
     def _repr_helper(self):
         return "%s.%s()" % (self.__module__, self.__class__.__name__)
 
@@ -133,7 +138,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
 
     def insert(self, rows, **kwargs):
         """
-        Inserts a collection of tuples. Additional keyword arguments are passed to insert1.
+        Insert a collection of tuples. Additional keyword arguments are passed to insert1.
 
         :param iter: Must be an iterator that generates a sequence of valid arguments for insert.
         """
@@ -154,19 +159,19 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         heading = self.heading
 
         if isinstance(tup, np.void):    # np.array insert
-            for fieldname in tup.dtype.fields:
-                if fieldname not in heading:
-                    raise KeyError(u'{0:s} is not in the attribute list'.format(fieldname))
+            for field in tup.dtype.fields:
+                if field not in heading:
+                    raise KeyError(u'{0:s} is not in the attribute list'.format(field))
             value_list = ','.join([repr(tup[name]) if not heading[name].is_blob else '%s'
                                    for name in heading if name in tup.dtype.fields])
             args = tuple(pack(tup[name]) for name in heading
                          if name in tup.dtype.fields and heading[name].is_blob)
             attribute_list = '`' + '`,`'.join(q for q in heading if q in tup.dtype.fields) + '`'
 
-        elif isinstance(tup, Mapping):   #  dict-based insert
-            for fieldname in tup.keys():
-                if fieldname not in heading:
-                    raise KeyError(u'{0:s} is not in the attribute list'.format(fieldname))
+        elif isinstance(tup, Mapping):  # dict-based insert
+            for field in tup.keys():
+                if field not in heading:
+                    raise KeyError(u'{0:s} is not in the attribute list'.format(field))
             value_list = ','.join(repr(tup[name]) if not heading[name].is_blob else '%s'
                                   for name in heading if name in tup)
             args = tuple(pack(tup[name]) for name in heading
@@ -175,9 +180,11 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
 
         else:    # positional insert
             try:
-                if len(tup) != len(self.heading):
+                if len(tup) != len(heading):
                     raise DataJointError(
-                        'Tuple size does not match the number of relation attributes')
+                        'Incorrect number of attributes: '
+                        '{given} given; {expected} expected'.format(
+                            given=len(tup), expected=len(heading)))
             except TypeError:
                 raise DataJointError('Datatype %s cannot be inserted' % type(tup))
             else:
