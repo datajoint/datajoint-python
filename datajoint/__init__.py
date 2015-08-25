@@ -14,11 +14,9 @@ import os
 __author__ = "Dimitri Yatsenko, Edgar Walker, and Fabian Sinz at Baylor College of Medicine"
 __version__ = "0.2"
 __all__ = ['__author__', '__version__',
-           'config',
-           'Connection', 'Heading', 'Relation', 'FreeRelation', 'Not',
-           'schema',
-           'Relation', 'Manual', 'Lookup', 'Imported', 'Computed', 'Part',
-           'conn', 'kill']
+           'config', 'conn', 'kill',
+           'Connection', 'Heading', 'Relation', 'FreeRelation', 'Not', 'schema',
+           'Manual', 'Lookup', 'Imported', 'Computed', 'Part']
 
 
 class key:
