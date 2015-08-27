@@ -5,6 +5,7 @@ from nose.tools import assert_raises, assert_equal, \
     assert_tuple_equal, assert_dict_equal, raises
 
 from . import schema
+from pymysql import IntegrityError
 
 
 class TestRelation:
@@ -38,6 +39,7 @@ class TestRelation:
         assert_list_equal(list(u['subject_id']), sorted([s[0] for s in self.subject.contents]))
 
     def test_delete_quick(self):
+        """Tests quick deletion"""
         tmp = np.array([
             (2, 'Klara', 'monkey', '2010-01-01', ''),
             (1, 'Peter', 'mouse', '2015-01-01', '')],
@@ -47,3 +49,22 @@ class TestRelation:
         assert_true(len(s) == 2, 'insert did not work.')
         s.delete_quick()
         assert_true(len(s) == 0, 'delete did not work.')
+
+    def test_skip_duplicate(self):
+        """Tests if duplicates are properly skipped."""
+        tmp = np.array([
+            (2, 'Klara', 'monkey', '2010-01-01', ''),
+            (2, 'Klara', 'monkey', '2010-01-01', ''),
+            (1, 'Peter', 'mouse', '2015-01-01', '')],
+            dtype=self.subject.heading.as_dtype)
+        self.subject.insert(tmp, skip_duplicates=True)
+
+    @raises(IntegrityError)
+    def test_not_skip_duplicate(self):
+        """Tests if duplicates are not skipped."""
+        tmp = np.array([
+            (2, 'Klara', 'monkey', '2010-01-01', ''),
+            (2, 'Klara', 'monkey', '2010-01-01', ''),
+            (1, 'Peter', 'mouse', '2015-01-01', '')],
+            dtype=self.subject.heading.as_dtype)
+        self.subject.insert(tmp, skip_duplicates=False)
