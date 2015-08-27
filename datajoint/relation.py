@@ -274,8 +274,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         ret = self.connection.query(
             'SHOW TABLE STATUS FROM `{database}` WHERE NAME="{table}"'.format(
-                database=self.database, table=self.table_name), as_dict=True
-        ).fetchone()
+                database=self.database, table=self.table_name), as_dict=True).fetchone()
         return ret['Data_length'] + ret['Index_length']
 
     # --------- functionality used by the decorator ---------
