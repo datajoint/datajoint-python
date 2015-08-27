@@ -56,13 +56,19 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         if self._heading is None:
             self._heading = Heading()  # instance-level heading
         if not self._heading:
-            if not self.is_declared:
-                self.connection.query(
-                    declare(self.full_table_name, self.definition, self._context))
-            if self.is_declared:
-                self.connection.erm.load_dependencies(self.full_table_name)
-                self._heading.init_from_database(self.connection, self.database, self.table_name)
+            self.declare()
         return self._heading
+
+    def declare(self):
+        """
+        load the table heading. If the table is not declared, use self.definition to declare
+        """
+        if not self.is_declared:
+            self.connection.query(
+                declare(self.full_table_name, self.definition, self._context))
+        if self.is_declared:
+            self.connection.erm.load_dependencies(self.full_table_name)
+            self._heading.init_from_database(self.connection, self.database, self.table_name)
 
     @property
     def from_clause(self):
@@ -115,7 +121,6 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
                      for table in self.connection.erm.get_descendants(self.full_table_name))
         return [relation for relation in relations if relation.is_declared]
 
-
     def _repr_helper(self):
         return "%s.%s()" % (self.__module__, self.__class__.__name__)
 
@@ -133,7 +138,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
 
     def insert(self, rows, **kwargs):
         """
-        Inserts a collection of tuples. Additional keyword arguments are passed to insert1.
+        Insert a collection of tuples. Additional keyword arguments are passed to insert1.
 
         :param iter: Must be an iterator that generates a sequence of valid arguments for insert.
         """
@@ -172,9 +177,11 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
                          if name in tup and heading[name].is_blob)
         else:    # positional insert
             try:
-                if len(tup) != len(self.heading):
+                if len(tup) != len(heading):
                     raise DataJointError(
-                        'Tuple size does not match the number of relation attributes')
+                        'Incorrect number of attributes: '
+                        '{given} given; {expected} expected'.format(
+                            given=len(tup), expected=len(heading)))
             except TypeError:
                 raise DataJointError('Datatype %s cannot be inserted' % type(tup))
             else:
@@ -225,7 +232,8 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
                 relations[dep] &= r.project() if name in restrict_by_me else r.restrictions
 
         do_delete = False  # indicate if there is anything to delete
-        print('The contents of the following tables are about to be deleted:')
+        if config['safemode']:
+            print('The contents of the following tables are about to be deleted:')
         for relation in relations.values():
             count = len(relation)
             if count:
@@ -234,10 +242,15 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
                     print(relation.full_table_name, '(%d tuples)' % count)
             else:
                 relations.pop(relation.full_table_name)
-        if do_delete and (not config['safemode'] or user_choice("Proceed?", default='no') == 'yes'):
-            with self.connection.transaction:
-                for r in reversed(list(relations.values())):
-                    r.delete_quick()
+        if not do_delete:
+            if config['safemode']:
+                print('Nothing to delete')
+        else:
+            if not config['safemode'] or user_choice("Proceed?", default='no') == 'yes':
+                with self.connection.transaction:
+                    for r in reversed(list(relations.values())):
+                        r.delete_quick()
+                print('Done')
 
     def drop_quick(self):
         """

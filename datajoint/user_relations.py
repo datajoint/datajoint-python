@@ -2,13 +2,14 @@
 Hosts the table tiers, user relations should be derived from.
 """
 
-from datajoint.relation import Relation
+import abc
+from .relation import Relation
 from .autopopulate import AutoPopulate
 from .utils import from_camel_case
 from . import DataJointError
 
 
-class Part(Relation):
+class Part(Relation, metaclass=abc.ABCMeta):
 
     @property
     def master(self):
@@ -22,7 +23,7 @@ class Part(Relation):
         return self.master().table_name + '__' + from_camel_case(self.__class__.__name__)
 
 
-class Manual(Relation):
+class Manual(Relation, metaclass=abc.ABCMeta):
     """
     Inherit from this class if the table's values are entered manually.
     """
@@ -35,7 +36,7 @@ class Manual(Relation):
         return from_camel_case(self.__class__.__name__)
 
 
-class Lookup(Relation):
+class Lookup(Relation, metaclass=abc.ABCMeta):
     """
     Inherit from this class if the table's values are for lookup. This is
     currently equivalent to defining the table as Manual and serves semantic
@@ -54,10 +55,10 @@ class Lookup(Relation):
         Checks whether the instance has a property called `contents` and inserts its elements.
         """
         if hasattr(self, 'contents'):
-            self.insert(self.contents, ignore_errors=False, skip_duplicates=True)
+            self.insert(self.contents, skip_duplicates=True)
 
 
-class Imported(Relation, AutoPopulate):
+class Imported(Relation, AutoPopulate, metaclass=abc.ABCMeta):
     """
     Inherit from this class if the table's values are imported from external data sources.
     The inherited class must at least provide the function `_make_tuples`.
@@ -71,7 +72,7 @@ class Imported(Relation, AutoPopulate):
         return "_" + from_camel_case(self.__class__.__name__)
 
 
-class Computed(Relation, AutoPopulate):
+class Computed(Relation, AutoPopulate, metaclass=abc.ABCMeta):
     """
     Inherit from this class if the table's values are computed from other relations in the schema.
     The inherited class must at least provide the function `_make_tuples`.

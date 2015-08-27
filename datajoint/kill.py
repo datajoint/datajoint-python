@@ -32,7 +32,7 @@ def kill(restriction=None, connection=None):
             except TypeError as err:
                 print(process)
 
-        response = input('process to kill or "q" to quit)')
+        response = input('process to kill or "q" to quit > ')
         if response == 'q':
             break
         if response:
