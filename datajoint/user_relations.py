@@ -55,7 +55,7 @@ class Lookup(Relation, metaclass=abc.ABCMeta):
         Checks whether the instance has a property called `contents` and inserts its elements.
         """
         if hasattr(self, 'contents'):
-            self.insert(self.contents, ignore_errors=True)
+            self.insert(self.contents, skip_duplicates=True)
 
 
 class Imported(Relation, AutoPopulate, metaclass=abc.ABCMeta):
