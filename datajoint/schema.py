@@ -76,7 +76,7 @@ class schema:
                 elif issubclass(part, Relation):
                     raise DataJointError('Part relations must subclass from datajoint.Part')
 
-        # invoke _prepare()
+        # invoke Relation._prepare() on class and its part relations.
         cls()._prepare()
         for part in parts:
             part()._prepare()

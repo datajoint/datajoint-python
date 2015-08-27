@@ -229,7 +229,8 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
                 relations[dep] &= r.project() if name in restrict_by_me else r.restrictions
 
         do_delete = False  # indicate if there is anything to delete
-        print('The contents of the following tables are about to be deleted:')
+        if config['safemode']:
+            print('The contents of the following tables are about to be deleted:')
         for relation in relations.values():
             count = len(relation)
             if count:
@@ -238,10 +239,15 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
                     print(relation.full_table_name, '(%d tuples)' % count)
             else:
                 relations.pop(relation.full_table_name)
-        if do_delete and (not config['safemode'] or user_choice("Proceed?", default='no') == 'yes'):
-            with self.connection.transaction:
-                for r in reversed(list(relations.values())):
-                    r.delete_quick()
+        if not do_delete:
+            if config['safemode']:
+                print('Nothing to delete')
+        else:
+            if not config['safemode'] or user_choice("Proceed?", default='no') == 'yes':
+                with self.connection.transaction:
+                    for r in reversed(list(relations.values())):
+                        r.delete_quick()
+                print('Done')
 
     def drop_quick(self):
         """
