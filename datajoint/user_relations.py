@@ -54,7 +54,7 @@ class Lookup(Relation):
         Checks whether the instance has a property called `contents` and inserts its elements.
         """
         if hasattr(self, 'contents'):
-            self.insert(self.contents, ignore_errors=True)
+            self.insert(self.contents, ignore_errors=False, skip_duplicates=True)
 
 
 class Imported(Relation, AutoPopulate):
