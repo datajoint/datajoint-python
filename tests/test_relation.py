@@ -20,6 +20,7 @@ class TestRelation:
         self.trial = schema.Trial()
         self.ephys = schema.Ephys()
         self.channel = schema.Ephys.Channel()
+        self.img = schema.Image()
 
     def test_contents(self):
         """
@@ -68,3 +69,10 @@ class TestRelation:
             (1, 'Peter', 'mouse', '2015-01-01', '')],
             dtype=self.subject.heading.as_dtype)
         self.subject.insert(tmp, skip_duplicates=False)
+
+
+    def test_blob_insert(self):
+        X = np.random.randn(20,10)
+        self.img.insert1((1,X))
+        Y = self.img.fetch()[0]['img']
+        assert_true(np.all(X == Y), 'Inserted and retrieved image are not identical')

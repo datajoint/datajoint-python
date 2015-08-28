@@ -178,10 +178,9 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
             except TypeError:
                 raise DataJointError('Datatype %s cannot be inserted' % type(tup))
             else:
-                pairs = zip(heading, tup)
-                values = ['%s' if heading[name].is_blob else value for name, value in pairs]
+                values = ['%s' if heading[name].is_blob else value for name, value in zip(heading, tup)]
                 attributes = heading.names
-                args = tuple(pack(value) for name, value in pairs if heading[name].is_blob)
+                args = tuple(pack(value) for name, value in zip(heading, tup) if heading[name].is_blob)
 
         value_list = ','.join(map(lambda elem: repr(elem) if elem != '%s' else elem , values))
         attribute_list = '`' + '`,`'.join(attributes) + '`'
@@ -197,6 +196,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
             sql += " INTO %s (%s) VALUES (%s)" % (self.from_clause, attribute_list, value_list)
             logger.info(sql)
             self.connection.query(sql, args=args)
+
 
     def delete_quick(self):
         """

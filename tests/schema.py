@@ -160,4 +160,11 @@ class Ephys(dj.Imported):
                      channel=channel,
                      voltage=np.float32(np.random.randn(number_samples))))
 
-
+@schema
+class Image(dj.Manual):
+    definition = """
+    # table for testing blob inserts
+    id           : int # image identifier
+    ---
+    img             : longblob # image
+    """
