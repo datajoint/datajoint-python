@@ -271,7 +271,6 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         do_drop = True
         relations = self.descendants
         if config['safemode']:
-            print('The following tables are about to be dropped:')
             for relation in relations:
                 print(relation.full_table_name, '(%d tuples)' % len(relation))
             do_drop = user_choice("Proceed?", default='no') == 'yes'

@@ -5,7 +5,10 @@ from nose.tools import assert_raises, assert_equal, \
     assert_tuple_equal, assert_dict_equal, raises
 
 from . import schema
-from pymysql import IntegrityError
+from pymysql import IntegrityError, ProgrammingError
+import datajoint as dj
+from datajoint import utils
+from unittest.mock import patch
 
 
 class TestRelation:
@@ -21,6 +24,7 @@ class TestRelation:
         self.ephys = schema.Ephys()
         self.channel = schema.Ephys.Channel()
         self.img = schema.Image()
+        self.trash = schema.UberTrash()
 
     def test_contents(self):
         """
@@ -70,9 +74,18 @@ class TestRelation:
             dtype=self.subject.heading.as_dtype)
         self.subject.insert(tmp, skip_duplicates=False)
 
-
     def test_blob_insert(self):
-        X = np.random.randn(20,10)
-        self.img.insert1((1,X))
+        """Tests inserting and retrieving blobs."""
+        X = np.random.randn(20, 10)
+        self.img.insert1((1, X))
         Y = self.img.fetch()[0]['img']
         assert_true(np.all(X == Y), 'Inserted and retrieved image are not identical')
+
+    @raises(ProgrammingError)
+    def test_drop(self):
+        """Tests dropping tables"""
+        dj.config['safemode'] = True
+        with patch.object(utils, "input", create=True, return_value='yes'):
+            self.trash.drop()
+        dj.config['safemode'] = False
+        self.trash.fetch()

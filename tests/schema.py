@@ -168,3 +168,25 @@ class Image(dj.Manual):
     ---
     img             : longblob # image
     """
+
+
+@schema
+class UberTrash(dj.Manual):
+    definition = """
+    id : int
+    ---
+    """
+
+
+@schema
+class UnterTrash(dj.Manual):
+    definition = """
+    -> UberTrash
+    my_id   : int
+    ---
+    """
+
+    def _prepare(self):
+        UberTrash().insert1((1,), skip_duplicates=True)
+        self.insert1((1, 1), skip_duplicates=True)
+        self.insert1((1, 2), skip_duplicates=True)
