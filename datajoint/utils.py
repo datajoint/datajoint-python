@@ -6,7 +6,8 @@ from datajoint import DataJointError
 def user_choice(prompt, choices=("yes", "no"), default=None):
     """
     Prompts the user for confirmation.  The default value, if any, is capitalized.
-    :parsam prompt: Information to display to the user.
+
+    :param prompt: Information to display to the user.
     :param choices: an iterable of possible choices.
     :param default: default choice
     :return: the user's choice
@@ -36,11 +37,15 @@ def group_by(rel, *attributes, sortby=None):
 
 def to_camel_case(s):
     """
-    Convert names with under score (_) separation
-    into camel case names.
+    Convert names with under score (_) separation into camel case names.
+
+    :param s: string in under_score notation
+    :returns: string in CamelCase notation
+
     Example:
-    >>> to_camel_case("table_name")
-        "TableName"
+
+    >>> to_camel_case("table_name") # yields "TableName"
+
     """
 
     def to_upper(match):
@@ -53,9 +58,12 @@ def from_camel_case(s):
     """
     Convert names in camel case into underscore (_) separated names
 
+    :param s: string in CamelCase notation
+    :returns: string in under_score notation
+
     Example:
-    >>> from_camel_case("TableName")
-        "table_name"
+
+    >>> from_camel_case("TableName") # yields "table_name"
     """
 
     def convert(match):
