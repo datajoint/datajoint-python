@@ -1,9 +1,9 @@
 from operator import itemgetter, attrgetter
 import itertools
-from nose.tools import assert_true
+from nose.tools import assert_true, raises
 from numpy.testing import assert_array_equal, assert_equal
 import numpy as np
-
+import warnings
 from . import schema
 import datajoint as dj
 
@@ -135,3 +135,45 @@ class TestFetch:
         # 3 lines are used for headers (2) and summary statement (1)
         assert_true(n - 3 <= limit)
 
+    @raises(dj.DataJointError)
+    def test_prepare_attributes(self):
+        """Test preparing attributes for getitem"""
+        self.lang.fetch[None]
+
+    def test_asdict(self):
+        """Test returns as dictionaries"""
+        d = self.lang.fetch.as_dict()
+        for dd in d:
+            assert_true(isinstance(dd, dict))
+
+    def test_asdict_with_call(self):
+        """Test returns as dictionaries with call."""
+        d = self.lang.fetch.as_dict()()
+        for dd in d:
+            assert_true(isinstance(dd, dict))
+
+    def test_offset(self):
+        """Tests offset"""
+        cur = self.lang.fetch.limit(4).offset(1)(order_by=['language', 'name DESC'])
+        langs = self.lang.contents
+        langs.sort(key=itemgetter(0), reverse=True)
+        langs.sort(key=itemgetter(1), reverse=False)
+        assert_equal(len(cur), 4, 'Length is not correct')
+        for c, l in list(zip(cur, langs[1:]))[:4]:
+            assert_true(np.all([cc == ll for cc, ll in zip(c, l)]), 'Sorting order is different')
+
+
+    def test_limit_warning(self):
+        """Tests whether warning is raised if offset is used without limit."""
+        with warnings.catch_warnings(record=True) as w:
+            self.lang.fetch.offset(1)()
+            assert_true(len(w) > 0, "Warning war not raised")
+
+    def test_len(self):
+        """Tests __len__"""
+        assert_true(len(self.lang.fetch) == len(self.lang),'__len__ is not behaving properly')
+
+    @raises(dj.DataJointError)
+    def test_fetch1(self):
+        """Tests whether fetch1 raises error"""
+        self.lang.fetch1()
