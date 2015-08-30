@@ -18,6 +18,7 @@ API:
    blob.rst
    declare.rst
    utils.rst
+   fetch.rst
 
 Indices and tables
 ==================

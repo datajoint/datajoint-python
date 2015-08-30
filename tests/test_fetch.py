@@ -148,7 +148,7 @@ class TestFetch:
 
     def test_asdict_with_call(self):
         """Test returns as dictionaries with call."""
-        d = self.lang.fetch.as_dict()()
+        d = self.lang.fetch.as_dict()
         for dd in d:
             assert_true(isinstance(dd, dict))
 

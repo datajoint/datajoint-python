@@ -9,6 +9,15 @@ from . import config
 
 
 def prepare_attributes(relation, item):
+    """
+    Used by fetch.__getitem__ to deal with slices
+
+    :param relation: the relation that created the fetch object
+    :param item: the item passed to __getitem__. Can be a string, a tuple, a list, or a slice.
+
+    :return: a tuple of items to fetch, a list of the corresponding attributes
+    :raise DataJointError: if item does not match one of the datatypes above
+    """
     if isinstance(item, str) or item is PRIMARY_KEY:
         item = (item,)
     elif isinstance(item, int):
@@ -27,7 +36,7 @@ def prepare_attributes(relation, item):
 
 def copy_first(f):
     """
-    decorates methods that return an altered copy of self
+    Decorates methods that return an altered copy of self
     """
     @wraps(f)
     def ret(*args, **kwargs):
@@ -39,6 +48,11 @@ def copy_first(f):
 
 
 class Fetch:
+    """
+    A fetch object that handles retrieving elements from the database table.
+
+    :param relation: relation the fetch object retrieves data from.
+    """
 
     def __init__(self, relation):
         if isinstance(relation, Fetch):  # copy constructor
@@ -52,22 +66,57 @@ class Fetch:
 
     @copy_first
     def order_by(self, *args):
+        """
+        Changes the state of the fetch object to order the results by a particular attribute.
+        The commands are handed down to mysql.
+
+        :param args: the attributes to sort by. If DESC is passed after the name, then the order is descending.
+        :return: a copy of the fetch object
+
+        Example:
+
+        >>> my_relation.fetch.order_by('language', 'name DESC')
+
+        """
         if len(args) > 0:
             self.behavior['order_by'] = args
         return self
 
+    @property
     @copy_first
     def as_dict(self):
+        """
+        Changes the state of the fetch object to return dictionaries.
+
+        :return: a copy of the fetch object
+
+        Example:
+
+        >>> my_relation.fetch.as_dict()
+
+        """
         self.behavior['as_dict'] = True
         return self
 
     @copy_first
     def limit(self, limit):
+        """
+        Limits the number of items fetched.
+
+        :param limit: limit on the number of items
+        :return: a copy of the fetch object
+        """
         self.behavior['limit'] = limit
         return self
 
     @copy_first
     def offset(self, offset):
+        """
+        Offsets the number of itms fetched. Needs to be applied with limit.
+
+        :param offset: offset
+        :return: a copy of the fetch object
+        """
         if self.behavior['limit'] is None:
             warnings.warn('You should supply a limit together with an offset,')
         self.behavior['offset'] = offset
@@ -75,6 +124,12 @@ class Fetch:
 
     @copy_first
     def set_behavior(self, **kwargs):
+        """
+        Sets the behavior like offset, limit, or order_by via keywords arguments.
+
+        :param kwargs:  keyword arguments
+        :return: a copy of the fetch object
+        """
         self.behavior.update(kwargs)
         return self
 
@@ -146,10 +201,11 @@ class Fetch:
         :return: tuple with an entry for each element of item
 
         Examples:
-        a, b = relation['a', 'b']
-        a, b, key = relation['a', 'b', datajoint.key]
-        results = relation['a':'z']    # return attributes a-z as a tuple
-        results = relation[:-1]   # return all but the last attribute
+
+        >>> a, b = relation['a', 'b']
+        >>> a, b, key = relation['a', 'b', datajoint.key]
+        >>> results = relation['a':'z']    # return attributes a-z as a tuple
+        >>> results = relation[:-1]   # return all but the last attribute
         """
         single_output = isinstance(item, str) or item is PRIMARY_KEY or isinstance(item, int)
         item, attributes = prepare_attributes(self._relation, item)
@@ -185,6 +241,11 @@ class Fetch:
 
 
 class Fetch1:
+    """
+    Fetch object for fetching exactly one row.
+
+    :param relation: relation the fetch object fetches data from
+    """
 
     def __init__(self, relation):
         self._relation = relation
@@ -192,6 +253,7 @@ class Fetch1:
     def __call__(self):
         """
         This version of fetch is called when self is expected to contain exactly one tuple.
+
         :return: the one tuple in the relation in the form of a dict
         """
         heading = self._relation.heading
@@ -208,13 +270,16 @@ class Fetch1:
         """
         Fetch attributes as separate outputs.
         datajoint.key is a special value that requests the entire primary key
+
         :return: tuple with an entry for each element of item
 
         Examples:
-        a, b = relation['a', 'b']
-        a, b, key = relation['a', 'b', datajoint.key]
-        results = relation['a':'z']    # return attributes a-z as a tuple
-        results = relation[:-1]   # return all but the last attribute
+
+        >>> a, b = relation['a', 'b']
+        >>> a, b, key = relation['a', 'b', datajoint.key]
+        >>> results = relation['a':'z']    # return attributes a-z as a tuple
+        >>> results = relation[:-1]   # return all but the last attribute
+
         """
         single_output = isinstance(item, str) or item is PRIMARY_KEY or isinstance(item, int)
         item, attributes = prepare_attributes(self._relation, item)
