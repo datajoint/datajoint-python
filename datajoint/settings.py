@@ -54,6 +54,9 @@ log_levels = {
 
 
 class Borg:
+    """
+    Class to implement an de facto singleton.
+    """
     _shared_state = {}
 
     def __init__(self):

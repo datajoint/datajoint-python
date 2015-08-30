@@ -19,6 +19,7 @@ API:
    declare.rst
    utils.rst
    fetch.rst
+   settings.rst
 
 Indices and tables
 ==================
