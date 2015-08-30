@@ -11,6 +11,7 @@ import datajoint as dj
 class TestFetch:
     def __init__(self):
         self.subject = schema.Subject()
+
         self.lang = schema.Language()
 
     def test_getitem(self):
@@ -34,6 +35,13 @@ class TestFetch:
 
         for column, field in zip(self.subject.fetch['subject_id'::2], [e[0] for e in tmp.dtype.descr][::2]):
             np.testing.assert_array_equal(sorted(tmp[field]), sorted(column), 'slice : does not work correctly')
+
+    def test_getitem_for_fetch1(self):
+        """Testing Fetch1.__getitem__"""
+        assert_true( (self.subject & "subject_id=10").fetch1['subject_id'] == 10)
+        assert_true( (self.subject & "subject_id=10").fetch1['subject_id','species'] == (10, 'monkey'))
+        assert_true( (self.subject & "subject_id=10").fetch1['subject_id':'species'] == (10, 'Curious George'))
+
 
     def test_order_by(self):
         """Tests order_by sorting order"""
