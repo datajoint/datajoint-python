@@ -160,4 +160,33 @@ class Ephys(dj.Imported):
                      channel=channel,
                      voltage=np.float32(np.random.randn(number_samples))))
 
+@schema
+class Image(dj.Manual):
+    definition = """
+    # table for testing blob inserts
+    id           : int # image identifier
+    ---
+    img             : longblob # image
+    """
 
+
+@schema
+class UberTrash(dj.Manual):
+    definition = """
+    id : int
+    ---
+    """
+
+
+@schema
+class UnterTrash(dj.Manual):
+    definition = """
+    -> UberTrash
+    my_id   : int
+    ---
+    """
+
+    def _prepare(self):
+        UberTrash().insert1((1,), skip_duplicates=True)
+        self.insert1((1, 1), skip_duplicates=True)
+        self.insert1((1, 2), skip_duplicates=True)

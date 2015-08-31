@@ -45,17 +45,15 @@ class schema:
         :param cls: class to be decorated
         """
 
-        def process_relation_class(class_object, context):
+        def process_relation_class(relation_class, context):
             """
             assign schema properties to the relation class and declare the table
             """
-            class_object.database = self.database
-            class_object._connection = self.connection
-            class_object._heading = Heading()
-            class_object._context = context
-            instance = class_object()
-            instance.heading  # trigger table declaration
-            instance._prepare()
+            relation_class.database = self.database
+            relation_class._connection = self.connection
+            relation_class._heading = Heading()
+            relation_class._context = context
+            relation_class().declare()
 
         if issubclass(cls, Part):
             raise DataJointError('The schema decorator should not apply to part relations')
@@ -63,6 +61,7 @@ class schema:
         process_relation_class(cls, context=self.context)
 
         #  Process subordinate relations
+        parts = list()
         for name in (name for name in dir(cls) if not name.startswith('_')):
             part = getattr(cls, name)
             try:
@@ -71,10 +70,17 @@ class schema:
                 pass
             else:
                 if is_sub:
+                    parts.append(part)
                     part._master = cls
                     process_relation_class(part, context=dict(self.context, **{cls.__name__: cls}))
                 elif issubclass(part, Relation):
                     raise DataJointError('Part relations must subclass from datajoint.Part')
+
+        # invoke Relation._prepare() on class and its part relations.
+        cls()._prepare()
+        for part in parts:
+            part()._prepare()
+
         return cls
 
     @property

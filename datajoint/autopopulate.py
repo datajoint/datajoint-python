@@ -2,6 +2,7 @@
 import abc
 import logging
 import datetime
+import random
 from .relational_operand import RelationalOperand
 from . import DataJointError
 from .relation import FreeRelation
@@ -52,7 +53,8 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         """
         return self
 
-    def populate(self, restriction=None, suppress_errors=False, reserve_jobs=False):
+    def populate(self, restriction=None, suppress_errors=False,
+                 reserve_jobs=False, order="original"):
         """
         rel.populate() calls rel._make_tuples(key) for every primary key in self.populated_from
         for which there is not already a tuple in rel.
@@ -61,18 +63,31 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         :param suppress_errors: suppresses error if true
         :param reserve_jobs: currently not implemented
         :param batch: batch size of a single job
+        :param order: "original"|"reverse"|"random"  - the order of execution
         """
-        error_list = [] if suppress_errors else None
         if not isinstance(self.populated_from, RelationalOperand):
             raise DataJointError('Invalid populated_from value')
 
         if self.connection.in_transaction:
             raise DataJointError('Populate cannot be called during a transaction.')
 
+        valid_order = ['original', 'reverse', 'random']
+        if order not in valid_order:
+            raise DataJointError('The order argument must be one of %s' % str(valid_order))
+
+        error_list = [] if suppress_errors else None
+
         jobs = self.connection.jobs[self.target.database]
         table_name = self.target.table_name
         unpopulated = (self.populated_from & restriction) - self.target.project()
-        for key in unpopulated.fetch.keys():
+        keys = unpopulated.fetch.keys()
+        if order == "reverse":
+            keys = list(keys).reverse()
+        elif order == "random":
+            keys = list(keys)
+            random.shuffle(keys)
+
+        for key in keys:
             if not reserve_jobs or jobs.reserve(table_name, key):
                 self.connection.start_transaction()
                 if key in self.target:  # already populated
