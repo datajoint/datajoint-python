@@ -44,14 +44,17 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
     # -------------- required by RelationalOperand ----------------- #
     @property
     def connection(self):
+        """
+        :return: the connection object of the relation
+        """
         return self._connection
 
     @property
     def heading(self):
         """
-        Get the table heading.
-        If the table is not declared, attempts to declare it and return heading.
-        :return:
+        Returns the table heading. If the table is not declared, attempts to declare it and return heading.
+
+        :return: table heading
         """
         if self._heading is None:
             self._heading = Heading()  # instance-level heading
@@ -61,7 +64,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
 
     def declare(self):
         """
-        load the table heading. If the table is not declared, use self.definition to declare
+        Loads the table heading. If the table is not declared, use self.definition to declare
         """
         if not self.is_declared:
             self.connection.query(
@@ -79,9 +82,15 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
 
     @property
     def select_fields(self):
+        """
+        :return: the selected attributes from the SQL SELECT statement.
+        """
         return '*'
 
     def erd(self, *args, **kwargs):
+        """
+        :return: the entity relationship diagram object of this relation
+        """
         erd = self.connection.erd()
         nodes = erd.up_down_neighbors(self.full_table_name)
         return erd.restrict_by_tables(nodes)
@@ -89,10 +98,16 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
     # ------------- dependencies ---------- #
     @property
     def parents(self):
+        """
+        :return: the parent relation of this relation
+        """
         return self.connection.erm.parents[self.full_table_name]
 
     @property
     def children(self):
+        """
+        :return: the child relations of this relation
+        """
         return self.connection.erm.children[self.full_table_name]
 
     @property
@@ -112,10 +127,11 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
     @property
     def descendants(self):
         """
-        :return: list of relation objects for all children and references, recursively,
-        in order of dependence.
-        Does not include self.
+        Returns a list of relation objects for all children and references, recursively,
+        in order of dependence. The returned values do not include self.
         This is helpful for cascading delete or drop operations.
+
+        :return: list of descendants
         """
         relations = (FreeRelation(self.connection, table)
                      for table in self.connection.erm.get_descendants(self.full_table_name))
@@ -127,6 +143,9 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
     # --------- SQL functionality --------- #
     @property
     def is_declared(self):
+        """
+        :return: True is the table is declared
+        """
         cur = self.connection.query(
             'SHOW TABLES in `{database}`LIKE "{table_name}"'.format(
                 database=self.database, table_name=self.table_name))
@@ -134,11 +153,14 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
 
     @property
     def full_table_name(self):
+        """
+        :return: full table name in the database
+        """
         return r"`{0:s}`.`{1:s}`".format(self.database, self.table_name)
 
     def insert(self, rows, **kwargs):
         """
-        Insert a collection of tuples. Additional keyword arguments are passed to insert1.
+        Insert a collection of rows. Additional keyword arguments are passed to insert1.
 
         :param iter: Must be an iterator that generates a sequence of valid arguments for insert.
         """
@@ -155,7 +177,9 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         :param skip_dublicates=False: If True, ignore duplicate inserts.
 
         Example::
-            relation.insert1(dict(subject_id=7, species="mouse", date_of_birth="2014-09-01"))
+
+        >>> relation.insert1(dict(subject_id=7, species="mouse", date_of_birth="2014-09-01"))
+
         """
         heading = self.heading
 
@@ -185,10 +209,9 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
             except TypeError:
                 raise DataJointError('Datatype %s cannot be inserted' % type(tup))
             else:
-                pairs = zip(heading, tup)
-                values = ['%s' if heading[name].is_blob else value for name, value in pairs]
+                values = ['%s' if heading[name].is_blob else value for name, value in zip(heading, tup)]
                 attributes = heading.names
-                args = tuple(pack(value) for name, value in pairs if heading[name].is_blob)
+                args = tuple(pack(value) for name, value in zip(heading, tup) if heading[name].is_blob)
 
         value_list = ','.join(map(lambda elem: repr(elem) if elem != '%s' else elem , values))
         attribute_list = '`' + '`,`'.join(attributes) + '`'
@@ -205,16 +228,18 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
             logger.info(sql)
             self.connection.query(sql, args=args)
 
+
     def delete_quick(self):
         """
-        delete without cascading and without user prompt
+        Deletes the table without cascading and without user prompt.
         """
         self.connection.query('DELETE FROM ' + self.from_clause + self.where_clause)
 
     def delete(self):
         """
-        Delete the contents of the table and its dependent tables, recursively.
-        User is prompted for confirmation if config['safemode']
+        Deletes the contents of the table and its dependent tables, recursively.
+        User is prompted for confirmation if config['safemode'] is set to True.
+
         """
         relations = self.descendants
         restrict_by_me = set()
@@ -266,12 +291,11 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
     def drop(self):
         """
         Drop the table and all tables that reference it, recursively.
-        User is prompted for confirmation if config['safemode']
+        User is prompted for confirmation if config['safemode'] is set to True.
         """
         do_drop = True
         relations = self.descendants
         if config['safemode']:
-            print('The following tables are about to be dropped:')
             for relation in relations:
                 print(relation.full_table_name, '(%d tuples)' % len(relation))
             do_drop = user_choice("Proceed?", default='no') == 'yes'
@@ -314,12 +338,23 @@ class FreeRelation(Relation):
 
     @property
     def definition(self):
+        """
+        Definition of the table.
+
+        :return: the definition
+        """
         return self._definition
 
     @property
     def connection(self):
+        """
+        :return: the connection object of the relation.
+        """
         return self._connection
 
     @property
     def table_name(self):
+        """
+        :return: the table name in the database
+        """
         return self._table_name

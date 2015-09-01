@@ -13,9 +13,13 @@ API:
 
    tiers.rst
    relation.rst
+   relational_operand.rst
    connection.rst
    blob.rst
    declare.rst
+   utils.rst
+   fetch.rst
+   settings.rst
 
 Indices and tables
 ==================

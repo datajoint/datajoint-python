@@ -10,6 +10,12 @@ from . import DataJointError
 
 
 class Part(Relation, metaclass=abc.ABCMeta):
+    """
+    Inherit from this class if the table's values are details of an entry in another relation
+    and if this table is populated by this relation. For example, the entries inheriting from
+    dj.Part could be single entries of a matrix, while the parent table refers to the entire matrix.
+    Part relations are implemented as classes inside classes.
+    """
 
     @property
     def master(self):
