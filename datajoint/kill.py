@@ -37,11 +37,11 @@ def kill(restriction=None, connection=None):
             break
         if response:
             try:
-                id = int(response)
+                pid = int(response)
             except ValueError:
                 pass  # ignore non-numeric input
             else:
                 try:
-                    connection.query('kill %d' % id)
+                    connection.query('kill %d' % pid)
                 except pymysql.err.InternalError:
                     print('Process not found')
