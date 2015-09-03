@@ -31,3 +31,5 @@ def test_to_camel_case():
     assert_equal(to_camel_case('hello'), 'Hello')
     assert_equal(to_camel_case('this_is_a_sample_case'), 'ThisIsASampleCase')
     assert_equal(to_camel_case('This_is_Mixed'), 'ThisIsMixed')
+
+

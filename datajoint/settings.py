@@ -2,6 +2,7 @@
 Settings for DataJoint.
 """
 from . import DataJointError
+from contextlib import contextmanager
 import json
 import pprint
 from collections import OrderedDict
@@ -70,6 +71,7 @@ class Config(Borg, collections.MutableMapping):
 
     The default parameters are stored in datajoint.settings.default . If a local config file
     exists, the settings specified in this file override the default settings.
+
     """
 
     def __init__(self, *args, **kwargs):
@@ -124,5 +126,30 @@ class Config(Borg, collections.MutableMapping):
             filename = LOCALCONFIG
         with open(filename, 'r') as fid:
             self.update(json.load(fid))
+
+
+    @contextmanager
+    def __call__(self, **kwargs):
+        """
+        The config object can also be used in a with statement to change the state of the configuration
+        temporarily. kwargs to the context manager are the keys into config, where '.' is replaced by a
+        double underscore '__'. The context manager yields the changed config object.
+
+        Example:
+        >>> import datajoint as dj
+        >>> with dj.config(safe__mode=False) as cfg:
+        >>>     # do dangerous stuff here
+        """
+
+        try:
+            backup = self._conf.copy()
+            new = {k.replace('__','.'):v for k,v in kwargs.items()}
+            self._conf.update(new)
+            yield self
+        except:
+            self._conf.update(backup)
+            raise
+        else:
+            self._conf.update(backup)
 
 
