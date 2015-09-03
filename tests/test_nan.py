@@ -1,8 +1,7 @@
 import numpy as np
-from nose.tools import assert_true, assert_false, assert_equal, assert_list_equal
+from nose.tools import assert_true
 import datajoint as dj
 from . import PREFIX, CONN_INFO
-
 
 schema = dj.schema(PREFIX + '_nantest', locals(), connection=dj.conn(**CONN_INFO))
 
