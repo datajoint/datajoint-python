@@ -4,7 +4,7 @@ This module hosts the Connection class that manages the connection to the mysql 
 """
 
 from contextlib import contextmanager
-import pymysql as sql_api
+import pymysql as client
 import logging
 from . import config
 from . import DataJointError
@@ -59,7 +59,7 @@ class Connection:
         else:
             port = config['database.port']
         self.conn_info = dict(host=host, port=port, user=user, passwd=passwd)
-        self._conn = sql_api.connect(init_command=init_fun, **self.conn_info)
+        self._conn = client.connect(init_command=init_fun, **self.conn_info)
         if self.is_connected:
             logger.info("Connected {user}@{host}:{port}".format(**self.conn_info))
         else:
@@ -96,11 +96,11 @@ class Connection:
         Execute the specified query and return the tuple generator (cursor).
 
         :param query: mysql query
-        :param args: additional arguments for the sql_api.cursor
+        :param args: additional arguments for the client.cursor
         :param as_dict: If as_dict is set to True, the returned cursor objects returns
                         query results as dictionary.
         """
-        cursor = sql_api.cursors.DictCursor if as_dict else sql_api.cursors.Cursor
+        cursor = client.cursors.DictCursor if as_dict else client.cursors.Cursor
         cur = self._conn.cursor(cursor=cursor)
 
         # Log the query

@@ -22,7 +22,6 @@ class Auto(dj.Lookup):
         dict(name="Escher"),
         dict(name="Bach"))
 
-
 @schema
 class User(dj.Lookup):
     definition = """      # lab members

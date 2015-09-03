@@ -198,12 +198,14 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
             if heading[name].is_blob:
                 value = pack(value)
                 # This is a temporary hack to address issue #131 (slow blob inserts).
-                # When this problem is fixed by pymysql or python, this clause should be removed.
+                # When this problem is fixed by pymysql or python, then pass blob as query argument.
                 placeholder = '0x' + binascii.b2a_hex(value).decode('ascii')
                 value = None
             elif heading[name].numeric:
+                if np.isnan(value):
+                    name = None    # omit nans
                 placeholder = '%s'
-                value = repr(value)
+                value = repr(int(value) if isinstance(value, bool) else value)
             else:
                 placeholder = '%s'
             return name, placeholder, value
@@ -237,11 +239,11 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
                 sql = 'INSERT IGNORE'
             else:
                 sql = 'INSERT'
-            names, placeholders, values = list(zip(*attributes))
-            sql += " INTO %s (%s) VALUES (%s)" % (self.from_clause,
-                                                  '`'+'`,`'.join(names)+'`',
-                                                  ','.join(placeholders))
-            self.connection.query(sql, args=list(v for v in values if v is not None))
+            attributes = (a for a in attributes if a[0])   # omit dropped attributes
+            names, placeholders, values = tuple(zip(*attributes))
+            sql += " INTO %s (`%s`) VALUES (%s)" % (
+                self.from_clause, '`,`'.join(names), ','.join(placeholders))
+            self.connection.query(sql, args=tuple(v for v in values if v is not None))
 
     def delete_quick(self):
         """
