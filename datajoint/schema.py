@@ -36,7 +36,7 @@ class schema:
                 logger.info('Created database `{database}`.'.format(database=database))
             except pymysql.OperationalError:
                 raise DataJointError("Database named `{database}` was not defined, and"
-                                     "an attempt to create has failed. Check"
+                                     " an attempt to create has failed. Check"
                                      " permissions.".format(database=database))
 
     def __call__(self, cls):
