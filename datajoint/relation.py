@@ -2,6 +2,7 @@ from collections import Mapping, OrderedDict
 import numpy as np
 import logging
 import abc
+import binascii
 
 from . import config
 from . import DataJointError
@@ -181,24 +182,39 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         >>> relation.insert1(dict(subject_id=7, species="mouse", date_of_birth="2014-09-01"))
 
         """
+
         heading = self.heading
 
+        def check_fields(fields):
+            for field in fields:
+                if field not in heading:
+                    raise KeyError(u'{0:s} is not in the attribute list'.format(field))
+
+        def make_attribute(name, value):
+            """
+            For a given attribute, return its value or value placeholder as a string to be included
+            in the query and the value, if any to be submitted for processing by mysql API.
+            """
+            if heading[name].is_blob:
+                value = pack(value)
+                # This is a temporary hack to address issue #131 (slow blob inserts).
+                # When this problem is fixed by pymysql or python, this clause should be removed.
+                placeholder = '0x' + binascii.b2a_hex(value).decode('ascii')
+                value = None
+            elif heading[name].numeric:
+                placeholder = '%s'
+                value = repr(value)
+            else:
+                placeholder = '%s'
+            return name, placeholder, value
+
         if isinstance(tup, np.void):    # np.array insert
-            for field in tup.dtype.fields:
-                if field not in heading:
-                    raise KeyError(u'{0:s} is not in the attribute list'.format(field))
-            values = ['%s' if heading[name].is_blob else tup[name] for name in heading if name in tup.dtype.fields]
-            attributes = [name for name in heading if name in tup.dtype.fields]
-            args = tuple(pack(tup[name]) for name in heading
-                         if name in tup.dtype.fields and heading[name].is_blob)
-        elif isinstance(tup, Mapping):   #  dict-based insert
-            for field in tup.keys():
-                if field not in heading:
-                    raise KeyError(u'{0:s} is not in the attribute list'.format(field))
-            values = ['%s' if heading[name].is_blob else tup[name] for name in heading if name in tup]
-            attributes = [name for name in heading if name in tup]
-            args = tuple(pack(tup[name]) for name in heading
-                         if name in tup and heading[name].is_blob)
+            check_fields(tup.dtype.fields)
+            attributes = [make_attribute(name, tup[name])
+                          for name in heading if name in tup.dtype.fields]
+        elif isinstance(tup, Mapping):   # dict-based insert
+            check_fields(tup.keys())
+            attributes = [make_attribute(name, tup[name]) for name in heading if name in tup]
         else:    # positional insert
             try:
                 if len(tup) != len(heading):
@@ -209,14 +225,11 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
             except TypeError:
                 raise DataJointError('Datatype %s cannot be inserted' % type(tup))
             else:
-                values = ['%s' if heading[name].is_blob else value for name, value in zip(heading, tup)]
-                attributes = heading.names
-                args = tuple(pack(value) for name, value in zip(heading, tup) if heading[name].is_blob)
-
-        value_list = ','.join(map(lambda elem: repr(elem) if elem != '%s' else elem , values))
-        attribute_list = '`' + '`,`'.join(attributes) + '`'
-
-        skip = skip_duplicates and (self & {a: v for a, v in zip(attributes, values) if heading[a].in_key})
+                attributes = [make_attribute(name, value) for name, value in zip(heading, tup)]
+        if not attributes:
+            raise DataJointError('Empty tuple')
+        skip = skip_duplicates and (
+            self & {name: value for name, _, value in attributes if heading[name].in_key})
         if not skip:
             if replace:
                 sql = 'REPLACE'
@@ -224,10 +237,11 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
                 sql = 'INSERT IGNORE'
             else:
                 sql = 'INSERT'
-            sql += " INTO %s (%s) VALUES (%s)" % (self.from_clause, attribute_list, value_list)
-            logger.info(sql)
-            self.connection.query(sql, args=args)
-
+            names, placeholders, values = list(zip(*attributes))
+            sql += " INTO %s (%s) VALUES (%s)" % (self.from_clause,
+                                                  '`'+'`,`'.join(names)+'`',
+                                                  ','.join(placeholders))
+            self.connection.query(sql, args=list(v for v in values if v is not None))
 
     def delete_quick(self):
         """

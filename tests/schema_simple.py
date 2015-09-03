@@ -15,7 +15,7 @@ class A(dj.Lookup):
     ---
     cond_in_a :tinyint
     """
-    contents = [(i, i % 4 > i % 3) for i in range(10)]
+    contents = [(i, int(i % 4 > i % 3)) for i in range(10)]
 
 
 @schema
@@ -56,7 +56,7 @@ class L(dj.Lookup):
     ---
     cond_in_l :tinyint
     """
-    contents = [(i, i % 3 >= i % 5) for i in range(30)]
+    contents = [(i, int(i % 3 >= i % 5)) for i in range(30)]
 
 
 @schema

@@ -20,8 +20,7 @@ class Auto(dj.Lookup):
     contents = (
         dict(name="Godel"),
         dict(name="Escher"),
-        dict(name="Bach")
-    )
+        dict(name="Bach"))
 
 
 @schema
