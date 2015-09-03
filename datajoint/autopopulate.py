@@ -43,7 +43,6 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         above them in the dependency hierarchy, restricting by the given key, computes dependent
         attributes, and inserts the new tuples into self.
         """
-        pass
 
     @property
     def target(self):
