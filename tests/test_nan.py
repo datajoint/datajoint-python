@@ -17,7 +17,7 @@ class NanTest(dj.Manual):
 
 def test_insert_nan():
     rel = NanTest()
-    a = np.array([1, 2, np.nan, np.pi, np.nan])
+    a = np.array([0, 1/3, np.nan, np.pi, np.nan])
     rel.insert(((i, value) for i, value in enumerate(a)))
     b = rel.fetch.order_by('id')['value']
     assert_true((np.isnan(a) == np.isnan(b)).all(),

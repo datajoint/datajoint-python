@@ -22,6 +22,7 @@ class Auto(dj.Lookup):
         dict(name="Escher"),
         dict(name="Bach"))
 
+
 @schema
 class User(dj.Lookup):
     definition = """      # lab members
@@ -157,6 +158,7 @@ class Ephys(dj.Imported):
                 dict(key,
                      channel=channel,
                      voltage=np.float32(np.random.randn(number_samples))))
+
 
 @schema
 class Image(dj.Manual):

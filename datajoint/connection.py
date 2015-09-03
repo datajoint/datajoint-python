@@ -14,20 +14,6 @@ from .jobs import JobManager
 logger = logging.getLogger(__name__)
 
 
-# The following is a temporary hack to address issue #
-# START HACK
-hack = False
-if hack:
-    import binascii
-
-    def escape_bytes(bs, mapping=None):
-        assert isinstance(bs, (bytes, bytearray))
-        return '0x' + binascii.b2a_hex(bs).decode('ascii')
-
-    connector.connections.escape_bytes = escape_bytes
-# END HACK
-
-
 def conn(host=None, user=None, passwd=None, init_fun=None, reset=False):
     """
     Returns a persistent connection object to be shared by multiple modules.
