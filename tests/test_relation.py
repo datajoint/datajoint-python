@@ -51,9 +51,13 @@ class TestRelation:
     def test_empty_insert(self):
         self.user.insert1(())
 
-    @raises(TypeError)
+    @raises(dj.DataJointError)
+    def test_wrong_arguments_insert(self):
+        self.user.insert1(('First', 'Second'))
+
+    @raises(dj.DataJointError)
     def test_wrong_insert_type(self):
-        self.user.insert1('Bob')
+        self.user.insert1(3)
 
     def test_replace(self):
         """
@@ -63,15 +67,15 @@ class TestRelation:
         date = "2015-01-01"
         self.subject.insert1(
             dict(key, real_id=7, date_of_birth=date, subject_notes=""))
-        assert_equal(date, (self.subject & key).fetch1['date_of_birth'], 'incorrect insert')
+        assert_equal(date, str((self.subject & key).fetch1['date_of_birth']), 'incorrect insert')
         date = "2015-01-02"
         self.subject.insert1(
             dict(key, real_id=7, date_of_birth=date, subject_notes=""), skip_duplicates=True)
-        assert_not_equal(date, (self.subject & key).fetch1['date_of_birth'],
+        assert_not_equal(date, str((self.subject & key).fetch1['date_of_birth']),
                          'inappropriate replace')
         self.subject.insert1(
             dict(key, real_id=7, date_of_birth=date, subject_notes=""), replace=True)
-        assert_equal(date, (self.subject & key).fetch1['date_of_birth'], "replace failed")
+        assert_equal(date, str((self.subject & key).fetch1['date_of_birth']), "replace failed")
 
     def test_delete_quick(self):
         """Tests quick deletion"""
