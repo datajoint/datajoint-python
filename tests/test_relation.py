@@ -1,6 +1,6 @@
 from numpy.testing import assert_array_equal
 import numpy as np
-from nose.tools import assert_raises, assert_equal, \
+from nose.tools import assert_raises, assert_equal, assert_not_equal, \
     assert_false, assert_true, assert_list_equal, \
     assert_tuple_equal, assert_dict_equal, raises
 
@@ -42,6 +42,36 @@ class TestRelation:
         assert_true(len(self.subject) == len(self.subject.contents))
         u = self.subject.fetch(order_by=['subject_id'])
         assert_list_equal(list(u['subject_id']), sorted([s[0] for s in self.subject.contents]))
+
+    @raises(KeyError)
+    def test_misnamed_attribute(self):
+        self.user.insert1(dict(user="Bob"))
+
+    @raises(dj.DataJointError)
+    def test_empty_insert(self):
+        self.user.insert1(())
+
+    @raises(TypeError)
+    def test_wrong_insert_type(self):
+        self.user.insert1('Bob')
+
+    def test_replace(self):
+        """
+        Test replacing or ignoring duplicate entries
+        """
+        key = dict(subject_id=7)
+        date = "2015-01-01"
+        self.subject.insert1(
+            dict(key, real_id=7, date_of_birth=date, subject_notes=""))
+        assert_equal(date, (self.subject & key).fetch1['date_of_birth'], 'incorrect insert')
+        date = "2015-01-02"
+        self.subject.insert1(
+            dict(key, real_id=7, date_of_birth=date, subject_notes=""), skip_duplicates=True)
+        assert_not_equal(date, (self.subject & key).fetch1['date_of_birth'],
+                         'inappropriate replace')
+        self.subject.insert1(
+            dict(key, real_id=7, date_of_birth=date, subject_notes=""), replace=True)
+        assert_equal(date, (self.subject & key).fetch1['date_of_birth'], "replace failed")
 
     def test_delete_quick(self):
         """Tests quick deletion"""

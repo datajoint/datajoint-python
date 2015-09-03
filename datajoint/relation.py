@@ -32,7 +32,6 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         :return: the name of the table in the database
         """
-        raise NotImplementedError('Relation subclasses must define property table_name')
 
     @property
     @abc.abstractmethod
@@ -40,7 +39,6 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         :return: a string containing the table definition using the DataJoint DDL
         """
-        pass
 
     # -------------- required by RelationalOperand ----------------- #
     @property
