@@ -20,12 +20,11 @@ class RelationalOperand(metaclass=abc.ABCMeta):
     RelationalOperand operators are: restrict, pro, and join.
     """
 
-    _restrictions = []
+    _restrictions = None
 
     @property
     def restrictions(self):
-        assert self._restrictions is not None
-        return self._restrictions
+        return [] if self._restrictions is None else self._restrictions
 
     @property
     def primary_key(self):
@@ -113,21 +112,31 @@ class RelationalOperand(metaclass=abc.ABCMeta):
     def __and__(self, restriction):
         """
         relational restriction or semijoin
+        :return: a restricted copy of the argument
         """
-        # make a copy
         ret = copy(self)
-        ret._restrictions = list(ret.restrictions)
-        # apply restrictions, if any
-        if isinstance(restriction, RelationalOperand) \
-                or isinstance(restriction, np.void) \
-                or restriction:
-            restrictions = restriction \
-                if isinstance(restriction, list) or isinstance(restriction, tuple) \
-                else [restriction]
-            for restriction in restrictions:
-                if restriction not in ret._restrictions:
-                    ret._restrictions.append(restriction)
+        ret._restrictions = list(ret.restrictions)  # copy restriction list
+        ret.restrict(restriction)
         return ret
+
+    def restrict(self, *restrictions):
+        """
+        In-place restriction. Primarily intended for datajoint's internal use.
+        Users are encouraged to use self & restriction to apply a restriction.
+        Each condition in restrictions is applied and the conditions are combined with AND.
+        However, each member of restrictions can be a list of conditions, which are combined with OR.
+        :param restrictions: list of restrictions.
+        """
+        restrictions = [r for r in restrictions if r is not None]  # remove Nones
+        if restrictions:
+            if any(isinstance(r, (list, tuple, set)) and not r for r in restrictions):
+                # if any condition is an empty list, return empty
+                self._restrictions = ['FALSE']
+            else:
+                if self._restrictions is None:
+                    self._restrictions = restrictions
+                else:
+                    self._restrictions.extend(restrictions)
 
     def __sub__(self, restriction):
         """
@@ -168,7 +177,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         return len(self & item) > 0
 
-    def cursor(self, offset=0, limit=None, order_by=None, descending=False, as_dict=False):
+    def cursor(self, offset=0, limit=None, order_by=None, as_dict=False):
         """
         Return query cursor.
         See Relation.fetch() for input description.
@@ -205,12 +214,12 @@ class RelationalOperand(metaclass=abc.ABCMeta):
 
         def make_condition(arg):
             if isinstance(arg, dict):
-                conditions = ['`%s`=%s' % (k, repr(v)) for k, v in arg.items() if k in self.heading]
+                condition = ['`%s`=%s' % (k, repr(v)) for k, v in arg.items() if k in self.heading]
             elif isinstance(arg, np.void):
-                conditions = ['`%s`=%s' % (k, arg[k]) for k in arg.dtype.fields]
+                condition = ['`%s`=%s' % (k, arg[k]) for k in arg.dtype.fields]
             else:
                 raise DataJointError('invalid restriction type')
-            return ' AND '.join(conditions)
+            return ' AND '.join(condition)
 
         conditions = []
         for r in self.restrictions:
