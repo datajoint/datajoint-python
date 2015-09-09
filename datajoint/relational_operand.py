@@ -38,7 +38,6 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         :return: a datajoint.Connection object
         """
-        pass
 
     @property
     @abc.abstractmethod
@@ -46,7 +45,6 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         :return: a string containing the FROM clause of the SQL SELECT statement
         """
-        pass
 
     @property
     @abc.abstractmethod
@@ -54,7 +52,6 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         :return: a valid datajoint.Heading object
         """
-        pass
 
     @property
     def select_fields(self):
@@ -146,7 +143,9 @@ class RelationalOperand(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def _repr_helper(self):
-        pass
+        """
+        :return: (string) basic representation of the relation
+        """
 
     def __repr__(self):
         ret = self._repr_helper()

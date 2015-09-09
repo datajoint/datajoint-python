@@ -50,9 +50,6 @@ class Heading:
             attributes = OrderedDict([(q['name'], Attribute(**q)) for q in attributes])
         self.attributes = attributes
 
-    def reset(self):
-        self.attributes = None
-
     def __len__(self):
         return 0 if self.attributes is None else len(self.attributes)
 
@@ -68,10 +65,6 @@ class Heading:
         return [k for k, v in self.attributes.items() if v.in_key]
 
     @property
-    def dependent_fields(self):
-        return [k for k, v in self.attributes.items() if not v.in_key]
-
-    @property
     def blobs(self):
         return [k for k, v in self.attributes.items() if v.is_blob]
 
@@ -82,9 +75,6 @@ class Heading:
     @property
     def computed(self):
         return [k for k, v in self.attributes.items() if v.computation]
-
-    def __bool__(self):
-        return self.attributes is not None
 
     def __getitem__(self, name):
         """shortcut to the attribute"""
@@ -118,15 +108,6 @@ class Heading:
                          if self.attributes[name].computation is None
                          else '%s as `%s`' % (self.attributes[name].computation, name)
                          for name in self.names])
-
-    def keys(self):
-        return self.attributes.keys()
-
-    def values(self):
-        return self.attributes.values()
-
-    def items(self):
-        return self.attributes.items()
 
     def __iter__(self):
         return iter(self.attributes)
