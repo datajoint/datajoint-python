@@ -126,7 +126,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         restrictions = [r for r in restrictions if r is not None]  # remove Nones
         if restrictions:
-            if any(isinstance(r, (list, tuple, set)) and not r for r in restrictions):
+            if any(is_empty_set(r) for r in restrictions):
                 # if any condition is an empty list, return empty
                 self._restrictions = ['FALSE']
             else:
@@ -139,7 +139,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         inverted restriction aka antijoin
         """
-        return self & Not(restriction)
+        return self & (None if is_empty_set(restriction) else Not(restriction))
 
     @abc.abstractmethod
     def _repr_helper(self):
@@ -215,10 +215,10 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             if isinstance(arg, dict):
                 condition = ['`%s`=%s' % (k, repr(v)) for k, v in arg.items() if k in self.heading]
             elif isinstance(arg, np.void):
-                condition = ['`%s`=%s' % (k, arg[k]) for k in arg.dtype.fields]
+                condition = ['`%s`=%s' % (k, arg[k]) for k in arg.dtype.fields if k in self.heading]
             else:
                 raise DataJointError('invalid restriction type')
-            return ' AND '.join(condition)
+            return ' AND '.join(condition) if condition else 'TRUE'
 
         conditions = []
         for r in self.restrictions:
@@ -231,11 +231,14 @@ class RelationalOperand(metaclass=abc.ABCMeta):
                 r = '(' + ') OR ('.join([make_condition(q) for q in r]) + ')'
             elif isinstance(r, RelationalOperand):
                 common_attributes = ','.join([q for q in self.heading.names if q in r.heading.names])
-                r = '({fields}) {not_}in (SELECT {fields} FROM {from_}{where})'.format(
-                    fields=common_attributes,
-                    not_="not " if negate else "",
-                    from_=r.from_clause,
-                    where=r.where_clause)
+                if not common_attributes:
+                    r = 'FALSE' if negate else 'TRUE'
+                else:
+                    r = '({fields}) {not_}in (SELECT {fields} FROM {from_}{where})'.format(
+                        fields=common_attributes,
+                        not_="not " if negate else "",
+                        from_=r.from_clause,
+                        where=r.where_clause)
                 negate = False
             if not isinstance(r, str):
                 raise DataJointError('Invalid restriction object')
@@ -378,3 +381,7 @@ class Subquery(RelationalOperand):
 
     def _repr_helper(self):
         return "%r" % self._arg
+
+
+def is_empty_set(arg):
+    return isinstance(arg, (list, set, tuple, np.ndarray, RelationalOperand)) and len(arg) == 0
