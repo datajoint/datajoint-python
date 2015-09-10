@@ -133,3 +133,42 @@ class TestRelational:
                             "aggregation failed (mean)")
                 assert_true(np.isclose(max_, values.max(), rtol=1e-4, atol=1e-5),
                             "aggregation failed (max)")
+
+    @staticmethod
+    def test_restrictions_by_lists():
+        x = D()
+        y = L() & 'cond_in_l'
+        lenx = len(x)
+        assert_true(lenx > 0 and len(y) > 0 and len(x & y) < len(x), 'incorrect test setup')
+        assert_true(len(x & []) == 0,
+                    'incorrect restriction by an empty list')
+        assert_true(len(x & ()) == 0,
+                    'incorrect restriction by an empty tuple')
+        assert_true(len(x & set()) == 0,
+                    'incorrect restriction by an empty set')
+        assert_equal(len(x - []), lenx,
+                     'incorrect restriction by an empty list')
+        assert_equal(len(x - ()), lenx,
+                     'incorrect restriction by an empty tuple')
+        assert_equal(len(x - set()), lenx,
+                     'incorrect restriction by an empty set')
+        assert_equal(len(x & {}), lenx,
+                     'incorrect restriction by a tuple with no attributes')
+        assert_true(len(x - {}) == 0,
+                    'incorrect restriction by a tuple with no attributes')
+        assert_equal(len(x & {'foo': 0}), lenx,
+                     'incorrect restriction by a tuple with no matching attributes')
+        assert_true(len(x - {'foo': 0}) == 0,
+                    'incorrect restriction by a tuple with no matching attributes')
+        assert_equal(len(x & y), len(x & y.fetch()),
+                     'incorrect restriction by a list')
+        assert_equal(len(x - y), len(x - y.fetch()),
+                     'incorrect restriction by a list')
+        w = A()
+        assert_true(len(w) > 0, 'incorrect test setup: w is empty')
+        assert_false(bool(set(w.heading.names) & set(y.heading.names)),
+                     'incorrect test setup: w and y should have no common attributes')
+        assert_equal(len(w), len(w & y),
+                     'incorrect restriction without common attributes')
+        assert_true(len(w - y) == 0,
+                    'incorrect restriction without common attributes')

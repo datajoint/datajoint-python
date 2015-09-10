@@ -3,7 +3,6 @@ from matplotlib import transforms
 import numpy as np
 
 import logging
-import re
 from collections import defaultdict
 import pyparsing as pp
 import networkx as nx
@@ -14,6 +13,7 @@ from . import DataJointError
 from .utils import to_camel_case
 
 logger = logging.getLogger(__name__)
+
 
 class RelGraph(DiGraph):
     """
@@ -34,7 +34,7 @@ class RelGraph(DiGraph):
         :return: list of edges representing primary key foreign relations
         """
         return [edge for edge in self.edges()
-                if self[edge[0]][edge[1]].get('rel')=='parent']
+                if self[edge[0]][edge[1]].get('rel') == 'parent']
 
     @property
     def non_pk_edges(self):
@@ -42,7 +42,7 @@ class RelGraph(DiGraph):
         :return: list of edges representing non primary key foreign relations
         """
         return [edge for edge in self.edges()
-                if self[edge[0]][edge[1]].get('rel')=='referenced']
+                if self[edge[0]][edge[1]].get('rel') == 'referenced']
 
     def highlight(self, nodes):
         """
