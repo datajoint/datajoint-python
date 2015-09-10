@@ -228,8 +228,11 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
                 attributes = [make_attribute(name, value) for name, value in zip(heading, tup)]
         if not attributes:
             raise DataJointError('Empty tuple')
-        skip = skip_duplicates and (
-            self & {name: value for name, _, value in attributes if heading[name].in_key})
+        skip = skip_duplicates
+        if skip:
+            primary_key_value = {name: value for name, _, value in attributes if heading[name].in_key}
+            # if primary key value is empty, auto_populate is probably used
+            skip = primary_key_value and (self & primary_key_value)
         if not skip:
             if replace:
                 sql = 'REPLACE'
@@ -263,12 +266,13 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
 
         if self.restrictions:
             restrict_by_me.add(self.full_table_name)
-            relations[self.full_table_name] &= self.restrictions
+            relations[self.full_table_name].restrict(*self.restrictions)
 
         for name in relations:
             r = relations[name]
             for dep in (r.children + r.references):
-                relations[dep] &= r.project() if name in restrict_by_me else r.restrictions
+                relations[dep].restrict(
+                    *([r.project()] if name in restrict_by_me else r.restrictions))
 
         do_delete = False  # indicate if there is anything to delete
         if config['safemode']:
