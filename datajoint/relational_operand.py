@@ -124,7 +124,8 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         However, each member of restrictions can be a list of conditions, which are combined with OR.
         :param restrictions: list of restrictions.
         """
-        restrictions = [r for r in restrictions if r is not None]  # remove Nones
+        # remove Nones and duplicates
+        restrictions = [r for r in restrictions if r is not None and r not in self.restrictions]
         if restrictions:
             if any(is_empty_set(r) for r in restrictions):
                 # if any condition is an empty list, return empty
