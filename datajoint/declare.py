@@ -114,6 +114,5 @@ def compile_attribute(line, in_key=False):
         else:
             match['default'] = 'NOT NULL'
     match['comment'] = match['comment'].replace('"', '\\"')   # escape double quotes in comment
-    sql = ('`{name}` {type} {default}' + (' COMMENT "{comment}"' if match['comment'] else '')
-           ).format(**match)
+    sql = ('`{name}` {type} {default}' + (' COMMENT "{comment}"' if match['comment'] else '')).format(**match)
     return match['name'], sql
