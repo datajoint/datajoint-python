@@ -38,10 +38,11 @@ class TestFetch:
 
     def test_getitem_for_fetch1(self):
         """Testing Fetch1.__getitem__"""
-        assert_true( (self.subject & "subject_id=10").fetch1['subject_id'] == 10)
-        assert_true( (self.subject & "subject_id=10").fetch1['subject_id','species'] == (10, 'monkey'))
-        assert_true( (self.subject & "subject_id=10").fetch1['subject_id':'species'] == (10, 'Curious George'))
-
+        assert_true((self.subject & "subject_id=10").fetch1['subject_id'] == 10)
+        assert_equal((self.subject & "subject_id=10").fetch1['subject_id', 'species'],
+                     (10, 'monkey'))
+        assert_equal((self.subject & "subject_id=10").fetch1['subject_id':'species'],
+                     (10, 'Curious George'))
 
     def test_order_by(self):
         """Tests order_by sorting order"""
