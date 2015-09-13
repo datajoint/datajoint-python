@@ -324,8 +324,7 @@ class Projection(RelationalOperand):
 
         restricting_on_removed_attributes = bool(
             arg.attributes_in_restrictions() - set(self.heading.names))
-        renaming_renamed_attributes = renamed_attributes and arg.heading.computed
-        use_subquery = restricting_on_removed_attributes or renaming_renamed_attributes
+        use_subquery = restricting_on_removed_attributes or arg.heading.computed
         if use_subquery:
             self._arg = Subquery(arg)
         else:
@@ -341,6 +340,10 @@ class Projection(RelationalOperand):
     @property
     def heading(self):
         return self._arg.heading.project(*self._attributes, **self._renamed_attributes)
+
+    @property
+    def _grouped(self):
+        return self._arg._grouped
 
     @property
     def from_clause(self):

@@ -60,9 +60,7 @@ class Fetch(Iterable, Callable):
             self.behavior = dict(relation.behavior)
             self._relation = relation._relation
         else:
-            self.behavior = dict(
-                offset=None, limit=None, order_by=None, as_dict=False
-            )
+            self.behavior = dict(offset=None, limit=None, order_by=None, as_dict=False)
             self._relation = relation
 
     @copy_first
