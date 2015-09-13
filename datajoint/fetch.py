@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from collections.abc import Callable, Iterable
 from functools import wraps
 import warnings
 from .blob import unpack
@@ -47,7 +48,7 @@ def copy_first(f):
     return ret
 
 
-class Fetch:
+class Fetch(Iterable, Callable):
     """
     A fetch object that handles retrieving elements from the database table.
 
@@ -59,9 +60,7 @@ class Fetch:
             self.behavior = dict(relation.behavior)
             self._relation = relation._relation
         else:
-            self.behavior = dict(
-                offset=None, limit=None, order_by=None, as_dict=False
-            )
+            self.behavior = dict(offset=None, limit=None, order_by=None, as_dict=False)
             self._relation = relation
 
     @copy_first
@@ -240,7 +239,7 @@ class Fetch:
         return len(self._relation)
 
 
-class Fetch1:
+class Fetch1(Callable):
     """
     Fetch object for fetching exactly one row.
 

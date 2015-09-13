@@ -38,10 +38,11 @@ class TestFetch:
 
     def test_getitem_for_fetch1(self):
         """Testing Fetch1.__getitem__"""
-        assert_true( (self.subject & "subject_id=10").fetch1['subject_id'] == 10)
-        assert_true( (self.subject & "subject_id=10").fetch1['subject_id','species'] == (10, 'monkey'))
-        assert_true( (self.subject & "subject_id=10").fetch1['subject_id':'species'] == (10, 'Curious George'))
-
+        assert_true((self.subject & "subject_id=10").fetch1['subject_id'] == 10)
+        assert_equal((self.subject & "subject_id=10").fetch1['subject_id', 'species'],
+                     (10, 'monkey'))
+        assert_equal((self.subject & "subject_id=10").fetch1['subject_id':'species'],
+                     (10, 'Curious George'))
 
     def test_order_by(self):
         """Tests order_by sorting order"""
@@ -113,14 +114,14 @@ class TestFetch:
         langs.sort(key=itemgetter(0), reverse=True)
         langs.sort(key=itemgetter(1), reverse=False)
 
-        cur = self.lang.fetch.order_by('language', 'name DESC')['name','language']
+        cur = self.lang.fetch.order_by('language', 'name DESC')['name', 'language']
         cur2 = list(self.lang.fetch.order_by('language', 'name DESC').keys())
 
         for c, c2 in zip(zip(*cur), cur2):
             assert_true(c == tuple(c2.values()), 'Values are not the same')
 
     def test_fetch1(self):
-        key = {'name': 'Edgar', 'language':'Japanese'}
+        key = {'name': 'Edgar', 'language': 'Japanese'}
         true = schema.Language.contents[-1]
 
         dat = (self.lang & key).fetch1()
@@ -169,7 +170,6 @@ class TestFetch:
         assert_equal(len(cur), 4, 'Length is not correct')
         for c, l in list(zip(cur, langs[1:]))[:4]:
             assert_true(np.all([cc == ll for cc, ll in zip(c, l)]), 'Sorting order is different')
-
 
     def test_limit_warning(self):
         """Tests whether warning is raised if offset is used without limit."""

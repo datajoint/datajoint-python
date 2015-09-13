@@ -1,3 +1,4 @@
+from collections.abc import Iterable, Mapping
 import numpy as np
 import abc
 import re
@@ -103,7 +104,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         if not isinstance(group, RelationalOperand):
             raise DataJointError('The second argument must be a relation')
         return Aggregation(
-            Join(self, Subquery(group), left=True),
+            Join(self, group, left=True),
             *attributes, **renamed_attributes)
 
     def __and__(self, restriction):
@@ -112,8 +113,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         :return: a restricted copy of the argument
         """
         ret = copy(self)
-        ret._restrictions = list(ret.restrictions)  # copy restriction list
-        ret.restrict(restriction)
+        ret.restrict(restriction, *ret.restrictions)
         return ret
 
     def restrict(self, *restrictions):
@@ -124,7 +124,8 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         However, each member of restrictions can be a list of conditions, which are combined with OR.
         :param restrictions: list of restrictions.
         """
-        restrictions = [r for r in restrictions if r is not None]  # remove Nones
+        # remove Nones and duplicates
+        restrictions = [r for r in restrictions if r is not None and r not in self.restrictions]
         if restrictions:
             if any(is_empty_set(r) for r in restrictions):
                 # if any condition is an empty list, return empty
@@ -134,6 +135,14 @@ class RelationalOperand(metaclass=abc.ABCMeta):
                     self._restrictions = restrictions
                 else:
                     self._restrictions.extend(restrictions)
+
+    def attributes_in_restrictions(self):
+        """
+        :return: list of attributes that are probably used in the restrictions.
+        This is used internally for optimizing SQL statements
+        """
+        where_clause = self.where_clause
+        return set(name for name in self.heading.names if name in where_clause)
 
     def __sub__(self, restriction):
         """
@@ -212,7 +221,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             return ''
 
         def make_condition(arg):
-            if isinstance(arg, dict):
+            if isinstance(arg, Mapping):
                 condition = ['`%s`=%s' % (k, repr(v)) for k, v in arg.items() if k in self.heading]
             elif isinstance(arg, np.void):
                 condition = ['`%s`=%s' % (k, arg[k]) for k in arg.dtype.fields if k in self.heading]
@@ -225,20 +234,20 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             negate = isinstance(r, Not)
             if negate:
                 r = r.restriction
-            if isinstance(r, dict) or isinstance(r, np.void):
+            if isinstance(r, Mapping) or isinstance(r, np.void):
                 r = make_condition(r)
             elif isinstance(r, np.ndarray) or isinstance(r, list):
                 r = '(' + ') OR ('.join([make_condition(q) for q in r]) + ')'
             elif isinstance(r, RelationalOperand):
-                common_attributes = ','.join([q for q in self.heading.names if q in r.heading.names])
+                common_attributes = [q for q in self.heading.names if q in r.heading.names]
                 if not common_attributes:
                     r = 'FALSE' if negate else 'TRUE'
                 else:
-                    r = '({fields}) {not_}in (SELECT {fields} FROM {from_}{where})'.format(
+                    common_attributes = '`'+'`,`'.join(common_attributes)+'`'
+                    r = '({fields}) {not_}in ({subquery})'.format(
                         fields=common_attributes,
                         not_="not " if negate else "",
-                        from_=r.from_clause,
-                        where=r.where_clause)
+                        subquery=r.make_select(common_attributes))
                 negate = False
             if not isinstance(r, str):
                 raise DataJointError('Invalid restriction object')
@@ -267,7 +276,8 @@ class Join(RelationalOperand):
             raise DataJointError('Cannot join relations with different database connections')
         self._arg1 = Subquery(arg1) if arg1.heading.computed else arg1
         self._arg2 = Subquery(arg2) if arg2.heading.computed else arg2
-        self._restrictions = self._arg1.restrictions + self._arg2.restrictions
+        self.restrict(*self._arg1.restrictions)
+        self.restrict(*self._arg2.restrictions)
         self._left = left
         self._heading = self._arg1.heading.join(self._arg2.heading, left=left)
 
@@ -311,12 +321,15 @@ class Projection(RelationalOperand):
                 self._renamed_attributes.update({d['alias']: d['sql_expression']})
             else:
                 self._attributes.append(attribute)
+        self._arg = arg
 
-        if arg.heading.computed or arg.restrictions:
+        restricting_on_removed_attributes = bool(
+            arg.attributes_in_restrictions() - set(self.heading.names))
+        use_subquery = restricting_on_removed_attributes or arg.heading.computed
+        if use_subquery:
             self._arg = Subquery(arg)
         else:
-            self._arg = arg
-            self._restrictions = arg.restrictions
+            self.restrict(*arg.restrictions)
 
     def _repr_helper(self):
         return "(%r).project(%r)" % (self._arg, self._attributes)
@@ -330,12 +343,16 @@ class Projection(RelationalOperand):
         return self._arg.heading.project(*self._attributes, **self._renamed_attributes)
 
     @property
+    def _grouped(self):
+        return self._arg._grouped
+
+    @property
     def from_clause(self):
         return self._arg.from_clause
 
     def __and__(self, restriction):
         """
-        When projection has renamed attributes, it must be enclosed in a subquery before restriction
+        When restricting on renamed attributes, enclose in subquery
         """
         has_restriction = isinstance(restriction, RelationalOperand) or restriction
         do_subquery = has_restriction and self.heading.computed

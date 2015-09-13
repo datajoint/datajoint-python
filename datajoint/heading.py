@@ -164,9 +164,6 @@ class Heading:
             attr['string'] = bool(re.match(r'(var)?char|enum|date|time|timestamp', attr['type']))
             attr['is_blob'] = bool(re.match(r'(tiny|medium|long)?blob', attr['type']))
 
-            # strip field lengths off integer types
-            attr['type'] = re.sub(r'((tiny|small|medium|big)?int)\(\d+\)', r'\1', attr['type'])
-
             attr['computation'] = None
             if not (attr['numeric'] or attr['string'] or attr['is_blob']):
                 raise DataJointError('Unsupported field type {field} in `{database}`.`{table_name}`'.format(

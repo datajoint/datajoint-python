@@ -16,7 +16,7 @@ setup(
     long_description=long_description,
     author='Dimitri Yatsenko',
     author_email='Dimitri.Yatsenko@gmail.com',
-    license = "GNU LGPL",
+    license="GNU LGPL",
     url='https://github.com/datajoint/datajoint-python',
     keywords='database organization',
     packages=find_packages(exclude=['contrib', 'docs', 'tests*']),
