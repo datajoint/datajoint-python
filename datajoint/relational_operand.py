@@ -104,7 +104,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         if not isinstance(group, RelationalOperand):
             raise DataJointError('The second argument must be a relation')
         return Aggregation(
-            Join(self, Subquery(group), left=True),
+            Join(self, group, left=True),
             *attributes, **renamed_attributes)
 
     def __and__(self, restriction):
@@ -276,7 +276,8 @@ class Join(RelationalOperand):
             raise DataJointError('Cannot join relations with different database connections')
         self._arg1 = Subquery(arg1) if arg1.heading.computed else arg1
         self._arg2 = Subquery(arg2) if arg2.heading.computed else arg2
-        self._restrictions = self._arg1.restrictions + self._arg2.restrictions
+        self.restrict(*self._arg1.restrictions)
+        self.restrict(*self._arg2.restrictions)
         self._left = left
         self._heading = self._arg1.heading.join(self._arg2.heading, left=left)
 
