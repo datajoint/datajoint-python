@@ -26,7 +26,7 @@ def kill(restriction=None, connection=None):
     while True:
         print('  ID USER         STATE         TIME  INFO')
         print('+--+ +----------+ +-----------+ +--+')
-        for process in  connection.query(query, as_dict=True).fetchall():
+        for process in connection.query(query, as_dict=True).fetchall():
             try:
                 print('{ID:>4d} {USER:<12s} {STATE:<12s} {TIME:>5d}  {INFO}'.format(**process))
             except TypeError as err:
@@ -40,6 +40,7 @@ def kill(restriction=None, connection=None):
                 pid = int(response)
             except ValueError:
                 pass  # ignore non-numeric input
+            #TODO: check behavior when invalid input given
             else:
                 try:
                     connection.query('kill %d' % pid)
