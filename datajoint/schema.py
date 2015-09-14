@@ -8,7 +8,7 @@ from .user_relations import Part
 logger = logging.getLogger(__name__)
 
 
-class schema:
+class Schema:
     """
     A schema object can be used  as a decorator that associates a Relation class to a database as
     well as a namespace for looking up foreign key references in table declaration.
