@@ -7,7 +7,14 @@ from collections import defaultdict
 import pyparsing as pp
 import networkx as nx
 from networkx import DiGraph
-from networkx import pygraphviz_layout
+import re
+
+# use pygraphviz if available
+try:
+    from networkx import pygraphviz_layout
+except:
+    pygraphviz_layout = None
+
 import matplotlib.pyplot as plt
 from . import DataJointError
 from .utils import to_camel_case
@@ -17,9 +24,15 @@ logger = logging.getLogger(__name__)
 
 class RelGraph(DiGraph):
     """
-    A directed graph representing relations between tables within and across
-    multiple databases found.
+    A directed graph representing dependencies between Relations within and across
+    multiple databases.
     """
+
+    def __init__(self, name_map=None):
+        if name_map is None:
+            name_map = {}
+
+        super().__init__()
 
     @property
     def node_labels(self):
@@ -47,7 +60,7 @@ class RelGraph(DiGraph):
     def highlight(self, nodes):
         """
         Highlights specified nodes when plotting
-        :param nodes: list of nodes to be highlighted
+        :param nodes: list of nodes, specified by full table names, to be highlighted
         """
         for node in nodes:
             self.node[node]['highlight'] = True
@@ -56,7 +69,7 @@ class RelGraph(DiGraph):
         """
         Remove highlights from specified nodes when plotting. If specified node is not
         highlighted to begin with, nothing happens.
-        :param nodes: list of nodes to remove highlights from
+        :param nodes: list of nodes, specified by full table names, to remove highlights from
         """
         if not nodes:
             nodes = self.nodes_iter()
@@ -111,7 +124,7 @@ class RelGraph(DiGraph):
     def restrict_by_tables(self, tables, fill=False):
         """
         Creates a subgraph containing only specified tables.
-        :param tables: list of tables to keep in the subgraph
+        :param tables: list of tables to keep in the subgraph. Tables are specified using full table names
         :param fill: set True to automatically include nodes connecting two nodes in the specified list
         of tables
         :return: a subgraph with specified nodes
@@ -256,6 +269,7 @@ class ERM(RelGraph):
 
     def __init__(self, conn, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._databases = set()
         self._conn = conn
         self._parents = dict()
         self._referenced = dict()
@@ -293,7 +307,29 @@ class ERM(RelGraph):
     def subgraph(self, *args, **kwargs):
         return RelGraph(self).subgraph(*args, **kwargs)
 
-    def load_dependencies(self, full_table_name):
+    def register_database(self, database):
+        """
+        Register the database to be monitored
+        :param database: name of database to be monitored
+        """
+        self._databases.add(database)
+
+
+    def load_dependencies(self):
+        for database in self._databases:
+            self.load_dependencies_for_database(database)
+
+    def load_dependencies_for_database(self, database):
+        sql_table_name_regexp = re.compile('^(#|_|__|~)?[a-z][a-z0-9_]*$')
+
+        cur = self._conn.query('SHOW TABLES FROM `{database}`'.format(database=database))
+
+        for info in cur:
+            table_name = info[0]
+            full_table_name = '`{database}`.`{table_name}`'.format(database=database, table_name=table_name)
+            self.load_dependencies_for_table(full_table_name)
+
+    def load_dependencies_for_table(self, full_table_name):
         # check if already loaded.  Use clear_dependencies before reloading
         if full_table_name in self._parents:
             return
@@ -366,20 +402,25 @@ class ERM(RelGraph):
             if full_table_name in self._references[ref]:
                 self._references[ref].remove(full_table_name)
 
+
     @property
     def parents(self):
+        self.load_dependencies()
         return self._parents
 
     @property
     def children(self):
+        self.load_dependencies()
         return self._children
 
     @property
     def references(self):
+        self.load_dependencies()
         return self._references
 
     @property
     def referenced(self):
+        self.load_dependencies()
         return self._referenced
 
     def get_descendants(self, full_table_name):
@@ -388,6 +429,7 @@ class ERM(RelGraph):
         :return: list of all children and references, in order of dependence.
         This is helpful for cascading delete or drop operations.
         """
+        self.load_dependencies()
         ret = defaultdict(lambda: 0)
 
         def recurse(full_table_name, level):
