@@ -25,6 +25,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
     """
     _heading = None
     _context = None
+    database = None
 
     # ---------- abstract properties ------------ #
     @property
@@ -58,8 +59,9 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         if self._heading is None:
             self._heading = Heading()  # instance-level heading
-        if not self._heading:
+        if not self._heading:   # heading is not initialized
             self.declare()
+            self._heading.init_from_database(self.connection, self.database, self.table_name)
         return self._heading
 
     def declare(self):
@@ -69,9 +71,6 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         if not self.is_declared:
             self.connection.query(
                 declare(self.full_table_name, self.definition, self._context))
-        if self.is_declared:
-            self.connection.erm.load_dependencies(self.full_table_name)
-            self._heading.init_from_database(self.connection, self.database, self.table_name)
 
     @property
     def from_clause(self):
@@ -124,6 +123,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         return self.connection.erm.referenced[self.full_table_name]
 
+    #TODO: implement this inside the relation object in connection
     @property
     def descendants(self):
         """
@@ -137,7 +137,11 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
                      for table in self.connection.erm.get_descendants(self.full_table_name))
         return [relation for relation in relations if relation.is_declared]
 
+
     def _repr_helper(self):
+        """
+        :return: String representation of this object
+        """
         return "%s.%s()" % (self.__module__, self.__class__.__name__)
 
     # --------- SQL functionality --------- #
