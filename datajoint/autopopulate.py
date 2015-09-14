@@ -60,8 +60,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
 
         :param restriction: restriction on rel.populated_from - target
         :param suppress_errors: suppresses error if true
-        :param reserve_jobs: currently not implemented
-        :param batch: batch size of a single job
+        :param reserve_jobs: if true, reserves job to populate in asynchronous fashion
         :param order: "original"|"reverse"|"random"  - the order of execution
         """
         if not isinstance(self.populated_from, RelationalOperand):
