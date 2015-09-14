@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 import numpy as np
 import logging
 import abc
@@ -257,24 +257,31 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         Deletes the contents of the table and its dependent tables, recursively.
         User is prompted for confirmation if config['safemode'] is set to True.
-
         """
+
+        # construct a list (OrderedDict) of relations to delete
         relations = self.descendants
         restrict_by_me = set()
         for r in relations:
             restrict_by_me.update(r.references)
         relations = OrderedDict((r.full_table_name, r) for r in relations)
 
+        # construct restrictions for each relation
+        restrictions = defaultdict(lambda: list())
         if self.restrictions:
             restrict_by_me.add(self.full_table_name)
-            relations[self.full_table_name].restrict(*self.restrictions)
-
-        for name in relations:
-            r = relations[name]
+            restrictions[self.full_table_name] = self.restrictions  # copy own restrictions
+        for name, r in relations.items():
             for dep in (r.children + r.references):
-                relations[dep].restrict(
-                    *([r.project()] if name in restrict_by_me else r.restrictions))
+                if name in restrict_by_me:
+                    restrictions[dep].append(r.project())
+                else:
+                    restrictions[dep].extend(restrictions[name])
+        for name, r in relations.items():
+            if restrictions[name]:
+                r.restrict(restrictions[name])
 
+        # execute
         do_delete = False  # indicate if there is anything to delete
         if config['safemode']:
             print('The contents of the following tables are about to be deleted:')
