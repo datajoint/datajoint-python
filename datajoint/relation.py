@@ -260,26 +260,28 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
 
         # construct a list (OrderedDict) of relations to delete
-        relations = self.descendants
-        restrict_by_me = set()
-        for r in relations:
-            restrict_by_me.update(r.references)
-        relations = OrderedDict((r.full_table_name, r) for r in relations)
+        relations = OrderedDict((r.full_table_name, r) for r in self.descendants)
 
         # construct restrictions for each relation
+        restrict_by_me = set()
         restrictions = defaultdict(lambda: list())
         if self.restrictions:
             restrict_by_me.add(self.full_table_name)
             restrictions[self.full_table_name] = self.restrictions  # copy own restrictions
+        for r in relations.values():
+            restrict_by_me.update(r.references)
         for name, r in relations.items():
             for dep in (r.children + r.references):
                 if name in restrict_by_me:
-                    restrictions[dep].append(r.project())
+                    restrictions[dep].append(r)
                 else:
                     restrictions[dep].extend(restrictions[name])
+
+        # apply restrictions
         for name, r in relations.items():
             if restrictions[name]:
-                r.restrict(restrictions[name])
+                r.restrict([r.project() if isinstance(r, RelationalOperand) else r
+                            for r in restrictions[name]])
 
         # execute
         do_delete = False  # indicate if there is anything to delete

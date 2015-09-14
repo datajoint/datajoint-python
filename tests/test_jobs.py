@@ -33,6 +33,6 @@ def test_reserve_job():
         assert_false(schema.schema.jobs.reserve(table_name, key),
                      'failed to ignore error jobs')
     # clear error jobs
-    (schema.schema.jobs & dict(status="error")).delete()
+    (schema.schema.jobs & dict(status="error")).delete_quick()
     assert_false(schema.schema.jobs,
                  'failed to clear error jobs')

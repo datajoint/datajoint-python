@@ -1,4 +1,4 @@
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
 import numpy as np
 import abc
 import re
@@ -220,37 +220,38 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         if not self.restrictions:
             return ''
 
-        def make_condition(arg):
-            if isinstance(arg, Mapping):
+        def make_condition(arg, _negate=False):
+            if isinstance(arg, str):
+                condition = [arg]
+            elif isinstance(arg, RelationalOperand):
+                common_attributes = [q for q in self.heading.names if q in arg.heading.names]
+                if not common_attributes:
+                    condition = ['FALSE' if negate else 'TRUE']
+                else:
+                    common_attributes = '`'+'`,`'.join(common_attributes)+'`'
+                    condition = ['({fields}) {not_}in ({subquery})'.format(
+                        fields=common_attributes,
+                        not_="not " if negate else "",
+                        subquery=arg.make_select(common_attributes))]
+                _negate = False
+            elif isinstance(arg, Mapping):
                 condition = ['`%s`=%s' % (k, repr(v)) for k, v in arg.items() if k in self.heading]
             elif isinstance(arg, np.void):
+                # element of a record array
                 condition = ['`%s`=%s' % (k, arg[k]) for k in arg.dtype.fields if k in self.heading]
             else:
                 raise DataJointError('invalid restriction type')
-            return ' AND '.join(condition) if condition else 'TRUE'
+            return ' AND '.join(condition) if condition else 'TRUE', _negate
 
         conditions = []
         for r in self.restrictions:
             negate = isinstance(r, Not)
             if negate:
                 r = r.restriction
-            if isinstance(r, Mapping) or isinstance(r, np.void):
-                r = make_condition(r)
-            elif isinstance(r, np.ndarray) or isinstance(r, list):
-                r = '(' + ') OR ('.join([make_condition(q) for q in r]) + ')'
-            elif isinstance(r, RelationalOperand):
-                common_attributes = [q for q in self.heading.names if q in r.heading.names]
-                if not common_attributes:
-                    r = 'FALSE' if negate else 'TRUE'
-                else:
-                    common_attributes = '`'+'`,`'.join(common_attributes)+'`'
-                    r = '({fields}) {not_}in ({subquery})'.format(
-                        fields=common_attributes,
-                        not_="not " if negate else "",
-                        subquery=r.make_select(common_attributes))
-                negate = False
-            if not isinstance(r, str):
-                raise DataJointError('Invalid restriction object')
+            if isinstance(r, (list, tuple, set, np.ndarray)):
+                r = '(' + ') OR ('.join([make_condition(q)[0] for q in r]) + ')'
+            else:
+                r, negate = make_condition(r, negate)
             if r:
                 conditions.append('%s(%s)' % ('not ' if negate else '', r))
         return ' WHERE ' + ' AND '.join(conditions)
