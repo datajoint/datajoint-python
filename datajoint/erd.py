@@ -10,7 +10,6 @@ import re
 from networkx import DiGraph
 from functools import cmp_to_key
 import operator
-from . import Manual, Lookup, Imported, Computed, Part
 
 from collections import OrderedDict
 
@@ -113,7 +112,6 @@ class RelGraph(DiGraph):
 
     def __repr__(self):
         return self.repr_path()
-
 
     def restrict_by_modules(self, modules, fill=False):
         """
