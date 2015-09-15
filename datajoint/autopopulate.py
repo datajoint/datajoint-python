@@ -111,6 +111,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
                             jobs.complete(table_name, key)
         return error_list
 
+
     def progress(self, restriction=None, display=True):
         """
         report progress of populating this table

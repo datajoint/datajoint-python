@@ -68,8 +68,6 @@ class Schema:
         cur = self.connection.query("SHOW DATABASES LIKE '{database}'".format(database=self.database))
         return cur.rowcount > 0
 
-
-
     def __call__(self, cls):
         """
         Binds the passed in class object to a database. This is intended to be used as a decorator.
