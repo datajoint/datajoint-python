@@ -16,6 +16,7 @@ from .heading import Heading
 logger = logging.getLogger(__name__)
 
 
+
 class Relation(RelationalOperand, metaclass=abc.ABCMeta):
     """
     Relation is an abstract class that represents a base relation, i.e. a table in the database.
@@ -62,6 +63,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         if not self._heading:   # heading is not initialized
             self.declare()
             self._heading.init_from_database(self.connection, self.database, self.table_name)
+
         return self._heading
 
     def declare(self):
@@ -71,6 +73,8 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         if not self.is_declared:
             self.connection.query(
                 declare(self.full_table_name, self.definition, self._context))
+            #TODO: reconsider loading time
+            self.connection.erm.load_dependencies()
 
     @property
     def from_clause(self):
@@ -306,7 +310,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         if self.is_declared:
             self.connection.query('DROP TABLE %s' % self.full_table_name)
-            self.connection.erm.clear_dependencies(self.full_table_name)
+            self.connection.erm.clear_dependencies_for_table(self.full_table_name)
             if self._heading:
                 self._heading.reset()
             logger.info("Dropped table %s" % self.full_table_name)
