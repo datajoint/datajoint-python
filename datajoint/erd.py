@@ -6,8 +6,13 @@ import logging
 from collections import defaultdict
 import pyparsing as pp
 import networkx as nx
-from networkx import DiGraph
 import re
+from networkx import DiGraph
+from functools import cmp_to_key
+import operator
+from . import Manual, Lookup, Imported, Computed, Part
+
+from collections import OrderedDict
 
 # use pygraphviz if available
 try:
@@ -17,6 +22,7 @@ except:
 
 import matplotlib.pyplot as plt
 from . import DataJointError
+from functools import wraps
 from .utils import to_camel_case
 
 logger = logging.getLogger(__name__)
@@ -28,11 +34,11 @@ class RelGraph(DiGraph):
     multiple databases.
     """
 
-    def __init__(self, name_map=None):
+    def __init__(self, *args, name_map=None, **kwargs):
         if name_map is None:
             name_map = {}
 
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
     @property
     def node_labels(self):
@@ -106,8 +112,8 @@ class RelGraph(DiGraph):
         ax.axis('off')  # hide axis
 
     def __repr__(self):
-        #TODO: provide string version of ERD
-        return "RelGraph: to be implemented"
+        return self.repr_path()
+
 
     def restrict_by_modules(self, modules, fill=False):
         """
@@ -173,6 +179,7 @@ class RelGraph(DiGraph):
         for n in nodes:
             s.update(self.descendants(n))
         return s
+
 
     def ancestors(self, node):
         """
@@ -258,6 +265,115 @@ class RelGraph(DiGraph):
                     s.update(self.n_neighbors(x, n-1, prev))
         return s
 
+    @property
+    def root_nodes(self):
+        return {node for node in self.nodes() if len(self.predecessors(node)) == 0}
+
+    @property
+    def leaf_nodes(self):
+        return {node for node in self.nodes() if len(self.successors(node)) == 0}
+
+    def nodes_by_depth(self):
+        """
+        Return all nodes, ordered by their depth in the hierarchy
+        :returns: list of nodes, ordered by depth from shallowest to deepest
+        """
+        ret = defaultdict(lambda: 0)
+        roots = self.root_nodes
+
+        def recurse(node, depth):
+            if depth > ret[node]:
+                ret[node] = depth
+            for child in self.successors_iter(node):
+                recurse(child, depth+1)
+
+        for root in roots:
+            recurse(root, 0)
+
+        return sorted(ret.items(), key=operator.itemgetter(1))
+
+    def get_longest_path(self):
+        if not self.edges():
+            return []
+
+        node_depth_list = self.nodes_by_depth()
+        node_depth_lookup = dict(node_depth_list)
+        path = []
+
+        leaf = node_depth_list[-1][0]
+        predecessors = [leaf]
+        while predecessors:
+            leaf = sorted(predecessors, key=node_depth_lookup.get)[-1]
+            path.insert(0, leaf)
+            predecessors = self.predecessors(leaf)
+
+        return path
+
+    def remove_edges_in_path(self, path):
+        if len(path) <= 1: # no path exists!
+            return
+        for a, b in zip(path[:-1], path[1:]):
+            self.remove_edge(a, b)
+
+    def longest_paths(self):
+        g = self.copy_graph()
+        paths = []
+        path = g.get_longest_path()
+        while path:
+            paths.append(path)
+            g.remove_edges_in_path(path)
+            path = g.get_longest_path()
+        return paths
+
+    def repr_path(self):
+        paths = self.longest_paths()
+        k = cmp_to_key(self.compare_path)
+        sorted_paths = sorted(paths, key=k)
+        n = max([len(x) for x in self.nodes()])
+        repr = ''
+        for path in sorted_paths:
+            repr += self.repr_path_with_depth(path, n)
+        return repr
+
+    def compare_path(self, path1, path2):
+        node_depth_lookup = dict(self.nodes_by_depth())
+        for node1, node2 in zip(path1, path2):
+            if node_depth_lookup[node1] != node_depth_lookup[node2]:
+                return -1 if node_depth_lookup[node1] < node_depth_lookup[node2] else 1
+            if node1 != node2:
+                return -1 if node1 < node2 else 1
+        return 0
+
+    def repr_path_with_depth(self, path, n=20, m=2):
+        node_depth_lookup = dict(self.nodes_by_depth())
+        arrow = '-' * (m-1) + '>'
+        space = '-' * n
+        pattern = '{:%ds}' % n
+        repr = ''
+        prev_depth = 0
+        first = True
+        for (i, node) in enumerate(path):
+            depth = node_depth_lookup[node]
+            if first:
+                repr += (' '*(n+m))*(depth-prev_depth)
+            else:
+                repr += space.join(['-'*m]*(depth-prev_depth))[:-1] + '>'
+            first = False
+            prev_depth = depth
+            if i == len(path)-1:
+                repr += node
+            else:
+                repr += node.ljust(n, '-')
+        repr += '\n'
+        return repr
+
+
+def require_dep_loading(f):
+    @wraps(f)
+    def wrapper(self, *args, **kwargs):
+        self.load_dependencies()
+        return f(self, *args, **kwargs)
+    return wrapper
 
 class ERM(RelGraph):
     """
@@ -314,12 +430,18 @@ class ERM(RelGraph):
         """
         self._databases.add(database)
 
-
     def load_dependencies(self):
+        """
+        Load dependencies for all monitored databases
+        """
         for database in self._databases:
             self.load_dependencies_for_database(database)
 
     def load_dependencies_for_database(self, database):
+        """
+        Load dependencies for all tables found in the specified database
+        :param database: database for which dependencies will be loaded
+        """
         sql_table_name_regexp = re.compile('^(#|_|__|~)?[a-z][a-z0-9_]*$')
 
         cur = self._conn.query('SHOW TABLES FROM `{database}`'.format(database=database))
@@ -330,6 +452,10 @@ class ERM(RelGraph):
             self.load_dependencies_for_table(full_table_name)
 
     def load_dependencies_for_table(self, full_table_name):
+        """
+        Load dependencies for the specified table
+        :param full_table_name: table for which dependencies will be loaded, specified in full table name
+        """
         # check if already loaded.  Use clear_dependencies before reloading
         if full_table_name in self._parents:
             return
@@ -391,10 +517,15 @@ class ERM(RelGraph):
                 else:
                     self._referenced[full_table_name].append(result.referenced_table)
                     self._references[result.referenced_table].append(full_table_name)
-
         self.update_graph()
 
-    def clear_dependencies(self, full_table_name):
+    def clear_dependencies(self):
+        pass
+
+    def clear_dependencies_for_database(self, database):
+        pass
+
+    def clear_dependencies_for_table(self, full_table_name):
         for ref in self._parents.pop(full_table_name, []):
             if full_table_name in self._children[ref]:
                 self._children[ref].remove(full_table_name)
@@ -402,34 +533,34 @@ class ERM(RelGraph):
             if full_table_name in self._references[ref]:
                 self._references[ref].remove(full_table_name)
 
-
     @property
+    @require_dep_loading
     def parents(self):
-        self.load_dependencies()
         return self._parents
 
     @property
+    @require_dep_loading
     def children(self):
         self.load_dependencies()
         return self._children
 
     @property
+    @require_dep_loading
     def references(self):
-        self.load_dependencies()
         return self._references
 
     @property
+    @require_dep_loading
     def referenced(self):
-        self.load_dependencies()
         return self._referenced
 
+    @require_dep_loading
     def get_descendants(self, full_table_name):
         """
         :param full_table_name: a table name in the format `database`.`table_name`
         :return: list of all children and references, in order of dependence.
         This is helpful for cascading delete or drop operations.
         """
-        self.load_dependencies()
         ret = defaultdict(lambda: 0)
 
         def recurse(full_table_name, level):
@@ -440,4 +571,5 @@ class ERM(RelGraph):
 
         recurse(full_table_name, 0)
         return sorted(ret.keys(), key=ret.__getitem__)
+
 
