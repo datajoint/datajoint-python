@@ -264,7 +264,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
 
         # construct restrictions for each relation
         restrict_by_me = set()
-        restrictions = defaultdict(lambda: list())
+        restrictions = defaultdict(list)
         if self.restrictions:
             restrict_by_me.add(self.full_table_name)
             restrictions[self.full_table_name] = self.restrictions  # copy own restrictions
@@ -279,9 +279,9 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
 
         # apply restrictions
         for name, r in relations.items():
-            if restrictions[name]:
+            if restrictions[name]:  # do not restrict by an empty list
                 r.restrict([r.project() if isinstance(r, RelationalOperand) else r
-                            for r in restrictions[name]])
+                            for r in restrictions[name]])  # project 
 
         # execute
         do_delete = False  # indicate if there is anything to delete
