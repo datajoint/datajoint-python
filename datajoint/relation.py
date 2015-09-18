@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 import numpy as np
 import logging
 import abc
@@ -257,24 +257,33 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         Deletes the contents of the table and its dependent tables, recursively.
         User is prompted for confirmation if config['safemode'] is set to True.
-
         """
-        relations = self.descendants
-        restrict_by_me = set()
-        for r in relations:
-            restrict_by_me.update(r.references)
-        relations = OrderedDict((r.full_table_name, r) for r in relations)
 
+        # construct a list (OrderedDict) of relations to delete
+        relations = OrderedDict((r.full_table_name, r) for r in self.descendants)
+
+        # construct restrictions for each relation
+        restrict_by_me = set()
+        restrictions = defaultdict(list)
         if self.restrictions:
             restrict_by_me.add(self.full_table_name)
-            relations[self.full_table_name].restrict(*self.restrictions)
-
-        for name in relations:
-            r = relations[name]
+            restrictions[self.full_table_name] = self.restrictions  # copy own restrictions
+        for r in relations.values():
+            restrict_by_me.update(r.references)
+        for name, r in relations.items():
             for dep in (r.children + r.references):
-                relations[dep].restrict(
-                    *([r.project()] if name in restrict_by_me else r.restrictions))
+                if name in restrict_by_me:
+                    restrictions[dep].append(r)
+                else:
+                    restrictions[dep].extend(restrictions[name])
 
+        # apply restrictions
+        for name, r in relations.items():
+            if restrictions[name]:  # do not restrict by an empty list
+                r.restrict([r.project() if isinstance(r, RelationalOperand) else r
+                            for r in restrictions[name]])  # project 
+
+        # execute
         do_delete = False  # indicate if there is anything to delete
         if config['safemode']:
             print('The contents of the following tables are about to be deleted:')
