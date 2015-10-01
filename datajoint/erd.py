@@ -178,6 +178,8 @@ class RelGraph(DiGraph):
             s.update(self.descendants(n))
         return s
 
+    def copy_graph(self, *args, **kwargs):
+        return self.__class__(self, *args, **kwargs)
 
     def ancestors(self, node):
         """
@@ -291,6 +293,10 @@ class RelGraph(DiGraph):
         return sorted(ret.items(), key=operator.itemgetter(1))
 
     def get_longest_path(self):
+        """
+        :returns: a list of graph nodes defining th longest path in the graph
+        """
+        # no path exists if there is not an edge!
         if not self.edges():
             return []
 
@@ -308,12 +314,19 @@ class RelGraph(DiGraph):
         return path
 
     def remove_edges_in_path(self, path):
+        """
+        Removes all shared edges between this graph and the path
+        :param path: a list of nodes defining a path. All edges in this path will be removed from the graph if found
+        """
         if len(path) <= 1: # no path exists!
             return
         for a, b in zip(path[:-1], path[1:]):
             self.remove_edge(a, b)
 
     def longest_paths(self):
+        """
+        :return: list of paths from longest to shortest. A path is a list of nodes.
+        """
         g = self.copy_graph()
         paths = []
         path = g.get_longest_path()
@@ -324,22 +337,45 @@ class RelGraph(DiGraph):
         return paths
 
     def repr_path(self):
+        """
+        Construct string representation of the erm, summarizing dependencies between
+        tables
+        :return: string representation of the erm
+        """
         paths = self.longest_paths()
+
+        # turn comparator into Key object for use in sort
         k = cmp_to_key(self.compare_path)
         sorted_paths = sorted(paths, key=k)
+
+        # table name will be padded to match the longest table name
         n = max([len(x) for x in self.nodes()])
-        repr = ''
+        rep = ''
         for path in sorted_paths:
-            repr += self.repr_path_with_depth(path, n)
-        return repr
+            rep += self.repr_path_with_depth(path, n)
+        return rep
 
     def compare_path(self, path1, path2):
+        """
+        Comparator between two paths: path1 and path2 based on a combination of rules.
+        Path 1 is greater than path2 if:
+        1) i^th node in path1 is at greater depth than the i^th node in path2 OR
+        2) if i^th nodes are at the same depth, i^th node in path 1 is alphabetically less than i^th node
+        in path 2
+        3) if neither of the above statement is true even if path1 and path2 are switched, proceed to i+1^th node
+        If path2 is a subpath start at node 1, then path1 is greater than path2
+        :param path1: path 1 of 2 to be compared
+        :param path2: path 2 of 2 to be compared
+        :return: return 1 if path1 is greater than path2, -1 if path1 is less than path2, and 0 if they are identical
+        """
         node_depth_lookup = dict(self.nodes_by_depth())
         for node1, node2 in zip(path1, path2):
             if node_depth_lookup[node1] != node_depth_lookup[node2]:
                 return -1 if node_depth_lookup[node1] < node_depth_lookup[node2] else 1
             if node1 != node2:
                 return -1 if node1 < node2 else 1
+        if len(node1) != len(node2):
+            return -1 if len(node1) < len(node2) else 1
         return 0
 
     def repr_path_with_depth(self, path, n=20, m=2):
@@ -393,11 +429,9 @@ class ERM(RelGraph):
             self._conn = conn
         else:
             raise DataJointError('The connection is broken') #TODO: make better exception message
-        self.update_graph()
 
     def update_graph(self, reload=False):
         self.clear()
-
         # create primary key foreign connections
         for table, parents in self._parents.items():
             mod, cls = (x.strip('`') for x in table.split('.'))
@@ -410,6 +444,7 @@ class ERM(RelGraph):
             for ref in referenced:
                 self.add_edge(ref, table, rel='referenced')
 
+    @require_dep_loading
     def copy_graph(self, *args, **kwargs):
         """
         Return copy of the graph represented by this object at the
@@ -418,6 +453,7 @@ class ERM(RelGraph):
         """
         return RelGraph(self, *args, **kwargs)
 
+    @require_dep_loading
     def subgraph(self, *args, **kwargs):
         return RelGraph(self).subgraph(*args, **kwargs)
 
@@ -440,14 +476,17 @@ class ERM(RelGraph):
         Load dependencies for all tables found in the specified database
         :param database: database for which dependencies will be loaded
         """
-        sql_table_name_regexp = re.compile('^(#|_|__|~)?[a-z][a-z0-9_]*$')
+        #sql_table_name_regexp = re.compile('^(#|_|__|~)?[a-z][a-z0-9_]*$')
 
         cur = self._conn.query('SHOW TABLES FROM `{database}`'.format(database=database))
 
         for info in cur:
             table_name = info[0]
-            full_table_name = '`{database}`.`{table_name}`'.format(database=database, table_name=table_name)
-            self.load_dependencies_for_table(full_table_name)
+            # TODO: fix this criteria! It will exclude ANY tables ending with 'jobs'
+            # exclude tables ending with 'jobs' from erd
+            if not table_name.lower().endswith('jobs'):
+                full_table_name = '`{database}`.`{table_name}`'.format(database=database, table_name=table_name)
+                self.load_dependencies_for_table(full_table_name)
 
     def load_dependencies_for_table(self, full_table_name):
         """
@@ -516,6 +555,12 @@ class ERM(RelGraph):
                     self._referenced[full_table_name].append(result.referenced_table)
                     self._references[result.referenced_table].append(full_table_name)
         self.update_graph()
+
+
+    def __repr__(self):
+        # Make sure that all dependencies are loaded before printing repr
+        self.load_dependencies()
+        return super().__repr__()
 
     def clear_dependencies(self):
         pass
