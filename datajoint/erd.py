@@ -185,7 +185,7 @@ class RelGraph(DiGraph):
         of tables
         :return: a subgraph with specified nodes
         """
-        nodes = [n for n in self.nodes() if self.node[n].get('label') in tables]
+        nodes = [n for n in self.nodes() if n in tables]
         if fill:
             nodes = self.fill_connection_nodes(nodes)
         return self.subgraph(nodes)
