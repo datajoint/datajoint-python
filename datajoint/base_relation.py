@@ -94,7 +94,7 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         :return: the entity relationship diagram object of this relation
         """
-        erd = self.connection.erd()
+        erd = self.connection.erd(*args, **kwargs)
         nodes = erd.up_down_neighbors(self.full_table_name)
         return erd.restrict_by_tables(nodes)
 

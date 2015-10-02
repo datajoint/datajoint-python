@@ -82,8 +82,6 @@ class Connection:
             connected=connected, **self.conn_info)
 
     def erd(self, *args, **kwargs):
-        # load all dependencies
-        self.erm.load_dependencies()
         return self.erm.copy_graph(*args, **kwargs)
 
     @property
