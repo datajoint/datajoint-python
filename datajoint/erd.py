@@ -43,7 +43,12 @@ def parse_base_relations(rels):
     name_map = {}
     for r in rels:
         try:
-           name_map[r().full_table_name] = r.__name__
+            module = r.__module__
+            parts = []
+            if module != '__main__':
+                parts.append(module.split('.')[-1])
+            parts.append(r.__name__)
+            name_map[r().full_table_name] = '.'.join(parts)
         except:
             pass
     return name_map
@@ -82,6 +87,12 @@ class RelGraph(DiGraph):
 
         return '.'.join(x.strip('`') for x in node.split('.'))
 
+    @property
+    def lone_nodes(self):
+        """
+        :return: list of nodes that are not connected to any other node
+        """
+        return list(x for x in self.root_nodes if len(self.out_edges(x)) == 0)
 
     @property
     def pk_edges(self):
@@ -390,11 +401,17 @@ class RelGraph(DiGraph):
         sorted_paths = sorted(paths, key=k)
 
         # table name will be padded to match the longest table name
-        n = max([len(x) for x in self.node_labels.values()])
+        node_labels = self.node_labels
+        n = max([len(x) for x in node_labels.values()]) + 1
         rep = ''
         for path in sorted_paths:
             rep += self.repr_path_with_depth(path, n)
+
+        for node in self.lone_nodes:
+            rep += node_labels[node] + '\n'
+
         return rep
+
 
     def compare_path(self, path1, path2):
         """
@@ -423,24 +440,24 @@ class RelGraph(DiGraph):
         node_depth_lookup = dict(self.nodes_by_depth())
         node_labels = self.node_labels
         space = '-' * n
-        repr = ''
+        rep = ''
         prev_depth = 0
         first = True
         for (i, node) in enumerate(path):
             depth = node_depth_lookup[node]
             label = node_labels[node]
             if first:
-                repr += (' '*(n+m))*(depth-prev_depth)
+                rep += (' '*(n+m))*(depth-prev_depth)
             else:
-                repr += space.join(['-'*m]*(depth-prev_depth))[:-1] + '>'
+                rep += space.join(['-'*m]*(depth-prev_depth))[:-1] + '>'
             first = False
             prev_depth = depth
             if i == len(path)-1:
-                repr += label
+                rep += label
             else:
-                repr += label.ljust(n, '-')
-        repr += '\n'
-        return repr
+                rep += label.ljust(n, '-')
+        rep += '\n'
+        return rep
 
 
 def require_dep_loading(f):
