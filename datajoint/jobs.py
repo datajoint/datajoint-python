@@ -1,7 +1,7 @@
 import hashlib
 import os
 import pymysql
-from .relation import Relation
+from .base_relation import BaseRelation
 
 
 def key_hash(key):
@@ -14,7 +14,7 @@ def key_hash(key):
     return hashed.hexdigest()
 
 
-class JobRelation(Relation):
+class JobRelation(BaseRelation):
     """
     A base relation with no definition. Allows reserving jobs
     """

@@ -5,7 +5,7 @@ import datetime
 import random
 from .relational_operand import RelationalOperand
 from . import DataJointError
-from .relation import FreeRelation
+from .base_relation import FreeRelation
 
 # noinspection PyExceptionInherit,PyCallingNonCallable
 

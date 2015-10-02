@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 
-class Relation(RelationalOperand, metaclass=abc.ABCMeta):
+class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
     """
     Relation is an abstract class that represents a base relation, i.e. a table in the database.
     To make it a concrete class, override the abstract properties specifying the connection,
@@ -359,7 +359,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         pass
 
 
-class FreeRelation(Relation):
+class FreeRelation(BaseRelation):
     """
     A base relation without a dedicated class.  The table name is explicitly set.
     """

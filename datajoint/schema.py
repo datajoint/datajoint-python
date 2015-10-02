@@ -3,7 +3,7 @@ import logging
 
 from . import conn, DataJointError
 from .heading import Heading
-from .relation import Relation
+from .base_relation import BaseRelation
 from .user_relations import Part
 logger = logging.getLogger(__name__)
 
@@ -103,7 +103,7 @@ class Schema:
                     part._master = cls
                     # TODO: look into local namespace for the subclasses
                     process_relation_class(part, context=dict(self.context, **{cls.__name__: cls}))
-                elif issubclass(part, Relation):
+                elif issubclass(part, BaseRelation):
                     raise DataJointError('Part relations must be a subclass of datajoint.Part')
 
         # invoke Relation._prepare() on class and its part relations.

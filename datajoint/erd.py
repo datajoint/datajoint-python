@@ -6,7 +6,6 @@ import logging
 from collections import defaultdict
 import pyparsing as pp
 import networkx as nx
-import re
 from networkx import DiGraph
 from functools import cmp_to_key
 import operator
@@ -23,8 +22,36 @@ import matplotlib.pyplot as plt
 from . import DataJointError
 from functools import wraps
 from .utils import to_camel_case
+from .base_relation import BaseRelation
 
 logger = logging.getLogger(__name__)
+
+from inspect import isabstract
+
+
+def get_concrete_descendants(cls):
+    desc = []
+    child= cls.__subclasses__()
+    for c in child:
+        if not isabstract(c):
+            desc.append(c)
+        desc.extend(get_concrete_descendants(c))
+    return desc
+
+
+def parse_base_relations(rels):
+    name_map = {}
+    for r in rels:
+        try:
+           name_map[r().full_table_name] = r.__name__
+        except:
+            pass
+    return name_map
+
+
+def get_table_relation_name_map():
+    rels = get_concrete_descendants(BaseRelation)
+    return parse_base_relations(rels)
 
 
 class RelGraph(DiGraph):
@@ -35,7 +62,7 @@ class RelGraph(DiGraph):
 
     def __init__(self, *args, name_map=None, **kwargs):
         if name_map is None:
-            name_map = {}
+            self.name_map = {}
 
         super().__init__(*args, **kwargs)
 
@@ -89,6 +116,9 @@ class RelGraph(DiGraph):
         """
         if not self.nodes(): # There is nothing to plot
             logger.warning('Nothing to plot')
+            return
+        if pygraphviz_layout is None:
+            logger.warning('Failed to load Pygraphviz - plotting not supported at this time')
             return
         pos = pygraphviz_layout(self, prog='dot')
         fig = plt.figure(figsize=[10, 7])
@@ -484,7 +514,7 @@ class ERM(RelGraph):
             table_name = info[0]
             # TODO: fix this criteria! It will exclude ANY tables ending with 'jobs'
             # exclude tables ending with 'jobs' from erd
-            if not table_name.lower().endswith('jobs'):
+            if not table_name == '~jobs':
                 full_table_name = '`{database}`.`{table_name}`'.format(database=database, table_name=table_name)
                 self.load_dependencies_for_table(full_table_name)
 
@@ -555,7 +585,6 @@ class ERM(RelGraph):
                     self._referenced[full_table_name].append(result.referenced_table)
                     self._references[result.referenced_table].append(full_table_name)
         self.update_graph()
-
 
     def __repr__(self):
         # Make sure that all dependencies are loaded before printing repr

@@ -15,7 +15,7 @@ __author__ = "Dimitri Yatsenko, Edgar Walker, and Fabian Sinz at Baylor College 
 __version__ = "0.2"
 __all__ = ['__author__', '__version__',
            'config', 'conn', 'kill',
-           'Connection', 'Heading', 'Relation', 'FreeRelation', 'Not', 'schema',
+           'Connection', 'Heading', 'BaseRelation', 'FreeRelation', 'Not', 'schema',
            'Manual', 'Lookup', 'Imported', 'Computed', 'Part']
 
 
@@ -52,7 +52,7 @@ logger.setLevel(log_levels[config['loglevel']])
 
 # ------------- flatten import hierarchy -------------------------
 from .connection import conn, Connection
-from .relation import Relation
+from .base_relation import BaseRelation
 from .user_relations import Manual, Lookup, Imported, Computed, Part
 from .relational_operand import Not
 from .heading import Heading
