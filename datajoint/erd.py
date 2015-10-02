@@ -84,8 +84,8 @@ class RelGraph(DiGraph):
         # it's not efficient to recreate name-map on every call!
         if name_map is not None and node in name_map:
             return name_map[node]
-
-        return '.'.join(x.strip('`') for x in node.split('.'))
+        # no other name exists, so just use full table now
+        return node
 
     @property
     def lone_nodes(self):
