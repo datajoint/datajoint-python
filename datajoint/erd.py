@@ -60,10 +60,7 @@ class RelGraph(DiGraph):
     multiple databases.
     """
 
-    def __init__(self, *args, name_map=None, **kwargs):
-        if name_map is None:
-            self.name_map = {}
-
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     @property
@@ -71,7 +68,20 @@ class RelGraph(DiGraph):
         """
         :return: dictionary of key : label pairs for plotting
         """
-        return {k: attr['label'] for k, attr in self.node.items()}
+        name_map = get_table_relation_name_map()
+        return {k: self.get_label(k, name_map) for k in self.nodes()}
+
+    def get_label(self, node, name_map=None):
+        label = self.node[node].get('label', '')
+        if label.strip():
+            return label
+
+        # it's not efficient to recreate name-map on every call!
+        if name_map is not None and node in name_map:
+            return name_map[node]
+
+        return '.'.join(x.strip('`') for x in node.split('.'))
+
 
     @property
     def pk_edges(self):
@@ -145,6 +155,7 @@ class RelGraph(DiGraph):
 
     def restrict_by_modules(self, modules, fill=False):
         """
+        DEPRECATED - to be removed
         Creates a subgraph containing only tables in the specified modules.
         :param modules: list of module names
         :param fill: set True to automatically include nodes connecting two nodes in the specified modules
@@ -379,7 +390,7 @@ class RelGraph(DiGraph):
         sorted_paths = sorted(paths, key=k)
 
         # table name will be padded to match the longest table name
-        n = max([len(x) for x in self.nodes()])
+        n = max([len(x) for x in self.node_labels.values()])
         rep = ''
         for path in sorted_paths:
             rep += self.repr_path_with_depth(path, n)
@@ -410,14 +421,14 @@ class RelGraph(DiGraph):
 
     def repr_path_with_depth(self, path, n=20, m=2):
         node_depth_lookup = dict(self.nodes_by_depth())
-        arrow = '-' * (m-1) + '>'
+        node_labels = self.node_labels
         space = '-' * n
-        pattern = '{:%ds}' % n
         repr = ''
         prev_depth = 0
         first = True
         for (i, node) in enumerate(path):
             depth = node_depth_lookup[node]
+            label = node_labels[node]
             if first:
                 repr += (' '*(n+m))*(depth-prev_depth)
             else:
@@ -425,9 +436,9 @@ class RelGraph(DiGraph):
             first = False
             prev_depth = depth
             if i == len(path)-1:
-                repr += node
+                repr += label
             else:
-                repr += node.ljust(n, '-')
+                repr += label.ljust(n, '-')
         repr += '\n'
         return repr
 
@@ -465,7 +476,7 @@ class ERM(RelGraph):
         # create primary key foreign connections
         for table, parents in self._parents.items():
             mod, cls = (x.strip('`') for x in table.split('.'))
-            self.add_node(table, label=table, mod=mod, cls=cls)
+            self.add_node(table)
             for parent in parents:
                 self.add_edge(parent, table, rel='parent')
 
