@@ -92,6 +92,9 @@ class Connection:
         """
         return self._conn.ping()
 
+    def erd(self):
+        return self.dependencies.erd()
+
     def query(self, query, args=(), as_dict=False):
         """
         Execute the specified query and return the tuple generator (cursor).
