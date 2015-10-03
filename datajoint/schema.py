@@ -82,6 +82,7 @@ class Schema:
             relation_class._connection = self.connection
             relation_class._heading = Heading()
             relation_class._context = context
+            # instantiate the class and declare the table in database if not already present
             relation_class().declare()
 
         if issubclass(cls, Part):
@@ -89,7 +90,7 @@ class Schema:
 
         process_relation_class(cls, context=self.context)
 
-        #  Process subordinate relations
+        # Process subordinate relations
         parts = list()
         for name in (name for name in dir(cls) if not name.startswith('_')):
             part = getattr(cls, name)

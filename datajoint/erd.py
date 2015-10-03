@@ -141,6 +141,7 @@ class RelGraph(DiGraph):
         if pygraphviz_layout is None:
             logger.warning('Failed to load Pygraphviz - plotting not supported at this time')
             return
+
         pos = pygraphviz_layout(self, prog='dot')
         fig = plt.figure(figsize=[10, 7])
         ax = fig.add_subplot(111)
@@ -164,7 +165,7 @@ class RelGraph(DiGraph):
     def __repr__(self):
         return self.repr_path()
 
-    def restrict_by_database(self, databases, fill=False):
+    def restrict_by_databases(self, databases, fill=False):
         """
         Creates a subgraph containing only tables in the specified database.
         :param databases: list of database names
