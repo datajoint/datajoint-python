@@ -72,8 +72,6 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         if not self.is_declared:
             self.connection.query(
                 declare(self.full_table_name, self.definition, self._context))
-            #TODO: reconsider loading time
-            self.connection.erm.load_dependencies()
 
     @property
     def from_clause(self):
@@ -89,13 +87,13 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         return '*'
 
-    def erd(self, *args, **kwargs):
-        """
-        :return: the entity relationship diagram object of this relation
-        """
-        erd = self.connection.erd(*args, **kwargs)
-        nodes = erd.up_down_neighbors(self.full_table_name)
-        return erd.restrict_by_tables(nodes)
+    # def erd(self, *args, **kwargs):
+    #     """
+    #     :return: the entity relationship diagram object of this relation
+    #     """
+    #     erd = self.connection.erd(*args, **kwargs)
+    #     nodes = erd.up_down_neighbors(self.full_table_name)
+    #     return erd.restrict_by_tables(nodes)
 
     # ------------- dependencies ---------- #
     @property
@@ -103,30 +101,29 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         :return: the parent relation of this relation
         """
-        return self.connection.erm.parents[self.full_table_name]
+        return self.connection.dependencies.parents[self.full_table_name]
 
     @property
     def children(self):
         """
         :return: the child relations of this relation
         """
-        return self.connection.erm.children[self.full_table_name]
+        return self.connection.dependencies.children[self.full_table_name]
 
     @property
     def references(self):
         """
         :return: list of tables that this tables refers to
         """
-        return self.connection.erm.references[self.full_table_name]
+        return self.connection.dependencies.references[self.full_table_name]
 
     @property
     def referenced(self):
         """
         :return: list of tables for which this table is referenced by
         """
-        return self.connection.erm.referenced[self.full_table_name]
+        return self.connection.dependencies.referenced[self.full_table_name]
 
-    #TODO: implement this inside the relation object in connection
     @property
     def descendants(self):
         """
@@ -137,9 +134,8 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         :return: list of descendants
         """
         relations = (FreeRelation(self.connection, table)
-                     for table in self.connection.erm.get_descendants(self.full_table_name))
+                     for table in self.connection.dependencies.get_descendants(self.full_table_name))
         return [relation for relation in relations if relation.is_declared]
-
 
     def _repr_helper(self):
         """
@@ -271,6 +267,7 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         Deletes the contents of the table and its dependent tables, recursively.
         User is prompted for confirmation if config['safemode'] is set to True.
         """
+        self.connection.dependencies.load()
 
         # construct a list (OrderedDict) of relations to delete
         relations = OrderedDict((r.full_table_name, r) for r in self.descendants)
@@ -326,7 +323,6 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         #TODO: give a better exception message
         if self.is_declared:
             self.connection.query('DROP TABLE %s' % self.full_table_name)
-            self.connection.erm.clear_dependencies_for_table(self.full_table_name)
             logger.info("Dropped table %s" % self.full_table_name)
         else:
             logger.info("Nothing to drop: table %s is not declared" % self.full_table_name)
@@ -336,6 +332,7 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         Drop the table and all tables that reference it, recursively.
         User is prompted for confirmation if config['safemode'] is set to True.
         """
+        self.connection.dependencies.load()
         do_drop = True
         relations = self.descendants
         if config['safemode']:

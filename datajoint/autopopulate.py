@@ -63,15 +63,17 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         :param reserve_jobs: if true, reserves job to populate in asynchronous fashion
         :param order: "original"|"reverse"|"random"  - the order of execution
         """
-        if not isinstance(self.populated_from, RelationalOperand):
-            raise DataJointError('Invalid populated_from value')
-
         if self.connection.in_transaction:
             raise DataJointError('Populate cannot be called during a transaction.')
 
         valid_order = ['original', 'reverse', 'random']
         if order not in valid_order:
             raise DataJointError('The order argument must be one of %s' % str(valid_order))
+
+        self.connection.dependencies.load()
+
+        if not isinstance(self.populated_from, RelationalOperand):
+            raise DataJointError('Invalid populated_from value')
 
         error_list = [] if suppress_errors else None
 
