@@ -59,7 +59,7 @@ def get_table_relation_name_map():
     return parse_base_relations(rels)
 
 
-class RelGraph(DiGraph):
+class ERD(DiGraph):
     """
     A directed graph representing dependencies between Relations within and across
     multiple databases.
@@ -424,7 +424,6 @@ class RelGraph(DiGraph):
 
         return rep
 
-
     def compare_path(self, path1, path2):
         """
         Comparator between two paths: path1 and path2 based on a combination of rules.
@@ -471,27 +470,19 @@ class RelGraph(DiGraph):
         rep += '\n'
         return rep
 
+    @classmethod
+    def create_from_dependencies(cls, dependencies, *args, **kwargs):
+        obj = cls(*args, **kwargs)
 
-class ERD(RelGraph):
-    """
-    Entity Relation Diagram
-
-    Represents known relation between tables
-    """
-    # _checked_dependencies = set()
-
-    def __init__(self, parents_dict, referenced_dict, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.clear()
-        # create primary key foreign connections
-        for full_table, parents in parents_dict.items():
+        for full_table, parents in dependencies.parents.items():
             database, table = (x.strip('`') for x in full_table.split('.'))
-            self.add_node(full_table, database=database, table=table)
+            obj.add_node(full_table, database=database, table=table)
             for parent in parents:
-                self.add_edge(parent, full_table, rel='parent')
+                obj.add_edge(parent, full_table, rel='parent')
 
         # create non primary key foreign connections
-        for full_table, referenced in referenced_dict.items():
+        for full_table, referenced in dependencies.referenced.items():
             for ref in referenced:
-                self.add_edge(ref, full_table, rel='referenced')
+                obj.add_edge(ref, full_table, rel='referenced')
+
+        return obj
