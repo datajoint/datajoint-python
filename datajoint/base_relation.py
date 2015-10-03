@@ -90,13 +90,25 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         return '*'
 
-    def erd(self, *args, **kwargs):
+    def erd(self, *args, fill=True, mode='updown', **kwargs):
         """
+        :param mode: diffent methods of creating a graph pertaining to this relation.
+        Currently options includes the following:
+        * 'updown': Contains this relation and all other nodes that can be reached within specific
+        number of ups and downs in the graph. ups(=2) and downs(=2) are optional keyword arguments
+        * 'ancestors': Returs
         :return: the entity relationship diagram object of this relation
         """
-        erd = self.connection.erd(*args, **kwargs)
-        nodes = erd.up_down_neighbors(self.full_table_name)
-        return erd.restrict_by_tables(nodes)
+        erd = self.connection.erd()
+        if mode == 'updown':
+            nodes = erd.up_down_neighbors(self.full_table_name, *args, **kwargs)
+        elif mode == 'ancestors':
+            nodes = erd.ancestors(self.full_table_name, *args, **kwargs)
+        elif mode == 'descendants':
+            nodes = erd.descendants(self.full_table_name, *args, **kwargs)
+        else:
+            raise DataJointError('Unsupported erd mode', 'Mode "%s" is currently not supported' % mode)
+        return erd.restrict_by_tables(nodes, fill=fill)
 
     # ------------- dependencies ---------- #
     @property
