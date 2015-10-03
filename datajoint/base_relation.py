@@ -16,7 +16,6 @@ from .heading import Heading
 logger = logging.getLogger(__name__)
 
 
-
 class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
     """
     BaseRelation is an abstract class that represents a base relation, i.e. a table in the database.
@@ -328,8 +327,6 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         if self.is_declared:
             self.connection.query('DROP TABLE %s' % self.full_table_name)
             self.connection.erm.clear_dependencies_for_table(self.full_table_name)
-            if self._heading:
-                self._heading.reset()
             logger.info("Dropped table %s" % self.full_table_name)
         else:
             logger.info("Nothing to drop: table %s is not declared" % self.full_table_name)

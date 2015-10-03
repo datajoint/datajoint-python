@@ -52,10 +52,10 @@ class AndList(Sequence):
                     condition = 'FALSE' if negate else 'TRUE'
                 else:
                     common_attributes = '`'+'`,`'.join(common_attributes)+'`'
-                    condition = ['({fields}) {not_}in ({subquery})'.format(
+                    condition = '({fields}) {not_}in ({subquery})'.format(
                         fields=common_attributes,
                         not_="not " if negate else "",
-                        subquery=arg.make_select(common_attributes))]
+                        subquery=arg.make_select(common_attributes))
                 return condition, False   # negate is cleared
 
             # mappings are turned into ANDed equality conditions
@@ -83,7 +83,7 @@ class AndList(Sequence):
                 item, negate = make_condition(item, negate)
             if not item:
                 raise DataJointError('Empty condition')
-            conditions.append(('NOT %s' if negate else '%s') % item)
+            conditions.append(('NOT (%s)' if negate else '(%s)') % item)
         return ' WHERE ' + ' AND '.join(conditions)
 
 
@@ -104,6 +104,9 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         if self._restrictions is None:
             self._restrictions = AndList(self.heading)
         return self._restrictions
+
+    def clear_restrictions(self):
+        self._restrictions = None
 
     @property
     def primary_key(self):
@@ -201,7 +204,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         :return: a restricted copy of the argument
         """
         ret = copy(self)
-        ret._restrictions = None
+        ret.clear_restrictions()
         ret.restrict(restriction, *list(self.restrictions))
         return ret
 
@@ -311,10 +314,10 @@ class Join(RelationalOperand):
             raise DataJointError('Cannot join relations with different database connections')
         self._arg1 = Subquery(arg1) if arg1.heading.computed else arg1
         self._arg2 = Subquery(arg2) if arg2.heading.computed else arg2
-        self.restrict(*self._arg1.restrictions)
-        self.restrict(*self._arg2.restrictions)
-        self._left = left
         self._heading = self._arg1.heading.join(self._arg2.heading, left=left)
+        self.restrict(*list(self._arg1.restrictions))
+        self.restrict(*list(self._arg2.restrictions))
+        self._left = left
 
     def _repr_helper(self):
         return "(%r) * (%r)" % (self._arg1, self._arg2)
@@ -364,7 +367,7 @@ class Projection(RelationalOperand):
         if use_subquery:
             self._arg = Subquery(arg)
         else:
-            self.restrict(*arg.restrictions)
+            self.restrict(*list(arg.restrictions))
 
     def _repr_helper(self):
         return "(%r).project(%r)" % (self._arg, self._attributes)
@@ -375,7 +378,9 @@ class Projection(RelationalOperand):
 
     @property
     def heading(self):
-        return self._arg.heading.project(*self._attributes, **self._renamed_attributes)
+        heading = self._arg.heading
+        heading = heading.project(*self._attributes, **self._renamed_attributes)
+        return heading
 
     @property
     def _grouped(self):
@@ -385,15 +390,21 @@ class Projection(RelationalOperand):
     def from_clause(self):
         return self._arg.from_clause
 
+    def __and__(self, restriction):
+        has_restriction = isinstance(restriction, RelationalOperand) or bool(restriction)
+        do_subquery = has_restriction and self.heading.computed
+        ret = Subquery(self) if do_subquery else self
+        ret.restrict(restriction)
+        return ret
+
     def restrict(self, *restrictions):
         """
-        When restricting on renamed attributes, enclose in subquery
+        Override restrict: when restricting on renamed attributes, enclose in subquery
         """
         has_restriction = any(isinstance(r, RelationalOperand) or r for r in restrictions)
         do_subquery = has_restriction and self.heading.computed
         if do_subquery:
-            self._arg = Subquery(self)
-            self._restrictions = None
+            raise DataJointError('In-place restriction on renamed attributes is not allowed')
         super().restrict(*restrictions)
 
 
@@ -433,7 +444,9 @@ class Subquery(RelationalOperand):
 
     @property
     def heading(self):
-        return self._arg.heading.resolve()
+        h = self._arg.heading
+        h = h.resolve()
+        return h
 
     def _repr_helper(self):
         return "%r" % self._arg
