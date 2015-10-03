@@ -16,15 +16,17 @@ from .heading import Heading
 logger = logging.getLogger(__name__)
 
 
-class Relation(RelationalOperand, metaclass=abc.ABCMeta):
+
+class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
     """
-    Relation is an abstract class that represents a base relation, i.e. a table in the database.
+    BaseRelation is an abstract class that represents a base relation, i.e. a table in the database.
     To make it a concrete class, override the abstract properties specifying the connection,
     table name, database, context, and definition.
     A Relation implements insert and delete methods in addition to inherited relational operators.
     """
     _heading = None
     _context = None
+    database = None
 
     # ---------- abstract properties ------------ #
     @property
@@ -58,8 +60,10 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         if self._heading is None:
             self._heading = Heading()  # instance-level heading
-        if not self._heading:
+        if not self._heading:   # heading is not initialized
             self.declare()
+            self._heading.init_from_database(self.connection, self.database, self.table_name)
+
         return self._heading
 
     def declare(self):
@@ -69,9 +73,8 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         if not self.is_declared:
             self.connection.query(
                 declare(self.full_table_name, self.definition, self._context))
-        if self.is_declared:
-            self.connection.erm.load_dependencies(self.full_table_name)
-            self._heading.init_from_database(self.connection, self.database, self.table_name)
+            #TODO: reconsider loading time
+            self.connection.erm.load_dependencies()
 
     @property
     def from_clause(self):
@@ -91,7 +94,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         :return: the entity relationship diagram object of this relation
         """
-        erd = self.connection.erd()
+        erd = self.connection.erd(*args, **kwargs)
         nodes = erd.up_down_neighbors(self.full_table_name)
         return erd.restrict_by_tables(nodes)
 
@@ -124,6 +127,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         return self.connection.erm.referenced[self.full_table_name]
 
+    #TODO: implement this inside the relation object in connection
     @property
     def descendants(self):
         """
@@ -137,7 +141,11 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
                      for table in self.connection.erm.get_descendants(self.full_table_name))
         return [relation for relation in relations if relation.is_declared]
 
+
     def _repr_helper(self):
+        """
+        :return: String representation of this object
+        """
         return "%s.%s()" % (self.__module__, self.__class__.__name__)
 
     # --------- SQL functionality --------- #
@@ -162,7 +170,7 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         Insert a collection of rows. Additional keyword arguments are passed to insert1.
 
-        :param iter: Must be an iterator that generates a sequence of valid arguments for insert.
+        :param rows: An iterable where an element is a valid arguments for insert1.
         """
         for row in rows:
             self.insert1(row, **kwargs)
@@ -172,9 +180,9 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         Insert one data record or one Mapping (like a dict).
 
         :param tup: Data record, a Mapping (like a dict), or a list or tuple with ordered values.
-        :param replace=False: Replaces data tuple if True.
+        :param replace=False: If True, replaces the matching data tuple in the table if it exists.
         :param ignore_errors=False: If True, ignore errors: e.g. constraint violations.
-        :param skip_dublicates=False: If True, ignore duplicate inserts.
+        :param skip_dublicates=False: If True, silently skip duplicate inserts.
 
         Example::
 
@@ -185,14 +193,18 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         heading = self.heading
 
         def check_fields(fields):
+            """
+            Validates that all items in `fields` are valid attributes in the heading
+            """
             for field in fields:
                 if field not in heading:
                     raise KeyError(u'{0:s} is not in the attribute list'.format(field))
 
         def make_attribute(name, value):
             """
-            For a given attribute, return its value or value placeholder as a string to be included
-            in the query and the value, if any to be submitted for processing by mysql API.
+            For a given attribute `name` with `value, return its processed value or value placeholder
+            as a string to be included in the query and the value, if any to be submitted for
+            processing by mysql API.
             """
             if heading[name].is_blob:
                 value = pack(value)
@@ -249,8 +261,10 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
 
     def delete_quick(self):
         """
-        Deletes the table without cascading and without user prompt.
+        Deletes the table without cascading and without user prompt. If this table has any dependent
+        table(s), this will fail.
         """
+        #TODO: give a better exception message
         self.connection.query('DELETE FROM ' + self.from_clause + self.where_clause)
 
     def delete(self):
@@ -308,13 +322,17 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
     def drop_quick(self):
         """
         Drops the table associated with this relation without cascading and without user prompt.
+        If the table has any dependent table(s), this call will fail with an error.
         """
+        #TODO: give a better exception message
         if self.is_declared:
             self.connection.query('DROP TABLE %s' % self.full_table_name)
-            self.connection.erm.clear_dependencies(self.full_table_name)
+            self.connection.erm.clear_dependencies_for_table(self.full_table_name)
             if self._heading:
                 self._heading.reset()
             logger.info("Dropped table %s" % self.full_table_name)
+        else:
+            logger.info("Nothing to drop: table %s is not declared" % self.full_table_name)
 
     def drop(self):
         """
@@ -351,9 +369,10 @@ class Relation(RelationalOperand, metaclass=abc.ABCMeta):
         pass
 
 
-class FreeRelation(Relation):
+class FreeRelation(BaseRelation):
     """
-    A base relation without a dedicated class.  The table name is explicitly set.
+    A base relation without a dedicated class. Each instance is associated with a table
+    specified by full_table_name.
     """
     def __init__(self, connection, full_table_name, definition=None, context=None):
         self.database, self._table_name = (s.strip('`') for s in full_table_name.split('.'))

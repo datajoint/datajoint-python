@@ -7,26 +7,92 @@ from collections import defaultdict
 import pyparsing as pp
 import networkx as nx
 from networkx import DiGraph
-from networkx import pygraphviz_layout
+from functools import cmp_to_key
+import operator
+
+from collections import OrderedDict
+
+# use pygraphviz if available
+try:
+    from networkx import pygraphviz_layout
+except:
+    pygraphviz_layout = None
+
 import matplotlib.pyplot as plt
 from . import DataJointError
+from functools import wraps
 from .utils import to_camel_case
+from .base_relation import BaseRelation
 
 logger = logging.getLogger(__name__)
+
+from inspect import isabstract
+
+
+def get_concrete_descendants(cls):
+    desc = []
+    child= cls.__subclasses__()
+    for c in child:
+        if not isabstract(c):
+            desc.append(c)
+        desc.extend(get_concrete_descendants(c))
+    return desc
+
+
+def parse_base_relations(rels):
+    name_map = {}
+    for r in rels:
+        try:
+            module = r.__module__
+            parts = []
+            if module != '__main__':
+                parts.append(module.split('.')[-1])
+            parts.append(r.__name__)
+            name_map[r().full_table_name] = '.'.join(parts)
+        except:
+            pass
+    return name_map
+
+
+def get_table_relation_name_map():
+    rels = get_concrete_descendants(BaseRelation)
+    return parse_base_relations(rels)
 
 
 class RelGraph(DiGraph):
     """
-    A directed graph representing relations between tables within and across
-    multiple databases found.
+    A directed graph representing dependencies between Relations within and across
+    multiple databases.
     """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     @property
     def node_labels(self):
         """
         :return: dictionary of key : label pairs for plotting
         """
-        return {k: attr['label'] for k, attr in self.node.items()}
+        name_map = get_table_relation_name_map()
+        return {k: self.get_label(k, name_map) for k in self.nodes()}
+
+    def get_label(self, node, name_map=None):
+        label = self.node[node].get('label', '')
+        if label.strip():
+            return label
+
+        # it's not efficient to recreate name-map on every call!
+        if name_map is not None and node in name_map:
+            return name_map[node]
+        # no other name exists, so just use full table now
+        return node
+
+    @property
+    def lone_nodes(self):
+        """
+        :return: list of nodes that are not connected to any other node
+        """
+        return list(x for x in self.root_nodes if len(self.out_edges(x)) == 0)
 
     @property
     def pk_edges(self):
@@ -47,7 +113,7 @@ class RelGraph(DiGraph):
     def highlight(self, nodes):
         """
         Highlights specified nodes when plotting
-        :param nodes: list of nodes to be highlighted
+        :param nodes: list of nodes, specified by full table names, to be highlighted
         """
         for node in nodes:
             self.node[node]['highlight'] = True
@@ -56,7 +122,7 @@ class RelGraph(DiGraph):
         """
         Remove highlights from specified nodes when plotting. If specified node is not
         highlighted to begin with, nothing happens.
-        :param nodes: list of nodes to remove highlights from
+        :param nodes: list of nodes, specified by full table names, to remove highlights from
         """
         if not nodes:
             nodes = self.nodes_iter()
@@ -71,6 +137,9 @@ class RelGraph(DiGraph):
         """
         if not self.nodes(): # There is nothing to plot
             logger.warning('Nothing to plot')
+            return
+        if pygraphviz_layout is None:
+            logger.warning('Failed to load Pygraphviz - plotting not supported at this time')
             return
         pos = pygraphviz_layout(self, prog='dot')
         fig = plt.figure(figsize=[10, 7])
@@ -93,11 +162,11 @@ class RelGraph(DiGraph):
         ax.axis('off')  # hide axis
 
     def __repr__(self):
-        #TODO: provide string version of ERD
-        return "RelGraph: to be implemented"
+        return self.repr_path()
 
     def restrict_by_modules(self, modules, fill=False):
         """
+        DEPRECATED - to be removed
         Creates a subgraph containing only tables in the specified modules.
         :param modules: list of module names
         :param fill: set True to automatically include nodes connecting two nodes in the specified modules
@@ -111,12 +180,12 @@ class RelGraph(DiGraph):
     def restrict_by_tables(self, tables, fill=False):
         """
         Creates a subgraph containing only specified tables.
-        :param tables: list of tables to keep in the subgraph
+        :param tables: list of tables to keep in the subgraph. Tables are specified using full table names
         :param fill: set True to automatically include nodes connecting two nodes in the specified list
         of tables
         :return: a subgraph with specified nodes
         """
-        nodes = [n for n in self.nodes() if self.node[n].get('label') in tables]
+        nodes = [n for n in self.nodes() if n in tables]
         if fill:
             nodes = self.fill_connection_nodes(nodes)
         return self.subgraph(nodes)
@@ -160,6 +229,9 @@ class RelGraph(DiGraph):
         for n in nodes:
             s.update(self.descendants(n))
         return s
+
+    def copy_graph(self, *args, **kwargs):
+        return self.__class__(self, *args, **kwargs)
 
     def ancestors(self, node):
         """
@@ -245,6 +317,155 @@ class RelGraph(DiGraph):
                     s.update(self.n_neighbors(x, n-1, prev))
         return s
 
+    @property
+    def root_nodes(self):
+        return {node for node in self.nodes() if len(self.predecessors(node)) == 0}
+
+    @property
+    def leaf_nodes(self):
+        return {node for node in self.nodes() if len(self.successors(node)) == 0}
+
+    def nodes_by_depth(self):
+        """
+        Return all nodes, ordered by their depth in the hierarchy
+        :returns: list of nodes, ordered by depth from shallowest to deepest
+        """
+        ret = defaultdict(lambda: 0)
+        roots = self.root_nodes
+
+        def recurse(node, depth):
+            if depth > ret[node]:
+                ret[node] = depth
+            for child in self.successors_iter(node):
+                recurse(child, depth+1)
+
+        for root in roots:
+            recurse(root, 0)
+
+        return sorted(ret.items(), key=operator.itemgetter(1))
+
+    def get_longest_path(self):
+        """
+        :returns: a list of graph nodes defining th longest path in the graph
+        """
+        # no path exists if there is not an edge!
+        if not self.edges():
+            return []
+
+        node_depth_list = self.nodes_by_depth()
+        node_depth_lookup = dict(node_depth_list)
+        path = []
+
+        leaf = node_depth_list[-1][0]
+        predecessors = [leaf]
+        while predecessors:
+            leaf = sorted(predecessors, key=node_depth_lookup.get)[-1]
+            path.insert(0, leaf)
+            predecessors = self.predecessors(leaf)
+
+        return path
+
+    def remove_edges_in_path(self, path):
+        """
+        Removes all shared edges between this graph and the path
+        :param path: a list of nodes defining a path. All edges in this path will be removed from the graph if found
+        """
+        if len(path) <= 1: # no path exists!
+            return
+        for a, b in zip(path[:-1], path[1:]):
+            self.remove_edge(a, b)
+
+    def longest_paths(self):
+        """
+        :return: list of paths from longest to shortest. A path is a list of nodes.
+        """
+        g = self.copy_graph()
+        paths = []
+        path = g.get_longest_path()
+        while path:
+            paths.append(path)
+            g.remove_edges_in_path(path)
+            path = g.get_longest_path()
+        return paths
+
+    def repr_path(self):
+        """
+        Construct string representation of the erm, summarizing dependencies between
+        tables
+        :return: string representation of the erm
+        """
+        paths = self.longest_paths()
+
+        # turn comparator into Key object for use in sort
+        k = cmp_to_key(self.compare_path)
+        sorted_paths = sorted(paths, key=k)
+
+        # table name will be padded to match the longest table name
+        node_labels = self.node_labels
+        n = max([len(x) for x in node_labels.values()]) + 1
+        rep = ''
+        for path in sorted_paths:
+            rep += self.repr_path_with_depth(path, n)
+
+        for node in self.lone_nodes:
+            rep += node_labels[node] + '\n'
+
+        return rep
+
+
+    def compare_path(self, path1, path2):
+        """
+        Comparator between two paths: path1 and path2 based on a combination of rules.
+        Path 1 is greater than path2 if:
+        1) i^th node in path1 is at greater depth than the i^th node in path2 OR
+        2) if i^th nodes are at the same depth, i^th node in path 1 is alphabetically less than i^th node
+        in path 2
+        3) if neither of the above statement is true even if path1 and path2 are switched, proceed to i+1^th node
+        If path2 is a subpath start at node 1, then path1 is greater than path2
+        :param path1: path 1 of 2 to be compared
+        :param path2: path 2 of 2 to be compared
+        :return: return 1 if path1 is greater than path2, -1 if path1 is less than path2, and 0 if they are identical
+        """
+        node_depth_lookup = dict(self.nodes_by_depth())
+        for node1, node2 in zip(path1, path2):
+            if node_depth_lookup[node1] != node_depth_lookup[node2]:
+                return -1 if node_depth_lookup[node1] < node_depth_lookup[node2] else 1
+            if node1 != node2:
+                return -1 if node1 < node2 else 1
+        if len(node1) != len(node2):
+            return -1 if len(node1) < len(node2) else 1
+        return 0
+
+    def repr_path_with_depth(self, path, n=20, m=2):
+        node_depth_lookup = dict(self.nodes_by_depth())
+        node_labels = self.node_labels
+        space = '-' * n
+        rep = ''
+        prev_depth = 0
+        first = True
+        for (i, node) in enumerate(path):
+            depth = node_depth_lookup[node]
+            label = node_labels[node]
+            if first:
+                rep += (' '*(n+m))*(depth-prev_depth)
+            else:
+                rep += space.join(['-'*m]*(depth-prev_depth))[:-1] + '>'
+            first = False
+            prev_depth = depth
+            if i == len(path)-1:
+                rep += label
+            else:
+                rep += label.ljust(n, '-')
+        rep += '\n'
+        return rep
+
+
+def require_dep_loading(f):
+    @wraps(f)
+    def wrapper(self, *args, **kwargs):
+        self.load_dependencies()
+        return f(self, *args, **kwargs)
+    return wrapper
 
 class ERM(RelGraph):
     """
@@ -256,6 +477,7 @@ class ERM(RelGraph):
 
     def __init__(self, conn, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._databases = set()
         self._conn = conn
         self._parents = dict()
         self._referenced = dict()
@@ -265,15 +487,13 @@ class ERM(RelGraph):
             self._conn = conn
         else:
             raise DataJointError('The connection is broken') #TODO: make better exception message
-        self.update_graph()
 
     def update_graph(self, reload=False):
         self.clear()
-
         # create primary key foreign connections
         for table, parents in self._parents.items():
             mod, cls = (x.strip('`') for x in table.split('.'))
-            self.add_node(table, label=table, mod=mod, cls=cls)
+            self.add_node(table)
             for parent in parents:
                 self.add_edge(parent, table, rel='parent')
 
@@ -282,6 +502,7 @@ class ERM(RelGraph):
             for ref in referenced:
                 self.add_edge(ref, table, rel='referenced')
 
+    @require_dep_loading
     def copy_graph(self, *args, **kwargs):
         """
         Return copy of the graph represented by this object at the
@@ -290,10 +511,46 @@ class ERM(RelGraph):
         """
         return RelGraph(self, *args, **kwargs)
 
+    @require_dep_loading
     def subgraph(self, *args, **kwargs):
         return RelGraph(self).subgraph(*args, **kwargs)
 
-    def load_dependencies(self, full_table_name):
+    def register_database(self, database):
+        """
+        Register the database to be monitored
+        :param database: name of database to be monitored
+        """
+        self._databases.add(database)
+
+    def load_dependencies(self):
+        """
+        Load dependencies for all monitored databases
+        """
+        for database in self._databases:
+            self.load_dependencies_for_database(database)
+
+    def load_dependencies_for_database(self, database):
+        """
+        Load dependencies for all tables found in the specified database
+        :param database: database for which dependencies will be loaded
+        """
+        #sql_table_name_regexp = re.compile('^(#|_|__|~)?[a-z][a-z0-9_]*$')
+
+        cur = self._conn.query('SHOW TABLES FROM `{database}`'.format(database=database))
+
+        for info in cur:
+            table_name = info[0]
+            # TODO: fix this criteria! It will exclude ANY tables ending with 'jobs'
+            # exclude tables ending with 'jobs' from erd
+            if not table_name == '~jobs':
+                full_table_name = '`{database}`.`{table_name}`'.format(database=database, table_name=table_name)
+                self.load_dependencies_for_table(full_table_name)
+
+    def load_dependencies_for_table(self, full_table_name):
+        """
+        Load dependencies for the specified table
+        :param full_table_name: table for which dependencies will be loaded, specified in full table name
+        """
         # check if already loaded.  Use clear_dependencies before reloading
         if full_table_name in self._parents:
             return
@@ -355,10 +612,20 @@ class ERM(RelGraph):
                 else:
                     self._referenced[full_table_name].append(result.referenced_table)
                     self._references[result.referenced_table].append(full_table_name)
-
         self.update_graph()
 
-    def clear_dependencies(self, full_table_name):
+    def __repr__(self):
+        # Make sure that all dependencies are loaded before printing repr
+        self.load_dependencies()
+        return super().__repr__()
+
+    def clear_dependencies(self):
+        pass
+
+    def clear_dependencies_for_database(self, database):
+        pass
+
+    def clear_dependencies_for_table(self, full_table_name):
         for ref in self._parents.pop(full_table_name, []):
             if full_table_name in self._children[ref]:
                 self._children[ref].remove(full_table_name)
@@ -367,21 +634,27 @@ class ERM(RelGraph):
                 self._references[ref].remove(full_table_name)
 
     @property
+    @require_dep_loading
     def parents(self):
         return self._parents
 
     @property
+    @require_dep_loading
     def children(self):
+        self.load_dependencies()
         return self._children
 
     @property
+    @require_dep_loading
     def references(self):
         return self._references
 
     @property
+    @require_dep_loading
     def referenced(self):
         return self._referenced
 
+    @require_dep_loading
     def get_descendants(self, full_table_name):
         """
         :param full_table_name: a table name in the format `database`.`table_name`
@@ -398,4 +671,5 @@ class ERM(RelGraph):
 
         recurse(full_table_name, 0)
         return sorted(ret.keys(), key=ret.__getitem__)
+
 
