@@ -51,7 +51,6 @@ class Dependencies:
 
     @staticmethod
     def __foreign_key_parser(database):
-
         def add_database(string, loc, toc):
             return ['`{database}`.`{table}`'.format(database=database, table=toc[0])]
 

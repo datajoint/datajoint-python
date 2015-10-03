@@ -472,217 +472,26 @@ class RelGraph(DiGraph):
         return rep
 
 
-def require_dep_loading(f):
-    @wraps(f)
-    def wrapper(self, *args, **kwargs):
-        self.load_dependencies()
-        return f(self, *args, **kwargs)
-    return wrapper
-
-class ERM(RelGraph):
+class ERD(RelGraph):
     """
-    Entity Relation Map
+    Entity Relation Diagram
 
     Represents known relation between tables
     """
     # _checked_dependencies = set()
 
-    def __init__(self, conn, *args, **kwargs):
+    def __init__(self, parents_dict, referenced_dict, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._databases = set()
-        self._conn = conn
-        self._parents = dict()
-        self._referenced = dict()
-        self._children = defaultdict(list)
-        self._references = defaultdict(list)
-        if conn.is_connected:
-            self._conn = conn
-        else:
-            raise DataJointError('The connection is broken') #TODO: make better exception message
 
-    def update_graph(self, reload=False):
         self.clear()
         # create primary key foreign connections
-        for table, parents in self._parents.items():
-            mod, cls = (x.strip('`') for x in table.split('.'))
-            self.add_node(table)
+        for full_table, parents in parents_dict.items():
+            database, table = (x.strip('`') for x in full_table.split('.'))
+            self.add_node(full_table, database=database, table=table)
             for parent in parents:
-                self.add_edge(parent, table, rel='parent')
+                self.add_edge(parent, full_table, rel='parent')
 
         # create non primary key foreign connections
-        for table, referenced in self._referenced.items():
+        for full_table, referenced in referenced_dict.items():
             for ref in referenced:
-                self.add_edge(ref, table, rel='referenced')
-
-    @require_dep_loading
-    def copy_graph(self, *args, **kwargs):
-        """
-        Return copy of the graph represented by this object at the
-        time of call. Note that the returned graph is no longer
-        bound to a connection.
-        """
-        return RelGraph(self, *args, **kwargs)
-
-    @require_dep_loading
-    def subgraph(self, *args, **kwargs):
-        return RelGraph(self).subgraph(*args, **kwargs)
-
-    def register_database(self, database):
-        """
-        Register the database to be monitored
-        :param database: name of database to be monitored
-        """
-        self._databases.add(database)
-
-    def load_dependencies(self):
-        """
-        Load dependencies for all monitored databases
-        """
-        for database in self._databases:
-            self.load_dependencies_for_database(database)
-
-    def load_dependencies_for_database(self, database):
-        """
-        Load dependencies for all tables found in the specified database
-        :param database: database for which dependencies will be loaded
-        """
-        #sql_table_name_regexp = re.compile('^(#|_|__)?[a-z][a-z0-9_]*$')
-
-        cur = self._conn.query('SHOW TABLES FROM `{database}`'.format(database=database))
-
-        for info in cur:
-            table_name = info[0]
-            # exclude service tables from ERD
-            if not table_name.startswith('~'):
-                full_table_name = '`{database}`.`{table_name}`'.format(database=database, table_name=table_name)
-                self.load_dependencies_for_table(full_table_name)
-
-    def load_dependencies_for_table(self, full_table_name):
-        """
-        Load dependencies for the specified table
-        :param full_table_name: table for which dependencies will be loaded, specified in full table name
-        """
-        # check if already loaded.  Use clear_dependencies before reloading
-        if full_table_name in self._parents:
-            return
-        self._parents[full_table_name] = list()
-        self._referenced[full_table_name] = list()
-
-        # fetch the CREATE TABLE statement
-        cur = self._conn.query('SHOW CREATE TABLE %s' % full_table_name)
-        create_statement = cur.fetchone()
-        if not create_statement:
-            raise DataJointError('Could not load the definition for %s' % full_table_name)
-        create_statement = create_statement[1].split('\n')
-
-        # build foreign key fk_parser
-        database = full_table_name.split('.')[0].strip('`')
-        add_database = lambda string, loc, toc: ['`{database}`.`{table}`'.format(database=database, table=toc[0])]
-
-        # primary key parser
-        pk_parser = pp.CaselessLiteral('PRIMARY KEY')
-        pk_parser += pp.QuotedString('(', endQuoteChar=')').setResultsName('primary_key')
-
-        # foreign key parser
-        fk_parser = pp.CaselessLiteral('CONSTRAINT').suppress()
-        fk_parser += pp.QuotedString('`').suppress()
-        fk_parser += pp.CaselessLiteral('FOREIGN KEY').suppress()
-        fk_parser += pp.QuotedString('(', endQuoteChar=')').setResultsName('attributes')
-        fk_parser += pp.CaselessLiteral('REFERENCES')
-        fk_parser += pp.Or([
-            pp.QuotedString('`').setParseAction(add_database),
-            pp.Combine(pp.QuotedString('`', unquoteResults=False) +
-                       '.' + pp.QuotedString('`', unquoteResults=False))
-            ]).setResultsName('referenced_table')
-        fk_parser += pp.QuotedString('(', endQuoteChar=')').setResultsName('referenced_attributes')
-
-        # parse foreign keys
-        primary_key = None
-        for line in create_statement:
-            if primary_key is None:
-                try:
-                    result = pk_parser.parseString(line)
-                except pp.ParseException:
-                    pass
-                else:
-                    primary_key = [s.strip(' `') for s in result.primary_key.split(',')]
-            try:
-                result = fk_parser.parseString(line)
-            except pp.ParseException:
-                pass
-            else:
-                if not primary_key:
-                    raise DataJointError('No primary key found %s' % full_table_name)
-                if result.referenced_attributes != result.attributes:
-                    raise DataJointError(
-                        "%s's foreign key refers to differently named attributes in %s"
-                        % (self.__class__.__name__, result.referenced_table))
-                if all(q in primary_key for q in [s.strip('` ') for s in result.attributes.split(',')]):
-                    self._parents[full_table_name].append(result.referenced_table)
-                    self._children[result.referenced_table].append(full_table_name)
-                else:
-                    self._referenced[full_table_name].append(result.referenced_table)
-                    self._references[result.referenced_table].append(full_table_name)
-        self.update_graph()
-
-    def __repr__(self):
-        # Make sure that all dependencies are loaded before printing repr
-        self.load_dependencies()
-        return super().__repr__()
-
-    def clear_dependencies(self):
-        # TODO: complete the implementation
-        pass
-
-    def clear_dependencies_for_database(self, database):
-        # TODO: complete the implementation
-        pass
-
-    def clear_dependencies_for_table(self, full_table_name):
-        for ref in self._parents.pop(full_table_name, []):
-            if full_table_name in self._children[ref]:
-                self._children[ref].remove(full_table_name)
-        for ref in self._referenced.pop(full_table_name, []):
-            if full_table_name in self._references[ref]:
-                self._references[ref].remove(full_table_name)
-
-    @property
-    @require_dep_loading
-    def parents(self):
-        return self._parents
-
-    @property
-    @require_dep_loading
-    def children(self):
-        self.load_dependencies()
-        return self._children
-
-    @property
-    @require_dep_loading
-    def references(self):
-        return self._references
-
-    @property
-    @require_dep_loading
-    def referenced(self):
-        return self._referenced
-
-    @require_dep_loading
-    def get_descendants(self, full_table_name):
-        """
-        :param full_table_name: a table name in the format `database`.`table_name`
-        :return: list of all children and references, in order of dependence.
-        This is helpful for cascading delete or drop operations.
-        """
-        ret = defaultdict(lambda: 0)
-
-        def recurse(full_table_name, level):
-            if level > ret[full_table_name]:
-                ret[full_table_name] = level
-            for child in self.children[full_table_name] + self.references[full_table_name]:
-                recurse(child, level+1)
-
-        recurse(full_table_name, 0)
-        return sorted(ret.keys(), key=ret.__getitem__)
-
-
+                self.add_edge(ref, full_table, rel='referenced')
