@@ -1,4 +1,4 @@
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 import numpy as np
 import abc
 import re
@@ -9,6 +9,82 @@ from . import DataJointError
 from .fetch import Fetch, Fetch1
 
 logger = logging.getLogger(__name__)
+
+
+class AndList(Sequence):
+    """
+    A list of restrictions to by applied to a relation.  The restrictions are ANDed.
+    Each restriction can be a list or set or a relation whose elements are ORed.
+    But the elements that are lists can contain
+    """
+    def __init__(self, heading):
+        self.heading = heading
+        self._list = []
+
+    def __len__(self):
+        return len(self._list)
+
+    def __getitem__(self, i):
+        return self._list[i]
+
+    def add(self, *args):
+        # remove Nones and duplicates
+        args = [r for r in args if r is not None and r not in self]
+        if args:
+            if any(is_empty_set(r) for r in args):
+                # if any condition is an empty list, return FALSE
+                self._list = ['FALSE']
+            else:
+                self._list.extend(args)
+
+    def where_clause(self):
+        """
+        convert to a WHERE clause string
+        """
+        def make_condition(arg, _negate=False):
+            if isinstance(arg, (str, AndList)):
+                return str(arg), _negate
+
+            # semijoin or antijoin
+            if isinstance(arg, RelationalOperand):
+                common_attributes = [q for q in self.heading.names if q in arg.heading.names]
+                if not common_attributes:
+                    condition = 'FALSE' if negate else 'TRUE'
+                else:
+                    common_attributes = '`'+'`,`'.join(common_attributes)+'`'
+                    condition = ['({fields}) {not_}in ({subquery})'.format(
+                        fields=common_attributes,
+                        not_="not " if negate else "",
+                        subquery=arg.make_select(common_attributes))]
+                return condition, False   # negate is cleared
+
+            # mappings are turned into ANDed equality conditions
+            if isinstance(arg, Mapping):
+                condition = ['`%s`=%s' % (k, repr(v)) for k, v in arg.items() if k in self.heading]
+            elif isinstance(arg, np.void):
+                # element of a record array
+                condition = ['`%s`=%s' % (k, arg[k]) for k in arg.dtype.fields if k in self.heading]
+            else:
+                raise DataJointError('invalid restriction type')
+            return ' AND '.join(condition) if condition else 'TRUE', _negate
+
+        if not self:
+            return ''
+
+        conditions = []
+        for item in self:
+            negate = isinstance(item, Not)
+            if negate:
+                item = item.restriction
+            if isinstance(item, (list, tuple, set, np.ndarray)):
+                # sets of conditions are ORed
+                item = '(' + ') OR ('.join([make_condition(q)[0] for q in item]) + ')'
+            else:
+                item, negate = make_condition(item, negate)
+            if not item:
+                raise DataJointError('Empty condition')
+            conditions.append(('NOT %s' if negate else '%s') % item)
+        return ' WHERE ' + ' AND '.join(conditions)
 
 
 class RelationalOperand(metaclass=abc.ABCMeta):
@@ -25,11 +101,17 @@ class RelationalOperand(metaclass=abc.ABCMeta):
 
     @property
     def restrictions(self):
-        return [] if self._restrictions is None else self._restrictions
+        if self._restrictions is None:
+            self._restrictions = AndList(self.heading)
+        return self._restrictions
 
     @property
     def primary_key(self):
         return self.heading.primary_key
+
+    @property
+    def where_clause(self):
+        return self.restrictions.where_clause()
 
     # --------- abstract properties -----------
 
@@ -107,13 +189,20 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             Join(self, group, left=True),
             *attributes, **renamed_attributes)
 
+    def __iand__(self, restriction):
+        """
+        in-place restriction by a single condition
+        """
+        self.restrict(restriction)
+
     def __and__(self, restriction):
         """
         relational restriction or semijoin
         :return: a restricted copy of the argument
         """
         ret = copy(self)
-        ret.restrict(restriction, *ret.restrictions)
+        ret._restrictions = None
+        ret.restrict(restriction, *list(self.restrictions))
         return ret
 
     def restrict(self, *restrictions):
@@ -124,25 +213,15 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         However, each member of restrictions can be a list of conditions, which are combined with OR.
         :param restrictions: list of restrictions.
         """
-        # remove Nones and duplicates
-        restrictions = [r for r in restrictions if r is not None and r not in self.restrictions]
-        if restrictions:
-            if any(is_empty_set(r) for r in restrictions):
-                # if any condition is an empty list, return empty
-                self._restrictions = ['FALSE']
-            else:
-                if self._restrictions is None:
-                    self._restrictions = restrictions
-                else:
-                    self._restrictions.extend(restrictions)
+        self.restrictions.add(*restrictions)
 
     def attributes_in_restrictions(self):
         """
         :return: list of attributes that are probably used in the restrictions.
         This is used internally for optimizing SQL statements
         """
-        where_clause = self.where_clause
-        return set(name for name in self.heading.names if name in where_clause)
+        s = self.restrictions.where_clause()  # avoid calling multiple times
+        return set(name for name in self.heading.names if name in s)
 
     def __sub__(self, restriction):
         """
@@ -166,9 +245,8 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         return 'SELECT {fields} FROM {from_}{where}{group}'.format(
             fields=select_fields if select_fields else self.select_fields,
             from_=self.from_clause,
-            where=self.where_clause,
-            group=' GROUP BY `%s`' % '`,`'.join(self.primary_key) if self._grouped else ''
-            )
+            where=self.restrictions.where_clause(),
+            group=' GROUP BY `%s`' % '`,`'.join(self.primary_key) if self._grouped else '')
 
     def __len__(self):
         """
@@ -212,54 +290,10 @@ class RelationalOperand(metaclass=abc.ABCMeta):
     def fetch(self):
         return Fetch(self)
 
-    @property
-    def where_clause(self):
-        """
-        convert the restriction into an SQL WHERE
-        """
-        if not self.restrictions:
-            return ''
-
-        def make_condition(arg, _negate=False):
-            if isinstance(arg, str):
-                condition = [arg]
-            elif isinstance(arg, RelationalOperand):
-                common_attributes = [q for q in self.heading.names if q in arg.heading.names]
-                if not common_attributes:
-                    condition = ['FALSE' if negate else 'TRUE']
-                else:
-                    common_attributes = '`'+'`,`'.join(common_attributes)+'`'
-                    condition = ['({fields}) {not_}in ({subquery})'.format(
-                        fields=common_attributes,
-                        not_="not " if negate else "",
-                        subquery=arg.make_select(common_attributes))]
-                _negate = False
-            elif isinstance(arg, Mapping):
-                condition = ['`%s`=%s' % (k, repr(v)) for k, v in arg.items() if k in self.heading]
-            elif isinstance(arg, np.void):
-                # element of a record array
-                condition = ['`%s`=%s' % (k, arg[k]) for k in arg.dtype.fields if k in self.heading]
-            else:
-                raise DataJointError('invalid restriction type')
-            return ' AND '.join(condition) if condition else 'TRUE', _negate
-
-        conditions = []
-        for r in self.restrictions:
-            negate = isinstance(r, Not)
-            if negate:
-                r = r.restriction
-            if isinstance(r, (list, tuple, set, np.ndarray)):
-                r = '(' + ') OR ('.join([make_condition(q)[0] for q in r]) + ')'
-            else:
-                r, negate = make_condition(r, negate)
-            if r:
-                conditions.append('%s(%s)' % ('not ' if negate else '', r))
-        return ' WHERE ' + ' AND '.join(conditions)
-
 
 class Not:
     """
-    inverse restriction
+    invert restriction
     """
     def __init__(self, restriction):
         self.restriction = restriction
@@ -351,13 +385,16 @@ class Projection(RelationalOperand):
     def from_clause(self):
         return self._arg.from_clause
 
-    def __and__(self, restriction):
+    def restrict(self, *restrictions):
         """
         When restricting on renamed attributes, enclose in subquery
         """
-        has_restriction = isinstance(restriction, RelationalOperand) or restriction
+        has_restriction = any(isinstance(r, RelationalOperand) or r for r in restrictions)
         do_subquery = has_restriction and self.heading.computed
-        return Subquery(self) & restriction if do_subquery else super().__and__(restriction)
+        if do_subquery:
+            self._arg = Subquery(self)
+            self._restrictions = None
+        super().restrict(*restrictions)
 
 
 class Aggregation(Projection):
@@ -370,6 +407,7 @@ class Subquery(RelationalOperand):
     """
     A Subquery encapsulates its argument in a SELECT statement, enabling its use as a subquery.
     The attribute list and the WHERE clause are resolved.
+    As such, a subquery does not have any renamed attributes.
     """
     __counter = 0
 
