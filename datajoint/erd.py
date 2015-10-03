@@ -164,15 +164,14 @@ class RelGraph(DiGraph):
     def __repr__(self):
         return self.repr_path()
 
-    def restrict_by_modules(self, modules, fill=False):
+    def restrict_by_database(self, databases, fill=False):
         """
-        DEPRECATED - to be removed
-        Creates a subgraph containing only tables in the specified modules.
-        :param modules: list of module names
-        :param fill: set True to automatically include nodes connecting two nodes in the specified modules
+        Creates a subgraph containing only tables in the specified database.
+        :param databases: list of database names
+        :param fill: if True, automatically include nodes connecting two nodes in the specified modules
         :return: a subgraph with specified nodes
         """
-        nodes = [n for n in self.nodes() if self.node[n].get('mod') in modules]
+        nodes = [n for n in self.nodes() if n.split('.')[0].strip('`') in databases]
         if fill:
             nodes = self.fill_connection_nodes(nodes)
         return self.subgraph(nodes)
@@ -194,7 +193,7 @@ class RelGraph(DiGraph):
         nodes = [n for n in self.nodes() if self.node[n].get('mod') in module and
                  self.node[n].get('cls') in tables]
         if fill:
-            nodes =  self.fill_connection_nodes(nodes)
+            nodes = self.fill_connection_nodes(nodes)
         return self.subgraph(nodes)
 
     def fill_connection_nodes(self, nodes):
@@ -206,57 +205,69 @@ class RelGraph(DiGraph):
         graph = self.subgraph(self.ancestors_of_all(nodes))
         return graph.descendants_of_all(nodes)
 
-    def ancestors_of_all(self, nodes):
+    def ancestors_of_all(self, nodes, n=-1):
         """
         Find and return a set of  all ancestors of the given
         nodes. The set will also contain the specified nodes.
         :param nodes: list of nodes for which ancestors are to be found
+        :param n: maximum number of generations to go up for each node.
+        If set to a negative number, will return all ancestors.
         :return: a set containing passed in nodes and all of their ancestors
         """
         s = set()
-        for n in nodes:
-            s.update(self.ancestors(n))
+        for node in nodes:
+            s.update(self.ancestors(node, n))
         return s
 
-    def descendants_of_all(self, nodes):
+    def descendants_of_all(self, nodes, n=-1):
         """
         Find and return a set including all descendants of the given
         nodes. The set will also contain the given nodes as well.
         :param nodes: list of nodes for which descendants are to be found
+        :param n: maximum number of generations to go down for each node.
+        If set to a negative number, will return all descendants.
         :return: a set containing passed in nodes and all of their descendants
         """
         s = set()
-        for n in nodes:
-            s.update(self.descendants(n))
+        for node in nodes:
+            s.update(self.descendants(node, n))
         return s
 
     def copy_graph(self, *args, **kwargs):
         return self.__class__(self, *args, **kwargs)
 
-    def ancestors(self, node):
+    def ancestors(self, node, n=-1):
         """
         Find and return a set containing all ancestors of the specified
         node. For convenience in plotting, this set will also include
         the specified node as well (may change in future).
         :param node: node for which all ancestors are to be discovered
+        :param n: maximum number of generations to go up. If set to a negative number,
+        will return all ancestors.
         :return: a set containing the node and all of its ancestors
         """
         s = {node}
+        if n == 0:
+            return s
         for p in self.predecessors_iter(node):
-            s.update(self.ancestors(p))
+            s.update(self.ancestors(p, n-1))
         return s
 
-    def descendants(self, node):
+    def descendants(self, node, n=-1):
         """
         Find and return a set containing all descendants of the specified
         node. For convenience in plotting, this set will also include
         the specified node as well (may change in future).
         :param node: node for which all descendants are to be discovered
+        :param n: maximum number of generations to go down. If set to a negative number,
+        will return all descendants
         :return: a set containing the node and all of its descendants
         """
         s = {node}
+        if n == 0:
+            return s
         for c in self.successors_iter(node):
-            s.update(self.descendants(c))
+            s.update(self.descendants(c, n-1))
         return s
 
     def up_down_neighbors(self, node, ups=2, downs=2, _prev=None):
