@@ -63,7 +63,7 @@ class TestDelete:
                     'schema is not populated')
         L().delete()
         assert_false(bool(L() or D() or E() or E.F()), 'incomplete delete')
-        A().delete()  # delete all is necessary because delete L deletes from subtables. TODO: submit this as an issue
+        A().delete()  # delete all is necessary because delete L deletes from subtables.
 
     # @staticmethod
     # def test_delete_lookup_restricted():

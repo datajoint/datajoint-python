@@ -29,10 +29,8 @@ class Schema:
         self.database = database
         self.connection = connection
         self.context = context
-
-        # if the database does not exist, create it
-
         if not self.exists:
+            # create schema
             logger.info("Database `{database}` could not be found. "
                         "Attempting to create the database.".format(database=database))
             try:
@@ -42,9 +40,7 @@ class Schema:
                 raise DataJointError("Database named `{database}` was not defined, and"
                                      " an attempt to create has failed. Check"
                                      " permissions.".format(database=database))
-
-        # TODO: replace with a call on connection object
-        connection.erm.register_database(database)
+        connection.register(self)
 
     def drop(self):
         """

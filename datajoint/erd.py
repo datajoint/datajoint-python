@@ -546,15 +546,14 @@ class ERM(RelGraph):
         Load dependencies for all tables found in the specified database
         :param database: database for which dependencies will be loaded
         """
-        #sql_table_name_regexp = re.compile('^(#|_|__|~)?[a-z][a-z0-9_]*$')
+        #sql_table_name_regexp = re.compile('^(#|_|__)?[a-z][a-z0-9_]*$')
 
         cur = self._conn.query('SHOW TABLES FROM `{database}`'.format(database=database))
 
         for info in cur:
             table_name = info[0]
-            # TODO: fix this criteria! It will exclude ANY tables ending with 'jobs'
-            # exclude tables ending with 'jobs' from erd
-            if not table_name == '~jobs':
+            # exclude service tables from ERD
+            if not table_name.startswith('~'):
                 full_table_name = '`{database}`.`{table_name}`'.format(database=database, table_name=table_name)
                 self.load_dependencies_for_table(full_table_name)
 
