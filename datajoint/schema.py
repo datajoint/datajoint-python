@@ -5,6 +5,7 @@ from . import conn, DataJointError
 from .heading import Heading
 from .base_relation import BaseRelation
 from .user_relations import Part
+import inspect
 logger = logging.getLogger(__name__)
 
 
@@ -92,20 +93,13 @@ class Schema:
 
         # Process subordinate relations
         parts = list()
-        for name in (name for name in dir(cls) if not name.startswith('_')):
-            part = getattr(cls, name)
-            try:
-                is_sub = issubclass(part, Part)
-            except TypeError:
-                pass
-            else:
-                if is_sub:
-                    parts.append(part)
-                    part._master = cls
-                    # TODO: look into local namespace for the subclasses
-                    process_relation_class(part, context=dict(self.context, **{cls.__name__: cls}))
-                elif issubclass(part, BaseRelation):
-                    raise DataJointError('Part relations must be a subclass of datajoint.Part')
+        is_part = lambda x: inspect.isclass(x) and issubclass(x, Part)
+
+        for var, part in inspect.getmembers(cls, is_part):
+            parts.append(part)
+            part._master = cls
+            # TODO: look into local namespace for the subclasses
+            process_relation_class(part, context=dict(self.context, **{cls.__name__: cls}))
 
         # invoke Relation._prepare() on class and its part relations.
         cls()._prepare()
