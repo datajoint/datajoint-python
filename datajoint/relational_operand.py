@@ -378,9 +378,7 @@ class Projection(RelationalOperand):
 
     @property
     def heading(self):
-        heading = self._arg.heading
-        heading = heading.project(*self._attributes, **self._renamed_attributes)
-        return heading
+        return self._arg.heading.project(*self._attributes, **self._renamed_attributes)
 
     @property
     def _grouped(self):
@@ -444,9 +442,7 @@ class Subquery(RelationalOperand):
 
     @property
     def heading(self):
-        h = self._arg.heading
-        h = h.resolve()
-        return h
+        return self._arg.heading.resolve()
 
     def _repr_helper(self):
         return "%r" % self._arg
