@@ -283,7 +283,10 @@ class Fetch1(Callable):
         single_output = isinstance(item, str) or item is PRIMARY_KEY or isinstance(item, int)
         item, attributes = prepare_attributes(self._relation, item)
 
-        result = self._relation.project(*attributes).fetch()
+        result = self._relation.project(*attributes)
+        assert len(result) == 1, 'Fetch1 should only return one tuple'
+        result = result.fetch()
+
         return_values = tuple(
             np.ndarray(result.shape,
                        np.dtype({name: result.dtype.fields[name] for name in self._relation.primary_key}),
