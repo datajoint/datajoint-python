@@ -8,6 +8,7 @@ import pymysql as client
 import logging
 from . import config
 from . import DataJointError
+from datajoint.erd import ERD
 from .dependencies import Dependencies
 from .jobs import JobManager
 
@@ -93,7 +94,8 @@ class Connection:
         return self._conn.ping()
 
     def erd(self):
-        return self.dependencies.erd()
+        self.dependencies.load()
+        return ERD.create_from_dependencies(self.dependencies)
 
     def query(self, query, args=(), as_dict=False):
         """
