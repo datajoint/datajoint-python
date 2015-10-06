@@ -3,13 +3,13 @@ Hosts the table tiers, user relations should be derived from.
 """
 
 import abc
-from .relation import Relation
+from .base_relation import BaseRelation
 from .autopopulate import AutoPopulate
 from .utils import from_camel_case
 from . import DataJointError
 
 
-class Part(Relation, metaclass=abc.ABCMeta):
+class Part(BaseRelation, metaclass=abc.ABCMeta):
     """
     Inherit from this class if the table's values are details of an entry in another relation
     and if this table is populated by this relation. For example, the entries inheriting from
@@ -29,7 +29,7 @@ class Part(Relation, metaclass=abc.ABCMeta):
         return self.master().table_name + '__' + from_camel_case(self.__class__.__name__)
 
 
-class Manual(Relation, metaclass=abc.ABCMeta):
+class Manual(BaseRelation, metaclass=abc.ABCMeta):
     """
     Inherit from this class if the table's values are entered manually.
     """
@@ -42,7 +42,7 @@ class Manual(Relation, metaclass=abc.ABCMeta):
         return from_camel_case(self.__class__.__name__)
 
 
-class Lookup(Relation, metaclass=abc.ABCMeta):
+class Lookup(BaseRelation, metaclass=abc.ABCMeta):
     """
     Inherit from this class if the table's values are for lookup. This is
     currently equivalent to defining the table as Manual and serves semantic
@@ -64,7 +64,7 @@ class Lookup(Relation, metaclass=abc.ABCMeta):
             self.insert(self.contents, skip_duplicates=True)
 
 
-class Imported(Relation, AutoPopulate, metaclass=abc.ABCMeta):
+class Imported(BaseRelation, AutoPopulate, metaclass=abc.ABCMeta):
     """
     Inherit from this class if the table's values are imported from external data sources.
     The inherited class must at least provide the function `_make_tuples`.
@@ -78,7 +78,7 @@ class Imported(Relation, AutoPopulate, metaclass=abc.ABCMeta):
         return "_" + from_camel_case(self.__class__.__name__)
 
 
-class Computed(Relation, AutoPopulate, metaclass=abc.ABCMeta):
+class Computed(BaseRelation, AutoPopulate, metaclass=abc.ABCMeta):
     """
     Inherit from this class if the table's values are computed from other relations in the schema.
     The inherited class must at least provide the function `_make_tuples`.

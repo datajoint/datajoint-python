@@ -2,7 +2,7 @@ all:
 	@echo 'MakeFile for DataJoint packaging                                              '
 	@echo '                                                                              '
 	@echo 'make sdist                              Creates source distribution           '
-	@echo 'make wheel                              Creates Wheel dstribution             '
+	@echo 'make wheel                              Creates Wheel distribution            '
 	@echo 'make pypi                               Package and upload to PyPI            '
 	@echo 'make pypitest                           Package and upload to PyPI test server'
 	@echo 'make purge                              Remove all build related directories  '

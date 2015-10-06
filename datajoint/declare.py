@@ -38,8 +38,21 @@ def declare(full_table_name, definition, context):
         elif line.startswith('---') or line.startswith('___'):
             in_key = False  # start parsing dependent attributes
         elif line.startswith('->'):
-            # foreign key
-            ref = eval(line[2:], context)()  # TODO: surround this with try...except... to give a better error message
+            # foreign
+            # TODO: clean up import order
+            from .base_relation import BaseRelation
+            # TODO: break this step into finer steps, checking the type of reference before calling it
+            try:
+                ref = eval(line[2:], context)()
+            except NameError:
+                raise DataJointError('Foreign key reference %s could not be resolved' % line[2:])
+            except TypeError:
+                raise DataJointError('Foreign key reference %s could not be instantiated.'
+                                     'Make sure %s is a valid BaseRelation subclass' % line[2:])
+            # TODO: consider the case where line[2:] is a function that returns an instance of BaseRelation
+            if not isinstance(ref, BaseRelation):
+                    raise DataJointError('Foreign key reference %s must be a subclass of BaseRelation' % line[2:])
+
             foreign_key_sql.append(
                 'FOREIGN KEY ({primary_key})'
                 ' REFERENCES {ref} ({primary_key})'

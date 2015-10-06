@@ -1,7 +1,7 @@
 import hashlib
 import os
 import pymysql
-from .relation import Relation
+from .base_relation import BaseRelation
 
 
 def key_hash(key):
@@ -14,7 +14,7 @@ def key_hash(key):
     return hashed.hexdigest()
 
 
-class JobRelation(Relation):
+class JobRelation(BaseRelation):
     """
     A base relation with no definition. Allows reserving jobs
     """
@@ -56,14 +56,12 @@ class JobRelation(Relation):
         :param key: the dict of the job's primary key
         :return: True if reserved job successfully. False = the jobs is already taken
         """
-        job_key = dict(table_name=table_name, key_hash=key_hash(key))
+
         try:
-            self.insert1(
-                dict(job_key,
-                     status="reserved",
-                     host=os.uname().nodename,
-                     pid=os.getpid()))
-        except pymysql.err.IntegrityError:
+            job_key = dict(table_name=table_name, key_hash=key_hash(key),
+                           status='reserved', host=os.uname().nodename, pid=os.getpid())
+            self.insert1(job_key)
+        except pymysql.err.IntegrityError: #TODO check for other exceptions!
             return False
         else:
             return True

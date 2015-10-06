@@ -9,11 +9,15 @@ __author__ = 'Edgar Walker, Fabian Sinz, Dimitri Yatsenko'
 
 import logging
 from os import environ
+
+# turn on verbose logging
+logging.basicConfig(level=logging.DEBUG)
+
 import datajoint as dj
 
 __all__ = ['__author__', 'PREFIX', 'CONN_INFO']
 
-logging.basicConfig(level=logging.DEBUG)
+
 
 # Connection for testing
 CONN_INFO = dict(
@@ -27,10 +31,9 @@ PREFIX = environ.get('DJ_TEST_DB_PREFIX', 'djtest')
 def setup_package():
     """
     Package-level unit test setup
-    :return:
+    Turns off safemode
     """
     dj.config['safemode'] = False
-
 
 def teardown_package():
     """
