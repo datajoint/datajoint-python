@@ -406,6 +406,9 @@ class ERD(DiGraph):
         tables
         :return: string representation of the erm
         """
+        if len(self) == 0:
+            return "No relations to show"
+
         paths = self.longest_paths()
 
         # turn comparator into Key object for use in sort
