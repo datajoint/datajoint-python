@@ -2,7 +2,7 @@ from collections.abc import Mapping, Sequence
 import numpy as np
 import abc
 import re
-from copy import copy
+from copy import copy, deepcopy
 import logging
 from . import DataJointError
 
@@ -339,7 +339,7 @@ class Join(RelationalOperand):
 
     @property
     def select_fields(self):
-        return '*'
+        return self.heading.as_sql
 
 
 class Projection(RelationalOperand):

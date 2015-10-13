@@ -230,7 +230,7 @@ class Heading:
 
     def join(self, other, left):
         """
-        join two headings
+        Joins two headings.
         """
         assert isinstance(other, Heading)
         attribute_list = [v._asdict() for v in self.attributes.values()]
