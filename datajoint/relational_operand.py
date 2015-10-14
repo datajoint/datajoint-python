@@ -2,7 +2,7 @@ from collections.abc import Mapping, Sequence
 import numpy as np
 import abc
 import re
-from copy import copy, deepcopy
+from copy import copy
 import logging
 from . import DataJointError
 
