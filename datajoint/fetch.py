@@ -279,9 +279,9 @@ class Fetch1(Callable):
         single_output = isinstance(item, str) or item is PRIMARY_KEY or isinstance(item, int)
         item, attributes = prepare_attributes(self._relation, item)
 
-        result = self._relation.project(*attributes)
-        assert len(result) == 1, 'Fetch1 should only return one tuple'
-        result = result.fetch()
+        result = self._relation.project(*attributes).fetch()
+        if len(result) != 1:
+            raise DataJointError('Fetch1 should only return one tuple')
 
         return_values = tuple(
             np.ndarray(result.shape,
