@@ -19,7 +19,7 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 
 
 MOCK_MODULES = ['numpy', 'scipy', 'matplotlib', 'matplotlib.pyplot', 'matplotlib.transforms',"nose.tools", 'pymysql', 'networkx', 'numpy.lib',
-                'numpy.lib.recfunctions']
+                'numpy.lib.recfunctions', 'pygraphviz']
 for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = mock.Mock()
 

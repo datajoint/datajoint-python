@@ -1,6 +1,5 @@
 from collections import defaultdict
 import pyparsing as pp
-from .erd import ERD
 from . import DataJointError
 
 
@@ -17,10 +16,6 @@ class Dependencies:
         self._referenced = dict()
         self._children = defaultdict(list)
         self._references = defaultdict(list)
-
-    def erd(self):
-        self.load()
-        return ERD.create_from_dependencies(self)
 
     @property
     def parents(self):
