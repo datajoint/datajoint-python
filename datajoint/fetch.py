@@ -188,10 +188,7 @@ class Fetch(Iterable, Callable):
         """
         Iterator that returns primary keys.
         """
-        b = dict(self.behavior, **kwargs)
-        if 'as_dict' not in kwargs:
-            b['as_dict'] = True
-        yield from self._relation.project().fetch.set_behavior(**b)
+        yield from self._relation.project().fetch.set_behavior(**dict(self.behavior, as_dict=True, **kwargs))
 
     def __getitem__(self, item):
         """
@@ -216,8 +213,7 @@ class Fetch(Iterable, Callable):
                        result, 0, result.strides)
             if attribute is PRIMARY_KEY
             else result[attribute]
-            for attribute in item
-            ]
+            for attribute in item]
         return return_values[0] if single_output else return_values
 
     def __repr__(self):

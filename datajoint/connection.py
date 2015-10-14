@@ -8,7 +8,8 @@ import pymysql as client
 import logging
 from . import config
 from . import DataJointError
-from .erd import ERM
+from datajoint.erd import ERD
+from .dependencies import Dependencies
 from .jobs import JobManager
 
 logger = logging.getLogger(__name__)
@@ -67,7 +68,8 @@ class Connection:
         self._conn.autocommit(True)
         self._in_transaction = False
         self.jobs = JobManager(self)
-        self.erm = ERM(self)
+        self.schemas = dict()
+        self.dependencies = Dependencies(self)
 
     def __del__(self):
         logger.info('Disconnecting {user}@{host}:{port}'.format(**self.conn_info))
@@ -81,8 +83,8 @@ class Connection:
         return "DataJoint connection ({connected}) {user}@{host}:{port}".format(
             connected=connected, **self.conn_info)
 
-    def erd(self, *args, **kwargs):
-        return self.erm.copy_graph(*args, **kwargs)
+    def register(self, schema):
+        self.schemas[schema.database] = schema
 
     @property
     def is_connected(self):
@@ -90,6 +92,10 @@ class Connection:
         Returns true if the object is connected to the database server.
         """
         return self._conn.ping()
+
+    def erd(self):
+        self.dependencies.load()
+        return ERD.create_from_dependencies(self.dependencies)
 
     def query(self, query, args=(), as_dict=False):
         """
