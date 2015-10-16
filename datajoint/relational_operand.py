@@ -339,7 +339,7 @@ class Join(RelationalOperand):
 
     @property
     def select_fields(self):
-        return '*'
+        return self.heading.as_sql
 
 
 class Projection(RelationalOperand):

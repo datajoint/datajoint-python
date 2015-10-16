@@ -280,6 +280,9 @@ class Fetch1(Callable):
         item, attributes = prepare_attributes(self._relation, item)
 
         result = self._relation.project(*attributes).fetch()
+        if len(result) != 1:
+            raise DataJointError('Fetch1 should only return one tuple')
+
         return_values = tuple(
             np.ndarray(result.shape,
                        np.dtype({name: result.dtype.fields[name] for name in self._relation.primary_key}),
