@@ -28,12 +28,14 @@ CONN_INFO = dict(
 # Prefix for all databases used during testing
 PREFIX = environ.get('DJ_TEST_DB_PREFIX', 'djtest')
 
+
 def setup_package():
     """
     Package-level unit test setup
     Turns off safemode
     """
     dj.config['safemode'] = False
+
 
 def teardown_package():
     """
