@@ -54,78 +54,40 @@ log_levels = {
 }
 
 
-class Borg:
-    """
-    Class to implement an de facto singleton.
-    """
-    _shared_state = {}
 
-    def __init__(self):
-        self.__dict__ = self._shared_state
+class Config(collections.MutableMapping):
 
-
-class Config(Borg, collections.MutableMapping):
-    """
-    Stores datajoint settings. Behaves like a dictionary, but applies validator functions
-    when certain keys are set.
-
-    The default parameters are stored in datajoint.settings.default . If a local config file
-    exists, the settings specified in this file override the default settings.
-
-    """
+    instance = None
 
     def __init__(self, *args, **kwargs):
-        Borg.__init__(self)
-        self._conf = dict(default)
-        self.update(dict(*args, **kwargs))  # use the free update to set keys
+            if not Config.instance:
+                Config.instance = Config.__Config(*args, **kwargs)
+            else:
+                Config.instance._conf.update(dict(*args, **kwargs))
 
-    def __getitem__(self, key):
-        return self._conf[key]
+    def __getattr__(self, name):
+        return getattr(self.instance, name)
 
-    def __setitem__(self, key, value):
-        logger.log(logging.INFO, u"Setting {0:s} to {1:s}".format(str(key), str(value)))
-        if isinstance(value, collections.Mapping):
-            raise ValueError("Nested settings are not supported!")
-        if validators[key](value):
-            self._conf[key] = value
-        else:
-            raise DataJointError(u'Validator for {0:s} did not pass'.format(key, ))
+    def __getitem__(self, item):
+        return self.instance.__getitem__(item)
 
-    def __delitem__(self, key):
-        del self._conf[key]
-
-    def __iter__(self):
-        return iter(self._conf)
-
-    def __len__(self):
-        return len(self._conf)
+    def __setitem__(self, item, value):
+        self.instance.__setitem__(item, value)
 
     def __str__(self):
-        return pprint.pformat(self._conf, indent=4)
+        return pprint.pformat(self.instance._conf, indent=4)
 
     def __repr__(self):
         return self.__str__()
 
-    def save(self, filename=None):
-        """
-        Saves the settings in JSON format to the given file path.
-        :param filename: filename of the local JSON settings file. If None, the local config file is used.
-        """
-        if filename is None:
-            filename = LOCALCONFIG
-        with open(filename, 'w') as fid:
-            json.dump(self._conf, fid, indent=4)
+    def __delitem__(self, key):
+        del self.instance._conf[key]
 
-    def load(self, filename):
-        """
-        Updates the setting from config file in JSON format.
+    def __iter__(self):
+        return iter(self.instance._conf)
 
-        :param filename=None: filename of the local JSON settings file. If None, the local config file is used.
-        """
-        if filename is None:
-            filename = LOCALCONFIG
-        with open(filename, 'r') as fid:
-            self.update(json.load(fid))
+    def __len__(self):
+        return len(self.instance._conf)
 
 
     @contextmanager
@@ -142,14 +104,65 @@ class Config(Borg, collections.MutableMapping):
         """
 
         try:
-            backup = self._conf.copy()
+            backup = self.instance
+            self.instance = Config.__Config(self.instance._conf)
             new = {k.replace('__','.'):v for k,v in kwargs.items()}
-            self._conf.update(new)
+            self.instance._conf.update(new)
             yield self
         except:
-            self._conf.update(backup)
+            self.instance = backup
             raise
         else:
-            self._conf.update(backup)
+            self.instance = backup
+
+
+    class __Config:
+        """
+        Stores datajoint settings. Behaves like a dictionary, but applies validator functions
+        when certain keys are set.
+
+        The default parameters are stored in datajoint.settings.default . If a local config file
+        exists, the settings specified in this file override the default settings.
+
+        """
+
+        def __init__(self, *args, **kwargs):
+            self._conf = dict(default)
+            self._conf.update(dict(*args, **kwargs))  # use the free update to set keys
+
+        def __getitem__(self, key):
+            return self._conf[key]
+
+        def __setitem__(self, key, value):
+            logger.log(logging.INFO, u"Setting {0:s} to {1:s}".format(str(key), str(value)))
+            if isinstance(value, collections.Mapping):
+                raise ValueError("Nested settings are not supported!")
+            if validators[key](value):
+                self._conf[key] = value
+            else:
+                raise DataJointError(u'Validator for {0:s} did not pass'.format(key, ))
+
+        def save(self, filename=None):
+            """
+            Saves the settings in JSON format to the given file path.
+            :param filename: filename of the local JSON settings file. If None, the local config file is used.
+            """
+            if filename is None:
+                filename = LOCALCONFIG
+            with open(filename, 'w') as fid:
+                json.dump(self._conf, fid, indent=4)
+
+        def load(self, filename):
+            """
+            Updates the setting from config file in JSON format.
+
+            :param filename=None: filename of the local JSON settings file. If None, the local config file is used.
+            """
+            if filename is None:
+                filename = LOCALCONFIG
+            with open(filename, 'r') as fid:
+                self._conf.update(json.load(fid))
+
+
 
 

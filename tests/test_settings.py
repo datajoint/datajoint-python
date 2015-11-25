@@ -28,6 +28,14 @@ def test_singleton():
     assert_true(conf == dj.config, 'Config does not behave like a singleton.')
     os.remove('tmp.json')
 
+def test_singleton2():
+    """Testing singleton property"""
+    conf = dj.Config()
+    conf['dummy.val'] = 2
+    _ = dj.Config() # a new instance should not delete dummy.val
+    assert_true(conf['dummy.val'] == 2, 'Config does not behave like a singleton.')
+
+
 
 @raises(ValueError)
 def test_nested_check():
@@ -93,3 +101,4 @@ def test_contextmanager():
     with dj.config(arbitrary__stuff=10) as cfg:
         assert_true(dj.config['arbitrary.stuff'] == 10)
     assert_true(dj.config['arbitrary.stuff'] == 7)
+
