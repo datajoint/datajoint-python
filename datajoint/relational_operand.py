@@ -63,9 +63,8 @@ class AndList(Sequence):
 
             # mappings are turned into ANDed equality conditions
             if isinstance(arg, Mapping):
-                condition = ['`%s`=%s' %
-                             (k, repr(v) if not
-                             isinstance(v, (datetime.date, datetime.datetime, datetime.time)) else repr(str(v)))
+                condition = ['`%s`=%r' %
+                             (k, v if not isinstance(v, (datetime.date, datetime.datetime, datetime.time)) else str(v))
                              for k, v in arg.items() if k in self.heading]
             elif isinstance(arg, np.void):
                 # element of a record array
