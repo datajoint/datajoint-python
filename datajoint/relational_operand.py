@@ -5,6 +5,7 @@ import re
 from copy import copy
 import logging
 from . import DataJointError, config
+import datetime
 
 from .fetch import Fetch, Fetch1
 
@@ -62,7 +63,10 @@ class AndList(Sequence):
 
             # mappings are turned into ANDed equality conditions
             if isinstance(arg, Mapping):
-                condition = ['`%s`=%s' % (k, repr(v)) for k, v in arg.items() if k in self.heading]
+                condition = ['`%s`=%s' %
+                             (k, repr(v) if not
+                             isinstance(v, (datetime.date, datetime.datetime, datetime.time)) else str(v))
+                             for k, v in arg.items() if k in self.heading]
             elif isinstance(arg, np.void):
                 # element of a record array
                 condition = ['`%s`=%s' % (k, arg[k]) for k in arg.dtype.fields if k in self.heading]
@@ -286,6 +290,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         if self._grouped:
             return len(Subquery(self))
+
         cur = self.connection.query(self.make_select('count(*)'))
         return cur.fetchone()[0]
 
