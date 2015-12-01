@@ -111,7 +111,9 @@ class Connection:
 
         # Log the query
         logger.debug("Executing SQL:" + query[0:300])
+
         cur.execute(query, args)
+
         return cur
 
     # ---------- transaction processing
