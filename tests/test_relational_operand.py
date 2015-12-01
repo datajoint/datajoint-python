@@ -176,8 +176,8 @@ class TestRelational:
 
     def test_datetime(self):
         """Test date retrieval"""
-        Experiment().populate()
-        e1 = Experiment() & dict(experiment_date='2015-11-20')
-        e2 = Experiment() & dict(experiment_date=datetime.date(2015, 11, 20))
+        date = Experiment().fetch['experiment_date'][0]
 
-        assert_true(len(e1) == len(e2) == 7, 'Two date restriction do not yield the same result')
+        e1 = Experiment() & dict(experiment_date=str(date))
+        e2 = Experiment() & dict(experiment_date=date)
+        assert_true(len(e1) == len(e2) > 0, 'Two date restriction do not yield the same result')
