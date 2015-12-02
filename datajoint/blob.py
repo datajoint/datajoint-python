@@ -49,7 +49,7 @@ def pack(obj):
         obj, imaginary = np.real(obj), np.imag(obj)
 
     type_number = reverseClassID[obj.dtype]
-    assert dtypeList[type_number] is obj.dtype, 'ambigous or unknown array type'
+    assert dtypeList[type_number] == obj.dtype, 'ambigous or unknown array type'
     blob += np.asarray(type_number, dtype=np.uint32).tostring()
     blob += np.int8(is_complex).tostring() + b'\0\0\0'
     blob += obj.tostring()
