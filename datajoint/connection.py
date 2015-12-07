@@ -59,7 +59,7 @@ class Connection:
             port = int(port)
         else:
             port = config['database.port']
-        self.conn_info = dict(host=host, port=port, user=user, passwd=passwd)
+        self.conn_info = dict(host=host, port=port, user=user, passwd=passwd, max_allowed_packet=1024**3) # 1073741824
         self._conn = client.connect(init_command=init_fun, **self.conn_info)
         if self.is_connected:
             logger.info("Connected {user}@{host}:{port}".format(**self.conn_info))
