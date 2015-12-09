@@ -26,7 +26,6 @@ class Dependencies:
     def parents(self):
         return self._parents
 
-
     @property
     def children(self):
         return self._children

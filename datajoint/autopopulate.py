@@ -119,6 +119,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         report progress of populating this table
         :return: remaining, total -- tuples to be populated
         """
+        self.connection.dependencies.load()
         total = len(self.populated_from & restriction)
         remaining = len((self.populated_from & restriction) - self.target.project())
         if display:
