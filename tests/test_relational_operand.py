@@ -4,7 +4,8 @@ from nose.tools import assert_raises, assert_equal, \
     assert_tuple_equal, assert_dict_equal, raises
 import datajoint as dj
 from .schema_simple import A, B, D, E, L
-
+import datetime
+from .schema import Experiment
 
 def setup():
     """
@@ -172,3 +173,11 @@ class TestRelational:
                      'incorrect restriction without common attributes')
         assert_true(len(w - y) == 0,
                     'incorrect restriction without common attributes')
+
+    def test_datetime(self):
+        """Test date retrieval"""
+        date = Experiment().fetch['experiment_date'][0]
+
+        e1 = Experiment() & dict(experiment_date=str(date))
+        e2 = Experiment() & dict(experiment_date=date)
+        assert_true(len(e1) == len(e2) > 0, 'Two date restriction do not yield the same result')

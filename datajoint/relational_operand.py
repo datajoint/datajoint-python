@@ -4,7 +4,8 @@ import abc
 import re
 from copy import copy
 import logging
-from . import DataJointError
+from . import DataJointError, config
+import datetime
 
 from .fetch import Fetch, Fetch1
 
@@ -17,6 +18,7 @@ class AndList(Sequence):
     Each restriction can be a list or set or a relation whose elements are ORed.
     But the elements that are lists can contain
     """
+
     def __init__(self, heading):
         self.heading = heading
         self._list = []
@@ -41,6 +43,7 @@ class AndList(Sequence):
         """
         convert to a WHERE clause string
         """
+
         def make_condition(arg, _negate=False):
             if isinstance(arg, (str, AndList)):
                 return str(arg), _negate
@@ -51,16 +54,18 @@ class AndList(Sequence):
                 if not common_attributes:
                     condition = 'FALSE' if negate else 'TRUE'
                 else:
-                    common_attributes = '`'+'`,`'.join(common_attributes)+'`'
+                    common_attributes = '`' + '`,`'.join(common_attributes) + '`'
                     condition = '({fields}) {not_}in ({subquery})'.format(
                         fields=common_attributes,
                         not_="not " if negate else "",
                         subquery=arg.make_select(common_attributes))
-                return condition, False   # negate is cleared
+                return condition, False  # negate is cleared
 
             # mappings are turned into ANDed equality conditions
             if isinstance(arg, Mapping):
-                condition = ['`%s`=%s' % (k, repr(v)) for k, v in arg.items() if k in self.heading]
+                condition = ['`%s`=%r' %
+                             (k, v if not isinstance(v, (datetime.date, datetime.datetime, datetime.time)) else str(v))
+                             for k, v in arg.items() if k in self.heading]
             elif isinstance(arg, np.void):
                 # element of a record array
                 condition = ['`%s`=%s' % (k, arg[k]) for k in arg.dtype.fields if k in self.heading]
@@ -244,6 +249,33 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             ret += ' & %r' % self._restrictions
         return ret
 
+    def _repr_html_(self):
+        limit = config['display.limit']
+        rel = self.project(*self.heading.non_blobs)  # project out blobs
+        columns = rel.heading.names
+        content = dict(
+            head='</th><th>'.join(columns),
+            body='</tr><tr>'.join(
+                ['\n'.join(['<td>%s</td>' % column for column in tup]) for tup in rel.fetch(limit=limit)]),
+            tuples=len(rel)
+        )
+
+
+        return """<div style="max-height:1000px;max-width:1500px;overflow:auto;">\n
+                  <table border="1" class="dataframe">\n
+                  <thead>\n
+                  <tr style="text-align: right;">\n
+                  <th>
+                  %(head)s
+                  </th>
+                  </tr>\n
+                  <tbody>
+                  <tr>
+                  %(body)s
+                  </tr>
+                  </tbody>\n</table>\n<p>%(tuples)i tuples</p>\n</div>
+                  """ % content
+
     def make_select(self, select_fields=None):
         return 'SELECT {fields} FROM {from_}{where}{group}'.format(
             fields=select_fields if select_fields else self.select_fields,
@@ -257,6 +289,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         if self._grouped:
             return len(Subquery(self))
+
         cur = self.connection.query(self.make_select('count(*)'))
         return cur.fetchone()[0]
 
@@ -298,6 +331,7 @@ class Not:
     """
     invert restriction
     """
+
     def __init__(self, restriction):
         self.restriction = restriction
 
@@ -339,7 +373,7 @@ class Join(RelationalOperand):
 
     @property
     def select_fields(self):
-        return '*'
+        return self.heading.as_sql
 
 
 class Projection(RelationalOperand):

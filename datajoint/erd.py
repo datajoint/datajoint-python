@@ -39,13 +39,9 @@ def parse_base_relations(rels):
     name_map = {}
     for r in rels:
         try:
-            module = r.__module__
-            parts = []
-            if module != '__main__':
-                parts.append(module.split('.')[-1])
-            parts.append(r.__name__)
-            name_map[r().full_table_name] = '.'.join(parts)
-        except:
+            name_map[r().full_table_name] = '{module}.{cls}'.format(module=r.__module__, cls=r.__name__)
+        except TypeError:
+            # skip if failed to instantiate BaseRelation derivative
             pass
     return name_map
 
@@ -402,6 +398,9 @@ class ERD(DiGraph):
         tables
         :return: string representation of the erm
         """
+        if len(self) == 0:
+            return "No relations to show"
+
         paths = self.longest_paths()
 
         # turn comparator into Key object for use in sort
