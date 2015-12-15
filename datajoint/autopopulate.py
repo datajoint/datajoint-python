@@ -28,6 +28,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
                 join of the parent relations. Users may override to change the granularity
                 or the scope of populate() calls.
         """
+        self.connection.dependencies.load()
         parents = [FreeRelation(self.target.connection, rel) for rel in self.target.parents]
         if not parents:
             raise DataJointError('A relation must have parent relations to be able to be populated')
@@ -70,17 +71,16 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         if order not in valid_order:
             raise DataJointError('The order argument must be one of %s' % str(valid_order))
 
-        self.connection.dependencies.load()
-
-        if not isinstance(self.populated_from, RelationalOperand):
+        todo = self.populated_from
+        if not isinstance(todo, RelationalOperand):
             raise DataJointError('Invalid populated_from value')
+        todo.restrict(restriction)
 
         error_list = [] if suppress_errors else None
 
         jobs = self.connection.jobs[self.target.database]
         table_name = self.target.table_name
-        unpopulated = (self.populated_from & restriction) - self.target.project()
-        keys = unpopulated.fetch.keys()
+        keys = (todo - self.target.project()).fetch.keys()
         if order == "reverse":
             keys = list(keys).reverse()
         elif order == "random":
@@ -113,15 +113,14 @@ class AutoPopulate(metaclass=abc.ABCMeta):
                             jobs.complete(table_name, key)
         return error_list
 
-
     def progress(self, restriction=None, display=True):
         """
         report progress of populating this table
         :return: remaining, total -- tuples to be populated
         """
-        self.connection.dependencies.load()
-        total = len(self.populated_from & restriction)
-        remaining = len((self.populated_from & restriction) - self.target.project())
+        todo = self.populated_from & restriction
+        total = len(todo)
+        remaining = len(todo - self.target.project())
         if display:
             print('%-20s' % self.__class__.__name__, flush=True, end=': ')
             print('Completed %d of %d (%2.1f%%)   %s' %

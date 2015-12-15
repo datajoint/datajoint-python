@@ -3,18 +3,6 @@ import pyparsing as pp
 from . import DataJointError
 from functools import wraps
 
-def load_dependencies(func):
-    """
-    Decorator that ensures that dependencies are loaded
-    """
-
-    @wraps(func)
-    def f(*args, **kwargs):
-        args[0].load()
-        return func(*args, **kwargs)
-    return f
-
-
 
 class Dependencies:
     """
@@ -32,22 +20,18 @@ class Dependencies:
 
 
     @property
-    @load_dependencies
     def parents(self):
         return self._parents
 
     @property
-    @load_dependencies
     def children(self):
         return self._children
 
     @property
-    @load_dependencies
     def references(self):
         return self._references
 
     @property
-    @load_dependencies
     def referenced(self):
         return self._referenced
 
