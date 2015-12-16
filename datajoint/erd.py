@@ -19,14 +19,10 @@ except:
     pygraphviz_layout = None
 
 import matplotlib.pyplot as plt
-from . import DataJointError
-from functools import wraps
-from .utils import to_camel_case
+from inspect import isabstract
 from .base_relation import BaseRelation
 
 logger = logging.getLogger(__name__)
-
-from inspect import isabstract
 
 
 def get_concrete_descendants(cls):
@@ -153,7 +149,7 @@ class ERD(DiGraph):
         # draw non-primary key relations
         nx.draw_networkx_edges(self, pos, self.non_pk_edges, style='dashed', arrows=False)
         apos = np.array(list(pos.values()))
-        xmax = apos[:, 0].max() + 200 #TODO: use something more sensible then hard fixed number
+        xmax = apos[:, 0].max() + 200  # TODO: use something more sensible than hard fixed number
         xmin = apos[:, 0].min() - 100
         ax.set_xlim(xmin, xmax)
         ax.axis('off')  # hide axis
@@ -378,7 +374,7 @@ class ERD(DiGraph):
         Removes all shared edges between this graph and the path
         :param path: a list of nodes defining a path. All edges in this path will be removed from the graph if found
         """
-        if len(path) <= 1: # no path exists!
+        if len(path) <= 1:  # no path exists!
             return
         for a, b in zip(path[:-1], path[1:]):
             self.remove_edge(a, b)

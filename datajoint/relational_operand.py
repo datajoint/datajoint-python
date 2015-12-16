@@ -436,6 +436,7 @@ class Projection(RelationalOperand):
         has_restriction = any(isinstance(r, RelationalOperand) or r for r in restrictions)
         do_subquery = has_restriction and self.heading.computed
         if do_subquery:
+            # TODO fix this for the case (r & key).aggregate(m='compute')
             raise DataJointError('In-place restriction on renamed attributes is not allowed')
         super().restrict(*restrictions)
 
