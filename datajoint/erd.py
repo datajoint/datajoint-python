@@ -4,13 +4,10 @@ import numpy as np
 
 import logging
 from collections import defaultdict
-import pyparsing as pp
 import networkx as nx
 from networkx import DiGraph
 from functools import cmp_to_key
 import operator
-
-from collections import OrderedDict
 
 # use pygraphviz if available
 try:
@@ -20,8 +17,7 @@ except:
 
 import matplotlib.pyplot as plt
 from inspect import isabstract
-from .base_relation import BaseRelation
-from .user_relations import UserRelation
+from .user_relations import UserRelation, Part
 
 logger = logging.getLogger(__name__)
 
@@ -50,8 +46,18 @@ class ERD(DiGraph):
         """
         :return: dictionary of key : label pairs for plotting
         """
-        name_map = {rel.full_table_name: '{module}.{cls}'.format(module=rel.__module__, cls=rel.__name__)
-                    for rel in get_concrete_subclasses(UserRelation)}
+        def full_class_name(user_class):
+            if issubclass(user_class, Part):
+                return '{module}.{master}.{cls}'.format(
+                        module=user_class.__module__,
+                        master=user_class.master.__name__,
+                        cls=user_class.__name__)
+            else:
+                return '{module}.{cls}'.format(
+                        module=user_class.__module__,
+                        cls=user_class.__name__)
+
+        name_map = {rel.full_table_name: full_class_name(rel) for rel in get_concrete_subclasses(UserRelation)}
         return {k: self.get_label(k, name_map) for k in self.nodes()}
 
     def get_label(self, node, name_map=None):
