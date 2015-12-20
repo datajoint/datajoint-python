@@ -21,34 +21,24 @@ except:
 import matplotlib.pyplot as plt
 from inspect import isabstract
 from .base_relation import BaseRelation
+from .user_relations import UserRelation
 
 logger = logging.getLogger(__name__)
 
 
-def get_concrete_descendants(cls):
+def get_concrete_subclasses(cls):
     desc = []
     child= cls.__subclasses__()
     for c in child:
         if not isabstract(c):
             desc.append(c)
-        desc.extend(get_concrete_descendants(c))
+        desc.extend(get_concrete_subclasses(c))
     return desc
 
 
-def parse_base_relations(rels):
-    name_map = {}
-    for r in rels:
-        try:
-            name_map[r().full_table_name] = '{module}.{cls}'.format(module=r.__module__, cls=r.__name__)
-        except TypeError:
-            # skip if failed to instantiate BaseRelation derivative
-            pass
-    return name_map
-
-
 def get_table_relation_name_map():
-    rels = get_concrete_descendants(BaseRelation)
-    return parse_base_relations(rels)
+    return {rel.full_table_name: '{module}.{cls}'.format(module=rel.__module__, cls=rel.__name__)
+            for rel in get_concrete_subclasses(UserRelation)}
 
 
 class ERD(DiGraph):
