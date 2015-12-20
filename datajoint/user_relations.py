@@ -17,27 +17,32 @@ class classproperty:
         return self.f(owner)
 
 
-class Part(BaseRelation):
+class UserRelation(BaseRelation):
+
+    @classproperty
+    def full_table_name(cls):
+        return r"`{0:s}`.`{1:s}`".format(cls.database, cls.table_name)
+
+
+class Part(UserRelation):
     """
     Inherit from this class if the table's values are details of an entry in another relation
     and if this table is populated by this relation. For example, the entries inheriting from
     dj.Part could be single entries of a matrix, while the parent table refers to the entire matrix.
     Part relations are implemented as classes inside classes.
     """
+    _master = None
 
     @classproperty
     def master(cls):
-        if not hasattr(cls, '_master'):
-            raise DataJointError(
-                'Part relations must be declared inside a base relation class')
         return cls._master
 
-    @property
-    def table_name(self):
-        return self.master().table_name + '__' + from_camel_case(self.__class__.__name__)
+    @classproperty
+    def table_name(cls):
+        return cls.master.table_name + '__' + from_camel_case(cls.__name__)
 
 
-class Manual(BaseRelation):
+class Manual(UserRelation):
     """
     Inherit from this class if the table's values are entered manually.
     """
@@ -50,7 +55,7 @@ class Manual(BaseRelation):
         return from_camel_case(cls.__name__)
 
 
-class Lookup(BaseRelation):
+class Lookup(UserRelation):
     """
     Inherit from this class if the table's values are for lookup. This is
     currently equivalent to defining the table as Manual and serves semantic
@@ -72,7 +77,7 @@ class Lookup(BaseRelation):
             self.insert(self.contents, skip_duplicates=True)
 
 
-class Imported(BaseRelation, AutoPopulate):
+class Imported(UserRelation, AutoPopulate):
     """
     Inherit from this class if the table's values are imported from external data sources.
     The inherited class must at least provide the function `_make_tuples`.
@@ -86,7 +91,7 @@ class Imported(BaseRelation, AutoPopulate):
         return "_" + from_camel_case(cls.__name__)
 
 
-class Computed(BaseRelation, AutoPopulate):
+class Computed(UserRelation, AutoPopulate):
     """
     Inherit from this class if the table's values are computed from other relations in the schema.
     The inherited class must at least provide the function `_make_tuples`.
