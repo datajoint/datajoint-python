@@ -36,11 +36,6 @@ def get_concrete_subclasses(cls):
     return desc
 
 
-def get_table_relation_name_map():
-    return {rel.full_table_name: '{module}.{cls}'.format(module=rel.__module__, cls=rel.__name__)
-            for rel in get_concrete_subclasses(UserRelation)}
-
-
 class ERD(DiGraph):
     """
     A directed graph representing dependencies between Relations within and across
@@ -55,15 +50,14 @@ class ERD(DiGraph):
         """
         :return: dictionary of key : label pairs for plotting
         """
-        name_map = get_table_relation_name_map()
+        name_map = {rel.full_table_name: '{module}.{cls}'.format(module=rel.__module__, cls=rel.__name__)
+                    for rel in get_concrete_subclasses(UserRelation)}
         return {k: self.get_label(k, name_map) for k in self.nodes()}
 
     def get_label(self, node, name_map=None):
         label = self.node[node].get('label', '')
         if label.strip():
             return label
-
-        # it's not efficient to recreate name-map on every call!
         if name_map is not None and node in name_map:
             return name_map[node]
         # no other name exists, so just use full table now
