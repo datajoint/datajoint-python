@@ -19,6 +19,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
     must define the property populated_from, and must define the callback method _make_tuples.
     """
     _jobs = None
+    _populated_from = None
 
     @property
     def populated_from(self):
@@ -28,14 +29,16 @@ class AutoPopulate(metaclass=abc.ABCMeta):
                 join of the parent relations. Users may override to change the granularity
                 or the scope of populate() calls.
         """
-        self.connection.dependencies.load()
-        parents = [FreeRelation(self.target.connection, rel) for rel in self.target.parents]
-        if not parents:
-            raise DataJointError('A relation must have parent relations to be able to be populated')
-        ret = parents.pop(0)
-        while parents:
-            ret *= parents.pop(0)
-        return ret
+        if self._populated_from is None:
+            self.connection.dependencies.load()
+            parents = [FreeRelation(self.target.connection, rel) for rel in self.target.parents]
+            if not parents:
+                raise DataJointError('A relation must have parent relations to be able to be populated')
+            ret = parents.pop(0)
+            while parents:
+                ret *= parents.pop(0)
+            self._populated_from = ret
+        return self._populated_from
 
     @abc.abstractmethod
     def _make_tuples(self, key):
