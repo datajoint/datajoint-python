@@ -161,19 +161,21 @@ class Connection:
     def transaction(self):
         """
         Context manager for transactions. Opens an transaction and closes it after the with statement.
-        If an error is caught during the transaction, the commits are automatically rolled back. All
-        errors are raised again.
+        Only starts a transaction if there is not one going on already (MySQL does not support nested
+        transactions). If an error is caught during the transaction, the commits are automatically
+        rolled back. All errors are raised again.
 
         Example:
         >>> import datajoint as dj
         >>> with dj.conn().transaction as conn:
         >>>     # transaction is open here
         """
-        try:
-            self.start_transaction()
-            yield self
-        except:
-            self.cancel_transaction()
-            raise
-        else:
-            self.commit_transaction()
+        if not self.in_transaction:
+            try:
+                self.start_transaction()
+                yield self
+            except:
+                self.cancel_transaction()
+                raise
+            else:
+                self.commit_transaction()
