@@ -179,3 +179,5 @@ class Connection:
                 raise
             else:
                 self.commit_transaction()
+        else:
+            yield self
