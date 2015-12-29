@@ -2,7 +2,7 @@
 This module hosts the Connection class that manages the connection to the mysql database,
  and the `conn` function that provides access to a persistent connection in datajoint.
 """
-
+import warnings
 from contextlib import contextmanager
 import pymysql as client
 import logging
@@ -180,4 +180,6 @@ class Connection:
             else:
                 self.commit_transaction()
         else:
+            warnings.warn("""Connection is in a transaction already. MySQL does not support nested transaction. This
+                        transaction call will be ignored. """)
             yield self
