@@ -170,16 +170,11 @@ class Connection:
         >>> with dj.conn().transaction as conn:
         >>>     # transaction is open here
         """
-        if not self.in_transaction:
-            try:
-                self.start_transaction()
-                yield self
-            except:
-                self.cancel_transaction()
-                raise
-            else:
-                self.commit_transaction()
-        else:
-            warnings.warn("""Connection is in a transaction already. MySQL does not support nested transaction. This
-                        transaction call will be ignored. """)
+        try:
+            self.start_transaction()
             yield self
+        except:
+            self.cancel_transaction()
+            raise
+        else:
+            self.commit_transaction()
