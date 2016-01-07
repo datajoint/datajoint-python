@@ -261,7 +261,7 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
                 sql = 'INSERT IGNORE'
             else:
                 sql = 'INSERT'
-            attributes = (a for a in attributes if a[0])   # omit dropped attributes
+            attributes = (a for a in attributes if a[0] is not None)  # omit dropped attributes
             names, placeholders, values = tuple(zip(*attributes))
             sql += " INTO %s (`%s`) VALUES (%s)" % (
                 self.from_clause, '`,`'.join(names), ','.join(placeholders))
