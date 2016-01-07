@@ -59,7 +59,8 @@ class Connection:
             port = int(port)
         else:
             port = config['database.port']
-        self.conn_info = dict(host=host, port=port, user=user, passwd=passwd, max_allowed_packet=1024**3) # 1073741824
+        self.conn_info = dict(host=host, port=port, user=user, passwd=passwd,
+                              max_allowed_packet=1024 ** 3)  # 1073741824
         self._conn = client.connect(init_command=init_fun, **self.conn_info)
         if self.is_connected:
             logger.info("Connected {user}@{host}:{port}".format(**self.conn_info))
@@ -111,7 +112,6 @@ class Connection:
 
         # Log the query
         logger.debug("Executing SQL:" + query[0:300])
-
         cur.execute(query, args)
 
         return cur
@@ -161,9 +161,8 @@ class Connection:
     def transaction(self):
         """
         Context manager for transactions. Opens an transaction and closes it after the with statement.
-        Only starts a transaction if there is not one going on already (MySQL does not support nested
-        transactions). If an error is caught during the transaction, the commits are automatically
-        rolled back. All errors are raised again.
+        If an error is caught during the transaction, the commits are automatically rolled back.
+        All errors are raised again.
 
         Example:
         >>> import datajoint as dj
