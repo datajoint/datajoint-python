@@ -18,7 +18,9 @@ RUN \
     python3-matplotlib \
     python3-pandas \
     ipython3 \
-    ipython3-notebook
+    ipython3-notebook \
+    mysql-server \
+    mysql-client
 
 RUN pip3 install git+https://github.com/datajoint/datajoint-python.git
 
