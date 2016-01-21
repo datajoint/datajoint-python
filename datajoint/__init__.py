@@ -37,7 +37,12 @@ from .settings import Config, LOCALCONFIG, GLOBALCONFIG, logger, log_levels
 config = Config()
 
 
-if os.path.exists(LOCALCONFIG):
+if os.getenv('DJ_HOST') is not None and os.getenv('DJ_USER') is not None and os.getenv('DJ_PASS') is not None:
+    print("Loading local settings from environment variables")
+    config['database.host'] = os.getenv('DJ_HOST')
+    config['database.user'] = os.getenv('DJ_USER')
+    config['database.password'] = os.getenv('DJ_PASS')
+elif os.path.exists(LOCALCONFIG):
     local_config_file = os.path.expanduser(LOCALCONFIG)
     print("Loading local settings from {0:s}".format(local_config_file))
     logger.log(logging.INFO, "Loading local settings from {0:s}".format(local_config_file))
@@ -47,11 +52,6 @@ elif os.path.exists(GLOBALCONFIG):
     print("Loading local settings from {0:s}".format(local_config_file))
     logger.log(logging.INFO, "Loading local settings from {0:s}".format(local_config_file))
     config.load(local_config_file)
-elif os.getenv('DJ_HOST') is not None and os.getenv('DJ_USER') is not None and os.getenv('DJ_PASS') is not None:
-    print("Loading local settings from environment variables")
-    config['database.host'] = os.getenv('DJ_HOST')
-    config['database.user'] = os.getenv('DJ_USER')
-    config['database.password'] = os.getenv('DJ_PASS')
 else:
     print("""Cannot find configuration settings. Using default configuration. To change that, either
     * modify the local copy of %s that datajoint just saved for you
