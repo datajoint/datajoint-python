@@ -47,7 +47,7 @@ elif os.path.exists(LOCALCONFIG):
     print("Loading local settings from {0:s}".format(local_config_file))
     logger.log(logging.INFO, "Loading local settings from {0:s}".format(local_config_file))
     config.load(local_config_file)
-elif os.path.exists(GLOBALCONFIG):
+elif os.path.exists(os.path.expanduser('~/') + GLOBALCONFIG):
     local_config_file = os.path.expanduser('~/') + GLOBALCONFIG
     print("Loading local settings from {0:s}".format(local_config_file))
     logger.log(logging.INFO, "Loading local settings from {0:s}".format(local_config_file))
