@@ -174,7 +174,8 @@ class TestRelational:
         assert_true(len(w - y) == 0,
                     'incorrect restriction without common attributes')
 
-    def test_datetime(self):
+    @staticmethod
+    def test_datetime():
         """Test date retrieval"""
         date = Experiment().fetch['experiment_date'][0]
 

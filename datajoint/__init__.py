@@ -33,18 +33,33 @@ class DataJointError(Exception):
     pass
 
 # ----------- loads local configuration from file ----------------
-from .settings import Config, CONFIGVAR, LOCALCONFIG, logger, log_levels
+from .settings import Config, LOCALCONFIG, GLOBALCONFIG, logger, log_levels
 config = Config()
-local_config_file = os.environ.get(CONFIGVAR, None)
-if local_config_file is None:
-    local_config_file = LOCALCONFIG
-local_config_file = os.path.expanduser(local_config_file)
 
-try:
+
+if os.getenv('DJ_HOST') is not None and os.getenv('DJ_USER') is not None and os.getenv('DJ_PASS') is not None:
+    print("Loading local settings from environment variables")
+    config['database.host'] = os.getenv('DJ_HOST')
+    config['database.user'] = os.getenv('DJ_USER')
+    config['database.password'] = os.getenv('DJ_PASS')
+elif os.path.exists(LOCALCONFIG):
+    local_config_file = os.path.expanduser(LOCALCONFIG)
+    print("Loading local settings from {0:s}".format(local_config_file))
     logger.log(logging.INFO, "Loading local settings from {0:s}".format(local_config_file))
     config.load(local_config_file)
-except FileNotFoundError:
-    logger.warn("Local config file {0:s} does not exist! Creating it.".format(local_config_file))
+elif os.path.exists(os.path.expanduser('~/') + GLOBALCONFIG):
+    local_config_file = os.path.expanduser('~/') + GLOBALCONFIG
+    print("Loading local settings from {0:s}".format(local_config_file))
+    logger.log(logging.INFO, "Loading local settings from {0:s}".format(local_config_file))
+    config.load(local_config_file)
+else:
+    print("""Cannot find configuration settings. Using default configuration. To change that, either
+    * modify the local copy of %s that datajoint just saved for you
+    * put a file named %s with the same configuration format in your home
+    * specify the environment variables DJ_USER, DJ_HOST, DJ_PASS
+          """)
+    local_config_file = os.path.expanduser(LOCALCONFIG)
+    logger.log(logging.INFO, "No config found. Generating {0:s}".format(local_config_file))
     config.save(local_config_file)
 
 logger.setLevel(log_levels[config['loglevel']])

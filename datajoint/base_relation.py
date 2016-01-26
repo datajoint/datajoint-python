@@ -250,7 +250,8 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
             raise DataJointError('Empty tuple')
         skip = skip_duplicates
         if skip:
-            primary_key_value = {name: value for name, _, value in attributes if heading[name].in_key}
+            primary_key_value = {name: value for name, _, value in attributes if
+                                 name is not None and heading[name].in_key}
             # if primary key value is empty, auto_populate is probably used
             skip = primary_key_value and (self & primary_key_value)
         if not skip:
@@ -260,7 +261,7 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
                 sql = 'INSERT IGNORE'
             else:
                 sql = 'INSERT'
-            attributes = (a for a in attributes if a[0])   # omit dropped attributes
+            attributes = (a for a in attributes if a[0] is not None)  # omit dropped attributes
             names, placeholders, values = tuple(zip(*attributes))
             sql += " INTO %s (`%s`) VALUES (%s)" % (
                 self.from_clause, '`,`'.join(names), ','.join(placeholders))

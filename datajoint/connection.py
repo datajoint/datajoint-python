@@ -2,7 +2,6 @@
 This module hosts the Connection class that manages the connection to the mysql database,
  and the `conn` function that provides access to a persistent connection in datajoint.
 """
-
 from contextlib import contextmanager
 import pymysql as client
 import logging
@@ -59,7 +58,8 @@ class Connection:
             port = int(port)
         else:
             port = config['database.port']
-        self.conn_info = dict(host=host, port=port, user=user, passwd=passwd)
+        self.conn_info = dict(host=host, port=port, user=user, passwd=passwd,
+                              max_allowed_packet=1024 ** 3)  # this is a hack to fix problems with pymysql (remove later)
         self._conn = client.connect(init_command=init_fun, **self.conn_info)
         if self.is_connected:
             logger.info("Connected {user}@{host}:{port}".format(**self.conn_info))
@@ -111,7 +111,6 @@ class Connection:
 
         # Log the query
         logger.debug("Executing SQL:" + query[0:300])
-
         cur.execute(query, args)
 
         return cur
@@ -161,8 +160,8 @@ class Connection:
     def transaction(self):
         """
         Context manager for transactions. Opens an transaction and closes it after the with statement.
-        If an error is caught during the transaction, the commits are automatically rolled back. All
-        errors are raised again.
+        If an error is caught during the transaction, the commits are automatically rolled back.
+        All errors are raised again.
 
         Example:
         >>> import datajoint as dj
