@@ -70,12 +70,8 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         Loads the table heading. If the table is not declared, use self.definition to declare
         """
         if not self.is_declared:
-            if self.definition is not None and self.definition is not Ellipsis:
-                self.connection.query(
-                    declare(self.full_table_name, self.definition, self._context))
-            else:
-                name = self.__class__.__name__
-                raise NoDefinitionError("%s.definition is not defined and table is not in the database." % (name,))
+            self.connection.query(
+                declare(self.full_table_name, self.definition, self._context))
 
 
     @property

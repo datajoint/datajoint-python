@@ -72,6 +72,14 @@ class Schema:
         :param cls: class to be decorated
         """
 
+        if cls.definition is None or cls.definition is Ellipsis:
+            def __init__(self):
+                raise NoDefinitionError("%s.definition is not defined and table is not in the database."
+                                        % (cls.__name__,))
+            cls.__init__ = __init__
+            return cls
+
+
         def process_relation_class(relation_class, context):
             """
             assign schema properties to the relation class and declare the table
@@ -86,11 +94,7 @@ class Schema:
         if issubclass(cls, Part):
             raise DataJointError('The schema decorator should not be applied to Part relations')
 
-        try:
-            process_relation_class(cls, context=self.context)
-        except NoDefinitionError:
-            warn("""Table %s will not be declared because definition is not defined.""" % (cls.__name__, ))
-            logger.info("Table %s will not be declared because definition is not defined." % (cls.__name__, ))
+        process_relation_class(cls, context=self.context)
 
         # Process subordinate relations
         parts = list()
@@ -104,13 +108,9 @@ class Schema:
 
 
         # invoke Relation._prepare() on class and its part relations.
-        try:
-            cls()._prepare()
-            for part in parts:
-                part()._prepare()
-        except NoDefinitionError:
-            warn("""Table %s will not be declared because definition is not defined.""" % (cls.__name__, ))
-            logger.info("Table %s will not be declared because definition is not defined." % (cls.__name__, ))
+        cls()._prepare()
+        for part in parts:
+            part()._prepare()
 
         return cls
 

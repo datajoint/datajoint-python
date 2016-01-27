@@ -66,21 +66,6 @@ class TestDeclare:
         assert_equal(ephys.children, [channel.full_table_name])
         assert_equal(channel.parents, [ephys.full_table_name])
 
-    @staticmethod
-    def test_definition_defined():
-        """Test whether a warning is raised if the definition is not defined."""
-        with warnings.catch_warnings(record=True) as warning_list:
-            warnings.simplefilter('always')
-
-            from . import PREFIX, CONN_INFO
-
-            schema = dj.schema(PREFIX + '_test1', locals(), connection=dj.conn(**CONN_INFO))
-
-            @schema
-            class FromMatlab(dj.Manual):
-                definition = ...
-            assert_true(any(["Table FromMatlab will not be declared because definition is not defined." in str(w.message)
-                             for w in warning_list]))
 
     @raises(dj.NoDefinitionError)
     def test_no_definition_error(self):
