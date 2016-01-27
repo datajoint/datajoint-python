@@ -12,6 +12,7 @@ from .relational_operand import RelationalOperand
 from .blob import pack
 from .utils import user_choice
 from .heading import Heading
+from warnings import warn
 
 logger = logging.getLogger(__name__)
 
@@ -70,8 +71,14 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         Loads the table heading. If the table is not declared, use self.definition to declare
         """
         if not self.is_declared:
-            self.connection.query(
-                declare(self.full_table_name, self.definition, self._context))
+            if self.definition is not None and self.definition is not Ellipsis:
+                self.connection.query(
+                    declare(self.full_table_name, self.definition, self._context))
+            else:
+                name = self.__class__.__name__
+                warn("""Table for %s is not declared and definition is not defined.
+                        This table is probably defined but not yet declared in Matlab.""" % (name, ))
+                logger.info("Table for %s is not declared and definition is not defined." % (name, ))
 
     @property
     def from_clause(self):
