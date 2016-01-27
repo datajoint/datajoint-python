@@ -1,12 +1,13 @@
 import pymysql
 import logging
 
-from . import conn, DataJointError
+from . import conn, DataJointError, NoDefinitionError
 from .heading import Heading
 from .base_relation import BaseRelation
 from .user_relations import Part
 import inspect
 logger = logging.getLogger(__name__)
+from warnings import warn
 
 
 class Schema:
@@ -71,6 +72,14 @@ class Schema:
         :param cls: class to be decorated
         """
 
+        if cls.definition is None or cls.definition is Ellipsis:
+            def __init__(self):
+                raise NoDefinitionError("%s.definition is not defined and table is not in the database."
+                                        % (cls.__name__,))
+            cls.__init__ = __init__
+            return cls
+
+
         def process_relation_class(relation_class, context):
             """
             assign schema properties to the relation class and declare the table
@@ -96,6 +105,7 @@ class Schema:
             part._master = cls
             # TODO: look into local namespace for the subclasses
             process_relation_class(part, context=dict(self.context, **{cls.__name__: cls}))
+
 
         # invoke Relation._prepare() on class and its part relations.
         cls()._prepare()

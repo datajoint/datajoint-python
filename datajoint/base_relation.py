@@ -5,7 +5,7 @@ import logging
 import abc
 import binascii
 
-from . import config
+from . import config, NoDefinitionError
 from . import DataJointError
 from .declare import declare
 from .relational_operand import RelationalOperand
@@ -72,6 +72,7 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         if not self.is_declared:
             self.connection.query(
                 declare(self.full_table_name, self.definition, self._context))
+
 
     @property
     def from_clause(self):

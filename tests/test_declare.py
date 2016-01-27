@@ -1,6 +1,7 @@
-from nose.tools import assert_true, assert_false, assert_equal, assert_list_equal
+import warnings
+from nose.tools import assert_true, assert_false, assert_equal, assert_list_equal, raises
 from . import schema
-
+import datajoint as dj
 
 auto = schema.Auto()
 user = schema.User()
@@ -12,7 +13,6 @@ channel = schema.Ephys.Channel()
 
 
 class TestDeclare:
-
     @staticmethod
     def test_attributes():
         # test autoincrement declaration
@@ -50,7 +50,6 @@ class TestDeclare:
                           ['subject_id', 'experiment_id', 'trial_id', 'channel'])
         assert_true(channel.heading.attributes['voltage'].is_blob)
 
-
     def test_dependencies(self):
         assert_equal(user.references, [experiment.full_table_name])
         assert_equal(experiment.referenced, [user.full_table_name])
@@ -66,3 +65,17 @@ class TestDeclare:
 
         assert_equal(ephys.children, [channel.full_table_name])
         assert_equal(channel.parents, [ephys.full_table_name])
+
+
+    @raises(dj.NoDefinitionError)
+    def test_no_definition_error(self):
+        with warnings.catch_warnings(record=True) as warning_list:
+            warnings.simplefilter('always')
+            from . import PREFIX, CONN_INFO
+
+            schema = dj.schema(PREFIX + '_test1', locals(), connection=dj.conn(**CONN_INFO))
+
+            @schema
+            class FromMatlab(dj.Manual):
+                definition = ...
+        FromMatlab().declare()
