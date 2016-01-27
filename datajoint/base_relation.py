@@ -5,14 +5,13 @@ import logging
 import abc
 import binascii
 
-from . import config
+from . import config, NoDefinitionError
 from . import DataJointError
 from .declare import declare
 from .relational_operand import RelationalOperand
 from .blob import pack
 from .utils import user_choice
 from .heading import Heading
-from warnings import warn
 
 logger = logging.getLogger(__name__)
 
@@ -76,9 +75,8 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
                     declare(self.full_table_name, self.definition, self._context))
             else:
                 name = self.__class__.__name__
-                warn("""Table for %s is not declared and definition is not defined.
-                        This table is probably defined but not yet declared in Matlab.""" % (name, ))
-                logger.info("Table for %s is not declared and definition is not defined." % (name, ))
+                raise NoDefinitionError("%s.definition is not defined and table is not in the database." % (name,))
+
 
     @property
     def from_clause(self):

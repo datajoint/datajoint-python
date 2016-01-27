@@ -1,5 +1,5 @@
 import warnings
-from nose.tools import assert_true, assert_false, assert_equal, assert_list_equal
+from nose.tools import assert_true, assert_false, assert_equal, assert_list_equal, raises
 from . import schema
 import datajoint as dj
 
@@ -67,7 +67,8 @@ class TestDeclare:
         assert_equal(channel.parents, [ephys.full_table_name])
 
     @staticmethod
-    def test_defined_in_matlab():
+    def test_definition_defined():
+        """Test whether a warning is raised if the definition is not defined."""
         with warnings.catch_warnings(record=True) as warning_list:
             warnings.simplefilter('always')
 
@@ -78,5 +79,18 @@ class TestDeclare:
             @schema
             class FromMatlab(dj.Manual):
                 definition = ...
-            assert_true(any(["Table for FromMatlab is not declared and definition is not defined." in str(w.message)
+            assert_true(any(["Table FromMatlab will not be declared because definition is not defined." in str(w.message)
                              for w in warning_list]))
+
+    @raises(dj.NoDefinitionError)
+    def test_no_definition_error(self):
+        with warnings.catch_warnings(record=True) as warning_list:
+            warnings.simplefilter('always')
+            from . import PREFIX, CONN_INFO
+
+            schema = dj.schema(PREFIX + '_test1', locals(), connection=dj.conn(**CONN_INFO))
+
+            @schema
+            class FromMatlab(dj.Manual):
+                definition = ...
+        FromMatlab().declare()

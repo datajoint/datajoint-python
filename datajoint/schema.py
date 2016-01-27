@@ -1,12 +1,13 @@
 import pymysql
 import logging
 
-from . import conn, DataJointError
+from . import conn, DataJointError, NoDefinitionError
 from .heading import Heading
 from .base_relation import BaseRelation
 from .user_relations import Part
 import inspect
 logger = logging.getLogger(__name__)
+from warnings import warn
 
 
 class Schema:
@@ -85,7 +86,11 @@ class Schema:
         if issubclass(cls, Part):
             raise DataJointError('The schema decorator should not be applied to Part relations')
 
-        process_relation_class(cls, context=self.context)
+        try:
+            process_relation_class(cls, context=self.context)
+        except NoDefinitionError:
+            warn("""Table %s will not be declared because definition is not defined.""" % (cls.__name__, ))
+            logger.info("Table %s will not be declared because definition is not defined." % (cls.__name__, ))
 
         # Process subordinate relations
         parts = list()
@@ -97,10 +102,15 @@ class Schema:
             # TODO: look into local namespace for the subclasses
             process_relation_class(part, context=dict(self.context, **{cls.__name__: cls}))
 
+
         # invoke Relation._prepare() on class and its part relations.
-        cls()._prepare()
-        for part in parts:
-            part()._prepare()
+        try:
+            cls()._prepare()
+            for part in parts:
+                part()._prepare()
+        except NoDefinitionError:
+            warn("""Table %s will not be declared because definition is not defined.""" % (cls.__name__, ))
+            logger.info("Table %s will not be declared because definition is not defined." % (cls.__name__, ))
 
         return cls
 
