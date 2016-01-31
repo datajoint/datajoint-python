@@ -67,15 +67,3 @@ class TestDeclare:
         assert_equal(channel.parents, [ephys.full_table_name])
 
 
-    @raises(dj.NoDefinitionError)
-    def test_no_definition_error(self):
-        with warnings.catch_warnings(record=True) as warning_list:
-            warnings.simplefilter('always')
-            from . import PREFIX, CONN_INFO
-
-            schema = dj.schema(PREFIX + '_test1', locals(), connection=dj.conn(**CONN_INFO))
-
-            @schema
-            class FromMatlab(dj.Manual):
-                definition = ...
-        FromMatlab().declare()

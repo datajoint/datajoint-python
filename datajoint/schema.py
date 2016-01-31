@@ -1,13 +1,53 @@
+from operator import itemgetter
 import pymysql
 import logging
 
-from . import conn, DataJointError, NoDefinitionError
+from . import conn, DataJointError
+from datajoint.utils import to_camel_case
 from .heading import Heading
 from .base_relation import BaseRelation
-from .user_relations import Part
+from .user_relations import Part, Computed, Imported, Manual, Lookup
 import inspect
+
 logger = logging.getLogger(__name__)
 from warnings import warn
+
+
+class SchemaFactory:
+    """
+    Creates the appropriate python schema class objects from tables in a database.
+
+    SchemaFactory stores the class objects in a class dictionary and returns those
+    when prompted for the same table from the same database again. This way, the id
+    of both returned class objects is the same and comparison with python's "is" works
+    correctly. 
+    """
+
+    table2class = {}
+
+    def __call__(self, database, table_name):
+        class_name = to_camel_case(table_name)
+
+        def _make_tuples(other, key):
+            raise NotImplementedError("This is an automatically created class. _make_tuples is not implemented.")
+
+        if (database, table_name) in SchemaFactory.table2class:
+            class_name, class_obj = SchemaFactory.table2class[database, table_name]
+        else:
+
+            if table_name.rfind('__') > 1:
+                class_obj = type(class_name, (Part,), dict(definition=...))
+            elif table_name.startswith('__'):
+                class_obj = type(class_name, (Computed,), dict(definition=..., _make_tuples=_make_tuples))
+            elif table_name.startswith('_'):
+                class_obj = type(class_name, (Imported,), dict(definition=..., _make_tuples=_make_tuples))
+            elif table_name.startswith('#'):
+                class_obj = type(class_name, (Lookup,), dict(definition=...))
+            else:
+                class_obj = type(class_name, (Manual,), dict(definition=...))
+
+            SchemaFactory.table2class[database, table_name] = class_obj
+        return class_name, class_obj
 
 
 class Schema:
@@ -41,6 +81,15 @@ class Schema:
                 raise DataJointError("Database named `{database}` was not defined, and"
                                      " an attempt to create has failed. Check"
                                      " permissions.".format(database=database))
+        else:
+            class_factory = SchemaFactory()
+
+            for table_name in map(itemgetter(0),
+                                  connection.query(
+                                      'SHOW TABLES in {database}'.format(database=self.database)).fetchall()):
+                class_name, class_obj = class_factory(self.database, table_name)
+                context[class_name] = self(class_obj) if not issubclass(class_obj, Part) else class_obj
+
         connection.register(self)
 
     def drop(self):
@@ -71,14 +120,6 @@ class Schema:
         Binds the passed in class object to a database. This is intended to be used as a decorator.
         :param cls: class to be decorated
         """
-
-        if cls.definition is None or cls.definition is Ellipsis:
-            def __init__(self):
-                raise NoDefinitionError("%s.definition is not defined and table is not in the database."
-                                        % (cls.__name__,))
-            cls.__init__ = __init__
-            return cls
-
 
         def process_relation_class(relation_class, context):
             """

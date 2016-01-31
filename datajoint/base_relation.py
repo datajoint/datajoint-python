@@ -5,7 +5,7 @@ import logging
 import abc
 import binascii
 
-from . import config, NoDefinitionError
+from . import config
 from . import DataJointError
 from .declare import declare
 from .relational_operand import RelationalOperand
