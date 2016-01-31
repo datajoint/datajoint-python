@@ -157,6 +157,39 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         return "%s.%s()" % (self.__module__, self.__class__.__name__)
 
     # --------- SQL functionality --------- #
+    # TODO: finish this implementation
+    # @property
+    # def db_definition(self):
+    #     tdef = ...
+    #     if self.is_declared:
+    #         comment = self.table_comment
+    #         tdef = '# {comment}\n'.format(comment=comment) if comment else ''
+    #
+    #         #--------------------------
+    #         # TODO: remove this
+    #         from IPython import embed
+    #         embed()
+    #         exit()
+    #         #--------------------------
+    #
+    #         keys = ""
+    #         attributes = ""
+    #
+    #     return tdef
+
+    @property
+    def table_comment(self):
+        comment = ''
+        if self.is_declared:
+            td = self.connection.query(
+                'SHOW CREATE TABLE `{database}`.`{table_name}`'.format(
+                    database=self.database, table_name=self.table_name)).fetchone()[1]
+            idx = td.rfind('COMMENT=')
+            if idx > 0:
+                td = td[idx:]
+                comment = td[td.find("'")+1:td.rfind("'")]
+        return comment
+
     @property
     def is_declared(self):
         """

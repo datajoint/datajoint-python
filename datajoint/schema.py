@@ -94,9 +94,10 @@ class Schema:
                 class_name, class_obj = class_factory(self.database, table_name)
                 classes.append(self(class_obj) if not issubclass(class_obj, Part) else class_obj)
                 context[class_name] = classes[-1]
-            connection.dependencies.load()
-            for klass in classes:
-                klass.definition = klass.db_definition
+            # TODO: load definitions
+            # connection.dependencies.load()
+            # for klass in classes:
+            #     klass.definition = klass.db_definition
 
         connection.register(self)
 
