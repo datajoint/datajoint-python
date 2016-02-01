@@ -8,7 +8,7 @@ from .utils import from_camel_case
 from . import DataJointError
 import re
 
-_base_regexp = r'(?P<TIER>[a-z]+[a-z0-9]*(_[a-z]+[a-z0-9]*)*)'
+_base_regexp = r'[a-z]+[a-z0-9]*(_[a-z]+[a-z0-9]*)*'
 
 
 class classproperty:
@@ -45,7 +45,7 @@ class Manual(UserRelation):
     """
 
     _prefix = r''
-    _regexp = _prefix + _base_regexp.replace('TIER', 'manual')
+    _regexp = r'(?P<manual>' + _prefix + _base_regexp + ')'
 
     @property
     def table_name(self):
@@ -70,7 +70,7 @@ class Lookup(UserRelation):
     """
 
     _prefix = '#'
-    _regexp = _prefix + _base_regexp.replace('TIER', 'lookup')
+    _regexp = r'(?P<lookup>' +  _prefix + _base_regexp.replace('TIER', 'lookup') + ')'
 
     @classproperty
     def table_name(cls):
@@ -94,7 +94,7 @@ class Imported(UserRelation, AutoPopulate):
     """
 
     _prefix = '_'
-    _regexp = _prefix + _base_regexp.replace('TIER', 'imported')
+    _regexp = r'(?P<imported>' + _prefix + _base_regexp + ')'
 
     @property
     def table_name(self):
@@ -118,7 +118,7 @@ class Computed(UserRelation, AutoPopulate):
     """
 
     _prefix = '__'
-    _regexp = _prefix + _base_regexp.replace('TIER', 'computed')
+    _regexp = r'(?P<computed>' + _prefix + _base_regexp + ')'
 
     @property
     def table_name(self):
@@ -144,7 +144,7 @@ class Part(BaseRelation):
     """
 
     _regexp = r'(' + '|'.join([c._regexp for c in [Manual, Imported, Computed, Lookup]]) + r'){1,1}' \
-              + '__' + _base_regexp.replace('TIER', 'part')
+              +  '__' + r'(?P<part>' + _base_regexp + ')'
 
     _master = None
 

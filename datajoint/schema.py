@@ -1,6 +1,7 @@
 from operator import itemgetter
 import pymysql
 import logging
+import re
 from . import conn, DataJointError
 from datajoint.utils import to_camel_case
 from .heading import Heading
@@ -50,17 +51,19 @@ class Schema:
                                   connection.query(
                                       'SHOW TABLES in {database}'.format(database=self.database)).fetchall()):
                 class_name, class_obj = self.create_userrelation_from_database(table_name)
-                if not 'Jobs' in class_name:
-                    context[class_name] = self(class_obj) if not issubclass(class_obj, Part) else class_obj
+
+                context[class_name] = self(class_obj) \
+                    if class_obj is not None and not issubclass(class_obj, Part) else class_obj
 
 
         connection.register(self)
 
     def create_userrelation_from_database(self, table_name):
         """
-        Creates the appropriate python schema class objects from tables in a database.
+        Creates the appropriate python user relation classes from tables in a database. The tier of the class
+        is inferred from the table name.
 
-        SchemaFactory stores the class objects in a class dictionary and returns those
+        Schema stores the class objects in a class dictionary and returns those
         when prompted for the same table from the same database again. This way, the id
         of both returned class objects is the same and comparison with python's "is" works
         correctly.
@@ -73,21 +76,25 @@ class Schema:
         if (self.database, table_name) in Schema.table2class:
             class_name, class_obj = Schema.table2class[self.database, table_name]
         else:
-            if table_name.rfind('__') > 1:
-                master_name, master_class = self(self.database, table_name[:table_name.rfind('__')])
-                class_name = class_name[len(master_name):]
+            if re.fullmatch(Part._regexp, table_name):
+                groups = re.fullmatch(Part._regexp, table_name).groupdict()
+                master_table_name = [val for name, val in groups.items() if name != "part" and val is not None][0]
+                master_name, master_class = self.create_userrelation_from_database(master_table_name)
+                class_name = to_camel_case(groups['part'])
                 class_obj = type(class_name, (Part,), dict(definition=...))
                 setattr(master_class, class_name, class_obj)
                 class_name, class_obj = master_name, master_class
 
-            elif table_name.startswith('__'):
+            elif re.fullmatch(Computed._regexp, table_name):
                 class_obj = type(class_name, (Computed,), dict(definition=..., _make_tuples=_make_tuples))
-            elif table_name.startswith('_'):
+            elif re.fullmatch(Imported._regexp, table_name):
                 class_obj = type(class_name, (Imported,), dict(definition=..., _make_tuples=_make_tuples))
-            elif table_name.startswith('#'):
+            elif re.fullmatch(Lookup._regexp, table_name):
                 class_obj = type(class_name, (Lookup,), dict(definition=...))
-            else:
+            elif re.fullmatch(Manual._regexp, table_name):
                 class_obj = type(class_name, (Manual,), dict(definition=...))
+            else:
+                class_obj = None
 
             Schema.table2class[self.database, table_name] = class_name, class_obj
         return class_name, class_obj

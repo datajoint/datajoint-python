@@ -4,7 +4,6 @@ import numpy as np
 import logging
 import abc
 import binascii
-
 from . import config
 from . import DataJointError
 from .declare import declare
@@ -59,7 +58,7 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         if self._heading is None:
             self._heading = Heading()  # instance-level heading
-        if not self._heading:   # heading is not initialized
+        if not self._heading:  # heading is not initialized
             self.declare()
             self._heading.init_from_database(self.connection, self.database, self.table_name)
 
@@ -72,7 +71,6 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         if not self.is_declared:
             self.connection.query(
                 declare(self.full_table_name, self.definition, self._context))
-
 
     @property
     def from_clause(self):
@@ -156,40 +154,6 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         return "%s.%s()" % (self.__module__, self.__class__.__name__)
 
-    # --------- SQL functionality --------- #
-    # TODO: finish this implementation
-    # @property
-    # def db_definition(self):
-    #     tdef = ...
-    #     if self.is_declared:
-    #         comment = self.table_comment
-    #         tdef = '# {comment}\n'.format(comment=comment) if comment else ''
-    #
-    #         #--------------------------
-    #         # TODO: remove this
-    #         from IPython import embed
-    #         embed()
-    #         exit()
-    #         #--------------------------
-    #
-    #         keys = ""
-    #         attributes = ""
-    #
-    #     return tdef
-
-    @property
-    def table_comment(self):
-        comment = ''
-        if self.is_declared:
-            td = self.connection.query(
-                'SHOW CREATE TABLE `{database}`.`{table_name}`'.format(
-                    database=self.database, table_name=self.table_name)).fetchone()[1]
-            idx = td.rfind('COMMENT=')
-            if idx > 0:
-                td = td[idx:]
-                comment = td[td.find("'")+1:td.rfind("'")]
-        return comment
-
     @property
     def is_declared(self):
         """
@@ -255,21 +219,21 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
                 value = None
             elif heading[name].numeric:
                 if np.isnan(value):
-                    name = None    # omit nans
+                    name = None  # omit nans
                 placeholder = '%s'
                 value = repr(int(value) if isinstance(value, bool) else value)
             else:
                 placeholder = '%s'
             return name, placeholder, value
 
-        if isinstance(tup, np.void):    # np.array insert
+        if isinstance(tup, np.void):  # np.array insert
             check_fields(tup.dtype.fields)
             attributes = [make_attribute(name, tup[name])
                           for name in heading if name in tup.dtype.fields]
-        elif isinstance(tup, Mapping):   # dict-based insert
+        elif isinstance(tup, Mapping):  # dict-based insert
             check_fields(tup.keys())
             attributes = [make_attribute(name, tup[name]) for name in heading if name in tup]
-        else:    # positional insert
+        else:  # positional insert
             try:
                 if len(tup) != len(heading):
                     raise DataJointError(
@@ -306,7 +270,7 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         Deletes the table without cascading and without user prompt. If this table has any dependent
         table(s), this will fail.
         """
-        #TODO: give a better exception message
+        # TODO: give a better exception message
         self.connection.query('DELETE FROM ' + self.from_clause + self.where_clause)
 
     def delete(self):
@@ -367,7 +331,7 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         Drops the table associated with this relation without cascading and without user prompt.
         If the table has any dependent table(s), this call will fail with an error.
         """
-        #TODO: give a better exception message
+        # TODO: give a better exception message
         if self.is_declared:
             self.connection.query('DROP TABLE %s' % self.full_table_name)
             logger.info("Dropped table %s" % self.full_table_name)
@@ -415,6 +379,7 @@ class FreeRelation(BaseRelation):
     A base relation without a dedicated class. Each instance is associated with a table
     specified by full_table_name.
     """
+
     def __init__(self, connection, full_table_name, definition=None, context=None):
         self.database, self._table_name = (s.strip('`') for s in full_table_name.split('.'))
         self._connection = connection
