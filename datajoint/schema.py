@@ -50,15 +50,16 @@ class Schema:
             for table_name in map(itemgetter(0),
                                   connection.query(
                                       'SHOW TABLES in {database}'.format(database=self.database)).fetchall()):
-                class_name, class_obj = self.create_userrelation_from_database(table_name)
+                class_name, class_obj = self.create_userrelation_from_table(table_name)
 
+                # decorate class with @schema if it is not None and not a dj.Part
                 context[class_name] = self(class_obj) \
                     if class_obj is not None and not issubclass(class_obj, Part) else class_obj
 
 
         connection.register(self)
 
-    def create_userrelation_from_database(self, table_name):
+    def create_userrelation_from_table(self, table_name):
         """
         Creates the appropriate python user relation classes from tables in a database. The tier of the class
         is inferred from the table name.
@@ -79,7 +80,7 @@ class Schema:
             if re.fullmatch(Part._regexp, table_name):
                 groups = re.fullmatch(Part._regexp, table_name).groupdict()
                 master_table_name = [val for name, val in groups.items() if name != "part" and val is not None][0]
-                master_name, master_class = self.create_userrelation_from_database(master_table_name)
+                master_name, master_class = self.create_userrelation_from_table(master_table_name)
                 class_name = to_camel_case(groups['part'])
                 class_obj = type(class_name, (Part,), dict(definition=...))
                 setattr(master_class, class_name, class_obj)
