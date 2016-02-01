@@ -1,7 +1,6 @@
 from operator import itemgetter
 import pymysql
 import logging
-
 from . import conn, DataJointError
 from datajoint.utils import to_camel_case
 from .heading import Heading
@@ -13,52 +12,13 @@ logger = logging.getLogger(__name__)
 from warnings import warn
 
 
-class SchemaFactory:
-    """
-    Creates the appropriate python schema class objects from tables in a database.
-
-    SchemaFactory stores the class objects in a class dictionary and returns those
-    when prompted for the same table from the same database again. This way, the id
-    of both returned class objects is the same and comparison with python's "is" works
-    correctly.
-    """
-
-    table2class = {}
-
-    def __call__(self, database, table_name):
-        class_name = to_camel_case(table_name)
-
-        def _make_tuples(other, key):
-            raise NotImplementedError("This is an automatically created class. _make_tuples is not implemented.")
-
-        if (database, table_name) in SchemaFactory.table2class:
-            class_name, class_obj = SchemaFactory.table2class[database, table_name]
-        else:
-            if table_name.rfind('__') > 1:
-                master_name, master_class = self(database, table_name[:table_name.rfind('__')])
-                class_name = class_name[len(master_name):]
-                class_obj = type(class_name, (Part,), dict(definition=...))
-                setattr(master_class, class_name, class_obj)
-                class_name, class_obj = master_name, master_class
-
-            elif table_name.startswith('__'):
-                class_obj = type(class_name, (Computed,), dict(definition=..., _make_tuples=_make_tuples))
-            elif table_name.startswith('_'):
-                class_obj = type(class_name, (Imported,), dict(definition=..., _make_tuples=_make_tuples))
-            elif table_name.startswith('#'):
-                class_obj = type(class_name, (Lookup,), dict(definition=...))
-            else:
-                class_obj = type(class_name, (Manual,), dict(definition=...))
-
-            SchemaFactory.table2class[database, table_name] = class_name, class_obj
-        return class_name, class_obj
-
-
 class Schema:
     """
     A schema object can be used  as a decorator that associates a Relation class to a database as
     well as a namespace for looking up foreign key references in table declaration.
     """
+
+    table2class = {}
 
     def __init__(self, database, context, connection=None):
         """
@@ -86,20 +46,51 @@ class Schema:
                                      " an attempt to create has failed. Check"
                                      " permissions.".format(database=database))
         else:
-            class_factory = SchemaFactory()
-            classes = []
             for table_name in map(itemgetter(0),
                                   connection.query(
                                       'SHOW TABLES in {database}'.format(database=self.database)).fetchall()):
-                class_name, class_obj = class_factory(self.database, table_name)
-                classes.append(self(class_obj) if not issubclass(class_obj, Part) else class_obj)
-                context[class_name] = classes[-1]
-            # TODO: load definitions
-            # connection.dependencies.load()
-            # for klass in classes:
-            #     klass.definition = klass.db_definition
+                class_name, class_obj = self.create_userrelation_from_database(table_name)
+                if not 'Jobs' in class_name:
+                    context[class_name] = self(class_obj) if not issubclass(class_obj, Part) else class_obj
+
 
         connection.register(self)
+
+    def create_userrelation_from_database(self, table_name):
+        """
+        Creates the appropriate python schema class objects from tables in a database.
+
+        SchemaFactory stores the class objects in a class dictionary and returns those
+        when prompted for the same table from the same database again. This way, the id
+        of both returned class objects is the same and comparison with python's "is" works
+        correctly.
+        """
+        class_name = to_camel_case(table_name)
+
+        def _make_tuples(other, key):
+            raise NotImplementedError("This is an automatically created class. _make_tuples is not implemented.")
+
+        if (self.database, table_name) in Schema.table2class:
+            class_name, class_obj = Schema.table2class[self.database, table_name]
+        else:
+            if table_name.rfind('__') > 1:
+                master_name, master_class = self(self.database, table_name[:table_name.rfind('__')])
+                class_name = class_name[len(master_name):]
+                class_obj = type(class_name, (Part,), dict(definition=...))
+                setattr(master_class, class_name, class_obj)
+                class_name, class_obj = master_name, master_class
+
+            elif table_name.startswith('__'):
+                class_obj = type(class_name, (Computed,), dict(definition=..., _make_tuples=_make_tuples))
+            elif table_name.startswith('_'):
+                class_obj = type(class_name, (Imported,), dict(definition=..., _make_tuples=_make_tuples))
+            elif table_name.startswith('#'):
+                class_obj = type(class_name, (Lookup,), dict(definition=...))
+            else:
+                class_obj = type(class_name, (Manual,), dict(definition=...))
+
+            Schema.table2class[self.database, table_name] = class_name, class_obj
+        return class_name, class_obj
 
     def drop(self):
         """
@@ -155,7 +146,6 @@ class Schema:
             part._master = cls
             # TODO: look into local namespace for the subclasses
             process_relation_class(part, context=dict(self.context, **{cls.__name__: cls}))
-
 
         # invoke Relation._prepare() on class and its part relations.
         cls()._prepare()
