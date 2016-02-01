@@ -1,5 +1,5 @@
 """
-Sample scheme with realistic tables for testing
+Sample schema with realistic tables for testing
 """
 
 import random
