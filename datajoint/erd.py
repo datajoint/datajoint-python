@@ -4,13 +4,10 @@ import numpy as np
 
 import logging
 from collections import defaultdict
-import pyparsing as pp
 import networkx as nx
 from networkx import DiGraph
 from functools import cmp_to_key
 import operator
-
-from collections import OrderedDict
 
 # use pygraphviz if available
 try:
@@ -20,35 +17,19 @@ except:
 
 import matplotlib.pyplot as plt
 from inspect import isabstract
-from .base_relation import BaseRelation
+from .user_relations import UserRelation, Part
 
 logger = logging.getLogger(__name__)
 
 
-def get_concrete_descendants(cls):
+def get_concrete_subclasses(cls):
     desc = []
     child= cls.__subclasses__()
     for c in child:
         if not isabstract(c):
             desc.append(c)
-        desc.extend(get_concrete_descendants(c))
+        desc.extend(get_concrete_subclasses(c))
     return desc
-
-
-def parse_base_relations(rels):
-    name_map = {}
-    for r in rels:
-        try:
-            name_map[r().full_table_name] = '{module}.{cls}'.format(module=r.__module__, cls=r.__name__)
-        except TypeError:
-            # skip if failed to instantiate BaseRelation derivative
-            pass
-    return name_map
-
-
-def get_table_relation_name_map():
-    rels = get_concrete_descendants(BaseRelation)
-    return parse_base_relations(rels)
 
 
 class ERD(DiGraph):
@@ -65,15 +46,24 @@ class ERD(DiGraph):
         """
         :return: dictionary of key : label pairs for plotting
         """
-        name_map = get_table_relation_name_map()
+        def full_class_name(user_class):
+            if issubclass(user_class, Part):
+                return '{module}.{master}.{cls}'.format(
+                        module=user_class.__module__,
+                        master=user_class.master.__name__,
+                        cls=user_class.__name__)
+            else:
+                return '{module}.{cls}'.format(
+                        module=user_class.__module__,
+                        cls=user_class.__name__)
+
+        name_map = {rel.full_table_name: full_class_name(rel) for rel in get_concrete_subclasses(UserRelation)}
         return {k: self.get_label(k, name_map) for k in self.nodes()}
 
     def get_label(self, node, name_map=None):
         label = self.node[node].get('label', '')
         if label.strip():
             return label
-
-        # it's not efficient to recreate name-map on every call!
         if name_map is not None and node in name_map:
             return name_map[node]
         # no other name exists, so just use full table now

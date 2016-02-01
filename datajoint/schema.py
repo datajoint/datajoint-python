@@ -137,15 +137,18 @@ class Schema:
 
         process_relation_class(cls, context=self.context)
 
-        # Process subordinate relations
-        parts = list()
-        is_part = lambda x: inspect.isclass(x) and issubclass(x, Part)
+        # Process part relations
+        def is_part(x):
+            return inspect.isclass(x) and issubclass(x, Part)
 
-        for var, part in inspect.getmembers(cls, is_part):
-            parts.append(part)
-            part._master = cls
-            # TODO: look into local namespace for the subclasses
-            process_relation_class(part, context=dict(self.context, **{cls.__name__: cls}))
+        parts = list()
+        for part in dir(cls):
+            if part[0].isupper():
+                part = getattr(cls, part)
+                if is_part(part):
+                    parts.append(part)
+                    part._master = cls
+                    process_relation_class(part, context=dict(self.context, **{cls.__name__: cls}))
 
         # invoke Relation._prepare() on class and its part relations.
         cls()._prepare()
