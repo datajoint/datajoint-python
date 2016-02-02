@@ -1,11 +1,14 @@
+from operator import itemgetter
 import pymysql
 import logging
-
-from . import conn, DataJointError, NoDefinitionError
+import re
+from . import conn, DataJointError
+from datajoint.utils import to_camel_case
 from .heading import Heading
 from .base_relation import BaseRelation
-from .user_relations import Part
+from .user_relations import Part, Computed, Imported, Manual, Lookup
 import inspect
+
 logger = logging.getLogger(__name__)
 from warnings import warn
 
@@ -15,6 +18,8 @@ class Schema:
     A schema object can be used  as a decorator that associates a Relation class to a database as
     well as a namespace for looking up foreign key references in table declaration.
     """
+
+    table2class = {}
 
     def __init__(self, database, context, connection=None):
         """
@@ -41,7 +46,59 @@ class Schema:
                 raise DataJointError("Database named `{database}` was not defined, and"
                                      " an attempt to create has failed. Check"
                                      " permissions.".format(database=database))
+        else:
+            for table_name in map(itemgetter(0),
+                                  connection.query(
+                                      'SHOW TABLES in {database}'.format(database=self.database)).fetchall()):
+                class_name, class_obj = self.create_userrelation_from_table(table_name)
+
+                # decorate class with @schema if it is not None and not a dj.Part
+                context[class_name] = self(class_obj) \
+                    if class_obj is not None and not issubclass(class_obj, Part) else class_obj
+
+
         connection.register(self)
+
+    def create_userrelation_from_table(self, table_name):
+        """
+        Creates the appropriate python user relation classes from tables in a database. The tier of the class
+        is inferred from the table name.
+
+        Schema stores the class objects in a class dictionary and returns those
+        when prompted for the same table from the same database again. This way, the id
+        of both returned class objects is the same and comparison with python's "is" works
+        correctly.
+        """
+        class_name = to_camel_case(table_name)
+
+        def _make_tuples(other, key):
+            raise NotImplementedError("This is an automatically created class. _make_tuples is not implemented.")
+
+        if (self.database, table_name) in Schema.table2class:
+            class_name, class_obj = Schema.table2class[self.database, table_name]
+        else:
+            if re.fullmatch(Part._regexp, table_name):
+                groups = re.fullmatch(Part._regexp, table_name).groupdict()
+                master_table_name = groups['master']
+                master_name, master_class = self.create_userrelation_from_table(master_table_name)
+                class_name = to_camel_case(groups['part'])
+                class_obj = type(class_name, (Part,), dict(definition=...))
+                setattr(master_class, class_name, class_obj)
+                class_name, class_obj = master_name, master_class
+
+            elif re.fullmatch(Computed._regexp, table_name):
+                class_obj = type(class_name, (Computed,), dict(definition=..., _make_tuples=_make_tuples))
+            elif re.fullmatch(Imported._regexp, table_name):
+                class_obj = type(class_name, (Imported,), dict(definition=..., _make_tuples=_make_tuples))
+            elif re.fullmatch(Lookup._regexp, table_name):
+                class_obj = type(class_name, (Lookup,), dict(definition=...))
+            elif re.fullmatch(Manual._regexp, table_name):
+                class_obj = type(class_name, (Manual,), dict(definition=...))
+            else:
+                class_obj = None
+
+            Schema.table2class[self.database, table_name] = class_name, class_obj
+        return class_name, class_obj
 
     def drop(self):
         """
@@ -72,14 +129,6 @@ class Schema:
         :param cls: class to be decorated
         """
 
-        if cls.definition is None or cls.definition is Ellipsis:
-            def __init__(self):
-                raise NoDefinitionError("%s.definition is not defined and table is not in the database."
-                                        % (cls.__name__,))
-            cls.__init__ = __init__
-            return cls
-
-
         def process_relation_class(relation_class, context):
             """
             assign schema properties to the relation class and declare the table
@@ -96,16 +145,18 @@ class Schema:
 
         process_relation_class(cls, context=self.context)
 
-        # Process subordinate relations
+        # Process part relations
+        def is_part(x):
+            return inspect.isclass(x) and issubclass(x, Part)
+
         parts = list()
-        is_part = lambda x: inspect.isclass(x) and issubclass(x, Part)
-
-        for var, part in inspect.getmembers(cls, is_part):
-            parts.append(part)
-            part._master = cls
-            # TODO: look into local namespace for the subclasses
-            process_relation_class(part, context=dict(self.context, **{cls.__name__: cls}))
-
+        for part in dir(cls):
+            if part[0].isupper():
+                part = getattr(cls, part)
+                if is_part(part):
+                    parts.append(part)
+                    part._master = cls
+                    process_relation_class(part, context=dict(self.context, **{cls.__name__: cls}))
 
         # invoke Relation._prepare() on class and its part relations.
         cls()._prepare()

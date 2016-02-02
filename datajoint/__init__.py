@@ -32,12 +32,6 @@ class DataJointError(Exception):
     """
     pass
 
-class NoDefinitionError(DataJointError):
-    """
-    Error raised if table definition is not there.
-    """
-    pass
-
 # ----------- loads local configuration from file ----------------
 from .settings import Config, LOCALCONFIG, GLOBALCONFIG, logger, log_levels
 config = Config()
