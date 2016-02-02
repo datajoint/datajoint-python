@@ -79,7 +79,8 @@ class Schema:
         else:
             if re.fullmatch(Part._regexp, table_name):
                 groups = re.fullmatch(Part._regexp, table_name).groupdict()
-                master_table_name = [val for name, val in groups.items() if name != "part" and val is not None][0]
+                # master_table_name = [val for name, val in groups.items() if name != "part" and val is not None][0]
+                master_table_name = groups['master']
                 master_name, master_class = self.create_userrelation_from_table(master_table_name)
                 class_name = to_camel_case(groups['part'])
                 class_obj = type(class_name, (Part,), dict(definition=...))
