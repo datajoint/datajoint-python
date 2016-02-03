@@ -2,7 +2,6 @@ from collections import OrderedDict
 from collections.abc import Callable, Iterable
 from functools import wraps
 import warnings
-from itertools import starmap
 
 from .blob import unpack
 import numpy as np
