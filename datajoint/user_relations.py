@@ -143,7 +143,7 @@ class Part(BaseRelation):
     Part relations are implemented as classes inside classes.
     """
 
-    _regexp = r'(' + '|'.join([c._regexp for c in [Manual, Imported, Computed, Lookup]]) + r'){1,1}' \
+    _regexp = r'(?P<master>' + '|'.join([c._regexp for c in [Manual, Imported, Computed, Lookup]]) + r'){1,1}' \
               +  '__' + r'(?P<part>' + _base_regexp + ')'
 
     _master = None
