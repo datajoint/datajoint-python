@@ -244,9 +244,25 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
 
     def __repr__(self):
-        ret = self._repr_helper()
-        if self._restrictions:
-            ret += ' & %r' % self._restrictions
+        if config['loglevel'].lower() == 'debug':
+            ret = self._repr_helper()
+            if self._restrictions:
+                ret += ' & %r' % self._restrictions
+        else:
+            limit = config['display.limit']
+            width = config['display.width']
+            rel = self.project(*self.heading.non_blobs)  # project out blobs
+            template = '%%-%d.%ds' % (width, width)
+            columns = rel.heading.names
+            repr_string = ' '.join([template % column for column in columns]) + '\n'
+            repr_string += ' '.join(['+' + '-' * (width - 2) + '+' for _ in columns]) + '\n'
+            for tup in rel.fetch(limit=limit):
+                repr_string += ' '.join([template % column for column in tup]) + '\n'
+            if len(rel) > limit:
+                repr_string += '...\n'
+            repr_string += ' (%d tuples)\n' % len(rel)
+            return repr_string
+
         return ret
 
     def _repr_html_(self):
@@ -259,8 +275,6 @@ class RelationalOperand(metaclass=abc.ABCMeta):
                 ['\n'.join(['<td>%s</td>' % column for column in tup]) for tup in rel.fetch(limit=limit)]),
             tuples=len(rel)
         )
-
-
         return """<div style="max-height:1000px;max-width:1500px;overflow:auto;">\n
                   <table border="1" class="dataframe">\n
                   <thead>\n
