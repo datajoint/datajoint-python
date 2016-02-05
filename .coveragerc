@@ -1,6 +1,2 @@
 [run]
 source = datajoint
-omit =
-    */tests/*
-    */recycle_bin/*
-    */1st_version_thunderfish/*
