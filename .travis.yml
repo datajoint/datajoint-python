@@ -10,7 +10,6 @@ install:
 # command to run tests
 script:
   - nosetests -vv --with-coverage --cover-package=datajoint
-  - coverage run --source=datajoint setup.py test
 
 after_success:
   - coveralls
