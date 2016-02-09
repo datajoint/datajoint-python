@@ -3,7 +3,7 @@ from nose.tools import assert_raises, assert_equal, \
     assert_false, assert_true, assert_list_equal, \
     assert_tuple_equal, assert_dict_equal, raises
 import datajoint as dj
-from .schema_simple import A, B, D, E, L
+from .schema_simple import A, B, D, E, L, DataA, DataB
 import datetime
 from .schema import Experiment
 
@@ -182,3 +182,11 @@ class TestRelational:
         e1 = Experiment() & dict(experiment_date=str(date))
         e2 = Experiment() & dict(experiment_date=date)
         assert_true(len(e1) == len(e2) > 0, 'Two date restriction do not yield the same result')
+
+    @staticmethod
+    def test_join_project_optimization():
+        """Test optimization for join of projected relations with matching non-primary key"""
+        print(DataA().project() * DataB().project())
+        print(DataA())
+        assert_true(len(DataA().project() * DataB().project()) == len(DataA()) == len(DataB()),
+                    "Join of projected relations does not work")
