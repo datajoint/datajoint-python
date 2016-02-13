@@ -45,24 +45,26 @@ class AndList(Sequence):
         """
 
         def make_condition(arg, _negate=False):
-            if isinstance(arg, (str, AndList)):
-                return str(arg), _negate
+            if isinstance(arg, str):
+                return arg, _negate
+            elif isinstance(arg, AndList):
+                return '(' + ' AND '.join([make_condition(element)[0] for element in arg]) + ')', _negate
 
             # semijoin or antijoin
-            if isinstance(arg, RelationalOperand):
+            elif isinstance(arg, RelationalOperand):
                 common_attributes = [q for q in self.heading.names if q in arg.heading.names]
                 if not common_attributes:
-                    condition = 'FALSE' if negate else 'TRUE'
+                    condition = 'FALSE' if _negate else 'TRUE'
                 else:
                     common_attributes = '`' + '`,`'.join(common_attributes) + '`'
                     condition = '({fields}) {not_}in ({subquery})'.format(
                         fields=common_attributes,
-                        not_="not " if negate else "",
+                        not_="not " if _negate else "",
                         subquery=arg.make_select(common_attributes))
-                return condition, False  # negate is cleared
+                return condition, False  # _negate is cleared
 
             # mappings are turned into ANDed equality conditions
-            if isinstance(arg, Mapping):
+            elif isinstance(arg, Mapping):
                 condition = ['`%s`=%r' %
                              (k, v if not isinstance(v, (datetime.date, datetime.datetime, datetime.time)) else str(v))
                              for k, v in arg.items() if k in self.heading]
@@ -91,6 +93,8 @@ class AndList(Sequence):
             conditions.append(('NOT (%s)' if negate else '(%s)') % item)
         return ' WHERE ' + ' AND '.join(conditions)
 
+    def __repr__(self):
+        return 'AND List: ' + repr(self._list)
 
 class RelationalOperand(metaclass=abc.ABCMeta):
     """
