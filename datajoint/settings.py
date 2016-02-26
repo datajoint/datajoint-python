@@ -35,7 +35,7 @@ default = OrderedDict({
     #
     'connection.init_function': None,
     #
-    'loglevel': 'DEBUG',
+    'loglevel': 'INFO',
     #
     'safemode': True,
     #

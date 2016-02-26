@@ -2,6 +2,7 @@ from collections import OrderedDict
 from collections.abc import Callable, Iterable
 from functools import wraps
 import warnings
+
 from .blob import unpack
 import numpy as np
 from datajoint import DataJointError
@@ -39,6 +40,7 @@ def copy_first(f):
     """
     Decorates methods that return an altered copy of self
     """
+
     @wraps(f)
     def ret(*args, **kwargs):
         args = list(args)
@@ -148,7 +150,7 @@ class Fetch(Iterable, Callable):
         if behavior['limit'] is None and behavior['offset'] is not None:
             warnings.warn('Offset set, but no limit. Setting limit to a large number. '
                           'Consider setting a limit explicitly.')
-            behavior['limit'] = 2*len(self._relation)
+            behavior['limit'] = 2 * len(self._relation)
         cur = self._relation.cursor(**behavior)
 
         heading = self._relation.heading
@@ -217,19 +219,11 @@ class Fetch(Iterable, Callable):
         return return_values[0] if single_output else return_values
 
     def __repr__(self):
-        limit = config['display.limit']
-        width = config['display.width']
-        rel = self._relation.project(*self._relation.heading.non_blobs)  # project out blobs
-        template = '%%-%d.%ds' % (width, width)
-        columns = rel.heading.names
-        repr_string = ' '.join([template % column for column in columns]) + '\n'
-        repr_string += ' '.join(['+' + '-' * (width - 2) + '+' for _ in columns]) + '\n'
-        for tup in rel.fetch(limit=limit):
-            repr_string += ' '.join([template % column for column in tup]) + '\n'
-        if len(rel) > limit:
-            repr_string += '...\n'
-        repr_string += ' (%d tuples)\n' % len(rel)
-        return repr_string
+        repr_str = """Fetch object for {items} items on {name}\n""".format(name=self._relation.__class__.__name__,
+                                                                           items=len(self._relation)    )
+        repr_str += '\n'.join(
+            ["\t{key}:\t{value}".format(key=k, value=str(v)) for k, v in self.behavior.items() if v is not None])
+        return repr_str
 
     def __len__(self):
         return len(self._relation)

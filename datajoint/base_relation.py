@@ -288,7 +288,7 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         restrictions = defaultdict(list)
         if self.restrictions:
             restrict_by_me.add(self.full_table_name)
-            restrictions[self.full_table_name] = self.restrictions  # copy own restrictions
+            restrictions[self.full_table_name].append(self.restrictions)  # copy own restrictions
         for r in relations.values():
             restrict_by_me.update(r.references)
         for name, r in relations.items():
