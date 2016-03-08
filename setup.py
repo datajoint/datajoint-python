@@ -20,7 +20,7 @@ setup(
     url='https://github.com/datajoint/datajoint-python',
     keywords='database organization',
     packages=find_packages(exclude=['contrib', 'docs', 'tests*']),
-    install_requires=['numpy', 'pymysql', 'pyparsing', 'networkx', 'matplotlib', 'sphinx_rtd_theme', 'mock'],
+    install_requires=['numpy', 'pyparsing', 'networkx', 'matplotlib', 'sphinx_rtd_theme', 'mock','pymysql>=0.7.2'],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Science/Research',
