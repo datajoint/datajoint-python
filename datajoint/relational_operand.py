@@ -6,7 +6,6 @@ from copy import copy
 import logging
 from . import DataJointError, config
 import datetime
-
 from .fetch import Fetch, Fetch1
 
 logger = logging.getLogger(__name__)
@@ -95,6 +94,7 @@ class AndList(Sequence):
 
     def __repr__(self):
         return 'AND List: ' + repr(self._list)
+
 
 class RelationalOperand(metaclass=abc.ABCMeta):
     """
@@ -253,15 +253,20 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             if self._restrictions:
                 ret += ' & %r' % self._restrictions
         else:
+            rel = self.project(*self.heading.non_blobs)  # project out blobs
             limit = config['display.limit']
             width = config['display.width']
-            rel = self.project(*self.heading.non_blobs)  # project out blobs
-            template = '%%-%d.%ds' % (width, width)
+
+            tups = rel.fetch(limit=limit)
             columns = rel.heading.names
-            repr_string = ' '.join([template % column for column in columns]) + '\n'
-            repr_string += ' '.join(['+' + '-' * (width - 2) + '+' for _ in columns]) + '\n'
-            for tup in rel.fetch(limit=limit):
-                repr_string += ' '.join([template % column for column in tup]) + '\n'
+
+            widths = {f: min(max([len(f)] + [len(str(e)) for e in tups[f]])+4,width) for f in columns}
+
+            templates = {f:'%%-%d.%ds' % (widths[f], widths[f]) for f in columns}
+            repr_string = ' '.join([templates[column] % column for column in columns]) + '\n'
+            repr_string += ' '.join(['+' + '-' * (widths[column] - 2) + '+' for column in columns]) + '\n'
+            for tup in tups:
+                repr_string += ' '.join([templates[column] % tup[column] for column in columns]) + '\n'
             if len(rel) > limit:
                 repr_string += '...\n'
             repr_string += ' (%d tuples)\n' % len(rel)
