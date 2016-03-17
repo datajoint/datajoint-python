@@ -5,6 +5,7 @@ import random
 import datajoint as dj
 from . import PREFIX, CONN_INFO
 
+
 schema = dj.schema(PREFIX + '_relational', locals(), connection=dj.conn(**CONN_INFO))
 
 
@@ -102,3 +103,29 @@ class E(dj.Computed):
         for i, ref in enumerate(references):
             if random.getrandbits(1):
                 sub.insert1(dict(key, id_f=i, **ref))
+
+
+@schema
+class DataA(dj.Lookup):
+    definition = """
+    idx     : int
+    ---
+    a       : int
+    """
+
+    @property
+    def contents(self):
+        yield from zip(range(5), range(5))
+
+
+@schema
+class DataB(dj.Lookup):
+    definition = """
+    idx     : int
+    ---
+    a       : int
+    """
+
+    @property
+    def contents(self):
+        yield from zip(range(5), range(5, 10))

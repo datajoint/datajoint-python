@@ -1,11 +1,9 @@
 from collections.abc import Mapping
 from collections import OrderedDict, defaultdict
-from itertools import chain
 import numpy as np
 import logging
 import abc
 import binascii
-
 from . import config
 from . import DataJointError
 from .declare import declare
@@ -60,7 +58,7 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         if self._heading is None:
             self._heading = Heading()  # instance-level heading
-        if not self._heading:   # heading is not initialized
+        if not self._heading:  # heading is not initialized
             self.declare()
             self._heading.init_from_database(self.connection, self.database, self.table_name)
 
@@ -156,7 +154,6 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         return "%s.%s()" % (self.__module__, self.__class__.__name__)
 
-    # --------- SQL functionality --------- #
     @property
     def is_declared(self):
         """
@@ -197,13 +194,10 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         >>>     dict(subject_id=8, species="mouse", date_of_birth="2014-09-02")])
 
         """
-        if not rows:
-            return
-
         heading = self.heading
         field_list = None
 
-        def make_insert_row(row):
+        def make_row_to_insert(row):
             """
             :param row:  A tuple to insert
             :return: a dict with fields 'names', 'placeholders', 'values'
@@ -271,15 +265,15 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
 
             if not attributes:
                 raise DataJointError('Empty tuple')
-            row = dict(zip(('names', 'placeholders', 'values'), zip(*attributes)))
+            row_to_insert = dict(zip(('names', 'placeholders', 'values'), zip(*attributes)))
             nonlocal field_list
             if field_list is None:
-                field_list = row['names']
-            elif set(field_list) != set(row['names']):
+                field_list = row_to_insert['names']
+            elif set(field_list) != set(row_to_insert['names']):
                 raise DataJointError('Attempt to insert rows with different fields')
-            return row
+            return row_to_insert
 
-        def row_in_table(row):
+        def row_exists(row):
             """
             :param row: a dict with keys 'row' and 'values'.
             :return: True if row is already in table.
@@ -288,9 +282,19 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
                                      for (name, value) in zip(row['names'], row['values']) if heading[name].in_key)
             return self & primary_key_value
 
-        rows = [make_insert_row(row) for row in rows]
+        rows = list(make_row_to_insert(row) for row in rows)
+
+        if not rows:
+            return
+
+        # skip duplicates only if the entire primary key is specified.
+        skip_duplicates = skip_duplicates and set(heading.primary_key).issubset(set(field_list))
+
         if skip_duplicates:
-            rows = list(row for row in rows if not row_in_table(row))
+            rows = list(row for row in rows if not row_exists(row))
+
+        if not rows:
+            return
 
         if replace:
             sql = 'REPLACE'
@@ -303,10 +307,10 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
 
         # add placeholders to sql
         sql += ','.join('(' + ','.join(row['placeholders']) + ')' for row in rows)
-        #
+        # compile all values into one list
         args = []
-        for row in rows:
-            args.extend(value for value in row['values'] if value is not None)
+        for r in rows:
+            args.extend(v for v in r['values'] if v is not None)
         self.connection.query(sql, args=args)
 
     def delete_quick(self):
@@ -331,7 +335,7 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         restrictions = defaultdict(list)
         if self.restrictions:
             restrict_by_me.add(self.full_table_name)
-            restrictions[self.full_table_name] = self.restrictions  # copy own restrictions
+            restrictions[self.full_table_name].append(self.restrictions)  # copy own restrictions
         for r in relations.values():
             restrict_by_me.update(r.references)
         for name, r in relations.items():
@@ -374,7 +378,7 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         Drops the table associated with this relation without cascading and without user prompt.
         If the table has any dependent table(s), this call will fail with an error.
         """
-        #TODO: give a better exception message
+        # TODO: give a better exception message
         if self.is_declared:
             self.connection.query('DROP TABLE %s' % self.full_table_name)
             logger.info("Dropped table %s" % self.full_table_name)
@@ -422,6 +426,7 @@ class FreeRelation(BaseRelation):
     A base relation without a dedicated class. Each instance is associated with a table
     specified by full_table_name.
     """
+
     def __init__(self, connection, full_table_name, definition=None, context=None):
         self.database, self._table_name = (s.strip('`') for s in full_table_name.split('.'))
         self._connection = connection

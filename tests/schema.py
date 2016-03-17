@@ -1,8 +1,9 @@
 """
-Sample scheme with realistic tables for testing
+Sample schema with realistic tables for testing
 """
 
 import random
+
 import numpy as np
 import datajoint as dj
 from . import PREFIX, CONN_INFO
@@ -55,7 +56,6 @@ class Subject(dj.Manual):
 
 @schema
 class Language(dj.Lookup):
-
     definition = """
     # languages spoken by some of the developers
 
@@ -99,7 +99,7 @@ class Experiment(dj.Imported):
             self.insert1(
                 dict(key,
                      experiment_id=experiment_id,
-                     experiment_date=(date.today()-timedelta(random.expovariate(1/30))).isoformat(),
+                     experiment_date=(date.today() - timedelta(random.expovariate(1 / 30))).isoformat(),
                      username=random.choice(users)))
 
 
@@ -121,7 +121,7 @@ class Trial(dj.Imported):
             self.insert1(
                 dict(key,
                      trial_id=trial_id,
-                     start_time=random.random()*1e9
+                     start_time=random.random() * 1e9
                      ))
 
 

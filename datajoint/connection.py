@@ -2,7 +2,6 @@
 This module hosts the Connection class that manages the connection to the mysql database,
  and the `conn` function that provides access to a persistent connection in datajoint.
 """
-
 from contextlib import contextmanager
 import pymysql as client
 import logging
@@ -111,7 +110,6 @@ class Connection:
 
         # Log the query
         logger.debug("Executing SQL:" + query[0:300])
-
         cur.execute(query, args)
 
         return cur
@@ -161,8 +159,8 @@ class Connection:
     def transaction(self):
         """
         Context manager for transactions. Opens an transaction and closes it after the with statement.
-        If an error is caught during the transaction, the commits are automatically rolled back. All
-        errors are raised again.
+        If an error is caught during the transaction, the commits are automatically rolled back.
+        All errors are raised again.
 
         Example:
         >>> import datajoint as dj

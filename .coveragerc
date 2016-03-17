@@ -1,0 +1,5 @@
+[run]
+branch = False
+source = datajoint
+
+[report]
