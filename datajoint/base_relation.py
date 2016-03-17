@@ -1,5 +1,6 @@
 from collections.abc import Mapping
 from collections import OrderedDict, defaultdict
+from itertools import chain
 import numpy as np
 import logging
 import abc
@@ -173,105 +174,146 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         return r"`{0:s}`.`{1:s}`".format(self.database, self.table_name)
 
-    def insert(self, rows, **kwargs):
+    def insert1(self, row, **kwargs):
+        """
+        Insert one data record or one Mapping (like a dict).
+        :param row: Data record, a Mapping (like a dict), or a list or tuple with ordered values.
+        """
+        self.insert([row], **kwargs)
+
+    def insert(self, rows, replace=False, ignore_errors=False, skip_duplicates=False):
         """
         Insert a collection of rows. Additional keyword arguments are passed to insert1.
 
         :param rows: An iterable where an element is a valid arguments for insert1.
-        """
-        for row in rows:
-            self.insert1(row, **kwargs)
-
-    def insert1(self, tup, replace=False, ignore_errors=False, skip_duplicates=False):
-        """
-        Insert one data record or one Mapping (like a dict).
-
-        :param tup: Data record, a Mapping (like a dict), or a list or tuple with ordered values.
         :param replace=False: If True, replaces the matching data tuple in the table if it exists.
         :param ignore_errors=False: If True, ignore errors: e.g. constraint violations.
         :param skip_dublicates=False: If True, silently skip duplicate inserts.
 
         Example::
 
-        >>> relation.insert1(dict(subject_id=7, species="mouse", date_of_birth="2014-09-01"))
+        >>> relation.insert([
+        >>>     dict(subject_id=7, species="mouse", date_of_birth="2014-09-01"),
+        >>>     dict(subject_id=8, species="mouse", date_of_birth="2014-09-02")])
 
         """
+        if not rows:
+            return
 
         heading = self.heading
+        field_list = None
 
-        def check_fields(fields):
+        def make_insert_row(row):
             """
-            Validates that all items in `fields` are valid attributes in the heading
+            :param row:  A tuple to insert
+            :return: a dict with fields 'names', 'placeholders', 'values'
             """
-            for field in fields:
-                if field not in heading:
-                    raise KeyError(u'{0:s} is not in the attribute list'.format(field))
 
-        def make_attribute(name, value):
-            """
-            For a given attribute `name` with `value, return its processed value or value placeholder
-            as a string to be included in the query and the value, if any to be submitted for
-            processing by mysql API.
-            """
-            if heading[name].is_blob:
-                value = pack(value)
-                # This is a temporary hack to address issue #131 (slow blob inserts).
-                # When this problem is fixed by pymysql or python, then pass blob as query argument.
-                placeholder = '0x' + binascii.b2a_hex(value).decode('ascii')
-                value = None
-            elif heading[name].numeric:
-                if np.isnan(value):
-                    name = None    # omit nans
-                placeholder = '%s'
-                value = repr(int(value) if isinstance(value, bool) else value)
-            else:
-                placeholder = '%s'
-            return name, placeholder, value
+            def make_placeholder(name, value):
+                """
+                For a given attribute `name` with `value, return its processed value or value placeholder
+                as a string to be included in the query and the value, if any to be submitted for
+                processing by mysql API.
+                :param name:
+                :param value:
+                """
+                if heading[name].is_blob:
+                    value = pack(value)
+                    # This is a temporary hack to address issue #131 (slow blob inserts).
+                    # When this problem is fixed by pymysql or python, then pass blob as query argument.
+                    placeholder = '0x' + binascii.b2a_hex(value).decode('ascii')
+                    value = None
+                elif heading[name].numeric:
+                    if value is None or np.isnan(value):   # nans are turned into NULLs
+                        placeholder = 'NULL'
+                        value = None
+                    else:
+                        placeholder = '%s'
+                        value = repr(int(value) if isinstance(value, bool) else value)
+                else:
+                    placeholder = '%s'
+                return name, placeholder, value
 
-        if isinstance(tup, np.void):    # np.array insert
-            check_fields(tup.dtype.fields)
-            attributes = [make_attribute(name, tup[name])
-                          for name in heading if name in tup.dtype.fields]
-        elif isinstance(tup, Mapping):   # dict-based insert
-            check_fields(tup.keys())
-            attributes = [make_attribute(name, tup[name]) for name in heading if name in tup]
-        else:    # positional insert
-            try:
-                if len(tup) != len(heading):
-                    raise DataJointError(
-                        'Incorrect number of attributes: '
-                        '{given} given; {expected} expected'.format(
-                            given=len(tup), expected=len(heading)))
-            except TypeError:
-                raise DataJointError('Datatype %s cannot be inserted' % type(tup))
-            else:
-                attributes = [make_attribute(name, value) for name, value in zip(heading, tup)]
-        if not attributes:
-            raise DataJointError('Empty tuple')
-        skip = skip_duplicates
-        if skip:
-            primary_key_value = {name: value for name, _, value in attributes if heading[name].in_key}
-            # if primary key value is empty, auto_populate is probably used
-            skip = primary_key_value and (self & primary_key_value)
-        if not skip:
-            if replace:
-                sql = 'REPLACE'
-            elif ignore_errors:
-                sql = 'INSERT IGNORE'
-            else:
-                sql = 'INSERT'
-            attributes = (a for a in attributes if a[0])   # omit dropped attributes
-            names, placeholders, values = tuple(zip(*attributes))
-            sql += " INTO %s (`%s`) VALUES (%s)" % (
-                self.from_clause, '`,`'.join(names), ','.join(placeholders))
-            self.connection.query(sql, args=tuple(v for v in values if v is not None))
+            def check_fields(fields):
+                    """
+                    Validates that all items in `fields` are valid attributes in the heading
+                    :param fields: field names of a tuple
+                    """
+                    if field_list is None:
+                        for field in fields:
+                            if field not in heading:
+                                raise KeyError(u'{0:s} is not in the attribute list'.format(field))
+                    else:
+                        if len(fields) < len(field_list):
+                            raise KeyError('Inserted row is missing some attributes.')
+                        for field in fields:
+                            if field not in field_list:
+                                raise KeyError(u'{0:s} is not found among the attributes of the first inserted row'.format(field))
+
+            if isinstance(row, np.void):    # np.array
+                check_fields(row.dtype.fields)
+                attributes = [make_placeholder(name, row[name])
+                              for name in heading if name in row.dtype.fields]
+            elif isinstance(row, Mapping):   # dict-based
+                check_fields(row.keys())
+                attributes = [make_placeholder(name, row[name]) for name in heading if name in row]
+            else:    # positional
+                try:
+                    if len(row) != len(heading):
+                        raise DataJointError(
+                            'Incorrect number of attributes: '
+                            '{given} given; {expected} expected'.format(
+                                given=len(row), expected=len(heading)))
+                except TypeError:
+                    raise DataJointError('Datatype %s cannot be inserted' % type(row))
+                else:
+                    attributes = [make_placeholder(name, value) for name, value in zip(heading, row)]
+
+            if not attributes:
+                raise DataJointError('Empty tuple')
+            row = dict(zip(('names', 'placeholders', 'values'), zip(*attributes)))
+            nonlocal field_list
+            if field_list is None:
+                field_list = row['names']
+            elif set(field_list) != set(row['names']):
+                raise DataJointError('Attempt to insert rows with different fields')
+            return row
+
+        def row_in_table(row):
+            """
+            :param row: a dict with keys 'row' and 'values'.
+            :return: True if row is already in table.
+            """
+            primary_key_value = dict((name, value)
+                                     for (name, value) in zip(row['names'], row['values']) if heading[name].in_key)
+            return self & primary_key_value
+
+        rows = [make_insert_row(row) for row in rows]
+        if skip_duplicates:
+            rows = list(row for row in rows if not row_in_table(row))
+
+        if replace:
+            sql = 'REPLACE'
+        elif ignore_errors:
+            sql = 'INSERT IGNORE'
+        else:
+            sql = 'INSERT'
+
+        sql += " INTO %s (`%s`) VALUES " % (self.from_clause, '`,`'.join(field_list))
+
+        # add placeholders to sql
+        sql += ','.join('(' + ','.join(row['placeholders']) + ')' for row in rows)
+        #
+        args = []
+        for row in rows:
+            args.extend(value for value in row['values'] if value is not None)
+        self.connection.query(sql, args=args)
 
     def delete_quick(self):
         """
         Deletes the table without cascading and without user prompt. If this table has any dependent
         table(s), this will fail.
         """
-        #TODO: give a better exception message
         self.connection.query('DELETE FROM ' + self.from_clause + self.where_clause)
 
     def delete(self):
