@@ -69,7 +69,7 @@ class AndList(Sequence):
                              for k, v in arg.items() if k in self.heading]
             elif isinstance(arg, np.void):
                 # element of a record array
-                condition = ['`%s`=%s' % (k, arg[k]) for k in arg.dtype.fields if k in self.heading]
+                condition = ['`%s`=%r' % (k, arg[k]) for k in arg.dtype.fields if k in self.heading]
             else:
                 raise DataJointError('invalid restriction type')
             return ' AND '.join(condition) if condition else 'TRUE', _negate
