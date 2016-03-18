@@ -287,7 +287,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         return """<div style="max-height:1000px;max-width:1500px;overflow:auto;">\n
                   <table border="1" class="dataframe">\n
                   <thead>\n
-                  <tr style="text-align: right;">\n
+                  <tr style="text-align: right;">\n``
                   <th>
                   %(head)s
                   </th>
