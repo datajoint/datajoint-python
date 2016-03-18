@@ -24,7 +24,6 @@ class TestNaNInsert:
         self.rel.insert(((i, value) for i, value in enumerate(a)))
         self.a = a
 
-
     def test_insert_nan(self):
         """Test fetching of null values"""
         b = self.rel.fetch.order_by('id')['value']
