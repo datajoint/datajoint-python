@@ -147,4 +147,4 @@ class TestRelation:
 
             for tier in itertools.filterfalse(lambda t: issubclass(rel, t), tiers):
                 assert_false(re.match(tier._regexp, rel().table_name),
-                      'Regular expression matches for {name} but should not'.format(name=name))
+                             'Regular expression matches for {name} but should not'.format(name=name))
