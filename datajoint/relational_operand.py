@@ -369,8 +369,8 @@ class Join(RelationalOperand):
             raise DataJointError('a relation can only be joined with another relation')
         if arg1.connection != arg2.connection:
             raise DataJointError('Cannot join relations with different database connections')
-        self._arg1 = Subquery(arg1) if arg1.heading.computed else arg1
-        self._arg2 = Subquery(arg2) if arg2.heading.computed else arg2
+        self._arg1 = Subquery(arg1) if isinstance(arg1, Projection) else arg1
+        self._arg2 = Subquery(arg2) if isinstance(arg2, Projection) else arg2
         self._heading = self._arg1.heading.join(self._arg2.heading, left=left)
         self.restrict(*list(self._arg1.restrictions))
         self.restrict(*list(self._arg2.restrictions))
