@@ -58,6 +58,10 @@ class TestRelation:
         self.user.insert1(dict(user="Bob"))
 
     @raises(dj.DataJointError)
+    def test_empty_insert(self):
+        self.user.insert1(())
+
+    @raises(dj.DataJointError)
     def test_wrong_arguments_insert(self):
         self.user.insert1(('First', 'Second'))
 
