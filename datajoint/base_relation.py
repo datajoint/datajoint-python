@@ -232,7 +232,7 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
                 """
                 Validates that all items in `fields` are valid attributes in the heading
                 :param fields: field names of a tuple
-                 """
+                """
                 if field_list is None:
                     for field in fields:
                         if field not in heading:
@@ -240,7 +240,7 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
                 elif set(field_list) != set(fields):
                     raise DataJointError('Attempt to insert rows with different fields')
 
-            if isinstance(row, np.void):    # np.array
+            if isinstance(row, np.void):  # np.array
                 check_fields(row.dtype.fields)
                 attributes = [make_placeholder(name, row[name])
                               for name in heading if name in row.dtype.fields]
