@@ -176,7 +176,7 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         Insert one data record or one Mapping (like a dict).
         :param row: Data record, a Mapping (like a dict), or a list or tuple with ordered values.
         """
-        self.insert([row], **kwargs)
+        self.insert((row,), **kwargs)
 
     def insert(self, rows, replace=False, ignore_errors=False, skip_duplicates=False):
         """
@@ -218,7 +218,7 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
                     placeholder = '0x' + binascii.b2a_hex(value).decode('ascii')
                     value = None
                 elif heading[name].numeric:
-                    if value is None or np.isnan(value):   # nans are turned into NULLs
+                    if value is None or np.isnan(value):  # nans are turned into NULLs
                         placeholder = 'NULL'
                         value = None
                     else:
@@ -229,29 +229,30 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
                 return name, placeholder, value
 
             def check_fields(fields):
-                    """
-                    Validates that all items in `fields` are valid attributes in the heading
-                    :param fields: field names of a tuple
-                    """
-                    if field_list is None:
-                        for field in fields:
-                            if field not in heading:
-                                raise KeyError(u'{0:s} is not in the attribute list'.format(field))
-                    else:
-                        if len(fields) < len(field_list):
-                            raise KeyError('Inserted row is missing some attributes.')
-                        for field in fields:
-                            if field not in field_list:
-                                raise KeyError(u'{0:s} is not found among the attributes of the first inserted row'.format(field))
+                """
+                Validates that all items in `fields` are valid attributes in the heading
+                :param fields: field names of a tuple
+                """
+                if field_list is None:
+                    for field in fields:
+                        if field not in heading:
+                            raise KeyError(u'{0:s} is not in the attribute list'.format(field))
+                else:
+                    if len(fields) < len(field_list):
+                        raise KeyError('Inserted row is missing some attributes.')
+                    for field in fields:
+                        if field not in field_list:
+                            raise KeyError(
+                                u'{0:s} is not found among the attributes of the first inserted row'.format(field))
 
-            if isinstance(row, np.void):    # np.array
+            if isinstance(row, np.void):  # np.array
                 check_fields(row.dtype.fields)
                 attributes = [make_placeholder(name, row[name])
                               for name in heading if name in row.dtype.fields]
-            elif isinstance(row, Mapping):   # dict-based
+            elif isinstance(row, Mapping):  # dict-based
                 check_fields(row.keys())
                 attributes = [make_placeholder(name, row[name]) for name in heading if name in row]
-            else:    # positional
+            else:  # positional
                 try:
                     if len(row) != len(heading):
                         raise DataJointError(
