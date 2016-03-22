@@ -70,7 +70,7 @@ class Lookup(UserRelation):
     """
 
     _prefix = '#'
-    _regexp = r'(?P<lookup>' +  _prefix + _base_regexp.replace('TIER', 'lookup') + ')'
+    _regexp = r'(?P<lookup>' + _prefix + _base_regexp.replace('TIER', 'lookup') + ')'
 
     @classproperty
     def table_name(cls):
@@ -144,7 +144,7 @@ class Part(BaseRelation):
     """
 
     _regexp = r'(?P<master>' + '|'.join([c._regexp for c in [Manual, Imported, Computed, Lookup]]) + r'){1,1}' \
-              +  '__' + r'(?P<part>' + _base_regexp + ')'
+              + '__' + r'(?P<part>' + _base_regexp + ')'
 
     _master = None
 
