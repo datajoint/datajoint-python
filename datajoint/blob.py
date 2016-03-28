@@ -35,7 +35,7 @@ decode_lookup = {
 }
 
 class BlobReader(object):
-    def __init__(self, blob, simplify=True):
+    def __init__(self, blob, simplify=False):
         self._simplify = simplify
         self._blob = blob
         self._pos = 0
@@ -99,6 +99,8 @@ class BlobReader(object):
                 data = compact if compact.shape == () else np.array(''.join(data.squeeze()))
                 shape = (1,)
         else:
+            if is_complex:
+                n_elem *= 2 # read real and imaginary parts
             data = self.read_value(dtype, count=n_elem)
             if is_complex:
                 data = data[:n_elem//2] + 1j * data[n_elem//2:]
@@ -223,7 +225,7 @@ def pack(obj):
     blob += obj.tostring(order='F')
 
     if is_complex:
-        blob += imaginary.tostring()
+        blob += imaginary.tostring(order='F')
 
     compressed = b'ZL123\0' + np.uint64(len(blob)).tostring() + zlib.compress(blob)
     if len(compressed) < len(blob):
