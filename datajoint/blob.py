@@ -220,7 +220,7 @@ def pack(obj):
     assert dtype_list[type_number] == obj.dtype, 'ambiguous or unknown array type'
     blob += np.asarray(type_number, dtype=np.uint32).tostring()
     blob += np.int8(is_complex).tostring() + b'\0\0\0'
-    blob += obj.tostring()
+    blob += obj.tostring(order='F')
 
     if is_complex:
         blob += imaginary.tostring()
