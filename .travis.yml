@@ -3,6 +3,7 @@ env:
   - DJ_TEST_HOST="127.0.0.1" DJ_TEST_USER="root" DJ_TEST_PASSWORD="" DJ_HOST="127.0.0.1" DJ_USER="root" DJ_PASSWORD=""
 python:
   - "3.4"
+  - "3.5"
 services: mysql
 install:
   - pip install -r requirements.txt
