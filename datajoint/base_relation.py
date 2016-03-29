@@ -357,7 +357,7 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         do_delete = False  # indicate if there is anything to delete
         if config['safemode']:
             print('The contents of the following tables are about to be deleted:')
-        for relation in list(relations.values()):
+        for relation in relations.values():
             count = len(relation)
             if count:
                 do_delete = True
