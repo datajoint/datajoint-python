@@ -1,8 +1,10 @@
 FROM eywalker/pydev
 
-MAINTAINER Fabian Sinz <sinz@bcm.edu>
+MAINTAINER Edgar Y. Walker <edgar.walker@gmail.com>
 
-RUN pip install git+https://github.com/datajoint/datajoint-python.git &&  \
-    pip install git+https://github.com/datajoint/datajoint-addons.git
+ADD . /src
+RUN pip install /src && \
+    rm -rf /src
+    
 
 
