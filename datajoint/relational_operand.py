@@ -260,11 +260,11 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             tups = rel.fetch(limit=limit)
             columns = rel.heading.names
 
-            widths = {f: min(max([len(f)] + [len(str(e)) for e in tups[f]])+4,width) for f in columns}
+            widths = {f: min(max([len(f)] + [len(str(e)) for e in tups[f]])+2,width) for f in columns}
 
-            templates = {f:'%%-%d.%ds' % (widths[f], widths[f]) for f in columns}
+            templates = {f:'%%-%d.%ds|' % (widths[f]-1, widths[f]-1) for f in columns}
             repr_string = ' '.join([templates[column] % column for column in columns]) + '\n'
-            repr_string += ' '.join(['+' + '-' * (widths[column] - 2) + '+' for column in columns]) + '\n'
+            repr_string += '-'.join(['-' + '-' * (widths[column] - 2) + '+' for column in columns]) + '\n'
             for tup in tups:
                 repr_string += ' '.join([templates[column] % tup[column] for column in columns]) + '\n'
             if len(rel) > limit:
