@@ -85,10 +85,13 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         table_name = self.target.table_name
         keys = (todo - self.target.project()).fetch.keys()
         if order == "reverse":
-            keys = list(keys).reverse()
+            keys = list(keys)
+            keys.reverse()
         elif order == "random":
             keys = list(keys)
             random.shuffle(keys)
+        elif order != "original":
+            raise DataJointError('Invalid order specification')
 
         for key in keys:
             if not reserve_jobs or jobs.reserve(table_name, key):

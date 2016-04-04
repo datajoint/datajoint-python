@@ -195,7 +195,7 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
 
         """
         heading = self.heading
-        field_list = None
+        field_list = None  # ensures that all rows have the same attributes in the same order as the first row.
 
         def make_row_to_insert(row):
             """
@@ -205,8 +205,8 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
 
             def make_placeholder(name, value):
                 """
-                For a given attribute `name` with `value, return its processed value or value placeholder
-                as a string to be included in the query and the value, if any to be submitted for
+                For a given attribute `name` with `value`, return its processed value or value placeholder
+                as a string to be included in the query and the value, if any, to be submitted for
                 processing by mysql API.
                 :param name:
                 :param value:
@@ -237,13 +237,8 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
                     for field in fields:
                         if field not in heading:
                             raise KeyError(u'{0:s} is not in the attribute list'.format(field))
-                else:
-                    if len(fields) < len(field_list):
-                        raise KeyError('Inserted row is missing some attributes.')
-                    for field in fields:
-                        if field not in field_list:
-                            raise KeyError(
-                                u'{0:s} is not found among the attributes of the first inserted row'.format(field))
+                elif set(field_list) != set(fields):
+                    raise DataJointError('Attempt to insert rows with different fields')
 
             if isinstance(row, np.void):  # np.array
                 check_fields(row.dtype.fields)
@@ -269,9 +264,15 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
             row_to_insert = dict(zip(('names', 'placeholders', 'values'), zip(*attributes)))
             nonlocal field_list
             if field_list is None:
+                # first row sets the composition of the field list
                 field_list = row_to_insert['names']
-            elif set(field_list) != set(row_to_insert['names']):
-                raise DataJointError('Attempt to insert rows with different fields')
+            else:
+                #  reorder attributes in row_to_insert to match field_list
+                order = list(row_to_insert['names'].index(field) for field in field_list)
+                row_to_insert['names'] = list(row_to_insert['names'][i] for i in order)
+                row_to_insert['placeholders'] = list(row_to_insert['placeholders'][i] for i in order)
+                row_to_insert['values'] = list(row_to_insert['values'][i] for i in order)
+
             return row_to_insert
 
         def row_exists(row):
@@ -356,7 +357,7 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         do_delete = False  # indicate if there is anything to delete
         if config['safemode']:
             print('The contents of the following tables are about to be deleted:')
-        for relation in relations.values():
+        for relation in list(relations.values()):
             count = len(relation)
             if count:
                 do_delete = True
