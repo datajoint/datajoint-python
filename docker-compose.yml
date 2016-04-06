@@ -1,0 +1,20 @@
+version: '2'
+services:
+  datajoint:
+    build:
+      context: .
+      dockerfile: JupyterDockerfile
+    environment:
+      - DJ_HOST=db
+      - DJ_USER=root
+      - DJ_PASS=simple
+    links:
+      - db
+    ports:
+      - "8888:8888"
+  db:
+    image: mysql:5.7
+    environment:
+      - MYSQL_ROOT_PASSWORD=simple
+
+
