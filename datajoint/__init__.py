@@ -70,7 +70,7 @@ logger.setLevel(log_levels[config['loglevel']])
 from .connection import conn, Connection
 from .base_relation import BaseRelation
 from .user_relations import Manual, Lookup, Imported, Computed, Part
-from .relational_operand import Not, AndList
+from .relational_operand import Not, AndList, OrList
 from .heading import Heading
 from .schema import Schema as schema
 from .kill import kill

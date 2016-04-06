@@ -118,8 +118,9 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             if negate:
                 item = item.restriction  # NOT is added below
             if isinstance(item, (list, tuple, set, np.ndarray)):
-                # sets of conditions that are ORed
-                item = '(' + ') OR ('.join([make_condition(q)[0] for q in item if q is not None]) + ')'
+                # process an OR list
+                temp = [make_condition(q)[0] for q in item if q is not is_empty_or_list(q)]
+                item = 'FALSE' if not temp else '(' + ') OR ('.join(temp) + ')'
             else:
                 item, negate = make_condition(item, negate)
             if not item:
