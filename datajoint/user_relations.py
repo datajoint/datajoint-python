@@ -5,8 +5,6 @@ Hosts the table tiers, user relations should be derived from.
 from .base_relation import BaseRelation
 from .autopopulate import AutoPopulate
 from .utils import from_camel_case
-from . import DataJointError
-import re
 
 _base_regexp = r'[a-z]+[a-z0-9]*(_[a-z]+[a-z0-9]*)*'
 
