@@ -76,8 +76,10 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             if isinstance(arg, str):
                 return arg, _negate
             elif isinstance(arg, AndList):
-                return '(' + ' AND '.join(
-                    [make_condition(element)[0] for element in arg if arg is not None]) + ')', _negate
+                if arg:
+                    return '(' + ' AND '.join([make_condition(element)[0] for element in arg]) + ')', _negate
+                else:
+                    return 'FALSE' if _negate else 'TRUE', False
 
             #  semijoin or antijoin
             elif isinstance(arg, RelationalOperand):
@@ -120,7 +122,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             if isinstance(item, (list, tuple, set, np.ndarray)):
                 # process an OR list
                 temp = [make_condition(q)[0] for q in item if q is not is_empty_or_list(q)]
-                item = 'FALSE' if not temp else '(' + ') OR ('.join(temp) + ')'
+                item = '(' + ') OR ('.join(temp) + ')' if temp else 'FALSE'
             else:
                 item, negate = make_condition(item, negate)
             if not item:
