@@ -16,7 +16,8 @@ __version__ = "0.2"
 __all__ = ['__author__', '__version__',
            'config', 'conn', 'kill',
            'Connection', 'Heading', 'BaseRelation', 'FreeRelation', 'Not', 'schema',
-           'Manual', 'Lookup', 'Imported', 'Computed', 'Part']
+           'Manual', 'Lookup', 'Imported', 'Computed', 'Part',
+           'AndList', 'OrList']
 
 
 class key:
@@ -57,7 +58,7 @@ else:
     * modify the local copy of %s that datajoint just saved for you
     * put a file named %s with the same configuration format in your home
     * specify the environment variables DJ_USER, DJ_HOST, DJ_PASS
-          """)
+          """ % (LOCALCONFIG, GLOBALCONFIG))
     local_config_file = os.path.expanduser(LOCALCONFIG)
     logger.log(logging.INFO, "No config found. Generating {0:s}".format(local_config_file))
     config.save(local_config_file)
@@ -69,7 +70,7 @@ logger.setLevel(log_levels[config['loglevel']])
 from .connection import conn, Connection
 from .base_relation import BaseRelation
 from .user_relations import Manual, Lookup, Imported, Computed, Part
-from .relational_operand import Not
+from .relational_operand import Not, AndList, OrList
 from .heading import Heading
 from .schema import Schema as schema
 from .kill import kill

@@ -11,45 +11,77 @@ from .fetch import Fetch, Fetch1
 logger = logging.getLogger(__name__)
 
 
-class AndList(Sequence):
+class AndList(list):
     """
     A list of restrictions to by applied to a relation.  The restrictions are ANDed.
     Each restriction can be a list or set or a relation whose elements are ORed.
-    But the elements that are lists can contain
+    But the elements that are lists can contain other AndLists.
+
+    Example:
+    rel2 = rel & dj.AndList((cond1, cond2, cond3))
+    is equivalent to
+    rel2 = rel & cond1 & cond2 & cond3
+    """
+    pass
+
+
+class OrList(list):
+    """
+    A list of restrictions to by applied to a relation.  The restrictions are ORed.
+    If any restriction is .
+    But the elements that are lists can contain other AndLists.
+
+    Example:
+    rel2 = rel & dj.ORList((cond1, cond2, cond3))
+    is equivalent to
+    rel2 = rel & [cond1, cond2, cond3]
+
+    Since ORList is just an alias for list, it is not necessary and is only provided
+    for consistency with AndList.
+    """
+    pass
+
+
+class RelationalOperand(metaclass=abc.ABCMeta):
+    """
+    RelationalOperand implements relational algebra and fetch methods.
+    RelationalOperand objects reference other relation objects linked by operators.
+    The leaves of this tree of objects are base relations.
+    When fetching data from the database, this tree of objects is compiled into an SQL expression.
+    It is a mixin class that provides relational operators, iteration, and fetch capability.
+    RelationalOperand operators are: restrict, pro, and join.
     """
 
-    def __init__(self, heading):
-        self.heading = heading
-        self._list = []
+    _restrictions = None
 
-    def __len__(self):
-        return len(self._list)
+    @property
+    def restrictions(self):
+        if self._restrictions is None:
+            self._restrictions = AndList()
+        return self._restrictions
 
-    def __getitem__(self, i):
-        return self._list[i]
+    def clear_restrictions(self):
+        self._restrictions = None
 
-    def add(self, *args):
-        # remove Nones and duplicates
-        args = [r for r in args if r is not None and r not in self]
-        if args:
-            if any(is_empty_set(r) for r in args):
-                # if any condition is an empty list, return FALSE
-                self._list = ['FALSE']
-            else:
-                self._list.extend(args)
+    @property
+    def primary_key(self):
+        return self.heading.primary_key
 
+    @property
     def where_clause(self):
         """
         convert to a WHERE clause string
         """
-
         def make_condition(arg, _negate=False):
             if isinstance(arg, str):
                 return arg, _negate
             elif isinstance(arg, AndList):
-                return '(' + ' AND '.join([make_condition(element)[0] for element in arg]) + ')', _negate
+                if arg:
+                    return '(' + ' AND '.join([make_condition(element)[0] for element in arg]) + ')', _negate
+                else:
+                    return 'FALSE' if _negate else 'TRUE', False
 
-            # semijoin or antijoin
+            #  semijoin or antijoin
             elif isinstance(arg, RelationalOperand):
                 common_attributes = [q for q in self.heading.names if q in arg.heading.names]
                 if not common_attributes:
@@ -71,59 +103,32 @@ class AndList(Sequence):
                 # element of a record array
                 condition = ['`%s`=%s' % (k, arg[k]) for k in arg.dtype.fields if k in self.heading]
             else:
-                raise DataJointError('invalid restriction type')
+                raise DataJointError('Invalid restriction type')
             return ' AND '.join(condition) if condition else 'TRUE', _negate
 
-        if not self:
+        if len(self.restrictions) == 0:  # an empty list -> no WHERE clause
             return ''
 
+        # An empty or-list in the restrictions immediately causes an empty result
+        assert isinstance(self.restrictions, AndList)
+        if any(is_empty_or_list(r) for r in self.restrictions):
+            return ' WHERE FALSE'
+
         conditions = []
-        for item in self:
+        for item in self.restrictions:
             negate = isinstance(item, Not)
             if negate:
-                item = item.restriction
+                item = item.restriction  # NOT is added below
             if isinstance(item, (list, tuple, set, np.ndarray)):
-                # sets of conditions are ORed
-                item = '(' + ') OR ('.join([make_condition(q)[0] for q in item]) + ')'
+                # process an OR list
+                temp = [make_condition(q)[0] for q in item if q is not is_empty_or_list(q)]
+                item = '(' + ') OR ('.join(temp) + ')' if temp else 'FALSE'
             else:
                 item, negate = make_condition(item, negate)
             if not item:
                 raise DataJointError('Empty condition')
             conditions.append(('NOT (%s)' if negate else '(%s)') % item)
         return ' WHERE ' + ' AND '.join(conditions)
-
-    def __repr__(self):
-        return 'AND List: ' + repr(self._list)
-
-
-class RelationalOperand(metaclass=abc.ABCMeta):
-    """
-    RelationalOperand implements relational algebra and fetch methods.
-    RelationalOperand objects reference other relation objects linked by operators.
-    The leaves of this tree of objects are base relations.
-    When fetching data from the database, this tree of objects is compiled into an SQL expression.
-    It is a mixin class that provides relational operators, iteration, and fetch capability.
-    RelationalOperand operators are: restrict, pro, and join.
-    """
-
-    _restrictions = None
-
-    @property
-    def restrictions(self):
-        if self._restrictions is None:
-            self._restrictions = AndList(self.heading)
-        return self._restrictions
-
-    def clear_restrictions(self):
-        self._restrictions = None
-
-    @property
-    def primary_key(self):
-        return self.heading.primary_key
-
-    @property
-    def where_clause(self):
-        return self.restrictions.where_clause()
 
     # --------- abstract properties -----------
 
@@ -171,15 +176,21 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         relational projection operator.  See RelationalOperand.project
         """
-        return self.project(*attributes)
+        return self.proj(*attributes)
 
-    def project(self, *attributes, **renamed_attributes):
+    def project(self, *args, **kwargs):
+        """
+        alias for self.proj() for backward compatibility
+        """
+        return self.proj(*args, **kwargs)
+
+    def proj(self, *attributes, **renamed_attributes):
         """
         Relational projection operator.
         :param attributes: a list of attribute names to be included in the result.
         :return: a new relation with selected fields
         Primary key attributes are always selected and cannot be excluded.
-        Therefore obj.project() produces a relation with only the primary key attributes.
+        Therefore obj.proj() produces a relation with only the primary key attributes.
         If attributes includes the string '*', all attributes are selected.
         Each attribute can only be used once in attributes or renamed_attributes.  Therefore, the projected
         relation cannot have more attributes than the original relation.
@@ -203,43 +214,111 @@ class RelationalOperand(metaclass=abc.ABCMeta):
 
     def __iand__(self, restriction):
         """
-        in-place restriction by a single condition
+        in-place restriction
+
+        See relational_operand.restrict for more detail.
         """
         self.restrict(restriction)
+        return self
 
     def __and__(self, restriction):
         """
         relational restriction or semijoin
         :return: a restricted copy of the argument
+
+        See relational_operand.restrict for more detail.
         """
         ret = copy(self)
         ret.clear_restrictions()
-        ret.restrict(restriction, *list(self.restrictions))
+        ret.restrict(self.restrictions)
+        ret.restrict(restriction)
         return ret
 
-    def restrict(self, *restrictions):
+    def __isub__(self, restriction):
         """
-        In-place restriction. Primarily intended for datajoint's internal use.
-        Users are encouraged to use self & restriction to apply a restriction.
-        Each condition in restrictions is applied and the conditions are combined with AND.
-        However, each member of restrictions can be a list of conditions, which are combined with OR.
-        :param restrictions: list of restrictions.
+        in-place inverted restriction
+
+        See relational_operand.restrict for more detail.
         """
-        self.restrictions.add(*restrictions)
+        self.restrict(Not(restriction))
+        return self
+
+    def __sub__(self, restriction):
+        """
+        inverse restriction aka antijoin
+        :return: a restricted copy of the argument
+
+        See relational_operand.restrict for more detail.
+        """
+        return self & Not(restriction)
+
+    def restrict(self, restriction):
+        """
+        In-place restriction.  Restricts the relation to a subset of its original tuples.
+        rel.restrict(restriction)  is equivalent to  rel = rel & restriction  or  rel &= restriction
+        rel.restrict(Not(restriction))  is equivalent to  rel = rel - restriction  or  rel -= restriction
+        The primary key of the result is unaffected.
+        Successive restrictions are combined using the logical AND.
+        The AndList class is provided to play the role of successive restrictions.
+        Any relation, collection, or sequence other than an AndList are treated as OrLists.
+        However, the class OrList is still provided for cases when explicitness is required.
+        Inverse restriction is accomplished by either using the subtraction operator or the Not class.
+
+        The expressions in each row equivalent:
+        rel & 'TRUE'                        rel
+        rel & 'FALSE'                       the empty relation
+        rel - cond                          rel & Not(cond)
+        rel - 'TRUE'                        rel & 'FALSE'
+        rel - 'FALSE'                       rel
+        rel & AndList((cond1,cond2))        rel & cond1 & cond2
+        rel & AndList()                     rel
+        rel & [cond1, cond2]                rel & OrList((cond1, cond2))
+        rel & []                            rel & 'FALSE'
+        rel & None                          rel & 'FALSE'
+        rel & any_empty_relation            rel & 'FALSE'
+        rel - AndList((cond1,cond2))        rel & [Not(cond1), Not(cond2)]
+        rel - [cond1, cond2]                rel & Not(cond1) & Not(cond2)
+        rel - AndList()                     rel & 'FALSE'
+        rel - []                            rel
+        rel - None                          rel
+        rel - any_empty_relation            rel
+
+        When arg is another relation, the restrictions  rel & arg  and  rel - arg  become the relational semijoin and
+        antijoin operators, respectively.
+        Then,  rel & arg  restricts rel to tuples that match at least one tuple in arg (hence arg is treated as an OrList).
+        Conversely,  rel - arg  restricts rel to tuples that do not match any tuples in arg.
+        Two tuples match when their common attributes have equal values or when they have no common attributes.
+        All shared attributes must be in the primary key of either rel or arg or both or an error will be raised.
+
+        relational_operand.restrict is the only access point that modifies restrictions. All other operators must
+        ultimately call restrict()
+
+        :param restriction: a sequence or an array (treated as OR list), another relation, an SQL condition string, or
+        an AndList.
+        """
+        if isinstance(restriction, AndList):
+            self.restrictions.extend(restriction)
+        elif is_empty_or_list(restriction):
+            self.clear_restrictions()
+            self.restrictions.append('FALSE')
+        else:
+            self.restrictions.append(restriction)
+
+    @property
+    def fetch1(self):
+        return Fetch1(self)
+
+    @property
+    def fetch(self):
+        return Fetch(self)
 
     def attributes_in_restrictions(self):
         """
         :return: list of attributes that are probably used in the restrictions.
         This is used internally for optimizing SQL statements
         """
-        s = self.restrictions.where_clause()  # avoid calling multiple times
+        s = self.where_clause
         return set(name for name in self.heading.names if name in s)
-
-    def __sub__(self, restriction):
-        """
-        inverted restriction aka antijoin
-        """
-        return self & (None if is_empty_set(restriction) else Not(restriction))
 
     @abc.abstractmethod
     def _repr_helper(self):
@@ -253,7 +332,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             if self._restrictions:
                 ret += ' & %r' % self._restrictions
         else:
-            rel = self.project(*self.heading.non_blobs)  # project out blobs
+            rel = self.proj(*self.heading.non_blobs)  # project out blobs
             limit = config['display.limit']
             width = config['display.width']
 
@@ -262,7 +341,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
 
             widths = {f: min(max([len(f)] + [len(str(e)) for e in tups[f]])+4,width) for f in columns}
 
-            templates = {f:'%%-%d.%ds' % (widths[f], widths[f]) for f in columns}
+            templates = {f: '%%-%d.%ds' % (widths[f], widths[f]) for f in columns}
             repr_string = ' '.join([templates[column] % column for column in columns]) + '\n'
             repr_string += ' '.join(['+' + '-' * (widths[column] - 2) + '+' for column in columns]) + '\n'
             for tup in tups:
@@ -276,7 +355,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
 
     def _repr_html_(self):
         limit = config['display.limit']
-        rel = self.project(*self.heading.non_blobs)  # project out blobs
+        rel = self.proj(*self.heading.non_blobs)  # project out blobs
         columns = rel.heading.names
         content = dict(
             head='</th><th>'.join(columns),
@@ -303,7 +382,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         return 'SELECT {fields} FROM {from_}{where}{group}'.format(
             fields=select_fields if select_fields else self.select_fields,
             from_=self.from_clause,
-            where=self.restrictions.where_clause(),
+            where=self.where_clause,
             group=' GROUP BY `%s`' % '`,`'.join(self.primary_key) if self._grouped else '')
 
     def __len__(self):
@@ -341,14 +420,6 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         logger.debug(sql)
         return self.connection.query(sql, as_dict=as_dict)
 
-    @property
-    def fetch1(self):
-        return Fetch1(self)
-
-    @property
-    def fetch(self):
-        return Fetch(self)
-
 
 class Not:
     """
@@ -372,8 +443,8 @@ class Join(RelationalOperand):
         self._arg1 = Subquery(arg1) if isinstance(arg1, Projection) else arg1
         self._arg2 = Subquery(arg2) if isinstance(arg2, Projection) else arg2
         self._heading = self._arg1.heading.join(self._arg2.heading, left=left)
-        self.restrict(*list(self._arg1.restrictions))
-        self.restrict(*list(self._arg2.restrictions))
+        self.restrict(self._arg1.restrictions)
+        self.restrict(self._arg2.restrictions)
         self._left = left
 
     def _repr_helper(self):
@@ -402,7 +473,7 @@ class Join(RelationalOperand):
 class Projection(RelationalOperand):
     def __init__(self, arg, *attributes, **renamed_attributes):
         """
-        See RelationalOperand.project()
+        See RelationalOperand.proj()
         """
         # parse attributes in the form 'sql_expression -> new_attribute'
         alias_parser = re.compile(
@@ -424,10 +495,10 @@ class Projection(RelationalOperand):
         if use_subquery:
             self._arg = Subquery(arg)
         else:
-            self.restrict(*list(arg.restrictions))
+            self.restrict(arg.restrictions)
 
     def _repr_helper(self):
-        return "(%r).project(%r)" % (self._arg, self._attributes)
+        return "(%r).proj(%r)" % (self._arg, self._attributes)
 
     @property
     def connection(self):
@@ -435,7 +506,7 @@ class Projection(RelationalOperand):
 
     @property
     def heading(self):
-        return self._arg.heading.project(*self._attributes, **self._renamed_attributes)
+        return self._arg.heading.proj(*self._attributes, **self._renamed_attributes)
 
     @property
     def _grouped(self):
@@ -451,17 +522,6 @@ class Projection(RelationalOperand):
         ret = Subquery(self) if do_subquery else self
         ret.restrict(restriction)
         return ret
-
-    def restrict(self, *restrictions):
-        """
-        Override restrict: when restricting on renamed attributes, enclose in subquery
-        """
-        has_restriction = any(isinstance(r, RelationalOperand) or r for r in restrictions)
-        do_subquery = has_restriction and self.heading.computed
-        if do_subquery:
-            # TODO fix this for the case (r & key).aggregate(m='compute')
-            raise DataJointError('In-place restriction on renamed attributes is not allowed')
-        super().restrict(*restrictions)
 
 
 class Aggregation(Projection):
@@ -506,5 +566,10 @@ class Subquery(RelationalOperand):
         return "%r" % self._arg
 
 
-def is_empty_set(arg):
-    return isinstance(arg, (list, set, tuple, np.ndarray, RelationalOperand)) and len(arg) == 0
+def is_empty_or_list(arg):
+    """
+    returns true if the argument is equivalent to an empty OR list.
+    """
+    return not isinstance(arg, AndList) and (
+        arg is None or
+        isinstance(arg, (list, set, tuple, np.ndarray, RelationalOperand)) and len(arg) == 0)

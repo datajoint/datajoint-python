@@ -5,8 +5,6 @@ Hosts the table tiers, user relations should be derived from.
 from .base_relation import BaseRelation
 from .autopopulate import AutoPopulate
 from .utils import from_camel_case
-from . import DataJointError
-import re
 
 _base_regexp = r'[a-z]+[a-z0-9]*(_[a-z]+[a-z0-9]*)*'
 
@@ -47,17 +45,10 @@ class Manual(UserRelation):
     _prefix = r''
     _regexp = r'(?P<manual>' + _prefix + _base_regexp + ')'
 
-    @property
-    def table_name(self):
-        """
-        :returns: the table name of the table formatted for mysql.
-        """
-        return self._prefix + from_camel_case(self.__class__.__name__)
-
     @classproperty
     def table_name(cls):
         """
-        :returns: the table name of the table formatted for mysql.
+        :returns: the table name of the table formatted for SQL.
         """
         return from_camel_case(cls.__name__)
 
@@ -96,13 +87,6 @@ class Imported(UserRelation, AutoPopulate):
     _prefix = '_'
     _regexp = r'(?P<imported>' + _prefix + _base_regexp + ')'
 
-    @property
-    def table_name(self):
-        """
-        :returns: the table name of the table formatted for mysql.
-        """
-        return self._prefix + from_camel_case(self.__class__.__name__)
-
     @classproperty
     def table_name(cls):
         """
@@ -120,17 +104,10 @@ class Computed(UserRelation, AutoPopulate):
     _prefix = '__'
     _regexp = r'(?P<computed>' + _prefix + _base_regexp + ')'
 
-    @property
-    def table_name(self):
-        """
-        :returns: the table name of the table formatted for mysql.
-        """
-        return self._prefix + from_camel_case(self.__class__.__name__)
-
     @classproperty
     def table_name(cls):
         """
-        :returns: the table name of the table formatted for mysql.
+        :returns: the table name of the table formatted for SQL.
         """
         return cls._prefix + from_camel_case(cls.__name__)
 
@@ -143,8 +120,9 @@ class Part(BaseRelation):
     Part relations are implemented as classes inside classes.
     """
 
-    _regexp = r'(?P<master>' + '|'.join([c._regexp for c in [Manual, Imported, Computed, Lookup]]) + r'){1,1}' \
-              + '__' + r'(?P<part>' + _base_regexp + ')'
+    _regexp = r'(?P<master>' + '|'.join(
+        [c._regexp for c in [Manual, Imported, Computed, Lookup]]
+    ) + r'){1,1}' + '__' + r'(?P<part>' + _base_regexp + ')'
 
     _master = None
 

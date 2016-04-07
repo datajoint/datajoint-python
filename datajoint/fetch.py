@@ -190,7 +190,7 @@ class Fetch(Iterable, Callable):
         """
         Iterator that returns primary keys.
         """
-        yield from self._relation.project().fetch.set_behavior(**dict(self.behavior, as_dict=True, **kwargs))
+        yield from self._relation.proj().fetch.set_behavior(**dict(self.behavior, as_dict=True, **kwargs))
 
     def __getitem__(self, item):
         """

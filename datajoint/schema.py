@@ -5,12 +5,10 @@ import re
 from . import conn, DataJointError
 from datajoint.utils import to_camel_case
 from .heading import Heading
-from .base_relation import BaseRelation
 from .user_relations import Part, Computed, Imported, Manual, Lookup
 import inspect
 
 logger = logging.getLogger(__name__)
-from warnings import warn
 
 
 class Schema:

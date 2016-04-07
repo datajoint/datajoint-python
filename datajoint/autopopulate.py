@@ -3,7 +3,7 @@ import abc
 import logging
 import datetime
 import random
-from .relational_operand import RelationalOperand
+from .relational_operand import RelationalOperand, AndList
 from . import DataJointError
 from .base_relation import FreeRelation
 
@@ -56,13 +56,12 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         """
         return self
 
-    def populate(self, restriction=None, suppress_errors=False,
-                 reserve_jobs=False, order="original"):
+    def populate(self, *restrictions, suppress_errors=False, reserve_jobs=False, order="original"):
         """
         rel.populate() calls rel._make_tuples(key) for every primary key in self.populated_from
         for which there is not already a tuple in rel.
 
-        :param restriction: restriction on rel.populated_from - target
+        :param restrictions: a list of restrictions each restrict (rel.populated_from - target.proj())
         :param suppress_errors: suppresses error if true
         :param reserve_jobs: if true, reserves job to populate in asynchronous fashion
         :param order: "original"|"reverse"|"random"  - the order of execution
@@ -77,13 +76,13 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         todo = self.populated_from
         if not isinstance(todo, RelationalOperand):
             raise DataJointError('Invalid populated_from value')
-        todo.restrict(restriction)
+        todo.restrict(AndList(restrictions))
 
         error_list = [] if suppress_errors else None
 
-        jobs = self.connection.jobs[self.target.database]
-        table_name = self.target.table_name
-        keys = (todo - self.target.project()).fetch.keys()
+        jobs = self.connection.jobs[self.target.database] if reserve_jobs else None
+        todo -= self.target.proj()
+        keys = todo.fetch.keys()
         if order == "reverse":
             keys = list(keys)
             keys.reverse()
@@ -94,12 +93,12 @@ class AutoPopulate(metaclass=abc.ABCMeta):
             raise DataJointError('Invalid order specification')
 
         for key in keys:
-            if not reserve_jobs or jobs.reserve(table_name, key):
+            if not reserve_jobs or jobs.reserve(self.target.table_name, key):
                 self.connection.start_transaction()
                 if key in self.target:  # already populated
                     self.connection.cancel_transaction()
                     if reserve_jobs:
-                        jobs.complete(table_name, key)
+                        jobs.complete(self.target.table_name, key)
                 else:
                     logger.info('Populating: ' + str(key))
                     try:
@@ -107,7 +106,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
                     except Exception as error:
                         self.connection.cancel_transaction()
                         if reserve_jobs:
-                            jobs.error(table_name, key, error_message=str(error))
+                            jobs.error(self.target.table_name, key, error_message=str(error))
                         if not suppress_errors:
                             raise
                         else:
@@ -116,7 +115,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
                     else:
                         self.connection.commit_transaction()
                         if reserve_jobs:
-                            jobs.complete(table_name, key)
+                            jobs.complete(self.target.table_name, key)
         return error_list
 
     def progress(self, restriction=None, display=True):

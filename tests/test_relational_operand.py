@@ -92,16 +92,16 @@ class TestRelational:
 
         # test pairing
         # Approach 1: join then restrict
-        x = A().project(a1='id_a', c1='cond_in_a')
-        y = A().project(a2='id_a', c2='cond_in_a')
+        x = A().proj(a1='id_a', c1='cond_in_a')
+        y = A().proj(a2='id_a', c2='cond_in_a')
         rel = x*y & 'c1=0' & 'c2=1'
         assert_equal(len(x & 'c1=0')+len(y & 'c2=1'), len(A()),
                      'incorrect restriction')
         assert_equal(len(rel), len(x & 'c1=0')*len(y & 'c2=1'),
                      'incorrect pairing')
         # Approach 2: restrict then join
-        x = (A() & 'cond_in_a=0').project(a1='id_a')
-        y = (A() & 'cond_in_a=1').project(a2='id_a')
+        x = (A() & 'cond_in_a=0').proj(a1='id_a')
+        y = (A() & 'cond_in_a=1').proj(a2='id_a')
         assert_equal(len(rel), len(x*y))
 
     @staticmethod
@@ -186,7 +186,7 @@ class TestRelational:
     @staticmethod
     def test_join_project_optimization():
         """Test optimization for join of projected relations with matching non-primary key"""
-        print(DataA().project() * DataB().project())
+        print(DataA().project() * DataB().proj())
         print(DataA())
-        assert_true(len(DataA().project() * DataB().project()) == len(DataA()) == len(DataB()),
+        assert_true(len(DataA().project() * DataB().proj()) == len(DataA()) == len(DataB()),
                     "Join of projected relations does not work")

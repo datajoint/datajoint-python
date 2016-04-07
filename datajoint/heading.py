@@ -184,7 +184,7 @@ class Heading:
                     attr['dtype'] = numeric_types[(t, is_unsigned)]
         self.attributes = OrderedDict([(q['name'], Attribute(**q)) for q in attributes])
 
-    def project(self, *attribute_list, **renamed_attributes):
+    def proj(self, *attribute_list, **renamed_attributes):
         """
         derive a new heading by selecting, renaming, or computing attributes.
         In relational algebra these operators are known as project, rename, and expand.
