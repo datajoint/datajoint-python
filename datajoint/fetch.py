@@ -1,12 +1,11 @@
 from collections import OrderedDict
 from collections.abc import Callable, Iterable
-from functools import wraps
 import warnings
 
 from .blob import unpack
 import numpy as np
 from datajoint import DataJointError
-from . import key as PRIMARY_KEY, config
+from . import key as PRIMARY_KEY
 
 
 def prepare_attributes(relation, item):
@@ -107,7 +106,6 @@ class Fetch(Iterable, Callable):
         :param offset: the number of tuples to skip in the returned result
         :param limit: the maximum number of tuples to return
         :param order_by: the list of attributes to order the results. No ordering should be assumed if order_by=None.
-        :param descending: the list of attributes to order the results
         :param as_dict: returns a list of dictionaries instead of a record array
         :return: the contents of the relation in the form of a structured numpy.array
 
@@ -208,7 +206,6 @@ class Fetch1(Callable):
     def __call__(self):
         """
         This version of fetch is called when self is expected to contain exactly one tuple.
-
         :return: the one tuple in the relation in the form of a dict
         """
         heading = self._relation.heading
