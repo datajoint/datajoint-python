@@ -129,13 +129,6 @@ class TestFetch:
             assert_true(k == c == (self.lang & key).fetch1[ke],
                         'Values are not the same')
 
-    def test_copy(self):
-        """Test whether modifications copy the object"""
-        f = self.lang.fetch
-        f2 = f.order_by('name')
-        assert_true(f.behavior['order_by'] is None and len(f2.behavior['order_by']) == 1,
-                    'Object was not copied')
-
     def test_repr(self):
         """Test string representation of fetch, returning table preview"""
         repr = self.subject.fetch.__repr__()

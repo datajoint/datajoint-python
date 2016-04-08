@@ -228,7 +228,7 @@ class Heading:
 
         return Heading(attribute_list)
 
-    def join(self, other, left):
+    def join(self, other, aggregated):
         """
         Joins two headings.
         """
@@ -237,7 +237,7 @@ class Heading:
         for name in other.names:
             if name not in self.names:
                 attribute = other.attributes[name]._asdict();
-                if left:
+                if aggregated:
                     attribute['in_key'] = False
                 attribute_list.append(attribute)
         return Heading(attribute_list)

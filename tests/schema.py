@@ -131,7 +131,7 @@ class Ephys(dj.Imported):
     -> Trial
     ----
     sampling_frequency :double  # (Hz)
-    duration           :double  # (s)
+    duration           :decimal(7,3)  # (s)
     """
 
     class Channel(dj.Part):

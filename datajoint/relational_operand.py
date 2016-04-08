@@ -1,4 +1,4 @@
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 import numpy as np
 import abc
 import re
@@ -44,12 +44,11 @@ class OrList(list):
 
 class RelationalOperand(metaclass=abc.ABCMeta):
     """
-    RelationalOperand implements relational algebra and fetch methods.
-    RelationalOperand objects reference other relation objects linked by operators.
+    RelationalOperand implements the relational algebra.
+    RelationalOperand objects link other relational operands with relational operators.
     The leaves of this tree of objects are base relations.
     When fetching data from the database, this tree of objects is compiled into an SQL expression.
-    It is a mixin class that provides relational operators, iteration, and fetch capability.
-    RelationalOperand operators are: restrict, pro, and join.
+    RelationalOperand operators are restrict, join, proj, and aggregate.
     """
 
     _restrictions = None
@@ -111,7 +110,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
 
         # An empty or-list in the restrictions immediately causes an empty result
         assert isinstance(self.restrictions, AndList)
-        if any(is_empty_or_list(r) for r in self.restrictions):
+        if any(restricts_to_empty(r) for r in self.restrictions):
             return ' WHERE FALSE'
 
         conditions = []
@@ -121,7 +120,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
                 item = item.restriction  # NOT is added below
             if isinstance(item, (list, tuple, set, np.ndarray)):
                 # process an OR list
-                temp = [make_condition(q)[0] for q in item if q is not is_empty_or_list(q)]
+                temp = [make_condition(q)[0] for q in item if q is not restricts_to_empty(q)]
                 item = '(' + ') OR ('.join(temp) + ')' if temp else 'FALSE'
             else:
                 item, negate = make_condition(item, negate)
@@ -197,19 +196,20 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         return Projection(self, *attributes, **renamed_attributes)
 
-    def aggregate(self, group, *attributes, **renamed_attributes):
+    def aggregate(self, group, *attributes, left=False, **renamed_attributes):
         """
         Relational aggregation operator
 
         :param group:  relation whose tuples can be used in aggregation operators
         :param attributes:
+        :param left: true if need to preserve the number of tuples in the left relation (LEFT JOIN is used in aggregation)
         :param renamed_attributes:
         :return: a relation representing the aggregation/projection operator result
         """
         if not isinstance(group, RelationalOperand):
             raise DataJointError('The second argument must be a relation')
         return Aggregation(
-            Join(self, group, left=True),
+            Join(self, group, aggregated=True, left=left),
             *attributes, **renamed_attributes)
 
     def __iand__(self, restriction):
@@ -265,20 +265,22 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         Inverse restriction is accomplished by either using the subtraction operator or the Not class.
 
         The expressions in each row equivalent:
+        rel & True                          rel
+        rel & False                         the empty relation
         rel & 'TRUE'                        rel
         rel & 'FALSE'                       the empty relation
         rel - cond                          rel & Not(cond)
-        rel - 'TRUE'                        rel & 'FALSE'
+        rel - 'TRUE'                        rel & False
         rel - 'FALSE'                       rel
         rel & AndList((cond1,cond2))        rel & cond1 & cond2
         rel & AndList()                     rel
         rel & [cond1, cond2]                rel & OrList((cond1, cond2))
-        rel & []                            rel & 'FALSE'
-        rel & None                          rel & 'FALSE'
-        rel & any_empty_relation            rel & 'FALSE'
+        rel & []                            rel & False
+        rel & None                          rel & False
+        rel & any_empty_relation            rel & False
         rel - AndList((cond1,cond2))        rel & [Not(cond1), Not(cond2)]
         rel - [cond1, cond2]                rel & Not(cond1) & Not(cond2)
-        rel - AndList()                     rel & 'FALSE'
+        rel - AndList()                     rel & False
         rel - []                            rel
         rel - None                          rel
         rel - any_empty_relation            rel
@@ -296,9 +298,11 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         :param restriction: a sequence or an array (treated as OR list), another relation, an SQL condition string, or
         an AndList.
         """
+        if restriction is True or isinstance(restriction, str) and restriction.upper() == "TRUE":
+            return
         if isinstance(restriction, AndList):
             self.restrictions.extend(restriction)
-        elif is_empty_or_list(restriction):
+        elif restricts_to_empty(restriction):
             self.clear_restrictions()
             self.restrictions.append('FALSE')
         else:
@@ -435,14 +439,15 @@ class Join(RelationalOperand):
     Relational join
     """
 
-    def __init__(self, arg1, arg2, left=False):
+    def __init__(self, arg1, arg2, aggregated=False, left=False):
+        assert not left or aggregated     # left can be set only in aggregation
         if not isinstance(arg2, RelationalOperand):
             raise DataJointError('a relation can only be joined with another relation')
         if arg1.connection != arg2.connection:
             raise DataJointError('Cannot join relations with different database connections')
         self._arg1 = Subquery(arg1) if isinstance(arg1, Projection) else arg1
         self._arg2 = Subquery(arg2) if isinstance(arg2, Projection) else arg2
-        self._heading = self._arg1.heading.join(self._arg2.heading, left=left)
+        self._heading = self._arg1.heading.join(self._arg2.heading, aggregated=aggregated)
         self.restrict(self._arg1.restrictions)
         self.restrict(self._arg2.restrictions)
         self._left = left
@@ -566,10 +571,93 @@ class Subquery(RelationalOperand):
         return "%r" % self._arg
 
 
-def is_empty_or_list(arg):
+class U:
     """
-    returns true if the argument is equivalent to an empty OR list.
+    dj.U objects are special relations representing all possible values their attributes.
+    dj.U objects cannot be queried on their own but are useful for forming some relational queries.
+    dj.U('attr1', ..., 'attrn') represents a relation with the primary key attributes attr1 ... attrn.
+    The body of the relation is filled with all possible combinations of values of the attributes.
+    Without any attributes, dj.U() represents the relation with one tuple and no attributes.
+    The Third Manifesto refers to dj.U() as TABLE_DEE.
+
+    Relational restriction:
+    dj.U can be used to enumerate unique combinations of values of attributes from other relations.
+
+    The following expression produces a relation containing all unique combinations of contrast and brightness
+    found in relation stimulus:
+    dj.U('contrast', 'brightness') & stimulus
+
+    The following expression produces a relation containing all unique combinations of contrast and brightness that is
+    contained in relation1 but not contained in relation 2.
+    (dj.U('contrast', 'brightness') & relation1) - relation2
+
+
+    Relational aggregation:
+    In aggregation, dj.U is used to compute aggregate expressions on the entire relation.
+
+    The following expression produces a relation with one tuple and one attribute s containing the total number
+    of tuples in relation:
+    dj.U().aggregate(relation, n='count(*)')
+
+    The following expression produces a relation with one tuple containing the number n of distinct values of attr
+    in relation.
+    dj.U().aggregate(relation, n='count(distinct attr)')
+
+
+    The following expression produces a relation with one tuple and one attribute s containing the total sum of attr
+      from relation:
+    dj.U().aggregate(relation, s='sum(attr)')   # sum of attr from the entire relation
+
+    The following expression produces a relation with the count n of tuples in relation containing each unique
+    combination of values in attr1 and attr2.
+    dj.U(attr1,attr2).aggregate(relation, n='count(*)')
+
+
+    Joins:
+    If relation rel has attributes 'attr1' and 'attr2', then rel*dj.U('attr1','attr2') or produces a relation that is
+    identical to rel except attr1 and attr2 are included in the primary key.  This is useful for producing a join on
+    non-primary key attributes.
+    For example, if attr is in both rel1 and rel2 but not in their primary  keys, then rel1*rel2 will throw an error
+    because in most cases, it does not make sense to join on non-primary key attributes and users must first rename
+    attr in one of the operands.  The expression dj.U('attr')*rel1*rel2 overrides this constraint.
+    Join is commutative.
+    """
+
+    def __init__(self, *attributes):
+        self._attributes = attributes
+
+    def __and__(self, relation):
+        return _U(relation, self._attributes).proj(self.attributes)
+
+    def __sub__(self, relation):
+        return self & relation
+
+    def __mul__(self, relation):
+        return _U(relation)
+
+    def aggregate(self, relation, *args, **kwargs):
+        return _U(relation, self._attributes, grouped=True).proj(*args, **kwargs)
+
+
+class _U(RelationalOperand):
+    """
+    Helper class for class U
+    """
+
+    def __init__(self, relation):
+        if not isinstance(relation, RelationalOperand):
+            raise DataJointError('dj.U objects can only be restricted with other restrictions')
+        self._relation = relation
+
+    @property
+    def connection(self):
+        return self._relation.connection
+
+
+def restricts_to_empty(arg):
+    """
+    returns true for such args that for any (relation & arg) results in the empty relation.
     """
     return not isinstance(arg, AndList) and (
-        arg is None or
+        arg is None or arg is False or isinstance(arg, str) and arg.upper() == "FALSE" or
         isinstance(arg, (list, set, tuple, np.ndarray, RelationalOperand)) and len(arg) == 0)

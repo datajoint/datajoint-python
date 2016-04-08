@@ -118,12 +118,12 @@ class AutoPopulate(metaclass=abc.ABCMeta):
                             jobs.complete(self.target.table_name, key)
         return error_list
 
-    def progress(self, restriction=None, display=True):
+    def progress(self, *restrictions, display=True):
         """
         report progress of populating this table
         :return: remaining, total -- tuples to be populated
         """
-        todo = self.populated_from & restriction
+        todo = self.populated_from & AndList(restrictions)
         total = len(todo)
         remaining = len(todo - self.target.project())
         if display:

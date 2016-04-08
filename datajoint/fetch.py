@@ -6,8 +6,7 @@ import warnings
 from .blob import unpack
 import numpy as np
 from datajoint import DataJointError
-from . import key as PRIMARY_KEY
-from . import config
+from . import key as PRIMARY_KEY, config
 
 
 def prepare_attributes(relation, item):
@@ -36,20 +35,6 @@ def prepare_attributes(relation, item):
     return item, attributes
 
 
-def copy_first(f):
-    """
-    Decorates methods that return an altered copy of self
-    """
-
-    @wraps(f)
-    def ret(*args, **kwargs):
-        args = list(args)
-        args[0] = args[0].__class__(args[0])  # call copy constructor
-        return f(*args, **kwargs)
-
-    return ret
-
-
 class Fetch(Iterable, Callable):
     """
     A fetch object that handles retrieving elements from the database table.
@@ -58,14 +43,9 @@ class Fetch(Iterable, Callable):
     """
 
     def __init__(self, relation):
-        if isinstance(relation, Fetch):  # copy constructor
-            self.behavior = dict(relation.behavior)
-            self._relation = relation._relation
-        else:
-            self.behavior = dict(offset=None, limit=None, order_by=None, as_dict=False)
-            self._relation = relation
+        self.behavior = dict(offset=None, limit=None, order_by=None, as_dict=False)
+        self._relation = relation
 
-    @copy_first
     def order_by(self, *args):
         """
         Changes the state of the fetch object to order the results by a particular attribute.
@@ -84,7 +64,6 @@ class Fetch(Iterable, Callable):
         return self
 
     @property
-    @copy_first
     def as_dict(self):
         """
         Changes the state of the fetch object to return dictionaries.
@@ -99,7 +78,6 @@ class Fetch(Iterable, Callable):
         self.behavior['as_dict'] = True
         return self
 
-    @copy_first
     def limit(self, limit):
         """
         Limits the number of items fetched.
@@ -110,7 +88,6 @@ class Fetch(Iterable, Callable):
         self.behavior['limit'] = limit
         return self
 
-    @copy_first
     def offset(self, offset):
         """
         Offsets the number of itms fetched. Needs to be applied with limit.
@@ -121,17 +98,6 @@ class Fetch(Iterable, Callable):
         if self.behavior['limit'] is None:
             warnings.warn('You should supply a limit together with an offset,')
         self.behavior['offset'] = offset
-        return self
-
-    @copy_first
-    def set_behavior(self, **kwargs):
-        """
-        Sets the behavior like offset, limit, or order_by via keywords arguments.
-
-        :param kwargs:  keyword arguments
-        :return: a copy of the fetch object
-        """
-        self.behavior.update(kwargs)
         return self
 
     def __call__(self, **kwargs):
@@ -190,7 +156,7 @@ class Fetch(Iterable, Callable):
         """
         Iterator that returns primary keys.
         """
-        yield from self._relation.proj().fetch.set_behavior(**dict(self.behavior, as_dict=True, **kwargs))
+        yield from self._relation.proj().fetch(**dict(self.behavior, as_dict=True, **kwargs))
 
     def __getitem__(self, item):
         """
