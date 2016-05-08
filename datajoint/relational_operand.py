@@ -624,39 +624,28 @@ class U:
     """
 
     def __init__(self, *attributes):
+        self._join = None
         self._attributes = attributes
 
-    def __and__(self, relation):
-        return _U(relation, self._attributes).proj(self.attributes)
+    def __and__(self, arg):
+        if not isinstance(self, RelationalOperand):
+            raise DataJointError('Relation U can only be restricted with another relation')
+        return arg._forced_proj(*self._attributes)
 
-    def __sub__(self, relation):
-        return self & relation
+    def __mul__(self, arg):
+        if not isinstance(self, RelationalOperand):
+            raise DataJointError('Relation U can only be jointed with another relation')
+        return arg._augment_primary_key(self._attributes)
 
-    def __mul__(self, relation):
-        return _U(relation)
-
-    def aggregate(self, relation, *args, **kwargs):
-        return _U(relation, self._attributes, grouped=True).proj(*args, **kwargs)
-
-
-class _U(RelationalOperand):
-    """
-    Helper class for class U
-    """
-
-    def __init__(self, relation):
-        if not isinstance(relation, RelationalOperand):
-            raise DataJointError('dj.U objects can only be restricted with other restrictions')
-        self._relation = relation
-
-    @property
-    def connection(self):
-        return self._relation.connection
+    def aggregate(self, arg, **computed_attributes):
+        if not isinstance(arg, RelationalOperand):
+            raise DataJointError('Relation U can only aggregate over another relation')
+        return arg._forced_proj(*self._attributes, aggregated=True, **computed_attributes)
 
 
 def restricts_to_empty(arg):
     """
-    returns true for such args that for any (relation & arg) results in the empty relation.
+    returns true if restriction to arg will produce the empty relation.
     """
     return not isinstance(arg, AndList) and (
         arg is None or arg is False or isinstance(arg, str) and arg.upper() == "FALSE" or

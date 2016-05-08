@@ -23,9 +23,6 @@ class TestFetch:
 
         tmp = self.subject.fetch(order_by=['subject_id'])
 
-        for column, field in zip(self.subject.fetch[:], [e[0] for e in tmp.dtype.descr]):
-            np.testing.assert_array_equal(sorted(tmp[field]), sorted(column), 'slice : does not work correctly')
-
         subject_notes, key, real_id = self.subject.fetch['subject_notes', dj.key, 'real_id']
         #
         np.testing.assert_array_equal(sorted(subject_notes), sorted(tmp['subject_notes']))
@@ -33,16 +30,11 @@ class TestFetch:
         np.testing.assert_array_equal(sorted(key, key=itemgetter(0)),
                                       sorted(self.subject.project().fetch(), key=itemgetter(0)))
 
-        for column, field in zip(self.subject.fetch['subject_id'::2], [e[0] for e in tmp.dtype.descr][::2]):
-            np.testing.assert_array_equal(sorted(tmp[field]), sorted(column), 'slice : does not work correctly')
-
     def test_getitem_for_fetch1(self):
         """Testing Fetch1.__getitem__"""
         assert_true((self.subject & "subject_id=10").fetch1['subject_id'] == 10)
         assert_equal((self.subject & "subject_id=10").fetch1['subject_id', 'species'],
                      (10, 'monkey'))
-        assert_equal((self.subject & "subject_id=10").fetch1['subject_id':'species'],
-                     (10, 'Curious George'))
 
     def test_order_by(self):
         """Tests order_by sorting order"""
@@ -58,7 +50,6 @@ class TestFetch:
     def test_order_by_default(self):
         """Tests order_by sorting order with defaults"""
         langs = schema.Language.contents
-
         cur = self.lang.fetch.order_by('language', 'name DESC')()
         langs.sort(key=itemgetter(0), reverse=True)
         langs.sort(key=itemgetter(1), reverse=False)
@@ -69,7 +60,6 @@ class TestFetch:
     def test_order_by_direct(self):
         """Tests order_by sorting order passing it to __call__"""
         langs = schema.Language.contents
-
         cur = self.lang.fetch(order_by=['language', 'name DESC'])
         langs.sort(key=itemgetter(0), reverse=True)
         langs.sort(key=itemgetter(1), reverse=False)

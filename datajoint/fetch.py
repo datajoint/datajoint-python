@@ -8,33 +8,26 @@ from datajoint import DataJointError
 from . import key as PRIMARY_KEY
 
 
-def prepare_attributes(relation, item):
-    """
-    Used by fetch.__getitem__ to deal with slices
-
-    :param relation: the relation that created the fetch object
-    :param item: the item passed to __getitem__. Can be a string, a tuple, a list, or a slice.
-
-    :return: a tuple of items to fetch, a list of the corresponding attributes
-    :raise DataJointError: if item does not match one of the datatypes above
-    """
-    if isinstance(item, str) or item is PRIMARY_KEY:
-        item = (item,)
-    elif isinstance(item, int):
-        item = (relation.heading.names[item],)
-    elif isinstance(item, slice):
-        attributes = relation.heading.names
-        start = attributes.index(item.start) if isinstance(item.start, str) else item.start
-        stop = attributes.index(item.stop) if isinstance(item.stop, str) else item.stop
-        item = attributes[slice(start, stop, item.step)]
-    try:
-        attributes = tuple(i for i in item if i is not PRIMARY_KEY)
-    except TypeError:
-        raise DataJointError("Index must be a slice, a tuple, a list, a string.")
-    return item, attributes
+class FetchBase:
+    def _prepare_attributes(self, item):
+        """
+        Used by fetch.__getitem__ to deal with slices
+        :param item: the item passed to __getitem__. Can be a string, a tuple, a list, or a slice.
+        :return: a tuple of items to fetch, a list of the corresponding attributes
+        :raise DataJointError: if item does not match one of the datatypes above
+        """
+        if isinstance(item, str) or item is PRIMARY_KEY:
+            item = (item,)
+        elif isinstance(item, int):
+            item = (self._relation.heading.names[item],)
+        try:
+            attributes = tuple(i for i in item if i is not PRIMARY_KEY)
+        except TypeError:
+            raise DataJointError("Index must be a sequence or a string.")
+        return item, attributes
 
 
-class Fetch(Iterable, Callable):
+class Fetch(FetchBase, Callable, Iterable):
     """
     A fetch object that handles retrieving elements from the database table.
 
@@ -70,7 +63,6 @@ class Fetch(Iterable, Callable):
         :return: a copy of the fetch object
 
         Example:
-
         >>> my_relation.fetch.as_dict()
 
         """
@@ -108,7 +100,6 @@ class Fetch(Iterable, Callable):
         :param order_by: the list of attributes to order the results. No ordering should be assumed if order_by=None.
         :param as_dict: returns a list of dictionaries instead of a record array
         :return: the contents of the relation in the form of a structured numpy.array
-
         """
         behavior = dict(self.behavior, **kwargs)
         if behavior['limit'] is None and behavior['offset'] is not None:
@@ -163,15 +154,11 @@ class Fetch(Iterable, Callable):
         :return: tuple with an entry for each element of item
 
         Examples:
-
         >>> a, b = relation['a', 'b']
         >>> a, b, key = relation['a', 'b', datajoint.key]
-        >>> results = relation['a':'z']    # return attributes a-z as a tuple
-        >>> results = relation[:-1]   # return all but the last attribute
         """
         single_output = isinstance(item, str) or item is PRIMARY_KEY or isinstance(item, int)
-        item, attributes = prepare_attributes(self._relation, item)
-
+        item, attributes = self._prepare_attributes(item)
         result = self._relation.project(*attributes).fetch(**self.behavior)
         return_values = [
             np.ndarray(result.shape,
@@ -193,7 +180,7 @@ class Fetch(Iterable, Callable):
         return len(self._relation)
 
 
-class Fetch1(Callable):
+class Fetch1(FetchBase, Callable):
     """
     Fetch object for fetching exactly one row.
 
@@ -214,7 +201,6 @@ class Fetch1(Callable):
         ret = cur.fetchone()
         if not ret or cur.fetchone():
             raise DataJointError('fetch1 should only be used for relations with exactly one tuple')
-
         return OrderedDict((name, unpack(ret[name]) if heading[name].is_blob else ret[name])
                            for name in heading.names)
 
@@ -222,30 +208,22 @@ class Fetch1(Callable):
         """
         Fetch attributes as separate outputs.
         datajoint.key is a special value that requests the entire primary key
-
         :return: tuple with an entry for each element of item
 
         Examples:
-
         >>> a, b = relation['a', 'b']
         >>> a, b, key = relation['a', 'b', datajoint.key]
-        >>> results = relation['a':'z']    # return attributes a-z as a tuple
-        >>> results = relation[:-1]   # return all but the last attribute
-
         """
         single_output = isinstance(item, str) or item is PRIMARY_KEY or isinstance(item, int)
-        item, attributes = prepare_attributes(self._relation, item)
-
+        item, attributes = self._prepare_attributes(item)
         result = self._relation.project(*attributes).fetch()
         if len(result) != 1:
-            raise DataJointError('Fetch1 should only return one tuple')
-
+            raise DataJointError('Fetch1 should only return one tuple. %d tuples were found' % len(result))
         return_values = tuple(
             np.ndarray(result.shape,
                        np.dtype({name: result.dtype.fields[name] for name in self._relation.primary_key}),
                        result, 0, result.strides)
             if attribute is PRIMARY_KEY
             else result[attribute][0]
-            for attribute in item
-        )
+            for attribute in item)
         return return_values[0] if single_output else return_values
