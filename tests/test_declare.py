@@ -51,6 +51,7 @@ class TestDeclare:
 
     def test_dependencies(self):
         assert_equal(user.children(primary=False), [experiment.full_table_name])
+        assert_equal(experiment.parents(primary=False), [user.full_table_name])
 
         assert_equal(subject.children(primary=True), [experiment.full_table_name])
         assert_equal(experiment.parents(primary=True), [subject.full_table_name])
