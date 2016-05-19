@@ -31,13 +31,12 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         """
         if self._populated_from is None:
             self.connection.dependencies.load()
-            parents = [FreeRelation(self.target.connection, rel) for rel in self.target.parents]
+            parents = self.target.parents(primary=True)
             if not parents:
                 raise DataJointError('A relation must have parent relations to be able to be populated')
-            ret = parents.pop(0)
+            self._populated_from = FreeRelation(self.connection, parents.pop(0)).proj()
             while parents:
-                ret *= parents.pop(0)
-            self._populated_from = ret
+                self._populated_from *= FreeRelation(self.connection, parents.pop(0)).proj()
         return self._populated_from
 
     @abc.abstractmethod

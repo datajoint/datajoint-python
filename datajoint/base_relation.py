@@ -11,6 +11,7 @@ from .relational_operand import RelationalOperand
 from .blob import pack
 from .utils import user_choice
 from .heading import Heading
+import networkx as nx
 
 logger = logging.getLogger(__name__)
 
@@ -86,67 +87,25 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         return '*'
 
-    def erd(self, *args, fill=True, mode='updown', **kwargs):
+    def parents(self, primary=None):
         """
-        :param mode: diffent methods of creating a graph pertaining to this relation.
-        Currently options includes the following:
-        * 'updown': Contains this relation and all other nodes that can be reached within specific
-        number of ups and downs in the graph. ups(=2) and downs(=2) are optional keyword arguments
-        * 'ancestors': Returs
-        :return: the entity relationship diagram object of this relation
+        :param primary: if None, then all parents are returned. If True, then only foreign keys composed of
+        primary key attributes are considered.  If False, the only foreign keys including at least one non-primary
+        attribute are considered.
+        :return: list of tables referenced with self's foreign keys
         """
-        erd = self.connection.erd()
-        if mode == 'updown':
-            nodes = erd.up_down_neighbors(self.full_table_name, *args, **kwargs)
-        elif mode == 'ancestors':
-            nodes = erd.ancestors(self.full_table_name, *args, **kwargs)
-        elif mode == 'descendants':
-            nodes = erd.descendants(self.full_table_name, *args, **kwargs)
-        else:
-            raise DataJointError('Unsupported erd mode', 'Mode "%s" is currently not supported' % mode)
-        return erd.restrict_by_tables(nodes, fill=fill)
+        return [p[0] for p in self.connection.dependencies.in_edges(self.full_table_name, data=True)
+                if primary is None or p[2]['primary'] == primary]
 
-    # ------------- dependencies ---------- #
-    @property
-    def parents(self):
+    def children(self, primary=None):
         """
-        :return: the parent relation of this relation
+        :param primary: if None, then all parents are returned. If True, then only foreign keys composed of
+        primary key attributes are considered.  If False, the only foreign keys including at least one non-primary
+        attribute are considered.
+        :return: list of tables with foreign keys referencing self
         """
-        return self.connection.dependencies.parents[self.full_table_name]
-
-    @property
-    def children(self):
-        """
-        :return: the child relations of this relation
-        """
-        return self.connection.dependencies.children[self.full_table_name]
-
-    @property
-    def references(self):
-        """
-        :return: list of tables that this tables refers to
-        """
-        return self.connection.dependencies.references[self.full_table_name]
-
-    @property
-    def referenced(self):
-        """
-        :return: list of tables for which this table is referenced by
-        """
-        return self.connection.dependencies.referenced[self.full_table_name]
-
-    @property
-    def descendants(self):
-        """
-        Returns a list of relation objects for all children and references, recursively,
-        in order of dependence. The returned values do not include self.
-        This is helpful for cascading delete or drop operations.
-
-        :return: list of descendants
-        """
-        relations = (FreeRelation(self.connection, table)
-                     for table in self.connection.dependencies.get_descendants(self.full_table_name))
-        return [relation for relation in relations if relation.is_declared]
+        return [p[1] for p in self.connection.dependencies.out_edges(self.full_table_name, data=True)
+                if primary is None or p[2]['primary'] == primary]
 
     def _repr_helper(self):
         """
@@ -330,7 +289,8 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         self.connection.dependencies.load()
 
         # construct a list (OrderedDict) of relations to delete
-        relations = OrderedDict((r.full_table_name, r) for r in self.descendants)
+        tables = self.connection.dependencies.descendants(self.full_table_name)
+        relations = OrderedDict((r, FreeRelation(self.connection, r)) for r in tables)
 
         # construct restrictions for each relation
         restrict_by_me = set()
@@ -339,9 +299,9 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
             restrict_by_me.add(self.full_table_name)
             restrictions[self.full_table_name].append(self.restrictions)  # copy own restrictions
         for r in relations.values():
-            restrict_by_me.update(r.references)
+            restrict_by_me.update(r.children(primary=False))
         for name, r in relations.items():
-            for dep in (r.children + r.references):
+            for dep in r.children():
                 if name in restrict_by_me:
                     restrictions[dep].append(r)
                 else:
@@ -394,14 +354,14 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         self.connection.dependencies.load()
         do_drop = True
-        relations = self.descendants
+        tables = self.connection.dependencies.descendants(self.full_table_name)
         if config['safemode']:
-            for relation in relations:
-                print(relation.full_table_name, '(%d tuples)' % len(relation))
+            for table in tables:
+                print(table, '(%d tuples)' % len(FreeRelation(self.connection, table)))
             do_drop = user_choice("Proceed?", default='no') == 'yes'
         if do_drop:
-            while relations:
-                relations.pop().drop_quick()
+            for table in reversed(tables):
+                FreeRelation(self.connection, table).drop_quick()
             print('Tables dropped.')
 
     @property

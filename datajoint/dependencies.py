@@ -1,10 +1,8 @@
-from collections import defaultdict
 import pyparsing as pp
-from . import DataJointError
-from functools import wraps
+import networkx as nx
 
 
-class Dependencies:
+class Dependencies(nx.DiGraph):
     """
     Lookup for dependencies between tables
     """
@@ -13,43 +11,8 @@ class Dependencies:
 
     def __init__(self, conn):
         self._conn = conn
-        self._parents = dict()
-        self._referenced = dict()
-        self._children = defaultdict(list)
-        self._references = defaultdict(list)
-
-
-    @property
-    def parents(self):
-        return self._parents
-
-    @property
-    def children(self):
-        return self._children
-
-    @property
-    def references(self):
-        return self._references
-
-    @property
-    def referenced(self):
-        return self._referenced
-
-    def get_descendants(self, full_table_name):
-        """
-        :param full_table_name: a table name in the format `database`.`table_name`
-        :return: list of all children and references, in order of dependence.
-        This is helpful for cascading delete or drop operations.
-        """
-        ret = defaultdict(lambda: 0)
-
-        def recurse(name, level):
-            ret[name] = max(ret[name], level)
-            for child in self.children[name] + self.references[name]:
-                recurse(child, level+1)
-
-        recurse(full_table_name, 0)
-        return sorted(ret.keys(), key=ret.__getitem__)
+        self.loaded_tables = set()
+        super().__init__(self)
 
     @staticmethod
     def __foreign_key_parser(database):
@@ -69,21 +32,20 @@ class Dependencies:
 
     def load(self):
         """
-        Load dependencies for all tables that have not yet been loaded in all registered schemas
+        Load dependencies for all loaded schemas.
+        This method gets called before any operation that requires dependencies: delete, drop, populate, progress.
         """
         for database in self._conn.schemas:
             cur = self._conn.query('SHOW TABLES FROM `{database}`'.format(database=database))
             fk_parser = self.__foreign_key_parser(database)
-            # list tables that have not yet been loaded, exclude service tables that starts with ~
             tables = ('`{database}`.`{table_name}`'.format(database=database, table_name=info[0])
-                      for info in cur if not info[0].startswith('~'))
-            tables = (name for name in tables if name not in self._parents)
+                      for info in cur if not info[0].startswith('~'))  # exclude service tables
             for name in tables:
-                self._parents[name] = list()
-                self._referenced[name] = list()
-                # fetch the CREATE TABLE statement
-                create_statement = self._conn.query('SHOW CREATE TABLE %s' % name).fetchone()
-                create_statement = create_statement[1].split('\n')
+                if name in self.loaded_tables:
+                    continue
+                self.loaded_tables.add(name)
+                self.add_node(name)
+                create_statement = self._conn.query('SHOW CREATE TABLE %s' % name).fetchone()[1].split('\n')
                 primary_key = None
                 for line in create_statement:
                     if primary_key is None:
@@ -98,31 +60,13 @@ class Dependencies:
                     except pp.ParseException:
                         pass
                     else:
-                        if not primary_key:
-                            raise DataJointError('No primary key found %s' % name)
-                        if result.referenced_attributes != result.attributes:
-                            raise DataJointError(
-                                "%s's foreign key refers to differently named attributes in %s"
-                                % (self.__class__.__name__, result.referenced_table))
-                        if all(q in primary_key for q in [s.strip('` ') for s in result.attributes.split(',')]):
-                            self._parents[name].append(result.referenced_table)
-                            self._children[result.referenced_table].append(name)
-                        else:
-                            self._referenced[name].append(result.referenced_table)
-                            self._references[result.referenced_table].append(name)
+                        self.add_edge(result.referenced_table, name,
+                                      primary=all(r.strip('` ') in primary_key for r in result.attributes.split(',')))
 
-    def get_descendants(self, full_table_name):
+    def descendants(self, full_table_name):
         """
-        :param full_table_name: a table name in the format `database`.`table_name`
-        :return: list of all children and references, in order of dependence.
-        This is helpful for cascading delete or drop operations.
+        :param full_table_name:  In form `schema`.`table_name`
+        :return: all dependent tables sorted by path length, including self.
         """
-        ret = defaultdict(lambda: 0)
-
-        def recurse(name, level):
-            ret[name] = max(ret[name], level)
-            for child in self.children[name] + self.references[name]:
-                recurse(child, level+1)
-
-        recurse(full_table_name, 0)
-        return sorted(ret.keys(), key=ret.__getitem__)
+        path = nx.shortest_path_length(self, full_table_name)
+        return sorted(path.keys(), key=path.__getitem__)

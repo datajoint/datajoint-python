@@ -190,3 +190,7 @@ class UnterTrash(dj.Manual):
         UberTrash().insert1((1,), skip_duplicates=True)
         self.insert1((1, 1), skip_duplicates=True)
         self.insert1((1, 2), skip_duplicates=True)
+
+d = schema.connection.dependencies
+d.load()
+p = Trial().parents
