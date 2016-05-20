@@ -11,7 +11,6 @@ from .relational_operand import RelationalOperand
 from .blob import pack
 from .utils import user_choice
 from .heading import Heading
-import networkx as nx
 
 logger = logging.getLogger(__name__)
 

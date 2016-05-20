@@ -65,4 +65,3 @@ class TestDeclare:
         assert_equal(ephys.children(primary=True), [channel.full_table_name])
         assert_equal(channel.parents(primary=True), [ephys.full_table_name])
 
-

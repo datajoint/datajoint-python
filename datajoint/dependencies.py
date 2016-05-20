@@ -1,5 +1,6 @@
 import pyparsing as pp
 import networkx as nx
+from . import DataJointError
 
 
 class Dependencies(nx.DiGraph):
@@ -9,8 +10,8 @@ class Dependencies(nx.DiGraph):
     __primary_key_parser = (pp.CaselessLiteral('PRIMARY KEY') +
                             pp.QuotedString('(', endQuoteChar=')').setResultsName('primary_key'))
 
-    def __init__(self, conn):
-        self._conn = conn
+    def __init__(self):
+        self._conn = None
         self.loaded_tables = set()
         super().__init__(self)
 
@@ -62,6 +63,8 @@ class Dependencies(nx.DiGraph):
                     else:
                         self.add_edge(result.referenced_table, name,
                                       primary=all(r.strip('` ') in primary_key for r in result.attributes.split(',')))
+        if not nx.is_directed_acyclic_graph(self):
+            raise DataJointError('DataJoint can only work with acyclic dependencies')
 
     def descendants(self, full_table_name):
         """

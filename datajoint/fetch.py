@@ -1,10 +1,9 @@
 from collections import OrderedDict
 from collections.abc import Callable, Iterable
-import warnings
-
-from .blob import unpack
 import numpy as np
-from datajoint import DataJointError
+import warnings
+from .blob import unpack
+from . import DataJointError
 from . import key as PRIMARY_KEY
 
 

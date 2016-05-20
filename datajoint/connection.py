@@ -67,7 +67,8 @@ class Connection:
         self._in_transaction = False
         self.jobs = JobManager(self)
         self.schemas = dict()
-        self.dependencies = Dependencies(self)
+        self.dependencies = Dependencies()
+        self.dependencies._conn = self
 
     def __del__(self):
         logger.info('Disconnecting {user}@{host}:{port}'.format(**self.conn_info))

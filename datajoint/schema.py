@@ -45,19 +45,16 @@ class Schema:
                                      " an attempt to create has failed. Check"
                                      " permissions.".format(database=database))
         else:
-            for table_name in map(itemgetter(0),
-                                  connection.query(
-                                      'SHOW TABLES in {database}'.format(database=self.database)).fetchall()):
-                class_name, class_obj = self.create_userrelation_from_table(table_name)
-
+            for row in connection.query('SHOW TABLES in {database}'.format(database=self.database)):
+                class_name, class_obj = self._create_missing_relation_class(row[0])
+                # Add the missing class to the context
                 # decorate class with @schema if it is not None and not a dj.Part
-                context[class_name] = self(class_obj) \
-                    if class_obj is not None and not issubclass(class_obj, Part) else class_obj
-
-
+                context[class_name] = (
+                    class_obj if class_obj is None or issubclass(class_obj, Part)
+                    else self(class_obj))
         connection.register(self)
 
-    def create_userrelation_from_table(self, table_name):
+    def _create_missing_relation_class(self, table_name):
         """
         Creates the appropriate python user relation classes from tables in a database. The tier of the class
         is inferred from the table name.
@@ -78,12 +75,11 @@ class Schema:
             if re.fullmatch(Part._regexp, table_name):
                 groups = re.fullmatch(Part._regexp, table_name).groupdict()
                 master_table_name = groups['master']
-                master_name, master_class = self.create_userrelation_from_table(master_table_name)
+                master_name, master_class = self._create_missing_relation_class(master_table_name)
                 class_name = to_camel_case(groups['part'])
                 class_obj = type(class_name, (Part,), dict(definition=...))
                 setattr(master_class, class_name, class_obj)
                 class_name, class_obj = master_name, master_class
-
             elif re.fullmatch(Computed._regexp, table_name):
                 class_obj = type(class_name, (Computed,), dict(definition=..., _make_tuples=_make_tuples))
             elif re.fullmatch(Imported._regexp, table_name):
@@ -94,7 +90,6 @@ class Schema:
                 class_obj = type(class_name, (Manual,), dict(definition=...))
             else:
                 class_obj = None
-
             Schema.table2class[self.database, table_name] = class_name, class_obj
         return class_name, class_obj
 
