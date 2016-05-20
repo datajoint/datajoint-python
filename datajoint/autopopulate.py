@@ -30,7 +30,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
                 or the scope of populate() calls.
         """
         if self._populated_from is None:
-            self.connection.dependencies.load()
+            self.connection.dependencies.load(self.full_table_name)
             parents = self.target.parents(primary=True)
             if not parents:
                 raise DataJointError('A relation must have parent relations to be able to be populated')
