@@ -70,7 +70,11 @@ class TestDelete:
         assert_false(dj.config['safemode'], 'safemode must be off for testing')
         assert_true(bool(L() and A() and B() and B.C() and D() and E() and E.F()),
                     'schema is not populated')
-        L().delete()
+        try:
+            L().delete()
+        except Exception as e:
+            raise
+
         assert_false(bool(L() or D() or E() or E.F()), 'incomplete delete')
         A().delete()  # delete all is necessary because delete L deletes from subtables.
 

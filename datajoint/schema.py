@@ -17,8 +17,6 @@ class Schema:
     well as a namespace for looking up foreign key references in table declaration.
     """
 
-    table2class = {}
-
     def __init__(self, database, context, connection=None):
         """
         Associates the specified database with this schema object. If the target database does not exist
@@ -66,31 +64,27 @@ class Schema:
         """
         class_name = to_camel_case(table_name)
 
-        def _make_tuples(other, key):
+        def _make_tuples_stub(other, key):
             raise NotImplementedError("This is an automatically created class. _make_tuples is not implemented.")
 
-        if (self.database, table_name) in Schema.table2class:
-            class_name, class_obj = Schema.table2class[self.database, table_name]
+        if re.fullmatch(Part._regexp, table_name):
+            groups = re.fullmatch(Part._regexp, table_name).groupdict()
+            master_table_name = groups['master']
+            master_name, master_class = self._create_missing_relation_class(master_table_name)
+            class_name = to_camel_case(groups['part'])
+            class_obj = type(class_name, (Part,), dict(definition=...))
+            setattr(master_class, class_name, class_obj)
+            class_name, class_obj = master_name, master_class
+        elif re.fullmatch(Computed._regexp, table_name):
+            class_obj = type(class_name, (Computed,), dict(definition=..., _make_tuples=_make_tuples_stub))
+        elif re.fullmatch(Imported._regexp, table_name):
+            class_obj = type(class_name, (Imported,), dict(definition=..., _make_tuples=_make_tuples_stub))
+        elif re.fullmatch(Lookup._regexp, table_name):
+            class_obj = type(class_name, (Lookup,), dict(definition=...))
+        elif re.fullmatch(Manual._regexp, table_name):
+            class_obj = type(class_name, (Manual,), dict(definition=...))
         else:
-            if re.fullmatch(Part._regexp, table_name):
-                groups = re.fullmatch(Part._regexp, table_name).groupdict()
-                master_table_name = groups['master']
-                master_name, master_class = self._create_missing_relation_class(master_table_name)
-                class_name = to_camel_case(groups['part'])
-                class_obj = type(class_name, (Part,), dict(definition=...))
-                setattr(master_class, class_name, class_obj)
-                class_name, class_obj = master_name, master_class
-            elif re.fullmatch(Computed._regexp, table_name):
-                class_obj = type(class_name, (Computed,), dict(definition=..., _make_tuples=_make_tuples))
-            elif re.fullmatch(Imported._regexp, table_name):
-                class_obj = type(class_name, (Imported,), dict(definition=..., _make_tuples=_make_tuples))
-            elif re.fullmatch(Lookup._regexp, table_name):
-                class_obj = type(class_name, (Lookup,), dict(definition=...))
-            elif re.fullmatch(Manual._regexp, table_name):
-                class_obj = type(class_name, (Manual,), dict(definition=...))
-            else:
-                class_obj = None
-            Schema.table2class[self.database, table_name] = class_name, class_obj
+            class_obj = None
         return class_name, class_obj
 
     def drop(self):
