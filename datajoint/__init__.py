@@ -17,7 +17,7 @@ __all__ = ['__author__', '__version__',
            'config', 'conn', 'kill',
            'Connection', 'Heading', 'BaseRelation', 'FreeRelation', 'Not', 'schema',
            'Manual', 'Lookup', 'Imported', 'Computed', 'Part',
-           'AndList', 'OrList', 'erd']
+           'AndList', 'OrList', 'ERD']
 
 
 class key:
@@ -74,4 +74,4 @@ from .relational_operand import Not, AndList, OrList
 from .heading import Heading
 from .schema import Schema as schema
 from .kill import kill
-from .erd import erd
+from .erd import ERD

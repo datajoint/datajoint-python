@@ -112,7 +112,7 @@ class Computed(UserRelation, AutoPopulate):
         return cls._prefix + from_camel_case(cls.__name__)
 
 
-class Part(BaseRelation):
+class Part(UserRelation):
     """
     Inherit from this class if the table's values are details of an entry in another relation
     and if this table is populated by this relation. For example, the entries inheriting from

@@ -10,14 +10,14 @@ class Dependencies(nx.DiGraph):
     __primary_key_parser = (pp.CaselessLiteral('PRIMARY KEY') +
                             pp.QuotedString('(', endQuoteChar=')').setResultsName('primary_key'))
 
-    def __init__(self):
-        self._conn = None
+    def __init__(self, connection):
+        self._conn = connection
         self.loaded_tables = set()
         super().__init__(self)
 
     @staticmethod
     def __foreign_key_parser(database):
-        def add_database(string, loc, toc):
+        def paste_database(unused1, unused2, toc):
             return ['`{database}`.`{table}`'.format(database=database, table=toc[0])]
 
         return (pp.CaselessLiteral('CONSTRAINT').suppress() +
@@ -26,7 +26,7 @@ class Dependencies(nx.DiGraph):
                 pp.QuotedString('(', endQuoteChar=')').setResultsName('attributes') +
                 pp.CaselessLiteral('REFERENCES') +
                 pp.Or([
-                    pp.QuotedString('`').setParseAction(add_database),
+                    pp.QuotedString('`').setParseAction(paste_database),
                     pp.Combine(pp.QuotedString('`', unquoteResults=False) + '.' +
                                pp.QuotedString('`', unquoteResults=False))]).setResultsName('referenced_table') +
                 pp.QuotedString('(', endQuoteChar=')').setResultsName('referenced_attributes'))
@@ -79,8 +79,7 @@ class Dependencies(nx.DiGraph):
     def descendants(self, full_table_name):
         """
         :param full_table_name:  In form `schema`.`table_name`
-        :return: all dependent tables sorted in topological order.
+        :return: all dependent tables sorted in topological order.  Self is included.
         """
         nodes = nx.algorithms.dag.descendants(self, full_table_name)
-        nodes = [full_table_name] + nx.algorithms.dag.topological_sort(self, nodes)
-        return nodes
+        return [full_table_name] + nx.algorithms.dag.topological_sort(self, nodes)
