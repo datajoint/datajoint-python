@@ -29,11 +29,13 @@ class ERD(nx.DiGraph):
 
     Usage:
     >>>  erd = Erd(source)
-    where source may be a datajoint.Schema, a datajoint.BaseRelation, or sequence of such objects.
+    source can be a base relation object, a base relation class, a schema, or a module that has a schema
+    or source can be a sequence of such objects.
 
     >>> erd.draw()
     draws the diagram using pyplot
 
+    erd1 + erd2  - combines the two ERDs.
     erd + n   - adds n levels of successors
     erd - n   - adds n levens of predecessors
     Thus dj.ERD(schema.Table)+1-1 defines the diagram of immediate ancestors and descendants of schema.Table
@@ -43,36 +45,63 @@ class ERD(nx.DiGraph):
     """
     def __init__(self, source):
         try:
-            connection = source.connection
+            first_source = source[0]
+        except TypeError:
             source = [source]
-        except AttributeError:
+
+        try:
             connection = source[0].connection
-        connection.dependencies.load()   # reload all dependencies
+        except AttributeError:
+            try:
+                connection = source[0].schema.connection
+            except AttributeError:
+                raise DataJointError('Could find database connection in %s' % repr(source[0]))
+
+        connection.dependencies.load()
         super().__init__(connection.dependencies)
 
         self.nodes_to_show = set()
         for source in source:
-            if isinstance(source, UserRelation):
+            try:
                 self.nodes_to_show.add(source.full_table_name)
-            elif isinstance(source, schema):
+            except AttributeError:
+                try:
+                    database = source.database
+                except AttributeError:
+                    try:
+                        database = source.schema.database
+                    except AttributeError:
+                        raise DataJointError('Cannot plot ERD for %s' % repr(source))
                 for node in self:
-                    if node.startswith('`%s`' % source.database):
+                    if node.startswith('`%s`' % database):
                         self.nodes_to_show.add(node)
 
-    def __sub__(self, nsteps):
-        for i in range(nsteps):
-            new = nx.algorithms.boundary.node_boundary(nx.DiGraph(self).reverse(), self.nodes_to_show)
-            if not new:
-                break
-            self.nodes_to_show.update(new)
+    def __sub__(self, other):
+        try:
+            self.nodes_to_show.difference_update(other.nodes_to_show)
+        except AttributeError:
+            nsteps = other
+            for i in range(nsteps):
+                new = nx.algorithms.boundary.node_boundary(nx.DiGraph(self).reverse(), self.nodes_to_show)
+                if not new:
+                    break
+                self.nodes_to_show.update(new)
         return self
 
-    def __add__(self, nsteps):
-        for i in range(nsteps):
-            new = nx.algorithms.boundary.node_boundary(self, self.nodes_to_show)
-            if not new:
-                break
-            self.nodes_to_show.update(new)
+    def __add__(self, other):
+        try:
+            self.nodes_to_show.update(other.nodes_to_show)
+        except AttributeError:
+            nsteps = other
+            for i in range(nsteps):
+                new = nx.algorithms.boundary.node_boundary(self, self.nodes_to_show)
+                if not new:
+                    break
+                self.nodes_to_show.update(new)
+        return self
+
+    def __mul__(self, other):
+        self.nodes_to_show.intersection_update(other.nodes_to_show)
         return self
 
     def _make_graph(self):
@@ -195,7 +224,7 @@ class ERD(nx.DiGraph):
 
         # normalize
         x -= x.min()
-        x /= (x.max()+0.01)
+        x /= (x.max() + 0.01)
         y -= y.min()
         y /= (y.max() + 0.01)
         return {node: (x, y) for node, x, y in zip(nodes, x, y)}
