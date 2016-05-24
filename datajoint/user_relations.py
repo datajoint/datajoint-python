@@ -25,7 +25,7 @@ class UserRelation(BaseRelation):
     _connection = None
     _context = None
     _heading = None
-    _regexp = None
+    tier_regexp = None
     _prefix = None
 
     @classproperty
@@ -43,7 +43,7 @@ class Manual(UserRelation):
     """
 
     _prefix = r''
-    _regexp = r'(?P<manual>' + _prefix + _base_regexp + ')'
+    tier_regexp = r'(?P<manual>' + _prefix + _base_regexp + ')'
 
     @classproperty
     def table_name(cls):
@@ -61,7 +61,7 @@ class Lookup(UserRelation):
     """
 
     _prefix = '#'
-    _regexp = r'(?P<lookup>' + _prefix + _base_regexp.replace('TIER', 'lookup') + ')'
+    tier_regexp = r'(?P<lookup>' + _prefix + _base_regexp.replace('TIER', 'lookup') + ')'
 
     @classproperty
     def table_name(cls):
@@ -85,7 +85,7 @@ class Imported(UserRelation, AutoPopulate):
     """
 
     _prefix = '_'
-    _regexp = r'(?P<imported>' + _prefix + _base_regexp + ')'
+    tier_regexp = r'(?P<imported>' + _prefix + _base_regexp + ')'
 
     @classproperty
     def table_name(cls):
@@ -102,7 +102,7 @@ class Computed(UserRelation, AutoPopulate):
     """
 
     _prefix = '__'
-    _regexp = r'(?P<computed>' + _prefix + _base_regexp + ')'
+    tier_regexp = r'(?P<computed>' + _prefix + _base_regexp + ')'
 
     @classproperty
     def table_name(cls):
@@ -120,8 +120,8 @@ class Part(UserRelation):
     Part relations are implemented as classes inside classes.
     """
 
-    _regexp = r'(?P<master>' + '|'.join(
-        [c._regexp for c in [Manual, Imported, Computed, Lookup]]
+    tier_regexp = r'(?P<master>' + '|'.join(
+        [c.tier_regexp for c in (Manual, Lookup, Imported, Computed)]
     ) + r'){1,1}' + '__' + r'(?P<part>' + _base_regexp + ')'
 
     _master = None

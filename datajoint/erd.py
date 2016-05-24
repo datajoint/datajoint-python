@@ -1,11 +1,11 @@
 import networkx as nx
 import numpy as np
 import re
-from scipy.optimize import minimize, basinhopping
+from scipy.optimize import minimize
 import inspect
 from . import schema, Manual, Imported, Computed, Lookup, DataJointError
 from .user_relations import UserRelation
-import time
+
 
 def get_concrete_subclasses(cls):
     for subclass in cls.__subclasses__():
@@ -13,6 +13,7 @@ def get_concrete_subclasses(cls):
         if not inspect.isabstract(subclass):
             yield subclass
         yield from get_concrete_subclasses(subclass)
+
 
 class ERD(nx.DiGraph):
     """
@@ -72,10 +73,10 @@ class ERD(nx.DiGraph):
         # set node colors
         def get_color(table_name):
             return (
-            'black' if re.match(Manual._regexp, table_name) else
-            'gray' if re.match(Lookup._regexp, table_name) else
-            'red' if re.match(Computed._regexp, table_name) else
-            'blue' if re.match(Imported._regexp, table_name) else
+            'black' if re.fullmatch(Manual._regexp, table_name) else
+            'gray' if re.fullmatch(Lookup._regexp, table_name) else
+            'red' if re.fullmatch(Computed._regexp, table_name) else
+            'blue' if re.fullmatch(Imported._regexp, table_name) else
             'orange')
         nx.set_node_attributes(
             graph, 'color', {n: get_color(n.split('`')[-2]) for n in graph})
@@ -135,8 +136,8 @@ class ERD(nx.DiGraph):
             placed_neighbors = neighbors.difference(unplaced)
             placed_other = set(graph.nodes()).difference(unplaced).difference(neighbors)
             x[node] = (sum(x[n] for n in placed_neighbors) -
-                    sum(x[n] for n in placed_other)+
-                        0.05*(np.random.ranf()-0.5))/(len(placed_neighbors) + len(placed_other) + 0.01)
+                       sum(x[n] for n in placed_other) +
+                       0.05*(np.random.ranf()-0.5))/(len(placed_neighbors) + len(placed_other) + 0.01)
             x[node] += (x[node] > 0)-0.5
             unplaced.remove(node)
 

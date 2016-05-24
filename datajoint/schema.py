@@ -1,4 +1,3 @@
-from operator import itemgetter
 import pymysql
 import logging
 import re
@@ -32,7 +31,7 @@ class Schema:
         self.connection = connection
         self.context = context
         if not self.exists:
-            # create schema
+            # create database
             logger.info("Database `{database}` could not be found. "
                         "Attempting to create the database.".format(database=database))
             try:
@@ -42,50 +41,48 @@ class Schema:
                 raise DataJointError("Database named `{database}` was not defined, and"
                                      " an attempt to create has failed. Check"
                                      " permissions.".format(database=database))
-        else:
-            for row in connection.query('SHOW TABLES in {database}'.format(database=self.database)):
-                class_name, class_obj = self._create_missing_relation_class(row[0])
-                # Add the missing class to the context
-                # decorate class with @schema if it is not None and not a dj.Part
-                context[class_name] = (
-                    class_obj if class_obj is None or issubclass(class_obj, Part)
-                    else self(class_obj))
         connection.register(self)
 
-    def _create_missing_relation_class(self, table_name):
+    def spawn_missing_classes(self):
         """
-        Creates the appropriate python user relation classes from tables in a database. The tier of the class
-        is inferred from the table name.
-
-        Schema stores the class objects in a class dictionary and returns those
-        when prompted for the same table from the same database again. This way, the id
-        of both returned class objects is the same and comparison with python's "is" works
-        correctly.
+        Creates the appropriate python user relation classes from tables in the database and places them
+        in the namespace.
         """
-        class_name = to_camel_case(table_name)
 
-        def _make_tuples_stub(other, key):
-            raise NotImplementedError("This is an automatically created class. _make_tuples is not implemented.")
+        def _make_tuples_stub(unused_self, unused_key):
+            raise NotImplementedError(
+                "This is an automatically created user relation class. _make_tuples is not implemented.")
 
-        if re.fullmatch(Part._regexp, table_name):
-            groups = re.fullmatch(Part._regexp, table_name).groupdict()
-            master_table_name = groups['master']
-            master_name, master_class = self._create_missing_relation_class(master_table_name)
+        tables = [row[0] for row in self.connection.query('SHOW TABLES in `%s`' % self.database)]
+
+        # declare master relation classes
+        master_classes = {}
+        part_tables = []
+        for table_name in tables:
+            class_name = to_camel_case(table_name)
+            if class_name not in self.context:
+                try:
+                    cls = next(cls for cls in (Lookup, Manual, Imported, Computed)
+                               if re.fullmatch(cls.tier_regexp, table_name))
+                except StopIteration:
+                    if re.fullmatch(cls.tier_regexp, table_name):
+                        part_tables.append(table_name)
+                else:
+                    master_classes[table_name] = type(class_name, (cls,),
+                                                      dict(definition=..., _make_tuples=_make_tuples_stub))
+        # attach parts to masters
+        for part_table in part_tables:
+            groups = re.fullmatch(Part.tier_regexp, part_table).groupdict()
+            try:
+                master_class = master_classes[to_camel_case(groups['master'])]
+            except KeyError:
+                pass   # ignore part tables with no masters
             class_name = to_camel_case(groups['part'])
-            class_obj = type(class_name, (Part,), dict(definition=...))
-            setattr(master_class, class_name, class_obj)
-            class_name, class_obj = master_name, master_class
-        elif re.fullmatch(Computed._regexp, table_name):
-            class_obj = type(class_name, (Computed,), dict(definition=..., _make_tuples=_make_tuples_stub))
-        elif re.fullmatch(Imported._regexp, table_name):
-            class_obj = type(class_name, (Imported,), dict(definition=..., _make_tuples=_make_tuples_stub))
-        elif re.fullmatch(Lookup._regexp, table_name):
-            class_obj = type(class_name, (Lookup,), dict(definition=...))
-        elif re.fullmatch(Manual._regexp, table_name):
-            class_obj = type(class_name, (Manual,), dict(definition=...))
-        else:
-            class_obj = None
-        return class_name, class_obj
+            setattr(master_class, class_name, type(class_name, (Part,), dict(definition=...)))
+
+        # place classes in context upon decorating them with the schema
+        for cls in master_classes.values():
+            self.context[cls.__name__] = self(cls)
 
     def drop(self):
         """

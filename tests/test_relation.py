@@ -142,9 +142,9 @@ class TestRelation:
         """Test whether table names are matched by regular expressions"""
         tiers = [dj.Imported, dj.Manual, dj.Lookup, dj.Computed]
         for name, rel in getmembers(schema, relation_selector):
-            assert_true(re.match(rel._regexp, rel().table_name),
+            assert_true(re.match(rel.tier_regexp, rel().table_name),
                         'Regular expression does not match for {name}'.format(name=name))
 
             for tier in itertools.filterfalse(lambda t: issubclass(rel, t), tiers):
-                assert_false(re.match(tier._regexp, rel().table_name),
+                assert_false(re.match(tier.tier_regexp, rel().table_name),
                              'Regular expression matches for {name} but should not'.format(name=name))

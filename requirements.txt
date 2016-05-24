@@ -1,4 +1,5 @@
 numpy
+scipy
 pymysql
 pyparsing
 networkx
