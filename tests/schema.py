@@ -50,7 +50,7 @@ class Subject(dj.Manual):
         [1552, '1552', 'mouse', '2015-06-15', ''],
         [1553, '1553', 'mouse', '2016-07-01', '']]
 
-    def _prepare(self):
+    def prepare(self):
         self.insert(self.contents, ignore_errors=True)
 
 
@@ -186,7 +186,7 @@ class UnterTrash(dj.Manual):
     ---
     """
 
-    def _prepare(self):
+    def prepare(self):
         UberTrash().insert1((1,), skip_duplicates=True)
         self.insert1((1, 1), skip_duplicates=True)
         self.insert1((1, 2), skip_duplicates=True)

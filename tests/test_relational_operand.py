@@ -12,8 +12,8 @@ def setup():
     """
     module-level test setup
     """
-    A()._prepare()
-    L()._prepare()
+    A().prepare()
+    L().prepare()
     B().populate()
     D().populate()
     E().populate()

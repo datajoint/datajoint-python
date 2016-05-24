@@ -48,7 +48,7 @@ class Schema:
     def spawn_missing_classes(self):
         """
         Creates the appropriate python user relation classes from tables in the database and places them
-        in the namespace.
+        in the context.
         """
 
         def _make_tuples_stub(unused_self, unused_key):
@@ -79,8 +79,9 @@ class Schema:
                 master_class = master_classes[to_camel_case(groups['master'])]
             except KeyError:
                 pass   # ignore part tables with no masters
-            class_name = to_camel_case(groups['part'])
-            setattr(master_class, class_name, type(class_name, (Part,), dict(definition=...)))
+            else:
+                class_name = to_camel_case(groups['part'])
+                setattr(master_class, class_name, type(class_name, (Part,), dict(definition=...)))
 
         # place classes in context upon decorating them with the schema
         for cls in master_classes.values():
@@ -144,7 +145,7 @@ class Schema:
                     part._master = cls
                     process_relation_class(part, context=dict(self.context, **{cls.__name__: cls}))
 
-        # invoke Relation._prepare() on class and its part relations.
+        # invoke Relation.prepare() on class and its part relations.
         if self.prepare:
             cls().prepare()
             for part in parts:
