@@ -16,7 +16,7 @@ class Schema:
     well as a namespace for looking up foreign key references in table declaration.
     """
 
-    def __init__(self, database, context, connection=None):
+    def __init__(self, database, context, connection=None, prepare=True):
         """
         Associates the specified database with this schema object. If the target database does not exist
         already, will attempt on creating the database.
@@ -24,12 +24,14 @@ class Schema:
         :param database: name of the database to associate the decorated class with
         :param context: dictionary for looking up foreign keys references, usually set to locals()
         :param connection: Connection object. Defaults to datajoint.conn()
+        :param prepare: if True, then all classes will execute cls().prepare() upon declaration
         """
         if connection is None:
             connection = conn()
         self.database = database
         self.connection = connection
         self.context = context
+        self.prepare = prepare
         if not self.exists:
             # create database
             logger.info("Database `{database}` could not be found. "
@@ -143,9 +145,10 @@ class Schema:
                     process_relation_class(part, context=dict(self.context, **{cls.__name__: cls}))
 
         # invoke Relation._prepare() on class and its part relations.
-        cls()._prepare()
-        for part in parts:
-            part()._prepare()
+        if self.prepare:
+            cls().prepare()
+            for part in parts:
+                part().prepare()
 
         return cls
 

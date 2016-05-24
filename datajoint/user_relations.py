@@ -70,7 +70,7 @@ class Lookup(UserRelation):
         """
         return cls._prefix + from_camel_case(cls.__name__)
 
-    def _prepare(self):
+    def prepare(self):
         """
         Checks whether the instance has a property called `contents` and inserts its elements.
         """
