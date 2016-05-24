@@ -3,16 +3,24 @@ import numpy as np
 import re
 from scipy.optimize import minimize
 import inspect
-from . import schema, Manual, Imported, Computed, Lookup, DataJointError
+from . import schema, Manual, Imported, Computed, Lookup, Part, DataJointError
 from .user_relations import UserRelation
 
 
-def get_concrete_subclasses(cls):
+def _get_concrete_subclasses(cls):
     for subclass in cls.__subclasses__():
         print('Subclass: ', subclass.__name__, ('-- abstract ' if inspect.isabstract(subclass) else ''))
         if not inspect.isabstract(subclass):
             yield subclass
-        yield from get_concrete_subclasses(subclass)
+        yield from _get_concrete_subclasses(subclass)
+
+
+def _get_tier(table_name):
+    try:
+        return next(tier for tier in (Manual, Lookup, Computed, Imported, Part)
+                    if re.fullmatch(tier.tier_regexp, table_name))
+    except StopIteration:
+        return None
 
 
 class ERD(nx.DiGraph):
@@ -68,24 +76,25 @@ class ERD(nx.DiGraph):
         return self
 
     def draw(self, pos=None, layout=None):
+
         graph = nx.DiGraph(self).subgraph(self.nodes_to_show)
 
-        # set node colors
-        def get_color(table_name):
-            return (
-            'black' if re.fullmatch(Manual._regexp, table_name) else
-            'gray' if re.fullmatch(Lookup._regexp, table_name) else
-            'red' if re.fullmatch(Computed._regexp, table_name) else
-            'blue' if re.fullmatch(Imported._regexp, table_name) else
-            'orange')
-        nx.set_node_attributes(
-            graph, 'color', {n: get_color(n.split('`')[-2]) for n in graph})
+        node_colors = {
+            None: 'white',
+            Manual: 'black',
+            Lookup: 'gray',
+            Computed: 'red',
+            Imported: 'blue',
+            Part: 'violet'
+        }
+        color_mapping = {n: node_colors[_get_tier(n.split('`')[-2])] for n in graph};
+        nx.set_node_attributes(graph, 'color', color_mapping)
 
         # relabel nodes to class names
-        rels = list(get_concrete_subclasses(UserRelation))
+        rels = list(_get_concrete_subclasses(UserRelation))
 
         mapping = {rel.full_table_name: rel.__name__
-                   for rel in get_concrete_subclasses(UserRelation)
+                   for rel in _get_concrete_subclasses(UserRelation)
                    if rel.full_table_name in graph}
         nx.relabel_nodes(graph, mapping, copy=False)
 

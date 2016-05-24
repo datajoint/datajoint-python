@@ -67,7 +67,7 @@ class Schema:
                     cls = next(cls for cls in (Lookup, Manual, Imported, Computed)
                                if re.fullmatch(cls.tier_regexp, table_name))
                 except StopIteration:
-                    if re.fullmatch(cls.tier_regexp, table_name):
+                    if re.fullmatch(Part.tier_regexp, table_name):
                         part_tables.append(table_name)
                 else:
                     master_classes[table_name] = type(class_name, (cls,),
@@ -76,7 +76,7 @@ class Schema:
         for part_table in part_tables:
             groups = re.fullmatch(Part.tier_regexp, part_table).groupdict()
             try:
-                master_class = master_classes[to_camel_case(groups['master'])]
+                master_class = master_classes[groups['master']]
             except KeyError:
                 pass   # ignore part tables with no masters
             else:
