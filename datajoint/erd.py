@@ -1,15 +1,15 @@
 import networkx as nx
 import numpy as np
 import re
-from scipy.optimize import minimize
+from scipy.optimize import basinhopping
 import inspect
 from . import schema, Manual, Imported, Computed, Lookup, Part, DataJointError
 from .user_relations import UserRelation
+import time
 
 
 def _get_concrete_subclasses(cls):
     for subclass in cls.__subclasses__():
-        print('Subclass: ', subclass.__name__, ('-- abstract ' if inspect.isabstract(subclass) else ''))
         if not inspect.isabstract(subclass):
             yield subclass
         yield from _get_concrete_subclasses(subclass)
@@ -75,10 +75,11 @@ class ERD(nx.DiGraph):
             self.nodes_to_show.update(new)
         return self
 
-    def draw(self, pos=None, layout=None):
-
+    def _make_graph(self):
+        """
+        Make the self.graph - a graph object ready for drawing
+        """
         graph = nx.DiGraph(self).subgraph(self.nodes_to_show)
-
         node_colors = {
             None: 'white',
             Manual: 'black',
@@ -89,30 +90,34 @@ class ERD(nx.DiGraph):
         }
         color_mapping = {n: node_colors[_get_tier(n.split('`')[-2])] for n in graph};
         nx.set_node_attributes(graph, 'color', color_mapping)
-
         # relabel nodes to class names
         rels = list(_get_concrete_subclasses(UserRelation))
-
-        mapping = {rel.full_table_name: rel.__name__
+        mapping = {rel.full_table_name: rel.__module__ + '.' + (rel._master.__name__+'.' if issubclass(rel, Part) else '') + rel.__name__
                    for rel in _get_concrete_subclasses(UserRelation)
                    if rel.full_table_name in graph}
+        new_names = [mapping.values()]
+        if len(new_names) > len(set(new_names)):
+            raise DataJointError('Some classes have identifical names. The ERD cannot be plotted.')
         nx.relabel_nodes(graph, mapping, copy=False)
+        return graph
 
+    def draw(self, pos=None, layout=None):
+        graph = self._make_graph()
         # generate layout
         if pos is None:
             pos = self._layout(graph) if layout is None else layout(graph)
-
         import matplotlib.pyplot as plt
         nx.draw_networkx(graph, pos=pos)
         ax = plt.gca()
         ax.axis('off')
-        ax.set_xlim([-0.2, 1.2])  # allow a margin for labels
+        ax.set_xlim([-0.4, 1.4])  # allow a margin for labels
+        plt.show()
 
     @staticmethod
     def _layout(graph):
         """
         :param graph:  a networkx.DiGraph object
-        :return:
+        :return: position dict keyed by node names
         """
         if not nx.is_directed_acyclic_graph(graph):
             DataJointError('This layout only works for acyclic graphs')
@@ -135,9 +140,9 @@ class ERD(nx.DiGraph):
                     m = min(depths[n] for n in graph.successors(node)) - 1
                     updated = m > depths[node]
                     depths[node] = m
+        longest_path = nx.dag_longest_path(graph)  # place at x=0
 
         # assign initial x positions
-        longest_path = nx.dag_longest_path(graph)   # place at x=0
         x = dict.fromkeys(graph, 0)
         unplaced = set(node for node in graph if node not in longest_path)
         for node in sorted(unplaced, key=graph.degree, reverse=True):
@@ -147,7 +152,7 @@ class ERD(nx.DiGraph):
             x[node] = (sum(x[n] for n in placed_neighbors) -
                        sum(x[n] for n in placed_other) +
                        0.05*(np.random.ranf()-0.5))/(len(placed_neighbors) + len(placed_other) + 0.01)
-            x[node] += (x[node] > 0)-0.5
+            x[node] += 2*(x[node] > 0)-1
             unplaced.remove(node)
 
         n = graph.number_of_nodes()
@@ -165,7 +170,7 @@ class ERD(nx.DiGraph):
         D = np.logical_xor(D, np.identity(n, bool))
 
         def cost(xx):
-            xx = np.expand_dims(xx,1)
+            xx = np.expand_dims(xx, 1)
             g = xx.transpose()-xx
             h = g**2 + 1e-8
             return (
@@ -174,7 +179,7 @@ class ERD(nx.DiGraph):
                 (1/h[D]).sum())
 
         def grad(xx):
-            xx = np.expand_dims(xx,1)
+            xx = np.expand_dims(xx, 1)
             g = xx.transpose()-xx
             h = g**2 + 1e-8
             return -(
@@ -182,13 +187,17 @@ class ERD(nx.DiGraph):
                 2*(D*g).sum(axis=1) -
                 2*(D*g/h**2).sum(axis=1))
 
-        x = minimize(cost, x, jac=grad, method='BFGS', options={'gtol': 1e-4, 'disp': True}).x
+        x = basinhopping(cost, x, niter=250, minimizer_kwargs=dict(jac=grad)).x
+
+        # skew left and up a bit
+        y = depths + 0.3*x  # offset nodes slightly
+        x -= 0.2*depths
 
         # normalize
-        y = depths + 0.2*np.cos(2*np.pi * x)  # offset nodes slightly
         x -= x.min()
-        x /= x.max()
+        x /= (x.max()+0.01)
         y -= y.min()
-        y /= y.max()
+        y /= (y.max() + 0.01)
         return {node: (x, y) for node, x, y in zip(nodes, x, y)}
+
 

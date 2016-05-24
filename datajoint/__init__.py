@@ -6,13 +6,17 @@ organizing, populating, and querying data.
 
 DataJoint is free software under the LGPL License. In addition, we request
 that any use of DataJoint leading to a publication be acknowledged in the publication.
+
+Citations:
+    http://biorxiv.org/content/early/2015/11/14/031658
+    http://dx.doi.org/10.1101/031658
 """
 
 import logging
 import os
 
 __author__ = "Dimitri Yatsenko, Edgar Walker, and Fabian Sinz at Baylor College of Medicine"
-__version__ = "0.2"
+__version__ = "0.2.1"
 __all__ = ['__author__', '__version__',
            'config', 'conn', 'kill',
            'Connection', 'Heading', 'BaseRelation', 'FreeRelation', 'Not', 'schema',

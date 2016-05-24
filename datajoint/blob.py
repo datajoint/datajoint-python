@@ -34,7 +34,8 @@ decode_lookup = {
     b'ZL123\0': zlib.decompress
 }
 
-class BlobReader(object):
+
+class BlobReader:
     def __init__(self, blob, simplify=False):
         self._simplify = simplify
         self._blob = blob
@@ -198,7 +199,6 @@ class BlobReader(object):
 
     def __str__(self):
         return str(self._blob[self.pos:])
-
 
 
 def pack(obj):
