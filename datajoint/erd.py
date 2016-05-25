@@ -110,12 +110,12 @@ class ERD(nx.DiGraph):
         """
         graph = nx.DiGraph(self).subgraph(self.nodes_to_show)
         node_colors = {
-            None: 'white',
-            Manual: 'black',
-            Lookup: 'gray',
-            Computed: 'red',
-            Imported: 'blue',
-            Part: 'violet'
+            None: 'y',
+            Manual: 'g',
+            Lookup: 'c',
+            Computed: 'r',
+            Imported: 'b',
+            Part: 'm'
         }
         color_mapping = {n: node_colors[_get_tier(n.split('`')[-2])] for n in graph};
         nx.set_node_attributes(graph, 'color', color_mapping)
@@ -131,12 +131,28 @@ class ERD(nx.DiGraph):
         return graph
 
     def draw(self, pos=None, layout=None):
+        if not self.nodes_to_show:
+            print('There is nothing to plot')
+            return
         graph = self._make_graph()
-        # generate layout
         if pos is None:
             pos = self._layout(graph) if layout is None else layout(graph)
         import matplotlib.pyplot as plt
-        nx.draw_networkx(graph, pos=pos)
+
+        # plot manual
+        nodelist = graph.nodes()
+        node_colors = [graph.node[n]['color'] for n in nodelist]
+        nx.draw_networkx_nodes(graph, pos=pos, nodelist=nodelist,
+                        node_color= node_colors,
+                        node_size=300,
+                        linewidths=0,
+                        alpha=0.1)
+        edgelist = graph.edges(data=True)
+        edge_styles = ['solid' if e[2]['primary'] else 'dashed' for e in edgelist]
+        nx.draw_networkx_edges(graph, pos=pos, edgelist=edgelist, edge_styles=edge_styles, alpha=0.1)
+        for c in set(node_colors):
+            nx.draw_networkx_labels(graph.subgraph([n for n in nodelist if graph.node[n]['color']==c]),
+                                    pos=pos, font_color=c)
         ax = plt.gca()
         ax.axis('off')
         ax.set_xlim([-0.4, 1.4])  # allow a margin for labels
