@@ -43,7 +43,7 @@ class ERD(nx.DiGraph):
     Note that erd + 1 - 1  may differ from erd - 1 + 1 and so forth.
     Only those tables that are loaded in the connection object are displayed
     """
-    def __init__(self, source):
+    def __init__(self, source, include_parts=True):
         try:
             first_source = source[0]
         except TypeError:
@@ -75,6 +75,9 @@ class ERD(nx.DiGraph):
                 for node in self:
                     if node.startswith('`%s`' % database):
                         self.nodes_to_show.add(node)
+        if not include_parts:
+            self.nodes_to_show = set(n for n in self.nodes_to_show
+                                     if not re.fullmatch(Part.tier_regexp, n.split('`')[-2]))
 
     def __sub__(self, other):
         try:
@@ -112,7 +115,7 @@ class ERD(nx.DiGraph):
         node_colors = {
             None: 'y',
             Manual: 'g',
-            Lookup: 'c',
+            Lookup: 'k',
             Computed: 'r',
             Imported: 'b',
             Part: 'm'
@@ -146,10 +149,10 @@ class ERD(nx.DiGraph):
                         node_color= node_colors,
                         node_size=300,
                         linewidths=0,
-                        alpha=0.1)
+                        alpha=0.2)
         edgelist = graph.edges(data=True)
         edge_styles = ['solid' if e[2]['primary'] else 'dashed' for e in edgelist]
-        nx.draw_networkx_edges(graph, pos=pos, edgelist=edgelist, edge_styles=edge_styles, alpha=0.1)
+        nx.draw_networkx_edges(graph, pos=pos, edgelist=edgelist, edge_styles=edge_styles, alpha=0.2)
         for c in set(node_colors):
             nx.draw_networkx_labels(graph.subgraph([n for n in nodelist if graph.node[n]['color']==c]),
                                     pos=pos, font_color=c)
