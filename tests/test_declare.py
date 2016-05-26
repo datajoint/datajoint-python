@@ -1,6 +1,7 @@
 import warnings
 from nose.tools import assert_true, assert_false, assert_equal, assert_list_equal, raises
 from . import schema
+import datajoint as dj
 
 auto = schema.Auto()
 user = schema.User()
@@ -12,6 +13,13 @@ channel = schema.Ephys.Channel()
 
 
 class TestDeclare:
+
+    @staticmethod
+    def test_schema_decorator():
+        assert_true(issubclass(schema.Subject, dj.BaseRelation))
+        assert_true(issubclass(schema.Subject, dj.Manual))
+        assert_true(not issubclass(schema.Subject, dj.Part))
+
     @staticmethod
     def test_attributes():
         # test autoincrement declaration

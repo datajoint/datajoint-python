@@ -15,7 +15,7 @@ from .heading import Heading
 logger = logging.getLogger(__name__)
 
 
-class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
+class BaseRelation(RelationalOperand):
     """
     BaseRelation is an abstract class that represents a base relation, i.e. a table in the database.
     To make it a concrete class, override the abstract properties specifying the connection,
@@ -287,9 +287,9 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         self.connection.dependencies.load()
 
-        # construct a list (OrderedDict) of relations to delete
-        tables = self.connection.dependencies.descendants(self.full_table_name)
-        relations = OrderedDict((r, FreeRelation(self.connection, r)) for r in tables)
+        relations_to_delete = OrderedDict(
+            (r, FreeRelation(self.connection, r))
+            for r in self.connection.dependencies.descendants(self.full_table_name))
 
         # construct restrictions for each relation
         restrict_by_me = set()
@@ -297,9 +297,9 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         if self.restrictions:
             restrict_by_me.add(self.full_table_name)
             restrictions[self.full_table_name].append(self.restrictions)  # copy own restrictions
-        for r in relations.values():
+        for r in relations_to_delete.values():
             restrict_by_me.update(r.children(primary=False))
-        for name, r in relations.items():
+        for name, r in relations_to_delete.items():
             for dep in r.children():
                 if name in restrict_by_me:
                     restrictions[dep].append(r)
@@ -307,7 +307,7 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
                     restrictions[dep].extend(restrictions[name])
 
         # apply restrictions
-        for name, r in relations.items():
+        for name, r in relations_to_delete.items():
             if restrictions[name]:  # do not restrict by an empty list
                 r.restrict([r.project() if isinstance(r, RelationalOperand) else r
                             for r in restrictions[name]])  # project
@@ -316,21 +316,21 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         do_delete = False  # indicate if there is anything to delete
         if config['safemode']:
             print('The contents of the following tables are about to be deleted:')
-        for relation in list(relations.values()):
+        for relation in list(relations_to_delete.values()):
             count = len(relation)
             if count:
                 do_delete = True
                 if config['safemode']:
                     print(relation.full_table_name, '(%d tuples)' % count)
             else:
-                relations.pop(relation.full_table_name)
+                relations_to_delete.pop(relation.full_table_name)
         if not do_delete:
             if config['safemode']:
                 print('Nothing to delete')
         else:
             if not config['safemode'] or user_choice("Proceed?", default='no') == 'yes':
                 with self.connection.transaction:
-                    for r in reversed(list(relations.values())):
+                    for r in reversed(list(relations_to_delete.values())):
                         r.delete_quick()
                 print('Done')
 

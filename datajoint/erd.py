@@ -3,9 +3,8 @@ import numpy as np
 import re
 from scipy.optimize import basinhopping
 import inspect
-from . import schema, Manual, Imported, Computed, Lookup, Part, DataJointError
+from . import Manual, Imported, Computed, Lookup, Part, DataJointError
 from .user_relations import UserRelation
-import time
 
 
 def _get_concrete_subclasses(cls):
@@ -45,7 +44,7 @@ class ERD(nx.DiGraph):
     """
     def __init__(self, source, include_parts=True):
         try:
-            first_source = source[0]
+            source[0]
         except TypeError:
             source = [source]
 
@@ -107,7 +106,7 @@ class ERD(nx.DiGraph):
         self.nodes_to_show.intersection_update(other.nodes_to_show)
         return self
 
-    def _make_graph(self):
+    def _make_graph(self, prefix_module):
         """
         Make the self.graph - a graph object ready for drawing
         """
@@ -123,8 +122,8 @@ class ERD(nx.DiGraph):
         color_mapping = {n: node_colors[_get_tier(n.split('`')[-2])] for n in graph};
         nx.set_node_attributes(graph, 'color', color_mapping)
         # relabel nodes to class names
-        rels = list(_get_concrete_subclasses(UserRelation))
-        mapping = {rel.full_table_name: rel.__module__ + '.' + (rel._master.__name__+'.' if issubclass(rel, Part) else '') + rel.__name__
+        mapping = {rel.full_table_name: (rel.__module__ + '.' if prefix_module else '') +
+                                        (rel._master.__name__+'.' if issubclass(rel, Part) else '') + rel.__name__
                    for rel in _get_concrete_subclasses(UserRelation)
                    if rel.full_table_name in graph}
         new_names = [mapping.values()]
@@ -133,11 +132,11 @@ class ERD(nx.DiGraph):
         nx.relabel_nodes(graph, mapping, copy=False)
         return graph
 
-    def draw(self, pos=None, layout=None):
+    def draw(self, pos=None, layout=None, prefix_module=True):
         if not self.nodes_to_show:
             print('There is nothing to plot')
             return
-        graph = self._make_graph()
+        graph = self._make_graph(prefix_module)
         if pos is None:
             pos = self._layout(graph) if layout is None else layout(graph)
         import matplotlib.pyplot as plt

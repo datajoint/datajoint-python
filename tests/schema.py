@@ -10,7 +10,6 @@ from . import PREFIX, CONN_INFO
 
 schema = dj.schema(PREFIX + '_test1', locals(), connection=dj.conn(**CONN_INFO))
 
-
 @schema
 class Auto(dj.Lookup):
     definition = """
@@ -22,7 +21,6 @@ class Auto(dj.Lookup):
         dict(name="Godel"),
         dict(name="Escher"),
         dict(name="Bach"))
-
 
 @schema
 class User(dj.Lookup):

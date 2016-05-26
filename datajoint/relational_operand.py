@@ -1,4 +1,4 @@
-from collections.abc import Mapping
+import collections
 import numpy as np
 import abc
 import re
@@ -94,7 +94,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
                 return condition, False  # _negate is cleared
 
             # mappings are turned into ANDed equality conditions
-            elif isinstance(arg, Mapping):
+            elif isinstance(arg, collections.abc.Mapping):
                 condition = ['`%s`=%r' %
                              (k, v if not isinstance(v, (datetime.date, datetime.datetime, datetime.time)) else str(v))
                              for k, v in arg.items() if k in self.heading]

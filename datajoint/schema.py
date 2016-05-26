@@ -4,7 +4,7 @@ import re
 from . import conn, DataJointError
 from datajoint.utils import to_camel_case
 from .heading import Heading
-from .user_relations import Part, Computed, Imported, Manual, Lookup
+from .user_relations import UserRelation, Part, Computed, Imported, Manual, Lookup
 import inspect
 
 logger = logging.getLogger(__name__)
@@ -133,24 +133,20 @@ class Schema:
         process_relation_class(cls, context=self.context)
 
         # Process part relations
-        def is_part(x):
-            return inspect.isclass(x) and issubclass(x, Part)
-
         parts = list()
-        for part in dir(cls):
+        for part in cls._ordered_class_members:
             if part[0].isupper():
                 part = getattr(cls, part)
-                if is_part(part):
-                    parts.append(part)
+                if inspect.isclass(part) and issubclass(part, Part):
                     part._master = cls
                     process_relation_class(part, context=dict(self.context, **{cls.__name__: cls}))
+                    parts.append(part)
 
-        # invoke Relation.prepare() on class and its part relations.
+        # invoke Relation.prepare() on the class and its part relations.
         if self.prepare:
             cls().prepare()
             for part in parts:
                 part().prepare()
-
         return cls
 
     @property

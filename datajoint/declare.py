@@ -65,7 +65,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
     except NameError:
         raise DataJointError('Foreign key reference %s could not be resolved' % result.ref_table)
     if not issubclass(referenced_class, BaseRelation):
-        raise DataJointError('Foreign key reference %s must be a subclass of BaseRelation' % result.ref_table)
+        raise DataJointError('Foreign key reference %s must be a subclass of UserRelation' % result.ref_table)
     if result.ref_attrs and len(result.new_attributes) != len(result.ref_attrs):
         raise DataJointError('The number of new attributes and referenced attributes does not match in "%s"' % line)
     ref = referenced_class()
