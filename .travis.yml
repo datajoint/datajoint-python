@@ -1,4 +1,4 @@
-sudo: false
+sudo: required
 language: python
 env:
   - DJ_TEST_HOST="127.0.0.1" DJ_TEST_USER="root" DJ_TEST_PASSWORD="" DJ_HOST="127.0.0.1" DJ_USER="root" DJ_PASSWORD=""
@@ -6,13 +6,9 @@ python:
   - "3.4"
   - "3.5"
 services: mysql
-addons:
-  apt:
-    packages:
-      - libblas-dev
-      - liblapack-dev
-      - libatlas-dev
-      - gfortran
+before_install:
+  - sudo apt-get -qq update
+  - sudo apt-get install -y libblas-dev liblapack-dev libatlas-dev gfortran
 install:
   - pip install -r requirements.txt
   - pip install nose nose-cov python-coveralls
