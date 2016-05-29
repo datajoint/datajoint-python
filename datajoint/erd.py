@@ -145,18 +145,19 @@ class ERD(nx.DiGraph):
         # plot manual
         nodelist = graph.nodes()
         node_colors = [graph.node[n]['color'] for n in nodelist]
-        nx.draw_networkx_nodes(graph, pos=pos, nodelist=nodelist,
-                        node_color= node_colors,
-                        node_size=300,
-                        linewidths=0,
-                        alpha=0.2)
+        nx.draw_networkx_nodes(graph, pos=pos,
+                               nodelist=nodelist,
+                               node_color=node_colors,
+                               node_size=300,
+                               linewidths=0,
+                               alpha=0.2)
         edgelist = graph.edges(data=True)
         edge_styles = ['solid' if e[2]['primary'] else 'dashed' for e in edgelist]
         nx.draw_networkx_edges(graph, pos=pos, edgelist=edgelist, edge_styles=edge_styles, alpha=0.2)
         voffset = 0.1*sum(pos[e[0]][1]-pos[e[1]][1] for e in graph.edges_iter())/graph.number_of_edges()
         for c in set(node_colors):
-            nx.draw_networkx_labels(graph.subgraph([n for n in nodelist if graph.node[n]['color']==c]),
-                                    pos={k:v+voffset for k,v in pos.items()}, font_color='k')
+            nx.draw_networkx_labels(graph.subgraph([n for n in nodelist if graph.node[n]['color'] == c]),
+                                    pos={k: v+voffset for k, v in pos.items()}, font_color='k')
         ax = plt.gca()
         ax.axis('off')
         ax.set_xlim([-0.4, 1.4])  # allow a margin for labels

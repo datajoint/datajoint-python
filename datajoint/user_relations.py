@@ -155,7 +155,8 @@ class Part(BaseRelation):
 
     @classproperty
     def full_table_name(cls):
-        return r"`{0:s}`.`{1:s}`".format(cls.database, cls.table_name)
+        return None if cls.database is None or cls.table_name is None else r"`{0:s}`.`{1:s}`".format(
+            cls.database, cls.table_name)
 
     @classproperty
     def master(cls):
