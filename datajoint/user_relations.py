@@ -7,6 +7,7 @@ import abc
 from .base_relation import BaseRelation
 from .autopopulate import AutoPopulate
 from .utils import from_camel_case
+from . import DataJointError
 
 _base_regexp = r'[a-z]+[a-z0-9]*(_[a-z]+[a-z0-9]*)*'
 
@@ -51,6 +52,8 @@ class UserRelation(BaseRelation, metaclass=OrderedClass):
 
     @classproperty
     def full_table_name(cls):
+        if cls.database is None:
+            raise DataJointError('Class %s is not properly declared (schema decorator not applied?)' % cls.__name__)
         return r"`{0:s}`.`{1:s}`".format(cls.database, cls.table_name)
 
 
@@ -160,4 +163,4 @@ class Part(BaseRelation):
 
     @classproperty
     def table_name(cls):
-        return cls.master.table_name + '__' + from_camel_case(cls.__name__)
+        return None if cls.master is None else cls.master.table_name + '__' + from_camel_case(cls.__name__)

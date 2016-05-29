@@ -4,19 +4,20 @@ import re
 from scipy.optimize import basinhopping
 import inspect
 from . import Manual, Imported, Computed, Lookup, Part, DataJointError
-from .user_relations import UserRelation
 
+user_relation_classes = (Manual, Lookup, Computed, Imported, Part)
 
-def _get_concrete_subclasses(cls):
-    for subclass in cls.__subclasses__():
-        if not inspect.isabstract(subclass):
-            yield subclass
-        yield from _get_concrete_subclasses(subclass)
+def _get_concrete_subclasses(class_list):
+    for cls in class_list:
+        for subclass in cls.__subclasses__():
+            if not inspect.isabstract(subclass):
+                yield subclass
+            yield from _get_concrete_subclasses([subclass])
 
 
 def _get_tier(table_name):
     try:
-        return next(tier for tier in (Manual, Lookup, Computed, Imported, Part)
+        return next(tier for tier in user_relation_classes
                     if re.fullmatch(tier.tier_regexp, table_name))
     except StopIteration:
         return None
@@ -122,10 +123,10 @@ class ERD(nx.DiGraph):
         color_mapping = {n: node_colors[_get_tier(n.split('`')[-2])] for n in graph};
         nx.set_node_attributes(graph, 'color', color_mapping)
         # relabel nodes to class names
-        mapping = {rel.full_table_name: (rel.__module__ + '.' if prefix_module else '') +
-                                        (rel._master.__name__+'.' if issubclass(rel, Part) else '') + rel.__name__
-                   for rel in _get_concrete_subclasses(UserRelation)
-                   if rel.full_table_name in graph}
+        class_list = list(cls for cls in _get_concrete_subclasses(user_relation_classes))
+        mapping = {cls.full_table_name: (cls._context['__name__'] + '.' if prefix_module else '') +
+                                        (cls._master.__name__+'.' if issubclass(cls, Part) else '') + cls.__name__
+                   for cls in class_list if cls.full_table_name in graph}
         new_names = [mapping.values()]
         if len(new_names) > len(set(new_names)):
             raise DataJointError('Some classes have identifical names. The ERD cannot be plotted.')
@@ -152,9 +153,10 @@ class ERD(nx.DiGraph):
         edgelist = graph.edges(data=True)
         edge_styles = ['solid' if e[2]['primary'] else 'dashed' for e in edgelist]
         nx.draw_networkx_edges(graph, pos=pos, edgelist=edgelist, edge_styles=edge_styles, alpha=0.2)
+        voffset = 0.1*sum(pos[e[0]][1]-pos[e[1]][1] for e in graph.edges_iter())/graph.number_of_edges()
         for c in set(node_colors):
             nx.draw_networkx_labels(graph.subgraph([n for n in nodelist if graph.node[n]['color']==c]),
-                                    pos=pos, font_color=c)
+                                    pos={k:v+voffset for k,v in pos.items()}, font_color='k')
         ax = plt.gca()
         ax.axis('off')
         ax.set_xlim([-0.4, 1.4])  # allow a margin for labels
@@ -234,17 +236,15 @@ class ERD(nx.DiGraph):
                 2*(D*g).sum(axis=1) -
                 2*(D*g/h**2).sum(axis=1))
 
-        x = basinhopping(cost, x, niter=250, minimizer_kwargs=dict(jac=grad)).x
+        x = basinhopping(cost, x, niter=5000, T=10, stepsize=0.25, minimizer_kwargs=dict(jac=grad)).x
 
-        # skew left and up a bit
-        y = depths + 0.3*x  # offset nodes slightly
-        x -= 0.2*depths
+        # tilt left and up a bit
+        y = depths + 0.35*x  # offset nodes slightly
+        x -= 0.15*depths
 
         # normalize
         x -= x.min()
-        x /= (x.max() + 0.01)
+        x /= x.max() + 0.01
         y -= y.min()
-        y /= (y.max() + 0.01)
+        y /= y.max() + 0.01
         return {node: (x, y) for node, x, y in zip(nodes, x, y)}
-
-
