@@ -11,6 +11,8 @@ addons:
     packages:
       - libblas-dev
       - liblapack-dev
+      - libatlas-dev
+      - gfortran
 install:
   - pip install -r requirements.txt
   - pip install nose nose-cov python-coveralls
