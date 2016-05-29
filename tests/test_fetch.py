@@ -16,7 +16,6 @@ class TestFetch:
 
     def test_getitem(self):
         """Testing Fetch.__getitem__"""
-
         np.testing.assert_array_equal(sorted(self.subject.project().fetch(), key=itemgetter(0)),
                                       sorted(self.subject.fetch[dj.key], key=itemgetter(0)),
                                       'Primary key is not returned correctly')
@@ -24,7 +23,7 @@ class TestFetch:
         tmp = self.subject.fetch(order_by=['subject_id'])
 
         subject_notes, key, real_id = self.subject.fetch['subject_notes', dj.key, 'real_id']
-        #
+
         np.testing.assert_array_equal(sorted(subject_notes), sorted(tmp['subject_notes']))
         np.testing.assert_array_equal(sorted(real_id), sorted(tmp['real_id']))
         np.testing.assert_array_equal(sorted(key, key=itemgetter(0)),

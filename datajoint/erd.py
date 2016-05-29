@@ -236,7 +236,7 @@ class ERD(nx.DiGraph):
                 2*(D*g).sum(axis=1) -
                 2*(D*g/h**2).sum(axis=1))
 
-        x = basinhopping(cost, x, niter=5000, T=10, stepsize=0.25, minimizer_kwargs=dict(jac=grad)).x
+        x = basinhopping(cost, x, niter=100, T=10, stepsize=0.25, minimizer_kwargs=dict(jac=grad)).x
 
         # tilt left and up a bit
         y = depths + 0.35*x  # offset nodes slightly

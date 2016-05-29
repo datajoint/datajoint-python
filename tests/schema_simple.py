@@ -6,9 +6,10 @@ import datajoint as dj
 from . import PREFIX, CONN_INFO
 
 
-schema = dj.schema(PREFIX + '_relational', locals(), connection=dj.conn(**CONN_INFO))
+schema = dj.schema(PREFIX + '_relational', locals(), connection=dj.conn(**CONN_INFO), prepare=False)
 
 
+@schema
 class A(dj.Lookup):
     definition = """
     id_a :int
@@ -17,11 +18,6 @@ class A(dj.Lookup):
     """
     contents = [(i, i % 4 > i % 3) for i in range(10)]
 
-assert issubclass(A, dj.BaseRelation)
-assert not issubclass(A, dj.Part)
-A = schema(A)
-assert issubclass(A, dj.BaseRelation)
-assert not issubclass(A, dj.Part)
 
 @schema
 class B(dj.Computed):

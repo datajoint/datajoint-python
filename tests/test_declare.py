@@ -1,4 +1,3 @@
-import warnings
 from nose.tools import assert_true, assert_false, assert_equal, assert_list_equal, raises
 from . import schema
 import datajoint as dj

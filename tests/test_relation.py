@@ -2,11 +2,8 @@ from inspect import getmembers
 import re
 
 import itertools
-from numpy.testing import assert_array_equal
 import numpy as np
-from nose.tools import assert_raises, assert_equal, assert_not_equal, \
-    assert_false, assert_true, assert_list_equal, \
-    assert_tuple_equal, assert_dict_equal, raises
+from nose.tools import assert_equal, assert_not_equal, assert_false, assert_true, assert_list_equal, raises
 from . import schema
 from pymysql import IntegrityError, ProgrammingError
 import datajoint as dj
