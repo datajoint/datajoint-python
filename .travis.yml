@@ -10,6 +10,7 @@ addons:
   apt:
     packages:
       - libblas-dev
+      - liblapack-dev
 install:
   - pip install -r requirements.txt
   - pip install nose nose-cov python-coveralls
