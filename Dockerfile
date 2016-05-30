@@ -1,4 +1,4 @@
-FROM eywalker/pydev
+FROM datajoint/pydev
 
 MAINTAINER Edgar Y. Walker <edgar.walker@gmail.com>
 
