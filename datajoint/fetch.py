@@ -17,8 +17,6 @@ class FetchBase:
         """
         if isinstance(item, str) or item is PRIMARY_KEY:
             item = (item,)
-        elif isinstance(item, int):
-            item = (self._relation.heading.names[item],)
         try:
             attributes = tuple(i for i in item if i is not PRIMARY_KEY)
         except TypeError:

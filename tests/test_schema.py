@@ -34,9 +34,27 @@ def test_namespace_population():
 
 @raises(dj.DataJointError)
 def test_undecorated_table():
+    """
+    Undecorated user relation classes should raise an informative exception upon first use
+    """
 
     class UndecoratedClass(dj.Manual):
         definition = ""
 
     a = UndecoratedClass()
     a.full_table_name
+
+
+@raises(dj.DataJointError)
+def test_reject_decorated_part():
+    """
+    Decorating a dj.Part table should raise an informative exception.
+    """
+
+    @schema.schema
+    class A(dj.Manual):
+        definition = ...
+
+        @schema.schema
+        class B(dj.Part):
+            definition = ...
