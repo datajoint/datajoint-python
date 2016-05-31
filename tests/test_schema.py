@@ -66,4 +66,4 @@ def test_unauthorized_database():
     """
     an attempt to create a database to which user has no privileges should raise an informative exception.
     """
-    schema = dj.schema('unauthorized_schema', locals(), connection=dj.conn(**CONN_INFO))
+    dj.schema('unauthorized_schema', locals(), connection=dj.conn(**CONN_INFO))
