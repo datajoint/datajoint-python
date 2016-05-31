@@ -8,7 +8,9 @@ from . import key as PRIMARY_KEY
 
 
 class FetchBase:
-    def _prepare_attributes(self, item):
+
+    @staticmethod
+    def _prepare_attributes(item):
         """
         Used by fetch.__getitem__ to deal with slices
         :param item: the item passed to __getitem__. Can be a string, a tuple, a list, or a slice.
@@ -140,7 +142,7 @@ class Fetch(FetchBase, Callable, Iterable):
 
     def keys(self, **kwargs):
         """
-        Iterator that returns primary keys.
+        Iterator that returns primary keys as a sequence of dicts.
         """
         yield from self._relation.proj().fetch(**dict(self.behavior, as_dict=True, **kwargs))
 

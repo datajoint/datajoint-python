@@ -5,6 +5,7 @@ import datajoint as dj
 from inspect import getmembers
 from . import schema
 from . import schema_empty
+from . import CONN_INFO
 
 
 def relation_selector(attr):
@@ -58,3 +59,11 @@ def test_reject_decorated_part():
         @schema.schema
         class B(dj.Part):
             definition = ...
+
+
+@raises(dj.DataJointError)
+def test_unauthorized_database():
+    """
+    an attempt to create a database to which user has no privileges should raise an informative exception.
+    """
+    schema = dj.schema('unauthorized_schema', locals(), connection=dj.conn(**CONN_INFO))
