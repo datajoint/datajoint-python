@@ -30,3 +30,13 @@ def test_namespace_population():
             assert_true(hasattr(rel, name_part),
                         '{name_part} not found in {name}'.format(name_part=name_part, name=name))
             assert_true(getattr(rel, name_part).__base__ is dj.Part, 'Wrong tier for {name}'.format(name=name_part))
+
+
+@raises(dj.DataJointError)
+def test_undecorated_table():
+
+    class UndecoratedClass(dj.Manual):
+        definition = ""
+
+    a = UndecoratedClass()
+    a.full_table_name
