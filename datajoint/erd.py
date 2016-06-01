@@ -141,11 +141,11 @@ class ERD(nx.DiGraph):
         nx.draw_networkx_edges(graph, pos=pos, edgelist=edge_list, style=edge_styles, alpha=0.2)
 
         label_props = { # http://matplotlib.org/examples/color/named_colors.html
-            None: dict(bbox=dict(boxstyle='round', facecolor='yellow', alpha=0.3), size=8),
-            Manual: dict(bbox=dict(boxstyle='round', pad=0.1, edgecolor='white', facecolor='darkgreen', alpha=0.3), size=10),
-            Lookup: dict(bbox=dict(boxstyle='round', pad=0.2, edgecolor='white', facecolor='gray', alpha=0.2), size=8),
-            Computed: dict(bbox=dict(boxstyle='round', pad=0.1, edgecolor='white', facecolor='red', alpha=0.2), size=10),
-            Imported: dict(bbox=dict(boxstyle='round', pad=0.1, edgecolor='white', facecolor='darkblue', alpha=0.2), size=10),
+            None: dict(bbox=dict(boxstyle='round,pad=0.1', facecolor='yellow', alpha=0.3), size=8),
+            Manual: dict(bbox=dict(boxstyle='round,pad=0.1', edgecolor='white', facecolor='darkgreen', alpha=0.3), size=10),
+            Lookup: dict(bbox=dict(boxstyle='round,pad=0.1', edgecolor='white', facecolor='gray', alpha=0.2), size=8),
+            Computed: dict(bbox=dict(boxstyle='round,pad=0.1', edgecolor='white', facecolor='red', alpha=0.2), size=10),
+            Imported: dict(bbox=dict(boxstyle='round,pad=0.1', edgecolor='white', facecolor='darkblue', alpha=0.2), size=10),
             Part: dict(size=7)}
         ax = plt.gca()
         for node in graph.nodes(data=True):
