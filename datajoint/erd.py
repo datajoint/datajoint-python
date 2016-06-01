@@ -143,14 +143,14 @@ class ERD(nx.DiGraph):
         label_props = { # http://matplotlib.org/examples/color/named_colors.html
             None: dict(bbox=dict(boxstyle='round', facecolor='yellow', alpha=0.3), size=8),
             Manual: dict(bbox=dict(boxstyle='round', pad=0.1, edgecolor='white', facecolor='darkgreen', alpha=0.3), size=10),
-            Lookup: dict(bbox=dict(boxstyle='round', pad=0.2, facecolor='gray', alpha=0.2), size=8),
+            Lookup: dict(bbox=dict(boxstyle='round', pad=0.2, edgecolor='white', facecolor='gray', alpha=0.2), size=8),
             Computed: dict(bbox=dict(boxstyle='round', pad=0.1, edgecolor='white', facecolor='red', alpha=0.2), size=10),
             Imported: dict(bbox=dict(boxstyle='round', pad=0.1, edgecolor='white', facecolor='darkblue', alpha=0.2), size=10),
             Part: dict(size=7)}
         ax = plt.gca()
         for node in graph.nodes(data=True):
-            ax.text(*pos[node[0]], node[0], **label_props[node[1]['node_type']],
-                    horizontalalignment='right' if pos[node[0]][0]<0.5 else 'left')
+            ax.text(pos[node[0]][0], pos[node[0]][1], node[0], **label_props[node[1]['node_type']],
+                    horizontalalignment=('right' if pos[node[0]][0]<0.5 else 'left'))
         ax = plt.gca()
         ax.axis('off')
         ax.set_xlim([-0.4, 1.4])  # allow a margin for labels
@@ -233,7 +233,7 @@ class ERD(nx.DiGraph):
             h = g**2 + 1e-8
             return -2*((A*g).sum(axis=1) + 0.1*(D*g).sum(axis=1) - (D*g/h**2).sum(axis=1))
         niter = [100, 200, 500, 1000, 3000][quality]
-        maxiter = [2, 3, 4, 5, 6][quality]
+        maxiter = [1, 2, 3, 4, 4][quality]
         x = basinhopping(cost, x, niter=niter, interval=40, T=30, stepsize=1.0, disp=False,
                          minimizer_kwargs=dict(jac=grad, options=dict(maxiter=maxiter))).x
         # normalize coordinates to unit square
