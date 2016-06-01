@@ -4,8 +4,7 @@ import numpy as np
 import logging
 import abc
 import binascii
-from . import config
-from . import DataJointError
+from . import config, DataJointError
 from .declare import declare
 from .relational_operand import RelationalOperand
 from .blob import pack

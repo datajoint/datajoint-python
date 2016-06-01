@@ -145,3 +145,7 @@ class TestRelation:
             for tier in itertools.filterfalse(lambda t: issubclass(rel, t), tiers):
                 assert_false(re.match(tier.tier_regexp, rel().table_name),
                              'Regular expression matches for {name} but should not'.format(name=name))
+
+    def test_table_size(self):
+        assert_true(self.experiment.size_on_disk > 0)
+

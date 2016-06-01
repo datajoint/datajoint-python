@@ -6,18 +6,10 @@ import collections
 import abc
 from .base_relation import BaseRelation
 from .autopopulate import AutoPopulate
-from .utils import from_camel_case
+from .utils import from_camel_case, classproperty
 from . import DataJointError
 
 _base_regexp = r'[a-z]+[a-z0-9]*(_[a-z]+[a-z0-9]*)*'
-
-
-class classproperty:
-    def __init__(self, f):
-        self.f = f
-
-    def __get__(self, obj, owner):
-        return self.f(owner)
 
 
 class OrderedClass(abc.ABCMeta):

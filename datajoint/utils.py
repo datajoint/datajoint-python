@@ -2,6 +2,14 @@ import re
 from datajoint import DataJointError
 
 
+class classproperty:
+    def __init__(self, f):
+        self.f = f
+
+    def __get__(self, obj, owner):
+        return self.f(owner)
+
+
 def user_choice(prompt, choices=("yes", "no"), default=None):
     """
     Prompts the user for confirmation.  The default value, if any, is capitalized.
