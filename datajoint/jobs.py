@@ -35,6 +35,7 @@ class JobRelation(BaseRelation):
         pid=0  :int unsigned  # system process id
         timestamp=CURRENT_TIMESTAMP  :timestamp   # automatic timestamp
         """
+        self.declare()
 
     @property
     def definition(self):

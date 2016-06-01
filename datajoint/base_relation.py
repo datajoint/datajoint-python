@@ -49,8 +49,7 @@ class BaseRelation(RelationalOperand):
         """
         if self._heading is None:
             self._heading = Heading()  # instance-level heading
-        if not self._heading:  # heading is not initialized
-            self.declare()
+        if not self._heading:  # lazy loading of heading
             self._heading.init_from_database(self.connection, self.database, self.table_name)
         return self._heading
 
@@ -359,23 +358,16 @@ class FreeRelation(BaseRelation):
     specified by full_table_name.
     """
 
-    def __init__(self, connection, full_table_name, definition=None, context=None):
+    def __init__(self, connection, full_table_name):
         self.database, self._table_name = (s.strip('`') for s in full_table_name.split('.'))
         self._connection = connection
-        self._definition = definition
-        self._context = context
 
     def __repr__(self):
         return "FreeRelation(`%s`.`%s`)" % (self.database, self._table_name)
 
     @property
     def definition(self):
-        """
-        Definition of the table.
-
-        :return: the definition
-        """
-        return self._definition
+        return None
 
     @property
     def connection(self):
