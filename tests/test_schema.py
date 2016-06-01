@@ -5,7 +5,7 @@ import datajoint as dj
 from inspect import getmembers
 from . import schema
 from . import schema_empty
-from . import CONN_INFO
+from . import PREFIX, CONN_INFO
 
 
 def relation_selector(attr):
@@ -67,3 +67,10 @@ def test_unauthorized_database():
     an attempt to create a database to which user has no privileges should raise an informative exception.
     """
     dj.schema('unauthorized_schema', locals(), connection=dj.conn(**CONN_INFO))
+
+
+def test_drop_database():
+    schema = dj.schema(PREFIX + '_drop_test', locals(), connection=dj.conn(**CONN_INFO))
+    assert_true(schema.exists)
+    schema.drop()
+    assert_false(schema.exists)

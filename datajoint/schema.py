@@ -1,10 +1,11 @@
 import pymysql
 import logging
 import re
-from . import conn, DataJointError
+from . import conn, DataJointError, config
 from datajoint.utils import to_camel_case
 from .heading import Heading
-from .user_relations import UserRelation, Part, Computed, Imported, Manual, Lookup
+from .utils import user_choice
+from .user_relations import Part, Computed, Imported, Manual, Lookup
 import inspect
 
 logger = logging.getLogger(__name__)
@@ -91,7 +92,9 @@ class Schema:
         """
         Drop the associated database if it exists
         """
-        if self.exists:
+        if self.exists and (
+                    not config['safemode'] or
+                        user_choice("Proceed to delete entire schema `%s`?" % self.database, default='no') == 'yes'):
             logger.info("Dropping `{database}`.".format(database=self.database))
             try:
                 self.connection.query("DROP DATABASE `{database}`".format(database=self.database))
