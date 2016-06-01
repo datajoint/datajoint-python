@@ -57,9 +57,8 @@ class BaseRelation(RelationalOperand):
         """
         Loads the table heading. If the table is not declared, use self.definition to declare
         """
-        if not self.is_declared:
-            self.connection.query(
-                declare(self.full_table_name, self.definition, self._context))
+        self.connection.query(
+            declare(self.full_table_name, self.definition, self._context))
 
     @property
     def from_clause(self):
@@ -104,7 +103,7 @@ class BaseRelation(RelationalOperand):
     @property
     def is_declared(self):
         """
-        :return: True is the table is declared
+        :return: True is the table is declared in the database
         """
         cur = self.connection.query(
             'SHOW TABLES in `{database}`LIKE "{table_name}"'.format(

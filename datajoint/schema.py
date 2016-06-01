@@ -17,7 +17,7 @@ class Schema:
     well as a namespace for looking up foreign key references in table declaration.
     """
 
-    def __init__(self, database, context, connection=None, prepare=True):
+    def __init__(self, database, context, connection=None):
         """
         Associates the specified database with this schema object. If the target database does not exist
         already, will attempt on creating the database.
@@ -25,14 +25,12 @@ class Schema:
         :param database: name of the database to associate the decorated class with
         :param context: dictionary for looking up foreign keys references, usually set to locals()
         :param connection: Connection object. Defaults to datajoint.conn()
-        :param prepare: if True, then all classes will execute cls().prepare() upon declaration
         """
         if connection is None:
             connection = conn()
         self.database = database
         self.connection = connection
         self.context = context
-        self.prepare = prepare
         if not self.exists:
             # create database
             logger.info("Database `{database}` could not be found. "
@@ -126,8 +124,12 @@ class Schema:
             relation_class._connection = self.connection
             relation_class._heading = Heading()
             relation_class._context = context
-            # instantiate the class and declare the table in database if not already present
-            relation_class().declare()
+            # instantiate the class, declare the table if not already, and fill it with initial values.
+            instance = relation_class()
+            if not instance.is_declared:
+                instance.declare()
+                if hasattr(instance, 'contents'):
+                    instance.insert(instance.contents)
 
         if issubclass(cls, Part):
             raise DataJointError('The schema decorator should not be applied to Part relations')
@@ -135,20 +137,12 @@ class Schema:
         process_relation_class(cls, context=self.context)
 
         # Process part relations
-        parts = list()
         for part in cls._ordered_class_members:
             if part[0].isupper():
                 part = getattr(cls, part)
                 if inspect.isclass(part) and issubclass(part, Part):
                     part._master = cls
                     process_relation_class(part, context=dict(self.context, **{cls.__name__: cls}))
-                    parts.append(part)
-
-        # invoke Relation.prepare() on the class and its part relations.
-        if self.prepare:
-            cls().prepare()
-            for part in parts:
-                part().prepare()
         return cls
 
     @property

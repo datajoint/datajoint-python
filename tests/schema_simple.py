@@ -6,7 +6,7 @@ import datajoint as dj
 from . import PREFIX, CONN_INFO
 
 
-schema = dj.schema(PREFIX + '_relational', locals(), connection=dj.conn(**CONN_INFO), prepare=False)
+schema = dj.schema(PREFIX + '_relational', locals(), connection=dj.conn(**CONN_INFO))
 
 
 @schema
@@ -109,8 +109,7 @@ class DataA(dj.Lookup):
     ---
     a       : int
     """
-
-    contents = zip(range(5), range(5))
+    contents = list(zip(range(5), range(5)))
 
 
 @schema
@@ -120,5 +119,4 @@ class DataB(dj.Lookup):
     ---
     a       : int
     """
-
-    contents = zip(range(5), range(5, 10))
+    contents = list(zip(range(5), range(5, 10)))

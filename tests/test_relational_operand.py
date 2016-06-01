@@ -4,7 +4,6 @@ from nose.tools import assert_raises, assert_equal, \
     assert_tuple_equal, assert_dict_equal, raises
 import datajoint as dj
 from .schema_simple import A, B, D, E, L, DataA, DataB
-import datetime
 from .schema import Experiment
 
 
@@ -12,8 +11,8 @@ def setup():
     """
     module-level test setup
     """
-    A().prepare()
-    L().prepare()
+    A().insert(A.contents, skip_duplicates=True)
+    L().insert(L.contents, skip_duplicates=True)
     B().populate()
     D().populate()
     E().populate()

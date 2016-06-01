@@ -35,7 +35,8 @@ class JobRelation(BaseRelation):
         pid=0  :int unsigned  # system process id
         timestamp=CURRENT_TIMESTAMP  :timestamp   # automatic timestamp
         """
-        self.declare()
+        if not self.is_declared:
+            self.declare()
 
     @property
     def definition(self):
@@ -53,7 +54,7 @@ class JobRelation(BaseRelation):
         """
         Reserve a job for computation.  When a job is reserved, the job table contains an entry for the
         job key, identified by its hash. When jobs are completed, the entry is removed.
-        :param full_table_name: `database`.`table_name`
+        :param table_name: `database`.`table_name`
         :param key: the dict of the job's primary key
         :return: True if reserved job successfully. False = the jobs is already taken
         """

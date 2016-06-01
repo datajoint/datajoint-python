@@ -10,8 +10,8 @@ class TestDelete:
         """
         class-level test setup. Executes before each test method.
         """
-        A().prepare()
-        L().prepare()
+        A().insert(A.contents, skip_duplicates=True)
+        L().insert(L.contents, skip_duplicates=True)
         B().populate()
         D().populate()
         E().populate()
