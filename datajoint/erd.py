@@ -45,7 +45,7 @@ class ERD(nx.DiGraph):
     Note that erd + 1 - 1  may differ from erd - 1 + 1 and so forth.
     Only those tables that are loaded in the connection object are displayed
     """
-    def __init__(self, source, include_parts=True):
+    def __init__(self, source):
         # turn source into a sequence if it's not already
         try:
             source[0]
@@ -83,9 +83,6 @@ class ERD(nx.DiGraph):
                     for node in self:
                         if node.startswith('`%s`' % database):
                             self.nodes_to_show.add(node)
-        if not include_parts:
-            self.nodes_to_show = set(n for n in self.nodes_to_show
-                                     if not re.fullmatch(Part.tier_regexp, n.split('`')[-2]))
 
     def __add__(self, arg):
         """
@@ -155,8 +152,6 @@ class ERD(nx.DiGraph):
             pos = (layout if layout else self._layout)(graph, **layout_options)
         import matplotlib.pyplot as plt
 
-        # plot manual
-        nodelist = graph.nodes()
         edge_list = graph.edges(data=True)
         edge_styles = ['solid' if e[2]['primary'] else 'dashed' for e in edge_list]
         nx.draw_networkx_edges(graph, pos=pos, edgelist=edge_list, style=edge_styles, alpha=0.2)
