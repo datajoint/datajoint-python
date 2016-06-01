@@ -92,9 +92,10 @@ class Schema:
         """
         Drop the associated database if it exists
         """
-        if self.exists and (
-                    not config['safemode'] or
-                        user_choice("Proceed to delete entire schema `%s`?" % self.database, default='no') == 'yes'):
+        if not self.exists:
+            logger.info("Database named `{database}` does not exist. Doing nothing.".format(database=self.database))
+        elif (not config['safemode'] or
+                      user_choice("Proceed to delete entire schema `%s`?" % self.database, default='no') == 'yes'):
             logger.info("Dropping `{database}`.".format(database=self.database))
             try:
                 self.connection.query("DROP DATABASE `{database}`".format(database=self.database))
@@ -102,9 +103,7 @@ class Schema:
             except pymysql.OperationalError:
                 raise DataJointError("An attempt to drop database named `{database}` "
                                      "has failed. Check permissions.".format(database=self.database))
-        else:
-            logger.info("Database named `{database}` does not exist. Doing nothing.".format(database=self.database))
-
+           
     @property
     def exists(self):
         """
