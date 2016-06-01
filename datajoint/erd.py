@@ -8,6 +8,7 @@ from . import Manual, Imported, Computed, Lookup, Part, DataJointError
 
 user_relation_classes = (Manual, Lookup, Computed, Imported, Part)
 
+
 def _get_concrete_subclasses(class_list):
     for cls in class_list:
         for subclass in cls.__subclasses__():
@@ -47,65 +48,84 @@ class ERD(nx.DiGraph):
     def __init__(self, source, include_parts=True):
         try:
             source[0]
-        except TypeError:
+        except (TypeError, KeyError):
             source = [source]
+        except:
+            raise DataJointError('Cannot create an ERD from %s' % repr(source))
 
         try:
-            connection = source[0].connection
+            self.connection = source[0].connection
         except AttributeError:
             try:
-                connection = source[0].schema.connection
+                self.connection = source[0].schema.connection
             except AttributeError:
                 raise DataJointError('Could find database connection in %s' % repr(source[0]))
 
-        connection.dependencies.load()
-        super().__init__(connection.dependencies)
+        self.connection.dependencies.load()
+        super().__init__(self.connection.dependencies)
 
-        self.nodes_to_show = set()
-        for source in source:
-            try:
-                self.nodes_to_show.add(source.full_table_name)
-            except AttributeError:
+        try:
+            self.nodes_to_show = set(source[0].nodes_to_show)
+        except AttributeError:
+            self.nodes_to_show = set()
+            for source in source:
                 try:
-                    database = source.database
+                    self.nodes_to_show.add(source.full_table_name)
                 except AttributeError:
                     try:
-                        database = source.schema.database
+                        database = source.database
                     except AttributeError:
-                        raise DataJointError('Cannot plot ERD for %s' % repr(source))
-                for node in self:
-                    if node.startswith('`%s`' % database):
-                        self.nodes_to_show.add(node)
+                        try:
+                            database = source.schema.database
+                        except AttributeError:
+                            raise DataJointError('Cannot plot ERD for %s' % repr(source))
+                    for node in self:
+                        if node.startswith('`%s`' % database):
+                            self.nodes_to_show.add(node)
         if not include_parts:
             self.nodes_to_show = set(n for n in self.nodes_to_show
                                      if not re.fullmatch(Part.tier_regexp, n.split('`')[-2]))
 
-    def __sub__(self, other):
+    def __add__(self, arg):
+        """
+        :param arg: either another ERD or a positive integer.
+        :return: Union of the ERDs when arg is another ERD or an expansion downstream when arg is a positive integer.
+        """
+        self = ERD(self)   # copy
         try:
-            self.nodes_to_show.difference_update(other.nodes_to_show)
+            self.nodes_to_show.update(arg.nodes_to_show)
         except AttributeError:
-            nsteps = other
-            for i in range(nsteps):
-                new = nx.algorithms.boundary.node_boundary(nx.DiGraph(self).reverse(), self.nodes_to_show)
-                if not new:
-                    break
-                self.nodes_to_show.update(new)
-        return self
-
-    def __add__(self, other):
-        try:
-            self.nodes_to_show.update(other.nodes_to_show)
-        except AttributeError:
-            nsteps = other
-            for i in range(nsteps):
+            for i in range(arg):
                 new = nx.algorithms.boundary.node_boundary(self, self.nodes_to_show)
                 if not new:
                     break
                 self.nodes_to_show.update(new)
         return self
 
-    def __mul__(self, other):
-        self.nodes_to_show.intersection_update(other.nodes_to_show)
+    def __sub__(self, arg):
+        """
+        :param arg: either another ERD or a positive integer.
+        :return: Difference of the ERDs when arg is another ERD or an expansion upstream when arg is a positive integer.
+        """
+        self = ERD(self)   # copy
+        try:
+            self.nodes_to_show.difference_update(arg.nodes_to_show)
+        except AttributeError:
+            for i in range(arg):
+                new = nx.algorithms.boundary.node_boundary(nx.DiGraph(self).reverse(), self.nodes_to_show)
+                if not new:
+                    break
+                self.nodes_to_show.update(new)
+        return self
+
+    def __mul__(self, arg):
+        """
+        Intersection of two ERDs
+        :param arg: another ERD
+        :return: a new ERD comprising nodes that are present in both operands.
+        """
+        self = ERD(self)   # copy
+        self.nodes_to_show.intersection_update(arg.nodes_to_show)
         return self
 
     def _make_graph(self, prefix_module):
@@ -121,7 +141,7 @@ class ERD(nx.DiGraph):
                    for cls in class_list if cls.full_table_name in graph}
         new_names = [mapping.values()]
         if len(new_names) > len(set(new_names)):
-            raise DataJointError('Some classes have identifical names. The ERD cannot be plotted.')
+            raise DataJointError('Some classes have identical names. The ERD cannot be plotted.')
         nx.relabel_nodes(graph, mapping, copy=False)
         return graph
 

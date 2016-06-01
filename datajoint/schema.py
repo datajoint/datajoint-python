@@ -103,7 +103,7 @@ class Schema:
             except pymysql.OperationalError:
                 raise DataJointError("An attempt to drop database named `{database}` "
                                      "has failed. Check permissions.".format(database=self.database))
-           
+
     @property
     def exists(self):
         """
