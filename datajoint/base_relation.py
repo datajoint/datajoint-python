@@ -1,5 +1,4 @@
-from collections.abc import Mapping
-from collections import OrderedDict, defaultdict
+import collections
 import itertools
 import numpy as np
 import logging
@@ -192,7 +191,7 @@ class BaseRelation(RelationalOperand):
                 check_fields(row.dtype.fields)
                 attributes = [make_placeholder(name, row[name])
                               for name in heading if name in row.dtype.fields]
-            elif isinstance(row, Mapping):  # dict-based
+            elif isinstance(row, collections.abc.Mapping):  # dict-based
                 check_fields(row.keys())
                 attributes = [make_placeholder(name, row[name]) for name in heading if name in row]
             else:  # positional
@@ -240,7 +239,7 @@ class BaseRelation(RelationalOperand):
                 rows = list(row for row in rows if not row_exists(row))
             if rows:
                 self.connection.query(
-                    sql="{command} INTO {destination}(`{fields}`) VALUES {placeholders}".format(
+                    "{command} INTO {destination}(`{fields}`) VALUES {placeholders}".format(
                         command='REPLACE' if replace else 'INSERT IGNORE' if ignore_errors else 'INSERT',
                         destination=self.from_clause,
                         fields='`,`'.join(field_list),
@@ -261,13 +260,13 @@ class BaseRelation(RelationalOperand):
         """
         self.connection.dependencies.load()
 
-        relations_to_delete = OrderedDict(
+        relations_to_delete = collections.OrderedDict(
             (r, FreeRelation(self.connection, r))
             for r in self.connection.dependencies.descendants(self.full_table_name))
 
         # construct restrictions for each relation
         restrict_by_me = set()
-        restrictions = defaultdict(list)
+        restrictions = collections.defaultdict(list)
         if self.restrictions:
             restrict_by_me.add(self.full_table_name)
             restrictions[self.full_table_name].append(self.restrictions)  # copy own restrictions
