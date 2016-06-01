@@ -94,12 +94,12 @@ class Experiment(dj.Imported):
         from datetime import date, timedelta
         users = User().fetch()['username']
         random.seed('Amazing Seed')
-        for experiment_id in range(self.fake_experiments_per_subject):
-            self.insert1(
-                dict(key,
-                     experiment_id=experiment_id,
-                     experiment_date=(date.today() - timedelta(random.expovariate(1 / 30))).isoformat(),
-                     username=random.choice(users)))
+        self.insert(
+            dict(key,
+                 experiment_id=experiment_id,
+                 experiment_date=(date.today() - timedelta(random.expovariate(1 / 30))).isoformat(),
+                 username=random.choice(users))
+            for experiment_id in range(self.fake_experiments_per_subject))
 
 
 @schema
@@ -116,12 +116,11 @@ class Trial(dj.Imported):
         populate with random data (pretend reading from raw files)
         """
         random.seed('Amazing Seed')
-        for trial_id in range(10):
-            self.insert1(
-                dict(key,
-                     trial_id=trial_id,
-                     start_time=random.random() * 1e9
-                     ))
+        self.insert(
+            dict(key,
+                 trial_id=trial_id,
+                 start_time=random.random() * 1e9)
+            for trial_id in range(10))
 
 
 @schema
@@ -152,11 +151,11 @@ class Ephys(dj.Imported):
         self.insert1(row)
         number_samples = round(row['duration'] * row['sampling_frequency'])
         sub = self.Channel()
-        for channel in range(2):
-            sub.insert1(
-                dict(key,
-                     channel=channel,
-                     voltage=np.float32(np.random.randn(number_samples))))
+        sub.insert(
+            dict(key,
+                 channel=channel,
+                 voltage=np.float32(np.random.randn(number_samples)))
+            for channel in range(2))
 
 
 @schema
@@ -187,9 +186,4 @@ class UnterTrash(dj.Manual):
 
     def prepare(self):
         UberTrash().insert1((1,), skip_duplicates=True)
-        self.insert1((1, 1), skip_duplicates=True)
-        self.insert1((1, 2), skip_duplicates=True)
-
-d = schema.connection.dependencies
-d.load()
-p = Trial().parents
+        self.insert(((1, 1), (1,2)), skip_duplicates=True)

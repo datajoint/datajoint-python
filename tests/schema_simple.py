@@ -47,7 +47,7 @@ class B(dj.Computed):
             sigma = random.lognormvariate(0, 4)
             n = random.randint(0, 10)
             self.insert1(dict(key, mu=mu, sigma=sigma, n=n))
-            sub.insert((dict(key, id_c=j, value=random.normalvariate(mu, sigma)) for j in range(n)))
+            sub.insert(dict(key, id_c=j, value=random.normalvariate(mu, sigma)) for j in range(n))
 
 
 @schema
@@ -73,8 +73,7 @@ class D(dj.Computed):
         # make reference to a random tuple from L
         random.seed(str(key))
         lookup = list(L().fetch.keys())
-        for i in range(4):
-            self.insert1(dict(key, id_d=i, **random.choice(lookup)))
+        self.insert(dict(key, id_d=i, **random.choice(lookup)) for i in range(4))
 
 
 @schema
@@ -100,9 +99,7 @@ class E(dj.Computed):
         sub = E.F()
         references = list((B.C() & key).fetch.keys())
         random.shuffle(references)
-        for i, ref in enumerate(references):
-            if random.getrandbits(1):
-                sub.insert1(dict(key, id_f=i, **ref))
+        sub.insert(dict(key, id_f=i, **ref) for i, ref in enumerate(references) if random.getrandbits(1))
 
 
 @schema
@@ -113,9 +110,7 @@ class DataA(dj.Lookup):
     a       : int
     """
 
-    @property
-    def contents(self):
-        yield from zip(range(5), range(5))
+    contents = zip(range(5), range(5))
 
 
 @schema
@@ -126,6 +121,4 @@ class DataB(dj.Lookup):
     a       : int
     """
 
-    @property
-    def contents(self):
-        yield from zip(range(5), range(5, 10))
+    contents = zip(range(5), range(5, 10))

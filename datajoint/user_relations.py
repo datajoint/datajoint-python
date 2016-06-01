@@ -43,6 +43,13 @@ class UserRelation(BaseRelation, metaclass=OrderedClass):
         return cls._connection
 
     @classproperty
+    def table_name(cls):
+        """
+        :returns: the table name of the table formatted for mysql.
+        """
+        return cls._prefix + from_camel_case(cls.__name__)
+
+    @classproperty
     def full_table_name(cls):
         if cls.database is None:
             raise DataJointError('Class %s is not properly declared (schema decorator not applied?)' % cls.__name__)
@@ -57,13 +64,6 @@ class Manual(UserRelation):
     _prefix = r''
     tier_regexp = r'(?P<manual>' + _prefix + _base_regexp + ')'
 
-    @classproperty
-    def table_name(cls):
-        """
-        :returns: the table name of the table formatted for SQL.
-        """
-        return from_camel_case(cls.__name__)
-
 
 class Lookup(UserRelation):
     """
@@ -74,13 +74,6 @@ class Lookup(UserRelation):
 
     _prefix = '#'
     tier_regexp = r'(?P<lookup>' + _prefix + _base_regexp.replace('TIER', 'lookup') + ')'
-
-    @classproperty
-    def table_name(cls):
-        """
-        :returns: the table name of the table formatted for mysql.
-        """
-        return cls._prefix + from_camel_case(cls.__name__)
 
     def prepare(self):
         """
@@ -99,13 +92,6 @@ class Imported(UserRelation, AutoPopulate):
     _prefix = '_'
     tier_regexp = r'(?P<imported>' + _prefix + _base_regexp + ')'
 
-    @classproperty
-    def table_name(cls):
-        """
-        :returns: the table name of the table formatted for mysql.
-        """
-        return cls._prefix + from_camel_case(cls.__name__)
-
 
 class Computed(UserRelation, AutoPopulate):
     """
@@ -115,13 +101,6 @@ class Computed(UserRelation, AutoPopulate):
 
     _prefix = '__'
     tier_regexp = r'(?P<computed>' + _prefix + _base_regexp + ')'
-
-    @classproperty
-    def table_name(cls):
-        """
-        :returns: the table name of the table formatted for SQL.
-        """
-        return cls._prefix + from_camel_case(cls.__name__)
 
 
 class Part(BaseRelation):
