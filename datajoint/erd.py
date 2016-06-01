@@ -2,6 +2,7 @@ import networkx as nx
 import numpy as np
 import re
 from scipy.optimize import basinhopping
+import itertools
 import inspect
 from . import Manual, Imported, Computed, Lookup, Part, DataJointError
 
@@ -112,16 +113,7 @@ class ERD(nx.DiGraph):
         Make the self.graph - a graph object ready for drawing
         """
         graph = nx.DiGraph(self).subgraph(self.nodes_to_show)
-        node_colors = {   # http://matplotlib.org/examples/color/named_colors.html
-            None: 'y',
-            Manual: 'forestgreen',
-            Lookup: 'gray',
-            Computed: 'r',
-            Imported: 'darkblue',
-            Part: 'thistle'
-        }
-        color_mapping = {n: node_colors[_get_tier(n.split('`')[-2])] for n in graph};
-        nx.set_node_attributes(graph, 'color', color_mapping)
+        nx.set_node_attributes(graph, 'node_type', {n: _get_tier(n.split('`')[-2]) for n in graph})
         # relabel nodes to class names
         class_list = list(cls for cls in _get_concrete_subclasses(user_relation_classes))
         mapping = {cls.full_table_name: (cls._context['__name__'] + '.' if prefix_module else '') +
@@ -133,34 +125,42 @@ class ERD(nx.DiGraph):
         nx.relabel_nodes(graph, mapping, copy=False)
         return graph
 
-    def draw(self, pos=None, layout=None, prefix_module=True):
+    def draw(self, pos=None, layout=None, prefix_module=True, **layout_options):
         if not self.nodes_to_show:
             print('There is nothing to plot')
             return
         graph = self._make_graph(prefix_module)
         if pos is None:
-            pos = self._layout(graph) if layout is None else layout(graph)
+            pos = (layout if layout else self._layout)(graph, **layout_options)
         import matplotlib.pyplot as plt
 
         # plot manual
         nodelist = graph.nodes()
-        node_colors = [graph.node[n]['color'] for n in nodelist]
         edge_list = graph.edges(data=True)
         edge_styles = ['solid' if e[2]['primary'] else 'dashed' for e in edge_list]
         nx.draw_networkx_edges(graph, pos=pos, edgelist=edge_list, style=edge_styles, alpha=0.2)
-        for c in set(node_colors):
-            bbox = dict(boxstyle='round', facecolor=c, alpha=0.3)
-            nx.draw_networkx_labels(graph.subgraph([n for n in nodelist if graph.node[n]['color'] == c]),
-                                    pos=pos, bbox=bbox, horizontalalignment='right')
+
+        label_props = { # http://matplotlib.org/examples/color/named_colors.html
+            None: dict(bbox=dict(boxstyle='round', facecolor='yellow', alpha=0.3), size=8),
+            Manual: dict(bbox=dict(boxstyle='round', pad=0.1, edgecolor='white', facecolor='darkgreen', alpha=0.3), size=10),
+            Lookup: dict(bbox=dict(boxstyle='round', pad=0.2, facecolor='gray', alpha=0.2), size=8),
+            Computed: dict(bbox=dict(boxstyle='round', pad=0.1, edgecolor='white', facecolor='red', alpha=0.2), size=10),
+            Imported: dict(bbox=dict(boxstyle='round', pad=0.1, edgecolor='white', facecolor='darkblue', alpha=0.2), size=10),
+            Part: dict(size=7)}
+        ax = plt.gca()
+        for node in graph.nodes(data=True):
+            ax.text(*pos[node[0]], node[0], **label_props[node[1]['node_type']],
+                    horizontalalignment='right' if pos[node[0]][0]<0.5 else 'left')
         ax = plt.gca()
         ax.axis('off')
         ax.set_xlim([-0.4, 1.4])  # allow a margin for labels
         plt.show()
 
     @staticmethod
-    def _layout(graph):
+    def _layout(graph, quality=1):
         """
         :param graph:  a networkx.DiGraph object
+        :param quality: 0=dirty, 1=draft, 2=good, 3=great, 4=publish
         :return: position dict keyed by node names
         """
         if not nx.is_directed_acyclic_graph(graph):
@@ -174,7 +174,6 @@ class ERD(nx.DiGraph):
             depths = dict(depths, **dict.fromkeys(nodes, depth))
             nodes = set(edge[1] for edge in graph.out_edges(nodes))
             depth += 1
-
         # push depth down as far as possible
         updated = True
         while updated:
@@ -182,7 +181,7 @@ class ERD(nx.DiGraph):
             for node in graph.nodes():
                 if graph.successors(node):
                     m = min(depths[n] for n in graph.successors(node)) - 1
-                    updated = m > depths[node]
+                    updated = updated or m > depths[node]
                     depths[node] = m
         longest_path = nx.dag_longest_path(graph)  # place at x=0
 
@@ -199,41 +198,50 @@ class ERD(nx.DiGraph):
             x[node] += 2*(x[node] > 0)-1
             unplaced.remove(node)
 
-        n = graph.number_of_nodes()
-        nodes = list(depths.keys())
+        nodes = nx.topological_sort(graph)
         x = np.array([x[n] for n in nodes])
+
+        intersecting_edge_pairs = list(
+            [[nodes.index(n) for n in edge1],
+             [nodes.index(n) for n in edge2]]
+            for edge1, edge2 in itertools.combinations(graph.edges(), 2)
+            if len(set(edge1 + edge2)) == 4 and (
+                depths[edge1[1]] > depths[edge2[0]] and
+                depths[edge2[1]] > depths[edge1[0]]))
         depths = depth - np.array([depths[n] for n in nodes])
 
         #  minimize layout cost function (for x-coordinate only)
-        A = np.asarray(nx.to_numpy_matrix(graph, dtype=bool))
+        A = np.asarray(nx.to_numpy_matrix(graph, dtype=bool))   # adjacency matrix
         A = np.logical_or(A, A.transpose())
-        D = np.zeros_like(A,dtype=bool)
+        D = np.zeros_like(A,dtype=bool)         # neighbor matrix
         for d in set(depths):
             ix = depths == d
             D[np.outer(ix,ix)]=True
-        D = np.logical_xor(D, np.identity(n, bool))
+        D = np.logical_xor(D, np.identity(len(nodes), bool))
 
         def cost(xx):
             xx = np.expand_dims(xx, 1)
             g = xx.transpose()-xx
             h = g**2 + 1e-8
-            return h[A].sum() + 2*h[D].sum() + (1/h[D]).sum()
+            crossings = sum((xx[edge1[0]][0] > xx[edge2[0]][0]) != (xx[edge1[1]][0] > xx[edge2[1]][0])
+                            for edge1, edge2 in intersecting_edge_pairs)
+            return crossings*1000 + h[A].sum() + 0.1*h[D].sum() + (1/h[D]).sum()
 
         def grad(xx):
             xx = np.expand_dims(xx, 1)
             g = xx.transpose()-xx
             h = g**2 + 1e-8
-            return -2*((A*g).sum(axis=1) + (D*g).sum(axis=1) - (D*g/h**2).sum(axis=1))
-
-        x = basinhopping(cost, x, niter=100, T=10, stepsize=0.25, minimizer_kwargs=dict(jac=grad)).x
-
-        # tilt left and up a bit
-        y = depths + 0.35*x  # offset nodes slightly
-        x -= 0.15*depths
-
-        # normalize
+            return -2*((A*g).sum(axis=1) + 0.1*(D*g).sum(axis=1) - (D*g/h**2).sum(axis=1))
+        niter = [100, 200, 500, 1000, 3000][quality]
+        maxiter = [2, 3, 4, 5, 6][quality]
+        x = basinhopping(cost, x, niter=niter, interval=40, T=30, stepsize=1.0, disp=False,
+                         minimizer_kwargs=dict(jac=grad, options=dict(maxiter=maxiter))).x
+        # normalize coordinates to unit square
+        phi = np.pi*20/180   # rotate coordinate slightly
+        cs, sn = np.cos(phi), np.sin(phi)
+        x, depths = cs*x - sn*depths,  sn*x + cs*depths
         x -= x.min()
-        x /= x.max() + 0.01
-        y -= y.min()
-        y /= y.max() + 0.01
-        return {node: (x, y) for node, x, y in zip(nodes, x, y)}
+        x /= x.max()+0.01
+        depths -= depths.min()
+        depths = depths/(depths.max()+0.01)
+        return {node: (x, y) for node, x, y in zip(nodes, x, depths)}
