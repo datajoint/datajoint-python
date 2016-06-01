@@ -74,3 +74,4 @@ def test_drop_database():
     assert_true(schema.exists)
     schema.drop()
     assert_false(schema.exists)
+    schema.drop()   # should do nothing
