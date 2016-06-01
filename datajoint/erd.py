@@ -46,13 +46,12 @@ class ERD(nx.DiGraph):
     Only those tables that are loaded in the connection object are displayed
     """
     def __init__(self, source, include_parts=True):
+        # turn source into a sequence if it's not already
         try:
             source[0]
         except (TypeError, KeyError):
             source = [source]
-        except:
-            raise DataJointError('Cannot create an ERD from %s' % repr(source))
-
+        # if the first item does not have a connection, it should have a schema.connection
         try:
             self.connection = source[0].connection
         except AttributeError:
@@ -60,18 +59,20 @@ class ERD(nx.DiGraph):
                 self.connection = source[0].schema.connection
             except AttributeError:
                 raise DataJointError('Could find database connection in %s' % repr(source[0]))
-
-        self.connection.dependencies.load()
-        super().__init__(self.connection.dependencies)
-
         try:
+            # copy constructor
             self.nodes_to_show = set(source[0].nodes_to_show)
+            super().__init__(self.connection.dependencies)
         except AttributeError:
+            # initialize graph from dependencies
+            self.connection.dependencies.load()
+            super().__init__(self.connection.dependencies)
             self.nodes_to_show = set()
             for source in source:
                 try:
                     self.nodes_to_show.add(source.full_table_name)
                 except AttributeError:
+                    # does not have a table, so must have a database
                     try:
                         database = source.database
                     except AttributeError:
