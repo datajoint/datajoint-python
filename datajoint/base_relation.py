@@ -1,5 +1,6 @@
 from collections.abc import Mapping
 from collections import OrderedDict, defaultdict
+import itertools
 import numpy as np
 import logging
 import abc
@@ -132,16 +133,14 @@ class BaseRelation(RelationalOperand):
         Insert a collection of rows. Additional keyword arguments are passed to insert1.
 
         :param rows: An iterable where an element is a valid arguments for insert1.
-        :param replace=False: If True, replaces the matching data tuple in the table if it exists.
-        :param ignore_errors=False: If True, ignore errors: e.g. constraint violations.
-        :param skip_dublicates=False: If True, silently skip duplicate inserts.
+        :param replace: If True, replaces the matching data tuple in the table if it exists.
+        :param ignore_errors: If True, ignore errors: e.g. constraint violations.
+        :param skip_duplicates: If True, silently skip duplicate inserts.
 
         Example::
-
         >>> relation.insert([
         >>>     dict(subject_id=7, species="mouse", date_of_birth="2014-09-01"),
         >>>     dict(subject_id=8, species="mouse", date_of_birth="2014-09-02")])
-
         """
         heading = self.heading
         field_list = None  # ensures that all rows have the same attributes in the same order as the first row.
@@ -231,38 +230,22 @@ class BaseRelation(RelationalOperand):
             """
             primary_key_value = dict((name, value)
                                      for (name, value) in zip(row['names'], row['values']) if heading[name].in_key)
-            return self & primary_key_value
+            return primary_key_value in self
 
         rows = list(make_row_to_insert(row) for row in rows)
-
-        if not rows:
-            return
-
-        # skip duplicates only if the entire primary key is specified.
-        skip_duplicates = skip_duplicates and set(heading.primary_key).issubset(set(field_list))
-
-        if skip_duplicates:
-            rows = list(row for row in rows if not row_exists(row))
-
-        if not rows:
-            return
-
-        if replace:
-            sql = 'REPLACE'
-        elif ignore_errors:
-            sql = 'INSERT IGNORE'
-        else:
-            sql = 'INSERT'
-
-        sql += " INTO %s (`%s`) VALUES " % (self.from_clause, '`,`'.join(field_list))
-
-        # add placeholders to sql
-        sql += ','.join('(' + ','.join(row['placeholders']) + ')' for row in rows)
-        # compile all values into one list
-        args = []
-        for r in rows:
-            args.extend(v for v in r['values'] if v is not None)
-        self.connection.query(sql, args=args)
+        if rows:
+            # skip duplicates only if the entire primary key is specified.
+            skip_duplicates = skip_duplicates and set(heading.primary_key).issubset(set(field_list))
+            if skip_duplicates:
+                rows = list(row for row in rows if not row_exists(row))
+            if rows:
+                self.connection.query(
+                    sql="{command} INTO {destination}(`{fields}`) VALUES {placeholders}".format(
+                        command='REPLACE' if replace else 'INSERT IGNORE' if ignore_errors else 'INSERT',
+                        destination=self.from_clause,
+                        fields='`,`'.join(field_list),
+                        placeholders=','.join('(' + ','.join(row['placeholders']) + ')' for row in rows)),
+                    args=list(itertools.chain.from_iterable((v for v in r['values'] if v is not None) for r in rows)))
 
     def delete_quick(self):
         """
@@ -330,7 +313,6 @@ class BaseRelation(RelationalOperand):
         Drops the table associated with this relation without cascading and without user prompt.
         If the table has any dependent table(s), this call will fail with an error.
         """
-        # TODO: give a better exception message
         if self.is_declared:
             self.connection.query('DROP TABLE %s' % self.full_table_name)
             logger.info("Dropped table %s" % self.full_table_name)
