@@ -149,15 +149,16 @@ class ERD(nx.DiGraph):
             Part: dict(size=7)}
         ax = plt.gca()
         for node in graph.nodes(data=True):
-            ax.text(pos[node[0]][0], pos[node[0]][1], node[0], **label_props[node[1]['node_type']],
-                    horizontalalignment=('right' if pos[node[0]][0]<0.5 else 'left'))
+            ax.text(pos[node[0]][0], pos[node[0]][1], node[0],
+                    horizontalalignment=('right' if pos[node[0]][0] < 0.5 else 'left'),
+                    **label_props[node[1]['node_type']])
         ax = plt.gca()
         ax.axis('off')
         ax.set_xlim([-0.4, 1.4])  # allow a margin for labels
         plt.show()
 
     @staticmethod
-    def _layout(graph, quality=1):
+    def _layout(graph, quality=2):
         """
         :param graph:  a networkx.DiGraph object
         :param quality: 0=dirty, 1=draft, 2=good, 3=great, 4=publish
