@@ -1,7 +1,6 @@
 from inspect import getmembers
 import re
 
-import itertools
 import numpy as np
 from nose.tools import assert_equal, assert_not_equal, assert_false, assert_true, assert_list_equal, raises
 from . import schema
@@ -139,13 +138,13 @@ class TestRelation:
         """Test whether table names are matched by regular expressions"""
         tiers = [dj.Imported, dj.Manual, dj.Lookup, dj.Computed]
         for name, rel in getmembers(schema, relation_selector):
-            assert_true(re.match(rel.tier_regexp, rel().table_name),
+            assert_true(re.match(rel.tier_regexp, rel.table_name),
                         'Regular expression does not match for {name}'.format(name=name))
-
-            for tier in itertools.filterfalse(lambda t: issubclass(rel, t), tiers):
-                assert_false(re.match(tier.tier_regexp, rel().table_name),
-                             'Regular expression matches for {name} but should not'.format(name=name))
+            for tier in tiers:
+                assert_true(issubclass(rel, tier) or not re.match(tier.tier_regexp, rel.table_name),
+                            'Regular expression matches for {name} but should not'.format(name=name))
 
     def test_table_size(self):
-        assert_true(self.experiment.size_on_disk > 0)
+        """test getting the size of the table and its indices in bytes"""
+        assert_true(self.experiment.size_on_disk > 100)
 
