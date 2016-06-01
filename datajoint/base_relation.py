@@ -43,17 +43,9 @@ class BaseRelation(RelationalOperand):
 
     # -------------- required by RelationalOperand ----------------- #
     @property
-    def connection(self):
-        """
-        :return: the connection object of the relation
-        """
-        return self._connection
-
-    @property
     def heading(self):
         """
         Returns the table heading. If the table is not declared, attempts to declare it and return heading.
-
         :return: table heading
         """
         if self._heading is None:
@@ -61,7 +53,6 @@ class BaseRelation(RelationalOperand):
         if not self._heading:  # heading is not initialized
             self.declare()
             self._heading.init_from_database(self.connection, self.database, self.table_name)
-
         return self._heading
 
     def declare(self):

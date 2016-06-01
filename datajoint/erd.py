@@ -46,43 +46,48 @@ class ERD(nx.DiGraph):
     Only those tables that are loaded in the connection object are displayed
     """
     def __init__(self, source):
-        # turn source into a sequence if it's not already
+
+        if isinstance(source, ERD):
+            # copy constructor
+            self.nodes_to_show = set(source.nodes_to_show)
+            super().__init__(source)
+            return
+
+        # if source is not a list, make it a list
         try:
             source[0]
         except (TypeError, KeyError):
             source = [source]
-        # if the first item does not have a connection, it should have a schema.connection
+
+        # find connection in the first item in the list
         try:
-            self.connection = source[0].connection
+            connection = source[0].connection
         except AttributeError:
             try:
-                self.connection = source[0].schema.connection
+                connection = source[0].schema.connection
             except AttributeError:
                 raise DataJointError('Could find database connection in %s' % repr(source[0]))
-        try:
-            # copy constructor
-            self.nodes_to_show = set(source[0].nodes_to_show)
-            super().__init__(self.connection.dependencies)
-        except AttributeError:
-            # initialize graph from dependencies
-            self.connection.dependencies.load()
-            super().__init__(self.connection.dependencies)
-            self.nodes_to_show = set()
-            for source in source:
+
+        # initialize graph from dependencies
+        connection.dependencies.load()
+        super().__init__(connection.dependencies)
+
+        # Enumerate nodes from all the items in the list
+        self.nodes_to_show = set()
+        for source in source:
+            try:
+                self.nodes_to_show.add(source.full_table_name)
+            except AttributeError:
                 try:
-                    self.nodes_to_show.add(source.full_table_name)
+                    database = source.database
                 except AttributeError:
-                    # does not have a table, so must have a database
                     try:
-                        database = source.database
+                        database = source.schema.database
                     except AttributeError:
-                        try:
-                            database = source.schema.database
-                        except AttributeError:
-                            raise DataJointError('Cannot plot ERD for %s' % repr(source))
-                    for node in self:
-                        if node.startswith('`%s`' % database):
-                            self.nodes_to_show.add(node)
+                        raise DataJointError('Cannot plot ERD for %s' % repr(source))
+                for node in self:
+                    if node.startswith('`%s`' % database):
+                        self.nodes_to_show.add(node)
 
     def __add__(self, arg):
         """
