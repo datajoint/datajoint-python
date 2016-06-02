@@ -79,13 +79,13 @@ class Schema:
                 master_class = master_classes[groups['master']]
             except KeyError:
                 # if master not found among the spawned classes, check in the context
-                try:
-                    master_class = self.context[to_camel_case(groups['master'])]
-                    if hasattr(master_class, class_name):
-                        raise KeyError('part table is already declared')
-                except KeyError:
-                    master_class = None
-            if master_class is not None:
+                master_class = self.context[to_camel_case(groups['master'])]
+                if not hasattr(master_class, class_name):
+                    part_class = type(class_name, (Part,), dict(definition=...))
+                    part_class._master = master_class
+                    self.process_relation_class(part_class, context=self.context, assert_declared=True)
+                    setattr(master_class, class_name, part_class)
+            else:
                 setattr(master_class, class_name, type(class_name, (Part,), dict(definition=...)))
 
         # place classes in context upon decorating them with the schema
@@ -116,31 +116,33 @@ class Schema:
         cur = self.connection.query("SHOW DATABASES LIKE '{database}'".format(database=self.database))
         return cur.rowcount > 0
 
+    def process_relation_class(self, relation_class, context, assert_declared=False):
+        """
+        assign schema properties to the relation class and declare the table
+        """
+        relation_class.database = self.database
+        relation_class._connection = self.connection
+        relation_class._heading = Heading()
+        relation_class._context = context
+        # instantiate the class, declare the table if not already, and fill it with initial values.
+        instance = relation_class()
+        if not instance.is_declared:
+            if assert_declared:
+                raise DataJointError('Bug: incorrect table name generation')
+            instance.declare()
+            if hasattr(instance, 'contents'):
+                instance.insert(instance.contents)
+
     def __call__(self, cls):
         """
         Binds the passed in class object to a database. This is intended to be used as a decorator.
         :param cls: class to be decorated
         """
 
-        def process_relation_class(relation_class, context):
-            """
-            assign schema properties to the relation class and declare the table
-            """
-            relation_class.database = self.database
-            relation_class._connection = self.connection
-            relation_class._heading = Heading()
-            relation_class._context = context
-            # instantiate the class, declare the table if not already, and fill it with initial values.
-            instance = relation_class()
-            if not instance.is_declared:
-                instance.declare()
-                if hasattr(instance, 'contents'):
-                    instance.insert(instance.contents)
-
         if issubclass(cls, Part):
             raise DataJointError('The schema decorator should not be applied to Part relations')
 
-        process_relation_class(cls, context=self.context)
+        self.process_relation_class(cls, context=self.context)
 
         # Process part relations
         for part in cls._ordered_class_members:
@@ -148,7 +150,8 @@ class Schema:
                 part = getattr(cls, part)
                 if inspect.isclass(part) and issubclass(part, Part):
                     part._master = cls
-                    process_relation_class(part, context=dict(self.context, **{cls.__name__: cls}))
+                    # allow addressing master
+                    self.process_relation_class(part, context=dict(self.context, **{cls.__name__: cls}))
         return cls
 
     @property

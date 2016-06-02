@@ -330,7 +330,7 @@ class BaseRelation(RelationalOperand):
         if do_drop:
             for table in reversed(tables):
                 FreeRelation(self.connection, table).drop_quick()
-            print('Tables dropped.')
+            print('Tables dropped.  Restart kernel.')
 
     @property
     def size_on_disk(self):
