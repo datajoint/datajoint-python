@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 
 class Schema:
     """
-    A schema object can be used  as a decorator that associates a Relation class to a database as
-    well as a namespace for looking up foreign key references in table declaration.
+    A schema object is a decorator for UserRelation classes that binds them to their database.
+    It also specifies the namespace `context` in which other UserRelation classes are defined.
     """
 
     def __init__(self, database, context, connection=None):
@@ -74,12 +74,18 @@ class Schema:
         # attach parts to masters
         for part_table in part_tables:
             groups = re.fullmatch(Part.tier_regexp, part_table).groupdict()
+            class_name = to_camel_case(groups['part'])
             try:
                 master_class = master_classes[groups['master']]
             except KeyError:
-                pass   # ignore part tables with no masters
-            else:
-                class_name = to_camel_case(groups['part'])
+                # if master not found among the spawned classes, check in the context
+                try:
+                    master_class = self.context[to_camel_case(groups['master'])]
+                    if hasattr(master_class, class_name):
+                        raise KeyError('part table is already declared')
+                except KeyError:
+                    master_class = None
+            if master_class is not None:
                 setattr(master_class, class_name, type(class_name, (Part,), dict(definition=...)))
 
         # place classes in context upon decorating them with the schema
