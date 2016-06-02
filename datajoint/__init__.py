@@ -17,11 +17,14 @@ import os
 
 __author__ = "Dimitri Yatsenko, Edgar Walker, and Fabian Sinz at Baylor College of Medicine"
 __version__ = "0.2.1"
+__date__ = "June 1, 2016"
 __all__ = ['__author__', '__version__',
            'config', 'conn', 'kill',
            'Connection', 'Heading', 'BaseRelation', 'FreeRelation', 'Not', 'schema',
            'Manual', 'Lookup', 'Imported', 'Computed', 'Part',
            'AndList', 'OrList', 'ERD']
+
+print('DataJoint', __version__, '('+__date__+')')
 
 
 class key:
@@ -68,7 +71,6 @@ else:
     config.save(local_config_file)
 
 logger.setLevel(log_levels[config['loglevel']])
-
 
 # ------------- flatten import hierarchy -------------------------
 from .connection import conn, Connection

@@ -39,7 +39,7 @@ class TestPopulate:
         d.load()
         self.trial.populate(restriction)
         assert_true(self.trial, 'table was not populated')
-        poprel = self.trial.populated_from
+        poprel = self.trial.poprel
         assert_equal(len(poprel & self.trial), len(poprel & restriction))
         assert_equal(len(poprel - self.trial), len(poprel - restriction))
 

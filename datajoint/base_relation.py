@@ -195,7 +195,7 @@ class BaseRelation(RelationalOperand):
                 try:
                     if len(row) != len(heading):
                         raise DataJointError(
-                            'Incorrect number of attributes: '
+                            'Invalid insert argument. Incorrect number of attributes: '
                             '{given} given; {expected} expected'.format(
                                 given=len(row), expected=len(heading)))
                 except TypeError:

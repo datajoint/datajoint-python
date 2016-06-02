@@ -16,13 +16,13 @@ class AutoPopulate(metaclass=abc.ABCMeta):
     """
     AutoPopulate is a mixin class that adds the method populate() to a Relation class.
     Auto-populated relations must inherit from both Relation and AutoPopulate,
-    must define the property populated_from, and must define the callback method _make_tuples.
+    must define the property `poprel`, and must define the callback method _make_tuples.
     """
     _jobs = None
     _populated_from = None
 
     @property
-    def populated_from(self):
+    def poprel(self):
         """
         :return: the relation whose primary key values are passed, sequentially, to the
                 `_make_tuples` method when populate() is called.The default value is the
@@ -57,10 +57,10 @@ class AutoPopulate(metaclass=abc.ABCMeta):
 
     def populate(self, *restrictions, suppress_errors=False, reserve_jobs=False, order="original"):
         """
-        rel.populate() calls rel._make_tuples(key) for every primary key in self.populated_from
+        rel.populate() calls rel._make_tuples(key) for every primary key in self.poprel
         for which there is not already a tuple in rel.
 
-        :param restrictions: a list of restrictions each restrict (rel.populated_from - target.proj())
+        :param restrictions: a list of restrictions each restrict (rel.poprel - target.proj())
         :param suppress_errors: suppresses error if true
         :param reserve_jobs: if true, reserves job to populate in asynchronous fashion
         :param order: "original"|"reverse"|"random"  - the order of execution
@@ -72,9 +72,9 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         if order not in valid_order:
             raise DataJointError('The order argument must be one of %s' % str(valid_order))
 
-        todo = self.populated_from
+        todo = self.poprel
         if not isinstance(todo, RelationalOperand):
-            raise DataJointError('Invalid populated_from value')
+            raise DataJointError('Invalid poprel value')
         todo.restrict(AndList(restrictions))
 
         error_list = [] if suppress_errors else None
@@ -122,7 +122,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         report progress of populating this table
         :return: remaining, total -- tuples to be populated
         """
-        todo = self.populated_from & AndList(restrictions)
+        todo = self.poprel & AndList(restrictions)
         total = len(todo)
         remaining = len(todo - self.target.project())
         if display:
