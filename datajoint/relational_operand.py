@@ -361,13 +361,16 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         limit = config['display.limit']
         rel = self.proj(*self.heading.non_blobs)  # project out blobs
         columns = rel.heading.names
+        info = self.heading.table_info
         content = dict(
+            title="" if info is None else "<h3>%s</h3>" % info['comment'],
             head='</th><th>'.join(columns),
             body='</tr><tr>'.join(
                 ['\n'.join(['<td>%s</td>' % column for column in tup]) for tup in rel.fetch(limit=limit)]),
             tuples=len(rel)
         )
-        return """<div style="max-height:1000px;max-width:1500px;overflow:auto;">\n
+        return """%(title)s\n
+                  <div style="max-height:1000px;max-width:1500px;overflow:auto;">\n
                   <table border="1" class="dataframe">\n
                   <thead>\n
                   <tr style="text-align: right;">\n

@@ -148,3 +148,5 @@ class TestRelation:
         """test getting the size of the table and its indices in bytes"""
         assert_true(self.experiment.size_on_disk > 100)
 
+    def test_repr_html(self):
+        assert_true(self.ephys._repr_html_().startswith("<h3>"))

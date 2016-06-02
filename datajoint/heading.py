@@ -49,6 +49,7 @@ class Heading:
         if attributes:
             attributes = OrderedDict([(q['name'], Attribute(**q)) for q in attributes])
         self.attributes = attributes
+        self.table_info = None
 
     def __len__(self):
         return 0 if self.attributes is None else len(self.attributes)
@@ -116,6 +117,10 @@ class Heading:
         """
         initialize heading from a database table.  The table must exist already.
         """
+        cur = conn.query('SHOW TABLE STATUS FROM `{database}` WHERE name="{table_name}"'.format(
+            table_name=table_name, database=database), as_dict=True)
+        self.table_info = {k.lower(): v for k, v in cur.fetchone().items()}
+
         cur = conn.query(
             'SHOW FULL COLUMNS FROM `{table_name}` IN `{database}`'.format(
                 table_name=table_name, database=database), as_dict=True)
