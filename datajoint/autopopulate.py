@@ -3,6 +3,7 @@ import abc
 import logging
 import datetime
 import random
+from pymysql import OperationalError
 from .relational_operand import RelationalOperand, AndList
 from . import DataJointError
 from .base_relation import FreeRelation
@@ -75,7 +76,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         todo = self.poprel
         if not isinstance(todo, RelationalOperand):
             raise DataJointError('Invalid poprel value')
-        todo.restrict(AndList(restrictions))
+        todo = todo & AndList(restrictions)
 
         error_list = [] if suppress_errors else None
 
@@ -103,7 +104,11 @@ class AutoPopulate(metaclass=abc.ABCMeta):
                     try:
                         self._make_tuples(dict(key))
                     except Exception as error:
-                        self.connection.cancel_transaction()
+                        try:
+                            self.connection.cancel_transaction()
+                        except OperationalError:
+                            pass
+
                         if reserve_jobs:
                             jobs.error(self.target.table_name, key, error_message=str(error))
                         if not suppress_errors:

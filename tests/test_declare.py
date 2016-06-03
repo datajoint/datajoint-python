@@ -51,7 +51,7 @@ class TestDeclare:
                           ['subject_id', 'experiment_id', 'trial_id'])
 
         assert_list_equal(channel.heading.names,
-                          ['subject_id', 'experiment_id', 'trial_id', 'channel', 'voltage'])
+                          ['subject_id', 'experiment_id', 'trial_id', 'channel', 'voltage', 'current'])
         assert_list_equal(channel.primary_key,
                           ['subject_id', 'experiment_id', 'trial_id', 'channel'])
         assert_true(channel.heading.attributes['voltage'].is_blob)

@@ -23,7 +23,7 @@ class JobRelation(BaseRelation):
         self.database = database
         self._table_name = '~jobs'
         self._connection = connection
-        self._definition = """    # job reservation table
+        self._definition = """    # job reservation table for `{database}`
         table_name  :varchar(255)  # className of the table
         key_hash  :char(32)  # key hash
         ---
@@ -34,7 +34,7 @@ class JobRelation(BaseRelation):
         host=""  :varchar(255)  # system hostname
         pid=0  :int unsigned  # system process id
         timestamp=CURRENT_TIMESTAMP  :timestamp   # automatic timestamp
-        """
+        """.format(database=database)
         if not self.is_declared:
             self.declare()
 
@@ -49,6 +49,14 @@ class JobRelation(BaseRelation):
     @property
     def table_name(self):
         return self._table_name
+
+    def delete(self):
+        """ bypass interactive prompts"""
+        self.delete_quick()
+
+    def drop(self):
+        """ bypass interactive prompts"""
+        self.drop_quick()
 
     def reserve(self, table_name, key):
         """

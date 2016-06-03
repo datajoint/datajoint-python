@@ -132,7 +132,8 @@ class Ephys(dj.Imported):
         -> Ephys
         channel    :tinyint unsigned   # channel number within Ephys
         ----
-        voltage    :longblob
+        voltage    : longblob
+        current = null : longblob   # optional current to test null handling
         """
 
     def _make_tuples(self, key):

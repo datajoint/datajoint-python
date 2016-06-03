@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 
 class AndList(list):
     """
-    A list of restrictions to by applied to a relation.  The restrictions are ANDed.
-    Each restriction can be a list or set or a relation whose elements are ORed.
+    A list of restrictions to by applied to a relation.  The restrictions are AND-ed.
+    Each restriction can be a list or set or a relation whose elements are OR-ed.
     But the elements that are lists can contain other AndLists.
 
     Example:
@@ -27,7 +27,7 @@ class AndList(list):
 
 class OrList(list):
     """
-    A list of restrictions to by applied to a relation.  The restrictions are ORed.
+    A list of restrictions to by applied to a relation.  The restrictions are OR-ed.
     If any restriction is .
     But the elements that are lists can contain other AndLists.
 
@@ -369,21 +369,14 @@ class RelationalOperand(metaclass=abc.ABCMeta):
                 ['\n'.join(['<td>%s</td>' % column for column in tup]) for tup in rel.fetch(limit=limit)]),
             tuples=len(rel)
         )
-        return """%(title)s\n
-                  <div style="max-height:1000px;max-width:1500px;overflow:auto;">\n
-                  <table border="1" class="dataframe">\n
-                  <thead>\n
-                  <tr style="text-align: right;">\n
-                  <th>
-                  %(head)s
-                  </th>
-                  </tr>\n
-                  <tbody>
-                  <tr>
-                  %(body)s
-                  </tr>
-                  </tbody>\n</table>\n<p>%(tuples)i tuples</p>\n</div>
-                  """ % content
+        return """ %(title)s
+            <div style="max-height:1000px;max-width:1500px;overflow:auto;">
+            <table border="1" class="dataframe">
+                <thead> <tr style="text-align: right;"> <th> %(head)s </th> </tr> </thead>
+                <tbody> <tr> %(body)s </tr> </tbody>
+            </table>
+            <p>%(tuples)i tuples</p></div>
+            """ % content
 
     def make_select(self, select_fields=None):
         return 'SELECT {fields} FROM {from_}{where}{group}'.format(
@@ -594,7 +587,6 @@ class U:
     contained in relation1 but not contained in relation 2.
     (dj.U('contrast', 'brightness') & relation1) - relation2
 
-
     Relational aggregation:
     In aggregation, dj.U is used to compute aggregate expressions on the entire relation.
 
@@ -606,7 +598,6 @@ class U:
     in relation.
     dj.U().aggregate(relation, n='count(distinct attr)')
 
-
     The following expression produces a relation with one tuple and one attribute s containing the total sum of attr
       from relation:
     dj.U().aggregate(relation, s='sum(attr)')   # sum of attr from the entire relation
@@ -614,7 +605,6 @@ class U:
     The following expression produces a relation with the count n of tuples in relation containing each unique
     combination of values in attr1 and attr2.
     dj.U(attr1,attr2).aggregate(relation, n='count(*)')
-
 
     Joins:
     If relation rel has attributes 'attr1' and 'attr2', then rel*dj.U('attr1','attr2') or produces a relation that is
