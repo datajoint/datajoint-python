@@ -117,9 +117,11 @@ class Heading:
         """
         initialize heading from a database table.  The table must exist already.
         """
-        cur = conn.query('SHOW TABLE STATUS FROM `{database}` WHERE name="{table_name}"'.format(
-            table_name=table_name, database=database), as_dict=True)
-        self.table_info = {k.lower(): v for k, v in cur.fetchone().items()}
+        info = conn.query('SHOW TABLE STATUS FROM `{database}` WHERE name="{table_name}"'.format(
+            table_name=table_name, database=database), as_dict=True).fetchone()
+        if info is None:
+            raise DataJointError('The table is not defined.')
+        self.table_info = {k.lower(): v for k, v in info.items()}
 
         cur = conn.query(
             'SHOW FULL COLUMNS FROM `{table_name}` IN `{database}`'.format(

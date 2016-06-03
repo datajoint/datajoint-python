@@ -32,4 +32,4 @@ pip install datajoint
 * [0. Setup](tutorial-notebooks/Primer00.ipynb)
 * [1. Connect](tutorial-notebooks/Primer01.ipynb)
 * [2. Define a table](tutorial-notebooks/Primer02.ipynb)
-
+* [3. Dependencies](tutorial-notebooks/Primer03.ipynb)
