@@ -2,7 +2,7 @@ from inspect import getmembers
 import re
 
 import numpy as np
-from nose.tools import assert_equal, assert_not_equal, assert_false, assert_true, assert_list_equal, raises
+from nose.tools import assert_equal, assert_not_equal, assert_true, assert_list_equal, raises
 from . import schema
 from pymysql import IntegrityError, ProgrammingError
 import datajoint as dj
@@ -149,4 +149,4 @@ class TestRelation:
         assert_true(self.experiment.size_on_disk > 100)
 
     def test_repr_html(self):
-        assert_true(self.ephys._repr_html_().startswith("<h3>"))
+        assert_true(self.ephys._repr_html_().strip().startswith("<h3>"))
