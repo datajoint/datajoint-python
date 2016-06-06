@@ -169,7 +169,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         relational join
         """
-        return Join(self, other)
+        return other*self if isinstance(other, U) else Join(self, other)
 
     def __mod__(self, attributes=None):
         """
@@ -196,20 +196,20 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         return Projection(self, *attributes, **renamed_attributes)
 
-    def aggregate(self, group, *attributes, left=False, **renamed_attributes):
+    def aggregate(self, group, *attributes, keep_all_rows=False, **renamed_attributes):
         """
         Relational aggregation operator
 
         :param group:  relation whose tuples can be used in aggregation operators
         :param attributes:
-        :param left: true if need to preserve the number of tuples in the left relation (LEFT JOIN is used in aggregation)
+        :param keep_all_rows: True = preserve the number of tuples in the result (equivalent of LEFT JOIN in SQL)
         :param renamed_attributes:
         :return: a relation representing the aggregation/projection operator result
         """
         if not isinstance(group, RelationalOperand):
             raise DataJointError('The second argument must be a relation')
         return Aggregation(
-            Join(self, group, aggregated=True, left=left),
+            Join(self, group, aggregated=True, keep_all_rows=keep_all_rows),
             *attributes, **renamed_attributes)
 
     def __iand__(self, restriction):
@@ -298,6 +298,8 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         :param restriction: a sequence or an array (treated as OR list), another relation, an SQL condition string, or
         an AndList.
         """
+        if isinstance(restriction, U):
+            raise DataJointError('Restriction by dj.U is invalid')
         if restriction is True or isinstance(restriction, str) and restriction.upper() == "TRUE":
             return
         if isinstance(restriction, AndList):
@@ -435,8 +437,8 @@ class Join(RelationalOperand):
     Relational join
     """
 
-    def __init__(self, arg1, arg2, aggregated=False, left=False):
-        assert not left or aggregated     # left can be set only in aggregation
+    def __init__(self, arg1, arg2, aggregated=False, keep_all_rows=False):
+        assert not keep_all_rows or aggregated     # keep_all_rows can be set only in aggregation
         if not isinstance(arg2, RelationalOperand):
             raise DataJointError('a relation can only be joined with another relation')
         if arg1.connection != arg2.connection:
@@ -446,7 +448,7 @@ class Join(RelationalOperand):
         self._heading = self._arg1.heading.join(self._arg2.heading, aggregated=aggregated)
         self.restrict(self._arg1.restrictions)
         self.restrict(self._arg2.restrictions)
-        self._left = left
+        self._left = keep_all_rows
 
     def _repr_helper(self):
         return "(%r) * (%r)" % (self._arg1, self._arg2)
