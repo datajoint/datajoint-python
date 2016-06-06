@@ -22,7 +22,7 @@ __all__ = ['__author__', '__version__',
            'config', 'conn', 'kill',
            'Connection', 'Heading', 'BaseRelation', 'FreeRelation', 'Not', 'schema',
            'Manual', 'Lookup', 'Imported', 'Computed', 'Part',
-           'AndList', 'OrList', 'ERD']
+           'AndList', 'OrList', 'ERD', 'U']
 
 print('DataJoint', __version__, '('+__date__+')')
 
@@ -76,7 +76,7 @@ logger.setLevel(log_levels[config['loglevel']])
 from .connection import conn, Connection
 from .base_relation import BaseRelation
 from .user_relations import Manual, Lookup, Imported, Computed, Part
-from .relational_operand import Not, AndList, OrList
+from .relational_operand import Not, AndList, OrList, U
 from .heading import Heading
 from .schema import Schema as schema
 from .kill import kill

@@ -7,6 +7,7 @@ import logging
 from . import DataJointError, config
 import datetime
 from .fetch import Fetch, Fetch1
+from .heading import Heading
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +91,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
                     condition = '({fields}) {not_}in ({subquery})'.format(
                         fields=common_attributes,
                         not_="not " if _negate else "",
-                        subquery=arg.make_select(common_attributes))
+                        subquery=arg.make_sql(common_attributes))
                 return condition, False  # _negate is cleared
 
             # mappings are turned into ANDed equality conditions
@@ -195,6 +196,12 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         relation cannot have more attributes than the original relation.
         """
         return Projection(self, *attributes, **renamed_attributes)
+
+    def force_proj(self, *attributes, **renamed_attributes):
+        """
+        Relation projection operator that allows projecting out primary key.
+        Use the same way as self.proj(...) but the primary key is not automatically included.
+        """
 
     def aggregate(self, group, *attributes, keep_all_rows=False, **renamed_attributes):
         """
@@ -380,7 +387,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             <p>%(tuples)i tuples</p></div>
             """ % content
 
-    def make_select(self, select_fields=None):
+    def make_sql(self, select_fields=None):
         return 'SELECT {fields} FROM {from_}{where}{group}'.format(
             fields=select_fields if select_fields else self.select_fields,
             from_=self.from_clause,
@@ -394,7 +401,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         if self._grouped:
             return len(Subquery(self))
 
-        cur = self.connection.query(self.make_select('count(*)'))
+        cur = self.connection.query(self.make_sql('count(*)'))
         return cur.fetchone()[0]
 
     def __contains__(self, item):
@@ -411,7 +418,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         if offset and limit is None:
             raise DataJointError('limit is required when offset is set')
-        sql = self.make_select()
+        sql = self.make_sql()
         if order_by is not None:
             sql += ' ORDER BY ' + ', '.join(order_by)
 
@@ -429,7 +436,7 @@ class Not:
     """
 
     def __init__(self, restriction):
-        self.restriction = restriction
+        self.restriction = True if isinstance(restriction, U) else restriction
 
 
 class Join(RelationalOperand):
@@ -536,13 +543,13 @@ class Aggregation(Projection):
 class Subquery(RelationalOperand):
     """
     A Subquery encapsulates its argument in a SELECT statement, enabling its use as a subquery.
-    The attribute list and the WHERE clause are resolved.
-    As such, a subquery does not have any renamed attributes.
+    The attribute list and the WHERE clause are resolved.  Thus, a subquery no longer has any renamed attributes.
     """
     __counter = 0
 
-    def __init__(self, arg):
+    def __init__(self, arg, extend_primary_key=()):
         self._arg = arg
+        self._extend_primary_key = extend_primary_key
 
     @property
     def connection(self):
@@ -555,7 +562,7 @@ class Subquery(RelationalOperand):
 
     @property
     def from_clause(self):
-        return '(' + self._arg.make_select() + ') as `_s%x`' % self.counter
+        return '(' + self._arg.make_sql() + ') as `_s%x`' % self.counter
 
     @property
     def select_fields(self):
@@ -563,7 +570,7 @@ class Subquery(RelationalOperand):
 
     @property
     def heading(self):
-        return self._arg.heading.resolve()
+        return self._arg.heading.resolve(extend_primary_key=self._extend_primary_key)
 
     def _repr_helper(self):
         return "%r" % self._arg
@@ -623,19 +630,23 @@ class U:
         self._attributes = attributes
 
     def __and__(self, arg):
-        if not isinstance(self, RelationalOperand):
+        if not isinstance(arg, RelationalOperand):
             raise DataJointError('Relation U can only be restricted with another relation')
-        return arg._forced_proj(*self._attributes)
+        return arg.force_proj(*self._attributes)
 
     def __mul__(self, arg):
-        if not isinstance(self, RelationalOperand):
-            raise DataJointError('Relation U can only be jointed with another relation')
-        return arg._augment_primary_key(self._attributes)
+        if not isinstance(arg, RelationalOperand):
+            raise DataJointError('Relation U can only be joined with another relation')
+        for attr in self._attributes:
+            if attr not in arg.heading:
+                raise DataJointError('Attribute %s is not found.' % attr)
+        return Subquery(arg, extend_primary_key=self._attributes)
 
     def aggregate(self, arg, **computed_attributes):
         if not isinstance(arg, RelationalOperand):
             raise DataJointError('Relation U can only aggregate over another relation')
-        return arg._forced_proj(*self._attributes, aggregated=True, **computed_attributes)
+        arg = copy(arg)
+        return arg.force_proj(*self._attributes, aggregated=True, **computed_attributes)
 
 
 def restricts_to_empty(arg):

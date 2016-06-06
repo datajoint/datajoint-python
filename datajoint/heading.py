@@ -249,8 +249,11 @@ class Heading:
                 attribute_list.append(attribute)
         return Heading(attribute_list)
 
-    def resolve(self):
+    def resolve(self, extend_primary_key):
         """
         Remove attribute computations after they have been resolved in a subquery
         """
-        return Heading([dict(v._asdict(), computation=None) for v in self.attributes.values()])
+        return Heading(
+            [dict(v._asdict(), computation=None, in_key=(v.in_key or v.name in extend_primary_key))
+             for v in self.attributes.values()])
+
