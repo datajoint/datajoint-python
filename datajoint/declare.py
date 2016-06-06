@@ -85,7 +85,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
         if len(ref_attr) != 1:
             raise DataJointError('Mismatched attributes in foreign key "%s"' % line)
         ref_attr = ref_attr[0]
-        attr = result.new_attribute[0]
+        attr = result.new_attributes[0]
         attributes.append(attr)
         assert ref.heading[ref_attr].sql.startswith('`%s`' % ref_attr)
         attr_sql.append(ref.heading[ref_attr].sql.replace(ref_attr, attr, 1))

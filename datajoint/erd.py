@@ -139,8 +139,11 @@ class ERD(nx.DiGraph):
         nx.set_node_attributes(graph, 'node_type', {n: _get_tier(n.split('`')[-2]) for n in graph})
         # relabel nodes to class names
         class_list = list(cls for cls in _get_concrete_subclasses(user_relation_classes))
-        mapping = {cls.full_table_name: (cls._context['__name__'] + '.' if prefix_module else '') +
-                                        (cls._master.__name__+'.' if issubclass(cls, Part) else '') + cls.__name__
+        mapping = {
+            cls.full_table_name:
+                (cls._context['__name__'] + '.'
+                 if (prefix_module and cls._context['__name__'] != '__main__') else '') +
+                (cls._master.__name__+'.' if issubclass(cls, Part) else '') + cls.__name__
                    for cls in class_list if cls.full_table_name in graph}
         new_names = [mapping.values()]
         if len(new_names) > len(set(new_names)):
