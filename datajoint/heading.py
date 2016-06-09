@@ -46,17 +46,10 @@ class Heading:
         """
         :param arg: a list of dicts with the same keys as Attribute
         """
-        if arg is None:
-            # default constructor
-            self.attributes = None
-            self.table_info = None
-        elif isinstance(arg, Heading):
-            # copy constructor
-            raise DataJointError('Headings cannot be copied')
-        else:
-            # construct from a dict
-            self.attributes = OrderedDict((q['name'], Attribute(**q)) for q in arg)
-            self.table_info = None
+        assert not isinstance(arg, Heading), 'Headings cannot be copied'
+        self.table_info = None
+        self.attributes = None if arg is None else OrderedDict(
+            (q['name'], Attribute(**q)) for q in arg)
 
     def __len__(self):
         return 0 if self.attributes is None else len(self.attributes)
