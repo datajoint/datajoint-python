@@ -125,10 +125,7 @@ class Schema:
         relation_class._heading = Heading()
         relation_class._context = context
         # instantiate the class, declare the table if not already, and fill it with initial values.
-        try:
-            instance = relation_class()
-        except Exception as err:
-            print(err)
+        instance = relation_class()
         if not instance.is_declared:
             if assert_declared:
                 raise DataJointError('Bug: incorrect table name generation')

@@ -28,6 +28,10 @@ class TestU:
         assert_equal(self.experiment.primary_key, ['subject_id', 'experiment_id'])
         assert_equal(rel.primary_key, self.experiment.primary_key + ['experiment_date'])
 
+        rel = dj.U('experiment_date')*self.experiment
+        assert_equal(self.experiment.primary_key, ['subject_id', 'experiment_id'])
+        assert_equal(rel.primary_key, self.experiment.primary_key + ['experiment_date'])
+
     # def test_restrictions(self):
     #     rel = dj.U('language') & self.language
     #     assert_equal()
