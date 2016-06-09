@@ -667,8 +667,8 @@ class U(RelationalOperand):
         if len(primary_key) == 1 and isinstance(primary_key[0], U):
             # copy constructor
             arg = primary_key[0]
-            self._primary_key = arg.primary_key
-            self._heading = arg.heading
+            self._primary_key = arg._primary_key
+            self._heading = arg._heading
         else:
             # usual constructor
             self._primary_key = primary_key
@@ -699,9 +699,9 @@ class U(RelationalOperand):
         return self._primary_key
 
     def restrict(self, relation):
-        if isinstance(relation, RelationalOperand):
+        if not isinstance(relation, RelationalOperand):
             raise DataJointError('Relation U can only be restricted with another relation.')
-        return Projection(relation, attributes=self.primary_key, include_primary_key=False)
+        return Projection(relation, attributes=self.primary_key, renamed_attributes=dict(), include_primary_key=False)
 
     def __mul__(self, relation):
         if not isinstance(relation, RelationalOperand):

@@ -1,4 +1,4 @@
-from nose.tools import assert_equal, assert_true, raises
+from nose.tools import assert_equal, assert_true, raises, assert_list_equal
 from . import schema
 import datajoint as dj
 
@@ -19,9 +19,10 @@ class TestU:
         self.img = schema.Image()
         self.trash = schema.UberTrash()
 
-    @raises(dj.DataJointError)
-    def test_invalid_join(self):
-        rel = dj.U('language')*dict(language="English")
+    def test_restriction(self):
+        rel = dj.U('language') & self.language
+        assert_list_equal(rel.heading.names, ['language'])
+        languages = rel.fetch()
 
     def test_join(self):
         rel = self.experiment*dj.U('experiment_date')
@@ -32,7 +33,12 @@ class TestU:
         assert_equal(self.experiment.primary_key, ['subject_id', 'experiment_id'])
         assert_equal(rel.primary_key, self.experiment.primary_key + ['experiment_date'])
 
-    # def test_restrictions(self):
+    @raises(dj.DataJointError)
+    def test_invalid_join(self):
+        rel = dj.U('language') * dict(language="English")
+
+
+            # def test_restrictions(self):
     #     rel = dj.U('language') & self.language
     #     assert_equal()
     #
