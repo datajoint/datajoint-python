@@ -60,16 +60,10 @@ class RelationalOperand(metaclass=abc.ABCMeta):
     """
 
     def __init__(self, arg=None):
-        if arg is None:
-            self._restrictions = AndList()
-        else:
-            # abstract copy constructor
-            if not isinstance(arg, RelationalOperand):
-                raise DataJointError('Cannot construct RelationalOperand from %s' % arg.__class__.__name__)
-            if arg.__class__ is RelationalOperand:
-                raise DataJointError('Class %s must provide a copy constructor' % arg.__class__.__name__)
-            self._restrictions = AndList(arg._restrictions)   # copy restriction list
-
+        assert arg is None or isinstance(arg, RelationalOperand), \
+            'Cannot construct RelationalOperand from %s' % arg.__class__.__name__
+        self._restrictions = AndList(() if arg is None else arg._restrictions)
+ 
     # --------- abstract properties -----------
 
     @property
@@ -441,8 +435,7 @@ class Join(RelationalOperand):
         else:
             super().__init__()
             assert aggregated or keep_all_rows is None     # keep_all_rows should be set only for aggregation
-            if any(isinstance(arg, U) for arg in (arg1, arg2)):
-                raise DataJointError('Cannot join with Relation U')
+            assert not any(isinstance(arg, U) for arg in (arg1, arg2)), 'Cannot join with Relation U'
             if not isinstance(arg2, RelationalOperand):
                 raise DataJointError('a relation can only be joined with another relation')
             if arg1.connection != arg2.connection:
@@ -662,13 +655,10 @@ class U(RelationalOperand):
         super().__init__()
         if len(primary_key) == 1 and isinstance(primary_key[0], U):
             # copy constructor
-            arg = primary_key[0]
-            self._primary_key = arg._primary_key
-            self._heading = arg._heading
+            self._primary_key = primary_key[0]._primary_key  # ok not to copy
         else:
-            # usual constructor
+            # regular constructor
             self._primary_key = primary_key
-            self._heading = None
 
     # ----------- prohibited operations ------------- #
     @property
@@ -686,9 +676,7 @@ class U(RelationalOperand):
 
     @property
     def heading(self):
-        if self._heading is None:
-            raise DataJointError('Relation U does not support this operation')
-        return self._heading
+        raise DataJointError('Relation U does not support this operation')
 
     @property
     def primary_key(self):
