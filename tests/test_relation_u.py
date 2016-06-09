@@ -24,6 +24,10 @@ class TestU:
         assert_list_equal(rel.heading.names, ['language'])
         languages = rel.fetch()
 
+    def test_ineffective_restriction(self):
+        rel = self.language & dj.U('language')
+        assert_true(rel.make_sql() == self.language.make_sql())
+
     def test_join(self):
         rel = self.experiment*dj.U('experiment_date')
         assert_equal(self.experiment.primary_key, ['subject_id', 'experiment_id'])
@@ -37,10 +41,5 @@ class TestU:
     def test_invalid_join(self):
         rel = dj.U('language') * dict(language="English")
 
-
-            # def test_restrictions(self):
-    #     rel = dj.U('language') & self.language
-    #     assert_equal()
-    #
     # def test_aggregations(self):
     #     rel = dj.U('language').aggregate(n='count(*)')

@@ -297,14 +297,10 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         :param restriction: a sequence or an array (treated as OR list), another relation, an SQL condition string, or
         an AndList.
         """
-        if isinstance(restriction, U):
-            raise DataJointError('Restriction by Relation U is not allowed')
-        if restriction is True:
-            return
-        if isinstance(restriction, str) and restriction.upper() == "TRUE":
-            return
-        if any(isinstance(r, str) and r.upper() == 'TRUE' for r in self.restrictions):
-            return
+        # ineffective restrictions
+        if isinstance(restriction, U) or restriction is True or \
+                isinstance(restriction, str) and restriction.upper() == "TRUE":
+            return self
         if isinstance(restriction, AndList):
             self.restrictions.extend(restriction)
         elif restricts_to_empty(restriction):
