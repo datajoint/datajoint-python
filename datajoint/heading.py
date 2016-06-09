@@ -42,14 +42,22 @@ class Heading:
     the attribute names and the values are Attributes.
     """
 
-    def __init__(self, attributes=None):
+    def __init__(self, arg=None):
         """
-        :param attributes: a list of dicts with the same keys as Attribute
+        :param arg: a list of dicts with the same keys as Attribute
         """
-        if attributes:
-            attributes = OrderedDict([(q['name'], Attribute(**q)) for q in attributes])
-        self.attributes = attributes
-        self.table_info = None
+        if arg is None:
+            # default constructor
+            self.attributes = None
+            self.table_info = None
+        elif isinstance(arg, Heading):
+            # copy constructor
+            self.attributes = OrderedDict(arg.attributes)
+            self.table_info = arg.table_info
+        else:
+            # construct from a dict
+            self.attributes = OrderedDict((q['name'], Attribute(**q)) for q in arg)
+            self.table_info = None
 
     def __len__(self):
         return 0 if self.attributes is None else len(self.attributes)
@@ -237,23 +245,22 @@ class Heading:
 
     def join(self, other, aggregated):
         """
-        Joins two headings.
+        Join two headings into a new one.
         """
         assert isinstance(other, Heading)
         attribute_list = [v._asdict() for v in self.attributes.values()]
         for name in other.names:
             if name not in self.names:
-                attribute = other.attributes[name]._asdict();
+                attribute = other.attributes[name]._asdict()
                 if aggregated:
                     attribute['in_key'] = False
                 attribute_list.append(attribute)
         return Heading(attribute_list)
 
-    def resolve(self, extend_primary_key):
+    def resolve(self):
         """
-        Remove attribute computations after they have been resolved in a subquery
+        Create a new heading with removed attribute computations.
+        Used by subqueries, which resolve the computations.
         """
-        return Heading(
-            [dict(v._asdict(), computation=None, in_key=(v.in_key or v.name in extend_primary_key))
-             for v in self.attributes.values()])
+        return Heading(dict(v._asdict(), computation=None) for v in self.attributes.values())
 

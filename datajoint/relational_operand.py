@@ -2,10 +2,9 @@ import collections
 import numpy as np
 import abc
 import re
-from copy import copy
 import logging
-from . import DataJointError, config
 import datetime
+from . import DataJointError, config
 from .fetch import Fetch, Fetch1
 from .heading import Heading
 
@@ -52,16 +51,45 @@ class RelationalOperand(metaclass=abc.ABCMeta):
     RelationalOperand operators are restrict, join, proj, and aggregate.
     """
 
-    _restrictions = None
+    def __init__(self, arg=None):
+        if arg is None:
+            self._restrictions = AndList()
+        else:
+            # abstract copy constructor
+            if not isinstance(arg, RelationalOperand):
+                raise DataJointError('Cannot construct RelationalOperand from %s' % arg.__class__.__name__)
+            if arg.__class__ is RelationalOperand:
+                raise DataJointError('Class %s must provide a copy constructor' % arg.__class__.__name__)
+            self._restrictions = AndList(arg._restrictions)   # copy restriction list
+
+    # --------- abstract properties -----------
+
+    @property
+    @abc.abstractmethod
+    def connection(self):
+        """
+        :return: a datajoint.Connection object
+        """
+
+    @property
+    @abc.abstractmethod
+    def from_clause(self):
+        """
+        :return: a string containing the FROM clause of the SQL SELECT statement
+        """
+
+    @property
+    @abc.abstractmethod
+    def heading(self):
+        """
+        :return: all RelationalOperands must supply a valid datajoint.Heading object
+        """
+
+    # ---------- derived properties --------
 
     @property
     def restrictions(self):
-        if self._restrictions is None:
-            self._restrictions = AndList()
         return self._restrictions
-
-    def clear_restrictions(self):
-        self._restrictions = None
 
     @property
     def primary_key(self):
@@ -130,29 +158,6 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             conditions.append(('NOT (%s)' if negate else '(%s)') % item)
         return ' WHERE ' + ' AND '.join(conditions)
 
-    # --------- abstract properties -----------
-
-    @property
-    @abc.abstractmethod
-    def connection(self):
-        """
-        :return: a datajoint.Connection object
-        """
-
-    @property
-    @abc.abstractmethod
-    def from_clause(self):
-        """
-        :return: a string containing the FROM clause of the SQL SELECT statement
-        """
-
-    @property
-    @abc.abstractmethod
-    def heading(self):
-        """
-        :return: a valid datajoint.Heading object
-        """
-
     @property
     def select_fields(self):
         """
@@ -160,8 +165,11 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         return self.heading.as_sql
 
-    @property
     def _grouped(self):
+        """
+        If grouped, then GROUP BY the primary key.  Used for aggregation.
+        :return: True for aggregation, False otherwise
+        """
         return False
 
     # --------- relational operators -----------
@@ -170,19 +178,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         relational join
         """
-        return other*self if isinstance(other, U) else Join(self, other)
-
-    def __mod__(self, attributes=None):
-        """
-        relational projection operator.  See RelationalOperand.project
-        """
-        return self.proj(*attributes)
-
-    def project(self, *args, **kwargs):
-        """
-        alias for self.proj() for backward compatibility
-        """
-        return self.proj(*args, **kwargs)
+        return Join(self, other)
 
     def proj(self, *attributes, **renamed_attributes):
         """
@@ -195,13 +191,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         Each attribute can only be used once in attributes or renamed_attributes.  Therefore, the projected
         relation cannot have more attributes than the original relation.
         """
-        return Projection(self, *attributes, **renamed_attributes)
-
-    def force_proj(self, *attributes, **renamed_attributes):
-        """
-        Relation projection operator that allows projecting out primary key.
-        Use the same way as self.proj(...) but the primary key is not automatically included.
-        """
+        return Projection(self, attributes, renamed_attributes)
 
     def aggregate(self, group, *attributes, keep_all_rows=False, **renamed_attributes):
         """
@@ -210,14 +200,12 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         :param group:  relation whose tuples can be used in aggregation operators
         :param attributes:
         :param keep_all_rows: True = preserve the number of tuples in the result (equivalent of LEFT JOIN in SQL)
-        :param renamed_attributes:
+        :param renamed_attributes: a dict of renamings and computations
         :return: a relation representing the aggregation/projection operator result
         """
         if not isinstance(group, RelationalOperand):
             raise DataJointError('The second argument must be a relation')
-        return Aggregation(
-            Join(self, group, aggregated=True, keep_all_rows=keep_all_rows),
-            *attributes, **renamed_attributes)
+        return Aggregation(self, group, keep_all_rows, attributes, renamed_attributes)
 
     def __iand__(self, restriction):
         """
@@ -235,15 +223,13 @@ class RelationalOperand(metaclass=abc.ABCMeta):
 
         See relational_operand.restrict for more detail.
         """
-        ret = copy(self)
-        ret.clear_restrictions()
-        ret.restrict(self.restrictions)
+        ret = self.__class__(self)  # copy
         ret.restrict(restriction)
         return ret
 
     def __isub__(self, restriction):
         """
-        in-place inverted restriction
+        in-place inverted restriction aka antijoin
 
         See relational_operand.restrict for more detail.
         """
@@ -252,7 +238,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
 
     def __sub__(self, restriction):
         """
-        inverse restriction aka antijoin
+        inverted restriction aka antijoin
         :return: a restricted copy of the argument
 
         See relational_operand.restrict for more detail.
@@ -307,13 +293,16 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         """
         if isinstance(restriction, U):
             raise DataJointError('Restriction by dj.U is invalid')
-        if restriction is True or isinstance(restriction, str) and restriction.upper() == "TRUE":
+        if restriction is True:
+            return
+        if isinstance(restriction, str) and restriction.upper() == "TRUE":
+            return
+        if any(isinstance(r, str) and r.upper() == 'TRUE' for r in self.restrictions):
             return
         if isinstance(restriction, AndList):
             self.restrictions.extend(restriction)
         elif restricts_to_empty(restriction):
-            self.clear_restrictions()
-            self.restrictions.append('FALSE')
+            self._restrictions = AndList(['FALSE'])
         else:
             self.restrictions.append(restriction)
 
@@ -342,29 +331,24 @@ class RelationalOperand(metaclass=abc.ABCMeta):
     def __repr__(self):
         if config['loglevel'].lower() == 'debug':
             ret = self._repr_helper()
-            if self._restrictions:
-                ret += ' & %r' % self._restrictions
-        else:
-            rel = self.proj(*self.heading.non_blobs)  # project out blobs
-            limit = config['display.limit']
-            width = config['display.width']
-
-            tups = rel.fetch(limit=limit)
-            columns = rel.heading.names
-
-            widths = {f: min(max([len(f)] + [len(str(e)) for e in tups[f]])+4,width) for f in columns}
-
-            templates = {f: '%%-%d.%ds' % (widths[f], widths[f]) for f in columns}
-            repr_string = ' '.join([templates[column] % column for column in columns]) + '\n'
-            repr_string += ' '.join(['+' + '-' * (widths[column] - 2) + '+' for column in columns]) + '\n'
-            for tup in tups:
-                repr_string += ' '.join([templates[column] % tup[column] for column in columns]) + '\n'
-            if len(rel) > limit:
-                repr_string += '...\n'
-            repr_string += ' (%d tuples)\n' % len(rel)
-            return repr_string
-
-        return ret
+            if self.restrictions:
+                ret += ' & %r' % self.restrictions
+            return ret
+        rel = self.proj(*self.heading.non_blobs)  # project out blobs
+        limit = config['display.limit']
+        width = config['display.width']
+        tups = rel.fetch(limit=limit)
+        columns = rel.heading.names
+        widths = {f: min(max([len(f)] + [len(str(e)) for e in tups[f]])+4, width) for f in columns}
+        templates = {f: '%%-%d.%ds' % (widths[f], widths[f]) for f in columns}
+        repr_string = ' '.join([templates[column] % column for column in columns]) + '\n'
+        repr_string += ' '.join(['+' + '-' * (widths[column] - 2) + '+' for column in columns]) + '\n'
+        for tup in tups:
+            repr_string += ' '.join([templates[column] % tup[column] for column in columns]) + '\n'
+        if len(rel) > limit:
+            repr_string += '...\n'
+        repr_string += ' (%d tuples)\n' % len(rel)
+        return repr_string
 
     def _repr_html_(self):
         limit = config['display.limit']
@@ -376,8 +360,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             head='</th><th>'.join(columns),
             body='</tr><tr>'.join(
                 ['\n'.join(['<td>%s</td>' % column for column in tup]) for tup in rel.fetch(limit=limit)]),
-            tuples=len(rel)
-        )
+            tuples=len(rel))
         return """ %(title)s
             <div style="max-height:1000px;max-width:1500px;overflow:auto;">
             <table border="1" class="dataframe">
@@ -392,13 +375,13 @@ class RelationalOperand(metaclass=abc.ABCMeta):
             fields=select_fields if select_fields else self.select_fields,
             from_=self.from_clause,
             where=self.where_clause,
-            group=' GROUP BY `%s`' % '`,`'.join(self.primary_key) if self._grouped else '')
+            group=' GROUP BY `%s`' % '`,`'.join(self.primary_key) if self._grouped() else '')
 
     def __len__(self):
         """
         number of tuples in the relation.  This also takes care of the truth value
         """
-        if self._grouped:
+        if self._grouped():
             return len(Subquery(self))
 
         cur = self.connection.query(self.make_sql('count(*)'))
@@ -444,18 +427,29 @@ class Join(RelationalOperand):
     Relational join
     """
 
-    def __init__(self, arg1, arg2, aggregated=False, keep_all_rows=False):
-        assert not keep_all_rows or aggregated     # keep_all_rows can be set only in aggregation
-        if not isinstance(arg2, RelationalOperand):
-            raise DataJointError('a relation can only be joined with another relation')
-        if arg1.connection != arg2.connection:
-            raise DataJointError('Cannot join relations with different database connections')
-        self._arg1 = Subquery(arg1) if isinstance(arg1, Projection) else arg1
-        self._arg2 = Subquery(arg2) if isinstance(arg2, Projection) else arg2
-        self._heading = self._arg1.heading.join(self._arg2.heading, aggregated=aggregated)
-        self.restrict(self._arg1.restrictions)
-        self.restrict(self._arg2.restrictions)
-        self._left = keep_all_rows
+    def __init__(self, arg1, arg2=None, aggregated=False, keep_all_rows=None):
+        if arg2 is None and isinstance(arg1, Join):
+            # copy constructor
+            super().__init__(arg1)
+            self._arg1 = arg1._arg1
+            self._arg2 = arg1._arg2
+            self._heading = Heading(arg1._heading)
+            self._left = arg1._left
+        else:
+            super().__init__()
+            assert aggregated or keep_all_rows is None     # keep_all_rows should be set only for aggregation
+            if any(isinstance(arg, U) for arg in (arg1, arg2)):
+                raise DataJointError('Cannot join with Relation U')
+            if not isinstance(arg2, RelationalOperand):
+                raise DataJointError('a relation can only be joined with another relation')
+            if arg1.connection != arg2.connection:
+                raise DataJointError('Cannot join relations with different database connections')
+            self._arg1 = Subquery(arg1) if isinstance(arg1, Projection) else arg1
+            self._arg2 = Subquery(arg2) if isinstance(arg2, Projection) else arg2
+            self._heading = self._arg1.heading.join(self._arg2.heading, aggregated=aggregated)
+            self.restrict(self._arg1.restrictions)
+            self.restrict(self._arg2.restrictions)
+            self._left = keep_all_rows
 
     def _repr_helper(self):
         return "(%r) * (%r)" % (self._arg1, self._arg2)
@@ -481,10 +475,20 @@ class Join(RelationalOperand):
 
 
 class Projection(RelationalOperand):
-    def __init__(self, arg, *attributes, **renamed_attributes):
+    def __init__(self, arg, attributes=None, renamed_attributes=None):
         """
         See RelationalOperand.proj()
         """
+        if attributes is None:
+            # copy constructor
+            assert isinstance(arg, Projection), 'Projection can only be copied from another projection.'
+            super().__init__(arg)   # copy restrictions
+            self._arg = arg._arg
+            self._renamed_attributes = arg._renamed_attributes   # ok not to copy
+            self._attributes = arg._attributes  # ok not to copy
+            return
+
+        super().__init__()
         # parse attributes in the form 'sql_expression -> new_attribute'
         alias_parser = re.compile(
             '^\s*(?P<sql_expression>\S(.*\S)?)\s*->\s*(?P<alias>[a-z][a-z_0-9]*)\s*$')
@@ -498,7 +502,6 @@ class Projection(RelationalOperand):
             else:
                 self._attributes.append(attribute)
         self._arg = arg
-
         restricting_on_removed_attributes = bool(
             arg.attributes_in_restrictions() - set(self.heading.names))
         use_subquery = restricting_on_removed_attributes or arg.heading.computed
@@ -518,9 +521,8 @@ class Projection(RelationalOperand):
     def heading(self):
         return self._arg.heading.proj(*self._attributes, **self._renamed_attributes)
 
-    @property
     def _grouped(self):
-        return self._arg._grouped
+        return self._arg._grouped()
 
     @property
     def from_clause(self):
@@ -535,21 +537,45 @@ class Projection(RelationalOperand):
 
 
 class Aggregation(Projection):
-    @property
+
+    def __init__(self, arg, group=None, keep_all_rows=None, attributes=None, renamed_attributes=None):
+        """
+        See: RelationalOperand.aggregate
+        """
+        if group is None and isinstance(arg, Aggregation):
+            # copy constructor
+            super().__init__(arg)
+            self._left_arg = arg._left_arg
+            self._group = arg._group
+        else:
+            super().__init__(Join(arg, group, aggregated=True, keep_all_rows=keep_all_rows),
+                             attributes=attributes, renamed_attributes=renamed_attributes)
+            self._left_arg = arg
+            self._group = group
+
     def _grouped(self):
         return True
+
+    def _repr_helper(self):
+        return "(%r).aggregate(%r, %r, **%s)" % (self._arg, self._group, self._attributes)
 
 
 class Subquery(RelationalOperand):
     """
     A Subquery encapsulates its argument in a SELECT statement, enabling its use as a subquery.
     The attribute list and the WHERE clause are resolved.  Thus, a subquery no longer has any renamed attributes.
+    A subquery of a subquery is a just a copy of the subquery with no change in SQL.
     """
     __counter = 0
 
-    def __init__(self, arg, extend_primary_key=()):
-        self._arg = arg
-        self._extend_primary_key = extend_primary_key
+    def __init__(self, arg):
+        if isinstance(arg, Subquery):
+            # copy constructor
+            super().__init__(arg)
+            self._arg = arg._arg
+        else:
+            super().__init__()
+            self._arg = arg
 
     @property
     def connection(self):
@@ -570,13 +596,13 @@ class Subquery(RelationalOperand):
 
     @property
     def heading(self):
-        return self._arg.heading.resolve(extend_primary_key=self._extend_primary_key)
+        return self._arg.heading.resolve()
 
     def _repr_helper(self):
         return "%r" % self._arg
 
 
-class U:
+class U(RelationalOperand):
     """
     dj.U objects are special relations representing all possible values their attributes.
     dj.U objects cannot be queried on their own but are useful for forming some relational queries.
@@ -625,28 +651,18 @@ class U:
     Join is commutative.
     """
 
-    def __init__(self, *attributes):
-        self._join = None
-        self._attributes = attributes
+    @property
+    def primary_key(self):
+        return self._primary_key
 
-    def __and__(self, arg):
-        if not isinstance(arg, RelationalOperand):
+    @property
+    def heading(self):
+        raise NotImplementedError
+
+    def restrict(self, restriction):
+        if not isinstance(restriction, RelationalOperand):
             raise DataJointError('Relation U can only be restricted with another relation')
-        return arg.force_proj(*self._attributes)
-
-    def __mul__(self, arg):
-        if not isinstance(arg, RelationalOperand):
-            raise DataJointError('Relation U can only be joined with another relation')
-        for attr in self._attributes:
-            if attr not in arg.heading:
-                raise DataJointError('Attribute %s is not found.' % attr)
-        return Subquery(arg, extend_primary_key=self._attributes)
-
-    def aggregate(self, arg, **computed_attributes):
-        if not isinstance(arg, RelationalOperand):
-            raise DataJointError('Relation U can only aggregate over another relation')
-        arg = copy(arg)
-        return arg.force_proj(*self._attributes, aggregated=True, **computed_attributes)
+        raise NotImplementedError
 
 
 def restricts_to_empty(arg):

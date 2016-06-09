@@ -7,7 +7,7 @@ organizing, populating, and querying data.
 DataJoint is free software under the LGPL License. In addition, we request
 that any use of DataJoint leading to a publication be acknowledged in the publication.
 
-Citations:
+Please cite:
     http://biorxiv.org/content/early/2015/11/14/031658
     http://dx.doi.org/10.1101/031658
 """

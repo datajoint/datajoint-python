@@ -6,7 +6,7 @@ import collections
 import abc
 from .base_relation import BaseRelation
 from .autopopulate import AutoPopulate
-from .utils import from_camel_case, classproperty
+from .utils import from_camel_case, ClassProperty
 from . import DataJointError
 
 _base_regexp = r'[a-z]+[a-z0-9]*(_[a-z]+[a-z0-9]*)*'
@@ -38,18 +38,18 @@ class UserRelation(BaseRelation, metaclass=OrderedClass):
     tier_regexp = None
     _prefix = None
 
-    @classproperty
+    @ClassProperty
     def connection(cls):
         return cls._connection
 
-    @classproperty
+    @ClassProperty
     def table_name(cls):
         """
         :returns: the table name of the table formatted for mysql.
         """
         return cls._prefix + from_camel_case(cls.__name__)
 
-    @classproperty
+    @ClassProperty
     def full_table_name(cls):
         if cls.database is None:
             raise DataJointError('Class %s is not properly declared (schema decorator not applied?)' % cls.__name__)
@@ -120,19 +120,19 @@ class Part(BaseRelation):
         [c.tier_regexp for c in (Manual, Lookup, Imported, Computed)]
     ) + r'){1,1}' + '__' + r'(?P<part>' + _base_regexp + ')'
 
-    @classproperty
+    @ClassProperty
     def connection(cls):
         return cls._connection
 
-    @classproperty
+    @ClassProperty
     def full_table_name(cls):
         return None if cls.database is None or cls.table_name is None else r"`{0:s}`.`{1:s}`".format(
             cls.database, cls.table_name)
 
-    @classproperty
+    @ClassProperty
     def master(cls):
         return cls._master
 
-    @classproperty
+    @ClassProperty
     def table_name(cls):
         return None if cls.master is None else cls.master.table_name + '__' + from_camel_case(cls.__name__)

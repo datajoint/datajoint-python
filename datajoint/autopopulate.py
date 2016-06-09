@@ -129,7 +129,7 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         """
         todo = self.poprel & AndList(restrictions)
         total = len(todo)
-        remaining = len(todo - self.target.project())
+        remaining = len(todo - self.target.proj())
         if display:
             print('%-20s' % self.__class__.__name__, flush=True, end=': ')
             print('Completed %d of %d (%2.1f%%)   %s' %

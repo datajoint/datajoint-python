@@ -279,9 +279,8 @@ class BaseRelation(RelationalOperand):
         # apply restrictions
         for name, r in relations_to_delete.items():
             if restrictions[name]:  # do not restrict by an empty list
-                r.restrict([r.project() if isinstance(r, RelationalOperand) else r
+                r.restrict([r.proj() if isinstance(r, RelationalOperand) else r
                             for r in restrictions[name]])  # project
-
         # execute
         do_delete = False  # indicate if there is anything to delete
         if config['safemode']:
@@ -355,11 +354,20 @@ class FreeRelation(BaseRelation):
     """
     A base relation without a dedicated class. Each instance is associated with a table
     specified by full_table_name.
+    :param arg:  a dj.Connection or a dj.FreeRelation
     """
 
-    def __init__(self, connection, full_table_name):
-        self.database, self._table_name = (s.strip('`') for s in full_table_name.split('.'))
-        self._connection = connection
+    def __init__(self, arg, full_table_name=None):
+        super().__init__()
+        if isinstance(arg, FreeRelation):
+            # copy constructor
+            self.database = arg.database
+            self._table_name = arg._table_name
+            self._connection = arg._connection
+        else:
+            self.database, self._table_name = (s.strip('`') for s in full_table_name.split('.'))
+            self._connection = arg
+
 
     def __repr__(self):
         return "FreeRelation(`%s`.`%s`)" % (self.database, self._table_name)

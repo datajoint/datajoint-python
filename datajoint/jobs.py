@@ -18,11 +18,19 @@ class JobRelation(BaseRelation):
     """
     A base relation with no definition. Allows reserving jobs
     """
+    _table_name = '~jobs'
 
-    def __init__(self, connection, database):
+    def __init__(self, arg, database=None):
+        super().__init__()
+        if isinstance(arg, JobRelation):
+            # copy constructor
+            self.database = arg.database
+            self._connection = arg._connection
+            self._definition = arg._definition
+            return
+
         self.database = database
-        self._table_name = '~jobs'
-        self._connection = connection
+        self._connection = arg
         self._definition = """    # job reservation table for `{database}`
         table_name  :varchar(255)  # className of the table
         key_hash  :char(32)  # key hash

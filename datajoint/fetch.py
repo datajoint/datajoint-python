@@ -33,23 +33,24 @@ class Fetch(FetchBase, Callable, Iterable):
     :param relation: relation the fetch object retrieves data from.
     """
 
-    def __init__(self, relation):
-        self.behavior = dict(offset=None, limit=None, order_by=None, as_dict=False)
-        self._relation = relation
+    def __init__(self, arg):
+        if isinstance(arg, Fetch):
+            self.behavior = dict(arg.behavior)
+            self._relation = arg._relation
+        else:
+            self.behavior = dict(offset=None, limit=None, order_by=None, as_dict=False)
+            self._relation = arg
 
     def order_by(self, *args):
         """
         Changes the state of the fetch object to order the results by a particular attribute.
         The commands are handed down to mysql.
-
         :param args: the attributes to sort by. If DESC is passed after the name, then the order is descending.
         :return: a copy of the fetch object
-
         Example:
-
         >>> my_relation.fetch.order_by('language', 'name DESC')
-
         """
+        self = Fetch(self)
         if len(args) > 0:
             self.behavior['order_by'] = args
         return self
@@ -58,15 +59,13 @@ class Fetch(FetchBase, Callable, Iterable):
     def as_dict(self):
         """
         Changes the state of the fetch object to return dictionaries.
-
         :return: a copy of the fetch object
-
         Example:
         >>> my_relation.fetch.as_dict()
-
         """
-        self.behavior['as_dict'] = True
-        return self
+        ret = Fetch(self)
+        ret.behavior['as_dict'] = True
+        return ret
 
     def limit(self, limit):
         """
@@ -75,8 +74,9 @@ class Fetch(FetchBase, Callable, Iterable):
         :param limit: limit on the number of items
         :return: a copy of the fetch object
         """
-        self.behavior['limit'] = limit
-        return self
+        ret = Fetch(self)
+        ret.behavior['limit'] = limit
+        return ret
 
     def offset(self, offset):
         """
@@ -85,10 +85,11 @@ class Fetch(FetchBase, Callable, Iterable):
         :param offset: offset
         :return: a copy of the fetch object
         """
-        if self.behavior['limit'] is None:
+        ret = Fetch(self)
+        if ret.behavior['limit'] is None:
             warnings.warn('You should supply a limit together with an offset,')
-        self.behavior['offset'] = offset
-        return self
+        ret.behavior['offset'] = offset
+        return ret
 
     def __call__(self, **kwargs):
         """
@@ -158,7 +159,7 @@ class Fetch(FetchBase, Callable, Iterable):
         """
         single_output = isinstance(item, str) or item is PRIMARY_KEY or isinstance(item, int)
         item, attributes = self._prepare_attributes(item)
-        result = self._relation.project(*attributes).fetch(**self.behavior)
+        result = self._relation.proj(*attributes).fetch(**self.behavior)
         return_values = [
             np.ndarray(result.shape,
                        np.dtype({name: result.dtype.fields[name] for name in self._relation.primary_key}),
@@ -215,7 +216,7 @@ class Fetch1(FetchBase, Callable):
         """
         single_output = isinstance(item, str) or item is PRIMARY_KEY or isinstance(item, int)
         item, attributes = self._prepare_attributes(item)
-        result = self._relation.project(*attributes).fetch()
+        result = self._relation.proj(*attributes).fetch()
         if len(result) != 1:
             raise DataJointError('fetch1 should only return one tuple. %d tuples were found' % len(result))
         return_values = tuple(
