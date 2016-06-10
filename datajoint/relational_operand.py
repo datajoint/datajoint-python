@@ -63,7 +63,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         assert arg is None or isinstance(arg, RelationalOperand), \
             'Cannot construct RelationalOperand from %s' % arg.__class__.__name__
         self._restrictions = AndList(() if arg is None else arg._restrictions)
- 
+
     # --------- abstract properties -----------
 
     @property
@@ -354,7 +354,7 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         info = self.heading.table_info
         content = dict(
             title="" if info is None else "<h3>%s</h3>" % info['comment'],
-            head='</th><th>'.join(columns),
+            head='</th><th>'.join("<em>" + c + "</em>" if c in self.primary_key else c for c in columns),
             body='</tr><tr>'.join(
                 ['\n'.join(['<td>%s</td>' % column for column in tup]) for tup in rel.fetch(limit=limit)]),
             tuples=len(rel))
