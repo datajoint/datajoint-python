@@ -338,14 +338,12 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         columns = rel.heading.names
         widths = {f: min(max([len(f)] + [len(str(e)) for e in tups[f]])+4, width) for f in columns}
         templates = {f: '%%-%d.%ds' % (widths[f], widths[f]) for f in columns}
-        repr_string = ' '.join([templates[column] % column for column in columns]) + '\n'
-        repr_string += ' '.join(['+' + '-' * (widths[column] - 2) + '+' for column in columns]) + '\n'
-        for tup in tups:
-            repr_string += ' '.join([templates[column] % tup[column] for column in columns]) + '\n'
-        if len(rel) > limit:
-            repr_string += '...\n'
-        repr_string += ' (%d tuples)\n' % len(rel)
-        return repr_string
+        return (
+            ' '.join([templates[f] % ('*'+f if f in rel.primary_key else f) for f in columns]) + '\n' +
+            ' '.join(['+' + '-' * (widths[column] - 2) + '+' for column in columns]) + '\n' +
+            '\n'.join(' '.join(templates[f] % tup[f] for f in columns) for tup in tups) +
+            ('\n...\n' if len(rel) > limit else '\n') +
+            ' (%d tuples)\n' % len(rel))
 
     def _repr_html_(self):
         limit = config['display.limit']

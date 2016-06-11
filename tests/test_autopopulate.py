@@ -39,9 +39,9 @@ class TestPopulate:
         d.load()
         self.trial.populate(restriction)
         assert_true(self.trial, 'table was not populated')
-        poprel = self.trial.poprel
-        assert_equal(len(poprel & self.trial), len(poprel & restriction))
-        assert_equal(len(poprel - self.trial), len(poprel - restriction))
+        key_source = self.trial.key_source
+        assert_equal(len(key_source & self.trial), len(key_source & restriction))
+        assert_equal(len(key_source - self.trial), len(key_source - restriction))
 
         # test subtable populate
         assert_false(self.ephys)
