@@ -127,11 +127,18 @@ class Schema:
         # instantiate the class, declare the table if not already, and fill it with initial values.
         instance = relation_class()
         if not instance.is_declared:
-            if assert_declared:
-                raise DataJointError('Bug: incorrect table name generation')
+            assert not assert_declared, 'incorrect table name generation'
             instance.declare()
-            if hasattr(instance, 'contents'):
-                instance.insert(instance.contents)
+        if hasattr(instance, 'contents'):
+            total = len(instance)
+            contents_keys = [dict(zip(instance.primary_key, c)) for c in instance.contents]
+            if total > len(instance & contents_keys) and 'yes' == user_choice(
+                            '%s contains data that are no longer in its contents. '
+                            'Would you like to delete it?' % relation_class.__name__):
+                (instance - contents_keys).delete()
+                total = len(instance)
+            if len(instance.contents) > total:
+                instance.insert(instance.contents, skip_duplicates=True)
 
     def __call__(self, cls):
         """

@@ -74,13 +74,6 @@ class Lookup(UserRelation):
     _prefix = '#'
     tier_regexp = r'(?P<lookup>' + _prefix + _base_regexp.replace('TIER', 'lookup') + ')'
 
-    def prepare(self):
-        """
-        Checks whether the instance has a property called `contents` and inserts its elements.
-        """
-        if hasattr(self, 'contents'):
-            self.insert(self.contents, skip_duplicates=True)
-
 
 class Imported(UserRelation, AutoPopulate):
     """
