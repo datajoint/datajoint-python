@@ -1,6 +1,5 @@
 import collections
 import numpy as np
-import abc
 import re
 import logging
 import datetime
@@ -50,7 +49,7 @@ class OrList(list):
     pass
 
 
-class RelationalOperand(metaclass=abc.ABCMeta):
+class RelationalOperand:
     """
     RelationalOperand implements the relational algebra.
     RelationalOperand objects link other relational operands with relational operators.
@@ -67,25 +66,25 @@ class RelationalOperand(metaclass=abc.ABCMeta):
     # --------- abstract properties -----------
 
     @property
-    @abc.abstractmethod
     def connection(self):
         """
         :return: a datajoint.Connection object
         """
+        raise NotImplementedError('Subclasses of RelationOperand must implement the property "connection"')
 
     @property
-    @abc.abstractmethod
     def from_clause(self):
         """
         :return: a string containing the FROM clause of the SQL SELECT statement
         """
+        raise NotImplementedError('Subclasses of RelationOperand must implement the property "from_clause"')
 
     @property
-    @abc.abstractmethod
     def heading(self):
         """
         :return: all RelationalOperands must supply a valid datajoint.Heading object
         """
+        raise NotImplementedError('Subclasses of RelationOperand must implement the property "from_clause"')
 
     # ---------- derived properties --------
 
@@ -319,11 +318,11 @@ class RelationalOperand(metaclass=abc.ABCMeta):
         s = self.where_clause
         return set(name for name in self.heading.names if name in s)
 
-    @abc.abstractmethod
     def _repr_helper(self):
         """
         :return: (string) basic representation of the relation
         """
+        raise NotImplementedError('Subclasses of RelationOperand must implement the method "_repr_helper"')
 
     def __repr__(self):
         if config['loglevel'].lower() == 'debug':

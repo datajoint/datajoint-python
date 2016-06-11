@@ -2,7 +2,6 @@ import collections
 import itertools
 import numpy as np
 import logging
-import abc
 import binascii
 from . import config, DataJointError
 from .declare import declare
@@ -27,18 +26,18 @@ class BaseRelation(RelationalOperand):
 
     # ---------- abstract properties ------------ #
     @property
-    @abc.abstractmethod
     def table_name(self):
         """
         :return: the name of the table in the database
         """
+        raise NotImplementedError('Subclasses of BaseRelation must implement the property "table_name"')
 
     @property
-    @abc.abstractmethod
     def definition(self):
         """
         :return: a string containing the table definition using the DataJoint DDL
         """
+        raise NotImplementedError('Subclasses of BaseRelation must implement the property "definition"')
 
     # -------------- required by RelationalOperand ----------------- #
     @property

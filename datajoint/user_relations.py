@@ -3,7 +3,6 @@ Hosts the table tiers, user relations should be derived from.
 """
 
 import collections
-import abc
 from .base_relation import BaseRelation
 from .autopopulate import AutoPopulate
 from .utils import from_camel_case, ClassProperty
@@ -12,7 +11,7 @@ from . import DataJointError
 _base_regexp = r'[a-z]+[a-z0-9]*(_[a-z]+[a-z0-9]*)*'
 
 
-class OrderedClass(abc.ABCMeta):
+class OrderedClass(type):
     """
     Class whose members are ordered
     See https://docs.python.org/3/reference/datamodel.html#metaclass-example
@@ -103,7 +102,7 @@ class Computed(UserRelation, AutoPopulate):
     tier_regexp = r'(?P<computed>' + _prefix + _base_regexp + ')'
 
 
-class Part(BaseRelation):
+class Part(UserRelation):
     """
     Inherit from this class if the table's values are details of an entry in another relation
     and if this table is populated by this relation. For example, the entries inheriting from

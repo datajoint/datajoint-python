@@ -13,7 +13,7 @@ from .base_relation import FreeRelation
 logger = logging.getLogger(__name__)
 
 
-class AutoPopulate(metaclass=abc.ABCMeta):
+class AutoPopulate:
     """
     AutoPopulate is a mixin class that adds the method populate() to a Relation class.
     Auto-populated relations must inherit from both Relation and AutoPopulate,
@@ -40,13 +40,13 @@ class AutoPopulate(metaclass=abc.ABCMeta):
                 self._populated_from *= FreeRelation(self.connection, parents.pop(0)).proj()
         return self._populated_from
 
-    @abc.abstractmethod
     def _make_tuples(self, key):
         """
         Derived classes must implement method _make_tuples that fetches data from tables that are
         above them in the dependency hierarchy, restricting by the given key, computes dependent
         attributes, and inserts the new tuples into self.
         """
+        raise NotImplementedError('Subclasses of AutoPopulate must implement the method "_make_tuples"')
 
     @property
     def target(self):
