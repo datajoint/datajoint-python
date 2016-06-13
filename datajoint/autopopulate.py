@@ -3,6 +3,7 @@ import abc
 import logging
 import datetime
 import random
+from pymysql import OperationalError
 from .relational_operand import RelationalOperand, AndList
 from . import DataJointError
 from .base_relation import FreeRelation
@@ -12,17 +13,17 @@ from .base_relation import FreeRelation
 logger = logging.getLogger(__name__)
 
 
-class AutoPopulate(metaclass=abc.ABCMeta):
+class AutoPopulate:
     """
     AutoPopulate is a mixin class that adds the method populate() to a Relation class.
     Auto-populated relations must inherit from both Relation and AutoPopulate,
-    must define the property populated_from, and must define the callback method _make_tuples.
+    must define the property `key_source`, and must define the callback method _make_tuples.
     """
     _jobs = None
     _populated_from = None
 
     @property
-    def populated_from(self):
+    def key_source(self):
         """
         :return: the relation whose primary key values are passed, sequentially, to the
                 `_make_tuples` method when populate() is called.The default value is the
@@ -30,23 +31,22 @@ class AutoPopulate(metaclass=abc.ABCMeta):
                 or the scope of populate() calls.
         """
         if self._populated_from is None:
-            self.connection.dependencies.load()
-            parents = [FreeRelation(self.target.connection, rel) for rel in self.target.parents]
+            self.connection.dependencies.load(self.full_table_name)
+            parents = self.target.parents(primary=True)
             if not parents:
                 raise DataJointError('A relation must have parent relations to be able to be populated')
-            ret = parents.pop(0)
+            self._populated_from = FreeRelation(self.connection, parents.pop(0)).proj()
             while parents:
-                ret *= parents.pop(0)
-            self._populated_from = ret
+                self._populated_from *= FreeRelation(self.connection, parents.pop(0)).proj()
         return self._populated_from
 
-    @abc.abstractmethod
     def _make_tuples(self, key):
         """
         Derived classes must implement method _make_tuples that fetches data from tables that are
         above them in the dependency hierarchy, restricting by the given key, computes dependent
         attributes, and inserts the new tuples into self.
         """
+        raise NotImplementedError('Subclasses of AutoPopulate must implement the method "_make_tuples"')
 
     @property
     def target(self):
@@ -58,10 +58,10 @@ class AutoPopulate(metaclass=abc.ABCMeta):
 
     def populate(self, *restrictions, suppress_errors=False, reserve_jobs=False, order="original"):
         """
-        rel.populate() calls rel._make_tuples(key) for every primary key in self.populated_from
+        rel.populate() calls rel._make_tuples(key) for every primary key in self.key_source
         for which there is not already a tuple in rel.
 
-        :param restrictions: a list of restrictions each restrict (rel.populated_from - target.proj())
+        :param restrictions: a list of restrictions each restrict (rel.key_source - target.proj())
         :param suppress_errors: suppresses error if true
         :param reserve_jobs: if true, reserves job to populate in asynchronous fashion
         :param order: "original"|"reverse"|"random"  - the order of execution
@@ -73,10 +73,10 @@ class AutoPopulate(metaclass=abc.ABCMeta):
         if order not in valid_order:
             raise DataJointError('The order argument must be one of %s' % str(valid_order))
 
-        todo = self.populated_from
+        todo = self.key_source
         if not isinstance(todo, RelationalOperand):
-            raise DataJointError('Invalid populated_from value')
-        todo.restrict(AndList(restrictions))
+            raise DataJointError('Invalid key_source value')
+        todo = todo & AndList(restrictions)
 
         error_list = [] if suppress_errors else None
 
@@ -104,7 +104,11 @@ class AutoPopulate(metaclass=abc.ABCMeta):
                     try:
                         self._make_tuples(dict(key))
                     except Exception as error:
-                        self.connection.cancel_transaction()
+                        try:
+                            self.connection.cancel_transaction()
+                        except OperationalError:
+                            pass
+
                         if reserve_jobs:
                             jobs.error(self.target.table_name, key, error_message=str(error))
                         if not suppress_errors:
@@ -118,14 +122,14 @@ class AutoPopulate(metaclass=abc.ABCMeta):
                             jobs.complete(self.target.table_name, key)
         return error_list
 
-    def progress(self, restriction=None, display=True):
+    def progress(self, *restrictions, display=True):
         """
         report progress of populating this table
         :return: remaining, total -- tuples to be populated
         """
-        todo = self.populated_from & restriction
+        todo = self.key_source & AndList(restrictions)
         total = len(todo)
-        remaining = len(todo - self.target.project())
+        remaining = len(todo - self.target.proj())
         if display:
             print('%-20s' % self.__class__.__name__, flush=True, end=': ')
             print('Completed %d of %d (%2.1f%%)   %s' %

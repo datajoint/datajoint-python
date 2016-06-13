@@ -6,18 +6,25 @@ organizing, populating, and querying data.
 
 DataJoint is free software under the LGPL License. In addition, we request
 that any use of DataJoint leading to a publication be acknowledged in the publication.
+
+Please cite:
+    http://biorxiv.org/content/early/2015/11/14/031658
+    http://dx.doi.org/10.1101/031658
 """
 
 import logging
 import os
 
 __author__ = "Dimitri Yatsenko, Edgar Walker, and Fabian Sinz at Baylor College of Medicine"
-__version__ = "0.2"
+__version__ = "0.2.1"
+__date__ = "June 1, 2016"
 __all__ = ['__author__', '__version__',
            'config', 'conn', 'kill',
            'Connection', 'Heading', 'BaseRelation', 'FreeRelation', 'Not', 'schema',
            'Manual', 'Lookup', 'Imported', 'Computed', 'Part',
-           'AndList', 'OrList']
+           'AndList', 'OrList', 'ERD', 'U']
+
+print('DataJoint', __version__, '('+__date__+')')
 
 
 class key:
@@ -65,12 +72,12 @@ else:
 
 logger.setLevel(log_levels[config['loglevel']])
 
-
 # ------------- flatten import hierarchy -------------------------
 from .connection import conn, Connection
 from .base_relation import BaseRelation
 from .user_relations import Manual, Lookup, Imported, Computed, Part
-from .relational_operand import Not, AndList, OrList
+from .relational_operand import Not, AndList, OrList, U
 from .heading import Heading
 from .schema import Schema as schema
 from .kill import kill
+from .erd import ERD

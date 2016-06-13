@@ -18,7 +18,6 @@ import datajoint as dj
 __all__ = ['__author__', 'PREFIX', 'CONN_INFO']
 
 
-
 # Connection for testing
 CONN_INFO = dict(
     host=environ.get('DJ_TEST_HOST', 'localhost'),

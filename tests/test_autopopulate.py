@@ -34,12 +34,14 @@ class TestPopulate:
 
         # test restricted populate
         assert_false(self.trial, 'table already filled?')
-        restriction = dict(subject_id=self.subject.project().fetch()['subject_id'][0])
+        restriction = dict(subject_id=self.subject.proj().fetch()['subject_id'][0])
+        d = self.trial.connection.dependencies
+        d.load()
         self.trial.populate(restriction)
         assert_true(self.trial, 'table was not populated')
-        poprel = self.trial.populated_from
-        assert_equal(len(poprel & self.trial), len(poprel & restriction))
-        assert_equal(len(poprel - self.trial), len(poprel - restriction))
+        key_source = self.trial.key_source
+        assert_equal(len(key_source & self.trial), len(key_source & restriction))
+        assert_equal(len(key_source - self.trial), len(key_source - restriction))
 
         # test subtable populate
         assert_false(self.ephys)

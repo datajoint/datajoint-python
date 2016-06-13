@@ -1,4 +1,3 @@
-import warnings
 from nose.tools import assert_true, assert_false, assert_equal, assert_list_equal, raises
 from . import schema
 import datajoint as dj
@@ -13,6 +12,13 @@ channel = schema.Ephys.Channel()
 
 
 class TestDeclare:
+
+    @staticmethod
+    def test_schema_decorator():
+        assert_true(issubclass(schema.Subject, dj.BaseRelation))
+        assert_true(issubclass(schema.Subject, dj.Manual))
+        assert_true(not issubclass(schema.Subject, dj.Part))
+
     @staticmethod
     def test_attributes():
         # test autoincrement declaration
@@ -45,25 +51,24 @@ class TestDeclare:
                           ['subject_id', 'experiment_id', 'trial_id'])
 
         assert_list_equal(channel.heading.names,
-                          ['subject_id', 'experiment_id', 'trial_id', 'channel', 'voltage'])
+                          ['subject_id', 'experiment_id', 'trial_id', 'channel', 'voltage', 'current'])
         assert_list_equal(channel.primary_key,
                           ['subject_id', 'experiment_id', 'trial_id', 'channel'])
         assert_true(channel.heading.attributes['voltage'].is_blob)
 
     def test_dependencies(self):
-        assert_equal(user.references, [experiment.full_table_name])
-        assert_equal(experiment.referenced, [user.full_table_name])
+        assert_equal(user.children(primary=False), [experiment.full_table_name])
+        assert_equal(experiment.parents(primary=False), [user.full_table_name])
 
-        assert_equal(subject.children, [experiment.full_table_name])
-        assert_equal(experiment.parents, [subject.full_table_name])
+        assert_equal(subject.children(primary=True), [experiment.full_table_name])
+        assert_equal(experiment.parents(primary=True), [subject.full_table_name])
 
-        assert_equal(experiment.children, [trial.full_table_name])
-        assert_equal(trial.parents, [experiment.full_table_name])
+        assert_equal(experiment.children(primary=True), [trial.full_table_name])
+        assert_equal(trial.parents(primary=True), [experiment.full_table_name])
 
-        assert_equal(trial.children, [ephys.full_table_name])
-        assert_equal(ephys.parents, [trial.full_table_name])
+        assert_equal(trial.children(primary=True), [ephys.full_table_name])
+        assert_equal(ephys.parents(primary=True), [trial.full_table_name])
 
-        assert_equal(ephys.children, [channel.full_table_name])
-        assert_equal(channel.parents, [ephys.full_table_name])
-
+        assert_equal(ephys.children(primary=True), [channel.full_table_name])
+        assert_equal(channel.parents(primary=True), [ephys.full_table_name])
 
