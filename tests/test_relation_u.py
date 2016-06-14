@@ -20,9 +20,11 @@ class TestU:
         self.trash = schema.UberTrash()
 
     def test_restriction(self):
+        language_set = {s[1] for s in self.language.contents}
         rel = dj.U('language') & self.language
         assert_list_equal(rel.heading.names, ['language'])
-        languages = rel.fetch()
+        assert_true(len(rel) == len(language_set))
+        assert_true(set(rel.fetch['language']) == language_set)
 
     def test_ineffective_restriction(self):
         rel = self.language & dj.U('language')

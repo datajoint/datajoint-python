@@ -3,33 +3,39 @@ from . import DataJointError
 from collections import namedtuple, OrderedDict
 import re
 
+default_attribute_properties = dict(    # these default values are set in computed attributes
+    name=None, type='expression', in_key=False, nullable=False, default=None, comment='calculated attribute',
+    autoincrement=False, numeric=None, string=None, is_blob=False, sql_expression=None, dtype=object)
 
-class Attribute(namedtuple('Attribute',
-                           ('name', 'type', 'in_key', 'nullable', 'default',
-                            'comment', 'autoincrement', 'numeric', 'string', 'is_blob',
-                            'computation', 'dtype'))):
-    def _asdict(self):
-        """
-        for some reason the inherted _asdict does not work after subclassing from namedtuple
-        """
+
+class Attribute(namedtuple('_Attribute', default_attribute_properties.keys())):
+    """
+    Properties of a table column (attribute)
+    """
+    def todict(self):
+        """Convert namedtuple to dict."""
         return OrderedDict((name, self[i]) for i, name in enumerate(self._fields))
+
+    @staticmethod
+    def _asdict():
+        return NotImplementedError('Use .todict() instead')
 
     @property
     def sql(self):
         """
         Convert attribute tuple into its SQL CREATE TABLE clause.
-        :rtype : SQL code
+        :return: SQL code
         """
-        literals = ['CURRENT_TIMESTAMP']
+        sql_literals = ['CURRENT_TIMESTAMP']    # SQL literals that can be used as default values
         if self.nullable:
             default = 'DEFAULT NULL'
         else:
             default = 'NOT NULL'
             if self.default:
                 # enclose value in quotes except special SQL values or already enclosed
-                quote = self.default.upper() not in literals and self.default[0] not in '"\''
+                quote = self.default.upper() not in sql_literals and self.default[0] not in '"\''
                 default += ' DEFAULT ' + ('"%s"' if quote else "%s") % self.default
-        if any((c in r'\"' for c in self.comment)):
+        if any(c in r'\"' for c in self.comment):
             raise DataJointError('Illegal characters in attribute comment "%s"' % self.comment)
         return '`{name}` {type} {default} COMMENT "{comment}"'.format(
             name=self.name, type=self.type, default=default, comment=self.comment)
@@ -66,6 +72,10 @@ class Heading:
         return [k for k, v in self.attributes.items() if v.in_key]
 
     @property
+    def dependent_attributes(self):
+        return [k for k, v in self.attributes.items() if not v.in_key]
+
+    @property
     def blobs(self):
         return [k for k, v in self.attributes.items() if v.is_blob]
 
@@ -74,22 +84,19 @@ class Heading:
         return [k for k, v in self.attributes.items() if not v.is_blob]
 
     @property
-    def computed(self):
-        return [k for k, v in self.attributes.items() if v.computation]
+    def expressions(self):
+        return [k for k, v in self.attributes.items() if v.sql_expression is not None]
 
     def __getitem__(self, name):
         """shortcut to the attribute"""
         return self.attributes[name]
 
     def __repr__(self):
-        if self.attributes is None:
-            return 'Empty heading'
-        else:
-            return '\n'.join(['%-20s : %-28s # %s' % (
-                k if v.default is None else '%s="%s"' % (k, v.default),
-                '%s%s' % (v.type, 'auto_increment' if v.autoincrement else ''),
-                v.comment)
-                for k, v in self.attributes.items()])
+        return (None if self.attributes is None
+                else '\n'.join(['%-20s : %-28s # %s' % (
+                    k if v.default is None else '%s="%s"' % (k, v.default),
+                    '%s%s' % (v.type, 'auto_increment' if v.autoincrement else ''), v.comment)
+                                for k, v in self.attributes.items()]))
 
     @property
     def as_dtype(self):
@@ -106,8 +113,8 @@ class Heading:
         represent heading as SQL field list
         """
         return ','.join(['`%s`' % name
-                         if self.attributes[name].computation is None
-                         else '%s as `%s`' % (self.attributes[name].computation, name)
+                         if self.attributes[name].sql_expression is None
+                         else '%s as `%s`' % (self.attributes[name].sql_expression, name)
                          for name in self.names])
 
     def __iter__(self):
@@ -171,7 +178,7 @@ class Heading:
             attr['string'] = bool(re.match(r'(var)?char|enum|date|time|timestamp', attr['type']))
             attr['is_blob'] = bool(re.match(r'(tiny|medium|long)?blob', attr['type']))
 
-            attr['computation'] = None
+            attr['sql_expression'] = None
             if not (attr['numeric'] or attr['string'] or attr['is_blob']):
                 raise DataJointError('Unsupported field type {field} in `{database}`.`{table_name}`'.format(
                     field=attr['type'], database=database, table_name=table_name))
@@ -191,70 +198,46 @@ class Heading:
                     attr['dtype'] = numeric_types[(t, is_unsigned)]
         self.attributes = OrderedDict([(q['name'], Attribute(**q)) for q in attributes])
 
-    def proj(self, attribute_list, renamed_attributes, include_primary_key):
+    def project(self, attribute_list, named_attributes, force_primary_key=None):
         """
         derive a new heading by selecting, renaming, or computing attributes.
-        In relational algebra these operators are known as project, rename, and expand.
-        The primary key is always included.
+        In relational algebra these operators are known as project, rename, and extend.
         """
         try:  # check for missing attributes
-            raise DataJointError('Attribute `%s` is not found' % next(a for a in attribute_list if a not in self.names))
+            try:
+                raise DataJointError('Attribute `%s` is not found' % next(a for a in attribute_list if a not in self.names))
+            except DataJointError:
+                raise
         except StopIteration:
-            pass
-
-        if include_primary_key:
-            attribute_list = self.primary_key + [a for a in attribute_list if a not in self.primary_key]
-
-        # convert attribute_list into a list of dicts but exclude renamed attributes
-        attribute_list = [v._asdict() for k, v in self.attributes.items()
-                          if k in attribute_list and k not in renamed_attributes.values()]
-
-        # add renamed and computed attributes
-        for new_name, computation in renamed_attributes.items():
-            if computation in self.names:
-                # renamed attribute
-                new_attr = self.attributes[computation]._asdict()
-                new_attr['name'] = new_name
-                new_attr['computation'] = '`' + computation + '`'
-            else:
-                # computed attribute
-                new_attr = dict(
+            return Heading(
+                [dict(v.todict(), **dict(
+                    () if force_primary_key is None else [('in_key', k in force_primary_key)]))
+                 for k, v in self.attributes.items() if k in attribute_list] +
+                [dict(  # rename attribute
+                    self.attributes[sql_expression].todict(),
                     name=new_name,
-                    type='computed',
-                    in_key=False,
-                    nullable=False,
-                    default=None,
-                    comment='computed attribute',
-                    autoincrement=False,
-                    numeric=None,
-                    string=None,
-                    is_blob=False,
-                    computation=computation,
-                    dtype=object)
-            attribute_list.append(new_attr)
+                    sql_expression='`' + sql_expression + '`',
+                    **dict(() if force_primary_key is None else [('in_key', sql_expression in force_primary_key)]))
+                 if sql_expression in self.names else
+                 dict(  # compute attribute
+                     default_attribute_properties,
+                     name=new_name,
+                     sql_expression=sql_expression)
+                 for new_name, sql_expression in named_attributes.items()])
 
-        return Heading(attribute_list)
-
-    def join(self, other, aggregated):
+    def join(self, other):
         """
         Join two headings into a new one.
         """
-        assert isinstance(other, Heading)
-        attribute_list = [v._asdict() for v in self.attributes.values()]
-        for name in other.names:
-            if name not in self.names:
-                attribute = other.attributes[name]._asdict()
-                if aggregated:
-                    attribute['in_key'] = False
-                attribute_list.append(attribute)
-        return Heading(attribute_list)
+        return Heading([v.todict() for v in self.attributes.values()] + [
+            other.attributes[name].todict() for name in other.names if name not in self.names])
 
-    def resolve(self):
+    def make_subquery_heading(self):
         """
-        Create a new heading with removed attribute computations.
-        Used by subqueries, which resolve the computations.
+        Create a new heading with removed attribute sql_expressions.
+        Used by subqueries, which resolve the sql_expressions.
         """
-        return Heading(dict(v._asdict(), computation=None) for v in self.attributes.values())
+        return Heading(dict(v.todict(), sql_expression=None) for v in self.attributes.values())
 
     def extend_primary_key(self, new_attributes):
         """
@@ -264,5 +247,5 @@ class Heading:
         try:  # check for missing attributes
             raise DataJointError('Attribute `%s` is not found' % next(a for a in new_attributes if a not in self.names))
         except StopIteration:
-            return Heading(dict(v._asdict(), in_key=v.in_key or v.name in new_attributes)
+            return Heading(dict(v.todict(), in_key=v.in_key or v.name in new_attributes)
                            for v in self.attributes.values())

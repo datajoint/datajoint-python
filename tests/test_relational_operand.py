@@ -79,8 +79,7 @@ class TestRelational:
         assert_equal(set(x.primary_key).union(y.primary_key), set(rel.primary_key),
                      'incorrect join primary_key')
 
-        # test the -> notation
-        x = B().proj('id_a->a')
+        x = B().proj(a='id_a')
         y = D()
         rel = x*y
         assert_equal(len(rel), len(x)*len(y),
@@ -95,7 +94,9 @@ class TestRelational:
         x = A().proj(a1='id_a', c1='cond_in_a')
         y = A().proj(a2='id_a', c2='cond_in_a')
         rel = x*y & 'c1=0' & 'c2=1'
-        assert_equal(len(x & 'c1=0')+len(y & 'c2=1'), len(A()),
+        lenx = len(x & 'c1=0')
+        leny = len(y & 'c2=0')
+        assert_equal(lenx + leny, len(A()),
                      'incorrect restriction')
         assert_equal(len(rel), len(x & 'c1=0')*len(y & 'c2=1'),
                      'incorrect pairing')
@@ -123,6 +124,7 @@ class TestRelational:
     @staticmethod
     def test_aggregate():
         x = B().aggregate(B.C(), 'n', count='count(id_c)', mean='avg(value)', max='max(value)', keep_all_rows=True)
+        sql = x.make_sql()
         assert_equal(len(x), len(B()))
         for n, count, mean, max_, key in zip(*x.fetch['n', 'count', 'mean', 'max', dj.key]):
             assert_equal(n, count, 'aggregation failed (count)')

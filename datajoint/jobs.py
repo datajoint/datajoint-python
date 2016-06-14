@@ -51,19 +51,15 @@ class JobRelation(BaseRelation):
         return self._definition
 
     @property
-    def connection(self):
-        return self._connection
-
-    @property
     def table_name(self):
         return self._table_name
 
     def delete(self):
-        """ bypass interactive prompts"""
+        """bypass interactive prompts and dependencies"""
         self.delete_quick()
 
     def drop(self):
-        """ bypass interactive prompts"""
+        """bypass interactive prompts and dependencies"""
         self.drop_quick()
 
     def reserve(self, table_name, key):
@@ -74,12 +70,11 @@ class JobRelation(BaseRelation):
         :param key: the dict of the job's primary key
         :return: True if reserved job successfully. False = the jobs is already taken
         """
-
         try:
             job_key = dict(table_name=table_name, key_hash=key_hash(key),
                            status='reserved', host=os.uname().nodename, pid=os.getpid())
             self.insert1(job_key)
-        except pymysql.err.IntegrityError: #TODO check for other exceptions!
+        except pymysql.err.IntegrityError:
             return False
         else:
             return True

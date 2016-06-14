@@ -1,6 +1,7 @@
 import pymysql
 import logging
 import re
+import collections
 from . import conn, DataJointError, config
 from datajoint.utils import to_camel_case
 from .heading import Heading
@@ -131,12 +132,14 @@ class Schema:
             instance.declare()
         if hasattr(instance, 'contents'):
             total = len(instance)
-            contents_keys = [dict(zip(instance.primary_key, c)) for c in instance.contents]
-            if total > len(instance & contents_keys) and 'yes' == user_choice(
+            if total > 0 and config['safemode']:
+                contents_keys = [{r: c[r] for r in instance.primary_key} if isinstance(c, collections.abc.Mapping)
+                                 else dict(zip(instance.primary_key, c)) for c in instance.contents]
+                if total > len(instance & contents_keys) and 'yes' == user_choice(
                             '%s contains data that are no longer in its contents. '
                             'Would you like to delete it?' % relation_class.__name__):
-                (instance - contents_keys).delete()
-                total = len(instance)
+                    (instance - contents_keys).delete()
+                    total = len(instance)
             if len(instance.contents) > total:
                 instance.insert(instance.contents, skip_duplicates=True)
 
