@@ -11,6 +11,96 @@ from . import DataJointError
 logger = logging.getLogger(__name__)
 
 
+def build_foreign_key_parser():
+    attribute_name = pp.Word(pp.srange('[a-z]'), pp.srange('[a-z0-9_]'))
+    new_attributes = pp.Optional(pp.delimitedList(attribute_name)).setResultsName('new_attributes')
+    arrow = pp.Literal('->').suppress()
+    ref_table = pp.Word(pp.alphas, pp.alphanums + '._').setResultsName('ref_table')
+    left = pp.Literal('(').suppress()
+    right = pp.Literal(')').suppress()
+    ref_attrs = pp.Optional(left + pp.delimitedList(attribute_name) + right).setResultsName('ref_attrs')
+    return new_attributes + arrow + ref_table + ref_attrs
+
+
+def build_attribute_parser():
+    quoted = pp.Or(pp.QuotedString('"'), pp.QuotedString("'"))
+    colon = pp.Literal(':').suppress()
+    attribute_name = pp.Word(pp.srange('[a-z]'), pp.srange('[a-z0-9_]')).setResultsName('name')
+    data_type = pp.Combine(pp.Word(pp.alphas) + pp.SkipTo("#", ignore=quoted)).setResultsName('type')
+    default = pp.Literal('=').suppress() + pp.SkipTo(colon, ignore=quoted).setResultsName('default')
+    comment = pp.Literal('#').suppress() + pp.restOfLine.setResultsName('comment')
+    return attribute_name + pp.Optional(default) + colon + data_type + comment
+
+
+foreign_key_parser = build_foreign_key_parser()
+attribute_parser = build_attribute_parser()
+
+
+def is_foreign_key(line):
+    """
+    :param line: a line from the table definition
+    :return: true if the line appears to be a foreign key definition
+    """
+    arrow_position = line.find('->')
+    return arrow_position >= 0 and not any(c in line[0:arrow_position] for c in '"#\'')
+
+
+def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreign_key_sql):
+    """
+    :param line: a line from a table definition
+    :param context: namespace containing referenced objects
+    :param attributes: list of attribute names already in the declaration -- to be updated by this function
+    :param primary_key: None if the current foreign key is made from the dependent section. Otherwise it is the list
+    of primary key attributes thus far -- to be updated by the function
+    :param attr_sql: a list of sql statements defining attributes -- to be updated by this function.
+    :param foreign_key_sql: a list of sql statements specifying foreign key constraints -- to be updated by this function.
+    """
+    from .base_relation import BaseRelation
+    try:
+        result = foreign_key_parser.parseString(line)
+    except pp.ParseException as err:
+        raise DataJointError('Parsing error in line "%s". %s.' % line, err)
+    try:
+        referenced_class = eval(result.ref_table, context)
+    except NameError:
+        raise DataJointError('Foreign key reference %s could not be resolved' % result.ref_table)
+    if not issubclass(referenced_class, BaseRelation):
+        raise DataJointError('Foreign key reference %s must be a subclass of UserRelation' % result.ref_table)
+    if result.ref_attrs and len(result.new_attributes) != len(result.ref_attrs):
+        raise DataJointError('The number of new attributes and referenced attributes does not match in "%s"' % line)
+    ref = referenced_class()
+    if not result.new_attributes:
+        #  a simple foreign key
+        for attr in ref.primary_key:
+            if attr not in attributes:
+                attributes.append(attr)
+                attr_sql.append(ref.heading[attr].sql)
+                if primary_key is not None:
+                    primary_key.append(attr)
+        fk = ref.primary_key
+    elif len(result.new_attributes) == 1 and not result.ref_attrs:
+        #  a one-alias foreign key
+        ref_attr = (ref.primary_key if len(ref.primary_key) == 1 else
+                    [attr for attr in ref.primary_key if attr not in attributes])
+        if len(ref_attr) != 1:
+            raise DataJointError('Mismatched attributes in foreign key "%s"' % line)
+        ref_attr = ref_attr[0]
+        attr = result.new_attributes[0]
+        attributes.append(attr)
+        assert ref.heading[ref_attr].sql.startswith('`%s`' % ref_attr)
+        attr_sql.append(ref.heading[ref_attr].sql.replace(ref_attr, attr, 1))
+        if primary_key is not None:
+            primary_key.append(attr)
+        fk = [attr if k == ref_attr else k for k in ref.primary_key]
+    else:
+        #  a mapped foreign key
+        raise NotImplementedError('TBD mapped foreign keys ')
+
+    foreign_key_sql.append(
+        'FOREIGN KEY (`{fk}`) REFERENCES {ref} (`{pk}`) ON UPDATE CASCADE ON DELETE RESTRICT'.format(
+            fk='`,`'.join(fk), pk='`,`'.join(ref.primary_key), ref=ref.full_table_name))
+
+
 def declare(full_table_name, definition, context):
     """
     Parse declaration and create new SQL table accordingly.
@@ -21,10 +111,8 @@ def declare(full_table_name, definition, context):
     """
     # split definition into lines
     definition = re.split(r'\s*\n\s*', definition.strip())
-
     # check for optional table comment
     table_comment = definition.pop(0)[1:].strip() if definition[0].startswith('#') else ''
-
     in_key = True  # parse primary keys
     primary_key = []
     attributes = []
@@ -37,34 +125,10 @@ def declare(full_table_name, definition, context):
             pass
         elif line.startswith('---') or line.startswith('___'):
             in_key = False  # start parsing dependent attributes
-        elif line.startswith('->'):
-            # foreign
-            # TODO: clean up import order
-            from .base_relation import BaseRelation
-            # TODO: break this step into finer steps, checking the type of reference before calling it
-            try:
-                ref = eval(line[2:], context)()
-            except NameError:
-                raise DataJointError('Foreign key reference %s could not be resolved' % line[2:])
-            except TypeError:
-                raise DataJointError('Foreign key reference %s could not be instantiated.'
-                                     'Make sure %s is a valid BaseRelation subclass' % line[2:])
-            # TODO: consider the case where line[2:] is a function that returns an instance of BaseRelation
-            if not isinstance(ref, BaseRelation):
-                    raise DataJointError('Foreign key reference %s must be a subclass of BaseRelation' % line[2:])
-
-            foreign_key_sql.append(
-                'FOREIGN KEY ({primary_key})'
-                ' REFERENCES {ref} ({primary_key})'
-                ' ON UPDATE CASCADE ON DELETE RESTRICT'.format(
-                    primary_key='`' + '`,`'.join(ref.primary_key) + '`', ref=ref.full_table_name)
-            )
-            for name in ref.primary_key:
-                if in_key and name not in primary_key:
-                    primary_key.append(name)
-                if name not in attributes:
-                    attributes.append(name)
-                    attribute_sql.append(ref.heading[name].sql)
+        elif is_foreign_key(line):
+            compile_foreign_key(line, context, attributes,
+                                primary_key if in_key else None,
+                                attribute_sql, foreign_key_sql)
         elif re.match(r'^(unique\s+)?index[^:]*$', line, re.I):   # index
             index_sql.append(line)  # the SQL syntax is identical to DataJoint's
         else:
@@ -74,7 +138,6 @@ def declare(full_table_name, definition, context):
             if name not in attributes:
                 attributes.append(name)
                 attribute_sql.append(sql)
-
     # compile SQL
     if not primary_key:
         raise DataJointError('Table must have a primary key')
@@ -97,15 +160,6 @@ def compile_attribute(line, in_key=False):
     :param in_key: set to True if attribute is in primary key set
     :returns: (name, sql) -- attribute name and sql code for its declaration
     """
-    quoted = pp.Or(pp.QuotedString('"'), pp.QuotedString("'"))
-    colon = pp.Literal(':').suppress()
-    attribute_name = pp.Word(pp.srange('[a-z]'), pp.srange('[a-z0-9_]')).setResultsName('name')
-
-    data_type = pp.Combine(pp.Word(pp.alphas)+pp.SkipTo("#", ignore=quoted)).setResultsName('type')
-    default = pp.Literal('=').suppress() + pp.SkipTo(colon, ignore=quoted).setResultsName('default')
-    comment = pp.Literal('#').suppress() + pp.restOfLine.setResultsName('comment')
-
-    attribute_parser = attribute_name + pp.Optional(default) + colon + data_type + comment
 
     match = attribute_parser.parseString(line+'#', parseAll=True)
     match['comment'] = match['comment'].rstrip('#')

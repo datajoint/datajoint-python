@@ -1,25 +1,21 @@
-from operator import itemgetter
 import pymysql
 import logging
 import re
-from . import conn, DataJointError
+from . import conn, DataJointError, config
 from datajoint.utils import to_camel_case
 from .heading import Heading
-from .base_relation import BaseRelation
+from .utils import user_choice
 from .user_relations import Part, Computed, Imported, Manual, Lookup
 import inspect
 
 logger = logging.getLogger(__name__)
-from warnings import warn
 
 
 class Schema:
     """
-    A schema object can be used  as a decorator that associates a Relation class to a database as
-    well as a namespace for looking up foreign key references in table declaration.
+    A schema object is a decorator for UserRelation classes that binds them to their database.
+    It also specifies the namespace `context` in which other UserRelation classes are defined.
     """
-
-    table2class = {}
 
     def __init__(self, database, context, connection=None):
         """
@@ -36,7 +32,7 @@ class Schema:
         self.connection = connection
         self.context = context
         if not self.exists:
-            # create schema
+            # create database
             logger.info("Database `{database}` could not be found. "
                         "Attempting to create the database.".format(database=database))
             try:
@@ -46,65 +42,64 @@ class Schema:
                 raise DataJointError("Database named `{database}` was not defined, and"
                                      " an attempt to create has failed. Check"
                                      " permissions.".format(database=database))
-        else:
-            for table_name in map(itemgetter(0),
-                                  connection.query(
-                                      'SHOW TABLES in {database}'.format(database=self.database)).fetchall()):
-                class_name, class_obj = self.create_userrelation_from_table(table_name)
-
-                # decorate class with @schema if it is not None and not a dj.Part
-                context[class_name] = self(class_obj) \
-                    if class_obj is not None and not issubclass(class_obj, Part) else class_obj
-
-
         connection.register(self)
 
-    def create_userrelation_from_table(self, table_name):
+    def spawn_missing_classes(self):
         """
-        Creates the appropriate python user relation classes from tables in a database. The tier of the class
-        is inferred from the table name.
-
-        Schema stores the class objects in a class dictionary and returns those
-        when prompted for the same table from the same database again. This way, the id
-        of both returned class objects is the same and comparison with python's "is" works
-        correctly.
+        Creates the appropriate python user relation classes from tables in the database and places them
+        in the context.
         """
-        class_name = to_camel_case(table_name)
 
-        def _make_tuples(other, key):
-            raise NotImplementedError("This is an automatically created class. _make_tuples is not implemented.")
+        def _make_tuples_stub(unused_self, unused_key):
+            raise NotImplementedError(
+                "This is an automatically created user relation class. _make_tuples is not implemented.")
 
-        if (self.database, table_name) in Schema.table2class:
-            class_name, class_obj = Schema.table2class[self.database, table_name]
-        else:
-            if re.fullmatch(Part._regexp, table_name):
-                groups = re.fullmatch(Part._regexp, table_name).groupdict()
-                master_table_name = groups['master']
-                master_name, master_class = self.create_userrelation_from_table(master_table_name)
-                class_name = to_camel_case(groups['part'])
-                class_obj = type(class_name, (Part,), dict(definition=...))
-                setattr(master_class, class_name, class_obj)
-                class_name, class_obj = master_name, master_class
+        tables = [row[0] for row in self.connection.query('SHOW TABLES in `%s`' % self.database)]
 
-            elif re.fullmatch(Computed._regexp, table_name):
-                class_obj = type(class_name, (Computed,), dict(definition=..., _make_tuples=_make_tuples))
-            elif re.fullmatch(Imported._regexp, table_name):
-                class_obj = type(class_name, (Imported,), dict(definition=..., _make_tuples=_make_tuples))
-            elif re.fullmatch(Lookup._regexp, table_name):
-                class_obj = type(class_name, (Lookup,), dict(definition=...))
-            elif re.fullmatch(Manual._regexp, table_name):
-                class_obj = type(class_name, (Manual,), dict(definition=...))
+        # declare master relation classes
+        master_classes = {}
+        part_tables = []
+        for table_name in tables:
+            class_name = to_camel_case(table_name)
+            if class_name not in self.context:
+                try:
+                    cls = next(cls for cls in (Lookup, Manual, Imported, Computed)
+                               if re.fullmatch(cls.tier_regexp, table_name))
+                except StopIteration:
+                    if re.fullmatch(Part.tier_regexp, table_name):
+                        part_tables.append(table_name)
+                else:
+                    master_classes[table_name] = type(class_name, (cls,),
+                                                      dict(definition=..., _make_tuples=_make_tuples_stub))
+        # attach parts to masters
+        for part_table in part_tables:
+            groups = re.fullmatch(Part.tier_regexp, part_table).groupdict()
+            class_name = to_camel_case(groups['part'])
+            try:
+                master_class = master_classes[groups['master']]
+            except KeyError:
+                # if master not found among the spawned classes, check in the context
+                master_class = self.context[to_camel_case(groups['master'])]
+                if not hasattr(master_class, class_name):
+                    part_class = type(class_name, (Part,), dict(definition=...))
+                    part_class._master = master_class
+                    self.process_relation_class(part_class, context=self.context, assert_declared=True)
+                    setattr(master_class, class_name, part_class)
             else:
-                class_obj = None
+                setattr(master_class, class_name, type(class_name, (Part,), dict(definition=...)))
 
-            Schema.table2class[self.database, table_name] = class_name, class_obj
-        return class_name, class_obj
+        # place classes in context upon decorating them with the schema
+        for cls in master_classes.values():
+            self.context[cls.__name__] = self(cls)
 
     def drop(self):
         """
         Drop the associated database if it exists
         """
-        if self.exists:
+        if not self.exists:
+            logger.info("Database named `{database}` does not exist. Doing nothing.".format(database=self.database))
+        elif (not config['safemode'] or
+                      user_choice("Proceed to delete entire schema `%s`?" % self.database, default='no') == 'yes'):
             logger.info("Dropping `{database}`.".format(database=self.database))
             try:
                 self.connection.query("DROP DATABASE `{database}`".format(database=self.database))
@@ -112,8 +107,6 @@ class Schema:
             except pymysql.OperationalError:
                 raise DataJointError("An attempt to drop database named `{database}` "
                                      "has failed. Check permissions.".format(database=self.database))
-        else:
-            logger.info("Database named `{database}` does not exist. Doing nothing.".format(database=self.database))
 
     @property
     def exists(self):
@@ -123,46 +116,49 @@ class Schema:
         cur = self.connection.query("SHOW DATABASES LIKE '{database}'".format(database=self.database))
         return cur.rowcount > 0
 
+    def process_relation_class(self, relation_class, context, assert_declared=False):
+        """
+        assign schema properties to the relation class and declare the table
+        """
+        relation_class.database = self.database
+        relation_class._connection = self.connection
+        relation_class._heading = Heading()
+        relation_class._context = context
+        # instantiate the class, declare the table if not already, and fill it with initial values.
+        instance = relation_class()
+        if not instance.is_declared:
+            assert not assert_declared, 'incorrect table name generation'
+            instance.declare()
+        if hasattr(instance, 'contents'):
+            total = len(instance)
+            contents_keys = [dict(zip(instance.primary_key, c)) for c in instance.contents]
+            if total > len(instance & contents_keys) and 'yes' == user_choice(
+                            '%s contains data that are no longer in its contents. '
+                            'Would you like to delete it?' % relation_class.__name__):
+                (instance - contents_keys).delete()
+                total = len(instance)
+            if len(instance.contents) > total:
+                instance.insert(instance.contents, skip_duplicates=True)
+
     def __call__(self, cls):
         """
         Binds the passed in class object to a database. This is intended to be used as a decorator.
         :param cls: class to be decorated
         """
 
-        def process_relation_class(relation_class, context):
-            """
-            assign schema properties to the relation class and declare the table
-            """
-            relation_class.database = self.database
-            relation_class._connection = self.connection
-            relation_class._heading = Heading()
-            relation_class._context = context
-            # instantiate the class and declare the table in database if not already present
-            relation_class().declare()
-
         if issubclass(cls, Part):
             raise DataJointError('The schema decorator should not be applied to Part relations')
 
-        process_relation_class(cls, context=self.context)
+        self.process_relation_class(cls, context=self.context)
 
         # Process part relations
-        def is_part(x):
-            return inspect.isclass(x) and issubclass(x, Part)
-
-        parts = list()
-        for part in dir(cls):
+        for part in cls._ordered_class_members:
             if part[0].isupper():
                 part = getattr(cls, part)
-                if is_part(part):
-                    parts.append(part)
+                if inspect.isclass(part) and issubclass(part, Part):
                     part._master = cls
-                    process_relation_class(part, context=dict(self.context, **{cls.__name__: cls}))
-
-        # invoke Relation._prepare() on class and its part relations.
-        cls()._prepare()
-        for part in parts:
-            part()._prepare()
-
+                    # allow addressing master
+                    self.process_relation_class(part, context=dict(self.context, **{cls.__name__: cls}))
         return cls
 
     @property

@@ -1,11 +1,9 @@
-from collections.abc import Mapping
-from collections import OrderedDict, defaultdict
+import collections
+import itertools
 import numpy as np
 import logging
-import abc
 import binascii
-from . import config
-from . import DataJointError
+from . import config, DataJointError
 from .declare import declare
 from .relational_operand import RelationalOperand
 from .blob import pack
@@ -15,7 +13,7 @@ from .heading import Heading
 logger = logging.getLogger(__name__)
 
 
-class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
+class BaseRelation(RelationalOperand):
     """
     BaseRelation is an abstract class that represents a base relation, i.e. a table in the database.
     To make it a concrete class, override the abstract properties specifying the connection,
@@ -28,49 +26,38 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
 
     # ---------- abstract properties ------------ #
     @property
-    @abc.abstractmethod
     def table_name(self):
         """
         :return: the name of the table in the database
         """
+        raise NotImplementedError('Subclasses of BaseRelation must implement the property "table_name"')
 
     @property
-    @abc.abstractmethod
     def definition(self):
         """
         :return: a string containing the table definition using the DataJoint DDL
         """
+        raise NotImplementedError('Subclasses of BaseRelation must implement the property "definition"')
 
     # -------------- required by RelationalOperand ----------------- #
-    @property
-    def connection(self):
-        """
-        :return: the connection object of the relation
-        """
-        return self._connection
-
     @property
     def heading(self):
         """
         Returns the table heading. If the table is not declared, attempts to declare it and return heading.
-
         :return: table heading
         """
         if self._heading is None:
             self._heading = Heading()  # instance-level heading
-        if not self._heading:  # heading is not initialized
-            self.declare()
+        if not self._heading:  # lazy loading of heading
             self._heading.init_from_database(self.connection, self.database, self.table_name)
-
         return self._heading
 
     def declare(self):
         """
         Loads the table heading. If the table is not declared, use self.definition to declare
         """
-        if not self.is_declared:
-            self.connection.query(
-                declare(self.full_table_name, self.definition, self._context))
+        self.connection.query(
+            declare(self.full_table_name, self.definition, self._context))
 
     @property
     def from_clause(self):
@@ -86,67 +73,25 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         return '*'
 
-    def erd(self, *args, fill=True, mode='updown', **kwargs):
+    def parents(self, primary=None):
         """
-        :param mode: diffent methods of creating a graph pertaining to this relation.
-        Currently options includes the following:
-        * 'updown': Contains this relation and all other nodes that can be reached within specific
-        number of ups and downs in the graph. ups(=2) and downs(=2) are optional keyword arguments
-        * 'ancestors': Returs
-        :return: the entity relationship diagram object of this relation
+        :param primary: if None, then all parents are returned. If True, then only foreign keys composed of
+        primary key attributes are considered.  If False, the only foreign keys including at least one non-primary
+        attribute are considered.
+        :return: list of tables referenced with self's foreign keys
         """
-        erd = self.connection.erd()
-        if mode == 'updown':
-            nodes = erd.up_down_neighbors(self.full_table_name, *args, **kwargs)
-        elif mode == 'ancestors':
-            nodes = erd.ancestors(self.full_table_name, *args, **kwargs)
-        elif mode == 'descendants':
-            nodes = erd.descendants(self.full_table_name, *args, **kwargs)
-        else:
-            raise DataJointError('Unsupported erd mode', 'Mode "%s" is currently not supported' % mode)
-        return erd.restrict_by_tables(nodes, fill=fill)
+        return [p[0] for p in self.connection.dependencies.in_edges(self.full_table_name, data=True)
+                if primary is None or p[2]['primary'] == primary]
 
-    # ------------- dependencies ---------- #
-    @property
-    def parents(self):
+    def children(self, primary=None):
         """
-        :return: the parent relation of this relation
+        :param primary: if None, then all parents are returned. If True, then only foreign keys composed of
+        primary key attributes are considered.  If False, the only foreign keys including at least one non-primary
+        attribute are considered.
+        :return: list of tables with foreign keys referencing self
         """
-        return self.connection.dependencies.parents[self.full_table_name]
-
-    @property
-    def children(self):
-        """
-        :return: the child relations of this relation
-        """
-        return self.connection.dependencies.children[self.full_table_name]
-
-    @property
-    def references(self):
-        """
-        :return: list of tables that this tables refers to
-        """
-        return self.connection.dependencies.references[self.full_table_name]
-
-    @property
-    def referenced(self):
-        """
-        :return: list of tables for which this table is referenced by
-        """
-        return self.connection.dependencies.referenced[self.full_table_name]
-
-    @property
-    def descendants(self):
-        """
-        Returns a list of relation objects for all children and references, recursively,
-        in order of dependence. The returned values do not include self.
-        This is helpful for cascading delete or drop operations.
-
-        :return: list of descendants
-        """
-        relations = (FreeRelation(self.connection, table)
-                     for table in self.connection.dependencies.get_descendants(self.full_table_name))
-        return [relation for relation in relations if relation.is_declared]
+        return [p[1] for p in self.connection.dependencies.out_edges(self.full_table_name, data=True)
+                if primary is None or p[2]['primary'] == primary]
 
     def _repr_helper(self):
         """
@@ -157,7 +102,7 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
     @property
     def is_declared(self):
         """
-        :return: True is the table is declared
+        :return: True is the table is declared in the database
         """
         cur = self.connection.query(
             'SHOW TABLES in `{database}`LIKE "{table_name}"'.format(
@@ -183,16 +128,14 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         Insert a collection of rows. Additional keyword arguments are passed to insert1.
 
         :param rows: An iterable where an element is a valid arguments for insert1.
-        :param replace=False: If True, replaces the matching data tuple in the table if it exists.
-        :param ignore_errors=False: If True, ignore errors: e.g. constraint violations.
-        :param skip_dublicates=False: If True, silently skip duplicate inserts.
+        :param replace: If True, replaces the matching data tuple in the table if it exists.
+        :param ignore_errors: If True, ignore errors: e.g. constraint violations.
+        :param skip_duplicates: If True, silently skip duplicate inserts.
 
         Example::
-
         >>> relation.insert([
         >>>     dict(subject_id=7, species="mouse", date_of_birth="2014-09-01"),
         >>>     dict(subject_id=8, species="mouse", date_of_birth="2014-09-02")])
-
         """
         heading = self.heading
         field_list = None  # ensures that all rows have the same attributes in the same order as the first row.
@@ -244,14 +187,14 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
                 check_fields(row.dtype.fields)
                 attributes = [make_placeholder(name, row[name])
                               for name in heading if name in row.dtype.fields]
-            elif isinstance(row, Mapping):  # dict-based
+            elif isinstance(row, collections.abc.Mapping):  # dict-based
                 check_fields(row.keys())
                 attributes = [make_placeholder(name, row[name]) for name in heading if name in row]
             else:  # positional
                 try:
                     if len(row) != len(heading):
                         raise DataJointError(
-                            'Incorrect number of attributes: '
+                            'Invalid insert argument. Incorrect number of attributes: '
                             '{given} given; {expected} expected'.format(
                                 given=len(row), expected=len(heading)))
                 except TypeError:
@@ -282,38 +225,22 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
             """
             primary_key_value = dict((name, value)
                                      for (name, value) in zip(row['names'], row['values']) if heading[name].in_key)
-            return self & primary_key_value
+            return primary_key_value in self
 
         rows = list(make_row_to_insert(row) for row in rows)
-
-        if not rows:
-            return
-
-        # skip duplicates only if the entire primary key is specified.
-        skip_duplicates = skip_duplicates and set(heading.primary_key).issubset(set(field_list))
-
-        if skip_duplicates:
-            rows = list(row for row in rows if not row_exists(row))
-
-        if not rows:
-            return
-
-        if replace:
-            sql = 'REPLACE'
-        elif ignore_errors:
-            sql = 'INSERT IGNORE'
-        else:
-            sql = 'INSERT'
-
-        sql += " INTO %s (`%s`) VALUES " % (self.from_clause, '`,`'.join(field_list))
-
-        # add placeholders to sql
-        sql += ','.join('(' + ','.join(row['placeholders']) + ')' for row in rows)
-        # compile all values into one list
-        args = []
-        for r in rows:
-            args.extend(v for v in r['values'] if v is not None)
-        self.connection.query(sql, args=args)
+        if rows:
+            # skip duplicates only if the entire primary key is specified.
+            skip_duplicates = skip_duplicates and set(heading.primary_key).issubset(set(field_list))
+            if skip_duplicates:
+                rows = list(row for row in rows if not row_exists(row))
+            if rows:
+                self.connection.query(
+                    "{command} INTO {destination}(`{fields}`) VALUES {placeholders}".format(
+                        command='REPLACE' if replace else 'INSERT IGNORE' if ignore_errors else 'INSERT',
+                        destination=self.from_clause,
+                        fields='`,`'.join(field_list),
+                        placeholders=','.join('(' + ','.join(row['placeholders']) + ')' for row in rows)),
+                    args=list(itertools.chain.from_iterable((v for v in r['values'] if v is not None) for r in rows)))
 
     def delete_quick(self):
         """
@@ -329,49 +256,49 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         self.connection.dependencies.load()
 
-        # construct a list (OrderedDict) of relations to delete
-        relations = OrderedDict((r.full_table_name, r) for r in self.descendants)
+        relations_to_delete = collections.OrderedDict(
+            (r, FreeRelation(self.connection, r))
+            for r in self.connection.dependencies.descendants(self.full_table_name))
 
         # construct restrictions for each relation
         restrict_by_me = set()
-        restrictions = defaultdict(list)
+        restrictions = collections.defaultdict(list)
         if self.restrictions:
             restrict_by_me.add(self.full_table_name)
             restrictions[self.full_table_name].append(self.restrictions)  # copy own restrictions
-        for r in relations.values():
-            restrict_by_me.update(r.references)
-        for name, r in relations.items():
-            for dep in (r.children + r.references):
+        for r in relations_to_delete.values():
+            restrict_by_me.update(r.children(primary=False))
+        for name, r in relations_to_delete.items():
+            for dep in r.children():
                 if name in restrict_by_me:
                     restrictions[dep].append(r)
                 else:
                     restrictions[dep].extend(restrictions[name])
 
         # apply restrictions
-        for name, r in relations.items():
+        for name, r in relations_to_delete.items():
             if restrictions[name]:  # do not restrict by an empty list
-                r.restrict([r.project() if isinstance(r, RelationalOperand) else r
+                r.restrict([r.proj() if isinstance(r, RelationalOperand) else r
                             for r in restrictions[name]])  # project
-
         # execute
         do_delete = False  # indicate if there is anything to delete
         if config['safemode']:
             print('The contents of the following tables are about to be deleted:')
-        for relation in list(relations.values()):
+        for relation in list(relations_to_delete.values()):
             count = len(relation)
             if count:
                 do_delete = True
                 if config['safemode']:
                     print(relation.full_table_name, '(%d tuples)' % count)
             else:
-                relations.pop(relation.full_table_name)
+                relations_to_delete.pop(relation.full_table_name)
         if not do_delete:
             if config['safemode']:
                 print('Nothing to delete')
         else:
             if not config['safemode'] or user_choice("Proceed?", default='no') == 'yes':
                 with self.connection.transaction:
-                    for r in reversed(list(relations.values())):
+                    for r in reversed(list(relations_to_delete.values())):
                         r.delete_quick()
                 print('Done')
 
@@ -380,7 +307,6 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         Drops the table associated with this relation without cascading and without user prompt.
         If the table has any dependent table(s), this call will fail with an error.
         """
-        # TODO: give a better exception message
         if self.is_declared:
             self.connection.query('DROP TABLE %s' % self.full_table_name)
             logger.info("Dropped table %s" % self.full_table_name)
@@ -394,15 +320,15 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         """
         self.connection.dependencies.load()
         do_drop = True
-        relations = self.descendants
+        tables = self.connection.dependencies.descendants(self.full_table_name)
         if config['safemode']:
-            for relation in relations:
-                print(relation.full_table_name, '(%d tuples)' % len(relation))
+            for table in tables:
+                print(table, '(%d tuples)' % len(FreeRelation(self.connection, table)))
             do_drop = user_choice("Proceed?", default='no') == 'yes'
         if do_drop:
-            while relations:
-                relations.pop().drop_quick()
-            print('Tables dropped.')
+            for table in reversed(tables):
+                FreeRelation(self.connection, table).drop_quick()
+            print('Tables dropped.  Restart kernel.')
 
     @property
     def size_on_disk(self):
@@ -415,7 +341,7 @@ class BaseRelation(RelationalOperand, metaclass=abc.ABCMeta):
         return ret['Data_length'] + ret['Index_length']
 
     # --------- functionality used by the decorator ---------
-    def _prepare(self):
+    def prepare(self):
         """
         This method is overridden by the user_relations subclasses. It is called on an instance
         once when the class is declared.
@@ -427,25 +353,27 @@ class FreeRelation(BaseRelation):
     """
     A base relation without a dedicated class. Each instance is associated with a table
     specified by full_table_name.
+    :param arg:  a dj.Connection or a dj.FreeRelation
     """
 
-    def __init__(self, connection, full_table_name, definition=None, context=None):
-        self.database, self._table_name = (s.strip('`') for s in full_table_name.split('.'))
-        self._connection = connection
-        self._definition = definition
-        self._context = context
+    def __init__(self, arg, full_table_name=None):
+        super().__init__()
+        if isinstance(arg, FreeRelation):
+            # copy constructor
+            self.database = arg.database
+            self._table_name = arg._table_name
+            self._connection = arg._connection
+        else:
+            self.database, self._table_name = (s.strip('`') for s in full_table_name.split('.'))
+            self._connection = arg
+
 
     def __repr__(self):
         return "FreeRelation(`%s`.`%s`)" % (self.database, self._table_name)
 
     @property
     def definition(self):
-        """
-        Definition of the table.
-
-        :return: the definition
-        """
-        return self._definition
+        return None
 
     @property
     def connection(self):

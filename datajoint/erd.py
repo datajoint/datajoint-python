@@ -1,473 +1,272 @@
-from matplotlib import transforms
-
-import numpy as np
-
-import logging
-from collections import defaultdict
 import networkx as nx
-from networkx import DiGraph
-from functools import cmp_to_key
-import operator
+import numpy as np
+import re
+from scipy.optimize import basinhopping
+import itertools
+import inspect
+from . import Manual, Imported, Computed, Lookup, Part, DataJointError
 
-# use pygraphviz if available
-try:
-    from networkx import pygraphviz_layout
-except:
-    pygraphviz_layout = None
-
-import matplotlib.pyplot as plt
-from inspect import isabstract
-from .user_relations import UserRelation, Part
-
-logger = logging.getLogger(__name__)
+user_relation_classes = (Manual, Lookup, Computed, Imported, Part)
 
 
-def get_concrete_subclasses(cls):
-    desc = []
-    child= cls.__subclasses__()
-    for c in child:
-        if not isabstract(c):
-            desc.append(c)
-        desc.extend(get_concrete_subclasses(c))
-    return desc
+def _get_concrete_subclasses(class_list):
+    for cls in class_list:
+        for subclass in cls.__subclasses__():
+            if not inspect.isabstract(subclass):
+                yield subclass
+            yield from _get_concrete_subclasses([subclass])
 
 
-class ERD(DiGraph):
+def _get_tier(table_name):
+    try:
+        return next(tier for tier in user_relation_classes
+                    if re.fullmatch(tier.tier_regexp, table_name))
+    except StopIteration:
+        return None
+
+
+class ERD(nx.DiGraph):
     """
-    A directed graph representing dependencies between Relations within and across
-    multiple databases.
+    Entity relationship diagram.
+
+    Usage:
+    >>>  erd = Erd(source)
+    source can be a base relation object, a base relation class, a schema, or a module that has a schema
+    or source can be a sequence of such objects.
+
+    >>> erd.draw()
+    draws the diagram using pyplot
+
+    erd1 + erd2  - combines the two ERDs.
+    erd + n   - adds n levels of successors
+    erd - n   - adds n levens of predecessors
+    Thus dj.ERD(schema.Table)+1-1 defines the diagram of immediate ancestors and descendants of schema.Table
+
+    Note that erd + 1 - 1  may differ from erd - 1 + 1 and so forth.
+    Only those tables that are loaded in the connection object are displayed
     """
+    def __init__(self, source):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    @property
-    def node_labels(self):
-        """
-        :return: dictionary of key : label pairs for plotting
-        """
-        def full_class_name(user_class):
-            if issubclass(user_class, Part):
-                return '{module}.{master}.{cls}'.format(
-                        module=user_class.__module__,
-                        master=user_class.master.__name__,
-                        cls=user_class.__name__)
-            else:
-                return '{module}.{cls}'.format(
-                        module=user_class.__module__,
-                        cls=user_class.__name__)
-
-        name_map = {rel.full_table_name: full_class_name(rel) for rel in get_concrete_subclasses(UserRelation)}
-        return {k: self.get_label(k, name_map) for k in self.nodes()}
-
-    def get_label(self, node, name_map=None):
-        label = self.node[node].get('label', '')
-        if label.strip():
-            return label
-        if name_map is not None and node in name_map:
-            return name_map[node]
-        # no other name exists, so just use full table now
-        return node
-
-    @property
-    def lone_nodes(self):
-        """
-        :return: list of nodes that are not connected to any other node
-        """
-        return list(x for x in self.root_nodes if len(self.out_edges(x)) == 0)
-
-    @property
-    def pk_edges(self):
-        """
-        :return: list of edges representing primary key foreign relations
-        """
-        return [edge for edge in self.edges()
-                if self[edge[0]][edge[1]].get('rel') == 'parent']
-
-    @property
-    def non_pk_edges(self):
-        """
-        :return: list of edges representing non primary key foreign relations
-        """
-        return [edge for edge in self.edges()
-                if self[edge[0]][edge[1]].get('rel') == 'referenced']
-
-    def highlight(self, nodes):
-        """
-        Highlights specified nodes when plotting
-        :param nodes: list of nodes, specified by full table names, to be highlighted
-        """
-        for node in nodes:
-            self.node[node]['highlight'] = True
-
-    def remove_highlight(self, nodes=None):
-        """
-        Remove highlights from specified nodes when plotting. If specified node is not
-        highlighted to begin with, nothing happens.
-        :param nodes: list of nodes, specified by full table names, to remove highlights from
-        """
-        if not nodes:
-            nodes = self.nodes_iter()
-        for node in nodes:
-            self.node[node]['highlight'] = False
-
-    # TODO: make this take in various config parameters for plotting
-    def plot(self):
-        """
-        Plots an entity relation diagram (ERD) among all nodes that is part
-        of the current graph.
-        """
-        if not self.nodes(): # There is nothing to plot
-            logger.warning('Nothing to plot')
-            return
-        if pygraphviz_layout is None:
-            logger.warning('Failed to load Pygraphviz - plotting not supported at this time')
+        if isinstance(source, ERD):
+            # copy constructor
+            self.nodes_to_show = set(source.nodes_to_show)
+            super().__init__(source)
             return
 
-        pos = pygraphviz_layout(self, prog='dot')
-        fig = plt.figure(figsize=[10, 7])
-        ax = fig.add_subplot(111)
-        nx.draw_networkx_nodes(self, pos, node_size=200, node_color='g')
-        text_dict = nx.draw_networkx_labels(self, pos, self.node_labels)
-        trans = ax.transData + \
-            transforms.ScaledTranslation(12/72, 0, fig.dpi_scale_trans)
-        for text in text_dict.values():
-            text.set_horizontalalignment('left')
-            text.set_transform(trans)
-        # draw primary key relations
-        nx.draw_networkx_edges(self, pos, self.pk_edges, arrows=False)
-        # draw non-primary key relations
-        nx.draw_networkx_edges(self, pos, self.non_pk_edges, style='dashed', arrows=False)
-        apos = np.array(list(pos.values()))
-        xmax = apos[:, 0].max() + 200  # TODO: use something more sensible than hard fixed number
-        xmin = apos[:, 0].min() - 100
-        ax.set_xlim(xmin, xmax)
-        ax.axis('off')  # hide axis
+        # if source is not a list, make it a list
+        try:
+            source[0]
+        except (TypeError, KeyError):
+            source = [source]
 
-    def __repr__(self):
-        return self.repr_path()
+        # find connection in the first item in the list
+        try:
+            connection = source[0].connection
+        except AttributeError:
+            try:
+                connection = source[0].schema.connection
+            except AttributeError:
+                raise DataJointError('Could find database connection in %s' % repr(source[0]))
 
-    def restrict_by_databases(self, databases, fill=False):
+        # initialize graph from dependencies
+        connection.dependencies.load()
+        super().__init__(connection.dependencies)
+
+        # Enumerate nodes from all the items in the list
+        self.nodes_to_show = set()
+        for source in source:
+            try:
+                self.nodes_to_show.add(source.full_table_name)
+            except AttributeError:
+                try:
+                    database = source.database
+                except AttributeError:
+                    try:
+                        database = source.schema.database
+                    except AttributeError:
+                        raise DataJointError('Cannot plot ERD for %s' % repr(source))
+                for node in self:
+                    if node.startswith('`%s`' % database):
+                        self.nodes_to_show.add(node)
+
+    def __add__(self, arg):
         """
-        Creates a subgraph containing only tables in the specified database.
-        :param databases: list of database names
-        :param fill: if True, automatically include nodes connecting two nodes in the specified modules
-        :return: a subgraph with specified nodes
+        :param arg: either another ERD or a positive integer.
+        :return: Union of the ERDs when arg is another ERD or an expansion downstream when arg is a positive integer.
         """
-        nodes = [n for n in self.nodes() if n.split('.')[0].strip('`') in databases]
-        if fill:
-            nodes = self.fill_connection_nodes(nodes)
-        return self.subgraph(nodes)
+        self = ERD(self)   # copy
+        try:
+            self.nodes_to_show.update(arg.nodes_to_show)
+        except AttributeError:
+            for i in range(arg):
+                new = nx.algorithms.boundary.node_boundary(self, self.nodes_to_show)
+                if not new:
+                    break
+                self.nodes_to_show.update(new)
+        return self
 
-    def restrict_by_tables(self, tables, fill=False):
+    def __sub__(self, arg):
         """
-        Creates a subgraph containing only specified tables.
-        :param tables: list of tables to keep in the subgraph. Tables are specified using full table names
-        :param fill: set True to automatically include nodes connecting two nodes in the specified list
-        of tables
-        :return: a subgraph with specified nodes
+        :param arg: either another ERD or a positive integer.
+        :return: Difference of the ERDs when arg is another ERD or an expansion upstream when arg is a positive integer.
         """
-        nodes = [n for n in self.nodes() if n in tables]
-        if fill:
-            nodes = self.fill_connection_nodes(nodes)
-        return self.subgraph(nodes)
+        self = ERD(self)   # copy
+        try:
+            self.nodes_to_show.difference_update(arg.nodes_to_show)
+        except AttributeError:
+            for i in range(arg):
+                new = nx.algorithms.boundary.node_boundary(nx.DiGraph(self).reverse(), self.nodes_to_show)
+                if not new:
+                    break
+                self.nodes_to_show.update(new)
+        return self
 
-    def restrict_by_tables_in_module(self, module, tables, fill=False):
-        nodes = [n for n in self.nodes() if self.node[n].get('mod') in module and
-                 self.node[n].get('cls') in tables]
-        if fill:
-            nodes = self.fill_connection_nodes(nodes)
-        return self.subgraph(nodes)
-
-    def fill_connection_nodes(self, nodes):
+    def __mul__(self, arg):
         """
-        For given set of nodes, find and add nodes that serves as
-        connection points for two nodes in the set.
-        :param nodes: list of nodes for which connection nodes are to be filled in
+        Intersection of two ERDs
+        :param arg: another ERD
+        :return: a new ERD comprising nodes that are present in both operands.
         """
-        graph = self.subgraph(self.ancestors_of_all(nodes))
-        return graph.descendants_of_all(nodes)
+        self = ERD(self)   # copy
+        self.nodes_to_show.intersection_update(arg.nodes_to_show)
+        return self
 
-    def ancestors_of_all(self, nodes, n=-1):
+    def _make_graph(self, prefix_module):
         """
-        Find and return a set of  all ancestors of the given
-        nodes. The set will also contain the specified nodes.
-        :param nodes: list of nodes for which ancestors are to be found
-        :param n: maximum number of generations to go up for each node.
-        If set to a negative number, will return all ancestors.
-        :return: a set containing passed in nodes and all of their ancestors
+        Make the self.graph - a graph object ready for drawing
         """
-        s = set()
-        for node in nodes:
-            s.update(self.ancestors(node, n))
-        return s
+        graph = nx.DiGraph(self).subgraph(self.nodes_to_show)
+        nx.set_node_attributes(graph, 'node_type', {n: _get_tier(n.split('`')[-2]) for n in graph})
+        # relabel nodes to class names
+        class_list = list(cls for cls in _get_concrete_subclasses(user_relation_classes))
+        mapping = {
+            cls.full_table_name:
+                (cls._context['__name__'] + '.'
+                 if (prefix_module and cls._context['__name__'] != '__main__') else '') +
+                (cls._master.__name__+'.' if issubclass(cls, Part) else '') + cls.__name__
+                   for cls in class_list if cls.full_table_name in graph}
+        new_names = [mapping.values()]
+        if len(new_names) > len(set(new_names)):
+            raise DataJointError('Some classes have identical names. The ERD cannot be plotted.')
+        nx.relabel_nodes(graph, mapping, copy=False)
+        return graph
 
-    def descendants_of_all(self, nodes, n=-1):
-        """
-        Find and return a set including all descendants of the given
-        nodes. The set will also contain the given nodes as well.
-        :param nodes: list of nodes for which descendants are to be found
-        :param n: maximum number of generations to go down for each node.
-        If set to a negative number, will return all descendants.
-        :return: a set containing passed in nodes and all of their descendants
-        """
-        s = set()
-        for node in nodes:
-            s.update(self.descendants(node, n))
-        return s
-
-    def copy_graph(self, *args, **kwargs):
-        return self.__class__(self, *args, **kwargs)
-
-    def ancestors(self, node, n=-1):
-        """
-        Find and return a set containing all ancestors of the specified
-        node. For convenience in plotting, this set will also include
-        the specified node as well (may change in future).
-        :param node: node for which all ancestors are to be discovered
-        :param n: maximum number of generations to go up. If set to a negative number,
-        will return all ancestors.
-        :return: a set containing the node and all of its ancestors
-        """
-        s = {node}
-        if n == 0:
-            return s
-        for p in self.predecessors_iter(node):
-            s.update(self.ancestors(p, n-1))
-        return s
-
-    def descendants(self, node, n=-1):
-        """
-        Find and return a set containing all descendants of the specified
-        node. For convenience in plotting, this set will also include
-        the specified node as well (may change in future).
-        :param node: node for which all descendants are to be discovered
-        :param n: maximum number of generations to go down. If set to a negative number,
-        will return all descendants
-        :return: a set containing the node and all of its descendants
-        """
-        s = {node}
-        if n == 0:
-            return s
-        for c in self.successors_iter(node):
-            s.update(self.descendants(c, n-1))
-        return s
-
-    def up_down_neighbors(self, node, ups=2, downs=2, _prev=None):
-        """
-        Returns a set of all nodes that can be reached from the specified node by
-        moving up and down the ancestry tree with specific number of ups and downs.
-
-        Example:
-        up_down_neighbors(node, ups=2, downs=1) will return all nodes that can be reached by
-        any combinations of two up tracing and 1 down tracing of the ancestry tree. This includes
-        all children of a grand-parent (two ups and one down), all grand parents of all children (one down
-        and then two ups), and all siblings parents (one up, one down, and one up).
-
-        It must be noted that except for some special cases, there is no generalized interpretations for
-        the relationship among nodes captured by this method. However, it does tend to produce a fairy
-        good concise view of the relationships surrounding the specified node.
-
-
-        :param node: node to base all discovery on
-        :param ups: number of times to go up the ancestry tree (go up to parent)
-        :param downs: number of times to go down the ancestry tree (go down to children)
-        :param _prev: previously visited node. This will be excluded from up down search in this recursion
-        :return: a set of all nodes that can be reached within specified numbers of ups and downs from the source node
-        """
-        s = {node}
-        if ups > 0:
-            for x in self.predecessors_iter(node):
-                if x != _prev:
-                    s.update(self.up_down_neighbors(x, ups-1, downs, node))
-        if downs > 0:
-            for x in self.successors_iter(node):
-                if x != _prev:
-                    s.update(self.up_down_neighbors(x, ups, downs-1, node))
-        return s
-
-    def n_neighbors(self, node, n, directed=False, prev=None):
-        """
-        Returns a set of n degree neighbors for the
-        specified node. The set will contain the node itself.
-
-        n degree neighbors are defined as node that can be reached
-        within n edges from the root node.
-
-        By default all edges (incoming and outgoing) will be followed.
-        Set directed=True to follow only outgoing edges.
-        """
-        s = {node}
-        if n == 1:
-            s.update(self.predecessors(node))
-            s.update(self.successors(node))
-        elif n > 1:
-            if not directed:
-                for x in self.predecesors_iter():
-                    if x != prev:  # skip prev point
-                        s.update(self.n_neighbors(x, n-1, prev))
-            for x in self.succesors_iter():
-                if x != prev:
-                    s.update(self.n_neighbors(x, n-1, prev))
-        return s
-
-    @property
-    def root_nodes(self):
-        return {node for node in self.nodes() if len(self.predecessors(node)) == 0}
-
-    @property
-    def leaf_nodes(self):
-        return {node for node in self.nodes() if len(self.successors(node)) == 0}
-
-    def nodes_by_depth(self):
-        """
-        Return all nodes, ordered by their depth in the hierarchy
-        :returns: list of nodes, ordered by depth from shallowest to deepest
-        """
-        ret = defaultdict(lambda: 0)
-        roots = self.root_nodes
-
-        def recurse(node, depth):
-            if depth > ret[node]:
-                ret[node] = depth
-            for child in self.successors_iter(node):
-                recurse(child, depth+1)
-
-        for root in roots:
-            recurse(root, 0)
-
-        return sorted(ret.items(), key=operator.itemgetter(1))
-
-    def get_longest_path(self):
-        """
-        :returns: a list of graph nodes defining th longest path in the graph
-        """
-        # no path exists if there is not an edge!
-        if not self.edges():
-            return []
-
-        node_depth_list = self.nodes_by_depth()
-        node_depth_lookup = dict(node_depth_list)
-        path = []
-
-        leaf = node_depth_list[-1][0]
-        predecessors = [leaf]
-        while predecessors:
-            leaf = sorted(predecessors, key=node_depth_lookup.get)[-1]
-            path.insert(0, leaf)
-            predecessors = self.predecessors(leaf)
-
-        return path
-
-    def remove_edges_in_path(self, path):
-        """
-        Removes all shared edges between this graph and the path
-        :param path: a list of nodes defining a path. All edges in this path will be removed from the graph if found
-        """
-        if len(path) <= 1:  # no path exists!
+    def draw(self, pos=None, layout=None, prefix_module=True, font_scale=1.2, **layout_options):
+        if not self.nodes_to_show:
+            print('There is nothing to plot')
             return
-        for a, b in zip(path[:-1], path[1:]):
-            self.remove_edge(a, b)
+        graph = self._make_graph(prefix_module)
+        if pos is None:
+            pos = (layout if layout else self._layout)(graph, **layout_options)
+        import matplotlib.pyplot as plt
 
-    def longest_paths(self):
+        edge_list = graph.edges(data=True)
+        edge_styles = ['solid' if e[2]['primary'] else 'dashed' for e in edge_list]
+        nx.draw_networkx_edges(graph, pos=pos, edgelist=edge_list, style=edge_styles, alpha=0.2)
+
+        label_props = { # http://matplotlib.org/examples/color/named_colors.html
+            None: dict(bbox=dict(boxstyle='round,pad=0.1', facecolor='yellow', alpha=0.3), size=round(font_scale*8)),
+            Manual: dict(bbox=dict(boxstyle='round,pad=0.1', edgecolor='white', facecolor='darkgreen', alpha=0.3), size=round(font_scale*10)),
+            Lookup: dict(bbox=dict(boxstyle='round,pad=0.1', edgecolor='white', facecolor='gray', alpha=0.2), size=round(font_scale*8)),
+            Computed: dict(bbox=dict(boxstyle='round,pad=0.1', edgecolor='white', facecolor='red', alpha=0.2), size=round(font_scale*10)),
+            Imported: dict(bbox=dict(boxstyle='round,pad=0.1', edgecolor='white', facecolor='darkblue', alpha=0.2), size=round(font_scale*10)),
+            Part: dict(size=round(font_scale*7))}
+        ax = plt.gca()
+        for node in graph.nodes(data=True):
+            ax.text(pos[node[0]][0], pos[node[0]][1], node[0],
+                    horizontalalignment=('right' if pos[node[0]][0] < 0.5 else 'left'),
+                    **label_props[node[1]['node_type']])
+        ax = plt.gca()
+        ax.axis('off')
+        ax.set_xlim([-0.4, 1.4])  # allow a margin for labels
+        plt.show()
+
+    @staticmethod
+    def _layout(graph, quality=2):
         """
-        :return: list of paths from longest to shortest. A path is a list of nodes.
+        :param graph:  a networkx.DiGraph object
+        :param quality: 0=dirty, 1=draft, 2=good, 3=great, 4=publish
+        :return: position dict keyed by node names
         """
-        g = self.copy_graph()
-        paths = []
-        path = g.get_longest_path()
-        while path:
-            paths.append(path)
-            g.remove_edges_in_path(path)
-            path = g.get_longest_path()
-        return paths
+        if not nx.is_directed_acyclic_graph(graph):
+            DataJointError('This layout only works for acyclic graphs')
 
-    def repr_path(self):
-        """
-        Construct string representation of the erm, summarizing dependencies between
-        tables
-        :return: string representation of the erm
-        """
-        if len(self) == 0:
-            return "No relations to show"
+        # assign depths
+        nodes = set(node for node in graph.nodes() if not graph.in_edges(node))  # root
+        depth = 0
+        depths = {}
+        while nodes:
+            depths = dict(depths, **dict.fromkeys(nodes, depth))
+            nodes = set(edge[1] for edge in graph.out_edges(nodes))
+            depth += 1
+        # push depth down as far as possible
+        updated = True
+        while updated:
+            updated = False
+            for node in graph.nodes():
+                if graph.successors(node):
+                    m = min(depths[n] for n in graph.successors(node)) - 1
+                    updated = updated or m > depths[node]
+                    depths[node] = m
+        longest_path = nx.dag_longest_path(graph)  # place at x=0
 
-        paths = self.longest_paths()
+        # assign initial x positions
+        x = dict.fromkeys(graph, 0)
+        unplaced = set(node for node in graph if node not in longest_path)
+        for node in sorted(unplaced, key=graph.degree, reverse=True):
+            neighbors = set(nx.all_neighbors(graph, node))
+            placed_neighbors = neighbors.difference(unplaced)
+            placed_other = set(graph.nodes()).difference(unplaced).difference(neighbors)
+            x[node] = (sum(x[n] for n in placed_neighbors) -
+                       sum(x[n] for n in placed_other) +
+                       0.05*(np.random.ranf()-0.5))/(len(placed_neighbors) + len(placed_other) + 0.01)
+            x[node] += 2*(x[node] > 0)-1
+            unplaced.remove(node)
 
-        # turn comparator into Key object for use in sort
-        k = cmp_to_key(self.compare_path)
-        sorted_paths = sorted(paths, key=k)
+        nodes = nx.topological_sort(graph)
+        x = np.array([x[n] for n in nodes])
 
-        # table name will be padded to match the longest table name
-        node_labels = self.node_labels
-        n = max([len(x) for x in node_labels.values()]) + 1
-        rep = ''
-        for path in sorted_paths:
-            rep += self.repr_path_with_depth(path, n)
+        intersecting_edge_pairs = list(
+            [[nodes.index(n) for n in edge1],
+             [nodes.index(n) for n in edge2]]
+            for edge1, edge2 in itertools.combinations(graph.edges(), 2)
+            if len(set(edge1 + edge2)) == 4 and (
+                depths[edge1[1]] > depths[edge2[0]] and
+                depths[edge2[1]] > depths[edge1[0]]))
+        depths = depth - np.array([depths[n] for n in nodes])
 
-        for node in self.lone_nodes:
-            rep += node_labels[node] + '\n'
+        #  minimize layout cost function (for x-coordinate only)
+        A = np.asarray(nx.to_numpy_matrix(graph, dtype=bool))   # adjacency matrix
+        A = np.logical_or(A, A.transpose())
+        D = np.zeros_like(A,dtype=bool)         # neighbor matrix
+        for d in set(depths):
+            ix = depths == d
+            D[np.outer(ix,ix)]=True
+        D = np.logical_xor(D, np.identity(len(nodes), bool))
 
-        return rep
+        def cost(xx):
+            xx = np.expand_dims(xx, 1)
+            g = xx.transpose()-xx
+            h = g**2 + 1e-8
+            crossings = sum((xx[edge1[0]][0] > xx[edge2[0]][0]) != (xx[edge1[1]][0] > xx[edge2[1]][0])
+                            for edge1, edge2 in intersecting_edge_pairs)
+            return crossings*1000 + h[A].sum() + 0.1*h[D].sum() + (1/h[D]).sum()
 
-    def compare_path(self, path1, path2):
-        """
-        Comparator between two paths: path1 and path2 based on a combination of rules.
-        Path 1 is greater than path2 if:
-        1) i^th node in path1 is at greater depth than the i^th node in path2 OR
-        2) if i^th nodes are at the same depth, i^th node in path 1 is alphabetically less than i^th node
-        in path 2
-        3) if neither of the above statement is true even if path1 and path2 are switched, proceed to i+1^th node
-        If path2 is a subpath start at node 1, then path1 is greater than path2
-        :param path1: path 1 of 2 to be compared
-        :param path2: path 2 of 2 to be compared
-        :return: return 1 if path1 is greater than path2, -1 if path1 is less than path2, and 0 if they are identical
-        """
-        node_depth_lookup = dict(self.nodes_by_depth())
-        for node1, node2 in zip(path1, path2):
-            if node_depth_lookup[node1] != node_depth_lookup[node2]:
-                return -1 if node_depth_lookup[node1] < node_depth_lookup[node2] else 1
-            if node1 != node2:
-                return -1 if node1 < node2 else 1
-        if len(node1) != len(node2):
-            return -1 if len(node1) < len(node2) else 1
-        return 0
-
-    def repr_path_with_depth(self, path, n=20, m=2):
-        node_depth_lookup = dict(self.nodes_by_depth())
-        node_labels = self.node_labels
-        space = '-' * n
-        rep = ''
-        prev_depth = 0
-        first = True
-        for (i, node) in enumerate(path):
-            depth = node_depth_lookup[node]
-            label = node_labels[node]
-            if first:
-                rep += (' '*(n+m))*(depth-prev_depth)
-            else:
-                rep += space.join(['-'*m]*(depth-prev_depth))[:-1] + '>'
-            first = False
-            prev_depth = depth
-            if i == len(path)-1:
-                rep += label
-            else:
-                rep += label.ljust(n, '-')
-        rep += '\n'
-        return rep
-
-    @classmethod
-    def create_from_dependencies(cls, dependencies, *args, **kwargs):
-        obj = cls(*args, **kwargs)
-
-        for full_table, parents in dependencies.parents.items():
-            database, table = (x.strip('`') for x in full_table.split('.'))
-            obj.add_node(full_table, database=database, table=table)
-            for parent in parents:
-                obj.add_edge(parent, full_table, rel='parent')
-
-        # create non primary key foreign connections
-        for full_table, referenced in dependencies.referenced.items():
-            for ref in referenced:
-                obj.add_edge(ref, full_table, rel='referenced')
-
-        return obj
+        def grad(xx):
+            xx = np.expand_dims(xx, 1)
+            g = xx.transpose()-xx
+            h = g**2 + 1e-8
+            return -2*((A*g).sum(axis=1) + 0.1*(D*g).sum(axis=1) - (D*g/h**2).sum(axis=1))
+        niter = [100, 200, 500, 1000, 3000][quality]
+        maxiter = [1, 2, 3, 4, 4][quality]
+        x = basinhopping(cost, x, niter=niter, interval=40, T=30, stepsize=1.0, disp=False,
+                         minimizer_kwargs=dict(jac=grad, options=dict(maxiter=maxiter))).x
+        # normalize coordinates to unit square
+        phi = np.pi*20/180   # rotate coordinate slightly
+        cs, sn = np.cos(phi), np.sin(phi)
+        x, depths = cs*x - sn*depths,  sn*x + cs*depths
+        x -= x.min()
+        x /= x.max()+0.01
+        depths -= depths.min()
+        depths = depths/(depths.max()+0.01)
+        return {node: (x, y) for node, x, y in zip(nodes, x, depths)}

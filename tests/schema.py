@@ -3,7 +3,6 @@ Sample schema with realistic tables for testing
 """
 
 import random
-
 import numpy as np
 import datajoint as dj
 from . import PREFIX, CONN_INFO
@@ -50,20 +49,15 @@ class Subject(dj.Manual):
         [1552, '1552', 'mouse', '2015-06-15', ''],
         [1553, '1553', 'mouse', '2016-07-01', '']]
 
-    def _prepare(self):
-        self.insert(self.contents, ignore_errors=True)
-
 
 @schema
 class Language(dj.Lookup):
     definition = """
     # languages spoken by some of the developers
-
     name        : varchar(40) # name of the developer
     language    : varchar(40) # language
     ---
     """
-
     contents = [
         ('Fabian', 'English'),
         ('Edgar', 'English'),
@@ -95,12 +89,12 @@ class Experiment(dj.Imported):
         from datetime import date, timedelta
         users = User().fetch()['username']
         random.seed('Amazing Seed')
-        for experiment_id in range(self.fake_experiments_per_subject):
-            self.insert1(
-                dict(key,
-                     experiment_id=experiment_id,
-                     experiment_date=(date.today() - timedelta(random.expovariate(1 / 30))).isoformat(),
-                     username=random.choice(users)))
+        self.insert(
+            dict(key,
+                 experiment_id=experiment_id,
+                 experiment_date=(date.today() - timedelta(random.expovariate(1 / 30))).isoformat(),
+                 username=random.choice(users))
+            for experiment_id in range(self.fake_experiments_per_subject))
 
 
 @schema
@@ -117,12 +111,11 @@ class Trial(dj.Imported):
         populate with random data (pretend reading from raw files)
         """
         random.seed('Amazing Seed')
-        for trial_id in range(10):
-            self.insert1(
-                dict(key,
-                     trial_id=trial_id,
-                     start_time=random.random() * 1e9
-                     ))
+        self.insert(
+            dict(key,
+                 trial_id=trial_id,
+                 start_time=random.random() * 1e9)
+            for trial_id in range(10))
 
 
 @schema
@@ -131,7 +124,7 @@ class Ephys(dj.Imported):
     -> Trial
     ----
     sampling_frequency :double  # (Hz)
-    duration           :double  # (s)
+    duration           :decimal(7,3)  # (s)
     """
 
     class Channel(dj.Part):
@@ -139,7 +132,8 @@ class Ephys(dj.Imported):
         -> Ephys
         channel    :tinyint unsigned   # channel number within Ephys
         ----
-        voltage    :longblob
+        voltage    : longblob
+        current = null : longblob   # optional current to test null handling
         """
 
     def _make_tuples(self, key):
@@ -151,13 +145,13 @@ class Ephys(dj.Imported):
                    sampling_frequency=6000,
                    duration=np.minimum(2, random.expovariate(1)))
         self.insert1(row)
-        number_samples = round(row['duration'] * row['sampling_frequency'])
+        number_samples = int(row['duration'] * row['sampling_frequency']+0.5)
         sub = self.Channel()
-        for channel in range(2):
-            sub.insert1(
-                dict(key,
-                     channel=channel,
-                     voltage=np.float32(np.random.randn(number_samples))))
+        sub.insert(
+            dict(key,
+                 channel=channel,
+                 voltage=np.float32(np.random.randn(number_samples)))
+            for channel in range(2))
 
 
 @schema
@@ -176,6 +170,7 @@ class UberTrash(dj.Manual):
     id : int
     ---
     """
+    contents = [(1,)]
 
 
 @schema
@@ -185,8 +180,4 @@ class UnterTrash(dj.Manual):
     my_id   : int
     ---
     """
-
-    def _prepare(self):
-        UberTrash().insert1((1,), skip_duplicates=True)
-        self.insert1((1, 1), skip_duplicates=True)
-        self.insert1((1, 2), skip_duplicates=True)
+    contents = [(1, 1), (1, 2)]

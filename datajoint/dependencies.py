@@ -1,59 +1,23 @@
-from collections import defaultdict
 import pyparsing as pp
+import networkx as nx
 from . import DataJointError
-from functools import wraps
 
 
-class Dependencies:
+class Dependencies(nx.DiGraph):
     """
     Lookup for dependencies between tables
     """
     __primary_key_parser = (pp.CaselessLiteral('PRIMARY KEY') +
                             pp.QuotedString('(', endQuoteChar=')').setResultsName('primary_key'))
 
-    def __init__(self, conn):
-        self._conn = conn
-        self._parents = dict()
-        self._referenced = dict()
-        self._children = defaultdict(list)
-        self._references = defaultdict(list)
-
-
-    @property
-    def parents(self):
-        return self._parents
-
-    @property
-    def children(self):
-        return self._children
-
-    @property
-    def references(self):
-        return self._references
-
-    @property
-    def referenced(self):
-        return self._referenced
-
-    def get_descendants(self, full_table_name):
-        """
-        :param full_table_name: a table name in the format `database`.`table_name`
-        :return: list of all children and references, in order of dependence.
-        This is helpful for cascading delete or drop operations.
-        """
-        ret = defaultdict(lambda: 0)
-
-        def recurse(name, level):
-            ret[name] = max(ret[name], level)
-            for child in self.children[name] + self.references[name]:
-                recurse(child, level+1)
-
-        recurse(full_table_name, 0)
-        return sorted(ret.keys(), key=ret.__getitem__)
+    def __init__(self, connection):
+        self._conn = connection
+        self.loaded_tables = set()
+        super().__init__(self)
 
     @staticmethod
     def __foreign_key_parser(database):
-        def add_database(string, loc, toc):
+        def paste_database(unused1, unused2, toc):
             return ['`{database}`.`{table}`'.format(database=database, table=toc[0])]
 
         return (pp.CaselessLiteral('CONSTRAINT').suppress() +
@@ -62,67 +26,60 @@ class Dependencies:
                 pp.QuotedString('(', endQuoteChar=')').setResultsName('attributes') +
                 pp.CaselessLiteral('REFERENCES') +
                 pp.Or([
-                    pp.QuotedString('`').setParseAction(add_database),
+                    pp.QuotedString('`').setParseAction(paste_database),
                     pp.Combine(pp.QuotedString('`', unquoteResults=False) + '.' +
                                pp.QuotedString('`', unquoteResults=False))]).setResultsName('referenced_table') +
                 pp.QuotedString('(', endQuoteChar=')').setResultsName('referenced_attributes'))
 
-    def load(self):
+    def add_table(self, table_name):
         """
-        Load dependencies for all tables that have not yet been loaded in all registered schemas
+        Adds table to the dependency graph
+        :param table_name: in format `schema`.`table`
         """
-        for database in self._conn.schemas:
-            cur = self._conn.query('SHOW TABLES FROM `{database}`'.format(database=database))
-            fk_parser = self.__foreign_key_parser(database)
-            # list tables that have not yet been loaded, exclude service tables that starts with ~
-            tables = ('`{database}`.`{table_name}`'.format(database=database, table_name=info[0])
-                      for info in cur if not info[0].startswith('~'))
-            tables = (name for name in tables if name not in self._parents)
-            for name in tables:
-                self._parents[name] = list()
-                self._referenced[name] = list()
-                # fetch the CREATE TABLE statement
-                create_statement = self._conn.query('SHOW CREATE TABLE %s' % name).fetchone()
-                create_statement = create_statement[1].split('\n')
-                primary_key = None
-                for line in create_statement:
-                    if primary_key is None:
-                        try:
-                            result = self.__primary_key_parser.parseString(line)
-                        except pp.ParseException:
-                            pass
-                        else:
-                            primary_key = [s.strip(' `') for s in result.primary_key.split(',')]
-                    try:
-                        result = fk_parser.parseString(line)
-                    except pp.ParseException:
-                        pass
-                    else:
-                        if not primary_key:
-                            raise DataJointError('No primary key found %s' % name)
-                        if result.referenced_attributes != result.attributes:
-                            raise DataJointError(
-                                "%s's foreign key refers to differently named attributes in %s"
-                                % (self.__class__.__name__, result.referenced_table))
-                        if all(q in primary_key for q in [s.strip('` ') for s in result.attributes.split(',')]):
-                            self._parents[name].append(result.referenced_table)
-                            self._children[result.referenced_table].append(name)
-                        else:
-                            self._referenced[name].append(result.referenced_table)
-                            self._references[result.referenced_table].append(name)
+        if table_name in self.loaded_tables:
+            return
+        fk_parser = self.__foreign_key_parser(table_name.split('.')[0].strip('`'))
+        self.loaded_tables.add(table_name)
+        self.add_node(table_name)
+        create_statement = self._conn.query('SHOW CREATE TABLE %s' % table_name).fetchone()[1].split('\n')
+        primary_key = None
+        for line in create_statement:
+            if primary_key is None:
+                try:
+                    result = self.__primary_key_parser.parseString(line)
+                except pp.ParseException:
+                    pass
+                else:
+                    primary_key = [s.strip(' `') for s in result.primary_key.split(',')]
+            try:
+                result = fk_parser.parseString(line)
+            except pp.ParseException:
+                pass
+            else:
+                self.add_edge(result.referenced_table, table_name,
+                              primary=all(r.strip('` ') in primary_key for r in result.attributes.split(',')))
 
-    def get_descendants(self, full_table_name):
+    def load(self, target=None):
         """
-        :param full_table_name: a table name in the format `database`.`table_name`
-        :return: list of all children and references, in order of dependence.
-        This is helpful for cascading delete or drop operations.
+        Load dependencies for all loaded schemas.
+        This method gets called before any operation that requires dependencies: delete, drop, populate, progress.
         """
-        ret = defaultdict(lambda: 0)
+        if target is not None and '.' in target:  # `database`.`table`
+            self.add_table(target)
+        else:
+            databases = self._conn.schemas if target is None else [target]
+            for database in databases:
+                for row in self._conn.query('SHOW TABLES FROM `{database}`'.format(database=database)):
+                    table = row[0]
+                    if not table.startswith('~'):  # exclude service tables
+                        self.add_table('`{db}`.`{tab}`'.format(db=database, tab=table))
+        if not nx.is_directed_acyclic_graph(self):
+            raise DataJointError('DataJoint can only work with acyclic dependencies')
 
-        def recurse(name, level):
-            ret[name] = max(ret[name], level)
-            for child in self.children[name] + self.references[name]:
-                recurse(child, level+1)
-
-        recurse(full_table_name, 0)
-        return sorted(ret.keys(), key=ret.__getitem__)
+    def descendants(self, full_table_name):
+        """
+        :param full_table_name:  In form `schema`.`table_name`
+        :return: all dependent tables sorted in topological order.  Self is included.
+        """
+        nodes = nx.algorithms.dag.descendants(self, full_table_name)
+        return [full_table_name] + nx.algorithms.dag.topological_sort(self, nodes)

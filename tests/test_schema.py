@@ -5,6 +5,7 @@ import datajoint as dj
 from inspect import getmembers
 from . import schema
 from . import schema_empty
+from . import PREFIX, CONN_INFO
 
 
 def relation_selector(attr):
@@ -30,3 +31,47 @@ def test_namespace_population():
             assert_true(hasattr(rel, name_part),
                         '{name_part} not found in {name}'.format(name_part=name_part, name=name))
             assert_true(getattr(rel, name_part).__base__ is dj.Part, 'Wrong tier for {name}'.format(name=name_part))
+
+
+@raises(dj.DataJointError)
+def test_undecorated_table():
+    """
+    Undecorated user relation classes should raise an informative exception upon first use
+    """
+
+    class UndecoratedClass(dj.Manual):
+        definition = ""
+
+    a = UndecoratedClass()
+    a.full_table_name
+
+
+@raises(dj.DataJointError)
+def test_reject_decorated_part():
+    """
+    Decorating a dj.Part table should raise an informative exception.
+    """
+
+    @schema.schema
+    class A(dj.Manual):
+        definition = ...
+
+        @schema.schema
+        class B(dj.Part):
+            definition = ...
+
+
+@raises(dj.DataJointError)
+def test_unauthorized_database():
+    """
+    an attempt to create a database to which user has no privileges should raise an informative exception.
+    """
+    dj.schema('unauthorized_schema', locals(), connection=dj.conn(**CONN_INFO))
+
+
+def test_drop_database():
+    schema = dj.schema(PREFIX + '_drop_test', locals(), connection=dj.conn(**CONN_INFO))
+    assert_true(schema.exists)
+    schema.drop()
+    assert_false(schema.exists)
+    schema.drop()   # should do nothing

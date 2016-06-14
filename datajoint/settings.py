@@ -12,7 +12,7 @@ import collections
 from enum import Enum
 
 LOCALCONFIG = 'dj_local_conf.json'
-GLOBALCONFIG = '._datajoint_config.json'
+GLOBALCONFIG = '.datajoint_config.json'
 
 validators = collections.defaultdict(lambda: lambda value: True)
 validators['database.port'] = lambda a: isinstance(a, int)

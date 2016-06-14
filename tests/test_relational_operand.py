@@ -4,15 +4,15 @@ from nose.tools import assert_raises, assert_equal, \
     assert_tuple_equal, assert_dict_equal, raises
 import datajoint as dj
 from .schema_simple import A, B, D, E, L, DataA, DataB
-import datetime
 from .schema import Experiment
+
 
 def setup():
     """
     module-level test setup
     """
-    A()._prepare()
-    L()._prepare()
+    A().insert(A.contents, skip_duplicates=True)
+    L().insert(L.contents, skip_duplicates=True)
     B().populate()
     D().populate()
     E().populate()
@@ -69,7 +69,7 @@ class TestRelational:
                      'incorrect join primary_key')
 
         # test renamed join
-        x = B().project(i='id_a')   # rename the common attribute to achieve full cartesian product
+        x = B().proj(i='id_a')   # rename the common attribute to achieve full cartesian product
         y = D()
         rel = x*y
         assert_equal(len(rel), len(x)*len(y),
@@ -79,8 +79,8 @@ class TestRelational:
         assert_equal(set(x.primary_key).union(y.primary_key), set(rel.primary_key),
                      'incorrect join primary_key')
 
-        # test the % notation
-        x = B() % ['id_a->a']
+        # test the -> notation
+        x = B().proj('id_a->a')
         y = D()
         rel = x*y
         assert_equal(len(rel), len(x)*len(y),
@@ -92,24 +92,24 @@ class TestRelational:
 
         # test pairing
         # Approach 1: join then restrict
-        x = A().project(a1='id_a', c1='cond_in_a')
-        y = A().project(a2='id_a', c2='cond_in_a')
+        x = A().proj(a1='id_a', c1='cond_in_a')
+        y = A().proj(a2='id_a', c2='cond_in_a')
         rel = x*y & 'c1=0' & 'c2=1'
         assert_equal(len(x & 'c1=0')+len(y & 'c2=1'), len(A()),
                      'incorrect restriction')
         assert_equal(len(rel), len(x & 'c1=0')*len(y & 'c2=1'),
                      'incorrect pairing')
         # Approach 2: restrict then join
-        x = (A() & 'cond_in_a=0').project(a1='id_a')
-        y = (A() & 'cond_in_a=1').project(a2='id_a')
+        x = (A() & 'cond_in_a=0').proj(a1='id_a')
+        y = (A() & 'cond_in_a=1').proj(a2='id_a')
         assert_equal(len(rel), len(x*y))
 
     @staticmethod
     def test_project():
-        x = A().project(a='id_a')  # rename
+        x = A().proj(a='id_a')  # rename
         assert_equal(x.heading.names, ['a'],
                      'renaming does not work')
-        x = A().project(a='(id_a)')  # extend
+        x = A().proj(a='(id_a)')  # extend
         assert_equal(set(x.heading.names), set(('id_a', 'a')),
                      'extend does not work')
 
@@ -117,12 +117,12 @@ class TestRelational:
         cond = L() & 'cond_in_l'
         assert_equal(len(D() & cond) + len(D() - cond), len(D()),
                      'failed semijoin or antijoin')
-        assert_equal(len((D() & cond).project()), len((D() & cond)),
+        assert_equal(len((D() & cond).proj()), len((D() & cond)),
                      'projection failed: altered its argument''s cardinality')
 
     @staticmethod
     def test_aggregate():
-        x = B().aggregate(B.C(), 'n', count='count(id_c)', mean='avg(value)', max='max(value)')
+        x = B().aggregate(B.C(), 'n', count='count(id_c)', mean='avg(value)', max='max(value)', keep_all_rows=True)
         assert_equal(len(x), len(B()))
         for n, count, mean, max_, key in zip(*x.fetch['n', 'count', 'mean', 'max', dj.key]):
             assert_equal(n, count, 'aggregation failed (count)')
@@ -186,7 +186,7 @@ class TestRelational:
     @staticmethod
     def test_join_project_optimization():
         """Test optimization for join of projected relations with matching non-primary key"""
-        print(DataA().project() * DataB().project())
+        print(DataA().proj() * DataB().proj())
         print(DataA())
-        assert_true(len(DataA().project() * DataB().project()) == len(DataA()) == len(DataB()),
+        assert_true(len(DataA().proj() * DataB().proj()) == len(DataA()) == len(DataB()),
                     "Join of projected relations does not work")

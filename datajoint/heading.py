@@ -42,13 +42,14 @@ class Heading:
     the attribute names and the values are Attributes.
     """
 
-    def __init__(self, attributes=None):
+    def __init__(self, arg=None):
         """
-        :param attributes: a list of dicts with the same keys as Attribute
+        :param arg: a list of dicts with the same keys as Attribute
         """
-        if attributes:
-            attributes = OrderedDict([(q['name'], Attribute(**q)) for q in attributes])
-        self.attributes = attributes
+        assert not isinstance(arg, Heading), 'Headings cannot be copied'
+        self.table_info = None
+        self.attributes = None if arg is None else OrderedDict(
+            (q['name'], Attribute(**q)) for q in arg)
 
     def __len__(self):
         return 0 if self.attributes is None else len(self.attributes)
@@ -116,6 +117,12 @@ class Heading:
         """
         initialize heading from a database table.  The table must exist already.
         """
+        info = conn.query('SHOW TABLE STATUS FROM `{database}` WHERE name="{table_name}"'.format(
+            table_name=table_name, database=database), as_dict=True).fetchone()
+        if info is None:
+            raise DataJointError('The table is not defined.')
+        self.table_info = {k.lower(): v for k, v in info.items()}
+
         cur = conn.query(
             'SHOW FULL COLUMNS FROM `{table_name}` IN `{database}`'.format(
                 table_name=table_name, database=database), as_dict=True)
@@ -184,19 +191,19 @@ class Heading:
                     attr['dtype'] = numeric_types[(t, is_unsigned)]
         self.attributes = OrderedDict([(q['name'], Attribute(**q)) for q in attributes])
 
-    def project(self, *attribute_list, **renamed_attributes):
+    def proj(self, attribute_list, renamed_attributes, include_primary_key):
         """
         derive a new heading by selecting, renaming, or computing attributes.
         In relational algebra these operators are known as project, rename, and expand.
         The primary key is always included.
         """
-        # check missing attributes
-        missing = [a for a in attribute_list if a not in self.names]
-        if missing:
-            raise DataJointError('Attributes `%s` are not found' % '`, `'.join(missing))
+        try:  # check for missing attributes
+            raise DataJointError('Attribute `%s` is not found' % next(a for a in attribute_list if a not in self.names))
+        except StopIteration:
+            pass
 
-        # always add primary key attributes
-        attribute_list = self.primary_key + [a for a in attribute_list if a not in self.primary_key]
+        if include_primary_key:
+            attribute_list = self.primary_key + [a for a in attribute_list if a not in self.primary_key]
 
         # convert attribute_list into a list of dicts but exclude renamed attributes
         attribute_list = [v._asdict() for k, v in self.attributes.items()
@@ -228,22 +235,34 @@ class Heading:
 
         return Heading(attribute_list)
 
-    def join(self, other, left):
+    def join(self, other, aggregated):
         """
-        Joins two headings.
+        Join two headings into a new one.
         """
         assert isinstance(other, Heading)
         attribute_list = [v._asdict() for v in self.attributes.values()]
         for name in other.names:
             if name not in self.names:
-                attribute = other.attributes[name]._asdict();
-                if left:
+                attribute = other.attributes[name]._asdict()
+                if aggregated:
                     attribute['in_key'] = False
                 attribute_list.append(attribute)
         return Heading(attribute_list)
 
     def resolve(self):
         """
-        Remove attribute computations after they have been resolved in a subquery
+        Create a new heading with removed attribute computations.
+        Used by subqueries, which resolve the computations.
         """
-        return Heading([dict(v._asdict(), computation=None) for v in self.attributes.values()])
+        return Heading(dict(v._asdict(), computation=None) for v in self.attributes.values())
+
+    def extend_primary_key(self, new_attributes):
+        """
+        Create a new heading in which the primary key also includes new_attributes.
+        :param new_attributes: new attributes to be added to the primary key.
+        """
+        try:  # check for missing attributes
+            raise DataJointError('Attribute `%s` is not found' % next(a for a in new_attributes if a not in self.names))
+        except StopIteration:
+            return Heading(dict(v._asdict(), in_key=v.in_key or v.name in new_attributes)
+                           for v in self.attributes.values())
