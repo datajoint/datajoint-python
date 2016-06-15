@@ -120,8 +120,7 @@ class Connection:
             logger.debug("Executing SQL:" + query[0:300])
             cur.execute(query, args) # TODO insert reconnect
         except err.OperationalError as e:
-            if config['database.reconnect']:
-                print(e)
+            if 'MySQL server has gone away' in str(e) and config['database.reconnect']:
                 warnings.warn('''Mysql server has gone away.
                     Reconnected to the server. Data from transactions might be lost and referential constraints may
                     be violated. You can switch off this behavior by setting the 'database.reconnect' to False.
