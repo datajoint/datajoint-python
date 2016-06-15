@@ -128,6 +128,12 @@ class TestRelational:
         assert_equal(len(s.split('\n')), len(x)+2)
 
     @staticmethod
+    def test_heading_repr():
+        x = A()*D()
+        s = repr(x.heading)
+        assert_equal(len(s.split('\n')), len(x.heading.attributes))
+
+    @staticmethod
     def test_aggregate():
         x = B().aggregate(B.C(), 'n', count='count(id_c)', mean='avg(value)', max='max(value)', keep_all_rows=True)
         assert_equal(len(x), len(B()))

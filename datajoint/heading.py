@@ -16,10 +16,6 @@ class Attribute(namedtuple('_Attribute', default_attribute_properties.keys())):
         """Convert namedtuple to dict."""
         return OrderedDict((name, self[i]) for i, name in enumerate(self._fields))
 
-    @staticmethod
-    def _asdict():
-        return NotImplementedError('Use .todict() instead')
-
     @property
     def sql(self):
         """
@@ -208,10 +204,7 @@ class Heading:
         In relational algebra these operators are known as project, rename, and extend.
         """
         try:  # check for missing attributes
-            try:
-                raise DataJointError('Attribute `%s` is not found' % next(a for a in attribute_list if a not in self.names))
-            except DataJointError:
-                raise
+            raise DataJointError('Attribute `%s` is not found' % next(a for a in attribute_list if a not in self.names))
         except StopIteration:
             return Heading(
                 [dict(v.todict(), **dict(
