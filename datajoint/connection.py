@@ -73,10 +73,6 @@ class Connection:
         self.schemas = dict()
         self.dependencies = Dependencies(self)
 
-    def __del__(self):
-        logger.info('Disconnecting {user}@{host}:{port}'.format(**self.conn_info))
-        self._conn.close()
-
     def __eq__(self, other):
         return self.conn_info == other.conn_info
 
