@@ -32,6 +32,7 @@ default = OrderedDict({
     'database.password': 'datajoint',
     'database.user': 'datajoint',
     'database.port': 3306,
+    'database.reconnect': True,
     #
     'connection.init_function': None,
     #
