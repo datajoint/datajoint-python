@@ -99,6 +99,10 @@ class Heading:
                                 for k, v in self.attributes.items()]))
 
     @property
+    def has_autoincrement(self):
+        return any(e.autoincrement for e in self.attributes.values())
+
+    @property
     def as_dtype(self):
         """
         represent the heading as a numpy dtype

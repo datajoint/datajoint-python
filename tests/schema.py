@@ -17,11 +17,10 @@ class Auto(dj.Lookup):
     ---
     name :varchar(12)
     """
-    contents = (
-        dict(name="Godel"),
-        dict(name="Escher"),
-        dict(name="Bach"))
 
+    def fill(self):
+        if not self:
+            self.insert([dict(name="Godel"), dict(name="Escher"), dict(name="Bach")])
 
 @schema
 class User(dj.Lookup):
@@ -29,7 +28,6 @@ class User(dj.Lookup):
     username: varchar(12)
     """
     contents = [['Jake'], ['Cathryn'], ['Shan'], ['Fabian'], ['Edgar'], ['George'], ['Dimitri']]
-
 
 @schema
 class Subject(dj.Manual):
@@ -49,7 +47,6 @@ class Subject(dj.Manual):
         [1552, '1552', 'mouse', '2015-06-15', ''],
         [1553, '1553', 'mouse', '2016-07-01', '']]
 
-
 @schema
 class Language(dj.Lookup):
     definition = """
@@ -65,7 +62,6 @@ class Language(dj.Lookup):
         ('Dimitri', 'Ukrainian'),
         ('Fabian', 'German'),
         ('Edgar', 'Japanese')]
-
 
 @schema
 class Experiment(dj.Imported):
@@ -96,7 +92,6 @@ class Experiment(dj.Imported):
                  username=random.choice(users))
             for experiment_id in range(self.fake_experiments_per_subject))
 
-
 @schema
 class Trial(dj.Imported):
     definition = """   # a trial within an experiment
@@ -116,7 +111,6 @@ class Trial(dj.Imported):
                  trial_id=trial_id,
                  start_time=random.random() * 1e9)
             for trial_id in range(10))
-
 
 @schema
 class Ephys(dj.Imported):
@@ -145,7 +139,7 @@ class Ephys(dj.Imported):
                    sampling_frequency=6000,
                    duration=np.minimum(2, random.expovariate(1)))
         self.insert1(row)
-        number_samples = int(row['duration'] * row['sampling_frequency']+0.5)
+        number_samples = int(row['duration'] * row['sampling_frequency'] + 0.5)
         sub = self.Channel()
         sub.insert(
             dict(key,
