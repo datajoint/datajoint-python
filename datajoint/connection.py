@@ -124,7 +124,7 @@ class Connection:
                 print(e)
                 warnings.warn('''Mysql server has gone away.
                     Reconnected to the server. Data from transactions might be lost and referential constraints may
-                    be violated. You can switch of this behavior by setting the 'database.reconnect' to False.
+                    be violated. You can switch off this behavior by setting the 'database.reconnect' to False.
                     ''')
                 self.connect()
             else:
