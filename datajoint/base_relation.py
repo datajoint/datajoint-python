@@ -93,12 +93,6 @@ class BaseRelation(RelationalOperand):
         return [p[1] for p in self.connection.dependencies.out_edges(self.full_table_name, data=True)
                 if primary is None or p[2]['primary'] == primary]
 
-    def _repr_helper(self):
-        """
-        :return: String representation of this object
-        """
-        return "%s.%s()" % (self.__module__, self.__class__.__name__)
-
     @property
     def is_declared(self):
         """
@@ -340,14 +334,6 @@ class BaseRelation(RelationalOperand):
                 database=self.database, table=self.table_name), as_dict=True).fetchone()
         return ret['Data_length'] + ret['Index_length']
 
-    # --------- functionality used by the decorator ---------
-    def prepare(self):
-        """
-        This method is overridden by the user_relations subclasses. It is called on an instance
-        once when the class is declared.
-        """
-        pass
-
 
 class FreeRelation(BaseRelation):
     """
@@ -367,20 +353,8 @@ class FreeRelation(BaseRelation):
             self.database, self._table_name = (s.strip('`') for s in full_table_name.split('.'))
             self._connection = arg
 
-
     def __repr__(self):
         return "FreeRelation(`%s`.`%s`)" % (self.database, self._table_name)
-
-    @property
-    def definition(self):
-        return None
-
-    @property
-    def connection(self):
-        """
-        :return: the connection object of the relation.
-        """
-        return self._connection
 
     @property
     def table_name(self):
