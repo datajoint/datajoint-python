@@ -78,12 +78,10 @@ class TestRelational:
                      'incorrect join heading')
         assert_equal(set(x.primary_key).union(y.primary_key), set(rel.primary_key),
                      'incorrect join primary_key')
-
         x = B().proj(a='id_a')
         y = D()
         rel = x*y
-        assert_equal(len(rel), len(x)*len(y),
-                     'incorrect join')
+        assert_equal(len(rel), len(x)*len(y), 'incorrect join')
         assert_equal(set(x.heading.names).union(y.heading.names), set(rel.heading.names),
                      'incorrect join heading')
         assert_equal(set(x.primary_key).union(y.primary_key), set(rel.primary_key),
@@ -165,6 +163,8 @@ class TestRelational:
         y = L() & 'cond_in_l'
         lenx = len(x)
         assert_true(lenx > 0 and len(y) > 0 and len(x & y) < len(x), 'incorrect test setup')
+        assert_equal(len(x & y), len(D()*L() & 'cond_in_l'),
+                     'incorrect restriction of restriction')
         assert_true(len(x & []) == 0,
                     'incorrect restriction by an empty list')
         assert_true(len(x & ()) == 0,

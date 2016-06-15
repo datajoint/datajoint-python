@@ -52,6 +52,7 @@ class Subject(dj.Manual):
 class Language(dj.Lookup):
     definition = """
     # languages spoken by some of the developers
+    # additional comments are ignored
     name        : varchar(40) # name of the developer
     language    : varchar(40) # language
     ---
