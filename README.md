@@ -29,4 +29,4 @@ pip install datajoint
 ~~However, please be aware that DataJoint for Python is still undergoing major changes, and thus what's available on PyPI via `pip` is in **pre-release state**!~~
 
 ## Tutorial 
-For an IPython Notebook-based Primer to DataJoint, see (https://github.com/datajoint/ipython-notebook-tutorial). 
+The IPython Notebook-based primer for DataJoint is at https://github.com/datajoint/ipython-notebook-tutorial. 

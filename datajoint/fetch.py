@@ -161,11 +161,7 @@ class Fetch(FetchBase, Callable, Iterable):
         item, attributes = self._prepare_attributes(item)
         result = self._relation.proj(*attributes).fetch(**self.behavior)
         return_values = [
-            np.ndarray(result.shape,
-                       np.dtype({name: result.dtype.fields[name] for name in self._relation.primary_key}),
-                       result, 0, result.strides)
-            if attribute is PRIMARY_KEY
-            else result[attribute]
+            np.array[self._relation.primary_key].copy() if attribute is PRIMARY_KEY else result[attribute]
             for attribute in item]
         return return_values[0] if single_output else return_values
 
@@ -220,10 +216,6 @@ class Fetch1(FetchBase, Callable):
         if len(result) != 1:
             raise DataJointError('fetch1 should only return one tuple. %d tuples were found' % len(result))
         return_values = tuple(
-            np.ndarray(result.shape,
-                       np.dtype({name: result.dtype.fields[name] for name in self._relation.primary_key}),
-                       result, 0, result.strides)
-            if attribute is PRIMARY_KEY
-            else result[attribute][0]
+            (result[self._relation.primary_key].copy() if attribute is PRIMARY_KEY else result[attribute])[0]
             for attribute in item)
         return return_values[0] if single_output else return_values
