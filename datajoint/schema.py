@@ -1,3 +1,5 @@
+import warnings
+
 import pymysql
 import logging
 import re
@@ -135,8 +137,14 @@ class Schema:
             assert not assert_declared, 'incorrect table name generation'
             instance.declare()
         if hasattr(instance, 'contents'):
-            if len(instance.contents) > len(instance):
-                instance.insert(instance.contents, skip_duplicates=True)
+            contents = list(instance.contents)
+            if len(contents) > len(instance):
+                if instance.has_autoincrement:
+                    warnings.warn(
+                        'Contents has changed but cannot be inserted because {table} has autoincrement.'.format(
+                            table=instance.__class__.__name__))
+                else:
+                    instance.insert(contents, skip_duplicates=True)
 
     def __call__(self, cls):
         """
