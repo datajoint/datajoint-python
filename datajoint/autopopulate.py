@@ -1,5 +1,4 @@
 """autopopulate containing the dj.AutoPopulate class. See `dj.AutoPopulate` for more info."""
-import abc
 import logging
 import datetime
 import random
@@ -131,9 +130,8 @@ class AutoPopulate:
         total = len(todo)
         remaining = len(todo - self.target.proj())
         if display:
-            print('%-20s' % self.__class__.__name__, flush=True, end=': ')
-            print('Completed %d of %d (%2.1f%%)   %s' %
-                  (total - remaining, total, 100 - 100 * remaining / (total+1e-12),
-                   datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d %H:%M:%S')
-                   ), flush=True)
+            print('%-20s' % self.__class__.__name__,
+                  'Completed %d of %d (%2.1f%%)   %s' % (
+                      total - remaining, total, 100 - 100 * remaining / (total+1e-12),
+                      datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d %H:%M:%S')), flush=True)
         return remaining, total

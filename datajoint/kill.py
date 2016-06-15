@@ -19,9 +19,8 @@ def kill(restriction=None, connection=None):
     if connection is None:
         connection = conn()
 
-    query = 'SELECT * FROM information_schema.processlist WHERE id <> CONNECTION_ID()';
-    if restriction is not None:
-        query += ' AND (%s)' % restriction
+    query = 'SELECT * FROM information_schema.processlist WHERE id <> CONNECTION_ID()' + (
+        "" if restriction is None else ' AND (%s)' % restriction)
 
     while True:
         print('  ID USER         STATE         TIME  INFO')
@@ -29,9 +28,8 @@ def kill(restriction=None, connection=None):
         for process in connection.query(query, as_dict=True).fetchall():
             try:
                 print('{ID:>4d} {USER:<12s} {STATE:<12s} {TIME:>5d}  {INFO}'.format(**process))
-            except TypeError as err:
+            except TypeError:
                 print(process)
-
         response = input('process to kill or "q" to quit > ')
         if response == 'q':
             break
@@ -40,7 +38,6 @@ def kill(restriction=None, connection=None):
                 pid = int(response)
             except ValueError:
                 pass  # ignore non-numeric input
-            #TODO: check behavior when invalid input given
             else:
                 try:
                     connection.query('kill %d' % pid)
