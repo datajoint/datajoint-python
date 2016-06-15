@@ -37,6 +37,13 @@ class UserRelation(BaseRelation, metaclass=OrderedClass):
     tier_regexp = None
     _prefix = None
 
+    @property
+    def definition(self):
+        """
+        :return: a string containing the table definition using the DataJoint DDL.
+        """
+        raise NotImplementedError('Subclasses of BaseRelation must implement the property "definition"')
+
     @ClassProperty
     def connection(cls):
         return cls._connection

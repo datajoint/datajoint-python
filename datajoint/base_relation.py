@@ -32,13 +32,6 @@ class BaseRelation(RelationalOperand):
         """
         raise NotImplementedError('Subclasses of BaseRelation must implement the property "table_name"')
 
-    @property
-    def definition(self):
-        """
-        :return: a string containing the table definition using the DataJoint DDL
-        """
-        raise NotImplementedError('Subclasses of BaseRelation must implement the property "definition"')
-
     # -------------- required by RelationalOperand ----------------- #
     @property
     def heading(self):
