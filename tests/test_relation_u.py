@@ -43,5 +43,8 @@ class TestU:
     def test_invalid_join(self):
         rel = dj.U('language') * dict(language="English")
 
-    # def test_aggregations(self):
-    #     rel = dj.U('language').aggregate(n='count(*)')
+    def test_aggregations(self):
+        rel = dj.U('language').aggregate(schema.Language(), number_of_speakers='count(*)')
+        assert_equal(len(rel), len(set(l[1] for l in schema.Language.contents)))
+        assert_equal((rel & 'language="English"').fetch1['number_of_speakers'], 3)
+

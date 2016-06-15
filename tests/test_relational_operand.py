@@ -135,6 +135,14 @@ class TestRelational:
 
     @staticmethod
     def test_aggregate():
+        x = B().aggregate(B.C())
+        assert_equal(len(x), len(B() & B.C()))
+
+        x = B().aggregate(B.C(), keep_all_rows=True)
+        assert_equal(len(x), len(B()))    # test LEFT join
+
+        assert_equal(len((x & 'id_b=0').fetch()), len(B() & 'id_b=0'))   # test restricted aggregation
+
         x = B().aggregate(B.C(), 'n', count='count(id_c)', mean='avg(value)', max='max(value)', keep_all_rows=True)
         assert_equal(len(x), len(B()))
         y = x & 'mean>0'   # restricted aggregation

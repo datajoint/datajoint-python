@@ -243,7 +243,9 @@ class RelationalOperand:
         :return: a restricted copy of the argument
         See relational_operand.restrict for more detail.
         """
-        return (Subquery(self) if self.heading.expressions else self.__class__(self)).restrict(restriction)
+        return (Subquery(self)    # the HAVING clause in GroupBy can handle renamed attributes but WHERE cannot
+                if self.heading.expressions and not isinstance(self, GroupBy)
+                else self.__class__(self)).restrict(restriction)
 
     def __isub__(self, restriction):
         """
@@ -309,7 +311,8 @@ class RelationalOperand:
         an AndList.
         """
         if not restricts_to_same(restriction):
-            assert not self.heading.expressions, "Cannot restrict in place a projection with renamed attributes."
+            assert not self.heading.expressions or isinstance(self, GroupBy), \
+                "Cannot restrict in place a projection with renamed attributes."
             if isinstance(restriction, AndList):
                 self.restrictions.extend(restriction)
             else:
