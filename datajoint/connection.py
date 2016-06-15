@@ -118,7 +118,7 @@ class Connection:
         # Log the query
         try:
             logger.debug("Executing SQL:" + query[0:300])
-            cur.execute(query, args) # TODO insert reconnect
+            cur.execute(query, args) 
         except err.OperationalError as e:
             if 'MySQL server has gone away' in str(e) and config['database.reconnect']:
                 warnings.warn('''Mysql server has gone away.
