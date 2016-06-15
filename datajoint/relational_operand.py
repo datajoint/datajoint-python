@@ -190,8 +190,6 @@ class RelationalOperand:
                     [make_condition(q)[0] for q in item if q is not restricts_to_empty(q)]) + ')'
             else:
                 item, negate = make_condition(item, negate)
-            if not item:
-                raise DataJointError('Empty condition')
             conditions.append(('NOT (%s)' if negate else '(%s)') % item)
         return ' WHERE ' + ' AND '.join(conditions)
 

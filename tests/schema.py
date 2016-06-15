@@ -47,6 +47,7 @@ class Subject(dj.Manual):
         [1552, '1552', 'mouse', '2015-06-15', ''],
         [1553, '1553', 'mouse', '2016-07-01', '']]
 
+
 @schema
 class Language(dj.Lookup):
     definition = """
@@ -62,6 +63,7 @@ class Language(dj.Lookup):
         ('Dimitri', 'Ukrainian'),
         ('Fabian', 'German'),
         ('Edgar', 'Japanese')]
+
 
 @schema
 class Experiment(dj.Imported):
@@ -92,6 +94,7 @@ class Experiment(dj.Imported):
                  username=random.choice(users))
             for experiment_id in range(self.fake_experiments_per_subject))
 
+
 @schema
 class Trial(dj.Imported):
     definition = """   # a trial within an experiment
@@ -111,6 +114,7 @@ class Trial(dj.Imported):
                  trial_id=trial_id,
                  start_time=random.random() * 1e9)
             for trial_id in range(10))
+
 
 @schema
 class Ephys(dj.Imported):

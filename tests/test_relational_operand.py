@@ -122,9 +122,14 @@ class TestRelational:
                      'projection failed: altered its argument''s cardinality')
 
     @staticmethod
+    def test_preview():
+        x = A().proj(a='id_a')
+        s = x.preview()
+        assert_equal(len(s.split('\n')), len(x)+2)
+
+    @staticmethod
     def test_aggregate():
         x = B().aggregate(B.C(), 'n', count='count(id_c)', mean='avg(value)', max='max(value)', keep_all_rows=True)
-        sql = x.make_sql()
         assert_equal(len(x), len(B()))
         for n, count, mean, max_, key in zip(*x.fetch['n', 'count', 'mean', 'max', dj.key]):
             assert_equal(n, count, 'aggregation failed (count)')
