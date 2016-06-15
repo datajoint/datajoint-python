@@ -84,18 +84,14 @@ class RelationalOperand:
             self._restrictions = AndList()
             self._distinct = False
 
-    # --------- abstract properties -----------
-
     @property
     def connection(self):
         """
         :return:  the dj.Connection object
         """
-        try:
-            return self._connection
-        except:
-            raise DataJointError('Subclasses of RelationOperand must define self._connection or self.connection.')
+        return self._connection
 
+    # --------- abstract properties -----------
     @property
     def from_clause(self):
         """
@@ -109,12 +105,9 @@ class RelationalOperand:
         """
         :return: the dj.Heading object of the relation
         """
-        try:
-            return self._heading
-        except:
-            raise DataJointError('Subclasses of RelationOperand must define self._heading or self.heading.')
+        return self._heading
 
-    # ---------- derived properties --------
+    # ---------- dependent properties --------
 
     @property
     def distinct(self):
@@ -406,7 +399,7 @@ class RelationalOperand:
         :param item: any restriction
         (item in relation) is equivalent to bool(self & item) but may be executed more efficiently.
         """
-        return bool(self & item)   # May be optimized using as an EXISTS query
+        return bool(self & item)   # May be optimized e.g. using an EXISTS query
 
     def cursor(self, offset=0, limit=None, order_by=None, as_dict=False):
         """

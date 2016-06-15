@@ -137,6 +137,9 @@ class TestRelational:
     def test_aggregate():
         x = B().aggregate(B.C(), 'n', count='count(id_c)', mean='avg(value)', max='max(value)', keep_all_rows=True)
         assert_equal(len(x), len(B()))
+        y = x & 'mean>0'   # restricted aggregation
+        assert_true(len(y) > 0)
+        assert_true(all(y.fetch['mean'] > 0))
         for n, count, mean, max_, key in zip(*x.fetch['n', 'count', 'mean', 'max', dj.key]):
             assert_equal(n, count, 'aggregation failed (count)')
             values = (B.C() & key).fetch['value']
