@@ -24,14 +24,6 @@ class BaseRelation(RelationalOperand):
     _context = None
     database = None
 
-    # ---------- abstract properties ------------ #
-    @property
-    def table_name(self):
-        """
-        :return: the name of the table in the database
-        """
-        raise NotImplementedError('Subclasses of BaseRelation must implement the property "table_name"')
-
     # -------------- required by RelationalOperand ----------------- #
     @property
     def heading(self):

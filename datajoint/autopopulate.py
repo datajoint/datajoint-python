@@ -19,7 +19,7 @@ class AutoPopulate:
     must define the property `key_source`, and must define the callback method _make_tuples.
     """
     _jobs = None
-    _populated_from = None
+    _key_source = None
 
     @property
     def key_source(self):
@@ -29,15 +29,15 @@ class AutoPopulate:
                 join of the parent relations. Users may override to change the granularity
                 or the scope of populate() calls.
         """
-        if self._populated_from is None:
+        if self._key_source is None:
             self.connection.dependencies.load(self.full_table_name)
             parents = self.target.parents(primary=True)
             if not parents:
                 raise DataJointError('A relation must have parent relations to be able to be populated')
-            self._populated_from = FreeRelation(self.connection, parents.pop(0)).proj()
+            self._key_source = FreeRelation(self.connection, parents.pop(0)).proj()
             while parents:
-                self._populated_from *= FreeRelation(self.connection, parents.pop(0)).proj()
-        return self._populated_from
+                self._key_source *= FreeRelation(self.connection, parents.pop(0)).proj()
+        return self._key_source
 
     def _make_tuples(self, key):
         """
@@ -88,8 +88,6 @@ class AutoPopulate:
         elif order == "random":
             keys = list(keys)
             random.shuffle(keys)
-        elif order != "original":
-            raise DataJointError('Invalid order specification')
 
         for key in keys:
             if not reserve_jobs or jobs.reserve(self.target.table_name, key):
