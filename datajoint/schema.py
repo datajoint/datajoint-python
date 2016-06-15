@@ -139,7 +139,7 @@ class Schema:
         if hasattr(instance, 'contents'):
             contents = list(instance.contents)
             if len(contents) > len(instance):
-                if instance.has_autoincrement:
+                if instance.heading.has_autoincrement:
                     warnings.warn(
                         'Contents has changed but cannot be inserted because {table} has autoincrement.'.format(
                             table=instance.__class__.__name__))
