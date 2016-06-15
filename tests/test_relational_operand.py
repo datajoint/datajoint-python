@@ -33,6 +33,18 @@ class TestRelational:
         assert_true(len(E.F()) > 0, 'F populated incorrectly')
 
     @staticmethod
+    def test_rename():
+        # test renaming
+        x = B().proj(i='id_a') & 'i in (1,2,3,4)'
+        assert_equal(len(x), len(B() & 'id_a in (1,2,3,4)'),
+                     'incorrect restriction of renamed attributes')
+        y = x.proj(j='i')
+        assert_equal(len(y), len(B() & 'id_a in (1,2,3,4)'),
+                     'incorrect projection of restriction')
+        assert_equal(len(y & 'j in (3,4,5,6)'), len(B() & 'id_a in (3,4)'),
+                     'incorrect nested subqueries')
+
+    @staticmethod
     def test_join():
         # Test cartesian product
         x = A()
@@ -164,7 +176,11 @@ class TestRelational:
         lenx = len(x)
         assert_true(lenx > 0 and len(y) > 0 and len(x & y) < len(x), 'incorrect test setup')
         assert_equal(len(x & y), len(D()*L() & 'cond_in_l'),
-                     'incorrect restriction of restriction')
+                     'incorrect semijoin')
+        assert_equal(len(x - y), len(x) - len(x & y),
+                     'incorrect antijoin')
+        assert_equal(len(y - x), len(y) - len(y & x),
+                     'incorrect antijoin')
         assert_true(len(x & []) == 0,
                     'incorrect restriction by an empty list')
         assert_true(len(x & ()) == 0,

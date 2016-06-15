@@ -235,7 +235,7 @@ class RelationalOperand:
 
         See relational_operand.restrict for more detail.
         """
-        return (Subquery(self) if self.heading.expressions else self).restrict(restriction)
+        return (Subquery.make(self) if self.heading.expressions else self).restrict(restriction)
 
     def __and__(self, restriction):
         """
@@ -243,7 +243,7 @@ class RelationalOperand:
         :return: a restricted copy of the argument
         See relational_operand.restrict for more detail.
         """
-        return (Subquery(self)    # the HAVING clause in GroupBy can handle renamed attributes but WHERE cannot
+        return (Subquery.make(self)    # the HAVING clause in GroupBy can handle renamed attributes but WHERE cannot
                 if self.heading.expressions and not isinstance(self, GroupBy)
                 else self.__class__(self)).restrict(restriction)
 
@@ -468,7 +468,7 @@ class Join(RelationalOperand):
         """
         Decide when a Join argument needs to be wrapped in a subquery
         """
-        return Subquery(arg) if isinstance(arg, (GroupBy, Projection)) else arg
+        return Subquery.make(arg) if isinstance(arg, (GroupBy, Projection)) else arg
 
     @property
     def from_clause(self):
@@ -507,7 +507,7 @@ class Projection(RelationalOperand):
             self._distinct = (self.distinct or not set(arg.primary_key).issubset(
                 set(attributes) | set(named_attributes.values())))
         if self._need_subquery(arg, attributes, named_attributes):
-            self._arg = Subquery(arg)
+            self._arg = Subquery.make(arg)
             self._heading = self._arg.heading.project(attributes, named_attributes)
         else:
             self._arg = arg
@@ -579,7 +579,7 @@ class GroupBy(RelationalOperand):
             having=re.sub(r'^ WHERE', ' HAVING', self.where_clause))
 
     def __len__(self):
-        return len(Subquery(self))
+        return len(Subquery.make(self))
 
 
 class Subquery(RelationalOperand):
@@ -590,18 +590,27 @@ class Subquery(RelationalOperand):
     """
     __counter = 0
 
-    def __init__(self, arg):
-        if isinstance(arg, Subquery):
-            # copy constructor
+    def __init__(self, arg=None):
+        if arg is None:
+            super().__init__()
+        else:  # copy constructor
+            assert isinstance(arg, Subquery)
             super().__init__(arg)
+            # copy constructor
             self._connection = arg.connection
             self._heading = arg.heading
             self._arg = arg._arg
-        else:
-            super().__init__()
-            self._connection = arg.connection
-            self._heading = arg.heading.make_subquery_heading()
-            self._arg = arg
+
+    @staticmethod
+    def make(arg):
+        """
+        construct subquery of the query arg
+        """
+        self = Subquery()
+        self._connection = arg.connection
+        self._heading = arg.heading.make_subquery_heading()
+        self._arg = arg
+        return self
 
     @property
     def counter(self):
