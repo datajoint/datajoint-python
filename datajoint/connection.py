@@ -2,13 +2,16 @@
 This module hosts the Connection class that manages the connection to the mysql database,
  and the `conn` function that provides access to a persistent connection in datajoint.
 """
+import warnings
 from contextlib import contextmanager
 import pymysql as client
 import logging
+
 from . import config
 from . import DataJointError
 from .dependencies import Dependencies
 from .jobs import JobManager
+from pymysql import err
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +61,8 @@ class Connection:
         else:
             port = config['database.port']
         self.conn_info = dict(host=host, port=port, user=user, passwd=passwd)
-        self._conn = client.connect(init_command=init_fun, **self.conn_info)
+        self.init_fun = init_fun
+        self.connect()
         if self.is_connected:
             logger.info("Connected {user}@{host}:{port}".format(**self.conn_info))
         else:
@@ -80,6 +84,14 @@ class Connection:
         connected = "connected" if self.is_connected else "disconnected"
         return "DataJoint connection ({connected}) {user}@{host}:{port}".format(
             connected=connected, **self.conn_info)
+
+    def connect(self, init_fun=None):
+        """
+        Connects to the database server.
+
+        :param init_fun: initialization function passed to pymysql
+        """
+        self._conn = client.connect(init_command=self.init_fun, **self.conn_info)
 
     def register(self, schema):
         self.schemas[schema.database] = schema
@@ -104,9 +116,18 @@ class Connection:
         cur = self._conn.cursor(cursor=cursor)
 
         # Log the query
-        logger.debug("Executing SQL:" + query[0:300])
-        cur.execute(query, args)
-
+        try:
+            logger.debug("Executing SQL:" + query[0:300])
+            cur.execute(query, args) 
+        except err.OperationalError as e:
+            if 'MySQL server has gone away' in str(e) and config['database.reconnect']:
+                warnings.warn('''Mysql server has gone away.
+                    Reconnected to the server. Data from transactions might be lost and referential constraints may
+                    be violated. You can switch off this behavior by setting the 'database.reconnect' to False.
+                    ''')
+                self.connect()
+            else:
+                raise
         return cur
 
     # ---------- transaction processing

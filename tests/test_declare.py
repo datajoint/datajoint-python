@@ -3,6 +3,7 @@ from . import schema
 import datajoint as dj
 
 auto = schema.Auto()
+auto.fill()
 user = schema.User()
 subject = schema.Subject()
 experiment = schema.Experiment()
