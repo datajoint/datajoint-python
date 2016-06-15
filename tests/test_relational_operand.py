@@ -95,7 +95,7 @@ class TestRelational:
         y = A().proj(a2='id_a', c2='cond_in_a')
         rel = x*y & 'c1=0' & 'c2=1'
         lenx = len(x & 'c1=0')
-        leny = len(y & 'c2=0')
+        leny = len(y & 'c2=1')
         assert_equal(lenx + leny, len(A()),
                      'incorrect restriction')
         assert_equal(len(rel), len(x & 'c1=0')*len(y & 'c2=1'),
@@ -180,7 +180,6 @@ class TestRelational:
     def test_datetime():
         """Test date retrieval"""
         date = Experiment().fetch['experiment_date'][0]
-
         e1 = Experiment() & dict(experiment_date=str(date))
         e2 = Experiment() & dict(experiment_date=date)
         assert_true(len(e1) == len(e2) > 0, 'Two date restriction do not yield the same result')
@@ -188,7 +187,5 @@ class TestRelational:
     @staticmethod
     def test_join_project_optimization():
         """Test optimization for join of projected relations with matching non-primary key"""
-        print(DataA().proj() * DataB().proj())
-        print(DataA())
         assert_true(len(DataA().proj() * DataB().proj()) == len(DataA()) == len(DataB()),
                     "Join of projected relations does not work")

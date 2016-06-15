@@ -1,7 +1,7 @@
 import collections
+import logging
 import numpy as np
 import re
-import logging
 import datetime
 from . import DataJointError, config
 from .fetch import Fetch, Fetch1
@@ -20,7 +20,8 @@ def restricts_to_same(arg):
     """
     returns True if restriction with arg produces the same result as not restricting at all
     """
-    return isinstance(arg, U) or arg is True and not equal_ignore_case(arg, "TRUE")
+    return (isinstance(arg, U) or arg is True or equal_ignore_case(arg, "TRUE") or
+            isinstance(arg, Not) and restricts_to_empty(arg.restriction))
 
 
 def restricts_to_empty(arg):
@@ -28,9 +29,10 @@ def restricts_to_empty(arg):
     returns True if restriction with arg must produce the empty relation.
     """
     or_lists = (list, set, tuple, np.ndarray, RelationalOperand)
-    return arg is None or (isinstance(arg, AndList) and any(restricts_to_empty(r) for r in arg)) or (
-        arg is None or arg is False or equal_ignore_case(arg, "FALSE") or
-        isinstance(arg, or_lists) and len(arg) == 0)  # empty OR-list equals FALSE
+    return (arg is None or (isinstance(arg, AndList) and any(restricts_to_empty(r) for r in arg)) or
+            arg is None or arg is False or equal_ignore_case(arg, "FALSE") or
+            isinstance(arg, or_lists) and len(arg) == 0 or  # empty OR-list equals FALSE
+            isinstance(arg, Not) and restricts_to_same(arg.restriction))
 
 
 class AndList(list):
@@ -240,12 +242,12 @@ class RelationalOperand:
 
     def __iand__(self, restriction):
         """
-        in-place restriction
+        in-place restriction.
+        A subquery is created if the argument has renamed attributes.  Then the restriction is not in place.
 
         See relational_operand.restrict for more detail.
         """
-        self.restrict(restriction)
-        return self
+        return (Subquery(self) if self.heading.expressions else self).restrict(restriction)
 
     def __and__(self, restriction):
         """
@@ -253,7 +255,7 @@ class RelationalOperand:
         :return: a restricted copy of the argument
         See relational_operand.restrict for more detail.
         """
-        return self.__class__(self).restrict(restriction)
+        return (Subquery(self) if self.heading.expressions else self.__class__(self)).restrict(restriction)
 
     def __isub__(self, restriction):
         """
@@ -319,6 +321,7 @@ class RelationalOperand:
         an AndList.
         """
         if not restricts_to_same(restriction):
+            assert not self.heading.expressions, "Cannot restrict in place a projection with renamed attributes."
             if isinstance(restriction, AndList):
                 self.restrictions.extend(restriction)
             else:
@@ -474,9 +477,7 @@ class Join(RelationalOperand):
         """
         Decide when a Join argument needs to be wrapped in a subquery
         """
-        return (Subquery(arg)
-                if isinstance(arg, GroupBy) or (isinstance(arg, Projection) and arg.heading.expressions)
-                else arg)
+        return Subquery(arg) if isinstance(arg, (GroupBy, Projection)) else arg
 
     @property
     def from_clause(self):
@@ -516,10 +517,11 @@ class Projection(RelationalOperand):
                 set(attributes) | set(named_attributes.values())))
         if self._need_subquery(arg, attributes, named_attributes):
             self._arg = Subquery(arg)
+            self._heading = self._arg.heading.project(attributes, named_attributes)
         else:
             self._arg = arg
-            self.restrict(arg.restrictions)  # transfer restrictions when no subquery
-        self._heading = self._arg.heading.project(attributes, named_attributes)
+            self._heading = self._arg.heading.project(attributes, named_attributes)
+            self &= arg.restrictions  # transfer restrictions when no subquery
 
     @staticmethod
     def _need_subquery(arg, attributes, named_attributes):
@@ -586,7 +588,7 @@ class GroupBy(RelationalOperand):
             having=re.sub(r'^ WHERE', ' HAVING', self.where_clause))
 
     def __len__(self):
-        return len(Subquery(self) if self.restrictions else self._arg)
+        return len(Subquery(self))
 
 
 class Subquery(RelationalOperand):

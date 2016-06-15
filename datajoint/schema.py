@@ -1,7 +1,6 @@
 import pymysql
 import logging
 import re
-import collections
 from . import conn, DataJointError, config
 from datajoint.utils import to_camel_case
 from .heading import Heading
@@ -44,6 +43,11 @@ class Schema:
                                      " an attempt to create has failed. Check"
                                      " permissions.".format(database=database))
         connection.register(self)
+
+    def __repr__(self):
+        return 'Schema database: `{database}` in module: {context}\n'.format(
+            database=self.database,
+            context=self.context['__name__'] if '__name__' in self.context else "__")
 
     def spawn_missing_classes(self):
         """
@@ -131,16 +135,7 @@ class Schema:
             assert not assert_declared, 'incorrect table name generation'
             instance.declare()
         if hasattr(instance, 'contents'):
-            total = len(instance)
-            if total > 0 and config['safemode']:
-                contents_keys = [{r: c[r] for r in instance.primary_key} if isinstance(c, collections.abc.Mapping)
-                                 else dict(zip(instance.primary_key, c)) for c in instance.contents]
-                if total > len(instance & contents_keys) and 'yes' == user_choice(
-                            '%s contains data that are no longer in its contents. '
-                            'Would you like to delete it?' % relation_class.__name__):
-                    (instance - contents_keys).delete()
-                    total = len(instance)
-            if len(instance.contents) > total:
+            if len(instance.contents) > len(instance):
                 instance.insert(instance.contents, skip_duplicates=True)
 
     def __call__(self, cls):
