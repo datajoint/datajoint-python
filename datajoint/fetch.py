@@ -161,7 +161,7 @@ class Fetch(FetchBase, Callable, Iterable):
         item, attributes = self._prepare_attributes(item)
         result = self._relation.proj(*attributes).fetch(**self.behavior)
         return_values = [
-            np.array[self._relation.primary_key].copy() if attribute is PRIMARY_KEY else result[attribute]
+            result[self._relation.primary_key].copy() if attribute is PRIMARY_KEY else result[attribute]
             for attribute in item]
         return return_values[0] if single_output else return_values
 
