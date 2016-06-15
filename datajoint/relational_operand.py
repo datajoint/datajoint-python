@@ -146,10 +146,7 @@ class RelationalOperand:
             if isinstance(arg, str):
                 return arg, _negate
             elif isinstance(arg, AndList):
-                if arg:
-                    return '(' + ' AND '.join([make_condition(element)[0] for element in arg]) + ')', _negate
-                else:
-                    return 'FALSE' if _negate else 'TRUE', False
+                return '(' + ' AND '.join([make_condition(element)[0] for element in arg]) + ')', _negate
 
             #  semijoin or antijoin
             elif isinstance(arg, RelationalOperand):
