@@ -33,6 +33,14 @@ class TestRelational:
         assert_true(len(E.F()) > 0, 'F populated incorrectly')
 
     @staticmethod
+    def test_free_relation():
+        b = B()
+        free = dj.FreeRelation(b.connection, b.full_table_name)
+        assert_true(repr(free).startswith('FreeRelation') and b.full_table_name in repr(free))
+        r = 'n>5'
+        assert_equal((B() & r).make_sql(), (free & r).make_sql())
+
+    @staticmethod
     def test_rename():
         # test renaming
         x = B().proj(i='id_a') & 'i in (1,2,3,4)'

@@ -7,12 +7,13 @@ from . import schema
 from pymysql import IntegrityError, ProgrammingError
 import datajoint as dj
 from datajoint import utils
+from datajoint.base_relation import BaseRelation
 from unittest.mock import patch
 
 
 def relation_selector(attr):
     try:
-        return issubclass(attr, dj.BaseRelation)
+        return issubclass(attr, BaseRelation)
     except TypeError:
         return False
 

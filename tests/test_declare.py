@@ -16,7 +16,6 @@ class TestDeclare:
 
     @staticmethod
     def test_schema_decorator():
-        assert_true(issubclass(schema.Subject, dj.BaseRelation))
         assert_true(issubclass(schema.Subject, dj.Manual))
         assert_true(not issubclass(schema.Subject, dj.Part))
 
