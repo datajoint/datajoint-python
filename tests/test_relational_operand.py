@@ -36,8 +36,12 @@ class TestRelational:
     def test_rename():
         # test renaming
         x = B().proj(i='id_a') & 'i in (1,2,3,4)'
+        lenx = len(x)
         assert_equal(len(x), len(B() & 'id_a in (1,2,3,4)'),
                      'incorrect restriction of renamed attributes')
+        assert_equal(len(x & 'id_b in (1,2)'), len(B() & 'id_b in (1,2) and id_a in (1,2,3,4)'),
+                     'incorrect restriction of renamed restriction')
+        assert_equal(len(x), lenx, 'restriction modified original')
         y = x.proj(j='i')
         assert_equal(len(y), len(B() & 'id_a in (1,2,3,4)'),
                      'incorrect projection of restriction')
@@ -142,6 +146,12 @@ class TestRelational:
         x = A()*D()
         s = repr(x.heading)
         assert_equal(len(s.split('\n')), len(x.heading.attributes))
+
+    @staticmethod
+    @raises(dj.DataJointError)
+    def test_invalid_aggregate():
+        """cannot aggregate a less detailed object"""
+        rel = B().aggregate(A())
 
     @staticmethod
     def test_aggregate():

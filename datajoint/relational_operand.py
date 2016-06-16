@@ -552,7 +552,7 @@ class GroupBy(RelationalOperand):
         if not isinstance(group, RelationalOperand):
             raise DataJointError('a relation can only be joined with another relation')
         self._keep_all_rows = keep_all_rows
-        if not (set(group.primary_key) - set(arg.primary_key)):
+        if not(set(group.primary_key) - set(arg.primary_key) or set(group.primary_key) == set(arg.primary_key)):
             raise DataJointError(
                 'The aggregated relation should have additional fields in its primary key for aggregation to work')
         if isinstance(arg, U):
