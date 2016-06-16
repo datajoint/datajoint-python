@@ -2,7 +2,6 @@ import collections
 import itertools
 import numpy as np
 import logging
-import binascii
 from . import config, DataJointError
 from .declare import declare
 from .relational_operand import RelationalOperand
@@ -23,21 +22,6 @@ class BaseRelation(RelationalOperand):
     _heading = None
     _context = None
     database = None
-
-    # ---------- abstract properties ------------ #
-    @property
-    def table_name(self):
-        """
-        :return: the name of the table in the database
-        """
-        raise NotImplementedError('Subclasses of BaseRelation must implement the property "table_name"')
-
-    @property
-    def definition(self):
-        """
-        :return: a string containing the table definition using the DataJoint DDL
-        """
-        raise NotImplementedError('Subclasses of BaseRelation must implement the property "definition"')
 
     # -------------- required by RelationalOperand ----------------- #
     @property
@@ -92,12 +76,6 @@ class BaseRelation(RelationalOperand):
         """
         return [p[1] for p in self.connection.dependencies.out_edges(self.full_table_name, data=True)
                 if primary is None or p[2]['primary'] == primary]
-
-    def _repr_helper(self):
-        """
-        :return: String representation of this object
-        """
-        return "%s.%s()" % (self.__module__, self.__class__.__name__)
 
     @property
     def is_declared(self):
@@ -156,10 +134,7 @@ class BaseRelation(RelationalOperand):
                 """
                 if heading[name].is_blob:
                     value = pack(value)
-                    # This is a temporary hack to address issue #131 (slow blob inserts).
-                    # When this problem is fixed by pymysql or python, then pass blob as query argument.
-                    placeholder = '0x' + binascii.b2a_hex(value).decode('ascii')
-                    value = None
+                    placeholder = '%s'
                 elif heading[name].numeric:
                     if value is None or np.isnan(value):  # nans are turned into NULLs
                         placeholder = 'NULL'
@@ -202,8 +177,7 @@ class BaseRelation(RelationalOperand):
                 else:
                     attributes = [make_placeholder(name, value) for name, value in zip(heading, row)]
 
-            if not attributes:
-                raise DataJointError('Empty tuple')
+            assert len(attributes), 'Empty tuple'
             row_to_insert = dict(zip(('names', 'placeholders', 'values'), zip(*attributes)))
             nonlocal field_list
             if field_list is None:
@@ -340,14 +314,6 @@ class BaseRelation(RelationalOperand):
                 database=self.database, table=self.table_name), as_dict=True).fetchone()
         return ret['Data_length'] + ret['Index_length']
 
-    # --------- functionality used by the decorator ---------
-    def prepare(self):
-        """
-        This method is overridden by the user_relations subclasses. It is called on an instance
-        once when the class is declared.
-        """
-        pass
-
 
 class FreeRelation(BaseRelation):
     """
@@ -367,20 +333,8 @@ class FreeRelation(BaseRelation):
             self.database, self._table_name = (s.strip('`') for s in full_table_name.split('.'))
             self._connection = arg
 
-
     def __repr__(self):
         return "FreeRelation(`%s`.`%s`)" % (self.database, self._table_name)
-
-    @property
-    def definition(self):
-        return None
-
-    @property
-    def connection(self):
-        """
-        :return: the connection object of the relation.
-        """
-        return self._connection
 
     @property
     def table_name(self):

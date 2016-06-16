@@ -57,10 +57,6 @@ class Schema:
         in the context.
         """
 
-        def _make_tuples_stub(unused_self, unused_key):
-            raise NotImplementedError(
-                "This is an automatically created user relation class. _make_tuples is not implemented.")
-
         tables = [row[0] for row in self.connection.query('SHOW TABLES in `%s`' % self.database)]
 
         # declare master relation classes
@@ -76,8 +72,8 @@ class Schema:
                     if re.fullmatch(Part.tier_regexp, table_name):
                         part_tables.append(table_name)
                 else:
-                    master_classes[table_name] = type(class_name, (cls,),
-                                                      dict(definition=..., _make_tuples=_make_tuples_stub))
+                    master_classes[table_name] = type(class_name, (cls,), dict())
+
         # attach parts to masters
         for part_table in part_tables:
             groups = re.fullmatch(Part.tier_regexp, part_table).groupdict()
@@ -93,7 +89,7 @@ class Schema:
                     self.process_relation_class(part_class, context=self.context, assert_declared=True)
                     setattr(master_class, class_name, part_class)
             else:
-                setattr(master_class, class_name, type(class_name, (Part,), dict(definition=...)))
+                setattr(master_class, class_name, type(class_name, (Part,), dict()))
 
         # place classes in context upon decorating them with the schema
         for cls in master_classes.values():
@@ -106,7 +102,7 @@ class Schema:
         if not self.exists:
             logger.info("Database named `{database}` does not exist. Doing nothing.".format(database=self.database))
         elif (not config['safemode'] or
-                      user_choice("Proceed to delete entire schema `%s`?" % self.database, default='no') == 'yes'):
+              user_choice("Proceed to delete entire schema `%s`?" % self.database, default='no') == 'yes'):
             logger.info("Dropping `{database}`.".format(database=self.database))
             try:
                 self.connection.query("DROP DATABASE `{database}`".format(database=self.database))

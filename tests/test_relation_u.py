@@ -26,6 +26,11 @@ class TestU:
         assert_true(len(rel) == len(language_set))
         assert_true(set(rel.fetch['language']) == language_set)
 
+    @staticmethod
+    @raises(dj.DataJointError)
+    def test_invalid_restriction():
+        result = dj.U('color') & dict(color="red")
+
     def test_ineffective_restriction(self):
         rel = self.language & dj.U('language')
         assert_true(rel.make_sql() == self.language.make_sql())
@@ -39,9 +44,13 @@ class TestU:
         assert_equal(self.experiment.primary_key, ['subject_id', 'experiment_id'])
         assert_equal(rel.primary_key, self.experiment.primary_key + ['experiment_date'])
 
+    @staticmethod
     @raises(dj.DataJointError)
-    def test_invalid_join(self):
+    def test_invalid_join():
         rel = dj.U('language') * dict(language="English")
 
-    # def test_aggregations(self):
-    #     rel = dj.U('language').aggregate(n='count(*)')
+    def test_aggregations(self):
+        rel = dj.U('language').aggregate(schema.Language(), number_of_speakers='count(*)')
+        assert_equal(len(rel), len(set(l[1] for l in schema.Language.contents)))
+        assert_equal((rel & 'language="English"').fetch1['number_of_speakers'], 3)
+

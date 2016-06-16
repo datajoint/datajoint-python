@@ -13,7 +13,7 @@ def equal_ignore_case(str1, str2):
     try:
         return str1.upper() == str2.upper()
     except AttributeError:
-        return str1 == str2
+        return False
 
 
 def restricts_to_same(arg):
@@ -84,37 +84,19 @@ class RelationalOperand:
             self._restrictions = AndList()
             self._distinct = False
 
-    # --------- abstract properties -----------
-
     @property
     def connection(self):
         """
         :return:  the dj.Connection object
         """
-        try:
-            return self._connection
-        except:
-            raise DataJointError('Subclasses of RelationOperand must define self._connection or self.connection.')
-
-    @property
-    def from_clause(self):
-        """
-        :return: string with the FROM clause of the SQL SELECT statement (not including the word "FROM")
-        It is the core of the SELECT statement but lacks the field specification and the WHERE clause (restriction)
-        """
-        raise NotImplementedError('Missing property `from_clause` in class %s' % self.__class__.__name__)
+        return self._connection
 
     @property
     def heading(self):
         """
         :return: the dj.Heading object of the relation
         """
-        try:
-            return self._heading
-        except:
-            raise DataJointError('Subclasses of RelationOperand must define self._heading or self.heading.')
-
-    # ---------- derived properties --------
+        return self._heading
 
     @property
     def distinct(self):
@@ -190,8 +172,6 @@ class RelationalOperand:
                     [make_condition(q)[0] for q in item if q is not restricts_to_empty(q)]) + ')'
             else:
                 item, negate = make_condition(item, negate)
-            if not item:
-                raise DataJointError('Empty condition')
             conditions.append(('NOT (%s)' if negate else '(%s)') % item)
         return ' WHERE ' + ' AND '.join(conditions)
 
@@ -244,7 +224,7 @@ class RelationalOperand:
 
         See relational_operand.restrict for more detail.
         """
-        return (Subquery(self) if self.heading.expressions else self).restrict(restriction)
+        return (Subquery.make(self) if self.heading.expressions else self).restrict(restriction)
 
     def __and__(self, restriction):
         """
@@ -252,7 +232,9 @@ class RelationalOperand:
         :return: a restricted copy of the argument
         See relational_operand.restrict for more detail.
         """
-        return (Subquery(self) if self.heading.expressions else self.__class__(self)).restrict(restriction)
+        return (Subquery.make(self)    # the HAVING clause in GroupBy can handle renamed attributes but WHERE cannot
+                if self.heading.expressions and not isinstance(self, GroupBy)
+                else self.__class__(self)).restrict(restriction)
 
     def __isub__(self, restriction):
         """
@@ -318,7 +300,8 @@ class RelationalOperand:
         an AndList.
         """
         if not restricts_to_same(restriction):
-            assert not self.heading.expressions, "Cannot restrict in place a projection with renamed attributes."
+            assert not self.heading.expressions or isinstance(self, GroupBy), \
+                "Cannot restrict in place a projection with renamed attributes."
             if isinstance(restriction, AndList):
                 self.restrictions.extend(restriction)
             else:
@@ -408,7 +391,7 @@ class RelationalOperand:
         :param item: any restriction
         (item in relation) is equivalent to bool(self & item) but may be executed more efficiently.
         """
-        return bool(self & item)   # May be optimized using as an EXISTS query
+        return bool(self & item)   # May be optimized e.g. using an EXISTS query
 
     def cursor(self, offset=0, limit=None, order_by=None, as_dict=False):
         """
@@ -474,7 +457,7 @@ class Join(RelationalOperand):
         """
         Decide when a Join argument needs to be wrapped in a subquery
         """
-        return Subquery(arg) if isinstance(arg, (GroupBy, Projection)) else arg
+        return Subquery.make(arg) if isinstance(arg, (GroupBy, Projection)) else arg
 
     @property
     def from_clause(self):
@@ -513,7 +496,7 @@ class Projection(RelationalOperand):
             self._distinct = (self.distinct or not set(arg.primary_key).issubset(
                 set(attributes) | set(named_attributes.values())))
         if self._need_subquery(arg, attributes, named_attributes):
-            self._arg = Subquery(arg)
+            self._arg = Subquery.make(arg)
             self._heading = self._arg.heading.project(attributes, named_attributes)
         else:
             self._arg = arg
@@ -558,7 +541,7 @@ class GroupBy(RelationalOperand):
         if not isinstance(group, RelationalOperand):
             raise DataJointError('a relation can only be joined with another relation')
         self._keep_all_rows = keep_all_rows
-        if not (set(group.primary_key) - set(arg.primary_key)):
+        if not(set(group.primary_key) - set(arg.primary_key) or set(group.primary_key) == set(arg.primary_key)):
             raise DataJointError(
                 'The aggregated relation should have additional fields in its primary key for aggregation to work')
         if isinstance(arg, U):
@@ -572,10 +555,6 @@ class GroupBy(RelationalOperand):
         self._heading = self._arg.heading.project(
             attributes, named_attributes, force_primary_key=arg.primary_key)
 
-    @property
-    def from_clause(self):
-        raise DataJointError('Internal DataJointError: Aggregated relation must be wrapped in a subquery.')
-
     def make_sql(self):
         return 'SELECT {fields} FROM {from_}{where} GROUP  BY `{group_by}`{having}'.format(
             fields=self.select_fields,
@@ -585,7 +564,7 @@ class GroupBy(RelationalOperand):
             having=re.sub(r'^ WHERE', ' HAVING', self.where_clause))
 
     def __len__(self):
-        return len(Subquery(self))
+        return len(Subquery.make(self))
 
 
 class Subquery(RelationalOperand):
@@ -596,18 +575,27 @@ class Subquery(RelationalOperand):
     """
     __counter = 0
 
-    def __init__(self, arg):
-        if isinstance(arg, Subquery):
-            # copy constructor
+    def __init__(self, arg=None):
+        if arg is None:
+            super().__init__()
+        else:  # copy constructor
+            assert isinstance(arg, Subquery)
             super().__init__(arg)
+            # copy constructor
             self._connection = arg.connection
             self._heading = arg.heading
             self._arg = arg._arg
-        else:
-            super().__init__()
-            self._connection = arg.connection
-            self._heading = arg.heading.make_subquery_heading()
-            self._arg = arg
+
+    @staticmethod
+    def make(arg):
+        """
+        construct subquery of the query arg
+        """
+        self = Subquery()
+        self._connection = arg.connection
+        self._heading = arg.heading.make_subquery_heading()
+        self._arg = arg
+        return self
 
     @property
     def counter(self):

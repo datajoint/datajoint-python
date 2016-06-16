@@ -22,12 +22,14 @@ class Auto(dj.Lookup):
         if not self:
             self.insert([dict(name="Godel"), dict(name="Escher"), dict(name="Bach")])
 
+
 @schema
 class User(dj.Lookup):
     definition = """      # lab members
     username: varchar(12)
     """
     contents = [['Jake'], ['Cathryn'], ['Shan'], ['Fabian'], ['Edgar'], ['George'], ['Dimitri']]
+
 
 @schema
 class Subject(dj.Manual):
@@ -47,10 +49,12 @@ class Subject(dj.Manual):
         [1552, '1552', 'mouse', '2015-06-15', ''],
         [1553, '1553', 'mouse', '2016-07-01', '']]
 
+
 @schema
 class Language(dj.Lookup):
     definition = """
     # languages spoken by some of the developers
+    # additional comments are ignored
     name        : varchar(40) # name of the developer
     language    : varchar(40) # language
     ---
@@ -62,6 +66,7 @@ class Language(dj.Lookup):
         ('Dimitri', 'Ukrainian'),
         ('Fabian', 'German'),
         ('Edgar', 'Japanese')]
+
 
 @schema
 class Experiment(dj.Imported):
@@ -92,6 +97,7 @@ class Experiment(dj.Imported):
                  username=random.choice(users))
             for experiment_id in range(self.fake_experiments_per_subject))
 
+
 @schema
 class Trial(dj.Imported):
     definition = """   # a trial within an experiment
@@ -101,16 +107,28 @@ class Trial(dj.Imported):
     start_time                 :double      # (s)
     """
 
+    class Condition(dj.Part):
+        definition = """   # trial conditions
+        -> Trial
+        cond_idx : smallint   # condition number
+        ----
+        orientation :  float   # degrees
+        """
+
     def _make_tuples(self, key):
         """
         populate with random data (pretend reading from raw files)
         """
         random.seed('Amazing Seed')
-        self.insert(
-            dict(key,
-                 trial_id=trial_id,
-                 start_time=random.random() * 1e9)
-            for trial_id in range(10))
+        trial = self.Condition()
+        for trial_id in range(10):
+            key['trial_id']=trial_id
+            self.insert1(
+                dict(key, start_time=random.random() * 1e9))
+            trial.insert(dict(key,
+                              cond_idx=cond_idx,
+                              orientation=random.random()*360) for cond_idx in range(30))
+
 
 @schema
 class Ephys(dj.Imported):
