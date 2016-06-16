@@ -54,9 +54,23 @@ class TestRelation:
     def test_misnamed_attribute(self):
         self.user.insert1(dict(user="Bob"))
 
+    @raises(NotImplementedError)
+    def test_missing_definition(self):
+        @schema.schema
+        class MissingDefinition(dj.Manual):
+            definitions = """  # misspelled definition
+            id : int
+            ---
+            comment : varchar(16)  # otherwise everything's normal
+            """
+
+    @raises(dj.DataJointError)
+    def test_empty_insert1(self):
+        self.user.insert1(())
+
     @raises(dj.DataJointError)
     def test_empty_insert(self):
-        self.user.insert1(())
+        self.user.insert([()])
 
     @raises(dj.DataJointError)
     def test_wrong_arguments_insert(self):
