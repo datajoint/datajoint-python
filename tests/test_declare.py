@@ -66,7 +66,7 @@ class TestDeclare:
         assert_equal(experiment.children(primary=True), [trial.full_table_name])
         assert_equal(trial.parents(primary=True), [experiment.full_table_name])
 
-        assert_equal(trial.children(primary=True), [ephys.full_table_name])
+        assert_equal(trial.children(primary=True), [ephys.full_table_name, trial.Condition().full_table_name])
         assert_equal(ephys.parents(primary=True), [trial.full_table_name])
 
         assert_equal(ephys.children(primary=True), [channel.full_table_name])
