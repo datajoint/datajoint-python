@@ -50,8 +50,12 @@ class TestRelation:
         u = self.subject.fetch(order_by=['subject_id'])
         assert_list_equal(list(u['subject_id']), sorted([s[0] for s in self.subject.contents]))
 
-    @raises(KeyError)
+    @raises(dj.DataJointError)
     def test_misnamed_attribute(self):
+        self.user.insert([dict(username="Bob"), dict(user="Alice")])
+
+    @raises(KeyError)
+    def test_misnamed_attribute1(self):
         self.user.insert1(dict(user="Bob"))
 
     @raises(NotImplementedError)

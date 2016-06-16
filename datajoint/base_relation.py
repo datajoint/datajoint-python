@@ -177,8 +177,7 @@ class BaseRelation(RelationalOperand):
                 else:
                     attributes = [make_placeholder(name, value) for name, value in zip(heading, row)]
 
-            if not attributes:
-                raise DataJointError('Empty tuple')
+            assert len(attributes), 'Empty tuple'
             row_to_insert = dict(zip(('names', 'placeholders', 'values'), zip(*attributes)))
             nonlocal field_list
             if field_list is None:
