@@ -91,23 +91,12 @@ class RelationalOperand:
         """
         return self._connection
 
-    # --------- abstract properties -----------
-    @property
-    def from_clause(self):
-        """
-        :return: string with the FROM clause of the SQL SELECT statement (not including the word "FROM")
-        It is the core of the SELECT statement but lacks the field specification and the WHERE clause (restriction)
-        """
-        raise NotImplementedError('Missing property `from_clause` in class %s' % self.__class__.__name__)
-
     @property
     def heading(self):
         """
         :return: the dj.Heading object of the relation
         """
         return self._heading
-
-    # ---------- dependent properties --------
 
     @property
     def distinct(self):
@@ -565,10 +554,6 @@ class GroupBy(RelationalOperand):
                       list(a for a in attributes if a not in arg.primary_key))
         self._heading = self._arg.heading.project(
             attributes, named_attributes, force_primary_key=arg.primary_key)
-
-    @property
-    def from_clause(self):
-        raise DataJointError('Internal DataJointError: Aggregated relation must be wrapped in a subquery.')
 
     def make_sql(self):
         return 'SELECT {fields} FROM {from_}{where} GROUP  BY `{group_by}`{having}'.format(
