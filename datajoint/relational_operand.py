@@ -13,7 +13,7 @@ def equal_ignore_case(str1, str2):
     try:
         return str1.upper() == str2.upper()
     except AttributeError:
-        return str1 == str2
+        return False
 
 
 def restricts_to_same(arg):
