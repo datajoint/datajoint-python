@@ -2,7 +2,6 @@ import collections
 import itertools
 import numpy as np
 import logging
-import binascii
 from . import config, DataJointError
 from .declare import declare
 from .relational_operand import RelationalOperand
@@ -135,10 +134,7 @@ class BaseRelation(RelationalOperand):
                 """
                 if heading[name].is_blob:
                     value = pack(value)
-                    # This is a temporary hack to address issue #131 (slow blob inserts).
-                    # When this problem is fixed by pymysql or python, then pass blob as query argument.
-                    placeholder = '0x' + binascii.b2a_hex(value).decode('ascii')
-                    value = None
+                    placeholder = '%s'
                 elif heading[name].numeric:
                     if value is None or np.isnan(value):  # nans are turned into NULLs
                         placeholder = 'NULL'
