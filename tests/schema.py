@@ -54,6 +54,7 @@ class Subject(dj.Manual):
 class Language(dj.Lookup):
     definition = """
     # languages spoken by some of the developers
+    # additional comments are ignored
     name        : varchar(40) # name of the developer
     language    : varchar(40) # language
     ---
@@ -106,16 +107,28 @@ class Trial(dj.Imported):
     start_time                 :double      # (s)
     """
 
+    class Condition(dj.Part):
+        definition = """   # trial conditions
+        -> Trial
+        cond_idx : smallint   # condition number
+        ----
+        orientation :  float   # degrees
+        """
+
     def _make_tuples(self, key):
         """
         populate with random data (pretend reading from raw files)
         """
         random.seed('Amazing Seed')
-        self.insert(
-            dict(key,
-                 trial_id=trial_id,
-                 start_time=random.random() * 1e9)
-            for trial_id in range(10))
+        trial = self.Condition()
+        for trial_id in range(10):
+            key['trial_id']=trial_id
+            self.insert1(
+                dict(key, start_time=random.random() * 1e9))
+            trial.insert(dict(key,
+                              cond_idx=cond_idx,
+                              orientation=random.random()*360) for cond_idx in range(30))
+
 
 
 @schema

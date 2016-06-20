@@ -7,12 +7,13 @@ from . import schema
 from pymysql import IntegrityError, ProgrammingError
 import datajoint as dj
 from datajoint import utils
+from datajoint.base_relation import BaseRelation
 from unittest.mock import patch
 
 
 def relation_selector(attr):
     try:
-        return issubclass(attr, dj.BaseRelation)
+        return issubclass(attr, BaseRelation)
     except TypeError:
         return False
 
@@ -49,13 +50,31 @@ class TestRelation:
         u = self.subject.fetch(order_by=['subject_id'])
         assert_list_equal(list(u['subject_id']), sorted([s[0] for s in self.subject.contents]))
 
-    @raises(KeyError)
+    @raises(dj.DataJointError)
     def test_misnamed_attribute(self):
+        self.user.insert([dict(username="Bob"), dict(user="Alice")])
+
+    @raises(KeyError)
+    def test_misnamed_attribute1(self):
         self.user.insert1(dict(user="Bob"))
+
+    @raises(NotImplementedError)
+    def test_missing_definition(self):
+        @schema.schema
+        class MissingDefinition(dj.Manual):
+            definitions = """  # misspelled definition
+            id : int
+            ---
+            comment : varchar(16)  # otherwise everything's normal
+            """
+
+    @raises(dj.DataJointError)
+    def test_empty_insert1(self):
+        self.user.insert1(())
 
     @raises(dj.DataJointError)
     def test_empty_insert(self):
-        self.user.insert1(())
+        self.user.insert([()])
 
     @raises(dj.DataJointError)
     def test_wrong_arguments_insert(self):

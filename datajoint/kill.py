@@ -5,7 +5,7 @@ from . import conn
 def kill(restriction=None, connection=None):
     """
     view and kill database connections.
-    :param restriction: restriciton to be applied to processlist
+    :param restriction: restriction to be applied to processlist
     :param connection: a datajoint.Connection object. Default calls datajoint.conn()
 
     Restrictions are specified as strings and can involve any of the attributes of

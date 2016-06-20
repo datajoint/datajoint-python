@@ -33,6 +33,30 @@ class TestRelational:
         assert_true(len(E.F()) > 0, 'F populated incorrectly')
 
     @staticmethod
+    def test_free_relation():
+        b = B()
+        free = dj.FreeRelation(b.connection, b.full_table_name)
+        assert_true(repr(free).startswith('FreeRelation') and b.full_table_name in repr(free))
+        r = 'n>5'
+        assert_equal((B() & r).make_sql(), (free & r).make_sql())
+
+    @staticmethod
+    def test_rename():
+        # test renaming
+        x = B().proj(i='id_a') & 'i in (1,2,3,4)'
+        lenx = len(x)
+        assert_equal(len(x), len(B() & 'id_a in (1,2,3,4)'),
+                     'incorrect restriction of renamed attributes')
+        assert_equal(len(x & 'id_b in (1,2)'), len(B() & 'id_b in (1,2) and id_a in (1,2,3,4)'),
+                     'incorrect restriction of renamed restriction')
+        assert_equal(len(x), lenx, 'restriction modified original')
+        y = x.proj(j='i')
+        assert_equal(len(y), len(B() & 'id_a in (1,2,3,4)'),
+                     'incorrect projection of restriction')
+        assert_equal(len(y & 'j in (3,4,5,6)'), len(B() & 'id_a in (3,4)'),
+                     'incorrect nested subqueries')
+
+    @staticmethod
     def test_join():
         # Test cartesian product
         x = A()
@@ -78,12 +102,10 @@ class TestRelational:
                      'incorrect join heading')
         assert_equal(set(x.primary_key).union(y.primary_key), set(rel.primary_key),
                      'incorrect join primary_key')
-
         x = B().proj(a='id_a')
         y = D()
         rel = x*y
-        assert_equal(len(rel), len(x)*len(y),
-                     'incorrect join')
+        assert_equal(len(rel), len(x)*len(y), 'incorrect join')
         assert_equal(set(x.heading.names).union(y.heading.names), set(rel.heading.names),
                      'incorrect join heading')
         assert_equal(set(x.primary_key).union(y.primary_key), set(rel.primary_key),
@@ -122,10 +144,38 @@ class TestRelational:
                      'projection failed: altered its argument''s cardinality')
 
     @staticmethod
+    def test_preview():
+        x = A().proj(a='id_a')
+        s = x.preview()
+        assert_equal(len(s.split('\n')), len(x)+2)
+
+    @staticmethod
+    def test_heading_repr():
+        x = A()*D()
+        s = repr(x.heading)
+        assert_equal(len(s.split('\n')), len(x.heading.attributes))
+
+    @staticmethod
+    @raises(dj.DataJointError)
+    def test_invalid_aggregate():
+        """cannot aggregate a less detailed object"""
+        rel = B().aggregate(A())
+
+    @staticmethod
     def test_aggregate():
+        x = B().aggregate(B.C())
+        assert_equal(len(x), len(B() & B.C()))
+
+        x = B().aggregate(B.C(), keep_all_rows=True)
+        assert_equal(len(x), len(B()))    # test LEFT join
+
+        assert_equal(len((x & 'id_b=0').fetch()), len(B() & 'id_b=0'))   # test restricted aggregation
+
         x = B().aggregate(B.C(), 'n', count='count(id_c)', mean='avg(value)', max='max(value)', keep_all_rows=True)
-        sql = x.make_sql()
         assert_equal(len(x), len(B()))
+        y = x & 'mean>0'   # restricted aggregation
+        assert_true(len(y) > 0)
+        assert_true(all(y.fetch['mean'] > 0))
         for n, count, mean, max_, key in zip(*x.fetch['n', 'count', 'mean', 'max', dj.key]):
             assert_equal(n, count, 'aggregation failed (count)')
             values = (B.C() & key).fetch['value']
@@ -143,6 +193,12 @@ class TestRelational:
         y = L() & 'cond_in_l'
         lenx = len(x)
         assert_true(lenx > 0 and len(y) > 0 and len(x & y) < len(x), 'incorrect test setup')
+        assert_equal(len(x & y), len(D()*L() & 'cond_in_l'),
+                     'incorrect semijoin')
+        assert_equal(len(x - y), len(x) - len(x & y),
+                     'incorrect antijoin')
+        assert_equal(len(y - x), len(y) - len(y & x),
+                     'incorrect antijoin')
         assert_true(len(x & []) == 0,
                     'incorrect restriction by an empty list')
         assert_true(len(x & ()) == 0,

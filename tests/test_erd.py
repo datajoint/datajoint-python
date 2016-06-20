@@ -13,7 +13,7 @@ class TestERD:
 
     @staticmethod
     def test_decorator():
-        assert_true(issubclass(A, dj.BaseRelation))
+        assert_true(issubclass(A, dj.Lookup))
         assert_false(issubclass(A, dj.Part))
         assert_true(B.database == schema.database)
         assert_true(issubclass(B.C, dj.Part))
