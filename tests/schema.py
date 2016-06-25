@@ -130,6 +130,7 @@ class Trial(dj.Imported):
                               orientation=random.random()*360) for cond_idx in range(30))
 
 
+
 @schema
 class Ephys(dj.Imported):
     definition = """    # some kind of electrophysiological recording
