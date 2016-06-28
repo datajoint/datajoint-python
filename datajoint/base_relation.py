@@ -136,12 +136,12 @@ class BaseRelation(RelationalOperand):
                     value = pack(value)
                     placeholder = '%s'
                 elif heading[name].numeric:
-                    if value is None or np.isnan(value):  # nans are turned into NULLs
+                    if value is None or np.isnan(np.float(value)):  # nans are turned into NULLs
                         placeholder = 'NULL'
                         value = None
                     else:
                         placeholder = '%s'
-                        value = repr(int(value) if isinstance(value, bool) else value)
+                        value = str(int(value) if isinstance(value, bool) else value)
                 else:
                     placeholder = '%s'
                 return name, placeholder, value
