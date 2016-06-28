@@ -91,7 +91,9 @@ class Heading:
         if self.attributes is None:
             return 'heading not loaded'
         in_key = True
-        ret = '# ' + self.table_info['comment'] + '\n'
+        ret = ''
+        if self.table_info:
+            ret += '# ' + self.table_infoself.table_info['comment'] + '\n'
         for v in self.attributes.values():
             if in_key and not v.in_key:
                 ret += '---\n'
