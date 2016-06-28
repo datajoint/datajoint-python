@@ -93,7 +93,7 @@ class Heading:
         in_key = True
         ret = ''
         if self.table_info:
-            ret += '# ' + self.table_infoself.table_info['comment'] + '\n'
+            ret += '# ' + self.table_info['comment'] + '\n'
         for v in self.attributes.values():
             if in_key and not v.in_key:
                 ret += '---\n'
