@@ -88,11 +88,18 @@ class Heading:
         return self.attributes[name]
 
     def __repr__(self):
-        return (None if self.attributes is None
-                else '\n'.join(['%-20s : %-28s # %s' % (
-                    k if v.default is None else '%s="%s"' % (k, v.default),
-                    '%s%s' % (v.type, 'auto_increment' if v.autoincrement else ''), v.comment)
-                                for k, v in self.attributes.items()]))
+        if self.attributes is None:
+            return 'heading not loaded'
+        in_key = True
+        ret = '# ' + self.table_info['comment'] + '\n'
+        for v in self.attributes.values():
+            if in_key and not v.in_key:
+                ret += '---\n'
+                in_key = False
+            ret += '%-20s : %-28s # %s\n' % (
+                v.name if v.default is None else '%s="%s"' % (v.name, v.default),
+                '%s%s' % (v.type, 'auto_increment' if v.autoincrement else ''), v.comment)
+        return ret
 
     @property
     def has_autoincrement(self):
