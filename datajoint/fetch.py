@@ -107,7 +107,6 @@ class Fetch(FetchBase, Callable, Iterable):
                           'Consider setting a limit explicitly.')
             behavior['limit'] = 2 * len(self._relation)
         cur = self._relation.cursor(**behavior)
-
         heading = self._relation.heading
         if behavior['as_dict']:
             ret = [OrderedDict((name, unpack(d[name]) if heading[name].is_blob else d[name])

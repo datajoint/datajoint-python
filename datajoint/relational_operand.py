@@ -466,11 +466,6 @@ class Join(RelationalOperand):
             left=" LEFT" if self._left else "",
             from2=self._arg2.from_clause)
 
-    @property
-    def select_fields(self):
-        return '*' if all(a.select_fields == '*' for a in (self._arg, self._arg2)) else self.heading.as_sql
-
-
 class Projection(RelationalOperand):
     """
     Projection is an private DataJoint class that implements relational projection.
