@@ -445,7 +445,7 @@ class Join(RelationalOperand):
             self._distinct = self._arg.distinct or self._arg2.distinct
             self._left = keep_all_rows
             try:
-                DataJointError("Cannot join relations on dependent attribute %s" % next(r for r in set(
+                raise DataJointError("Cannot join relations on dependent attribute `%s`" % next(r for r in set(
                     self._arg.heading.dependent_attributes).intersection(self._arg2.heading.dependent_attributes)))
             except StopIteration:
                 self._heading = self._arg.heading.join(self._arg2.heading)

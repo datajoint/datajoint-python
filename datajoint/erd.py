@@ -131,7 +131,7 @@ class ERD(nx.DiGraph):
         self.nodes_to_show.intersection_update(arg.nodes_to_show)
         return self
 
-    def _make_graph(self, prefix_module):
+    def _make_graph(self, prefix):
         """
         Make the self.graph - a graph object ready for drawing
         """
@@ -142,7 +142,7 @@ class ERD(nx.DiGraph):
         mapping = {
             cls.full_table_name:
                 (cls._context['__name__'] + '.'
-                 if (prefix_module and cls._context['__name__'] != '__main__') else '') +
+                 if (prefix and cls._context['__name__'] != '__main__') else '') +
                 (cls._master.__name__+'.' if issubclass(cls, Part) else '') + cls.__name__
                    for cls in class_list if cls.full_table_name in graph}
         new_names = [mapping.values()]
@@ -151,11 +151,11 @@ class ERD(nx.DiGraph):
         nx.relabel_nodes(graph, mapping, copy=False)
         return graph
 
-    def draw(self, pos=None, layout=None, prefix_module=True, font_scale=1.2, **layout_options):
+    def draw(self, pos=None, layout=None, prefix=True, font_scale=1.2, **layout_options):
         if not self.nodes_to_show:
             print('There is nothing to plot')
             return
-        graph = self._make_graph(prefix_module)
+        graph = self._make_graph(prefix)
         if pos is None:
             pos = (layout if layout else self._layout)(graph, **layout_options)
         import matplotlib.pyplot as plt

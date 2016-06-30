@@ -122,7 +122,7 @@ class Connection:
                     be violated. You can switch off this behavior by setting the 'database.reconnect' to False.
                     ''')
                 self.connect()
-                logger.debug("Re-Executing SQL:" + query[0:300])
+                logger.debug("Re-executing SQL: " + query[0:300])
                 cur.execute(query, args)
             else:
                 raise

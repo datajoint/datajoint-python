@@ -153,7 +153,8 @@ class TestRelational:
     def test_heading_repr():
         x = A()*D()
         s = repr(x.heading)
-        assert_equal(len(s.split('\n')), len(x.heading.attributes))
+        assert_equal(len(list(1 for g in s.split('\n') if g.strip() and not g.strip().startswith(('-', '#')))),
+                     len(x.heading.attributes))
 
     @staticmethod
     @raises(dj.DataJointError)

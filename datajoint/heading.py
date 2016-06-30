@@ -88,11 +88,20 @@ class Heading:
         return self.attributes[name]
 
     def __repr__(self):
-        return (None if self.attributes is None
-                else '\n'.join(['%-20s : %-28s # %s' % (
-                    k if v.default is None else '%s="%s"' % (k, v.default),
-                    '%s%s' % (v.type, 'auto_increment' if v.autoincrement else ''), v.comment)
-                                for k, v in self.attributes.items()]))
+        if self.attributes is None:
+            return 'heading not loaded'
+        in_key = True
+        ret = ''
+        if self.table_info:
+            ret += '# ' + self.table_info['comment'] + '\n'
+        for v in self.attributes.values():
+            if in_key and not v.in_key:
+                ret += '---\n'
+                in_key = False
+            ret += '%-20s : %-28s # %s\n' % (
+                v.name if v.default is None else '%s="%s"' % (v.name, v.default),
+                '%s%s' % (v.type, 'auto_increment' if v.autoincrement else ''), v.comment)
+        return ret
 
     @property
     def has_autoincrement(self):
@@ -225,9 +234,13 @@ class Heading:
     def join(self, other):
         """
         Join two headings into a new one.
+        It assumes that self and other are headings that share no common dependent attributes.
         """
-        return Heading([v.todict() for v in self.attributes.values()] + [
-            other.attributes[name].todict() for name in other.names if name not in self.names])
+        return Heading(
+            [self.attributes[name].todict() for name in self.primary_key] +
+            [other.attributes[name].todict() for name in other.primary_key if name not in self.primary_key] +
+            [self.attributes[name].todict() for name in self.dependent_attributes if name not in other.primary_key] +
+            [other.attributes[name].todict() for name in other.dependent_attributes if name not in self.primary_key])
 
     def make_subquery_heading(self):
         """
