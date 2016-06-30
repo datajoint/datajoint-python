@@ -76,13 +76,24 @@ class RelationalOperand:
     """
 
     def __init__(self, arg=None):
-        if arg is not None:  # copy
+        if arg is None:  # initialize
+            # initialize
+            self._restrictions = AndList()
+            self._distinct = False
+        else:  # copy
             assert isinstance(arg, RelationalOperand), 'Cannot make RelationalOperand from %s' % arg.__class__.__name__
             self._restrictions = AndList(arg._restrictions)
             self._distinct = arg.distinct
-        else:  # initialize
-            self._restrictions = AndList()
-            self._distinct = False
+
+    @classmethod
+    def create(cls):
+        """abstract method for creating an instance"""
+        assert False, "Abstract method `create` must be overridden in subclass."
+
+    @property
+    def select_fields(self):
+        """abstract property: a string specifying the field list in SQL queries"""
+        assert False, "Abstract property `select_fields` must be overridden in subclass."
 
     @property
     def connection(self):
@@ -129,7 +140,6 @@ class RelationalOperand:
                 return arg, _negate
             elif isinstance(arg, AndList):
                 return '(' + ' AND '.join([make_condition(element)[0] for element in arg]) + ')', _negate
-
             #  semijoin or antijoin
             elif isinstance(arg, RelationalOperand):
                 common_attributes = [q for q in self.heading.names if q in arg.heading.names]
@@ -188,7 +198,7 @@ class RelationalOperand:
         """
         natural join of relations self and other
         """
-        return other*self if isinstance(other, U) else Join(self, other)
+        return other*self if isinstance(other, U) else Join.create(self, other)
 
     def proj(self, *attributes, **named_attributes):
         """
@@ -203,7 +213,8 @@ class RelationalOperand:
         self.proj(a='(id)') adds a new computed field named 'a' that has the same value as id
         Each attribute can only be used once in attributes or named_attributes.
         """
-        return Projection(self, attributes, named_attributes)
+        ret = Projection.create(self, attributes, named_attributes)
+        return ret
 
     def aggregate(self, group, *attributes, keep_all_rows=False, **named_attributes):
         """
@@ -214,8 +225,8 @@ class RelationalOperand:
         :param named_attributes: renamings and computations on attributes of self and group
         :return: a relation representing the result of the aggregation/projection operator
         """
-        return GroupBy(self, group, keep_all_rows=keep_all_rows,
-                       attributes=attributes, named_attributes=named_attributes)
+        return GroupBy.create(self, group, keep_all_rows=keep_all_rows,
+                              attributes=attributes, named_attributes=named_attributes)
 
     def __iand__(self, restriction):
         """
@@ -224,7 +235,7 @@ class RelationalOperand:
 
         See relational_operand.restrict for more detail.
         """
-        return (Subquery.make(self) if self.heading.expressions else self).restrict(restriction)
+        return (Subquery.create(self) if self.heading.expressions else self).restrict(restriction)
 
     def __and__(self, restriction):
         """
@@ -232,7 +243,7 @@ class RelationalOperand:
         :return: a restricted copy of the argument
         See relational_operand.restrict for more detail.
         """
-        return (Subquery.make(self)    # the HAVING clause in GroupBy can handle renamed attributes but WHERE cannot
+        return (Subquery.create(self)    # the HAVING clause in GroupBy can handle renamed attributes but WHERE cannot
                 if self.heading.expressions and not isinstance(self, GroupBy)
                 else self.__class__(self)).restrict(restriction)
 
@@ -368,7 +379,7 @@ class RelationalOperand:
 
     def make_sql(self, select_fields=None):
         return 'SELECT {fields} FROM {from_}{where}'.format(
-            fields=(select_fields if select_fields else ("DISTINCT " if self.distinct else "") + self.select_fields),
+            fields=select_fields or (("DISTINCT " if self.distinct else "") + self.select_fields),
             from_=self.from_clause,
             where=self.where_clause)
 
@@ -424,47 +435,52 @@ class Join(RelationalOperand):
     Join is a private DataJoint class not exposed to users.
     """
 
-    def __init__(self, arg, arg2=None, keep_all_rows=False):
-        if arg2 is None and isinstance(arg, Join):
-            # copy constructor
-            super().__init__(arg)
+    def __init__(self, arg=None):
+        super().__init__(arg)
+        if arg is not None:
+            assert isinstance(arg, Join), "Join copy constructor requires a Join object"
             self._connection = arg.connection
             self._heading = arg.heading
-            self._arg = arg._arg
+            self._arg1 = arg._arg1
             self._arg2 = arg._arg2
             self._left = arg._left
-        else:
-            super().__init__()
-            if not isinstance(arg2, RelationalOperand):
-                raise DataJointError('a relation can only be joined with another relation')
-            if arg.connection != arg2.connection:
-                raise DataJointError("Cannot join relations from different connections.")
-            self._connection = arg.connection
-            self._arg = self.make_argument_subquery(arg)
-            self._arg2 = self.make_argument_subquery(arg2)
-            self._distinct = self._arg.distinct or self._arg2.distinct
-            self._left = keep_all_rows
-            try:
-                raise DataJointError("Cannot join relations on dependent attribute `%s`" % next(r for r in set(
-                    self._arg.heading.dependent_attributes).intersection(self._arg2.heading.dependent_attributes)))
-            except StopIteration:
-                self._heading = self._arg.heading.join(self._arg2.heading)
-                self.restrict(self._arg.restrictions)
-                self.restrict(self._arg2.restrictions)
+
+    @classmethod
+    def create(cls, arg1, arg2, keep_all_rows=False):
+        obj = cls()
+        if not isinstance(arg1, RelationalOperand) or not isinstance(arg2, RelationalOperand):
+            raise DataJointError('a relation can only be joined with another relation')
+        if arg1.connection != arg2.connection:
+            raise DataJointError("Cannot join relations from different connections.")
+        obj._connection = arg1.connection
+        obj._arg1 = cls.make_argument_subquery(arg1)
+        obj._arg2 = cls.make_argument_subquery(arg2)
+        obj._distinct = obj._arg1.distinct or obj._arg2.distinct
+        obj._left = keep_all_rows
+        try:
+            # ensure no common dependent attributes
+            raise DataJointError("Cannot join relations on dependent attribute `%s`" % next(r for r in set(
+                obj._arg1.heading.dependent_attributes).intersection(obj._arg2.heading.dependent_attributes)))
+        except StopIteration:
+            obj._heading = obj._arg1.heading.join(obj._arg2.heading)
+            obj.restrict(obj._arg1.restrictions)
+            obj.restrict(obj._arg2.restrictions)
+        return obj
 
     @staticmethod
     def make_argument_subquery(arg):
         """
         Decide when a Join argument needs to be wrapped in a subquery
         """
-        return Subquery.make(arg) if isinstance(arg, (GroupBy, Projection)) else arg
+        return Subquery.create(arg) if isinstance(arg, (GroupBy, Projection)) else arg
 
     @property
     def from_clause(self):
         return '{from1} NATURAL{left} JOIN {from2}'.format(
-            from1=self._arg.from_clause,
+            from1=self._arg1.from_clause,
             left=" LEFT" if self._left else "",
             from2=self._arg2.from_clause)
+
 
 class Projection(RelationalOperand):
     """
@@ -472,31 +488,40 @@ class Projection(RelationalOperand):
     See RelationalOperand.proj() for user interface.
     """
 
-    def __init__(self, arg, attributes=None, named_attributes=None, include_primary_key=True):
-        if attributes is None and isinstance(arg, Projection):
-            # copy constructor
-            super().__init__(arg)
+    def __init__(self, arg=None):
+        super().__init__(arg)
+        if arg is not None:
+            assert isinstance(arg, Projection), "Projection copy constructor requires a Projection object."
             self._connection = arg.connection
             self._heading = arg.heading
             self._arg = arg._arg
-            return
 
-        super().__init__()
-        self._connection = arg.connection
+    @classmethod
+    def create(cls, arg, attributes=None, named_attributes=None, include_primary_key=True):
+        """
+        :param arg:  A relation to be be projected
+        :param attributes:  attributes to be selected from
+        :param named_attributes:  new attributes to select or
+        :param include_primary_key:  True if the primary key must be included even if it's not in attributes.
+        :return: the resulting Projection object
+        """
+        obj = cls()
+        obj._connection = arg.connection
         named_attributes = {k: v.strip() for k, v in named_attributes.items()}  # clean up values
-        if include_primary_key:   # include primary key of arg
+        if include_primary_key:   # include primary key of relation
             attributes = (list(a for a in arg.primary_key if a not in named_attributes.values()) +
                           list(a for a in attributes if a not in arg.primary_key))
         else:
-            self._distinct = (self.distinct or not set(arg.primary_key).issubset(
-                set(attributes) | set(named_attributes.values())))
-        if self._need_subquery(arg, attributes, named_attributes):
-            self._arg = Subquery.make(arg)
-            self._heading = self._arg.heading.project(attributes, named_attributes)
+            obj._distinct = arg.distinct or not set(arg.primary_key).issubset(
+                set(attributes) | set(named_attributes.values()))
+        if cls._need_subquery(arg, attributes, named_attributes):
+            obj._arg = Subquery.create(arg)
+            obj._heading = obj._arg.heading.project(attributes, named_attributes)
         else:
-            self._arg = arg
-            self._heading = self._arg.heading.project(attributes, named_attributes)
-            self &= arg.restrictions  # transfer restrictions when no subquery
+            obj._arg = arg
+            obj._heading = obj._arg.heading.project(attributes, named_attributes)
+            obj &= arg.restrictions  # copy restrictions when no subquery
+        return obj
 
     @staticmethod
     def _need_subquery(arg, attributes, named_attributes):
@@ -522,44 +547,45 @@ class GroupBy(RelationalOperand):
     GroupBy is a private class in DataJoint, not exposed to users.
     """
 
-    def __init__(self, arg, group=None, attributes=None, named_attributes=None, keep_all_rows=False):
-        if group is None and isinstance(arg, GroupBy):
+    def __init__(self, arg=None):
+        super().__init__(arg)
+        if arg is not None:
             # copy constructor
-            super().__init__(arg)
+            assert isinstance(arg, GroupBy), "GroupBy copy constructor requires a GroupBy object"
             self._connection = arg.connection
             self._heading = arg.heading
             self._arg = arg._arg
             self._keep_all_rows = arg._keep_all_rows
-            return
 
-        super().__init__()
+    @classmethod
+    def create(cls, arg, group, attributes=None, named_attributes=None, keep_all_rows=False):
         if not isinstance(group, RelationalOperand):
             raise DataJointError('a relation can only be joined with another relation')
-        self._keep_all_rows = keep_all_rows
+        obj = cls()
+        obj._keep_all_rows = keep_all_rows
         if not(set(group.primary_key) - set(arg.primary_key) or set(group.primary_key) == set(arg.primary_key)):
             raise DataJointError(
                 'The aggregated relation should have additional fields in its primary key for aggregation to work')
-        if isinstance(arg, U):
-            self._arg = Join.make_argument_subquery(group)
-        else:
-            self._arg = Join(arg, group, keep_all_rows=keep_all_rows)
-        self._connection = self._arg.connection
+        obj._arg = (Join.make_argument_subquery(group) if isinstance(arg, U)
+                    else Join.create(arg, group, keep_all_rows=keep_all_rows))
+        obj._connection = obj._arg.connection
         # always include primary key of arg
         attributes = (list(a for a in arg.primary_key if a not in named_attributes.values()) +
                       list(a for a in attributes if a not in arg.primary_key))
-        self._heading = self._arg.heading.project(
+        obj._heading = obj._arg.heading.project(
             attributes, named_attributes, force_primary_key=arg.primary_key)
+        return obj
 
-    def make_sql(self):
+    def make_sql(self, select_fields=None):
         return 'SELECT {fields} FROM {from_}{where} GROUP  BY `{group_by}`{having}'.format(
-            fields=self.select_fields,
+            fields=select_fields or self.select_fields,
             from_=self._arg.from_clause,
             where=self._arg.where_clause,
             group_by='`,`'.join(self.primary_key),
             having=re.sub(r'^ WHERE', ' HAVING', self.where_clause))
 
     def __len__(self):
-        return len(Subquery.make(self))
+        return len(Subquery.create(self))
 
 
 class Subquery(RelationalOperand):
@@ -571,26 +597,24 @@ class Subquery(RelationalOperand):
     __counter = 0
 
     def __init__(self, arg=None):
-        if arg is None:
-            super().__init__()
-        else:  # copy constructor
-            assert isinstance(arg, Subquery)
-            super().__init__(arg)
+        super().__init__(arg)
+        if arg is not None:
             # copy constructor
+            assert isinstance(arg, Subquery)
             self._connection = arg.connection
             self._heading = arg.heading
             self._arg = arg._arg
 
-    @staticmethod
-    def make(arg):
+    @classmethod
+    def create(cls, arg):
         """
-        construct subquery of the query arg
+        construct a subquery from arg
         """
-        self = Subquery()
-        self._connection = arg.connection
-        self._heading = arg.heading.make_subquery_heading()
-        self._arg = arg
-        return self
+        obj = cls()
+        obj._connection = arg.connection
+        obj._heading = arg.heading.make_subquery_heading()
+        obj._arg = arg
+        return obj
 
     @property
     def counter(self):
@@ -665,8 +689,8 @@ class U:
     def __and__(self, relation):
         if not isinstance(relation, RelationalOperand):
             raise DataJointError('Relation U can only be restricted with another relation.')
-        return Projection(relation, attributes=self.primary_key,
-                          named_attributes=dict(), include_primary_key=False)
+        return Projection.create(relation, attributes=self.primary_key,
+                                 named_attributes=dict(), include_primary_key=False)
 
     def __mul__(self, relation):
         """
@@ -689,4 +713,4 @@ class U:
         :param named_attributes: computations of the form new_attribute="sql expression on attributes of group"
         :return: The new relation
         """
-        return GroupBy(self, group=group, keep_all_rows=False, attributes=(), named_attributes=named_attributes)
+        return GroupBy.create(self, group=group, keep_all_rows=False, attributes=(), named_attributes=named_attributes)

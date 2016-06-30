@@ -72,7 +72,7 @@ class TestDelete:
                     'schema is not populated')
         try:
             L().delete()
-        except Exception as e:
+        except Exception:
             raise
 
         assert_false(bool(L() or D() or E() or E.F()), 'incomplete delete')
