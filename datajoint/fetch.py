@@ -114,7 +114,8 @@ class Fetch(FetchBase, Callable, Iterable):
                                for name in heading.names)
                    for d in cur.fetchall()]
         else:
-            ret = np.array(list(cur.fetchall()), dtype=heading.as_dtype)
+            ret = list(cur.fetchall())
+            ret = np.array(ret, dtype=heading.as_dtype)
             for blob_name in heading.blobs:
                 ret[blob_name] = list(map(unpack, ret[blob_name]))
 

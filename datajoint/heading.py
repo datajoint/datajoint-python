@@ -234,9 +234,13 @@ class Heading:
     def join(self, other):
         """
         Join two headings into a new one.
+        It assumes that self and other are headings that share no common dependent attributes.
         """
-        return Heading([v.todict() for v in self.attributes.values()] + [
-            other.attributes[name].todict() for name in other.names if name not in self.names])
+        return Heading(
+            [self.attributes[name].todict() for name in self.primary_key] +
+            [other.attributes[name].todict() for name in other.primary_key if name not in self.primary_key] +
+            [self.attributes[name].todict() for name in self.dependent_attributes if name not in other.primary_key] +
+            [other.attributes[name].todict() for name in other.dependent_attributes if name not in self.primary_key])
 
     def make_subquery_heading(self):
         """
