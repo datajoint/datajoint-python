@@ -161,7 +161,11 @@ def compile_attribute(line, in_key=False):
     :returns: (name, sql) -- attribute name and sql code for its declaration
     """
 
-    match = attribute_parser.parseString(line+'#', parseAll=True)
+    try:
+        match = attribute_parser.parseString(line+'#', parseAll=True)
+    except pp.ParseException:
+        logger.error('Declaration error in line: ', line)
+        raise
     match['comment'] = match['comment'].rstrip('#')
     if 'default' not in match:
         match['default'] = ''

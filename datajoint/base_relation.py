@@ -1,5 +1,6 @@
 import collections
 import itertools
+import inspect
 import numpy as np
 import logging
 from . import config, DataJointError
@@ -314,6 +315,52 @@ class BaseRelation(RelationalOperand):
                 database=self.database, table=self.table_name), as_dict=True).fetchone()
         return ret['Data_length'] + ret['Index_length']
 
+    @property
+    def real_definition(self):
+        """
+        :return:  the definition string for the relation using DataJoint DDL.
+        This does not yet work for aliased foreign keys.
+        """
+        self.connection.dependencies.load()
+        parents = {r: FreeRelation(self.connection, r).primary_key for r in self.parents()}
+        in_key = True
+        definition = '# ' + self.heading.table_info['comment'] + '\n'
+        attributes_thus_far = set()
+        for attr in self.heading.attributes.values():
+            if in_key and not attr.in_key:
+                definition += '---\n'
+                in_key = False
+            attributes_thus_far.add(attr.name)
+            do_include = True
+            for parent, primary_key in list(parents.items()):
+                if attributes_thus_far.issuperset(primary_key):
+                    parents.pop(parent)
+                    definition += '-> ' + self.lookup_table_name(parent) + '\n'
+                    do_include = False
+            if do_include:
+                definition += '%-20s : %-28s # %s\n' % (
+                    attr.name if attr.default is None else '%s="%s"' % (attr.name, attr.default),
+                    '%s%s' % (attr.type, 'auto_increment' if attr.autoincrement else ''), attr.comment)
+        return definition
+
+    def lookup_table_name(self, name):
+        """
+        given the name of another table in the form `database`.`table_name`, find its class in the context
+        :param name: `database`.`table_name`
+        :return: class name found in the context.
+        """
+        def _lookup(context, name):
+            for member_name, member in context.items():
+                if inspect.isclass(member) and issubclass(member, BaseRelation) and member.full_table_name == name:
+                    return member_name
+                if inspect.ismodule(member) and member.__name__ != 'datajoint':
+                    candidate_name = _lookup(dict(inspect.getmembers(member)), name)
+                    if candidate_name != name:
+                        return member_name + '.' + candidate_name
+            return name
+
+        return _lookup(self._context, name)
+
 
 class FreeRelation(BaseRelation):
     """
@@ -342,3 +389,5 @@ class FreeRelation(BaseRelation):
         :return: the table name in the database
         """
         return self._table_name
+
+
