@@ -1,7 +1,7 @@
-import re
 from nose.tools import assert_true, assert_false, assert_equal, assert_list_equal, raises
 from . import schema
 import datajoint as dj
+from datajoint.declare import declare
 
 auto = schema.Auto()
 auto.fill()
@@ -24,8 +24,9 @@ class TestDeclare:
     def test_real_definition():
         """real_definition should match original definition"""
         rel = schema.Experiment()
-        s1 = re.sub('r\s+', rel.definition, '')
-        s2 = re.sub('r\s+', rel.real_definition, '')
+        context = rel._context
+        s1 = declare(rel.full_table_name, rel.definition, context)
+        s2 = declare(rel.full_table_name, rel.real_definition, context)
         assert_equal(s1, s2)
 
     @staticmethod

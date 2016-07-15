@@ -17,7 +17,7 @@ import os
 
 __author__ = "Dimitri Yatsenko, Edgar Walker, and Fabian Sinz at Baylor College of Medicine"
 __version__ = "0.3.0"
-__date__ = "July 7, 2016"
+__date__ = "July 14, 2016"
 __all__ = ['__author__', '__version__',
            'config', 'conn', 'kill', 'BaseRelation',
            'Connection', 'Heading', 'FreeRelation', 'Not', 'schema',
