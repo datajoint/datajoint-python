@@ -315,8 +315,7 @@ class BaseRelation(RelationalOperand):
                 database=self.database, table=self.table_name), as_dict=True).fetchone()
         return ret['Data_length'] + ret['Index_length']
 
-    @property
-    def real_definition(self):
+    def show_definition(self):
         """
         :return:  the definition string for the relation using DataJoint DDL.
         This does not yet work for aliased foreign keys.
