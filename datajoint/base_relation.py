@@ -333,10 +333,11 @@ class BaseRelation(RelationalOperand):
             attributes_thus_far.add(attr.name)
             do_include = True
             for parent, primary_key in list(parents.items()):
+                if attr.name in primary_key:
+                    do_include = False
                 if attributes_thus_far.issuperset(primary_key):
                     parents.pop(parent)
                     definition += '-> ' + self.lookup_table_name(parent) + '\n'
-                    do_include = False
             if do_include:
                 definition += '%-20s : %-28s # %s\n' % (
                     attr.name if attr.default is None else '%s=%s' % (attr.name, attr.default),

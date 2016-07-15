@@ -166,7 +166,6 @@ class Heading:
             ('int', True): np.uint32,
             ('bigint', False): np.int64,
             ('bigint', True): np.uint64
-            # TODO: include types DECIMAL and NUMERIC
             }
 
         sql_literals = ['CURRENT_TIMESTAMP']

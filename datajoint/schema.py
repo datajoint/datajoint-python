@@ -1,5 +1,4 @@
 import warnings
-
 import pymysql
 import logging
 import inspect
