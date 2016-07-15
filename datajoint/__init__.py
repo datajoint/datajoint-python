@@ -16,13 +16,14 @@ import logging
 import os
 
 __author__ = "Dimitri Yatsenko, Edgar Walker, and Fabian Sinz at Baylor College of Medicine"
-__version__ = "0.2.8"
-__date__ = "July 1, 2016"
+__version__ = "0.3.0"
+__date__ = "July 14, 2016"
 __all__ = ['__author__', '__version__',
            'config', 'conn', 'kill', 'BaseRelation',
            'Connection', 'Heading', 'FreeRelation', 'Not', 'schema',
            'Manual', 'Lookup', 'Imported', 'Computed', 'Part',
-           'AndList', 'OrList', 'ERD', 'U']
+           'AndList', 'OrList', 'ERD', 'U',
+           'set_password']
 
 print('DataJoint', __version__, '('+__date__+')')
 
@@ -81,3 +82,4 @@ from .heading import Heading
 from .schema import Schema as schema
 from .kill import kill
 from .erd import ERD
+from .admin import set_password

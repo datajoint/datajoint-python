@@ -19,22 +19,13 @@ class Attribute(namedtuple('_Attribute', default_attribute_properties.keys())):
     @property
     def sql(self):
         """
-        Convert attribute tuple into its SQL CREATE TABLE clause.
+        Convert primary key attribute tuple into its SQL CREATE TABLE clause.
+        Default values are not reflected.
         :return: SQL code
         """
-        sql_literals = ['CURRENT_TIMESTAMP']    # SQL literals that can be used as default values
-        if self.nullable:
-            default = 'DEFAULT NULL'
-        else:
-            default = 'NOT NULL'
-            if self.default:
-                # enclose value in quotes except special SQL values or already enclosed
-                quote = self.default.upper() not in sql_literals and self.default[0] not in '"\''
-                default += ' DEFAULT ' + ('"%s"' if quote else "%s") % self.default
-        if any(c in r'\"' for c in self.comment):
-            raise DataJointError('Illegal characters in attribute comment "%s"' % self.comment)
-        return '`{name}` {type} {default} COMMENT "{comment}"'.format(
-            name=self.name, type=self.type, default=default, comment=self.comment)
+        assert self.in_key and not self.nullable   # primary key attributes are never nullable
+        return '`{name}` {type} NOT NULL COMMENT "{comment}"'.format(
+            name=self.name, type=self.type, comment=self.comment)
 
 
 class Heading:
@@ -99,7 +90,7 @@ class Heading:
                 ret += '---\n'
                 in_key = False
             ret += '%-20s : %-28s # %s\n' % (
-                v.name if v.default is None else '%s="%s"' % (v.name, v.default),
+                v.name if v.default is None else '%s=%s' % (v.name, v.default),
                 '%s%s' % (v.type, 'auto_increment' if v.autoincrement else ''), v.comment)
         return ret
 
@@ -175,17 +166,22 @@ class Heading:
             ('int', True): np.uint32,
             ('bigint', False): np.int64,
             ('bigint', True): np.uint64
-            # TODO: include types DECIMAL and NUMERIC
             }
+
+        sql_literals = ['CURRENT_TIMESTAMP']
 
         # additional attribute properties
         for attr in attributes:
             attr['nullable'] = (attr['nullable'] == 'YES')
             attr['in_key'] = (attr['in_key'] == 'PRI')
             attr['autoincrement'] = bool(re.search(r'auto_increment', attr['Extra'], flags=re.IGNORECASE))
+            attr['type'] = re.sub(r'int\(\d+\)', 'int', attr['type'], count=1)   # strip size off integers
             attr['numeric'] = bool(re.match(r'(tiny|small|medium|big)?int|decimal|double|float', attr['type']))
             attr['string'] = bool(re.match(r'(var)?char|enum|date|time|timestamp', attr['type']))
             attr['is_blob'] = bool(re.match(r'(tiny|medium|long)?blob', attr['type']))
+
+            if attr['string'] and attr['default'] is not None and attr['default'] not in sql_literals:
+                attr['default'] = '"%s"' % attr['default']
 
             attr['sql_expression'] = None
             if not (attr['numeric'] or attr['string'] or attr['is_blob']):
