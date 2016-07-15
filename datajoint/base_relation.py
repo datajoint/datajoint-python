@@ -339,7 +339,7 @@ class BaseRelation(RelationalOperand):
                     do_include = False
             if do_include:
                 definition += '%-20s : %-28s # %s\n' % (
-                    attr.name if attr.default is None else '%s="%s"' % (attr.name, attr.default),
+                    attr.name if attr.default is None else '%s=%s' % (attr.name, attr.default),
                     '%s%s' % (attr.type, 'auto_increment' if attr.autoincrement else ''), attr.comment)
         return definition
 
@@ -349,12 +349,12 @@ class BaseRelation(RelationalOperand):
         :param name: `database`.`table_name`
         :return: class name found in the context.
         """
-        def _lookup(context, name):
+        def _lookup(context, name, level=0):
             for member_name, member in context.items():
                 if inspect.isclass(member) and issubclass(member, BaseRelation) and member.full_table_name == name:
                     return member_name
-                if inspect.ismodule(member) and member.__name__ != 'datajoint':
-                    candidate_name = _lookup(dict(inspect.getmembers(member)), name)
+                if level < 5 and inspect.ismodule(member) and member.__name__ != 'datajoint':
+                    candidate_name = _lookup(dict(inspect.getmembers(member)), name, level+1)
                     if candidate_name != name:
                         return member_name + '.' + candidate_name
             return name

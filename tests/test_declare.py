@@ -1,3 +1,4 @@
+import re
 from nose.tools import assert_true, assert_false, assert_equal, assert_list_equal, raises
 from . import schema
 import datajoint as dj
@@ -18,6 +19,14 @@ class TestDeclare:
     def test_schema_decorator():
         assert_true(issubclass(schema.Subject, dj.Manual))
         assert_true(not issubclass(schema.Subject, dj.Part))
+
+    @staticmethod
+    def test_real_definition():
+        """real_definition should match original definition"""
+        rel = schema.Experiment()
+        s1 = re.sub('r\s+', rel.definition, '')
+        s2 = re.sub('r\s+', rel.real_definition, '')
+        assert_equal(s1, s2)
 
     @staticmethod
     def test_attributes():

@@ -171,4 +171,3 @@ class Schema:
         :return: jobs relation
         """
         return self.connection.jobs[self.database]
-
