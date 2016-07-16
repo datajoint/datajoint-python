@@ -339,7 +339,7 @@ class BaseRelation(RelationalOperand):
                     definition += '-> ' + self.lookup_table_name(parent) + '\n'
             if do_include:
                 definition += '%-20s : %-28s # %s\n' % (
-                    attr.name if attr.default is None else '%s=%s' % (attr.name, attr.default),
+                    attr.name if attr.default is None else '%s = %s' % (attr.name, attr.default),
                     '%s%s' % (attr.type, 'auto_increment' if attr.autoincrement else ''), attr.comment)
         print(definition)
         return definition
