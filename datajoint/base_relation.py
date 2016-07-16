@@ -37,6 +37,10 @@ class BaseRelation(RelationalOperand):
             self._heading.init_from_database(self.connection, self.database, self.table_name)
         return self._heading
 
+    @property
+    def context(self):
+        return self._context
+
     def declare(self):
         """
         Loads the table heading. If the table is not declared, use self.definition to declare
@@ -336,7 +340,7 @@ class BaseRelation(RelationalOperand):
                     do_include = False
                 if attributes_thus_far.issuperset(primary_key):
                     parents.pop(parent)
-                    definition += '-> ' + self.lookup_table_name(parent) + '\n'
+                    definition += '-> ' + lookup_class_name(self.context, parent) + '\n'
             if do_include:
                 definition += '%-20s : %-28s # %s\n' % (
                     attr.name if attr.default is None else '%s = %s' % (attr.name, attr.default),
@@ -344,34 +348,34 @@ class BaseRelation(RelationalOperand):
         print(definition)
         return definition
 
-    def lookup_table_name(self, name):
-        """
-        given the name of another table in the form `database`.`table_name`, find its class in the context
-        :param name: `database`.`table_name`
-        :return: class name found in the context.
-        """
-        def _lookup(context, name, level=0):
-            for member_name, member in context.items():
-                if inspect.isclass(member) and issubclass(member, BaseRelation):
-                    if member.full_table_name == name:
-                        return member_name
-                    # check subtables
-                    try:
-                        parts = member._ordered_class_members
-                    except AttributeError:
-                        pass  # not a UserRelation
-                    else:
-                        for part in parts:
-                            part = getattr(member, part)
-                            if inspect.isclass(part) and issubclass(part, BaseRelation) and part.full_table_name == name:
-                                return member_name + '.' + part.__name__
-                elif level < 5 and inspect.ismodule(member) and member.__name__ != 'datajoint':
-                    candidate_name = _lookup(dict(inspect.getmembers(member)), name, level+1)
-                    if candidate_name != name:
-                        return member_name + '.' + candidate_name
-            return name
 
-        return _lookup(self._context, name)
+def lookup_class_name(context, name, levels=4):
+    """
+    given the name of another table in the form `database`.`table_name`, find its class in the context
+    :param context: dictionary representing the namespace
+    :param name: `database`.`table_name`
+    :param levels: the limit on how deep to go into imported modules, helps avoid infinite recursion.
+    :return: class name found in the context.
+    """
+    for member_name, member in context.items():
+        if inspect.isclass(member) and issubclass(member, BaseRelation):
+            if member.full_table_name == name:
+                return member_name
+            # check part tables
+            try:
+                parts = member._ordered_class_members
+            except AttributeError:
+                pass  # not a UserRelation
+            else:
+                for part in parts:
+                    part = getattr(member, part)
+                    if inspect.isclass(part) and issubclass(part, BaseRelation) and part.full_table_name == name:
+                        return member_name + '.' + part.__name__
+        elif levels and inspect.ismodule(member) and member.__name__ != 'datajoint':
+            candidate_name = lookup_class_name(dict(inspect.getmembers(member)), name, levels-1)
+            if candidate_name != name:
+                return member_name + '.' + candidate_name
+    return name
 
 
 class FreeRelation(BaseRelation):

@@ -6,7 +6,7 @@ import re
 from . import conn, DataJointError, config
 from .heading import Heading
 from .utils import user_choice, to_camel_case
-from .user_relations import UserRelation, Part, Computed, Imported, Manual, Lookup
+from .user_relations import Part, Computed, Imported, Manual, Lookup
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +117,6 @@ class Schema:
         cur = self.connection.query("SHOW DATABASES LIKE '{database}'".format(database=self.database))
         return cur.rowcount > 0
 
-
     def process_relation_class(self, relation_class, context, assert_declared=False):
         """
         assign schema properties to the relation class and declare the table
@@ -140,7 +139,6 @@ class Schema:
                             table=instance.__class__.__name__))
                 else:
                     instance.insert(contents, skip_duplicates=True)
-
 
     def __call__(self, cls):
         """
@@ -170,3 +168,4 @@ class Schema:
         :return: jobs relation
         """
         return self.connection.jobs[self.database]
+
