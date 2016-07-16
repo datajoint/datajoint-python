@@ -341,6 +341,7 @@ class BaseRelation(RelationalOperand):
                 definition += '%-20s : %-28s # %s\n' % (
                     attr.name if attr.default is None else '%s=%s' % (attr.name, attr.default),
                     '%s%s' % (attr.type, 'auto_increment' if attr.autoincrement else ''), attr.comment)
+        print(definition)
         return definition
 
     def lookup_table_name(self, name):
@@ -351,9 +352,20 @@ class BaseRelation(RelationalOperand):
         """
         def _lookup(context, name, level=0):
             for member_name, member in context.items():
-                if inspect.isclass(member) and issubclass(member, BaseRelation) and member.full_table_name == name:
-                    return member_name
-                if level < 5 and inspect.ismodule(member) and member.__name__ != 'datajoint':
+                if inspect.isclass(member) and issubclass(member, BaseRelation):
+                    if member.full_table_name == name:
+                        return member_name
+                    # check subtables
+                    try:
+                        parts = member._ordered_class_members
+                    except AttributeError:
+                        pass  # not a UserRelation
+                    else:
+                        for part in parts:
+                            part = getattr(member, part)
+                            if inspect.isclass(part) and issubclass(part, BaseRelation) and part.full_table_name == name:
+                                return member_name + '.' + part.__name__
+                elif level < 5 and inspect.ismodule(member) and member.__name__ != 'datajoint':
                     candidate_name = _lookup(dict(inspect.getmembers(member)), name, level+1)
                     if candidate_name != name:
                         return member_name + '.' + candidate_name
