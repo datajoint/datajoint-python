@@ -14,13 +14,6 @@ DataJoint for Python is a high-level programming interface for relational databa
 
 DataJoint was initially developed in 2009 by Dimitri Yatsenko in Andreas Tolias' Lab for the distributed processing and management of large volumes of data streaming from regular experiments. Starting in 2011, DataJoint has been available as an open-source project adopted by other labs and improved through contributions from several developers.
 
-## Release notes
-### 0.3.2.   
-* Fixed issue #223:  `insert` can insert relations without fetching
-* ERD() now takes the `context` argument, which specifies in which context to look for classes. The default is taken from the argument (schema or relation).
-* ERD.draw() no longer has the `prefix` argument: class names are shown as found in the 
-    
-
 ## Quick start guide
 The current pip version is ancient. We will update it as soon as datajoint release 1.0 is out. 
 ~~To install datajoint using `pip` just run:~~
