@@ -183,6 +183,9 @@ class Heading:
             if attr['string'] and attr['default'] is not None and attr['default'] not in sql_literals:
                 attr['default'] = '"%s"' % attr['default']
 
+            if attr['nullable']:   # nullable fields always default to null
+                attr['default'] = 'null'
+
             attr['sql_expression'] = None
             if not (attr['numeric'] or attr['string'] or attr['is_blob']):
                 raise DataJointError('Unsupported field type {field} in `{database}`.`{table_name}`'.format(

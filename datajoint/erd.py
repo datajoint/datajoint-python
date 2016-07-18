@@ -1,20 +1,13 @@
 import networkx as nx
-import numpy as np
 import re
+import numpy as np
 from scipy.optimize import basinhopping
 import itertools
 import inspect
 from . import Manual, Imported, Computed, Lookup, Part, DataJointError
+from .base_relation import lookup_class_name
 
 user_relation_classes = (Manual, Lookup, Computed, Imported, Part)
-
-
-def _get_concrete_subclasses(class_list):
-    for cls in class_list:
-        for subclass in cls.__subclasses__():
-            if not inspect.isabstract(subclass):
-                yield subclass
-            yield from _get_concrete_subclasses([subclass])
 
 
 def _get_tier(table_name):
@@ -30,43 +23,51 @@ class ERD(nx.DiGraph):
     Entity relationship diagram.
 
     Usage:
-    >>>  erd = Erd(source)
-    source can be a base relation object, a base relation class, a schema, or a module that has a schema
-    or source can be a sequence of such objects.
+    >>>  erd = Erd(source, context=None)
+    source can be a base relation object, a base relation class, a schema, or a module that has a schema.
+    context is the namespace in which to search for classes. If None (default), looks
+    in source.context or source.schema.context
 
     >>> erd.draw()
     draws the diagram using pyplot
 
     erd1 + erd2  - combines the two ERDs.
     erd + n   - adds n levels of successors
-    erd - n   - adds n levens of predecessors
+    erd - n   - adds n levels of predecessors
     Thus dj.ERD(schema.Table)+1-1 defines the diagram of immediate ancestors and descendants of schema.Table
 
     Note that erd + 1 - 1  may differ from erd - 1 + 1 and so forth.
     Only those tables that are loaded in the connection object are displayed
     """
-    def __init__(self, source):
+    def __init__(self, source, context=None):
 
         if isinstance(source, ERD):
             # copy constructor
             self.nodes_to_show = set(source.nodes_to_show)
+            self._context = source._context
             super().__init__(source)
             return
 
-        # if source is not a list, make it a list
+        # find connection in the source
         try:
-            source[0]
-        except (TypeError, KeyError):
-            source = [source]
-
-        # find connection in the first item in the list
-        try:
-            connection = source[0].connection
+            connection = source.connection
         except AttributeError:
             try:
-                connection = source[0].schema.connection
+                connection = source.schema.connection
             except AttributeError:
-                raise DataJointError('Could find database connection in %s' % repr(source[0]))
+                raise DataJointError('Could not find database connection in %s' % repr(source[0]))
+
+        if context is None:
+            # find context in the source
+            try:
+                context = source.context
+            except AttributeError:
+                try:
+                    context = source.schema.context
+                except AttributeError:
+                    raise DataJointError('Could not find context in %s' % repr(source[0]))
+
+        self._context = context
 
         # initialize graph from dependencies
         connection.dependencies.load()
@@ -74,20 +75,19 @@ class ERD(nx.DiGraph):
 
         # Enumerate nodes from all the items in the list
         self.nodes_to_show = set()
-        for source in source:
+        try:
+            self.nodes_to_show.add(source.full_table_name)
+        except AttributeError:
             try:
-                self.nodes_to_show.add(source.full_table_name)
+                database = source.database
             except AttributeError:
                 try:
-                    database = source.database
+                    database = source.schema.database
                 except AttributeError:
-                    try:
-                        database = source.schema.database
-                    except AttributeError:
-                        raise DataJointError('Cannot plot ERD for %s' % repr(source))
-                for node in self:
-                    if node.startswith('`%s`' % database):
-                        self.nodes_to_show.add(node)
+                    raise DataJointError('Cannot plot ERD for %s' % repr(source))
+            for node in self:
+                if node.startswith('`%s`' % database):
+                    self.nodes_to_show.add(node)
 
     def __add__(self, arg):
         """
@@ -131,31 +131,25 @@ class ERD(nx.DiGraph):
         self.nodes_to_show.intersection_update(arg.nodes_to_show)
         return self
 
-    def _make_graph(self, prefix):
+    def _make_graph(self):
         """
         Make the self.graph - a graph object ready for drawing
         """
         graph = nx.DiGraph(self).subgraph(self.nodes_to_show)
         nx.set_node_attributes(graph, 'node_type', {n: _get_tier(n.split('`')[-2]) for n in graph})
         # relabel nodes to class names
-        class_list = list(cls for cls in _get_concrete_subclasses(user_relation_classes))
-        mapping = {
-            cls.full_table_name:
-                (cls._context['__name__'] + '.'
-                 if (prefix and cls._context['__name__'] != '__main__') else '') +
-                (cls._master.__name__+'.' if issubclass(cls, Part) else '') + cls.__name__
-                   for cls in class_list if cls.full_table_name in graph}
+        mapping = {node: lookup_class_name(self._context, node) for node in graph.nodes()}
         new_names = [mapping.values()]
         if len(new_names) > len(set(new_names)):
             raise DataJointError('Some classes have identical names. The ERD cannot be plotted.')
         nx.relabel_nodes(graph, mapping, copy=False)
         return graph
 
-    def draw(self, pos=None, layout=None, prefix=True, font_scale=1.2, **layout_options):
+    def draw(self, pos=None, layout=None, font_scale=1.2, **layout_options):
         if not self.nodes_to_show:
             print('There is nothing to plot')
             return
-        graph = self._make_graph(prefix)
+        graph = self._make_graph()
         if pos is None:
             pos = (layout if layout else self._layout)(graph, **layout_options)
         import matplotlib.pyplot as plt
