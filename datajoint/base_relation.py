@@ -387,9 +387,13 @@ def lookup_class_name(context, name, levels=4):
                     if inspect.isclass(part) and issubclass(part, BaseRelation) and part.full_table_name == name:
                         return member_name + '.' + part.__name__
         elif levels and inspect.ismodule(member) and member.__name__ != 'datajoint':
-            candidate_name = lookup_class_name(dict(inspect.getmembers(member)), name, levels-1)
-            if candidate_name != name:
-                return member_name + '.' + candidate_name
+            try:
+                candidate_name = lookup_class_name(dict(inspect.getmembers(member)), name, levels-1)
+            except ImportError:
+                pass
+            else:
+                if candidate_name != name:
+                    return member_name + '.' + candidate_name
     return name
 
 
