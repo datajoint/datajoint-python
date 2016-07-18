@@ -84,6 +84,12 @@ class TestRelation:
     def test_wrong_insert_type(self):
         self.user.insert1(3)
 
+    def test_insert_select(self):
+        original_length = len(self.subject)
+        self.subject.insert(self.subject.proj(
+            'real_id', 'date_of_birth', 'subject_notes', subject_id='subject_id+1000', species='"human"'))
+        assert_equal(len(self.subject), 2*original_length)
+
     def test_replace(self):
         """
         Test replacing or ignoring duplicate entries

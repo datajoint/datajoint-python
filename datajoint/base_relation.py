@@ -102,16 +102,18 @@ class BaseRelation(RelationalOperand):
     def insert1(self, row, **kwargs):
         """
         Insert one data record or one Mapping (like a dict).
-        :param row: Data record, a Mapping (like a dict), or a list or tuple with ordered values.
+        :param row: a numpy record, a dict-like object, or an ordered sequence to be inserted as one row.
+        For kwargs, see insert()
         """
         self.insert((row,), **kwargs)
 
     def insert(self, rows, replace=False, ignore_errors=False, skip_duplicates=False):
         """
-        Insert a collection of rows. Additional keyword arguments are passed to insert1.
+        Insert a collection of rows.
 
-        :param rows: An iterable where an element is a valid arguments for insert1.
-        :param replace: If True, replaces the matching data tuple in the table if it exists.
+        :param rows: An iterable where an element is a numpy record, a dict-like object, or an ordered sequence.
+        rows may also be another relation with the same heading.
+        :param replace: If True, replaces the existing tuple.
         :param ignore_errors: If True, ignore errors: e.g. constraint violations.
         :param skip_duplicates: If True, silently skip duplicate inserts.
 
@@ -120,6 +122,19 @@ class BaseRelation(RelationalOperand):
         >>>     dict(subject_id=7, species="mouse", date_of_birth="2014-09-01"),
         >>>     dict(subject_id=8, species="mouse", date_of_birth="2014-09-02")])
         """
+
+        if isinstance(rows, RelationalOperand):
+            # INSERT FROM SELECT
+            if skip_duplicates:
+                ignore_errors = True
+            query = 'INSERT{ignore} INTO {table} ({fields}) {select}'.format(
+                ignore=" IGNORE" if ignore_errors else "",
+                table=self.full_table_name,
+                fields='`'+'`,`'.join(rows.heading.names)+'`',
+                select=rows.make_sql())
+            self.connection.query(query)
+            return
+
         heading = self.heading
         field_list = None  # ensures that all rows have the same attributes in the same order as the first row.
 

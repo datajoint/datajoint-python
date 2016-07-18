@@ -24,8 +24,7 @@ class ERD(nx.DiGraph):
 
     Usage:
     >>>  erd = Erd(source, context=None)
-    source can be a base relation object, a base relation class, a schema, or a module that has a schema
-    or source can be a sequence of such objects.
+    source can be a base relation object, a base relation class, a schema, or a module that has a schema.
     context is the namespace in which to search for classes. If None (default), looks
     in source.context or source.schema.context
 
@@ -34,7 +33,7 @@ class ERD(nx.DiGraph):
 
     erd1 + erd2  - combines the two ERDs.
     erd + n   - adds n levels of successors
-    erd - n   - adds n levens of predecessors
+    erd - n   - adds n levels of predecessors
     Thus dj.ERD(schema.Table)+1-1 defines the diagram of immediate ancestors and descendants of schema.Table
 
     Note that erd + 1 - 1  may differ from erd - 1 + 1 and so forth.
