@@ -3,9 +3,9 @@ import re
 import numpy as np
 from scipy.optimize import basinhopping
 import itertools
-import inspect
 from . import Manual, Imported, Computed, Lookup, Part, DataJointError
 from .base_relation import lookup_class_name
+
 
 user_relation_classes = (Manual, Lookup, Computed, Imported, Part)
 

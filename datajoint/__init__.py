@@ -16,7 +16,7 @@ import logging
 import os
 
 __author__ = "Dimitri Yatsenko, Edgar Walker, and Fabian Sinz at Baylor College of Medicine"
-__version__ = "0.3.2"
+__version__ = "0.3.3"
 __date__ = "July 18, 2016"
 __all__ = ['__author__', '__version__',
            'config', 'conn', 'kill', 'BaseRelation',
@@ -26,6 +26,8 @@ __all__ = ['__author__', '__version__',
            'set_password']
 
 print('DataJoint', __version__, '('+__date__+')')
+
+logging.captureWarnings(True)
 
 
 class key:
