@@ -6,3 +6,6 @@
 
 ### 0.3.3
 * Suppressed warnings (redirected them to logging).  Previoiusly, scipy would throw warnings in ERD, for example.
+* Added ERD.from_sequence as a shortcut to combining the ERDs of multiple sources
+* ERD() no longer text the context argument.
+* ERD.draw() now takes an optional context argument.  By default uses the caller's locals.
