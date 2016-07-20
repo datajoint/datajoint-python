@@ -1,6 +1,7 @@
 import networkx as nx
 import re
 import numpy as np
+import functools
 from scipy.optimize import basinhopping
 import itertools
 from . import Manual, Imported, Computed, Lookup, Part, DataJointError
@@ -73,6 +74,15 @@ class ERD(nx.DiGraph):
             for node in self:
                 if node.startswith('`%s`' % database):
                     self.nodes_to_show.add(node)
+
+    @classmethod
+    def from_sequence(cls, sequence):
+        """
+        The join ERD for all objects in sequence
+        :param sequence: a sequence (e.g. list, tuple)
+        :return: ERD(arg1) + ... + ERD(argn)
+        """
+        return functools.reduce(lambda x, y: x+y, map(ERD, sequence))
 
     def __add__(self, arg):
         """
