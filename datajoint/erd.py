@@ -14,7 +14,7 @@ user_relation_classes = (Manual, Lookup, Computed, Imported, Part)
 def _get_tier(table_name):
     try:
         return next(tier for tier in user_relation_classes
-                    if re.fullmatch(tier.tier_regexp, table_name))
+                    if re.fullmatch(tier.tier_regexp, table_name.split('`')[-2]))
     except StopIteration:
         return None
 
@@ -84,6 +84,25 @@ class ERD(nx.DiGraph):
         """
         return functools.reduce(lambda x, y: x+y, map(ERD, sequence))
 
+    def add_parts(self):
+        """
+        Adds to the diagram the part tables of tables already included in the diagram
+        :return:
+        """
+        def is_part(part, master):
+            """
+            :param part:  `database`.`table_name`
+            :param master:   `database`.`table_name`
+            :return: True if part is part of master,
+            """
+            part = [s.strip('`') for s in part.split('.')]
+            master = [s.strip('`') for s in master.split('.')]
+            return master[0] == part[0] and master[1] + '__' == part[1][:len(master[1])+2]
+
+        self = ERD(self)  #  copy
+        self.nodes_to_show.update(n for n in self.nodes() if any(is_part(n, m) for m in self.nodes_to_show))
+        return self
+
     def __add__(self, arg):
         """
         :param arg: either another ERD or a positive integer.
@@ -93,11 +112,14 @@ class ERD(nx.DiGraph):
         try:
             self.nodes_to_show.update(arg.nodes_to_show)
         except AttributeError:
-            for i in range(arg):
-                new = nx.algorithms.boundary.node_boundary(self, self.nodes_to_show)
-                if not new:
-                    break
-                self.nodes_to_show.update(new)
+            try:
+                self.nodes_to_show.add(arg.full_table_name)
+            except AttributeError:
+                for i in range(arg):
+                    new = nx.algorithms.boundary.node_boundary(self, self.nodes_to_show)
+                    if not new:
+                        break
+                    self.nodes_to_show.update(new)
         return self
 
     def __sub__(self, arg):
@@ -109,11 +131,14 @@ class ERD(nx.DiGraph):
         try:
             self.nodes_to_show.difference_update(arg.nodes_to_show)
         except AttributeError:
-            for i in range(arg):
-                new = nx.algorithms.boundary.node_boundary(nx.DiGraph(self).reverse(), self.nodes_to_show)
-                if not new:
-                    break
-                self.nodes_to_show.update(new)
+            try:
+                self.nodes_to_show.remove(arg.full_table_name)
+            except AttributeError:
+                for i in range(arg):
+                    new = nx.algorithms.boundary.node_boundary(nx.DiGraph(self).reverse(), self.nodes_to_show)
+                    if not new:
+                        break
+                    self.nodes_to_show.update(new)
         return self
 
     def __mul__(self, arg):
@@ -131,7 +156,7 @@ class ERD(nx.DiGraph):
         Make the self.graph - a graph object ready for drawing
         """
         graph = nx.DiGraph(self).subgraph(self.nodes_to_show)
-        nx.set_node_attributes(graph, 'node_type', {n: _get_tier(n.split('`')[-2]) for n in graph})
+        nx.set_node_attributes(graph, 'node_type', {n: _get_tier(n) for n in graph})
         # relabel nodes to class names
         mapping = {node: lookup_class_name(node, context) for node in graph.nodes()}
         new_names = [mapping.values()]
