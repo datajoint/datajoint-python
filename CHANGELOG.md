@@ -3,3 +3,9 @@
 * Fixed issue #223:  `insert` can insert relations without fetching
 * ERD() now takes the `context` argument, which specifies in which context to look for classes. The default is taken from the argument (schema or relation).
 * ERD.draw() no longer has the `prefix` argument: class names are shown as found in the context.
+
+### 0.3.3
+* Suppressed warnings (redirected them to logging).  Previoiusly, scipy would throw warnings in ERD, for example.
+* Added ERD.from_sequence as a shortcut to combining the ERDs of multiple sources
+* ERD() no longer text the context argument.
+* ERD.draw() now takes an optional context argument.  By default uses the caller's locals.
