@@ -9,3 +9,7 @@
 * Added ERD.from_sequence as a shortcut to combining the ERDs of multiple sources
 * ERD() no longer text the context argument.
 * ERD.draw() now takes an optional context argument.  By default uses the caller's locals.
+
+### 0.3.4
+* Added method the `ERD.add_parts` method, which adds the part tables of all tables currently in the ERD.
+* `ERD() + arg` and `ERD() - arg` can now accept relation classes as arg.
