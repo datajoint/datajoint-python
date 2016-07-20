@@ -23,10 +23,8 @@ class ERD(nx.DiGraph):
     Entity relationship diagram.
 
     Usage:
-    >>>  erd = Erd(source, context=None)
+    >>>  erd = Erd(source)
     source can be a base relation object, a base relation class, a schema, or a module that has a schema.
-    context is the namespace in which to search for classes. If None (default), looks
-    in source.context or source.schema.context
 
     >>> erd.draw()
     draws the diagram using pyplot
@@ -39,12 +37,11 @@ class ERD(nx.DiGraph):
     Note that erd + 1 - 1  may differ from erd - 1 + 1 and so forth.
     Only those tables that are loaded in the connection object are displayed
     """
-    def __init__(self, source, context=None):
+    def __init__(self, source):
 
         if isinstance(source, ERD):
             # copy constructor
             self.nodes_to_show = set(source.nodes_to_show)
-            self._context = source._context
             super().__init__(source)
             return
 
@@ -56,18 +53,6 @@ class ERD(nx.DiGraph):
                 connection = source.schema.connection
             except AttributeError:
                 raise DataJointError('Could not find database connection in %s' % repr(source[0]))
-
-        if context is None:
-            # find context in the source
-            try:
-                context = source.context
-            except AttributeError:
-                try:
-                    context = source.schema.context
-                except AttributeError:
-                    raise DataJointError('Could not find context in %s' % repr(source[0]))
-
-        self._context = context
 
         # initialize graph from dependencies
         connection.dependencies.load()
@@ -131,25 +116,42 @@ class ERD(nx.DiGraph):
         self.nodes_to_show.intersection_update(arg.nodes_to_show)
         return self
 
-    def _make_graph(self):
+    def _make_graph(self, context):
         """
         Make the self.graph - a graph object ready for drawing
         """
         graph = nx.DiGraph(self).subgraph(self.nodes_to_show)
         nx.set_node_attributes(graph, 'node_type', {n: _get_tier(n.split('`')[-2]) for n in graph})
         # relabel nodes to class names
-        mapping = {node: lookup_class_name(self._context, node) for node in graph.nodes()}
+        mapping = {node: lookup_class_name(node, context) for node in graph.nodes()}
         new_names = [mapping.values()]
         if len(new_names) > len(set(new_names)):
             raise DataJointError('Some classes have identical names. The ERD cannot be plotted.')
         nx.relabel_nodes(graph, mapping, copy=False)
         return graph
 
-    def draw(self, pos=None, layout=None, font_scale=1.2, **layout_options):
+    def draw(self, pos=None, layout=None, context=None, font_scale=1.2, **layout_options):
+        """
+        Draws the graph of dependencies.
+        :param pos: dict with positions for every node.  If None, then layout is called.
+        :param layout: the graph layout function. If None, then self._layout is used.
+        :param context: the context in which to look for the class names.  If None, the caller's context is used.
+        :param font_scale: the scalar used to scale all the fonts.
+        :param layout_options:  kwargs passed into the layout function.
+        """
         if not self.nodes_to_show:
             print('There is nothing to plot')
             return
-        graph = self._make_graph()
+        if context is None:
+            # get the caller's locals()
+            import inspect
+            frame = inspect.currentframe()
+            try:
+                context = frame.f_back.f_locals
+            finally:
+                del frame
+
+        graph = self._make_graph(context)
         if pos is None:
             pos = (layout if layout else self._layout)(graph, **layout_options)
         import matplotlib.pyplot as plt
@@ -158,7 +160,7 @@ class ERD(nx.DiGraph):
         edge_styles = ['solid' if e[2]['primary'] else 'dashed' for e in edge_list]
         nx.draw_networkx_edges(graph, pos=pos, edgelist=edge_list, style=edge_styles, alpha=0.2)
 
-        label_props = { # http://matplotlib.org/examples/color/named_colors.html
+        label_props = {  # http://matplotlib.org/examples/color/named_colors.html
             None: dict(bbox=dict(boxstyle='round,pad=0.1', facecolor='yellow', alpha=0.3), size=round(font_scale*8)),
             Manual: dict(bbox=dict(boxstyle='round,pad=0.1', edgecolor='white', facecolor='darkgreen', alpha=0.3), size=round(font_scale*10)),
             Lookup: dict(bbox=dict(boxstyle='round,pad=0.1', edgecolor='white', facecolor='gray', alpha=0.2), size=round(font_scale*8)),

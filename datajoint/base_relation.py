@@ -355,7 +355,7 @@ class BaseRelation(RelationalOperand):
                     do_include = False
                 if attributes_thus_far.issuperset(primary_key):
                     parents.pop(parent)
-                    definition += '-> ' + lookup_class_name(self.context, parent) + '\n'
+                    definition += '-> ' + lookup_class_name(parent, self.context) + '\n'
             if do_include:
                 definition += '%-20s : %-28s # %s\n' % (
                     attr.name if attr.default is None else '%s = %s' % (attr.name, attr.default),
@@ -364,37 +364,39 @@ class BaseRelation(RelationalOperand):
         return definition
 
 
-def lookup_class_name(context, name, levels=4):
+def lookup_class_name(name, context, depth=3):
     """
     given the name of another table in the form `database`.`table_name`, find its class in the context
-    :param context: dictionary representing the namespace
     :param name: `database`.`table_name`
-    :param levels: the limit on how deep to go into imported modules, helps avoid infinite recursion.
-    :return: class name found in the context.
+    :param context: dictionary representing the namespace
+    :param depth: search depth into imported modules, helps avoid infinite recursion.
+    :return: class name found in the context or original name if not found
     """
-    for member_name, member in context.items():
-        if inspect.isclass(member) and issubclass(member, BaseRelation):
-            if member.full_table_name == name:
-                return member_name
-            # check part tables
-            try:
-                parts = member._ordered_class_members
-            except AttributeError:
-                pass  # not a UserRelation
-            else:
-                for part in parts:
-                    part = getattr(member, part)
-                    if inspect.isclass(part) and issubclass(part, BaseRelation) and part.full_table_name == name:
-                        return member_name + '.' + part.__name__
-        elif levels and inspect.ismodule(member) and member.__name__ != 'datajoint':
-            try:
-                candidate_name = lookup_class_name(dict(inspect.getmembers(member)), name, levels-1)
-            except ImportError:
-                pass
-            else:
-                if candidate_name != name:
-                    return member_name + '.' + candidate_name
-    return name
+    # breadth-first search
+    nodes = [dict(context=context, context_name='', depth=depth)]
+    while nodes:
+        node = nodes.pop(0)
+        for member_name, member in node['context'].items():
+            if inspect.isclass(member) and issubclass(member, BaseRelation):
+                if member.full_table_name == name:   # found it!
+                    return '.'.join([node['context_name'],  member_name]).lstrip('.')
+                try:  # look for part tables
+                    parts = member._ordered_class_members
+                except AttributeError:
+                    pass  # not a UserRelation -- cannot have part tables.
+                else:
+                    for part in (getattr(member, p) for p in parts):
+                        if inspect.isclass(part) and issubclass(part, BaseRelation) and part.full_table_name == name:
+                            return '.'.join([node['context_name'], member_name, part.__name__]).lstrip('.')
+            elif node['depth'] > 0 and inspect.ismodule(member) and member.__name__ != 'datajoint':
+                try:
+                    nodes.append(
+                        dict(context=dict(inspect.getmembers(member)),
+                             context_name=node['context_name'] + '.' + member_name,
+                             depth=node['depth']-1))
+                except ImportError:
+                    pass  # could not import, so do not attempt
+    return name  # return original name if class is not found
 
 
 class FreeRelation(BaseRelation):
