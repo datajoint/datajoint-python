@@ -508,11 +508,13 @@ class Projection(RelationalOperand):
         obj = cls()
         obj._connection = arg.connection
         named_attributes = {k: v.strip() for k, v in named_attributes.items()}  # clean up values
+        obj._distinct = arg.distinct
         if include_primary_key:   # include primary key of relation
             attributes = (list(a for a in arg.primary_key if a not in named_attributes.values()) +
                           list(a for a in attributes if a not in arg.primary_key))
         else:
-            obj._distinct = arg.distinct or not set(arg.primary_key).issubset(
+            # make distinct if the primary key is not completely selected
+            obj._distinct = obj._distinct or not set(arg.primary_key).issubset(
                 set(attributes) | set(named_attributes.values()))
         if cls._need_subquery(arg, attributes, named_attributes):
             obj._arg = Subquery.create(arg)
