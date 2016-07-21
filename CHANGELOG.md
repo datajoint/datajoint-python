@@ -13,3 +13,6 @@
 ### 0.3.4
 * Added method the `ERD.add_parts` method, which adds the part tables of all tables currently in the ERD.
 * `ERD() + arg` and `ERD() - arg` can now accept relation classes as arg.
+
+### 0.3.5
+* `dj.set_password()` now asks for user confirmation before changing the password.
