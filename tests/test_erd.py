@@ -32,7 +32,7 @@ class TestERD:
     @staticmethod
     def test_erd():
         erd = dj.ERD(schema)
-        graph = erd._make_graph(prefix=False)
+        graph = erd._make_graph(schema.context)
         assert_true(set(cls.__name__ for cls in (A, B, D, E, L)).issubset(graph.nodes()))
         pos = erd._layout(graph)
         assert_true(set(cls.__name__ for cls in (A, B, D, E, L)).issubset(pos.keys()))
@@ -43,7 +43,9 @@ class TestERD:
         erd1 = erd0 + 3
         erd2 = dj.ERD(E) - 3
         erd3 = erd1 * erd2
+        erd4 = (erd0 + E).add_parts() - B - E
         assert_true(erd0.nodes_to_show == set(cls.full_table_name for cls in [B]))
         assert_true(erd1.nodes_to_show == set(cls.full_table_name for cls in (B, B.C, E, E.F)))
         assert_true(erd2.nodes_to_show == set(cls.full_table_name for cls in (A, B, D, E, L)))
         assert_true(erd3.nodes_to_show == set(cls.full_table_name for cls in (B, E)))
+        assert_true(erd4.nodes_to_show == set(cls.full_table_name for cls in (B.C, E.F)))

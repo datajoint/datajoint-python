@@ -1,14 +1,12 @@
 import warnings
-
 import pymysql
 import logging
+import inspect
 import re
 from . import conn, DataJointError, config
-from datajoint.utils import to_camel_case
 from .heading import Heading
-from .utils import user_choice
+from .utils import user_choice, to_camel_case
 from .user_relations import Part, Computed, Imported, Manual, Lookup
-import inspect
 
 logger = logging.getLogger(__name__)
 
@@ -170,3 +168,4 @@ class Schema:
         :return: jobs relation
         """
         return self.connection.jobs[self.database]
+

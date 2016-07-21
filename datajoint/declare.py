@@ -141,15 +141,12 @@ def declare(full_table_name, definition, context):
     # compile SQL
     if not primary_key:
         raise DataJointError('Table must have a primary key')
-    sql = 'CREATE TABLE IF NOT EXISTS %s (\n  ' % full_table_name
-    sql += ',\n  '.join(attribute_sql)
-    sql += ',\n  PRIMARY KEY (`' + '`,`'.join(primary_key) + '`)'
-    if foreign_key_sql:
-        sql += ',  \n' + ',  \n'.join(foreign_key_sql)
-    if index_sql:
-        sql += ',  \n' + ',  \n'.join(index_sql)
-    sql += '\n) ENGINE = InnoDB, COMMENT "%s"' % table_comment
-    return sql
+    return ('CREATE TABLE IF NOT EXISTS %s (\n' % full_table_name +
+            ',\n'.join(attribute_sql +
+                       ['PRIMARY KEY (`' + '`,`'.join(primary_key) + '`)'] +
+                       foreign_key_sql +
+                       index_sql) +
+            '\n) ENGINE=InnoDB, COMMENT "%s"' % table_comment)
 
 
 def compile_attribute(line, in_key=False):
@@ -161,7 +158,11 @@ def compile_attribute(line, in_key=False):
     :returns: (name, sql) -- attribute name and sql code for its declaration
     """
 
-    match = attribute_parser.parseString(line+'#', parseAll=True)
+    try:
+        match = attribute_parser.parseString(line+'#', parseAll=True)
+    except pp.ParseException:
+        logger.error('Declaration error in line: ', line)
+        raise
     match['comment'] = match['comment'].rstrip('#')
     if 'default' not in match:
         match['default'] = ''

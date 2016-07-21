@@ -62,6 +62,7 @@ class Connection:
             port = config['database.port']
         self.conn_info = dict(host=host, port=port, user=user, passwd=passwd)
         self.init_fun = init_fun
+        print("Connecting {user}@{host}:{port}".format(**self.conn_info))
         self.connect()
         if self.is_connected:
             logger.info("Connected {user}@{host}:{port}".format(**self.conn_info))
@@ -189,3 +190,6 @@ class Connection:
             raise
         else:
             self.commit_transaction()
+
+
+
