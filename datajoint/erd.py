@@ -165,7 +165,7 @@ class ERD(nx.DiGraph):
         nx.relabel_nodes(graph, mapping, copy=False)
         return graph
 
-    def draw(self, pos=None, layout=None, context=None, font_scale=1.2, **layout_options):
+    def draw(self, pos=None, layout=None, context=None, font_scale=1.5, **layout_options):
         """
         Draws the graph of dependencies.
         :param pos: dict with positions for every node.  If None, then layout is called.
