@@ -16,3 +16,7 @@
 
 ### 0.3.5
 * `dj.set_password()` now asks for user confirmation before changing the password.
+* fixed issue #228
+
+### 0.3.6
+* bugfix in `schema.spawn_missing_classes`.  Previously, spawned part classes would not show in ERDs.

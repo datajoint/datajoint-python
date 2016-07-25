@@ -158,7 +158,7 @@ class ERD(nx.DiGraph):
         graph = nx.DiGraph(self).subgraph(self.nodes_to_show)
         nx.set_node_attributes(graph, 'node_type', {n: _get_tier(n) for n in graph})
         # relabel nodes to class names
-        mapping = {node: lookup_class_name(node, context) for node in graph.nodes()}
+        mapping = {node: (lookup_class_name(node, context) or node) for node in graph.nodes()}
         new_names = [mapping.values()]
         if len(new_names) > len(set(new_names)):
             raise DataJointError('Some classes have identical names. The ERD cannot be plotted.')
