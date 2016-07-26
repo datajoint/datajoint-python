@@ -10,7 +10,6 @@ __*__
 .python-version
 *.egg-info/
 dist/
-build/
 MANIFEST
 .vagrant/
 dj_local_conf.json

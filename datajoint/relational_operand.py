@@ -277,6 +277,7 @@ class RelationalOperand:
         Inverse restriction is accomplished by either using the subtraction operator or the Not class.
 
         The expressions in each row equivalent:
+
         rel & True                          rel
         rel & False                         the empty relation
         rel & 'TRUE'                        rel
@@ -308,7 +309,7 @@ class RelationalOperand:
         ultimately call restrict()
 
         :param restriction: a sequence or an array (treated as OR list), another relation, an SQL condition string, or
-        an AndList.
+            an AndList.
         """
         if not restricts_to_same(restriction):
             assert not self.heading.expressions or isinstance(self, GroupBy), \
@@ -330,9 +331,9 @@ class RelationalOperand:
     def attributes_in_restriction(self):
         """
         :return: list of attributes that are probably used in the restrictions.
-        The function errs on the side of false positives.
-        For example, if the restriction is "val='id'", then the attribute 'id' would be flagged.
-        This is used internally for optimizing SQL statements.
+            The function errs on the side of false positives.
+            For example, if the restriction is "val='id'", then the attribute 'id' would be flagged.
+            This is used internally for optimizing SQL statements.
         """
         return set(name for name in self.heading.names
                    if re.search(r'\b' + name + r'\b', self.where_clause))
@@ -642,36 +643,45 @@ class U:
     The Third Manifesto refers to dj.U() as TABLE_DEE.
 
     Relational restriction:
+
     dj.U can be used to enumerate unique combinations of values of attributes from other relations.
 
     The following expression produces a relation containing all unique combinations of contrast and brightness
     found in relation stimulus:
-    dj.U('contrast', 'brightness') & stimulus
+
+    >>> dj.U('contrast', 'brightness') & stimulus
 
     The following expression produces a relation containing all unique combinations of contrast and brightness that is
     contained in relation1 but not contained in relation 2.
-    (dj.U('contrast', 'brightness') & relation1) - relation2
+
+    >>> (dj.U('contrast', 'brightness') & relation1) - relation2
 
     Relational aggregation:
+
     In aggregation, dj.U is used to compute aggregate expressions on the entire relation.
 
     The following expression produces a relation with one tuple and one attribute s containing the total number
     of tuples in relation:
-    dj.U().aggregate(relation, n='count(*)')
+
+    >>> dj.U().aggregate(relation, n='count(*)')
 
     The following expression produces a relation with one tuple containing the number n of distinct values of attr
     in relation.
-    dj.U().aggregate(relation, n='count(distinct attr)')
+
+    >>> dj.U().aggregate(relation, n='count(distinct attr)')
 
     The following expression produces a relation with one tuple and one attribute s containing the total sum of attr
-      from relation:
-    dj.U().aggregate(relation, s='sum(attr)')   # sum of attr from the entire relation
+    from relation:
+
+    >>> dj.U().aggregate(relation, s='sum(attr)')   # sum of attr from the entire relation
 
     The following expression produces a relation with the count n of tuples in relation containing each unique
     combination of values in attr1 and attr2.
-    dj.U(attr1,attr2).aggregate(relation, n='count(*)')
+
+    >>> dj.U(attr1,attr2).aggregate(relation, n='count(*)')
 
     Joins:
+
     If relation rel has attributes 'attr1' and 'attr2', then rel*dj.U('attr1','attr2') or produces a relation that is
     identical to rel except attr1 and attr2 are included in the primary key.  This is useful for producing a join on
     non-primary key attributes.
