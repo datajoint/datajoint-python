@@ -355,10 +355,10 @@ class BaseRelation(RelationalOperand):
                     do_include = False
                 if attributes_thus_far.issuperset(primary_key):
                     parents.pop(parent)
-                    definition += '-> ' + lookup_class_name(parent, self.context) + '\n'
+                    definition += '-> ' + (lookup_class_name(parent, self.context) or parent) + '\n'
             if do_include:
                 definition += '%-20s : %-28s # %s\n' % (
-                    attr.name if attr.default is None else '%s = %s' % (attr.name, attr.default),
+                    attr.name if attr.default is None else '%s=%s' % (attr.name, attr.default),
                     '%s%s' % (attr.type, 'auto_increment' if attr.autoincrement else ''), attr.comment)
         print(definition)
         return definition
@@ -366,11 +366,11 @@ class BaseRelation(RelationalOperand):
 
 def lookup_class_name(name, context, depth=3):
     """
-    given the name of another table in the form `database`.`table_name`, find its class in the context
+    given a table name in the form `database`.`table_name`, find its class in the context.
     :param name: `database`.`table_name`
     :param context: dictionary representing the namespace
     :param depth: search depth into imported modules, helps avoid infinite recursion.
-    :return: class name found in the context or original name if not found
+    :return: class name found in the context or None if not found
     """
     # breadth-first search
     nodes = [dict(context=context, context_name='', depth=depth)]
@@ -396,7 +396,7 @@ def lookup_class_name(name, context, depth=3):
                              depth=node['depth']-1))
                 except ImportError:
                     pass  # could not import, so do not attempt
-    return name  # return original name if class is not found
+    return None
 
 
 class FreeRelation(BaseRelation):

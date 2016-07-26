@@ -7,6 +7,7 @@ from . import conn, DataJointError, config
 from .heading import Heading
 from .utils import user_choice, to_camel_case
 from .user_relations import Part, Computed, Imported, Manual, Lookup
+from .base_relation import lookup_class_name
 
 logger = logging.getLogger(__name__)
 
@@ -55,43 +56,35 @@ class Schema:
         in the context.
         """
 
-        tables = [row[0] for row in self.connection.query('SHOW TABLES in `%s`' % self.database)]
-
-        # declare master relation classes
-        master_classes = {}
+        tables = [
+            row[0] for row in self.connection.query('SHOW TABLES in `%s`' % self.database)
+            if lookup_class_name('`{db}`.`{tab}`'.format(db=self.database, tab=row[0]), self.context, 0) is None]
+        master_classes = (Lookup, Manual, Imported, Computed)
         part_tables = []
         for table_name in tables:
             class_name = to_camel_case(table_name)
             if class_name not in self.context:
                 try:
-                    cls = next(cls for cls in (Lookup, Manual, Imported, Computed)
-                               if re.fullmatch(cls.tier_regexp, table_name))
+                    cls = next(cls for cls in master_classes if re.fullmatch(cls.tier_regexp, table_name))
                 except StopIteration:
                     if re.fullmatch(Part.tier_regexp, table_name):
                         part_tables.append(table_name)
                 else:
-                    master_classes[table_name] = type(class_name, (cls,), dict())
+                    # declare and decorate master relation classes
+                    self.context[class_name] = self(type(class_name, (cls,), dict()))
 
         # attach parts to masters
-        for part_table in part_tables:
-            groups = re.fullmatch(Part.tier_regexp, part_table).groupdict()
+        for table_name in part_tables:
+            groups = re.fullmatch(Part.tier_regexp, table_name).groupdict()
             class_name = to_camel_case(groups['part'])
             try:
-                master_class = master_classes[groups['master']]
-            except KeyError:
-                # if master not found among the spawned classes, check in the context
                 master_class = self.context[to_camel_case(groups['master'])]
-                if not hasattr(master_class, class_name):
-                    part_class = type(class_name, (Part,), dict(definition=...))
-                    part_class._master = master_class
-                    self.process_relation_class(part_class, context=self.context, assert_declared=True)
-                    setattr(master_class, class_name, part_class)
-            else:
-                setattr(master_class, class_name, type(class_name, (Part,), dict()))
-
-        # place classes in context upon decorating them with the schema
-        for cls in master_classes.values():
-            self.context[cls.__name__] = self(cls)
+            except KeyError:
+                raise DataJointError('The tabled %s does not follow DataJoint naming conventions' % table_name)
+            part_class = type(class_name, (Part,), dict(definition=...))
+            part_class._master = master_class
+            self.process_relation_class(part_class, context=self.context, assert_declared=True)
+            setattr(master_class, class_name, part_class)
 
     def drop(self):
         """

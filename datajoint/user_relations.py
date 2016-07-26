@@ -8,7 +8,7 @@ from .autopopulate import AutoPopulate
 from .utils import from_camel_case, ClassProperty
 from . import DataJointError
 
-_base_regexp = r'[a-z]+[a-z0-9]*(_[a-z]+[a-z0-9]*)*'
+_base_regexp = r'[a-z][a-z0-9]*(_[a-z][a-z0-9]*)*'
 
 
 class OrderedClass(type):
@@ -22,8 +22,13 @@ class OrderedClass(type):
 
     def __new__(cls, name, bases, namespace, **kwds):
         result = type.__new__(cls, name, bases, dict(namespace))
-        result._ordered_class_members = tuple(namespace)
+        result._ordered_class_members = list(namespace)
         return result
+
+    def __setattr__(cls, name, value):
+        if hasattr(cls, '_ordered_class_members'):
+            cls._ordered_class_members.append(name)
+        super().__setattr__(name, value)
 
 
 class UserRelation(BaseRelation, metaclass=OrderedClass):
@@ -36,6 +41,7 @@ class UserRelation(BaseRelation, metaclass=OrderedClass):
     _heading = None
     tier_regexp = None
     _prefix = None
+
 
     @property
     def definition(self):
