@@ -1,0 +1,237 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>datajoint.user_relations module &mdash; Datajoint Python 0.3 documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.3',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Datajoint Python 0.3 documentation" href="index.html" />
+    <link rel="next" title="datajoint.utils module" href="datajoint.utils.html" />
+    <link rel="prev" title="datajoint.settings module" href="datajoint.settings.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-datajoint.user_relations">
+<span id="datajoint-user-relations-module"></span><h1>datajoint.user_relations module<a class="headerlink" href="#module-datajoint.user_relations" title="Permalink to this headline">¶</a></h1>
+<p>Hosts the table tiers, user relations should be derived from.</p>
+<dl class="class">
+<dt id="datajoint.user_relations.Computed">
+<em class="property">class </em><code class="descclassname">datajoint.user_relations.</code><code class="descname">Computed</code><span class="sig-paren">(</span><em>arg=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/user_relations.html#Computed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.user_relations.Computed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.user_relations.UserRelation" title="datajoint.user_relations.UserRelation"><code class="xref py py-class docutils literal"><span class="pre">datajoint.user_relations.UserRelation</span></code></a>, <a class="reference internal" href="datajoint.autopopulate.html#datajoint.autopopulate.AutoPopulate" title="datajoint.autopopulate.AutoPopulate"><code class="xref py py-class docutils literal"><span class="pre">datajoint.autopopulate.AutoPopulate</span></code></a></p>
+<p>Inherit from this class if the table&#8217;s values are computed from other relations in the schema.
+The inherited class must at least provide the function <cite>_make_tuples</cite>.</p>
+<dl class="attribute">
+<dt id="datajoint.user_relations.Computed.tier_regexp">
+<code class="descname">tier_regexp</code><em class="property"> = '(?P&lt;computed&gt;__[a-z][a-z0-9]*(_[a-z][a-z0-9]*)*)'</em><a class="headerlink" href="#datajoint.user_relations.Computed.tier_regexp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="datajoint.user_relations.Imported">
+<em class="property">class </em><code class="descclassname">datajoint.user_relations.</code><code class="descname">Imported</code><span class="sig-paren">(</span><em>arg=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/user_relations.html#Imported"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.user_relations.Imported" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.user_relations.UserRelation" title="datajoint.user_relations.UserRelation"><code class="xref py py-class docutils literal"><span class="pre">datajoint.user_relations.UserRelation</span></code></a>, <a class="reference internal" href="datajoint.autopopulate.html#datajoint.autopopulate.AutoPopulate" title="datajoint.autopopulate.AutoPopulate"><code class="xref py py-class docutils literal"><span class="pre">datajoint.autopopulate.AutoPopulate</span></code></a></p>
+<p>Inherit from this class if the table&#8217;s values are imported from external data sources.
+The inherited class must at least provide the function <cite>_make_tuples</cite>.</p>
+<dl class="attribute">
+<dt id="datajoint.user_relations.Imported.tier_regexp">
+<code class="descname">tier_regexp</code><em class="property"> = '(?P&lt;imported&gt;_[a-z][a-z0-9]*(_[a-z][a-z0-9]*)*)'</em><a class="headerlink" href="#datajoint.user_relations.Imported.tier_regexp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="datajoint.user_relations.Lookup">
+<em class="property">class </em><code class="descclassname">datajoint.user_relations.</code><code class="descname">Lookup</code><span class="sig-paren">(</span><em>arg=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/user_relations.html#Lookup"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.user_relations.Lookup" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.user_relations.UserRelation" title="datajoint.user_relations.UserRelation"><code class="xref py py-class docutils literal"><span class="pre">datajoint.user_relations.UserRelation</span></code></a></p>
+<p>Inherit from this class if the table&#8217;s values are for lookup. This is
+currently equivalent to defining the table as Manual and serves semantic
+purposes only.</p>
+<dl class="attribute">
+<dt id="datajoint.user_relations.Lookup.tier_regexp">
+<code class="descname">tier_regexp</code><em class="property"> = '(?P&lt;lookup&gt;#[a-z][a-z0-9]*(_[a-z][a-z0-9]*)*)'</em><a class="headerlink" href="#datajoint.user_relations.Lookup.tier_regexp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="datajoint.user_relations.Manual">
+<em class="property">class </em><code class="descclassname">datajoint.user_relations.</code><code class="descname">Manual</code><span class="sig-paren">(</span><em>arg=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/user_relations.html#Manual"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.user_relations.Manual" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.user_relations.UserRelation" title="datajoint.user_relations.UserRelation"><code class="xref py py-class docutils literal"><span class="pre">datajoint.user_relations.UserRelation</span></code></a></p>
+<p>Inherit from this class if the table&#8217;s values are entered manually.</p>
+<dl class="attribute">
+<dt id="datajoint.user_relations.Manual.tier_regexp">
+<code class="descname">tier_regexp</code><em class="property"> = '(?P&lt;manual&gt;[a-z][a-z0-9]*(_[a-z][a-z0-9]*)*)'</em><a class="headerlink" href="#datajoint.user_relations.Manual.tier_regexp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="datajoint.user_relations.OrderedClass">
+<em class="property">class </em><code class="descclassname">datajoint.user_relations.</code><code class="descname">OrderedClass</code><a class="reference internal" href="_modules/datajoint/user_relations.html#OrderedClass"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.user_relations.OrderedClass" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">type</span></code></p>
+<p>Class whose members are ordered
+See <a class="reference external" href="https://docs.python.org/3/reference/datamodel.html#metaclass-example">https://docs.python.org/3/reference/datamodel.html#metaclass-example</a></p>
+</dd></dl>
+
+<dl class="class">
+<dt id="datajoint.user_relations.Part">
+<em class="property">class </em><code class="descclassname">datajoint.user_relations.</code><code class="descname">Part</code><span class="sig-paren">(</span><em>arg=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/user_relations.html#Part"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.user_relations.Part" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.user_relations.UserRelation" title="datajoint.user_relations.UserRelation"><code class="xref py py-class docutils literal"><span class="pre">datajoint.user_relations.UserRelation</span></code></a></p>
+<p>Inherit from this class if the table&#8217;s values are details of an entry in another relation
+and if this table is populated by this relation. For example, the entries inheriting from
+dj.Part could be single entries of a matrix, while the parent table refers to the entire matrix.
+Part relations are implemented as classes inside classes.</p>
+<dl class="attribute">
+<dt id="datajoint.user_relations.Part.connection">
+<code class="descname">connection</code><em class="property"> = None</em><a class="headerlink" href="#datajoint.user_relations.Part.connection" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.user_relations.Part.full_table_name">
+<code class="descname">full_table_name</code><em class="property"> = None</em><a class="headerlink" href="#datajoint.user_relations.Part.full_table_name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.user_relations.Part.master">
+<code class="descname">master</code><em class="property"> = None</em><a class="headerlink" href="#datajoint.user_relations.Part.master" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.user_relations.Part.table_name">
+<code class="descname">table_name</code><em class="property"> = None</em><a class="headerlink" href="#datajoint.user_relations.Part.table_name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.user_relations.Part.tier_regexp">
+<code class="descname">tier_regexp</code><em class="property"> = '(?P&lt;master&gt;(?P&lt;manual&gt;[a-z][a-z0-9]*(_[a-z][a-z0-9]*)*)|(?P&lt;lookup&gt;#[a-z][a-z0-9]*(_[a-z][a-z0-9]*)*)|(?P&lt;imported&gt;_[a-z][a-z0-9]*(_[a-z][a-z0-9]*)*)|(?P&lt;computed&gt;__[a-z][a-z0-9]*(_[a-z][a-z0-9]*)*)){1,1}__(?P&lt;part&gt;[a-z][a-z0-9]*(_[a-z][a-z0-9]*)*)'</em><a class="headerlink" href="#datajoint.user_relations.Part.tier_regexp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="datajoint.user_relations.UserRelation">
+<em class="property">class </em><code class="descclassname">datajoint.user_relations.</code><code class="descname">UserRelation</code><span class="sig-paren">(</span><em>arg=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/user_relations.html#UserRelation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.user_relations.UserRelation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="datajoint.base_relation.html#datajoint.base_relation.BaseRelation" title="datajoint.base_relation.BaseRelation"><code class="xref py py-class docutils literal"><span class="pre">datajoint.base_relation.BaseRelation</span></code></a></p>
+<p>A subclass of UserRelation is a dedicated class interfacing a base relation.
+UserRelation is initialized by the decorator generated by schema().</p>
+<dl class="attribute">
+<dt id="datajoint.user_relations.UserRelation.connection">
+<code class="descname">connection</code><em class="property"> = None</em><a class="headerlink" href="#datajoint.user_relations.UserRelation.connection" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.user_relations.UserRelation.definition">
+<code class="descname">definition</code><a class="headerlink" href="#datajoint.user_relations.UserRelation.definition" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">a string containing the table definition using the DataJoint DDL.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.user_relations.UserRelation.full_table_name">
+<code class="descname">full_table_name</code><a class="headerlink" href="#datajoint.user_relations.UserRelation.full_table_name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.user_relations.UserRelation.table_name">
+<code class="descname">table_name</code><a class="headerlink" href="#datajoint.user_relations.UserRelation.table_name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.user_relations.UserRelation.tier_regexp">
+<code class="descname">tier_regexp</code><em class="property"> = None</em><a class="headerlink" href="#datajoint.user_relations.UserRelation.tier_regexp" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="datajoint.settings.html" title="previous chapter">datajoint.settings module</a></li>
+      <li>Next: <a href="datajoint.utils.html" title="next chapter">datajoint.utils module</a></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/datajoint.user_relations.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Dimitri Yatsenko, Edgar Walker, Fabian Sinz.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="_sources/datajoint.user_relations.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,330 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Basic functions &mdash; Datajoint Python 0.3 documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.3',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Datajoint Python 0.3 documentation" href="index.html" />
+    <link rel="next" title="datajoint.admin module" href="datajoint.admin.html" />
+    <link rel="prev" title="Datajoint Python" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-datajoint">
+<span id="basic-functions"></span><h1>Basic functions<a class="headerlink" href="#module-datajoint" title="Permalink to this headline">¶</a></h1>
+<p>DataJoint for Python is a high-level programming interface for MySQL databases
+to support data processing chains in science labs. DataJoint is built on the
+foundation of the relational data model and prescribes a consistent method for
+organizing, populating, and querying data.</p>
+<p>DataJoint is free software under the LGPL License. In addition, we request
+that any use of DataJoint leading to a publication be acknowledged in the publication.</p>
+<dl class="docutils">
+<dt>Please cite:</dt>
+<dd><a class="reference external" href="http://biorxiv.org/content/early/2015/11/14/031658">http://biorxiv.org/content/early/2015/11/14/031658</a>
+<a class="reference external" href="http://dx.doi.org/10.1101/031658">http://dx.doi.org/10.1101/031658</a></dd>
+</dl>
+<dl class="function">
+<dt id="datajoint.kill">
+<code class="descclassname">datajoint.</code><code class="descname">kill</code><span class="sig-paren">(</span><em>restriction=None</em>, <em>connection=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/kill.html#kill"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.kill" title="Permalink to this definition">¶</a></dt>
+<dd><p>view and kill database connections.
+:param restriction: restriction to be applied to processlist
+:param connection: a datajoint.Connection object. Default calls datajoint.conn()</p>
+<p>Restrictions are specified as strings and can involve any of the attributes of
+information_schema.processlist: ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.</p>
+<dl class="docutils">
+<dt>Examples:</dt>
+<dd>dj.kill(&#8216;HOST LIKE &#8220;%compute%&#8221;&#8217;) lists only connections from hosts containing &#8220;compute&#8221;.
+dj.kill(&#8216;TIME &gt; 600&#8217;) lists only connections older than 10 minutes.</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="datajoint.conn">
+<code class="descclassname">datajoint.</code><code class="descname">conn</code><span class="sig-paren">(</span><em>host=None</em>, <em>user=None</em>, <em>passwd=None</em>, <em>init_fun=None</em>, <em>reset=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/connection.html#conn"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.conn" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a persistent connection object to be shared by multiple modules.
+If the connection is not yet established or reset=True, a new connection is set up.
+If connection information is not provided, it is taken from config which takes the
+information from dj_local_conf.json. If the password is not specified in that file
+datajoint prompts for the password.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>host</strong> &#8211; hostname</li>
+<li><strong>user</strong> &#8211; mysql user</li>
+<li><strong>passwd</strong> &#8211; mysql password</li>
+<li><strong>init_fun</strong> &#8211; initialization function</li>
+<li><strong>reset</strong> &#8211; whether the connection should be reseted or not</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="datajoint.Lookup">
+<em class="property">class </em><code class="descclassname">datajoint.</code><code class="descname">Lookup</code><span class="sig-paren">(</span><em>arg=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/user_relations.html#Lookup"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.Lookup" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherit from this class if the table&#8217;s values are for lookup. This is
+currently equivalent to defining the table as Manual and serves semantic
+purposes only.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="datajoint.Manual">
+<em class="property">class </em><code class="descclassname">datajoint.</code><code class="descname">Manual</code><span class="sig-paren">(</span><em>arg=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/user_relations.html#Manual"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.Manual" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherit from this class if the table&#8217;s values are entered manually.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="datajoint.Part">
+<em class="property">class </em><code class="descclassname">datajoint.</code><code class="descname">Part</code><span class="sig-paren">(</span><em>arg=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/user_relations.html#Part"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.Part" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherit from this class if the table&#8217;s values are details of an entry in another relation
+and if this table is populated by this relation. For example, the entries inheriting from
+dj.Part could be single entries of a matrix, while the parent table refers to the entire matrix.
+Part relations are implemented as classes inside classes.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="datajoint.Computed">
+<em class="property">class </em><code class="descclassname">datajoint.</code><code class="descname">Computed</code><span class="sig-paren">(</span><em>arg=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/user_relations.html#Computed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.Computed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherit from this class if the table&#8217;s values are computed from other relations in the schema.
+The inherited class must at least provide the function <cite>_make_tuples</cite>.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="datajoint.Imported">
+<em class="property">class </em><code class="descclassname">datajoint.</code><code class="descname">Imported</code><span class="sig-paren">(</span><em>arg=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/user_relations.html#Imported"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.Imported" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inherit from this class if the table&#8217;s values are imported from external data sources.
+The inherited class must at least provide the function <cite>_make_tuples</cite>.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="datajoint.AndList">
+<em class="property">class </em><code class="descclassname">datajoint.</code><code class="descname">AndList</code><a class="reference internal" href="_modules/datajoint/relational_operand.html#AndList"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.AndList" title="Permalink to this definition">¶</a></dt>
+<dd><p>A list of restrictions to by applied to a relation.  The restrictions are AND-ed.
+Each restriction can be a list or set or a relation whose elements are OR-ed.
+But the elements that are lists can contain other AndLists.</p>
+<p>Example:
+rel2 = rel &amp; dj.AndList((cond1, cond2, cond3))
+is equivalent to
+rel2 = rel &amp; cond1 &amp; cond2 &amp; cond3</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="datajoint.OrList">
+<em class="property">class </em><code class="descclassname">datajoint.</code><code class="descname">OrList</code><a class="reference internal" href="_modules/datajoint/relational_operand.html#OrList"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.OrList" title="Permalink to this definition">¶</a></dt>
+<dd><p>A list of restrictions to by applied to a relation.  The restrictions are OR-ed.
+If any restriction is .
+But the elements that are lists can contain other AndLists.</p>
+<p>Example:
+rel2 = rel &amp; dj.ORList((cond1, cond2, cond3))
+is equivalent to
+rel2 = rel &amp; [cond1, cond2, cond3]</p>
+<p>Since ORList is just an alias for list, it is not necessary and is only provided
+for consistency with AndList.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="datajoint.key">
+<em class="property">class </em><code class="descclassname">datajoint.</code><code class="descname">key</code><a class="reference internal" href="_modules/datajoint.html#key"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.key" title="Permalink to this definition">¶</a></dt>
+<dd><p>object that allows requesting the primary key in Fetch.__getitem__</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="datajoint.ERD">
+<em class="property">class </em><code class="descclassname">datajoint.</code><code class="descname">ERD</code><span class="sig-paren">(</span><em>source</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/erd.html#ERD"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.ERD" title="Permalink to this definition">¶</a></dt>
+<dd><p>Entity relationship diagram.</p>
+<p>Usage:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span> <span class="n">erd</span> <span class="o">=</span> <span class="n">Erd</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>source can be a base relation object, a base relation class, a schema, or a module that has a schema.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">erd</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>draws the diagram using pyplot</p>
+<p>erd1 + erd2  - combines the two ERDs.
+erd + n   - adds n levels of successors
+erd - n   - adds n levels of predecessors
+Thus dj.ERD(schema.Table)+1-1 defines the diagram of immediate ancestors and descendants of schema.Table</p>
+<p>Note that erd + 1 - 1  may differ from erd - 1 + 1 and so forth.
+Only those tables that are loaded in the connection object are displayed</p>
+<dl class="method">
+<dt id="datajoint.ERD.add_parts">
+<code class="descname">add_parts</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/erd.html#ERD.add_parts"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.ERD.add_parts" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adds to the diagram the part tables of tables already included in the diagram
+:return:</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="datajoint.ERD.draw">
+<code class="descname">draw</code><span class="sig-paren">(</span><em>pos=None</em>, <em>layout=None</em>, <em>context=None</em>, <em>font_scale=1.5</em>, <em>**layout_options</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/erd.html#ERD.draw"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.ERD.draw" title="Permalink to this definition">¶</a></dt>
+<dd><p>Draws the graph of dependencies.
+:param pos: dict with positions for every node.  If None, then layout is called.
+:param layout: the graph layout function. If None, then self._layout is used.
+:param context: the context in which to look for the class names.  If None, the caller&#8217;s context is used.
+:param font_scale: the scalar used to scale all the fonts.
+:param layout_options:  kwargs passed into the layout function.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="datajoint.ERD.from_sequence">
+<em class="property">classmethod </em><code class="descname">from_sequence</code><span class="sig-paren">(</span><em>sequence</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/erd.html#ERD.from_sequence"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.ERD.from_sequence" title="Permalink to this definition">¶</a></dt>
+<dd><p>The join ERD for all objects in sequence
+:param sequence: a sequence (e.g. list, tuple)
+:return: ERD(arg1) + ... + ERD(argn)</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="datajoint.U">
+<em class="property">class </em><code class="descclassname">datajoint.</code><code class="descname">U</code><span class="sig-paren">(</span><em>*primary_key</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/relational_operand.html#U"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.U" title="Permalink to this definition">¶</a></dt>
+<dd><p>dj.U objects are special relations representing all possible values their attributes.
+dj.U objects cannot be queried on their own but are useful for forming some relational queries.
+dj.U(&#8216;attr1&#8217;, ..., &#8216;attrn&#8217;) represents a relation with the primary key attributes attr1 ... attrn.
+The body of the relation is filled with all possible combinations of values of the attributes.
+Without any attributes, dj.U() represents the relation with one tuple and no attributes.
+The Third Manifesto refers to dj.U() as TABLE_DEE.</p>
+<p>Relational restriction:</p>
+<p>dj.U can be used to enumerate unique combinations of values of attributes from other relations.</p>
+<p>The following expression produces a relation containing all unique combinations of contrast and brightness
+found in relation stimulus:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">dj</span><span class="o">.</span><span class="n">U</span><span class="p">(</span><span class="s1">&#39;contrast&#39;</span><span class="p">,</span> <span class="s1">&#39;brightness&#39;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">stimulus</span>
+</pre></div>
+</div>
+<p>The following expression produces a relation containing all unique combinations of contrast and brightness that is
+contained in relation1 but not contained in relation 2.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">U</span><span class="p">(</span><span class="s1">&#39;contrast&#39;</span><span class="p">,</span> <span class="s1">&#39;brightness&#39;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">relation1</span><span class="p">)</span> <span class="o">-</span> <span class="n">relation2</span>
+</pre></div>
+</div>
+<p>Relational aggregation:</p>
+<p>In aggregation, dj.U is used to compute aggregate expressions on the entire relation.</p>
+<p>The following expression produces a relation with one tuple and one attribute s containing the total number
+of tuples in relation:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">dj</span><span class="o">.</span><span class="n">U</span><span class="p">()</span><span class="o">.</span><span class="n">aggregate</span><span class="p">(</span><span class="n">relation</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="s1">&#39;count(*)&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The following expression produces a relation with one tuple containing the number n of distinct values of attr
+in relation.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">dj</span><span class="o">.</span><span class="n">U</span><span class="p">()</span><span class="o">.</span><span class="n">aggregate</span><span class="p">(</span><span class="n">relation</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="s1">&#39;count(distinct attr)&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The following expression produces a relation with one tuple and one attribute s containing the total sum of attr
+from relation:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">dj</span><span class="o">.</span><span class="n">U</span><span class="p">()</span><span class="o">.</span><span class="n">aggregate</span><span class="p">(</span><span class="n">relation</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="s1">&#39;sum(attr)&#39;</span><span class="p">)</span>   <span class="c1"># sum of attr from the entire relation</span>
+</pre></div>
+</div>
+<p>The following expression produces a relation with the count n of tuples in relation containing each unique
+combination of values in attr1 and attr2.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">dj</span><span class="o">.</span><span class="n">U</span><span class="p">(</span><span class="n">attr1</span><span class="p">,</span><span class="n">attr2</span><span class="p">)</span><span class="o">.</span><span class="n">aggregate</span><span class="p">(</span><span class="n">relation</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="s1">&#39;count(*)&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Joins:</p>
+<p>If relation rel has attributes &#8216;attr1&#8217; and &#8216;attr2&#8217;, then rel*dj.U(&#8216;attr1&#8217;,&#8217;attr2&#8217;) or produces a relation that is
+identical to rel except attr1 and attr2 are included in the primary key.  This is useful for producing a join on
+non-primary key attributes.
+For example, if attr is in both rel1 and rel2 but not in their primary  keys, then rel1*rel2 will throw an error
+because in most cases, it does not make sense to join on non-primary key attributes and users must first rename
+attr in one of the operands.  The expression dj.U(&#8216;attr&#8217;)*rel1*rel2 overrides this constraint.
+Join is commutative.</p>
+<dl class="method">
+<dt id="datajoint.U.aggregate">
+<code class="descname">aggregate</code><span class="sig-paren">(</span><em>group</em>, <em>**named_attributes</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/relational_operand.html#U.aggregate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.U.aggregate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Aggregation of the type U(&#8216;attr1&#8217;,&#8217;attr2&#8217;).aggregate(rel, computation=&#8221;expression&#8221;)
+has the primary key (&#8216;attr1&#8217;,&#8217;attr2&#8217;) and performs aggregation computations for all matching tuples of relation.
+:param group:  The other relation which will be aggregated
+:param named_attributes: computations of the form new_attribute=&#8221;sql expression on attributes of group&#8221;
+:return: The new relation</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Datajoint Python</a></li>
+      <li>Next: <a href="datajoint.admin.html" title="next chapter">datajoint.admin module</a></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/datajoint.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Dimitri Yatsenko, Edgar Walker, Fabian Sinz.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="_sources/datajoint.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

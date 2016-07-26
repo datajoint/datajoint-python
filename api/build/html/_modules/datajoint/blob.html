@@ -1,0 +1,330 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>datajoint.blob &mdash; Datajoint Python 0.3 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.3',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Datajoint Python 0.3 documentation" href="../../index.html" />
+    <link rel="up" title="datajoint" href="../datajoint.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for datajoint.blob</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Provides serialization methods for numpy.ndarrays that ensure compatibility with Matlab.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">zlib</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">OrderedDict</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">DataJointError</span>
+
+<span class="n">mxClassID</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">((</span>
+    <span class="c1"># see http://www.mathworks.com/help/techdoc/apiref/mxclassid.html</span>
+    <span class="p">(</span><span class="s1">&#39;mxUNKNOWN_CLASS&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;mxCELL_CLASS&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;mxSTRUCT_CLASS&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;mxLOGICAL_CLASS&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s1">&#39;bool&#39;</span><span class="p">)),</span>
+    <span class="p">(</span><span class="s1">&#39;mxCHAR_CLASS&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s1">&#39;c&#39;</span><span class="p">)),</span>
+    <span class="p">(</span><span class="s1">&#39;mxVOID_CLASS&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+    <span class="p">(</span><span class="s1">&#39;mxDOUBLE_CLASS&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s1">&#39;float64&#39;</span><span class="p">)),</span>
+    <span class="p">(</span><span class="s1">&#39;mxSINGLE_CLASS&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s1">&#39;float32&#39;</span><span class="p">)),</span>
+    <span class="p">(</span><span class="s1">&#39;mxINT8_CLASS&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s1">&#39;int8&#39;</span><span class="p">)),</span>
+    <span class="p">(</span><span class="s1">&#39;mxUINT8_CLASS&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s1">&#39;uint8&#39;</span><span class="p">)),</span>
+    <span class="p">(</span><span class="s1">&#39;mxINT16_CLASS&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s1">&#39;int16&#39;</span><span class="p">)),</span>
+    <span class="p">(</span><span class="s1">&#39;mxUINT16_CLASS&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s1">&#39;uint16&#39;</span><span class="p">)),</span>
+    <span class="p">(</span><span class="s1">&#39;mxINT32_CLASS&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s1">&#39;int32&#39;</span><span class="p">)),</span>
+    <span class="p">(</span><span class="s1">&#39;mxUINT32_CLASS&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s1">&#39;uint32&#39;</span><span class="p">)),</span>
+    <span class="p">(</span><span class="s1">&#39;mxINT64_CLASS&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s1">&#39;int64&#39;</span><span class="p">)),</span>
+    <span class="p">(</span><span class="s1">&#39;mxUINT64_CLASS&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s1">&#39;uint64&#39;</span><span class="p">)),</span>
+    <span class="p">(</span><span class="s1">&#39;mxFUNCTION_CLASS&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)))</span>
+
+<span class="n">rev_class_id</span> <span class="o">=</span> <span class="p">{</span><span class="n">dtype</span><span class="p">:</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">dtype</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">mxClassID</span><span class="o">.</span><span class="n">values</span><span class="p">())}</span>
+<span class="n">dtype_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">mxClassID</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+
+<span class="n">decode_lookup</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">b</span><span class="s1">&#39;ZL123</span><span class="se">\0</span><span class="s1">&#39;</span><span class="p">:</span> <span class="n">zlib</span><span class="o">.</span><span class="n">decompress</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="BlobReader"><a class="viewcode-back" href="../../datajoint.blob.html#datajoint.blob.BlobReader">[docs]</a><span class="k">class</span> <span class="nc">BlobReader</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">blob</span><span class="p">,</span> <span class="n">simplify</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_simplify</span> <span class="o">=</span> <span class="n">simplify</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_blob</span> <span class="o">=</span> <span class="n">blob</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pos</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">pos</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pos</span>
+
+    <span class="nd">@pos</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">pos</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pos</span> <span class="o">=</span> <span class="n">val</span>
+
+<div class="viewcode-block" id="BlobReader.reset"><a class="viewcode-back" href="../../datajoint.blob.html#datajoint.blob.BlobReader.reset">[docs]</a>    <span class="k">def</span> <span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pos</span> <span class="o">=</span> <span class="mi">0</span></div>
+
+<div class="viewcode-block" id="BlobReader.decompress"><a class="viewcode-back" href="../../datajoint.blob.html#datajoint.blob.BlobReader.decompress">[docs]</a>    <span class="k">def</span> <span class="nf">decompress</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">pattern</span><span class="p">,</span> <span class="n">decoder</span> <span class="ow">in</span> <span class="n">decode_lookup</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_blob</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">:]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">pattern</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">pos</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">pattern</span><span class="p">)</span>
+                <span class="n">blob_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_value</span><span class="p">(</span><span class="s1">&#39;uint64&#39;</span><span class="p">)</span>
+                <span class="n">blob</span> <span class="o">=</span> <span class="n">decoder</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_blob</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">:])</span>
+                <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">blob</span><span class="p">)</span> <span class="o">==</span> <span class="n">blob_size</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_blob</span> <span class="o">=</span> <span class="n">blob</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_pos</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">break</span></div>
+
+<div class="viewcode-block" id="BlobReader.unpack"><a class="viewcode-back" href="../../datajoint.blob.html#datajoint.blob.BlobReader.unpack">[docs]</a>    <span class="k">def</span> <span class="nf">unpack</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">decompress</span><span class="p">()</span>
+        <span class="n">blob_format</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_string</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">blob_format</span> <span class="o">==</span> <span class="s1">&#39;mYm&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_mym_data</span><span class="p">(</span><span class="n">n_bytes</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BlobReader.read_mym_data"><a class="viewcode-back" href="../../datajoint.blob.html#datajoint.blob.BlobReader.read_mym_data">[docs]</a>    <span class="k">def</span> <span class="nf">read_mym_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_bytes</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">n_bytes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">n_bytes</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                <span class="n">n_bytes</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_blob</span><span class="p">)</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">pos</span>
+            <span class="n">n_bytes</span> <span class="o">-=</span> <span class="mi">1</span>
+
+        <span class="n">type_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_value</span><span class="p">(</span><span class="s1">&#39;c&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">type_id</span> <span class="o">==</span> <span class="n">b</span><span class="s1">&#39;A&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_array</span><span class="p">(</span><span class="n">n_bytes</span><span class="o">=</span><span class="n">n_bytes</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">type_id</span> <span class="o">==</span> <span class="n">b</span><span class="s1">&#39;S&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_structure</span><span class="p">(</span><span class="n">n_bytes</span><span class="o">=</span><span class="n">n_bytes</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">type_id</span> <span class="o">==</span> <span class="n">b</span><span class="s1">&#39;C&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_cell_array</span><span class="p">(</span><span class="n">n_bytes</span><span class="o">=</span><span class="n">n_bytes</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BlobReader.read_array"><a class="viewcode-back" href="../../datajoint.blob.html#datajoint.blob.BlobReader.read_array">[docs]</a>    <span class="k">def</span> <span class="nf">read_array</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">advance</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">n_bytes</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pos</span>
+        <span class="n">n_dims</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">read_value</span><span class="p">(</span><span class="s1">&#39;uint64&#39;</span><span class="p">))</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_value</span><span class="p">(</span><span class="s1">&#39;uint64&#39;</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="n">n_dims</span><span class="p">)</span>
+        <span class="n">n_elem</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">shape</span><span class="p">))</span>
+        <span class="n">dtype_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_value</span><span class="p">(</span><span class="s1">&#39;uint32&#39;</span><span class="p">)</span>
+        <span class="n">dtype</span> <span class="o">=</span> <span class="n">dtype_list</span><span class="p">[</span><span class="n">dtype_id</span><span class="p">]</span>
+        <span class="n">is_complex</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_value</span><span class="p">(</span><span class="s1">&#39;uint32&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">dtype_id</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span> <span class="c1"># if dealing with character array</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_value</span><span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="mi">2</span> <span class="o">*</span> <span class="n">n_elem</span><span class="p">)</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[::</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;&lt;U1&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">n_dims</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">compact</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="n">compact</span> <span class="k">if</span> <span class="n">compact</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">()</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()))</span>
+                <span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">is_complex</span><span class="p">:</span>
+                <span class="n">n_elem</span> <span class="o">*=</span> <span class="mi">2</span> <span class="c1"># read real and imaginary parts</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_value</span><span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="n">n_elem</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">is_complex</span><span class="p">:</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:</span><span class="n">n_elem</span><span class="o">//</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="n">data</span><span class="p">[</span><span class="n">n_elem</span><span class="o">//</span><span class="mi">2</span><span class="p">:]</span>
+
+        <span class="k">if</span> <span class="n">n_bytes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">pos</span> <span class="o">-</span> <span class="n">start</span> <span class="o">==</span> <span class="n">n_bytes</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">advance</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pos</span> <span class="o">=</span> <span class="n">start</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">simplify</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="s1">&#39;F&#39;</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="BlobReader.read_structure"><a class="viewcode-back" href="../../datajoint.blob.html#datajoint.blob.BlobReader.read_structure">[docs]</a>    <span class="k">def</span> <span class="nf">read_structure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">advance</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">n_bytes</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pos</span>
+        <span class="n">n_dims</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_value</span><span class="p">(</span><span class="s1">&#39;uint64&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_value</span><span class="p">(</span><span class="s1">&#39;uint64&#39;</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="n">n_dims</span><span class="p">)</span>
+        <span class="n">n_elem</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">shape</span><span class="p">))</span>
+        <span class="n">n_field</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">read_value</span><span class="p">(</span><span class="s1">&#39;uint32&#39;</span><span class="p">))</span>
+        <span class="n">field_names</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_field</span><span class="p">):</span>
+            <span class="n">field_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">read_string</span><span class="p">())</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">field_names</span><span class="p">:</span>
+            <span class="c1"># return an empty array</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+        <span class="n">dt</span> <span class="o">=</span> <span class="p">[(</span><span class="n">f</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">object</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">field_names</span><span class="p">]</span>
+        <span class="n">raw_data</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_elem</span><span class="p">):</span>
+            <span class="n">vals</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_field</span><span class="p">):</span>
+                <span class="n">nb</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">read_value</span><span class="p">(</span><span class="s1">&#39;uint64&#39;</span><span class="p">))</span> <span class="c1"># dealing with a weird bug of numpy</span>
+                <span class="n">vals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">read_mym_data</span><span class="p">(</span><span class="n">n_bytes</span><span class="o">=</span><span class="n">nb</span><span class="p">))</span>
+            <span class="n">raw_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">vals</span><span class="p">))</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">rec</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">raw_data</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dt</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">n_bytes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">pos</span> <span class="o">-</span> <span class="n">start</span> <span class="o">==</span> <span class="n">n_bytes</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">advance</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pos</span> <span class="o">=</span> <span class="n">start</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">simplify</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="s1">&#39;F&#39;</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="BlobReader.simplify"><a class="viewcode-back" href="../../datajoint.blob.html#datajoint.blob.BlobReader.simplify">[docs]</a>    <span class="k">def</span> <span class="nf">simplify</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Simplify the given array as much as possible - squeeze out all singleton</span>
+<span class="sd">        dimensions and also convert a zero dimensional array into array scalar</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_simplify</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">array</span>
+        <span class="n">array</span> <span class="o">=</span> <span class="n">array</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">array</span> <span class="o">=</span> <span class="n">array</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">array</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">array</span> <span class="o">=</span> <span class="n">array</span><span class="p">[()]</span>
+        <span class="k">return</span> <span class="n">array</span></div>
+
+<div class="viewcode-block" id="BlobReader.read_cell_array"><a class="viewcode-back" href="../../datajoint.blob.html#datajoint.blob.BlobReader.read_cell_array">[docs]</a>    <span class="k">def</span> <span class="nf">read_cell_array</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">advance</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">n_bytes</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pos</span>
+        <span class="n">n_dims</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_value</span><span class="p">(</span><span class="s1">&#39;uint64&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_value</span><span class="p">(</span><span class="s1">&#39;uint64&#39;</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="n">n_dims</span><span class="p">)</span>
+        <span class="n">n_elem</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">shape</span><span class="p">))</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n_elem</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">object</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_elem</span><span class="p">):</span>
+            <span class="n">nb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_value</span><span class="p">(</span><span class="s1">&#39;uint64&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+            <span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_mym_data</span><span class="p">(</span><span class="n">n_bytes</span><span class="o">=</span><span class="n">nb</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">n_bytes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">pos</span> <span class="o">-</span> <span class="n">start</span> <span class="o">==</span> <span class="n">n_bytes</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">advance</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pos</span> <span class="o">=</span> <span class="n">start</span>
+        <span class="k">return</span> <span class="n">data</span></div>
+
+<div class="viewcode-block" id="BlobReader.read_string"><a class="viewcode-back" href="../../datajoint.blob.html#datajoint.blob.BlobReader.read_string">[docs]</a>    <span class="k">def</span> <span class="nf">read_string</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">advance</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Read a string terminated by null byte &#39;\0&#39;. The returned string</span>
+<span class="sd">        object is ASCII decoded, and will not include the terminating null byte.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_blob</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">b</span><span class="s1">&#39;</span><span class="se">\0</span><span class="s1">&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">target</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pos</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_blob</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_pos</span><span class="p">:</span><span class="n">target</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">advance</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_pos</span> <span class="o">=</span> <span class="n">target</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">data</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;ascii&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="BlobReader.read_value"><a class="viewcode-back" href="../../datajoint.blob.html#datajoint.blob.BlobReader.read_value">[docs]</a>    <span class="k">def</span> <span class="nf">read_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;uint64&#39;</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">advance</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Read one or more scalars of the indicated dtype. Count specifies the number of</span>
+<span class="sd">        scalars to be read in.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_blob</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="n">count</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">advance</span><span class="p">:</span>
+            <span class="c1"># probably the same thing as data.nbytes * 8</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_pos</span> <span class="o">+=</span> <span class="n">data</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">itemsize</span> <span class="o">*</span> <span class="n">data</span><span class="o">.</span><span class="n">size</span>
+        <span class="k">if</span> <span class="n">count</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">data</span></div>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_blob</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">:])</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_blob</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">pos</span><span class="p">:])</span></div>
+
+
+<div class="viewcode-block" id="pack"><a class="viewcode-back" href="../../datajoint.blob.html#datajoint.blob.pack">[docs]</a><span class="k">def</span> <span class="nf">pack</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Packs an object into a blob to be compatible with mym.mex</span>
+
+<span class="sd">    :param obj: object to be packed</span>
+<span class="sd">    :type obj: numpy.ndarray</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">&quot;Only numpy arrays can be saved in blobs&quot;</span><span class="p">)</span>
+
+    <span class="n">blob</span> <span class="o">=</span> <span class="n">b</span><span class="s2">&quot;mYm</span><span class="se">\0</span><span class="s2">A&quot;</span>  <span class="c1"># TODO: extend to process other data types besides arrays</span>
+    <span class="n">blob</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">shape</span><span class="p">),)</span> <span class="o">+</span> <span class="n">obj</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint64</span><span class="p">)</span><span class="o">.</span><span class="n">tostring</span><span class="p">()</span>
+
+    <span class="n">is_complex</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">iscomplexobj</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">is_complex</span><span class="p">:</span>
+        <span class="n">obj</span><span class="p">,</span> <span class="n">imaginary</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">real</span><span class="p">(</span><span class="n">obj</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">imag</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+
+    <span class="n">type_number</span> <span class="o">=</span> <span class="n">rev_class_id</span><span class="p">[</span><span class="n">obj</span><span class="o">.</span><span class="n">dtype</span><span class="p">]</span>
+    <span class="k">assert</span> <span class="n">dtype_list</span><span class="p">[</span><span class="n">type_number</span><span class="p">]</span> <span class="o">==</span> <span class="n">obj</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="s1">&#39;ambiguous or unknown array type&#39;</span>
+    <span class="n">blob</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">type_number</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint32</span><span class="p">)</span><span class="o">.</span><span class="n">tostring</span><span class="p">()</span>
+    <span class="n">blob</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">(</span><span class="n">is_complex</span><span class="p">)</span><span class="o">.</span><span class="n">tostring</span><span class="p">()</span> <span class="o">+</span> <span class="n">b</span><span class="s1">&#39;</span><span class="se">\0\0\0</span><span class="s1">&#39;</span>
+    <span class="n">blob</span> <span class="o">+=</span> <span class="n">obj</span><span class="o">.</span><span class="n">tostring</span><span class="p">(</span><span class="n">order</span><span class="o">=</span><span class="s1">&#39;F&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">is_complex</span><span class="p">:</span>
+        <span class="n">blob</span> <span class="o">+=</span> <span class="n">imaginary</span><span class="o">.</span><span class="n">tostring</span><span class="p">(</span><span class="n">order</span><span class="o">=</span><span class="s1">&#39;F&#39;</span><span class="p">)</span>
+
+    <span class="n">compressed</span> <span class="o">=</span> <span class="n">b</span><span class="s1">&#39;ZL123</span><span class="se">\0</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">uint64</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">blob</span><span class="p">))</span><span class="o">.</span><span class="n">tostring</span><span class="p">()</span> <span class="o">+</span> <span class="n">zlib</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">blob</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">compressed</span><span class="p">)</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">blob</span><span class="p">):</span>
+        <span class="n">blob</span> <span class="o">=</span> <span class="n">compressed</span>
+    <span class="k">return</span> <span class="n">blob</span></div>
+
+
+<div class="viewcode-block" id="unpack"><a class="viewcode-back" href="../../datajoint.blob.html#datajoint.blob.unpack">[docs]</a><span class="k">def</span> <span class="nf">unpack</span><span class="p">(</span><span class="n">blob</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">blob</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">return</span> <span class="n">BlobReader</span><span class="p">(</span><span class="n">blob</span><span class="p">)</span><span class="o">.</span><span class="n">unpack</span><span class="p">()</span></div>
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  <li><a href="../datajoint.html">datajoint</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Dimitri Yatsenko, Edgar Walker, Fabian Sinz.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

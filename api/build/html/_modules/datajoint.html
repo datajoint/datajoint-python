@@ -1,0 +1,174 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>datajoint &mdash; Datajoint Python 0.3 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.3',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Datajoint Python 0.3 documentation" href="../index.html" />
+    <link rel="up" title="Module code" href="index.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for datajoint</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">DataJoint for Python is a high-level programming interface for MySQL databases</span>
+<span class="sd">to support data processing chains in science labs. DataJoint is built on the</span>
+<span class="sd">foundation of the relational data model and prescribes a consistent method for</span>
+<span class="sd">organizing, populating, and querying data.</span>
+
+<span class="sd">DataJoint is free software under the LGPL License. In addition, we request</span>
+<span class="sd">that any use of DataJoint leading to a publication be acknowledged in the publication.</span>
+
+<span class="sd">Please cite:</span>
+<span class="sd">    http://biorxiv.org/content/early/2015/11/14/031658</span>
+<span class="sd">    http://dx.doi.org/10.1101/031658</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="n">__author__</span> <span class="o">=</span> <span class="s2">&quot;Dimitri Yatsenko, Edgar Walker, and Fabian Sinz at Baylor College of Medicine&quot;</span>
+<span class="n">__version__</span> <span class="o">=</span> <span class="s2">&quot;0.3.5&quot;</span>
+<span class="n">__date__</span> <span class="o">=</span> <span class="s2">&quot;July 21, 2016&quot;</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;__author__&#39;</span><span class="p">,</span> <span class="s1">&#39;__version__&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;config&#39;</span><span class="p">,</span> <span class="s1">&#39;conn&#39;</span><span class="p">,</span> <span class="s1">&#39;kill&#39;</span><span class="p">,</span> <span class="s1">&#39;BaseRelation&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;Connection&#39;</span><span class="p">,</span> <span class="s1">&#39;Heading&#39;</span><span class="p">,</span> <span class="s1">&#39;FreeRelation&#39;</span><span class="p">,</span> <span class="s1">&#39;Not&#39;</span><span class="p">,</span> <span class="s1">&#39;schema&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;Manual&#39;</span><span class="p">,</span> <span class="s1">&#39;Lookup&#39;</span><span class="p">,</span> <span class="s1">&#39;Imported&#39;</span><span class="p">,</span> <span class="s1">&#39;Computed&#39;</span><span class="p">,</span> <span class="s1">&#39;Part&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;AndList&#39;</span><span class="p">,</span> <span class="s1">&#39;OrList&#39;</span><span class="p">,</span> <span class="s1">&#39;ERD&#39;</span><span class="p">,</span> <span class="s1">&#39;U&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;set_password&#39;</span><span class="p">]</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;DataJoint&#39;</span><span class="p">,</span> <span class="n">__version__</span><span class="p">,</span> <span class="s1">&#39;(&#39;</span><span class="o">+</span><span class="n">__date__</span><span class="o">+</span><span class="s1">&#39;)&#39;</span><span class="p">)</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">captureWarnings</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="key"><a class="viewcode-back" href="../datajoint.html#datajoint.key">[docs]</a><span class="k">class</span> <span class="nc">key</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    object that allows requesting the primary key in Fetch.__getitem__</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">pass</span></div>
+
+
+<span class="k">class</span> <span class="nc">DataJointError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Base class for errors specific to DataJoint internal operation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">pass</span>
+
+<span class="c1"># ----------- loads local configuration from file ----------------</span>
+<span class="kn">from</span> <span class="nn">.settings</span> <span class="k">import</span> <span class="n">Config</span><span class="p">,</span> <span class="n">LOCALCONFIG</span><span class="p">,</span> <span class="n">GLOBALCONFIG</span><span class="p">,</span> <span class="n">logger</span><span class="p">,</span> <span class="n">log_levels</span>
+<span class="n">config</span> <span class="o">=</span> <span class="n">Config</span><span class="p">()</span>
+
+
+<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s1">&#39;DJ_HOST&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s1">&#39;DJ_USER&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s1">&#39;DJ_PASS&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Loading local settings from environment variables&quot;</span><span class="p">)</span>
+    <span class="n">config</span><span class="p">[</span><span class="s1">&#39;database.host&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s1">&#39;DJ_HOST&#39;</span><span class="p">)</span>
+    <span class="n">config</span><span class="p">[</span><span class="s1">&#39;database.user&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s1">&#39;DJ_USER&#39;</span><span class="p">)</span>
+    <span class="n">config</span><span class="p">[</span><span class="s1">&#39;database.password&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s1">&#39;DJ_PASS&#39;</span><span class="p">)</span>
+<span class="k">elif</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">LOCALCONFIG</span><span class="p">):</span>
+    <span class="n">local_config_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="n">LOCALCONFIG</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Loading local settings from </span><span class="si">{0:s}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">local_config_file</span><span class="p">))</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span> <span class="s2">&quot;Loading local settings from </span><span class="si">{0:s}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">local_config_file</span><span class="p">))</span>
+    <span class="n">config</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">local_config_file</span><span class="p">)</span>
+<span class="k">elif</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s1">&#39;~/&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="n">GLOBALCONFIG</span><span class="p">):</span>
+    <span class="n">local_config_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s1">&#39;~/&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="n">GLOBALCONFIG</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Loading local settings from </span><span class="si">{0:s}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">local_config_file</span><span class="p">))</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span> <span class="s2">&quot;Loading local settings from </span><span class="si">{0:s}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">local_config_file</span><span class="p">))</span>
+    <span class="n">config</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">local_config_file</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;Cannot find configuration settings. Using default configuration. To change that, either</span>
+<span class="s2">    * modify the local copy of </span><span class="si">%s</span><span class="s2"> that datajoint just saved for you</span>
+<span class="s2">    * put a file named </span><span class="si">%s</span><span class="s2"> with the same configuration format in your home</span>
+<span class="s2">    * specify the environment variables DJ_USER, DJ_HOST, DJ_PASS</span>
+<span class="s2">          &quot;&quot;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">LOCALCONFIG</span><span class="p">,</span> <span class="n">GLOBALCONFIG</span><span class="p">))</span>
+    <span class="n">local_config_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="n">LOCALCONFIG</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span> <span class="s2">&quot;No config found. Generating </span><span class="si">{0:s}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">local_config_file</span><span class="p">))</span>
+    <span class="n">config</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">local_config_file</span><span class="p">)</span>
+
+<span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">log_levels</span><span class="p">[</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;loglevel&#39;</span><span class="p">]])</span>
+
+<span class="c1"># ------------- flatten import hierarchy -------------------------</span>
+<span class="kn">from</span> <span class="nn">.connection</span> <span class="k">import</span> <span class="n">conn</span><span class="p">,</span> <span class="n">Connection</span>
+<span class="kn">from</span> <span class="nn">.base_relation</span> <span class="k">import</span> <span class="n">FreeRelation</span><span class="p">,</span> <span class="n">BaseRelation</span>
+<span class="kn">from</span> <span class="nn">.user_relations</span> <span class="k">import</span> <span class="n">Manual</span><span class="p">,</span> <span class="n">Lookup</span><span class="p">,</span> <span class="n">Imported</span><span class="p">,</span> <span class="n">Computed</span><span class="p">,</span> <span class="n">Part</span>
+<span class="kn">from</span> <span class="nn">.relational_operand</span> <span class="k">import</span> <span class="n">Not</span><span class="p">,</span> <span class="n">AndList</span><span class="p">,</span> <span class="n">OrList</span><span class="p">,</span> <span class="n">U</span>
+<span class="kn">from</span> <span class="nn">.heading</span> <span class="k">import</span> <span class="n">Heading</span>
+<span class="kn">from</span> <span class="nn">.schema</span> <span class="k">import</span> <span class="n">Schema</span> <span class="k">as</span> <span class="n">schema</span>
+<span class="kn">from</span> <span class="nn">.kill</span> <span class="k">import</span> <span class="n">kill</span>
+<span class="kn">from</span> <span class="nn">.erd</span> <span class="k">import</span> <span class="n">ERD</span>
+<span class="kn">from</span> <span class="nn">.admin</span> <span class="k">import</span> <span class="n">set_password</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Dimitri Yatsenko, Edgar Walker, Fabian Sinz.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

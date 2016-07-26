@@ -1,0 +1,542 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>datajoint.relational_operand module &mdash; Datajoint Python 0.3 documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.3',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Datajoint Python 0.3 documentation" href="index.html" />
+    <link rel="next" title="datajoint.schema module" href="datajoint.schema.html" />
+    <link rel="prev" title="datajoint.kill module" href="datajoint.kill.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-datajoint.relational_operand">
+<span id="datajoint-relational-operand-module"></span><h1>datajoint.relational_operand module<a class="headerlink" href="#module-datajoint.relational_operand" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="datajoint.relational_operand.AndList">
+<em class="property">class </em><code class="descclassname">datajoint.relational_operand.</code><code class="descname">AndList</code><a class="reference internal" href="_modules/datajoint/relational_operand.html#AndList"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.relational_operand.AndList" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">list</span></code></p>
+<p>A list of restrictions to by applied to a relation.  The restrictions are AND-ed.
+Each restriction can be a list or set or a relation whose elements are OR-ed.
+But the elements that are lists can contain other AndLists.</p>
+<p>Example:
+rel2 = rel &amp; dj.AndList((cond1, cond2, cond3))
+is equivalent to
+rel2 = rel &amp; cond1 &amp; cond2 &amp; cond3</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="datajoint.relational_operand.GroupBy">
+<em class="property">class </em><code class="descclassname">datajoint.relational_operand.</code><code class="descname">GroupBy</code><span class="sig-paren">(</span><em>arg=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/relational_operand.html#GroupBy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.relational_operand.GroupBy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.relational_operand.RelationalOperand" title="datajoint.relational_operand.RelationalOperand"><code class="xref py py-class docutils literal"><span class="pre">datajoint.relational_operand.RelationalOperand</span></code></a></p>
+<p>GroupBy(rel, comp1=&#8217;expr1&#8217;, ..., compn=&#8217;exprn&#8217;)  produces a relation with the primary key specified by rel.heading.
+The computed arguments comp1, ..., compn use aggregation operators on the attributes of rel.
+GroupBy is used RelationalOperand.aggregate and U.aggregate.
+GroupBy is a private class in DataJoint, not exposed to users.</p>
+<dl class="classmethod">
+<dt id="datajoint.relational_operand.GroupBy.create">
+<em class="property">classmethod </em><code class="descname">create</code><span class="sig-paren">(</span><em>arg</em>, <em>group</em>, <em>attributes=None</em>, <em>named_attributes=None</em>, <em>keep_all_rows=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/relational_operand.html#GroupBy.create"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.relational_operand.GroupBy.create" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="datajoint.relational_operand.GroupBy.make_sql">
+<code class="descname">make_sql</code><span class="sig-paren">(</span><em>select_fields=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/relational_operand.html#GroupBy.make_sql"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.relational_operand.GroupBy.make_sql" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="datajoint.relational_operand.Join">
+<em class="property">class </em><code class="descclassname">datajoint.relational_operand.</code><code class="descname">Join</code><span class="sig-paren">(</span><em>arg=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/relational_operand.html#Join"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.relational_operand.Join" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.relational_operand.RelationalOperand" title="datajoint.relational_operand.RelationalOperand"><code class="xref py py-class docutils literal"><span class="pre">datajoint.relational_operand.RelationalOperand</span></code></a></p>
+<p>Relational join.
+Join is a private DataJoint class not exposed to users.</p>
+<dl class="classmethod">
+<dt id="datajoint.relational_operand.Join.create">
+<em class="property">classmethod </em><code class="descname">create</code><span class="sig-paren">(</span><em>arg1</em>, <em>arg2</em>, <em>keep_all_rows=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/relational_operand.html#Join.create"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.relational_operand.Join.create" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.relational_operand.Join.from_clause">
+<code class="descname">from_clause</code><a class="headerlink" href="#datajoint.relational_operand.Join.from_clause" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="staticmethod">
+<dt id="datajoint.relational_operand.Join.make_argument_subquery">
+<em class="property">static </em><code class="descname">make_argument_subquery</code><span class="sig-paren">(</span><em>arg</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/relational_operand.html#Join.make_argument_subquery"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.relational_operand.Join.make_argument_subquery" title="Permalink to this definition">¶</a></dt>
+<dd><p>Decide when a Join argument needs to be wrapped in a subquery</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="datajoint.relational_operand.Not">
+<em class="property">class </em><code class="descclassname">datajoint.relational_operand.</code><code class="descname">Not</code><span class="sig-paren">(</span><em>restriction</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/relational_operand.html#Not"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.relational_operand.Not" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>invert restriction</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="datajoint.relational_operand.OrList">
+<em class="property">class </em><code class="descclassname">datajoint.relational_operand.</code><code class="descname">OrList</code><a class="reference internal" href="_modules/datajoint/relational_operand.html#OrList"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.relational_operand.OrList" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">list</span></code></p>
+<p>A list of restrictions to by applied to a relation.  The restrictions are OR-ed.
+If any restriction is .
+But the elements that are lists can contain other AndLists.</p>
+<p>Example:
+rel2 = rel &amp; dj.ORList((cond1, cond2, cond3))
+is equivalent to
+rel2 = rel &amp; [cond1, cond2, cond3]</p>
+<p>Since ORList is just an alias for list, it is not necessary and is only provided
+for consistency with AndList.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="datajoint.relational_operand.Projection">
+<em class="property">class </em><code class="descclassname">datajoint.relational_operand.</code><code class="descname">Projection</code><span class="sig-paren">(</span><em>arg=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/relational_operand.html#Projection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.relational_operand.Projection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.relational_operand.RelationalOperand" title="datajoint.relational_operand.RelationalOperand"><code class="xref py py-class docutils literal"><span class="pre">datajoint.relational_operand.RelationalOperand</span></code></a></p>
+<p>Projection is an private DataJoint class that implements relational projection.
+See RelationalOperand.proj() for user interface.</p>
+<dl class="classmethod">
+<dt id="datajoint.relational_operand.Projection.create">
+<em class="property">classmethod </em><code class="descname">create</code><span class="sig-paren">(</span><em>arg</em>, <em>attributes=None</em>, <em>named_attributes=None</em>, <em>include_primary_key=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/relational_operand.html#Projection.create"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.relational_operand.Projection.create" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>arg</strong> &#8211; A relation to be be projected</li>
+<li><strong>attributes</strong> &#8211; attributes to be selected from</li>
+<li><strong>named_attributes</strong> &#8211; new attributes to select or</li>
+<li><strong>include_primary_key</strong> &#8211; True if the primary key must be included even if it&#8217;s not in attributes.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">the resulting Projection object</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.relational_operand.Projection.from_clause">
+<code class="descname">from_clause</code><a class="headerlink" href="#datajoint.relational_operand.Projection.from_clause" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="datajoint.relational_operand.RelationalOperand">
+<em class="property">class </em><code class="descclassname">datajoint.relational_operand.</code><code class="descname">RelationalOperand</code><span class="sig-paren">(</span><em>arg=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/relational_operand.html#RelationalOperand"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.relational_operand.RelationalOperand" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>RelationalOperand implements the relational algebra.
+RelationalOperand objects link other relational operands with relational operators.
+The leaves of this tree of objects are base relations.
+When fetching data from the database, this tree of objects is compiled into an SQL expression.
+RelationalOperand operators are restrict, join, proj, and aggregate.</p>
+<dl class="method">
+<dt id="datajoint.relational_operand.RelationalOperand.aggregate">
+<code class="descname">aggregate</code><span class="sig-paren">(</span><em>group</em>, <em>*attributes</em>, <em>*</em>, <em>keep_all_rows=False</em>, <em>**named_attributes</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/relational_operand.html#RelationalOperand.aggregate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.relational_operand.RelationalOperand.aggregate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Relational aggregation/projection operator
+:param group:  relation whose tuples can be used in aggregation operators
+:param attributes: attributes of self to include in the resulting relation
+:param keep_all_rows: True = preserve the number of tuples in the result (equivalent of LEFT JOIN in SQL)
+:param named_attributes: renamings and computations on attributes of self and group
+:return: a relation representing the result of the aggregation/projection operator</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="datajoint.relational_operand.RelationalOperand.attributes_in_restriction">
+<code class="descname">attributes_in_restriction</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/relational_operand.html#RelationalOperand.attributes_in_restriction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.relational_operand.RelationalOperand.attributes_in_restriction" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">list of attributes that are probably used in the restrictions.
+The function errs on the side of false positives.
+For example, if the restriction is &#8220;val=&#8217;id&#8217;&#8221;, then the attribute &#8216;id&#8217; would be flagged.
+This is used internally for optimizing SQL statements.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.relational_operand.RelationalOperand.connection">
+<code class="descname">connection</code><a class="headerlink" href="#datajoint.relational_operand.RelationalOperand.connection" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">the dj.Connection object</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="datajoint.relational_operand.RelationalOperand.create">
+<em class="property">classmethod </em><code class="descname">create</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/relational_operand.html#RelationalOperand.create"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.relational_operand.RelationalOperand.create" title="Permalink to this definition">¶</a></dt>
+<dd><p>abstract method for creating an instance</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="datajoint.relational_operand.RelationalOperand.cursor">
+<code class="descname">cursor</code><span class="sig-paren">(</span><em>offset=0</em>, <em>limit=None</em>, <em>order_by=None</em>, <em>as_dict=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/relational_operand.html#RelationalOperand.cursor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.relational_operand.RelationalOperand.cursor" title="Permalink to this definition">¶</a></dt>
+<dd><p>See Relation.fetch() for input description.
+:return: query cursor</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.relational_operand.RelationalOperand.distinct">
+<code class="descname">distinct</code><a class="headerlink" href="#datajoint.relational_operand.RelationalOperand.distinct" title="Permalink to this definition">¶</a></dt>
+<dd><p>True if the DISTINCT modifier is required to turn the query into a relation</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.relational_operand.RelationalOperand.fetch">
+<code class="descname">fetch</code><a class="headerlink" href="#datajoint.relational_operand.RelationalOperand.fetch" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.relational_operand.RelationalOperand.fetch1">
+<code class="descname">fetch1</code><a class="headerlink" href="#datajoint.relational_operand.RelationalOperand.fetch1" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.relational_operand.RelationalOperand.heading">
+<code class="descname">heading</code><a class="headerlink" href="#datajoint.relational_operand.RelationalOperand.heading" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">the dj.Heading object of the relation</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.relational_operand.RelationalOperand.is_restricted">
+<code class="descname">is_restricted</code><a class="headerlink" href="#datajoint.relational_operand.RelationalOperand.is_restricted" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="datajoint.relational_operand.RelationalOperand.make_sql">
+<code class="descname">make_sql</code><span class="sig-paren">(</span><em>select_fields=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/relational_operand.html#RelationalOperand.make_sql"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.relational_operand.RelationalOperand.make_sql" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="datajoint.relational_operand.RelationalOperand.preview">
+<code class="descname">preview</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/relational_operand.html#RelationalOperand.preview"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.relational_operand.RelationalOperand.preview" title="Permalink to this definition">¶</a></dt>
+<dd><p>returns a preview of the contents of the relation.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.relational_operand.RelationalOperand.primary_key">
+<code class="descname">primary_key</code><a class="headerlink" href="#datajoint.relational_operand.RelationalOperand.primary_key" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="datajoint.relational_operand.RelationalOperand.proj">
+<code class="descname">proj</code><span class="sig-paren">(</span><em>*attributes</em>, <em>**named_attributes</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/relational_operand.html#RelationalOperand.proj"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.relational_operand.RelationalOperand.proj" title="Permalink to this definition">¶</a></dt>
+<dd><p>Relational projection operator.
+:param attributes:  attributes to be included in the result. (The primary key is already included).
+:param named_attributes: new attributes computed or renamed from existing attributes.
+:return: the projected relation.
+Primary key attributes are always cannot be excluded but may be renamed.
+Thus self.proj() produces the relation with only the primary key of self.
+self.proj(a=&#8217;id&#8217;) renames the attribute &#8216;id&#8217; into &#8216;a&#8217; and includes &#8216;a&#8217; in the projection.
+self.proj(a=&#8217;expr&#8217;) adds a new field a with the value computed with SQL expression.
+self.proj(a=&#8217;(id)&#8217;) adds a new computed field named &#8216;a&#8217; that has the same value as id
+Each attribute can only be used once in attributes or named_attributes.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="datajoint.relational_operand.RelationalOperand.restrict">
+<code class="descname">restrict</code><span class="sig-paren">(</span><em>restriction</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/relational_operand.html#RelationalOperand.restrict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.relational_operand.RelationalOperand.restrict" title="Permalink to this definition">¶</a></dt>
+<dd><p>In-place restriction.  Restricts the relation to a subset of its original tuples.
+rel.restrict(restriction)  is equivalent to  rel = rel &amp; restriction  or  rel &amp;= restriction
+rel.restrict(Not(restriction))  is equivalent to  rel = rel - restriction  or  rel -= restriction
+The primary key of the result is unaffected.
+Successive restrictions are combined using the logical AND.
+The AndList class is provided to play the role of successive restrictions.
+Any relation, collection, or sequence other than an AndList are treated as OrLists.
+However, the class OrList is still provided for cases when explicitness is required.
+Inverse restriction is accomplished by either using the subtraction operator or the Not class.</p>
+<p>The expressions in each row equivalent:</p>
+<p>rel &amp; True                          rel
+rel &amp; False                         the empty relation
+rel &amp; &#8216;TRUE&#8217;                        rel
+rel &amp; &#8216;FALSE&#8217;                       the empty relation
+rel - cond                          rel &amp; Not(cond)
+rel - &#8216;TRUE&#8217;                        rel &amp; False
+rel - &#8216;FALSE&#8217;                       rel
+rel &amp; AndList((cond1,cond2))        rel &amp; cond1 &amp; cond2
+rel &amp; AndList()                     rel
+rel &amp; [cond1, cond2]                rel &amp; OrList((cond1, cond2))
+rel &amp; []                            rel &amp; False
+rel &amp; None                          rel &amp; False
+rel &amp; any_empty_relation            rel &amp; False
+rel - AndList((cond1,cond2))        rel &amp; [Not(cond1), Not(cond2)]
+rel - [cond1, cond2]                rel &amp; Not(cond1) &amp; Not(cond2)
+rel - AndList()                     rel &amp; False
+rel - []                            rel
+rel - None                          rel
+rel - any_empty_relation            rel</p>
+<p>When arg is another relation, the restrictions  rel &amp; arg  and  rel - arg  become the relational semijoin and
+antijoin operators, respectively.
+Then,  rel &amp; arg  restricts rel to tuples that match at least one tuple in arg (hence arg is treated as an OrList).
+Conversely,  rel - arg  restricts rel to tuples that do not match any tuples in arg.
+Two tuples match when their common attributes have equal values or when they have no common attributes.
+All shared attributes must be in the primary key of either rel or arg or both or an error will be raised.</p>
+<p>relational_operand.restrict is the only access point that modifies restrictions. All other operators must
+ultimately call restrict()</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>restriction</strong> &#8211; a sequence or an array (treated as OR list), another relation, an SQL condition string, or
+an AndList.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.relational_operand.RelationalOperand.restrictions">
+<code class="descname">restrictions</code><a class="headerlink" href="#datajoint.relational_operand.RelationalOperand.restrictions" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">The AndList of restrictions applied to the relation.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.relational_operand.RelationalOperand.select_fields">
+<code class="descname">select_fields</code><a class="headerlink" href="#datajoint.relational_operand.RelationalOperand.select_fields" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">string specifying the attributes to return</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.relational_operand.RelationalOperand.where_clause">
+<code class="descname">where_clause</code><a class="headerlink" href="#datajoint.relational_operand.RelationalOperand.where_clause" title="Permalink to this definition">¶</a></dt>
+<dd><p>convert self.restrictions to the SQL WHERE clause</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="datajoint.relational_operand.Subquery">
+<em class="property">class </em><code class="descclassname">datajoint.relational_operand.</code><code class="descname">Subquery</code><span class="sig-paren">(</span><em>arg=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/relational_operand.html#Subquery"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.relational_operand.Subquery" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.relational_operand.RelationalOperand" title="datajoint.relational_operand.RelationalOperand"><code class="xref py py-class docutils literal"><span class="pre">datajoint.relational_operand.RelationalOperand</span></code></a></p>
+<p>A Subquery encapsulates its argument in a SELECT statement, enabling its use as a subquery.
+The attribute list and the WHERE clause are resolved.  Thus, a subquery no longer has any renamed attributes.
+A subquery of a subquery is a just a copy of the subquery with no change in SQL.</p>
+<dl class="attribute">
+<dt id="datajoint.relational_operand.Subquery.counter">
+<code class="descname">counter</code><a class="headerlink" href="#datajoint.relational_operand.Subquery.counter" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="classmethod">
+<dt id="datajoint.relational_operand.Subquery.create">
+<em class="property">classmethod </em><code class="descname">create</code><span class="sig-paren">(</span><em>arg</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/relational_operand.html#Subquery.create"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.relational_operand.Subquery.create" title="Permalink to this definition">¶</a></dt>
+<dd><p>construct a subquery from arg</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.relational_operand.Subquery.from_clause">
+<code class="descname">from_clause</code><a class="headerlink" href="#datajoint.relational_operand.Subquery.from_clause" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.relational_operand.Subquery.select_fields">
+<code class="descname">select_fields</code><a class="headerlink" href="#datajoint.relational_operand.Subquery.select_fields" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="datajoint.relational_operand.U">
+<em class="property">class </em><code class="descclassname">datajoint.relational_operand.</code><code class="descname">U</code><span class="sig-paren">(</span><em>*primary_key</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/relational_operand.html#U"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.relational_operand.U" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>dj.U objects are special relations representing all possible values their attributes.
+dj.U objects cannot be queried on their own but are useful for forming some relational queries.
+dj.U(&#8216;attr1&#8217;, ..., &#8216;attrn&#8217;) represents a relation with the primary key attributes attr1 ... attrn.
+The body of the relation is filled with all possible combinations of values of the attributes.
+Without any attributes, dj.U() represents the relation with one tuple and no attributes.
+The Third Manifesto refers to dj.U() as TABLE_DEE.</p>
+<p>Relational restriction:</p>
+<p>dj.U can be used to enumerate unique combinations of values of attributes from other relations.</p>
+<p>The following expression produces a relation containing all unique combinations of contrast and brightness
+found in relation stimulus:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">dj</span><span class="o">.</span><span class="n">U</span><span class="p">(</span><span class="s1">&#39;contrast&#39;</span><span class="p">,</span> <span class="s1">&#39;brightness&#39;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">stimulus</span>
+</pre></div>
+</div>
+<p>The following expression produces a relation containing all unique combinations of contrast and brightness that is
+contained in relation1 but not contained in relation 2.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">U</span><span class="p">(</span><span class="s1">&#39;contrast&#39;</span><span class="p">,</span> <span class="s1">&#39;brightness&#39;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">relation1</span><span class="p">)</span> <span class="o">-</span> <span class="n">relation2</span>
+</pre></div>
+</div>
+<p>Relational aggregation:</p>
+<p>In aggregation, dj.U is used to compute aggregate expressions on the entire relation.</p>
+<p>The following expression produces a relation with one tuple and one attribute s containing the total number
+of tuples in relation:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">dj</span><span class="o">.</span><span class="n">U</span><span class="p">()</span><span class="o">.</span><span class="n">aggregate</span><span class="p">(</span><span class="n">relation</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="s1">&#39;count(*)&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The following expression produces a relation with one tuple containing the number n of distinct values of attr
+in relation.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">dj</span><span class="o">.</span><span class="n">U</span><span class="p">()</span><span class="o">.</span><span class="n">aggregate</span><span class="p">(</span><span class="n">relation</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="s1">&#39;count(distinct attr)&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The following expression produces a relation with one tuple and one attribute s containing the total sum of attr
+from relation:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">dj</span><span class="o">.</span><span class="n">U</span><span class="p">()</span><span class="o">.</span><span class="n">aggregate</span><span class="p">(</span><span class="n">relation</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="s1">&#39;sum(attr)&#39;</span><span class="p">)</span>   <span class="c1"># sum of attr from the entire relation</span>
+</pre></div>
+</div>
+<p>The following expression produces a relation with the count n of tuples in relation containing each unique
+combination of values in attr1 and attr2.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">dj</span><span class="o">.</span><span class="n">U</span><span class="p">(</span><span class="n">attr1</span><span class="p">,</span><span class="n">attr2</span><span class="p">)</span><span class="o">.</span><span class="n">aggregate</span><span class="p">(</span><span class="n">relation</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="s1">&#39;count(*)&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Joins:</p>
+<p>If relation rel has attributes &#8216;attr1&#8217; and &#8216;attr2&#8217;, then rel*dj.U(&#8216;attr1&#8217;,&#8217;attr2&#8217;) or produces a relation that is
+identical to rel except attr1 and attr2 are included in the primary key.  This is useful for producing a join on
+non-primary key attributes.
+For example, if attr is in both rel1 and rel2 but not in their primary  keys, then rel1*rel2 will throw an error
+because in most cases, it does not make sense to join on non-primary key attributes and users must first rename
+attr in one of the operands.  The expression dj.U(&#8216;attr&#8217;)*rel1*rel2 overrides this constraint.
+Join is commutative.</p>
+<dl class="method">
+<dt id="datajoint.relational_operand.U.aggregate">
+<code class="descname">aggregate</code><span class="sig-paren">(</span><em>group</em>, <em>**named_attributes</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/relational_operand.html#U.aggregate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.relational_operand.U.aggregate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Aggregation of the type U(&#8216;attr1&#8217;,&#8217;attr2&#8217;).aggregate(rel, computation=&#8221;expression&#8221;)
+has the primary key (&#8216;attr1&#8217;,&#8217;attr2&#8217;) and performs aggregation computations for all matching tuples of relation.
+:param group:  The other relation which will be aggregated
+:param named_attributes: computations of the form new_attribute=&#8221;sql expression on attributes of group&#8221;
+:return: The new relation</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.relational_operand.U.primary_key">
+<code class="descname">primary_key</code><a class="headerlink" href="#datajoint.relational_operand.U.primary_key" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="datajoint.relational_operand.equal_ignore_case">
+<code class="descclassname">datajoint.relational_operand.</code><code class="descname">equal_ignore_case</code><span class="sig-paren">(</span><em>str1</em>, <em>str2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/relational_operand.html#equal_ignore_case"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.relational_operand.equal_ignore_case" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="datajoint.relational_operand.restricts_to_empty">
+<code class="descclassname">datajoint.relational_operand.</code><code class="descname">restricts_to_empty</code><span class="sig-paren">(</span><em>arg</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/relational_operand.html#restricts_to_empty"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.relational_operand.restricts_to_empty" title="Permalink to this definition">¶</a></dt>
+<dd><p>returns True if restriction with arg must produce the empty relation.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="datajoint.relational_operand.restricts_to_same">
+<code class="descclassname">datajoint.relational_operand.</code><code class="descname">restricts_to_same</code><span class="sig-paren">(</span><em>arg</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/relational_operand.html#restricts_to_same"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.relational_operand.restricts_to_same" title="Permalink to this definition">¶</a></dt>
+<dd><p>returns True if restriction with arg produces the same result as not restricting at all</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="datajoint.kill.html" title="previous chapter">datajoint.kill module</a></li>
+      <li>Next: <a href="datajoint.schema.html" title="next chapter">datajoint.schema module</a></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/datajoint.relational_operand.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Dimitri Yatsenko, Edgar Walker, Fabian Sinz.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="_sources/datajoint.relational_operand.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

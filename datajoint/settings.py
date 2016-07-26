@@ -99,9 +99,11 @@ class Config(collections.MutableMapping):
         double underscore '__'. The context manager yields the changed config object.
 
         Example:
+
         >>> import datajoint as dj
         >>> with dj.config(safe__mode=False) as cfg:
         >>>     # do dangerous stuff here
+
         """
 
         try:

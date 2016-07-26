@@ -65,9 +65,11 @@ class BaseRelation(RelationalOperand):
     def parents(self, primary=None):
         """
         :param primary: if None, then all parents are returned. If True, then only foreign keys composed of
-        primary key attributes are considered.  If False, the only foreign keys including at least one non-primary
-        attribute are considered.
+            primary key attributes are considered.  If False, the only foreign keys including at least one non-primary
+            attribute are considered.
+
         :return: list of tables referenced with self's foreign keys
+
         """
         return [p[0] for p in self.connection.dependencies.in_edges(self.full_table_name, data=True)
                 if primary is None or p[2]['primary'] == primary]
@@ -75,9 +77,11 @@ class BaseRelation(RelationalOperand):
     def children(self, primary=None):
         """
         :param primary: if None, then all parents are returned. If True, then only foreign keys composed of
-        primary key attributes are considered.  If False, the only foreign keys including at least one non-primary
-        attribute are considered.
+            primary key attributes are considered.  If False, the only foreign keys including at least one non-primary
+            attribute are considered.
+
         :return: list of tables with foreign keys referencing self
+
         """
         return [p[1] for p in self.connection.dependencies.out_edges(self.full_table_name, data=True)
                 if primary is None or p[2]['primary'] == primary]
@@ -112,15 +116,17 @@ class BaseRelation(RelationalOperand):
         Insert a collection of rows.
 
         :param rows: An iterable where an element is a numpy record, a dict-like object, or an ordered sequence.
-        rows may also be another relation with the same heading.
+            rows may also be another relation with the same heading.
         :param replace: If True, replaces the existing tuple.
         :param ignore_errors: If True, ignore errors: e.g. constraint violations.
         :param skip_duplicates: If True, silently skip duplicate inserts.
 
         Example::
+
         >>> relation.insert([
         >>>     dict(subject_id=7, species="mouse", date_of_birth="2014-09-01"),
         >>>     dict(subject_id=8, species="mouse", date_of_birth="2014-09-02")])
+
         """
 
         if isinstance(rows, RelationalOperand):
@@ -337,7 +343,7 @@ class BaseRelation(RelationalOperand):
     def show_definition(self):
         """
         :return:  the definition string for the relation using DataJoint DDL.
-        This does not yet work for aliased foreign keys.
+            This does not yet work for aliased foreign keys.
         """
         self.connection.dependencies.load()
         parents = {r: FreeRelation(self.connection, r).primary_key for r in self.parents()}

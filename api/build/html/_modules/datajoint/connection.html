@@ -1,0 +1,286 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>datajoint.connection &mdash; Datajoint Python 0.3 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.3',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Datajoint Python 0.3 documentation" href="../../index.html" />
+    <link rel="up" title="datajoint" href="../datajoint.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for datajoint.connection</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module hosts the Connection class that manages the connection to the mysql database,</span>
+<span class="sd"> and the `conn` function that provides access to a persistent connection in datajoint.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">from</span> <span class="nn">contextlib</span> <span class="k">import</span> <span class="n">contextmanager</span>
+<span class="kn">import</span> <span class="nn">pymysql</span> <span class="k">as</span> <span class="nn">client</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+
+<span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">config</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">DataJointError</span>
+<span class="kn">from</span> <span class="nn">.dependencies</span> <span class="k">import</span> <span class="n">Dependencies</span>
+<span class="kn">from</span> <span class="nn">.jobs</span> <span class="k">import</span> <span class="n">JobManager</span>
+<span class="kn">from</span> <span class="nn">pymysql</span> <span class="k">import</span> <span class="n">err</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="conn"><a class="viewcode-back" href="../../datajoint.connection.html#datajoint.conn">[docs]</a><span class="k">def</span> <span class="nf">conn</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">user</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">passwd</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">init_fun</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">reset</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns a persistent connection object to be shared by multiple modules.</span>
+<span class="sd">    If the connection is not yet established or reset=True, a new connection is set up.</span>
+<span class="sd">    If connection information is not provided, it is taken from config which takes the</span>
+<span class="sd">    information from dj_local_conf.json. If the password is not specified in that file</span>
+<span class="sd">    datajoint prompts for the password.</span>
+
+<span class="sd">    :param host: hostname</span>
+<span class="sd">    :param user: mysql user</span>
+<span class="sd">    :param passwd: mysql password</span>
+<span class="sd">    :param init_fun: initialization function</span>
+<span class="sd">    :param reset: whether the connection should be reseted or not</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">conn</span><span class="p">,</span> <span class="s1">&#39;connection&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">reset</span><span class="p">:</span>
+        <span class="n">host</span> <span class="o">=</span> <span class="n">host</span> <span class="k">if</span> <span class="n">host</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;database.host&#39;</span><span class="p">]</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="n">user</span> <span class="k">if</span> <span class="n">user</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;database.user&#39;</span><span class="p">]</span>
+        <span class="n">passwd</span> <span class="o">=</span> <span class="n">passwd</span> <span class="k">if</span> <span class="n">passwd</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;database.password&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">passwd</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">passwd</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;Please enter database password: &quot;</span><span class="p">)</span>
+        <span class="n">init_fun</span> <span class="o">=</span> <span class="n">init_fun</span> <span class="k">if</span> <span class="n">init_fun</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;connection.init_function&#39;</span><span class="p">]</span>
+        <span class="n">conn</span><span class="o">.</span><span class="n">connection</span> <span class="o">=</span> <span class="n">Connection</span><span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="n">user</span><span class="p">,</span> <span class="n">passwd</span><span class="p">,</span> <span class="n">init_fun</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">conn</span><span class="o">.</span><span class="n">connection</span></div>
+
+
+<div class="viewcode-block" id="Connection"><a class="viewcode-back" href="../../datajoint.connection.html#datajoint.Connection">[docs]</a><span class="k">class</span> <span class="nc">Connection</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A dj.Connection object manages a connection to a database server.</span>
+<span class="sd">    It also catalogues modules, schemas, tables, and their dependencies (foreign keys).</span>
+
+<span class="sd">    Most of the parameters below should be set in the local configuration file.</span>
+
+<span class="sd">    :param host: host name</span>
+<span class="sd">    :param user: user name</span>
+<span class="sd">    :param passwd: password</span>
+<span class="sd">    :param init_fun: initialization function</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">host</span><span class="p">,</span> <span class="n">user</span><span class="p">,</span> <span class="n">passwd</span><span class="p">,</span> <span class="n">init_fun</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="s1">&#39;:&#39;</span> <span class="ow">in</span> <span class="n">host</span><span class="p">:</span>
+            <span class="n">host</span><span class="p">,</span> <span class="n">port</span> <span class="o">=</span> <span class="n">host</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">)</span>
+            <span class="n">port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">port</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">port</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;database.port&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conn_info</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span> <span class="n">user</span><span class="o">=</span><span class="n">user</span><span class="p">,</span> <span class="n">passwd</span><span class="o">=</span><span class="n">passwd</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">init_fun</span> <span class="o">=</span> <span class="n">init_fun</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Connecting </span><span class="si">{user}</span><span class="s2">@</span><span class="si">{host}</span><span class="s2">:</span><span class="si">{port}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">conn_info</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_connected</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Connected </span><span class="si">{user}</span><span class="s2">@</span><span class="si">{host}</span><span class="s2">:</span><span class="si">{port}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">conn_info</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s1">&#39;Connection failed.&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_conn</span><span class="o">.</span><span class="n">autocommit</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_in_transaction</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">jobs</span> <span class="o">=</span> <span class="n">JobManager</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">schemas</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dependencies</span> <span class="o">=</span> <span class="n">Dependencies</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn_info</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">conn_info</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">connected</span> <span class="o">=</span> <span class="s2">&quot;connected&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_connected</span> <span class="k">else</span> <span class="s2">&quot;disconnected&quot;</span>
+        <span class="k">return</span> <span class="s2">&quot;DataJoint connection (</span><span class="si">{connected}</span><span class="s2">) </span><span class="si">{user}</span><span class="s2">@</span><span class="si">{host}</span><span class="s2">:</span><span class="si">{port}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">connected</span><span class="o">=</span><span class="n">connected</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">conn_info</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Connection.connect"><a class="viewcode-back" href="../../datajoint.connection.html#datajoint.Connection.connect">[docs]</a>    <span class="k">def</span> <span class="nf">connect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">init_fun</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Connects to the database server.</span>
+
+<span class="sd">        :param init_fun: initialization function passed to pymysql</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_conn</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">init_command</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">init_fun</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">conn_info</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Connection.register"><a class="viewcode-back" href="../../datajoint.connection.html#datajoint.Connection.register">[docs]</a>    <span class="k">def</span> <span class="nf">register</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">schema</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">schemas</span><span class="p">[</span><span class="n">schema</span><span class="o">.</span><span class="n">database</span><span class="p">]</span> <span class="o">=</span> <span class="n">schema</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_connected</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns true if the object is connected to the database server.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conn</span><span class="o">.</span><span class="n">ping</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Connection.query"><a class="viewcode-back" href="../../datajoint.connection.html#datajoint.Connection.query">[docs]</a>    <span class="k">def</span> <span class="nf">query</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(),</span> <span class="n">as_dict</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Execute the specified query and return the tuple generator (cursor).</span>
+
+<span class="sd">        :param query: mysql query</span>
+<span class="sd">        :param args: additional arguments for the client.cursor</span>
+<span class="sd">        :param as_dict: If as_dict is set to True, the returned cursor objects returns</span>
+<span class="sd">                        query results as dictionary.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cursor</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">cursors</span><span class="o">.</span><span class="n">DictCursor</span> <span class="k">if</span> <span class="n">as_dict</span> <span class="k">else</span> <span class="n">client</span><span class="o">.</span><span class="n">cursors</span><span class="o">.</span><span class="n">Cursor</span>
+        <span class="n">cur</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">(</span><span class="n">cursor</span><span class="o">=</span><span class="n">cursor</span><span class="p">)</span>
+
+        <span class="c1"># Log the query</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Executing SQL:&quot;</span> <span class="o">+</span> <span class="n">query</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">300</span><span class="p">])</span>
+            <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">err</span><span class="o">.</span><span class="n">OperationalError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s1">&#39;MySQL server has gone away&#39;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="ow">and</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;database.reconnect&#39;</span><span class="p">]:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;Mysql server has gone away.</span>
+<span class="s1">                    Reconnected to the server. Data from transactions might be lost and referential constraints may</span>
+<span class="s1">                    be violated. You can switch off this behavior by setting the &#39;database.reconnect&#39; to False.</span>
+<span class="s1">                    &#39;&#39;&#39;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Re-executing SQL: &quot;</span> <span class="o">+</span> <span class="n">query</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">300</span><span class="p">])</span>
+                <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span>
+        <span class="k">return</span> <span class="n">cur</span></div>
+
+    <span class="c1"># ---------- transaction processing</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">in_transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :return: True if there is an open transaction.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_in_transaction</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_in_transaction</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_connected</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_in_transaction</span>
+
+<div class="viewcode-block" id="Connection.start_transaction"><a class="viewcode-back" href="../../datajoint.connection.html#datajoint.Connection.start_transaction">[docs]</a>    <span class="k">def</span> <span class="nf">start_transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Starts a transaction error.</span>
+
+<span class="sd">        :raise DataJointError: if there is an ongoing transaction.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">in_transaction</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">&quot;Nested connections are not supported.&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s1">&#39;START TRANSACTION WITH CONSISTENT SNAPSHOT&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_in_transaction</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Transaction started&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Connection.cancel_transaction"><a class="viewcode-back" href="../../datajoint.connection.html#datajoint.Connection.cancel_transaction">[docs]</a>    <span class="k">def</span> <span class="nf">cancel_transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Cancels the current transaction and rolls back all changes made during the transaction.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s1">&#39;ROLLBACK&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_in_transaction</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Transaction cancelled. Rolling back ...&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Connection.commit_transaction"><a class="viewcode-back" href="../../datajoint.connection.html#datajoint.Connection.commit_transaction">[docs]</a>    <span class="k">def</span> <span class="nf">commit_transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Commit all changes made during the transaction and close it.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s1">&#39;COMMIT&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_in_transaction</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Transaction committed and closed.&quot;</span><span class="p">)</span></div>
+
+    <span class="c1"># -------- context manager for transactions</span>
+    <span class="nd">@property</span>
+    <span class="nd">@contextmanager</span>
+    <span class="k">def</span> <span class="nf">transaction</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Context manager for transactions. Opens an transaction and closes it after the with statement.</span>
+<span class="sd">        If an error is caught during the transaction, the commits are automatically rolled back.</span>
+<span class="sd">        All errors are raised again.</span>
+
+<span class="sd">        Example:</span>
+
+<span class="sd">        &gt;&gt;&gt; import datajoint as dj</span>
+<span class="sd">        &gt;&gt;&gt; with dj.conn().transaction as conn:</span>
+<span class="sd">        &gt;&gt;&gt;     # transaction is open here</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">start_transaction</span><span class="p">()</span>
+            <span class="k">yield</span> <span class="bp">self</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cancel_transaction</span><span class="p">()</span>
+            <span class="k">raise</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">commit_transaction</span><span class="p">()</span></div>
+
+
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  <li><a href="../datajoint.html">datajoint</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Dimitri Yatsenko, Edgar Walker, Fabian Sinz.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

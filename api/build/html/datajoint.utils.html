@@ -1,0 +1,166 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>datajoint.utils module &mdash; Datajoint Python 0.3 documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.3',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Datajoint Python 0.3 documentation" href="index.html" />
+    <link rel="prev" title="datajoint.user_relations module" href="datajoint.user_relations.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-datajoint.utils">
+<span id="datajoint-utils-module"></span><h1>datajoint.utils module<a class="headerlink" href="#module-datajoint.utils" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="datajoint.utils.ClassProperty">
+<em class="property">class </em><code class="descclassname">datajoint.utils.</code><code class="descname">ClassProperty</code><span class="sig-paren">(</span><em>f</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/utils.html#ClassProperty"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.utils.ClassProperty" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+</dd></dl>
+
+<dl class="function">
+<dt id="datajoint.utils.from_camel_case">
+<code class="descclassname">datajoint.utils.</code><code class="descname">from_camel_case</code><span class="sig-paren">(</span><em>s</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/utils.html#from_camel_case"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.utils.from_camel_case" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert names in camel case into underscore (_) separated names</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>s</strong> &#8211; string in CamelCase notation</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">string in under_score notation</td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">from_camel_case</span><span class="p">(</span><span class="s2">&quot;TableName&quot;</span><span class="p">)</span> <span class="c1"># yields &quot;table_name&quot;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="datajoint.utils.to_camel_case">
+<code class="descclassname">datajoint.utils.</code><code class="descname">to_camel_case</code><span class="sig-paren">(</span><em>s</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/utils.html#to_camel_case"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.utils.to_camel_case" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert names with under score (_) separation into camel case names.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>s</strong> &#8211; string in under_score notation</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">string in CamelCase notation</td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">to_camel_case</span><span class="p">(</span><span class="s2">&quot;table_name&quot;</span><span class="p">)</span> <span class="c1"># yields &quot;TableName&quot;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="datajoint.utils.user_choice">
+<code class="descclassname">datajoint.utils.</code><code class="descname">user_choice</code><span class="sig-paren">(</span><em>prompt</em>, <em>choices=('yes'</em>, <em>'no')</em>, <em>default=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/utils.html#user_choice"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.utils.user_choice" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prompts the user for confirmation.  The default value, if any, is capitalized.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>prompt</strong> &#8211; Information to display to the user.</li>
+<li><strong>choices</strong> &#8211; an iterable of possible choices.</li>
+<li><strong>default</strong> &#8211; default choice</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">the user&#8217;s choice</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="datajoint.user_relations.html" title="previous chapter">datajoint.user_relations module</a></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/datajoint.utils.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Dimitri Yatsenko, Edgar Walker, Fabian Sinz.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="_sources/datajoint.utils.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

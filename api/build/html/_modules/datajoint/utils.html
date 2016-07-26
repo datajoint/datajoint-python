@@ -1,0 +1,158 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>datajoint.utils &mdash; Datajoint Python 0.3 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.3',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Datajoint Python 0.3 documentation" href="../../index.html" />
+    <link rel="up" title="datajoint" href="../datajoint.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for datajoint.utils</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">from</span> <span class="nn">datajoint</span> <span class="k">import</span> <span class="n">DataJointError</span>
+
+
+<div class="viewcode-block" id="ClassProperty"><a class="viewcode-back" href="../../datajoint.utils.html#datajoint.utils.ClassProperty">[docs]</a><span class="k">class</span> <span class="nc">ClassProperty</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">f</span> <span class="o">=</span> <span class="n">f</span>
+
+    <span class="k">def</span> <span class="nf">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">owner</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">f</span><span class="p">(</span><span class="n">owner</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="user_choice"><a class="viewcode-back" href="../../datajoint.utils.html#datajoint.utils.user_choice">[docs]</a><span class="k">def</span> <span class="nf">user_choice</span><span class="p">(</span><span class="n">prompt</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;yes&quot;</span><span class="p">,</span> <span class="s2">&quot;no&quot;</span><span class="p">),</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Prompts the user for confirmation.  The default value, if any, is capitalized.</span>
+
+<span class="sd">    :param prompt: Information to display to the user.</span>
+<span class="sd">    :param choices: an iterable of possible choices.</span>
+<span class="sd">    :param default: default choice</span>
+<span class="sd">    :return: the user&#39;s choice</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">choice_list</span> <span class="o">=</span> <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">((</span><span class="n">choice</span><span class="o">.</span><span class="n">title</span><span class="p">()</span> <span class="k">if</span> <span class="n">choice</span> <span class="o">==</span> <span class="n">default</span> <span class="k">else</span> <span class="n">choice</span> <span class="k">for</span> <span class="n">choice</span> <span class="ow">in</span> <span class="n">choices</span><span class="p">))</span>
+    <span class="n">valid</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">while</span> <span class="ow">not</span> <span class="n">valid</span><span class="p">:</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="n">prompt</span> <span class="o">+</span> <span class="s1">&#39; [&#39;</span> <span class="o">+</span> <span class="n">choice_list</span> <span class="o">+</span> <span class="s1">&#39;]: &#39;</span><span class="p">)</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">response</span> <span class="k">if</span> <span class="n">response</span> <span class="k">else</span> <span class="n">default</span>
+        <span class="n">valid</span> <span class="o">=</span> <span class="n">response</span> <span class="ow">in</span> <span class="n">choices</span>
+    <span class="k">return</span> <span class="n">response</span></div>
+
+
+<div class="viewcode-block" id="to_camel_case"><a class="viewcode-back" href="../../datajoint.utils.html#datajoint.utils.to_camel_case">[docs]</a><span class="k">def</span> <span class="nf">to_camel_case</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert names with under score (_) separation into camel case names.</span>
+
+<span class="sd">    :param s: string in under_score notation</span>
+<span class="sd">    :returns: string in CamelCase notation</span>
+
+<span class="sd">    Example:</span>
+
+<span class="sd">    &gt;&gt;&gt; to_camel_case(&quot;table_name&quot;) # yields &quot;TableName&quot;</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">to_upper</span><span class="p">(</span><span class="n">match</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">0</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39;(^|[_\W])+[a-zA-Z]&#39;</span><span class="p">,</span> <span class="n">to_upper</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="from_camel_case"><a class="viewcode-back" href="../../datajoint.utils.html#datajoint.utils.from_camel_case">[docs]</a><span class="k">def</span> <span class="nf">from_camel_case</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert names in camel case into underscore (_) separated names</span>
+
+<span class="sd">    :param s: string in CamelCase notation</span>
+<span class="sd">    :returns: string in under_score notation</span>
+
+<span class="sd">    Example:</span>
+
+<span class="sd">    &gt;&gt;&gt; from_camel_case(&quot;TableName&quot;) # yields &quot;table_name&quot;</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">convert</span><span class="p">(</span><span class="n">match</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="s1">&#39;_&#39;</span> <span class="k">if</span> <span class="n">match</span><span class="o">.</span><span class="n">groups</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span> <span class="k">else</span> <span class="s1">&#39;&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s1">r&#39;[A-Z][a-zA-Z0-9]*&#39;</span><span class="p">,</span> <span class="n">s</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
+            <span class="s1">&#39;ClassName must be alphanumeric in CamelCase, begin with a capital letter&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">r&#39;(\B[A-Z])|(\b[A-Z])&#39;</span><span class="p">,</span> <span class="n">convert</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  <li><a href="../datajoint.html">datajoint</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Dimitri Yatsenko, Edgar Walker, Fabian Sinz.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

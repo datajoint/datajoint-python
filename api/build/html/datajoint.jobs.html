@@ -1,0 +1,169 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>datajoint.jobs module &mdash; Datajoint Python 0.3 documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.3',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Datajoint Python 0.3 documentation" href="index.html" />
+    <link rel="next" title="datajoint.kill module" href="datajoint.kill.html" />
+    <link rel="prev" title="datajoint.heading module" href="datajoint.heading.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-datajoint.jobs">
+<span id="datajoint-jobs-module"></span><h1>datajoint.jobs module<a class="headerlink" href="#module-datajoint.jobs" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="datajoint.jobs.JobManager">
+<em class="property">class </em><code class="descclassname">datajoint.jobs.</code><code class="descname">JobManager</code><span class="sig-paren">(</span><em>connection</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/jobs.html#JobManager"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.jobs.JobManager" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+</dd></dl>
+
+<dl class="class">
+<dt id="datajoint.jobs.JobRelation">
+<em class="property">class </em><code class="descclassname">datajoint.jobs.</code><code class="descname">JobRelation</code><span class="sig-paren">(</span><em>arg</em>, <em>database=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/jobs.html#JobRelation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.jobs.JobRelation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="datajoint.base_relation.html#datajoint.base_relation.BaseRelation" title="datajoint.base_relation.BaseRelation"><code class="xref py py-class docutils literal"><span class="pre">datajoint.base_relation.BaseRelation</span></code></a></p>
+<p>A base relation with no definition. Allows reserving jobs</p>
+<dl class="method">
+<dt id="datajoint.jobs.JobRelation.complete">
+<code class="descname">complete</code><span class="sig-paren">(</span><em>table_name</em>, <em>key</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/jobs.html#JobRelation.complete"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.jobs.JobRelation.complete" title="Permalink to this definition">¶</a></dt>
+<dd><p>Log a completed job.  When a job is completed, its reservation entry is deleted.
+:param table_name: <cite>database</cite>.`table_name`
+:param key: the dict of the job&#8217;s primary key</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.jobs.JobRelation.definition">
+<code class="descname">definition</code><a class="headerlink" href="#datajoint.jobs.JobRelation.definition" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="datajoint.jobs.JobRelation.delete">
+<code class="descname">delete</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/jobs.html#JobRelation.delete"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.jobs.JobRelation.delete" title="Permalink to this definition">¶</a></dt>
+<dd><p>bypass interactive prompts and dependencies</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="datajoint.jobs.JobRelation.drop">
+<code class="descname">drop</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/jobs.html#JobRelation.drop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.jobs.JobRelation.drop" title="Permalink to this definition">¶</a></dt>
+<dd><p>bypass interactive prompts and dependencies</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="datajoint.jobs.JobRelation.error">
+<code class="descname">error</code><span class="sig-paren">(</span><em>table_name</em>, <em>key</em>, <em>error_message</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/jobs.html#JobRelation.error"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.jobs.JobRelation.error" title="Permalink to this definition">¶</a></dt>
+<dd><p>Log an error message.  The job reservation is replaced with an error entry.
+if an error occurs, leave an entry describing the problem
+:param table_name: <cite>database</cite>.`table_name`
+:param key: the dict of the job&#8217;s primary key
+:param error_message: string error message</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="datajoint.jobs.JobRelation.reserve">
+<code class="descname">reserve</code><span class="sig-paren">(</span><em>table_name</em>, <em>key</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/jobs.html#JobRelation.reserve"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.jobs.JobRelation.reserve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reserve a job for computation.  When a job is reserved, the job table contains an entry for the
+job key, identified by its hash. When jobs are completed, the entry is removed.
+:param table_name: <cite>database</cite>.`table_name`
+:param key: the dict of the job&#8217;s primary key
+:return: True if reserved job successfully. False = the jobs is already taken</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.jobs.JobRelation.table_name">
+<code class="descname">table_name</code><a class="headerlink" href="#datajoint.jobs.JobRelation.table_name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="datajoint.jobs.key_hash">
+<code class="descclassname">datajoint.jobs.</code><code class="descname">key_hash</code><span class="sig-paren">(</span><em>key</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/jobs.html#key_hash"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.jobs.key_hash" title="Permalink to this definition">¶</a></dt>
+<dd><p>32-byte hash used for lookup of primary keys of jobs</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="datajoint.heading.html" title="previous chapter">datajoint.heading module</a></li>
+      <li>Next: <a href="datajoint.kill.html" title="next chapter">datajoint.kill module</a></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/datajoint.jobs.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Dimitri Yatsenko, Edgar Walker, Fabian Sinz.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="_sources/datajoint.jobs.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

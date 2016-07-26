@@ -1,0 +1,341 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>datajoint.base_relation module &mdash; Datajoint Python 0.3 documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.3',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Datajoint Python 0.3 documentation" href="index.html" />
+    <link rel="next" title="datajoint.blob module" href="datajoint.blob.html" />
+    <link rel="prev" title="datajoint.autopopulate module" href="datajoint.autopopulate.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-datajoint.base_relation">
+<span id="datajoint-base-relation-module"></span><h1>datajoint.base_relation module<a class="headerlink" href="#module-datajoint.base_relation" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="datajoint.base_relation.BaseRelation">
+<em class="property">class </em><code class="descclassname">datajoint.base_relation.</code><code class="descname">BaseRelation</code><span class="sig-paren">(</span><em>arg=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/base_relation.html#BaseRelation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.base_relation.BaseRelation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="datajoint.relational_operand.html#datajoint.relational_operand.RelationalOperand" title="datajoint.relational_operand.RelationalOperand"><code class="xref py py-class docutils literal"><span class="pre">datajoint.relational_operand.RelationalOperand</span></code></a></p>
+<p>BaseRelation is an abstract class that represents a base relation, i.e. a table in the database.
+To make it a concrete class, override the abstract properties specifying the connection,
+table name, database, context, and definition.
+A Relation implements insert and delete methods in addition to inherited relational operators.</p>
+<dl class="method">
+<dt id="datajoint.base_relation.BaseRelation.children">
+<code class="descname">children</code><span class="sig-paren">(</span><em>primary=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/base_relation.html#BaseRelation.children"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.base_relation.BaseRelation.children" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>primary</strong> &#8211; if None, then all parents are returned. If True, then only foreign keys composed of
+primary key attributes are considered.  If False, the only foreign keys including at least one non-primary
+attribute are considered.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">list of tables with foreign keys referencing self</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.base_relation.BaseRelation.context">
+<code class="descname">context</code><a class="headerlink" href="#datajoint.base_relation.BaseRelation.context" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.base_relation.BaseRelation.database">
+<code class="descname">database</code><em class="property"> = None</em><a class="headerlink" href="#datajoint.base_relation.BaseRelation.database" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="datajoint.base_relation.BaseRelation.declare">
+<code class="descname">declare</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/base_relation.html#BaseRelation.declare"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.base_relation.BaseRelation.declare" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads the table heading. If the table is not declared, use self.definition to declare</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="datajoint.base_relation.BaseRelation.delete">
+<code class="descname">delete</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/base_relation.html#BaseRelation.delete"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.base_relation.BaseRelation.delete" title="Permalink to this definition">¶</a></dt>
+<dd><p>Deletes the contents of the table and its dependent tables, recursively.
+User is prompted for confirmation if config[&#8216;safemode&#8217;] is set to True.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="datajoint.base_relation.BaseRelation.delete_quick">
+<code class="descname">delete_quick</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/base_relation.html#BaseRelation.delete_quick"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.base_relation.BaseRelation.delete_quick" title="Permalink to this definition">¶</a></dt>
+<dd><p>Deletes the table without cascading and without user prompt. If this table has any dependent
+table(s), this will fail.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="datajoint.base_relation.BaseRelation.drop">
+<code class="descname">drop</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/base_relation.html#BaseRelation.drop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.base_relation.BaseRelation.drop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Drop the table and all tables that reference it, recursively.
+User is prompted for confirmation if config[&#8216;safemode&#8217;] is set to True.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="datajoint.base_relation.BaseRelation.drop_quick">
+<code class="descname">drop_quick</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/base_relation.html#BaseRelation.drop_quick"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.base_relation.BaseRelation.drop_quick" title="Permalink to this definition">¶</a></dt>
+<dd><p>Drops the table associated with this relation without cascading and without user prompt.
+If the table has any dependent table(s), this call will fail with an error.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.base_relation.BaseRelation.from_clause">
+<code class="descname">from_clause</code><a class="headerlink" href="#datajoint.base_relation.BaseRelation.from_clause" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">the FROM clause of SQL SELECT statements.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.base_relation.BaseRelation.full_table_name">
+<code class="descname">full_table_name</code><a class="headerlink" href="#datajoint.base_relation.BaseRelation.full_table_name" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">full table name in the database</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.base_relation.BaseRelation.heading">
+<code class="descname">heading</code><a class="headerlink" href="#datajoint.base_relation.BaseRelation.heading" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the table heading. If the table is not declared, attempts to declare it and return heading.
+:return: table heading</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="datajoint.base_relation.BaseRelation.insert">
+<code class="descname">insert</code><span class="sig-paren">(</span><em>rows</em>, <em>replace=False</em>, <em>ignore_errors=False</em>, <em>skip_duplicates=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/base_relation.html#BaseRelation.insert"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.base_relation.BaseRelation.insert" title="Permalink to this definition">¶</a></dt>
+<dd><p>Insert a collection of rows.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>rows</strong> &#8211; An iterable where an element is a numpy record, a dict-like object, or an ordered sequence.
+rows may also be another relation with the same heading.</li>
+<li><strong>replace</strong> &#8211; If True, replaces the existing tuple.</li>
+<li><strong>ignore_errors</strong> &#8211; If True, ignore errors: e.g. constraint violations.</li>
+<li><strong>skip_duplicates</strong> &#8211; If True, silently skip duplicate inserts.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">relation</span><span class="o">.</span><span class="n">insert</span><span class="p">([</span>
+<span class="gp">&gt;&gt;&gt; </span>    <span class="nb">dict</span><span class="p">(</span><span class="n">subject_id</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">species</span><span class="o">=</span><span class="s2">&quot;mouse&quot;</span><span class="p">,</span> <span class="n">date_of_birth</span><span class="o">=</span><span class="s2">&quot;2014-09-01&quot;</span><span class="p">),</span>
+<span class="gp">&gt;&gt;&gt; </span>    <span class="nb">dict</span><span class="p">(</span><span class="n">subject_id</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">species</span><span class="o">=</span><span class="s2">&quot;mouse&quot;</span><span class="p">,</span> <span class="n">date_of_birth</span><span class="o">=</span><span class="s2">&quot;2014-09-02&quot;</span><span class="p">)])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="datajoint.base_relation.BaseRelation.insert1">
+<code class="descname">insert1</code><span class="sig-paren">(</span><em>row</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/base_relation.html#BaseRelation.insert1"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.base_relation.BaseRelation.insert1" title="Permalink to this definition">¶</a></dt>
+<dd><p>Insert one data record or one Mapping (like a dict).
+:param row: a numpy record, a dict-like object, or an ordered sequence to be inserted as one row.
+For kwargs, see insert()</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.base_relation.BaseRelation.is_declared">
+<code class="descname">is_declared</code><a class="headerlink" href="#datajoint.base_relation.BaseRelation.is_declared" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">True is the table is declared in the database</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="datajoint.base_relation.BaseRelation.parents">
+<code class="descname">parents</code><span class="sig-paren">(</span><em>primary=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/base_relation.html#BaseRelation.parents"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.base_relation.BaseRelation.parents" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>primary</strong> &#8211; if None, then all parents are returned. If True, then only foreign keys composed of
+primary key attributes are considered.  If False, the only foreign keys including at least one non-primary
+attribute are considered.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">list of tables referenced with self&#8217;s foreign keys</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.base_relation.BaseRelation.select_fields">
+<code class="descname">select_fields</code><a class="headerlink" href="#datajoint.base_relation.BaseRelation.select_fields" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">the selected attributes from the SQL SELECT statement.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="datajoint.base_relation.BaseRelation.show_definition">
+<code class="descname">show_definition</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/base_relation.html#BaseRelation.show_definition"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.base_relation.BaseRelation.show_definition" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">the definition string for the relation using DataJoint DDL.
+This does not yet work for aliased foreign keys.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="datajoint.base_relation.BaseRelation.size_on_disk">
+<code class="descname">size_on_disk</code><a class="headerlink" href="#datajoint.base_relation.BaseRelation.size_on_disk" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">size of data and indices in bytes on the storage device</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="datajoint.base_relation.FreeRelation">
+<em class="property">class </em><code class="descclassname">datajoint.base_relation.</code><code class="descname">FreeRelation</code><span class="sig-paren">(</span><em>arg</em>, <em>full_table_name=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/base_relation.html#FreeRelation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.base_relation.FreeRelation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.base_relation.BaseRelation" title="datajoint.base_relation.BaseRelation"><code class="xref py py-class docutils literal"><span class="pre">datajoint.base_relation.BaseRelation</span></code></a></p>
+<p>A base relation without a dedicated class. Each instance is associated with a table
+specified by full_table_name.
+:param arg:  a dj.Connection or a dj.FreeRelation</p>
+<dl class="attribute">
+<dt id="datajoint.base_relation.FreeRelation.table_name">
+<code class="descname">table_name</code><a class="headerlink" href="#datajoint.base_relation.FreeRelation.table_name" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">the table name in the database</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="datajoint.base_relation.lookup_class_name">
+<code class="descclassname">datajoint.base_relation.</code><code class="descname">lookup_class_name</code><span class="sig-paren">(</span><em>name</em>, <em>context</em>, <em>depth=3</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/base_relation.html#lookup_class_name"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.base_relation.lookup_class_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>given a table name in the form <cite>database</cite>.`table_name`, find its class in the context.
+:param name: <cite>database</cite>.`table_name`
+:param context: dictionary representing the namespace
+:param depth: search depth into imported modules, helps avoid infinite recursion.
+:return: class name found in the context or None if not found</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="datajoint.autopopulate.html" title="previous chapter">datajoint.autopopulate module</a></li>
+      <li>Next: <a href="datajoint.blob.html" title="next chapter">datajoint.blob module</a></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/datajoint.base_relation.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Dimitri Yatsenko, Edgar Walker, Fabian Sinz.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="_sources/datajoint.base_relation.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

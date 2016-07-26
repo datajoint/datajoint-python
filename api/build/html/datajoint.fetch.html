@@ -1,0 +1,198 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>datajoint.fetch module &mdash; Datajoint Python 0.3 documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.3',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="Datajoint Python 0.3 documentation" href="index.html" />
+    <link rel="next" title="datajoint.heading module" href="datajoint.heading.html" />
+    <link rel="prev" title="datajoint.erd module" href="datajoint.erd.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-datajoint.fetch">
+<span id="datajoint-fetch-module"></span><h1>datajoint.fetch module<a class="headerlink" href="#module-datajoint.fetch" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="datajoint.fetch.Fetch">
+<em class="property">class </em><code class="descclassname">datajoint.fetch.</code><code class="descname">Fetch</code><span class="sig-paren">(</span><em>arg</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/fetch.html#Fetch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.fetch.Fetch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.fetch.FetchBase" title="datajoint.fetch.FetchBase"><code class="xref py py-class docutils literal"><span class="pre">datajoint.fetch.FetchBase</span></code></a>, <code class="xref py py-class docutils literal"><span class="pre">collections.abc.Callable</span></code>, <code class="xref py py-class docutils literal"><span class="pre">collections.abc.Iterable</span></code></p>
+<p>A fetch object that handles retrieving elements from the database table.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>relation</strong> &#8211; relation the fetch object retrieves data from.</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="datajoint.fetch.Fetch.as_dict">
+<code class="descname">as_dict</code><a class="headerlink" href="#datajoint.fetch.Fetch.as_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Changes the state of the fetch object to return dictionaries.
+:return: a copy of the fetch object
+Example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">my_relation</span><span class="o">.</span><span class="n">fetch</span><span class="o">.</span><span class="n">as_dict</span><span class="p">()</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="datajoint.fetch.Fetch.keys">
+<code class="descname">keys</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/fetch.html#Fetch.keys"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.fetch.Fetch.keys" title="Permalink to this definition">¶</a></dt>
+<dd><p>Iterator that returns primary keys as a sequence of dicts.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="datajoint.fetch.Fetch.limit">
+<code class="descname">limit</code><span class="sig-paren">(</span><em>limit</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/fetch.html#Fetch.limit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.fetch.Fetch.limit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Limits the number of items fetched.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>limit</strong> &#8211; limit on the number of items</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">a copy of the fetch object</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="datajoint.fetch.Fetch.offset">
+<code class="descname">offset</code><span class="sig-paren">(</span><em>offset</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/fetch.html#Fetch.offset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.fetch.Fetch.offset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Offsets the number of itms fetched. Needs to be applied with limit.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>offset</strong> &#8211; offset</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">a copy of the fetch object</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="datajoint.fetch.Fetch.order_by">
+<code class="descname">order_by</code><span class="sig-paren">(</span><em>*args</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/fetch.html#Fetch.order_by"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.fetch.Fetch.order_by" title="Permalink to this definition">¶</a></dt>
+<dd><p>Changes the state of the fetch object to order the results by a particular attribute.
+The commands are handed down to mysql.
+:param args: the attributes to sort by. If DESC is passed after the name, then the order is descending.
+:return: a copy of the fetch object
+Example:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">my_relation</span><span class="o">.</span><span class="n">fetch</span><span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="s1">&#39;language&#39;</span><span class="p">,</span> <span class="s1">&#39;name DESC&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="datajoint.fetch.Fetch1">
+<em class="property">class </em><code class="descclassname">datajoint.fetch.</code><code class="descname">Fetch1</code><span class="sig-paren">(</span><em>relation</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/datajoint/fetch.html#Fetch1"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.fetch.Fetch1" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.fetch.FetchBase" title="datajoint.fetch.FetchBase"><code class="xref py py-class docutils literal"><span class="pre">datajoint.fetch.FetchBase</span></code></a>, <code class="xref py py-class docutils literal"><span class="pre">collections.abc.Callable</span></code></p>
+<p>Fetch object for fetching exactly one row.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>relation</strong> &#8211; relation the fetch object fetches data from</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="datajoint.fetch.FetchBase">
+<em class="property">class </em><code class="descclassname">datajoint.fetch.</code><code class="descname">FetchBase</code><a class="reference internal" href="_modules/datajoint/fetch.html#FetchBase"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#datajoint.fetch.FetchBase" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="datajoint.erd.html" title="previous chapter">datajoint.erd module</a></li>
+      <li>Next: <a href="datajoint.heading.html" title="next chapter">datajoint.heading module</a></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/datajoint.fetch.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Dimitri Yatsenko, Edgar Walker, Fabian Sinz.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="_sources/datajoint.fetch.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
