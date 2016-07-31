@@ -16,8 +16,8 @@ import logging
 import os
 
 __author__ = "Dimitri Yatsenko, Edgar Walker, and Fabian Sinz at Baylor College of Medicine"
-__version__ = "0.3.6"
-__date__ = "July 30, 2016"
+__version__ = "0.3.7"
+__date__ = "July 31, 2016"
 __all__ = ['__author__', '__version__',
            'config', 'conn', 'kill', 'BaseRelation',
            'Connection', 'Heading', 'FreeRelation', 'Not', 'schema',
@@ -48,17 +48,17 @@ from .settings import Config, LOCALCONFIG, GLOBALCONFIG, logger, log_levels
 config = Config()
 
 
-if os.getenv('DJ_HOST') is not None and os.getenv('DJ_USER') is not None and os.getenv('DJ_PASS') is not None:
+if os.getenv('DJ_HOST') is not None and os.getenv('DJ_USER') is not None and os.getenv('DJ_PASS') is not None:  # pragma: no cover
     print("Loading local settings from environment variables")
     config['database.host'] = os.getenv('DJ_HOST')
     config['database.user'] = os.getenv('DJ_USER')
     config['database.password'] = os.getenv('DJ_PASS')
-elif os.path.exists(LOCALCONFIG):
+elif os.path.exists(LOCALCONFIG):  # pragma: no cover
     local_config_file = os.path.expanduser(LOCALCONFIG)
     print("Loading local settings from {0:s}".format(local_config_file))
     logger.log(logging.INFO, "Loading local settings from {0:s}".format(local_config_file))
     config.load(local_config_file)
-elif os.path.exists(os.path.expanduser('~/') + GLOBALCONFIG):
+elif os.path.exists(os.path.expanduser('~/') + GLOBALCONFIG):  # pragma: no cover
     local_config_file = os.path.expanduser('~/') + GLOBALCONFIG
     print("Loading local settings from {0:s}".format(local_config_file))
     logger.log(logging.INFO, "Loading local settings from {0:s}".format(local_config_file))
@@ -82,6 +82,5 @@ from .user_relations import Manual, Lookup, Imported, Computed, Part
 from .relational_operand import Not, AndList, OrList, U
 from .heading import Heading
 from .schema import Schema as schema
-from .kill import kill
 from .erd import ERD
-from .admin import set_password
+from .admin import set_password, kill

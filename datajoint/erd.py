@@ -168,7 +168,7 @@ class ERD(nx.DiGraph):
         nx.relabel_nodes(graph, mapping, copy=False)
         return graph
 
-    def draw(self, pos=None, layout=None, context=None, font_scale=1.5, **layout_options):
+    def draw(self, pos=None, layout=None, context=None, font_scale=1.5, **layout_options):   # pragma: no cover
         """
         Draws the graph of dependencies.
         :param pos: dict with positions for every node.  If None, then layout is called.
@@ -222,7 +222,7 @@ class ERD(nx.DiGraph):
         :param quality: 0=dirty, 1=draft, 2=good, 3=great, 4=publish
         :return: position dict keyed by node names
         """
-        if not nx.is_directed_acyclic_graph(graph):
+        if not nx.is_directed_acyclic_graph(graph):  # pragma: no cover
             DataJointError('This layout only works for acyclic graphs')
 
         # assign depths

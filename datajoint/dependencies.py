@@ -73,7 +73,7 @@ class Dependencies(nx.DiGraph):
                     table = row[0]
                     if not table.startswith('~'):  # exclude service tables
                         self.add_table('`{db}`.`{tab}`'.format(db=database, tab=table))
-        if not nx.is_directed_acyclic_graph(self):
+        if not nx.is_directed_acyclic_graph(self):  # pragma: no cover
             raise DataJointError('DataJoint can only work with acyclic dependencies')
 
     def descendants(self, full_table_name):

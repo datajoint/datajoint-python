@@ -51,12 +51,19 @@ class TestRelation:
         assert_list_equal(list(u['subject_id']), sorted([s[0] for s in self.subject.contents]))
 
     @raises(dj.DataJointError)
-    def test_misnamed_attribute(self):
+    def test_misnamed_attribute1(self):
         self.user.insert([dict(username="Bob"), dict(user="Alice")])
 
     @raises(KeyError)
-    def test_misnamed_attribute1(self):
+    def test_misnamed_attribute2(self):
         self.user.insert1(dict(user="Bob"))
+
+    @raises(KeyError)
+    def test_extra_attribute1(self):
+        self.user.insert1(dict(username="Robert", spouse="Alice"))
+
+    def test_extra_attribute2(self):
+        self.user.insert1(dict(username="Robert", spouse="Alice"), ignore_extra_fields=True)
 
     @raises(NotImplementedError)
     def test_missing_definition(self):
