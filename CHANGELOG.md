@@ -25,3 +25,5 @@
 ### 0.3.7  -- July 31, 2016
 * added parameter `ignore_extra_fields` in `insert` 
 * `insert(..., skip_duplicates=True)` now relies on `SELECT IGNORE`.  Previously it explicitly checked if tuple already exists.
+* table previews now include blob attributes displaying the string <BLOB>
+

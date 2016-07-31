@@ -1,4 +1,5 @@
 import collections
+from itertools import zip_longest
 import logging
 import numpy as np
 import re
@@ -345,7 +346,8 @@ class RelationalOperand:
         """
         returns a preview of the contents of the relation.
         """
-        rel = self.proj(*self.heading.non_blobs)  # project out blobs
+        rel = self.proj(*self.heading.non_blobs,
+                  **dict(zip_longest(self.heading.blobs, [], fillvalue="'=BLOB='")))  # replace blobs with =BLOB=
         limit = config['display.limit']
         width = config['display.width']
         tuples = rel.fetch(limit=limit)
@@ -360,7 +362,8 @@ class RelationalOperand:
             ' (%d tuples)\n' % len(rel))
 
     def _repr_html_(self):
-        rel = self.proj(*self.heading.non_blobs)  # project out blobs
+        rel = self.proj(*self.heading.non_blobs,
+                        **dict(zip_longest(self.heading.blobs, [], fillvalue="'<BLOB>'")))  # replace blobs with <BLOB>
         info = self.heading.table_info
         return """ {title}
             <div style="max-height:1000px;max-width:1500px;overflow:auto;">
