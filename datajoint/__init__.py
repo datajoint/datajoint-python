@@ -82,6 +82,5 @@ from .user_relations import Manual, Lookup, Imported, Computed, Part
 from .relational_operand import Not, AndList, OrList, U
 from .heading import Heading
 from .schema import Schema as schema
-from .kill import kill
 from .erd import ERD
-from .admin import set_password
+from .admin import set_password, kill
