@@ -174,7 +174,7 @@ class BaseRelation(RelationalOperand):
                 if field_list is None:
                     for field in fields:
                         if field not in heading:
-                            raise KeyError(u'{0:s} is not in the attribute list'.format(field))
+                            raise KeyError(u'`{0:s}` is not in the attribute list'.format(field))
                 elif set(field_list) != set(fields):
                     raise DataJointError('Attempt to insert rows with different fields')
 

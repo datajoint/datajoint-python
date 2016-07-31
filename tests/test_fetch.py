@@ -1,7 +1,6 @@
-from operator import itemgetter, attrgetter
+from operator import itemgetter
 import itertools
-from nose.tools import assert_true, raises
-from numpy.testing import assert_array_equal, assert_equal
+from nose.tools import assert_true, raises, assert_equal, assert_dict_equal
 import numpy as np
 import warnings
 from . import schema
@@ -15,9 +14,10 @@ class TestFetch:
 
     def test_getitem(self):
         """Testing Fetch.__getitem__"""
-        np.testing.assert_array_equal(sorted(self.subject.proj().fetch(), key=itemgetter(0)),
-                                      sorted(self.subject.fetch[dj.key], key=itemgetter(0)),
-                                      'Primary key is not returned correctly')
+        list1 = sorted(self.subject.proj().fetch.as_dict(), key=itemgetter('subject_id'))
+        list2 = sorted(self.subject.fetch[dj.key], key=itemgetter('subject_id'))
+        for l1, l2 in zip(list1, list2):
+            assert_dict_equal(l1, l2,  'Primary key is not returned correctly')
 
         tmp = self.subject.fetch(order_by=['subject_id'])
 
@@ -25,8 +25,9 @@ class TestFetch:
 
         np.testing.assert_array_equal(sorted(subject_notes), sorted(tmp['subject_notes']))
         np.testing.assert_array_equal(sorted(real_id), sorted(tmp['real_id']))
-        np.testing.assert_array_equal(sorted(key, key=itemgetter(0)),
-                                      sorted(self.subject.proj().fetch(), key=itemgetter(0)))
+        list1 = sorted(key, key=itemgetter('subject_id'))
+        for l1, l2 in zip(list1, list2):
+            assert_dict_equal(l1, l2,  'Primary key is not returned correctly')
 
     def test_getitem_for_fetch1(self):
         """Testing Fetch1.__getitem__"""
