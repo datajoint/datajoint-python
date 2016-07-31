@@ -222,7 +222,7 @@ class ERD(nx.DiGraph):
         :param quality: 0=dirty, 1=draft, 2=good, 3=great, 4=publish
         :return: position dict keyed by node names
         """
-        if not nx.is_directed_acyclic_graph(graph):
+        if not nx.is_directed_acyclic_graph(graph):  # pragma: no cover
             DataJointError('This layout only works for acyclic graphs')
 
         # assign depths

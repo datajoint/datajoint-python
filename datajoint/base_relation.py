@@ -272,7 +272,7 @@ class BaseRelation(RelationalOperand):
                             for r in restrictions[name]])  # project
         # execute
         do_delete = False  # indicate if there is anything to delete
-        if config['safemode']:
+        if config['safemode']:  # pragma: no cover
             print('The contents of the following tables are about to be deleted:')
         for relation in list(relations_to_delete.values()):
             count = len(relation)

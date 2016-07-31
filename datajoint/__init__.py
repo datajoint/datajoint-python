@@ -48,17 +48,17 @@ from .settings import Config, LOCALCONFIG, GLOBALCONFIG, logger, log_levels
 config = Config()
 
 
-if os.getenv('DJ_HOST') is not None and os.getenv('DJ_USER') is not None and os.getenv('DJ_PASS') is not None:
+if os.getenv('DJ_HOST') is not None and os.getenv('DJ_USER') is not None and os.getenv('DJ_PASS') is not None:  # pragma: no cover
     print("Loading local settings from environment variables")
     config['database.host'] = os.getenv('DJ_HOST')
     config['database.user'] = os.getenv('DJ_USER')
     config['database.password'] = os.getenv('DJ_PASS')
-elif os.path.exists(LOCALCONFIG):
+elif os.path.exists(LOCALCONFIG):  # pragma: no cover
     local_config_file = os.path.expanduser(LOCALCONFIG)
     print("Loading local settings from {0:s}".format(local_config_file))
     logger.log(logging.INFO, "Loading local settings from {0:s}".format(local_config_file))
     config.load(local_config_file)
-elif os.path.exists(os.path.expanduser('~/') + GLOBALCONFIG):
+elif os.path.exists(os.path.expanduser('~/') + GLOBALCONFIG):  # pragma: no cover
     local_config_file = os.path.expanduser('~/') + GLOBALCONFIG
     print("Loading local settings from {0:s}".format(local_config_file))
     logger.log(logging.INFO, "Loading local settings from {0:s}".format(local_config_file))
