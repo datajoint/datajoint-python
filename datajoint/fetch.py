@@ -48,7 +48,9 @@ class Fetch(FetchBase, Callable, Iterable):
         :param args: the attributes to sort by. If DESC is passed after the name, then the order is descending.
         :return: a copy of the fetch object
         Example:
+
         >>> my_relation.fetch.order_by('language', 'name DESC')
+
         """
         self = Fetch(self)
         if len(args) > 0:
@@ -61,7 +63,9 @@ class Fetch(FetchBase, Callable, Iterable):
         Changes the state of the fetch object to return dictionaries.
         :return: a copy of the fetch object
         Example:
+
         >>> my_relation.fetch.as_dict()
+
         """
         ret = Fetch(self)
         ret.behavior['as_dict'] = True
@@ -154,8 +158,10 @@ class Fetch(FetchBase, Callable, Iterable):
         :return: tuple with an entry for each element of item
 
         Examples:
+
         >>> a, b = relation['a', 'b']
         >>> a, b, key = relation['a', 'b', datajoint.key]
+
         """
         single_output = isinstance(item, str) or item is PRIMARY_KEY or isinstance(item, int)
         item, attributes = self._prepare_attributes(item)
@@ -208,8 +214,10 @@ class Fetch1(FetchBase, Callable):
         :return: tuple with an entry for each element of item
 
         Examples:
+
         >>> a, b = relation['a', 'b']
         >>> a, b, key = relation['a', 'b', datajoint.key]
+
         """
         single_output = isinstance(item, str) or item is PRIMARY_KEY or isinstance(item, int)
         item, attributes = self._prepare_attributes(item)

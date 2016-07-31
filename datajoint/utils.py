@@ -57,6 +57,7 @@ def from_camel_case(s):
     Example:
 
     >>> from_camel_case("TableName") # yields "table_name"
+
     """
 
     def convert(match):

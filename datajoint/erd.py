@@ -24,10 +24,13 @@ class ERD(nx.DiGraph):
     Entity relationship diagram.
 
     Usage:
+
     >>>  erd = Erd(source)
+
     source can be a base relation object, a base relation class, a schema, or a module that has a schema.
 
     >>> erd.draw()
+
     draws the diagram using pyplot
 
     erd1 + erd2  - combines the two ERDs.

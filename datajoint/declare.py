@@ -51,7 +51,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
     :param context: namespace containing referenced objects
     :param attributes: list of attribute names already in the declaration -- to be updated by this function
     :param primary_key: None if the current foreign key is made from the dependent section. Otherwise it is the list
-    of primary key attributes thus far -- to be updated by the function
+        of primary key attributes thus far -- to be updated by the function
     :param attr_sql: a list of sql statements defining attributes -- to be updated by this function.
     :param foreign_key_sql: a list of sql statements specifying foreign key constraints -- to be updated by this function.
     """
