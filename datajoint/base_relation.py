@@ -132,10 +132,8 @@ class BaseRelation(RelationalOperand):
 
         if isinstance(rows, RelationalOperand):
             # INSERT FROM SELECT
-            if skip_duplicates:
-                ignore_errors = True
             query = 'INSERT{ignore} INTO {table} ({fields}) {select}'.format(
-                ignore=" IGNORE" if ignore_errors else "",
+                ignore=" IGNORE" if ignore_errors or skip_duplicates else "",
                 table=self.full_table_name,
                 fields='`'+'`,`'.join(rows.heading.names)+'`',
                 select=rows.make_sql())
