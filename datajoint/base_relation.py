@@ -111,7 +111,7 @@ class BaseRelation(RelationalOperand):
         """
         self.insert((row,), **kwargs)
 
-    def insert(self, rows, replace=False, ignore_errors=False, skip_duplicates=False):
+    def insert(self, rows, replace=False, ignore_errors=False, skip_duplicates=False, ignore_extra_fields=False):
         """
         Insert a collection of rows.
 
@@ -120,6 +120,7 @@ class BaseRelation(RelationalOperand):
         :param replace: If True, replaces the existing tuple.
         :param ignore_errors: If True, ignore errors: e.g. constraint violations.
         :param skip_duplicates: If True, silently skip duplicate inserts.
+        :param ignore_extra_fields: If False, fields that are not in the heading raise error.
 
         Example::
 
@@ -158,6 +159,8 @@ class BaseRelation(RelationalOperand):
                 :param name:
                 :param value:
                 """
+                if ignore_extra_fields and name not in heading:
+                    return None
                 if heading[name].is_blob:
                     value = pack(value)
                     placeholder = '%s'
@@ -178,10 +181,11 @@ class BaseRelation(RelationalOperand):
                 :param fields: field names of a tuple
                 """
                 if field_list is None:
-                    for field in fields:
-                        if field not in heading:
-                            raise KeyError(u'`{0:s}` is not in the attribute list'.format(field))
-                elif set(field_list) != set(fields):
+                    if not ignore_extra_fields:
+                        for field in fields:
+                            if field not in heading:
+                                raise KeyError(u'`{0:s}` is not in the table heading'.format(field))
+                elif set(field_list) != set(fields).intersection(heading.names):
                     raise DataJointError('Attempt to insert rows with different fields')
 
             if isinstance(row, np.void):  # np.array
@@ -202,6 +206,8 @@ class BaseRelation(RelationalOperand):
                     raise DataJointError('Datatype %s cannot be inserted' % type(row))
                 else:
                     attributes = [make_placeholder(name, value) for name, value in zip(heading, row)]
+            if ignore_extra_fields:
+                attributes = [a for a in attributes if a is not None]
 
             assert len(attributes), 'Empty tuple'
             row_to_insert = dict(zip(('names', 'placeholders', 'values'), zip(*attributes)))
@@ -218,29 +224,15 @@ class BaseRelation(RelationalOperand):
 
             return row_to_insert
 
-        def row_exists(row):
-            """
-            :param row: a dict with keys 'row' and 'values'.
-            :return: True if row is already in table.
-            """
-            primary_key_value = dict((name, value)
-                                     for (name, value) in zip(row['names'], row['values']) if heading[name].in_key)
-            return primary_key_value in self
-
         rows = list(make_row_to_insert(row) for row in rows)
         if rows:
-            # skip duplicates only if the entire primary key is specified.
-            skip_duplicates = skip_duplicates and set(heading.primary_key).issubset(set(field_list))
-            if skip_duplicates:
-                rows = list(row for row in rows if not row_exists(row))
-            if rows:
-                self.connection.query(
-                    "{command} INTO {destination}(`{fields}`) VALUES {placeholders}".format(
-                        command='REPLACE' if replace else 'INSERT IGNORE' if ignore_errors else 'INSERT',
-                        destination=self.from_clause,
-                        fields='`,`'.join(field_list),
-                        placeholders=','.join('(' + ','.join(row['placeholders']) + ')' for row in rows)),
-                    args=list(itertools.chain.from_iterable((v for v in r['values'] if v is not None) for r in rows)))
+            self.connection.query(
+                "{command} INTO {destination}(`{fields}`) VALUES {placeholders}".format(
+                    command='REPLACE' if replace else 'INSERT IGNORE' if ignore_errors or skip_duplicates else 'INSERT',
+                    destination=self.from_clause,
+                    fields='`,`'.join(field_list),
+                    placeholders=','.join('(' + ','.join(row['placeholders']) + ')' for row in rows)),
+                args=list(itertools.chain.from_iterable((v for v in r['values'] if v is not None) for r in rows)))
 
     def delete_quick(self):
         """
