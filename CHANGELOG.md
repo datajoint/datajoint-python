@@ -18,6 +18,10 @@
 * `dj.set_password()` now asks for user confirmation before changing the password.
 * fixed issue #228
 
-### 0.3.6  (July 31)
+### 0.3.6  -- July 30, 2016
 * bugfix in `schema.spawn_missing_classes`.  Previously, spawned part classes would not show in ERDs.
 * dj.key now causes fetch to return as a list of dicts.  Previously it was a recarray.
+
+### 0.3.7  -- July 31, 2016
+* added parameter `ignore_extra_fields` in `insert` 
+* `insert(..., skip_duplicates=True)` now relies on `SELECT IGNORE`.  Previously it explicitly checked if tuple already exists.
