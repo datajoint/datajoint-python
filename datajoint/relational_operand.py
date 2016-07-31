@@ -347,7 +347,7 @@ class RelationalOperand:
         returns a preview of the contents of the relation.
         """
         rel = self.proj(*self.heading.non_blobs,
-                  **dict(zip_longest(self.heading.blobs, [], fillvalue="'=BLOB='")))  # replace blobs with =BLOB=
+                        **dict(zip_longest(self.heading.blobs, [], fillvalue="'<BLOB>'")))  # replace blobs with <BLOB>
         limit = config['display.limit']
         width = config['display.width']
         tuples = rel.fetch(limit=limit)
@@ -363,7 +363,7 @@ class RelationalOperand:
 
     def _repr_html_(self):
         rel = self.proj(*self.heading.non_blobs,
-                        **dict(zip_longest(self.heading.blobs, [], fillvalue="'<BLOB>'")))  # replace blobs with <BLOB>
+                        **dict(zip_longest(self.heading.blobs, [], fillvalue="'=BLOB='")))  # replace blobs with =BLOB=
         info = self.heading.table_info
         return """ {title}
             <div style="max-height:1000px;max-width:1500px;overflow:auto;">
