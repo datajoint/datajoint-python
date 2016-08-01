@@ -255,26 +255,26 @@ class TestRelational:
     @raises(AssertionError)
     def test_update_single_key():
         """Test that only one row can be updated"""
-        TestUpdate().update('string_attr', 'my new string')
+        TestUpdate()._update('string_attr', 'my new string')
 
     @staticmethod
     @raises(AssertionError)
     def test_update_no_primary():
         """Test that no primary key can be updated"""
-        TestUpdate().update('primary_key', 2)
+        TestUpdate()._update('primary_key', 2)
 
     @staticmethod
     @raises(AssertionError)
     def test_update_missing_attribute():
         """Test that attribute is in table"""
-        TestUpdate().update('not_existing', 2)
+        TestUpdate()._update('not_existing', 2)
 
     @staticmethod
     def test_update_string_attribute():
         """Test replacing a string value"""
         rel = (TestUpdate() & dict(primary_key=0))
         s = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
-        rel.update('string_attr', s)
+        rel._update('string_attr', s)
         assert_equal(s, rel.fetch1['string_attr'], "Updated string does not match")
 
     @staticmethod
@@ -282,9 +282,9 @@ class TestRelational:
         """Test replacing a string value"""
         rel = (TestUpdate() & dict(primary_key=0))
         s = random.randint(0,10)
-        rel.update('num_attr', s)
+        rel._update('num_attr', s)
         assert_equal(s, rel.fetch1['num_attr'], "Updated integer does not match")
-        rel.update('num_attr', None)
+        rel._update('num_attr', None)
         assert_true(np.isnan(rel.fetch1['num_attr']), "Numeric value is not NaN")
 
     @staticmethod
@@ -292,5 +292,5 @@ class TestRelational:
         """Test replacing a string value"""
         rel = (TestUpdate() & dict(primary_key=0))
         s = rel.fetch1['blob_attr']
-        rel.update('blob_attr', s.T)
+        rel._update('blob_attr', s.T)
         assert_equal(s.T.shape, rel.fetch1['blob_attr'].shape, "Array dimensions do not match")

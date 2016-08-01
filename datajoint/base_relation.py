@@ -359,7 +359,23 @@ class BaseRelation(RelationalOperand):
         print(definition)
         return definition
 
-    def update(self, attrname, value=None):
+    def _update(self, attrname, value=None):
+        """
+            Updates a field in an existing tuple. This is not a datajoyous operation and should not be used
+            routinely. Relational database maintain referential integrity on the level of a tuple. Therefore,
+            the UPDATE operator can violate referential integrity. The datajoyous way to update information is
+            to delete the entire tuple and insert the entire update tuple.
+
+            Safety constraints:
+               1. self must be restricted to exactly one tuple
+               2. the update attribute must not be in primary key
+
+            Example
+
+            >>> (v2p.Mice() & key).update('mouse_dob',   '2011-01-01')
+            >>> (v2p.Mice() & key).update( 'lens')   # set the value to NULL
+
+        """
         assert len(self) == 1, 'Update is only allowed on one tuple at a time'
         assert attrname in self.heading, 'invalid attribute name'
         assert attrname not in self.heading.primary_key, 'cannot update a key value. '
