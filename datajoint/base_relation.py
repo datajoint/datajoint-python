@@ -376,9 +376,12 @@ class BaseRelation(RelationalOperand):
             >>> (v2p.Mice() & key).update( 'lens')   # set the value to NULL
 
         """
-        assert len(self) == 1, 'Update is only allowed on one tuple at a time'
-        assert attrname in self.heading, 'invalid attribute name'
-        assert attrname not in self.heading.primary_key, 'cannot update a key value. '
+        if len(self) != 1:
+            raise DataJointError('Update is only allowed on one tuple at a time')
+        if attrname not in self.heading:
+            raise DataJointError('Invalid attribute name')
+        if attrname in self.heading.primary_key:
+            raise DataJointError('Cannot update a key value.')
 
         attr = self.heading[attrname]
 

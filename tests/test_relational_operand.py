@@ -252,19 +252,19 @@ class TestRelational:
                     "Join of projected relations does not work")
 
     @staticmethod
-    @raises(AssertionError)
+    @raises(dj.DataJointError)
     def test_update_single_key():
         """Test that only one row can be updated"""
         TestUpdate()._update('string_attr', 'my new string')
 
     @staticmethod
-    @raises(AssertionError)
+    @raises(dj.DataJointError)
     def test_update_no_primary():
         """Test that no primary key can be updated"""
         TestUpdate()._update('primary_key', 2)
 
     @staticmethod
-    @raises(AssertionError)
+    @raises(dj.DataJointError)
     def test_update_missing_attribute():
         """Test that attribute is in table"""
         TestUpdate()._update('not_existing', 2)
