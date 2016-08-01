@@ -1,9 +1,12 @@
+import random
+import string
+
 import numpy as np
 from nose.tools import assert_raises, assert_equal, \
     assert_false, assert_true, assert_list_equal, \
     assert_tuple_equal, assert_dict_equal, raises
 import datajoint as dj
-from .schema_simple import A, B, D, E, L, DataA, DataB
+from .schema_simple import A, B, D, E, L, DataA, DataB, TestUpdate
 from .schema import Experiment
 
 
@@ -16,10 +19,10 @@ def setup():
     B().populate()
     D().populate()
     E().populate()
+    Experiment().populate()
 
 
 class TestRelational:
-
     @staticmethod
     def test_populate():
         assert_false(B().progress(display=False)[0], 'B incompletely populated')
@@ -29,7 +32,7 @@ class TestRelational:
         assert_true(len(B()) == 40, 'B populated incorrectly')
         assert_true(len(B.C()) > 0, 'C populated incorrectly')
         assert_true(len(D()) == 40, 'D populated incorrectly')
-        assert_true(len(E()) == len(B())*len(D())/len(A()), 'E populated incorrectly')
+        assert_true(len(E()) == len(B()) * len(D()) / len(A()), 'E populated incorrectly')
         assert_true(len(E.F()) > 0, 'F populated incorrectly')
 
     @staticmethod
@@ -61,8 +64,8 @@ class TestRelational:
         # Test cartesian product
         x = A()
         y = L()
-        rel = x*y
-        assert_equal(len(rel), len(x)*len(y),
+        rel = x * y
+        assert_equal(len(rel), len(x) * len(y),
                      'incorrect join')
         assert_equal(set(x.heading.names).union(y.heading.names), set(rel.heading.names),
                      'incorrect join heading')
@@ -72,8 +75,8 @@ class TestRelational:
         # Test cartesian product of restricted relations
         x = A() & 'cond_in_a=1'
         y = L() & 'cond_in_l=1'
-        rel = x*y
-        assert_equal(len(rel), len(x)*len(y),
+        rel = x * y
+        assert_equal(len(rel), len(x) * len(y),
                      'incorrect join')
         assert_equal(set(x.heading.names).union(y.heading.names), set(rel.heading.names),
                      'incorrect join heading')
@@ -84,7 +87,7 @@ class TestRelational:
         cond = A() & 'cond_in_a=1'
         x = B() & cond
         y = D()
-        rel = x*y
+        rel = x * y
         assert_true(len(rel) >= len(x) and len(rel) >= len(y), 'incorrect join')
         assert_false(rel - cond, 'incorrect join, restriction, or antijoin')
         assert_equal(set(x.heading.names).union(y.heading.names), set(rel.heading.names),
@@ -93,10 +96,10 @@ class TestRelational:
                      'incorrect join primary_key')
 
         # test renamed join
-        x = B().proj(i='id_a')   # rename the common attribute to achieve full cartesian product
+        x = B().proj(i='id_a')  # rename the common attribute to achieve full cartesian product
         y = D()
-        rel = x*y
-        assert_equal(len(rel), len(x)*len(y),
+        rel = x * y
+        assert_equal(len(rel), len(x) * len(y),
                      'incorrect join')
         assert_equal(set(x.heading.names).union(y.heading.names), set(rel.heading.names),
                      'incorrect join heading')
@@ -104,8 +107,8 @@ class TestRelational:
                      'incorrect join primary_key')
         x = B().proj(a='id_a')
         y = D()
-        rel = x*y
-        assert_equal(len(rel), len(x)*len(y), 'incorrect join')
+        rel = x * y
+        assert_equal(len(rel), len(x) * len(y), 'incorrect join')
         assert_equal(set(x.heading.names).union(y.heading.names), set(rel.heading.names),
                      'incorrect join heading')
         assert_equal(set(x.primary_key).union(y.primary_key), set(rel.primary_key),
@@ -115,17 +118,17 @@ class TestRelational:
         # Approach 1: join then restrict
         x = A().proj(a1='id_a', c1='cond_in_a')
         y = A().proj(a2='id_a', c2='cond_in_a')
-        rel = x*y & 'c1=0' & 'c2=1'
+        rel = x * y & 'c1=0' & 'c2=1'
         lenx = len(x & 'c1=0')
         leny = len(y & 'c2=1')
         assert_equal(lenx + leny, len(A()),
                      'incorrect restriction')
-        assert_equal(len(rel), len(x & 'c1=0')*len(y & 'c2=1'),
+        assert_equal(len(rel), len(x & 'c1=0') * len(y & 'c2=1'),
                      'incorrect pairing')
         # Approach 2: restrict then join
         x = (A() & 'cond_in_a=0').proj(a1='id_a')
         y = (A() & 'cond_in_a=1').proj(a2='id_a')
-        assert_equal(len(rel), len(x*y))
+        assert_equal(len(rel), len(x * y))
 
     @staticmethod
     def test_project():
@@ -145,13 +148,14 @@ class TestRelational:
 
     @staticmethod
     def test_preview():
-        x = A().proj(a='id_a')
-        s = x.preview()
-        assert_equal(len(s.split('\n')), len(x)+2)
+        with dj.config(display__limit=7):
+            x = A().proj(a='id_a')
+            s = x.preview()
+            assert_equal(len(s.split('\n')), len(x) + 2)
 
     @staticmethod
     def test_heading_repr():
-        x = A()*D()
+        x = A() * D()
         s = repr(x.heading)
         assert_equal(len(list(1 for g in s.split('\n') if g.strip() and not g.strip().startswith(('-', '#')))),
                      len(x.heading.attributes))
@@ -168,13 +172,13 @@ class TestRelational:
         assert_equal(len(x), len(B() & B.C()))
 
         x = B().aggregate(B.C(), keep_all_rows=True)
-        assert_equal(len(x), len(B()))    # test LEFT join
+        assert_equal(len(x), len(B()))  # test LEFT join
 
-        assert_equal(len((x & 'id_b=0').fetch()), len(B() & 'id_b=0'))   # test restricted aggregation
+        assert_equal(len((x & 'id_b=0').fetch()), len(B() & 'id_b=0'))  # test restricted aggregation
 
         x = B().aggregate(B.C(), 'n', count='count(id_c)', mean='avg(value)', max='max(value)', keep_all_rows=True)
         assert_equal(len(x), len(B()))
-        y = x & 'mean>0'   # restricted aggregation
+        y = x & 'mean>0'  # restricted aggregation
         assert_true(len(y) > 0)
         assert_true(all(y.fetch['mean'] > 0))
         for n, count, mean, max_, key in zip(*x.fetch['n', 'count', 'mean', 'max', dj.key]):
@@ -194,7 +198,7 @@ class TestRelational:
         y = L() & 'cond_in_l'
         lenx = len(x)
         assert_true(lenx > 0 and len(y) > 0 and len(x & y) < len(x), 'incorrect test setup')
-        assert_equal(len(x & y), len(D()*L() & 'cond_in_l'),
+        assert_equal(len(x & y), len(D() * L() & 'cond_in_l'),
                      'incorrect semijoin')
         assert_equal(len(x - y), len(x) - len(x & y),
                      'incorrect antijoin')
@@ -246,3 +250,47 @@ class TestRelational:
         """Test optimization for join of projected relations with matching non-primary key"""
         assert_true(len(DataA().proj() * DataB().proj()) == len(DataA()) == len(DataB()),
                     "Join of projected relations does not work")
+
+    @staticmethod
+    @raises(AssertionError)
+    def test_update_single_key():
+        """Test that only one row can be updated"""
+        TestUpdate().update('string_attr', 'my new string')
+
+    @staticmethod
+    @raises(AssertionError)
+    def test_update_no_primary():
+        """Test that no primary key can be updated"""
+        TestUpdate().update('primary_key', 2)
+
+    @staticmethod
+    @raises(AssertionError)
+    def test_update_missing_attribute():
+        """Test that attribute is in table"""
+        TestUpdate().update('not_existing', 2)
+
+    @staticmethod
+    def test_update_string_attribute():
+        """Test replacing a string value"""
+        rel = (TestUpdate() & dict(primary_key=0))
+        s = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
+        rel.update('string_attr', s)
+        assert_equal(s, rel.fetch1['string_attr'], "Updated string does not match")
+
+    @staticmethod
+    def test_update_numeric_attribute():
+        """Test replacing a string value"""
+        rel = (TestUpdate() & dict(primary_key=0))
+        s = random.randint(0,10)
+        rel.update('num_attr', s)
+        assert_equal(s, rel.fetch1['num_attr'], "Updated integer does not match")
+        rel.update('num_attr', None)
+        assert_true(np.isnan(rel.fetch1['num_attr']), "Numeric value is not NaN")
+
+    @staticmethod
+    def test_update_blob_attribute():
+        """Test replacing a string value"""
+        rel = (TestUpdate() & dict(primary_key=0))
+        s = rel.fetch1['blob_attr']
+        rel.update('blob_attr', s.T)
+        assert_equal(s.T.shape, rel.fetch1['blob_attr'].shape, "Array dimensions do not match")

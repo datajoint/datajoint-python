@@ -359,6 +359,33 @@ class BaseRelation(RelationalOperand):
         print(definition)
         return definition
 
+    def update(self, attrname, value=None):
+        assert len(self) == 1, 'Update is only allowed on one tuple at a time'
+        assert attrname in self.heading, 'invalid attribute name'
+        assert attrname not in self.heading.primary_key, 'cannot update a key value. '
+
+        attr = self.heading[attrname]
+
+        if attr.is_blob:
+            value = pack(value)
+            placeholder = '%s'
+        elif attr.numeric:
+            if value is None or np.isnan(np.float(value)):  # nans are turned into NULLs
+                placeholder = 'NULL'
+                value = None
+            else:
+                placeholder = '%s'
+                value = str(int(value) if isinstance(value, bool) else value)
+        else:
+            placeholder = '%s'
+        command = "UPDATE {full_table_name} SET `{attrname}`={placeholder} {where_clause}".format(
+            full_table_name=self.from_clause,
+            attrname=attrname,
+            placeholder=placeholder,
+            where_clause=self.where_clause
+        )
+        self.connection.query(command, args=(value, ) if value is not None else ())
+
 
 def lookup_class_name(name, context, depth=3):
     """
