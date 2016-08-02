@@ -4,7 +4,7 @@ A simple, abstract schema to test relational algebra
 import random
 import datajoint as dj
 from . import PREFIX, CONN_INFO
-
+import numpy as np
 
 schema = dj.schema(PREFIX + '_relational', locals(), connection=dj.conn(**CONN_INFO))
 
@@ -120,3 +120,18 @@ class DataB(dj.Lookup):
     a       : int
     """
     contents = list(zip(range(5), range(5, 10)))
+
+@schema
+class TestUpdate(dj.Lookup):
+    definition = """
+    primary_key     : int
+    ---
+    string_attr     : varchar(255)
+    num_attr=null   : float
+    blob_attr       : longblob
+    """
+
+    contents = [
+        (0, 'my_string', 0.0, np.random.randn(10,2)),
+        (1, 'my_other_string', 1.0, np.random.randn(20,1)),
+    ]
