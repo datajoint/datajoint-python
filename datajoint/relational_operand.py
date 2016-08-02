@@ -87,12 +87,12 @@ class RelationalOperand:
             self._distinct = arg.distinct
 
     @classmethod
-    def create(cls):
+    def create(cls):  # pragma: no cover
         """abstract method for creating an instance"""
         assert False, "Abstract method `create` must be overridden in subclass."
 
     @property
-    def select_fields(self):
+    def select_fields(self):  # pragma: no cover
         """abstract property: a string specifying the field list in SQL queries"""
         assert False, "Abstract property `select_fields` must be overridden in subclass."
 

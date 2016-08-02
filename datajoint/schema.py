@@ -80,7 +80,7 @@ class Schema:
             try:
                 master_class = self.context[to_camel_case(groups['master'])]
             except KeyError:
-                raise DataJointError('The tabled %s does not follow DataJoint naming conventions' % table_name)
+                raise DataJointError('The table %s does not follow DataJoint naming conventions' % table_name)
             part_class = type(class_name, (Part,), dict(definition=...))
             part_class._master = master_class
             self.process_relation_class(part_class, context=self.context, assert_declared=True)
