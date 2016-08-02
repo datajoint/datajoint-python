@@ -154,7 +154,7 @@ class Heading:
         numeric_types = {
             ('float', False): np.float32,
             ('float', True): np.float32,
-            ('double', False): np.float32,
+            ('double', False): np.float64,
             ('double', True): np.float64,
             ('tinyint', False): np.int8,
             ('tinyint', True): np.uint8,

@@ -29,3 +29,5 @@
 
 ### 0.3.8  -- August 2, 2016
 * added the `_update` method in `base_relation`. It allows updating values in existing tuples.
+* bugfix in reading values of type double.  Previously it was cast as float32. 
+
