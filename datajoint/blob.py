@@ -298,9 +298,9 @@ def pack_dict(obj):
     return blob
 
 
-def unpack(blob):
+def unpack(blob, **kwargs):
     if blob is None:
         return None
 
-    return BlobReader(blob).unpack()
+    return BlobReader(blob, **kwargs).unpack()
 
