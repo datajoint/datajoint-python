@@ -234,6 +234,8 @@ def pack_obj(obj):
         blob += pack_array(np.array(obj, dtype=np.dtype('c')))
     elif isinstance(obj, Iterable):
         blob += pack_array(np.array(obj))
+    elif isinstance(obj, int) or isinstance(obj, float):
+        blob += pack_array(np.array(obj))
     else:
         raise DataJointError("Packing object of type %s currently not supported!" % type(obj))
 
