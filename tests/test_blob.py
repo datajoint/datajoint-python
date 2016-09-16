@@ -18,6 +18,9 @@ def test_pack():
     x = np.int16(np.random.randn(1, 2, 3))
     assert_array_equal(x, unpack(pack(x)), "Arrays do not match!")
 
+    x = {'name': 'Anonymous', 'age': 15}
+    assert(x == unpack(pack(x)), "Dict do not match!")
+
 
 def test_complex():
     z = np.random.randn(8, 10) + 1j*np.random.randn(8,10)
