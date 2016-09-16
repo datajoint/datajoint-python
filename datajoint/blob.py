@@ -101,7 +101,7 @@ class BlobReader:
         if dtype_id == 4:  # if dealing with character array
             data = self.read_value(dtype, count=2 * n_elem)
             data = data[::2].astype('U1')
-            if self._simplify and n_dims == 2 and shape[0] == 1 or n_dims == 1:
+            if n_dims == 2 and shape[0] == 1 or n_dims == 1:
                 compact = data.squeeze()
                 data = compact if compact.shape == () else np.array(''.join(data.squeeze()))
                 shape = (1,)
