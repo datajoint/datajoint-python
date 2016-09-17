@@ -34,11 +34,6 @@ decode_lookup = {
     b'ZL123\0': zlib.decompress
 }
 
-def forward_squeeze_shape(shape):
-    for p in range(len(shape)):
-        if shape[p] != 1:
-            break
-    return shape[p:]
 
 class BlobReader:
     def __init__(self, blob, simplify=False, as_dict=False):
