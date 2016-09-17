@@ -23,8 +23,8 @@ def test_pack():
     x = [1, 2, 3, 4]
     assert_array_equal(x, unpack(pack(x)), "List did not pack/unpack correctly")
 
-    x = [1, 2, 3, 4].__iter__()
-    assert_array_equal(x, unpack(pack(x)), "Iterator did not pack/unpack correctly")
+    x = [1, 2, 3, 4]
+    assert_array_equal(x, unpack(pack(x.__iter__())), "Iterator did not pack/unpack correctly")
 
 
 def test_complex():
