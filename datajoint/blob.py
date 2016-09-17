@@ -228,7 +228,7 @@ def pack_obj(obj):
     elif isinstance(obj, str):
         blob += pack_array(np.array(obj, dtype=np.dtype('c')))
     elif isinstance(obj, Iterable):
-        blob += pack_array(np.array(obj))
+        blob += pack_array(np.array(list(obj)))
     elif isinstance(obj, int) or isinstance(obj, float):
         blob += pack_array(np.array(obj))
     else:
