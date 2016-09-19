@@ -1,6 +1,7 @@
 from operator import itemgetter
 import itertools
-from nose.tools import assert_true, raises, assert_equal, assert_dict_equal
+from nose.tools import assert_true, raises, assert_equal, assert_dict_equal, assert_in
+from datajoint.fetch import Fetch, Fetch1
 import numpy as np
 import warnings
 from . import schema
@@ -8,9 +9,39 @@ import datajoint as dj
 
 
 class TestFetch:
+
     def __init__(self):
         self.subject = schema.Subject()
         self.lang = schema.Language()
+
+    def test_behavior_inheritance(self):
+        """Testing behavior property of Fetch objects"""
+        mock = {}
+
+        f1 = Fetch(mock)
+        assert_in('squeeze', f1.ext_behavior)
+
+        f2 = Fetch1(mock)
+        assert_in('squeeze', f2.ext_behavior)
+
+    def test_copy_constructor(self):
+        """Test copy constructor for Fetch and Fetch1"""
+        mock = {}
+
+        f1 = Fetch(mock).squeeze
+        f1.limit(1)
+        f2 = Fetch(f1)
+        assert_true(isinstance(f2, Fetch), 'Copy constructor is not returning correct object type')
+        assert_dict_equal(f1.sql_behavior, f2.sql_behavior, 'Behavior dictionary content is not copied correctly')
+        assert_true(f1._relation is f2._relation, 'Relation reference is not copied correctly')
+
+        f3 = Fetch1(mock).squeeze
+        f4 = Fetch1(f3)
+        assert_true(isinstance(f4, Fetch1), 'Copy constructor is not returning correct object type')
+        print(f3.sql_behavior)
+        print(f4.sql_behavior)
+        assert_dict_equal(f3.sql_behavior, f4.sql_behavior, 'Behavior dictionary content is not copied correctly')
+        assert_true(f3._relation is f4._relation, 'Relation reference is not copied correctly')
 
     def test_getitem(self):
         """Testing Fetch.__getitem__"""
@@ -45,6 +76,10 @@ class TestFetch:
             languages.sort(key=itemgetter(0), reverse=ord_name == 'DESC')
             for c, l in zip(cur, languages):
                 assert_true(np.all(cc == ll for cc, ll in zip(c, l)), 'Sorting order is different')
+
+    def test_squeeze(self):
+        """Tests squeeze simplifying the output arrays"""
+        pass
 
     def test_order_by_default(self):
         """Tests order_by sorting order with defaults"""
