@@ -32,15 +32,16 @@ class TestFetch:
         f1.limit(1)
         f2 = Fetch(f1)
         assert_true(isinstance(f2, Fetch), 'Copy constructor is not returning correct object type')
-        assert_dict_equal(f1.sql_behavior, f2.sql_behavior, 'Behavior dictionary content is not copied correctly')
+        assert_dict_equal(f1.sql_behavior, f2.sql_behavior, 'SQL behavior dictionary content is not copied correctly')
+        assert_dict_equal(f1.ext_behavior, f2.ext_behavior, 'Extra behavior dictionary content is not copied correctly')
         assert_true(f1._relation is f2._relation, 'Relation reference is not copied correctly')
 
         f3 = Fetch1(mock).squeeze
         f4 = Fetch1(f3)
         assert_true(isinstance(f4, Fetch1), 'Copy constructor is not returning correct object type')
-        print(f3.sql_behavior)
-        print(f4.sql_behavior)
         assert_dict_equal(f3.sql_behavior, f4.sql_behavior, 'Behavior dictionary content is not copied correctly')
+        assert_dict_equal(f3.ext_behavior, f4.ext_behavior, 'Extra behavior dictionary content is not copied correctly')
+
         assert_true(f3._relation is f4._relation, 'Relation reference is not copied correctly')
 
     def test_getitem(self):
@@ -78,8 +79,7 @@ class TestFetch:
                 assert_true(np.all(cc == ll for cc, ll in zip(c, l)), 'Sorting order is different')
 
     def test_squeeze(self):
-        """Tests squeeze simplifying the output arrays"""
-        pass
+        cur = self.lang.fetch.
 
     def test_order_by_default(self):
         """Tests order_by sorting order with defaults"""

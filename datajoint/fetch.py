@@ -206,7 +206,7 @@ class Fetch(FetchBase, Callable, Iterable):
         """
         behavior = dict(self.sql_behavior)
         behavior.update(self.ext_behavior)
-        
+
         single_output = isinstance(item, str) or item is PRIMARY_KEY or isinstance(item, int)
         item, attributes = self._prepare_attributes(item)
         result = self._relation.proj(*attributes).fetch(**behavior)
