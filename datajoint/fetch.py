@@ -7,6 +7,9 @@ from .blob import unpack
 from . import DataJointError
 from . import key as PRIMARY_KEY
 
+def update_dict(d1, d2):
+    return {k: (d2[k] if k in d2 else d1[k]) for k in d1}
+
 
 class FetchBase:
     def __init__(self, arg):
@@ -25,6 +28,7 @@ class FetchBase:
         :return: copy FetchBase derivatives
         """
         return self.__class__(self)
+
 
     def _initialize_behavior(self):
         self.sql_behavior = {}
@@ -135,10 +139,11 @@ class Fetch(FetchBase, Callable, Iterable):
         :param as_dict: returns a list of dictionaries instead of a record array
         :return: the contents of the relation in the form of a structured numpy.array
         """
-        sql_behavior = dict(self.sql_behavior, **kwargs)
-        ext_behavior = self.ext_behavior
+        sql_behavior = update_dict(self.sql_behavior, kwargs)
+        ext_behavior = update_dict(self.ext_behavior, kwargs)
 
         unpack_ = partial(unpack, squeeze=ext_behavior['squeeze'])
+
         if sql_behavior['limit'] is None and sql_behavior['offset'] is not None:
             warnings.warn('Offset set, but no limit. Setting limit to a large number. '
                           'Consider setting a limit explicitly.')
@@ -162,7 +167,7 @@ class Fetch(FetchBase, Callable, Iterable):
         Iterator that returns the contents of the database.
         """
         sql_behavior = dict(self.sql_behavior)
-        ext_behavior = self.ext_behavior
+        ext_behavior = dict(self.ext_behavior)
 
         unpack_ = partial(unpack, squeeze=ext_behavior['squeeze'])
 
@@ -199,9 +204,10 @@ class Fetch(FetchBase, Callable, Iterable):
         >>> a, b, key = relation['a', 'b', datajoint.key]
 
         """
+        behavior = dict(self.sql_behavior).update(self.ext_behavior)
         single_output = isinstance(item, str) or item is PRIMARY_KEY or isinstance(item, int)
         item, attributes = self._prepare_attributes(item)
-        result = self._relation.proj(*attributes).fetch(**self.sql_behavior)
+        result = self._relation.proj(*attributes).fetch(**behavior)
         return_values = [
             list(to_dicts(result[self._relation.primary_key]))
             if attribute is PRIMARY_KEY else result[attribute]
@@ -228,15 +234,15 @@ class Fetch1(FetchBase, Callable):
     :param relation: relation the fetch object fetches data from
     """
 
-    def __call__(self):
+    def __call__(self, **kwargs):
         """
         This version of fetch is called when self is expected to contain exactly one tuple.
         :return: the one tuple in the relation in the form of a dict
         """
         heading = self._relation.heading
 
-        sql_behavior = dict(self.sql_behavior)
-        ext_behavior = self.ext_behavior
+        #sql_behavior = update_dict(self.sql_behavior, kwargs)
+        ext_behavior = update_dict(self.ext_behavior, kwargs)
 
         unpack_ = partial(unpack, squeeze=ext_behavior['squeeze'])
 
