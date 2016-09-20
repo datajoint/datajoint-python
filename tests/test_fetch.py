@@ -79,7 +79,7 @@ class TestFetch:
                 assert_true(np.all(cc == ll for cc, ll in zip(c, l)), 'Sorting order is different')
 
     def test_squeeze(self):
-        cur = self.lang.fetch.
+        pass
 
     def test_order_by_default(self):
         """Tests order_by sorting order with defaults"""
