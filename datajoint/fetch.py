@@ -268,9 +268,12 @@ class Fetch1(FetchBase, Callable):
         >>> a, b, key = relation['a', 'b', datajoint.key]
 
         """
+        behavior = dict(self.sql_behavior)
+        behavior.update(self.ext_behavior)
+
         single_output = isinstance(item, str) or item is PRIMARY_KEY or isinstance(item, int)
         item, attributes = self._prepare_attributes(item)
-        result = self._relation.proj(*attributes).fetch()
+        result = self._relation.proj(*attributes).fetch(**behavior)
         if len(result) != 1:
             raise DataJointError('fetch1 should only return one tuple. %d tuples were found' % len(result))
         return_values = tuple(
