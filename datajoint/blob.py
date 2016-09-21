@@ -36,8 +36,8 @@ decode_lookup = {
 
 
 class BlobReader:
-    def __init__(self, blob, simplify=False, as_dict=False):
-        self._simplify = simplify
+    def __init__(self, blob, squeeze=False, as_dict=False):
+        self._squeeze = squeeze
         self._blob = blob
         self._pos = 0
         self._as_dict = as_dict
@@ -113,7 +113,7 @@ class BlobReader:
         if not advance:
             self.pos = start
 
-        return self.simplify(data.reshape(shape, order='F'))
+        return self.squeeze(data.reshape(shape, order='F'))
 
     def read_structure(self, advance=True, n_bytes=None):
         start = self.pos
@@ -145,14 +145,14 @@ class BlobReader:
             return data
         else:
             data = np.rec.array(raw_data, dtype=dt)
-            return self.simplify(data.reshape(shape, order='F'))
+            return self.squeeze(data.reshape(shape, order='F'))
 
-    def simplify(self, array):
+    def squeeze(self, array):
         """
         Simplify the given array as much as possible - squeeze out all singleton
         dimensions and also convert a zero dimensional array into array scalar
         """
-        if not self._simplify:
+        if not self._squeeze:
             return array
         array = array.copy()
         array = array.squeeze()
@@ -278,7 +278,7 @@ def pack_dict(obj):
     """
     obj = OrderedDict(obj)
     blob = b'S'
-    blob += np.array((2, 1, 1), dtype=np.uint64).tostring()
+    blob += np.array((1, 1), dtype=np.uint64).tostring()
     blob += np.array(len(obj), dtype=np.uint32).tostring()
 
     # write out field names
