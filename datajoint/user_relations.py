@@ -15,6 +15,9 @@ class OrderedClass(type):
     """
     Class whose members are ordered
     See https://docs.python.org/3/reference/datamodel.html#metaclass-example
+
+    TODO:  In Python 3.6, this will no longer be necessary and should be removed (PEP 520)
+    https://www.python.org/dev/peps/pep-0520/
     """
     @classmethod
     def __prepare__(metacls, name, bases, **kwds):

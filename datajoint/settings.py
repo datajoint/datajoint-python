@@ -27,6 +27,14 @@ role_to_prefix = {
 }
 prefix_to_role = dict(zip(role_to_prefix.values(), role_to_prefix.keys()))
 
+
+server_error_codes = {
+    'command denied': 1142,
+    'tables does not exist': 1146,
+    'syntax error': 1149
+}
+
+
 default = OrderedDict({
     'database.host': 'localhost',
     'database.password': 'datajoint',

@@ -18,7 +18,7 @@ class Schema:
     It also specifies the namespace `context` in which other UserRelation classes are defined.
     """
 
-    def __init__(self, database, context, connection=None):
+    def __init__(self, database, context, connection=None, create_tables=True):
         """
         Associates the specified database with this schema object. If the target database does not exist
         already, will attempt on creating the database.
@@ -32,6 +32,7 @@ class Schema:
         self.database = database
         self.connection = connection
         self.context = context
+        self._create_tables = create_tables
         if not self.exists:
             # create database
             logger.info("Database `{database}` could not be found. "
@@ -55,7 +56,6 @@ class Schema:
         Creates the appropriate python user relation classes from tables in the database and places them
         in the context.
         """
-
         tables = [
             row[0] for row in self.connection.query('SHOW TABLES in `%s`' % self.database)
             if lookup_class_name('`{db}`.`{tab}`'.format(db=self.database, tab=row[0]), self.context, 0) is None]
@@ -120,18 +120,19 @@ class Schema:
         relation_class._context = context
         # instantiate the class, declare the table if not already, and fill it with initial values.
         instance = relation_class()
-        if not instance.is_declared:
+        if not instance.is_declared and self._create_tables:
             assert not assert_declared, 'incorrect table name generation'
             instance.declare()
-        if hasattr(instance, 'contents'):
-            contents = list(instance.contents)
-            if len(contents) > len(instance):
-                if instance.heading.has_autoincrement:
-                    warnings.warn(
-                        'Contents has changed but cannot be inserted because {table} has autoincrement.'.format(
-                            table=instance.__class__.__name__))
-                else:
-                    instance.insert(contents, skip_duplicates=True)
+        if instance.is_declared:
+            if hasattr(instance, 'contents'):
+                contents = list(instance.contents)
+                if len(contents) > len(instance):
+                    if instance.heading.has_autoincrement:
+                        warnings.warn(
+                            'Contents has changed but cannot be inserted because {table} has autoincrement.'.format(
+                                table=instance.__class__.__name__))
+                    else:
+                        instance.insert(contents, skip_duplicates=True)
 
     def __call__(self, cls):
         """

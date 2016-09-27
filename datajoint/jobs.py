@@ -106,6 +106,9 @@ class JobRelation(BaseRelation):
 
 
 class JobManager:
+    """
+    A container for all job tables (one job table per schema).
+    """
     def __init__(self, connection):
         self.connection = connection
         self._jobs = {}

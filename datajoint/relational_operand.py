@@ -728,4 +728,10 @@ class U:
         :param named_attributes: computations of the form new_attribute="sql expression on attributes of group"
         :return: The new relation
         """
-        return GroupBy.create(self, group=group, keep_all_rows=False, attributes=(), named_attributes=named_attributes)
+
+        return (
+            GroupBy.create(self, group=group, keep_all_rows=False, attributes=(),named_attributes=named_attributes)
+            if self.primary_key else
+            Projection.create(group, attributes=(), named_attributes=named_attributes, include_primary_key=False))
+
+

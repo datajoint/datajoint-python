@@ -158,10 +158,8 @@ class Fetch(FetchBase, Callable, Iterable):
         :return: tuple with an entry for each element of item
 
         Examples:
-
         >>> a, b = relation['a', 'b']
         >>> a, b, key = relation['a', 'b', datajoint.key]
-
         """
         single_output = isinstance(item, str) or item is PRIMARY_KEY or isinstance(item, int)
         item, attributes = self._prepare_attributes(item)
