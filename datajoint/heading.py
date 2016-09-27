@@ -178,7 +178,7 @@ class Heading:
             attr['autoincrement'] = bool(re.search(r'auto_increment', attr['Extra'], flags=re.IGNORECASE))
             attr['type'] = re.sub(r'int\(\d+\)', 'int', attr['type'], count=1)   # strip size off integers
             attr['numeric'] = bool(re.match(r'(tiny|small|medium|big)?int|decimal|double|float', attr['type']))
-            attr['string'] = bool(re.match(r'(var)?char|enum|year|time|timestamp|year', attr['type']))
+            attr['string'] = bool(re.match(r'(var)?char|enum|year|time|timestamp|date|year', attr['type']))
             attr['is_blob'] = bool(re.match(r'(tiny|medium|long)?blob', attr['type']))
 
             if attr['string'] and attr['default'] is not None and attr['default'] not in sql_literals:
