@@ -367,21 +367,24 @@ class RelationalOperand:
         rel = self.proj(*self.heading.non_blobs,
                         **dict(zip_longest(self.heading.blobs, [], fillvalue="'=BLOB='")))  # replace blobs with =BLOB=
         info = self.heading.table_info
+        count = len(rel)
         return """ {title}
             <div style="max-height:1000px;max-width:1500px;overflow:auto;">
             <table border="1" class="dataframe">
                 <thead> <tr style="text-align: right;"> <th> {head} </th> </tr> </thead>
                 <tbody> <tr> {body} </tr> </tbody>
             </table>
+            {ellipsis}
             <p>{count} tuples</p></div>
             """.format(
             title="" if info is None else "<h3>%s</h3>" % info['comment'],
             head='</th><th>'.join("<em>" + c + "</em>" if c in self.primary_key else c
                                   for c in rel.heading.names),
+            ellipsis='<p>...</p>' if count > config['display.limit'] else '',
             body='</tr><tr>'.join(
                 ['\n'.join(['<td>%s</td>' % column for column in tup])
                  for tup in rel.fetch(limit=config['display.limit'])]),
-            count=len(rel))
+            count=count)
 
     def make_sql(self, select_fields=None):
         return 'SELECT {fields} FROM {from_}{where}'.format(
