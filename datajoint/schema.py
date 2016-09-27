@@ -18,7 +18,7 @@ class Schema:
     It also specifies the namespace `context` in which other UserRelation classes are defined.
     """
 
-    def __init__(self, database, context, connection=None, create_tables=True):
+    def __init__(self, database, context, connection=None):
         """
         Associates the specified database with this schema object. If the target database does not exist
         already, will attempt on creating the database.
@@ -32,7 +32,6 @@ class Schema:
         self.database = database
         self.connection = connection
         self.context = context
-        self._create_tables = create_tables
         if not self.exists:
             # create database
             logger.info("Database `{database}` could not be found. "
@@ -120,7 +119,7 @@ class Schema:
         relation_class._context = context
         # instantiate the class, declare the table if not already, and fill it with initial values.
         instance = relation_class()
-        if not instance.is_declared and self._create_tables:
+        if not instance.is_declared:
             assert not assert_declared, 'incorrect table name generation'
             instance.declare()
         if instance.is_declared:
