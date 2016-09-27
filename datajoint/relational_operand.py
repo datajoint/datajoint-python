@@ -734,4 +734,10 @@ class U:
             if self.primary_key else
             Projection.create(group, attributes=(), named_attributes=named_attributes, include_primary_key=False))
 
+    def aggr(self, *args, **kwargs):
+        """
+        Synonym for self.aggregate
+        """
+        self.aggregate(*args, **kwargs)
+
 

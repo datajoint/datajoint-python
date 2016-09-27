@@ -11,6 +11,16 @@ schema = dj.schema(PREFIX + '_test1', locals(), connection=dj.conn(**CONN_INFO))
 
 
 @schema
+class Test(dj.Computed):
+    definition="""
+    key   :   int     # key
+    ---
+    value   :   int     # value
+    """
+    contents = [(k, 2*k) for k in range(10)]
+
+
+@schema
 class Auto(dj.Lookup):
     definition = """
     id  :int auto_increment
