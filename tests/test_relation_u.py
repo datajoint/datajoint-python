@@ -57,6 +57,6 @@ class TestU:
     def test_argmax(self):
         rel = schema.Test()
         # get the tuples corresponding to maximum value
-        mx = rel & dj.U().aggr(rel, value='max(value)')
+        mx = rel & dj.U().aggregate(rel, value='max(value)')
         assert_equal(mx.fetch['value'][0], max(rel.fetch['value']))
 
