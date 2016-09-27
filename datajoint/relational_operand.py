@@ -385,7 +385,8 @@ class RelationalOperand:
 
     def make_sql(self, select_fields=None):
         return 'SELECT {fields} FROM {from_}{where}'.format(
-            fields=select_fields or (("DISTINCT " if self.distinct else "") + self.select_fields),
+            fields=select_fields or (
+                ("DISTINCT " if self.distinct and self.primary_key else "") + self.select_fields),
             from_=self.from_clause,
             where=self.where_clause)
 
@@ -394,7 +395,8 @@ class RelationalOperand:
         number of tuples in the relation.
         """
         return self.connection.query(self.make_sql('count(%s)' % (
-            ("DISTINCT `%s`" % '`,`'.join(self.primary_key)) if self.distinct else "*"))).fetchone()[0]
+            "DISTINCT `%s`" % '`,`'.join(self.primary_key)
+            if self.distinct and self.primary_key else "*"))).fetchone()[0]
 
     def __bool__(self):
         """
