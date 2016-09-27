@@ -1,8 +1,7 @@
-
-
 import numpy as np
 from datajoint.blob import pack, unpack
 from numpy.testing import assert_array_equal, raises
+from nose.tools import assert_equal, assert_true
 
 
 def test_pack():
@@ -17,6 +16,15 @@ def test_pack():
 
     x = np.int16(np.random.randn(1, 2, 3))
     assert_array_equal(x, unpack(pack(x)), "Arrays do not match!")
+
+    x = {'name': 'Anonymous', 'age': 15}
+    assert_true(x == unpack(pack(x), as_dict=True), "Dict do not match!")
+
+    x = [1, 2, 3, 4]
+    assert_array_equal(x, unpack(pack(x)), "List did not pack/unpack correctly")
+
+    x = [1, 2, 3, 4]
+    assert_array_equal(x, unpack(pack(x.__iter__())), "Iterator did not pack/unpack correctly")
 
 
 def test_complex():

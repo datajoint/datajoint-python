@@ -3,11 +3,13 @@ services:
   datajoint:
     build:
       context: .
-      dockerfile: JupyterDockerfile
+      dockerfile: DevDockerfile
     environment:
       - DJ_HOST=db
       - DJ_USER=root
       - DJ_PASS=simple
+    volumes:
+      - .:/src
     links:
       - db
     ports:
