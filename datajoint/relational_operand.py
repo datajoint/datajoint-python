@@ -229,6 +229,12 @@ class RelationalOperand:
         return GroupBy.create(self, group, keep_all_rows=keep_all_rows,
                               attributes=attributes, named_attributes=named_attributes)
 
+    def aggr(self, *args, **kwargs):
+        """
+        Synonym for aggregate
+        """
+        return self.aggr(*args, **kwargs)
+
     def __iand__(self, restriction):
         """
         in-place restriction.
@@ -734,3 +740,8 @@ class U:
             if self.primary_key else
             Projection.create(group, attributes=(), named_attributes=named_attributes, include_primary_key=False))
 
+    def aggr(self, *args, **kwargs):
+        """
+        Synonym for aggregate
+        """
+        return self.aggregate(*args, **kwargs)
