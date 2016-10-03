@@ -193,6 +193,33 @@ class TestRelational:
                             "aggregation failed (max)")
 
     @staticmethod
+    def test_aggr():
+        x = B().aggr(B.C())
+        assert_equal(len(x), len(B() & B.C()))
+
+        x = B().aggr(B.C(), keep_all_rows=True)
+        assert_equal(len(x), len(B()))  # test LEFT join
+
+        assert_equal(len((x & 'id_b=0').fetch()), len(B() & 'id_b=0'))  # test restricted aggregation
+
+        x = B().aggr(B.C(), 'n', count='count(id_c)', mean='avg(value)', max='max(value)', keep_all_rows=True)
+        assert_equal(len(x), len(B()))
+        y = x & 'mean>0'  # restricted aggregation
+        assert_true(len(y) > 0)
+        assert_true(all(y.fetch['mean'] > 0))
+        for n, count, mean, max_, key in zip(*x.fetch['n', 'count', 'mean', 'max', dj.key]):
+            assert_equal(n, count, 'aggregation failed (count)')
+            values = (B.C() & key).fetch['value']
+            assert_true(bool(len(values)) == bool(n),
+                        'aggregation failed (restriction)')
+            if n:
+                assert_true(np.isclose(mean, values.mean(), rtol=1e-4, atol=1e-5),
+                            "aggregation failed (mean)")
+                assert_true(np.isclose(max_, values.max(), rtol=1e-4, atol=1e-5),
+                            "aggregation failed (max)")
+
+
+    @staticmethod
     def test_restrictions_by_lists():
         x = D()
         y = L() & 'cond_in_l'

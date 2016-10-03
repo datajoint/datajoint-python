@@ -127,7 +127,8 @@ class Heading:
         info = conn.query('SHOW TABLE STATUS FROM `{database}` WHERE name="{table_name}"'.format(
             table_name=table_name, database=database), as_dict=True).fetchone()
         if info is None:
-            raise DataJointError('The table is not defined.')
+            raise DataJointError('The table `{database}`.`{table_name}` is not defined.'.format(
+                table_name=table_name, database=database))
         self.table_info = {k.lower(): v for k, v in info.items()}
 
         cur = conn.query(
@@ -177,7 +178,7 @@ class Heading:
             attr['autoincrement'] = bool(re.search(r'auto_increment', attr['Extra'], flags=re.IGNORECASE))
             attr['type'] = re.sub(r'int\(\d+\)', 'int', attr['type'], count=1)   # strip size off integers
             attr['numeric'] = bool(re.match(r'(tiny|small|medium|big)?int|decimal|double|float', attr['type']))
-            attr['string'] = bool(re.match(r'(var)?char|enum|date|time|timestamp', attr['type']))
+            attr['string'] = bool(re.match(r'(var)?char|enum|date|year|time|timestamp', attr['type']))
             attr['is_blob'] = bool(re.match(r'(tiny|medium|long)?blob', attr['type']))
 
             if attr['string'] and attr['default'] is not None and attr['default'] not in sql_literals:

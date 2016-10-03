@@ -199,10 +199,8 @@ class Fetch(FetchBase, Callable, Iterable):
         :return: tuple with an entry for each element of item
 
         Examples:
-
         >>> a, b = relation['a', 'b']
         >>> a, b, key = relation['a', 'b', datajoint.key]
-
         """
         behavior = dict(self.sql_behavior)
         behavior.update(self.ext_behavior)

@@ -50,7 +50,13 @@ class TestU:
         rel = dj.U('language') * dict(language="English")
 
     def test_aggregations(self):
-        rel = dj.U('language').aggregate(schema.Language(), number_of_speakers='count(*)')
+        rel = dj.U('language').aggr(schema.Language(), number_of_speakers='count(*)')
         assert_equal(len(rel), len(set(l[1] for l in schema.Language.contents)))
         assert_equal((rel & 'language="English"').fetch1['number_of_speakers'], 3)
+
+    def test_argmax(self):
+        rel = schema.Test()
+        # get the tuples corresponding to maximum value
+        mx = rel & dj.U().aggr(rel, value='max(value)')
+        assert_equal(mx.fetch['value'][0], max(rel.fetch['value']))
 

@@ -55,7 +55,6 @@ class Schema:
         Creates the appropriate python user relation classes from tables in the database and places them
         in the context.
         """
-
         tables = [
             row[0] for row in self.connection.query('SHOW TABLES in `%s`' % self.database)
             if lookup_class_name('`{db}`.`{tab}`'.format(db=self.database, tab=row[0]), self.context, 0) is None]
@@ -123,7 +122,8 @@ class Schema:
         if not instance.is_declared:
             assert not assert_declared, 'incorrect table name generation'
             instance.declare()
-        if hasattr(instance, 'contents'):
+        if instance.is_declared and hasattr(instance, 'contents'):
+            # process the contents attribute
             contents = list(instance.contents)
             if len(contents) > len(instance):
                 if instance.heading.has_autoincrement:

@@ -229,6 +229,8 @@ class RelationalOperand:
         return GroupBy.create(self, group, keep_all_rows=keep_all_rows,
                               attributes=attributes, named_attributes=named_attributes)
 
+    aggr = aggregate    # shorthand
+
     def __iand__(self, restriction):
         """
         in-place restriction.
@@ -365,25 +367,29 @@ class RelationalOperand:
         rel = self.proj(*self.heading.non_blobs,
                         **dict(zip_longest(self.heading.blobs, [], fillvalue="'=BLOB='")))  # replace blobs with =BLOB=
         info = self.heading.table_info
+        count = len(rel)
         return """ {title}
             <div style="max-height:1000px;max-width:1500px;overflow:auto;">
             <table border="1" class="dataframe">
                 <thead> <tr style="text-align: right;"> <th> {head} </th> </tr> </thead>
                 <tbody> <tr> {body} </tr> </tbody>
             </table>
+            {ellipsis}
             <p>{count} tuples</p></div>
             """.format(
             title="" if info is None else "<h3>%s</h3>" % info['comment'],
             head='</th><th>'.join("<em>" + c + "</em>" if c in self.primary_key else c
                                   for c in rel.heading.names),
+            ellipsis='<p>...</p>' if count > config['display.limit'] else '',
             body='</tr><tr>'.join(
                 ['\n'.join(['<td>%s</td>' % column for column in tup])
                  for tup in rel.fetch(limit=config['display.limit'])]),
-            count=len(rel))
+            count=count)
 
     def make_sql(self, select_fields=None):
         return 'SELECT {fields} FROM {from_}{where}'.format(
-            fields=select_fields or (("DISTINCT " if self.distinct else "") + self.select_fields),
+            fields=select_fields or (
+                ("DISTINCT " if self.distinct and self.primary_key else "") + self.select_fields),
             from_=self.from_clause,
             where=self.where_clause)
 
@@ -392,7 +398,8 @@ class RelationalOperand:
         number of tuples in the relation.
         """
         return self.connection.query(self.make_sql('count(%s)' % (
-            ("DISTINCT `%s`" % '`,`'.join(self.primary_key)) if self.distinct else "*"))).fetchone()[0]
+            "DISTINCT `%s`" % '`,`'.join(self.primary_key)
+            if self.distinct and self.primary_key else "*"))).fetchone()[0]
 
     def __bool__(self):
         """
@@ -728,4 +735,10 @@ class U:
         :param named_attributes: computations of the form new_attribute="sql expression on attributes of group"
         :return: The new relation
         """
-        return GroupBy.create(self, group=group, keep_all_rows=False, attributes=(), named_attributes=named_attributes)
+
+        return (
+            GroupBy.create(self, group=group, keep_all_rows=False, attributes=(),named_attributes=named_attributes)
+            if self.primary_key else
+            Projection.create(group, attributes=(), named_attributes=named_attributes, include_primary_key=False))
+
+    aggr = aggregate  # shorthand

@@ -2,6 +2,7 @@ import collections
 import itertools
 import inspect
 import numpy as np
+import pymysql
 import logging
 from . import config, DataJointError
 from .declare import declare
@@ -9,6 +10,7 @@ from .relational_operand import RelationalOperand
 from .blob import pack
 from .utils import user_choice
 from .heading import Heading
+from .settings import server_error_codes
 
 logger = logging.getLogger(__name__)
 
@@ -45,8 +47,12 @@ class BaseRelation(RelationalOperand):
         """
         Loads the table heading. If the table is not declared, use self.definition to declare
         """
-        self.connection.query(
-            declare(self.full_table_name, self.definition, self._context))
+        try:
+            self.connection.query(
+                declare(self.full_table_name, self.definition, self._context))
+        except pymysql.OperationalError as error:
+            if error.args[0] == server_error_codes['command denied']:
+                logger.warning(error.args[1])
 
     @property
     def from_clause(self):
@@ -123,11 +129,9 @@ class BaseRelation(RelationalOperand):
         :param ignore_extra_fields: If False, fields that are not in the heading raise error.
 
         Example::
-
         >>> relation.insert([
         >>>     dict(subject_id=7, species="mouse", date_of_birth="2014-09-01"),
         >>>     dict(subject_id=8, species="mouse", date_of_birth="2014-09-02")])
-
         """
 
         if isinstance(rows, RelationalOperand):
