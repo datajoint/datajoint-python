@@ -122,16 +122,16 @@ class Schema:
         if not instance.is_declared:
             assert not assert_declared, 'incorrect table name generation'
             instance.declare()
-        if instance.is_declared:
-            if hasattr(instance, 'contents'):
-                contents = list(instance.contents)
-                if len(contents) > len(instance):
-                    if instance.heading.has_autoincrement:
-                        warnings.warn(
-                            'Contents has changed but cannot be inserted because {table} has autoincrement.'.format(
-                                table=instance.__class__.__name__))
-                    else:
-                        instance.insert(contents, skip_duplicates=True)
+        if instance.is_declared and hasattr(instance, 'contents'):
+            # process the contents attribute
+            contents = list(instance.contents)
+            if len(contents) > len(instance):
+                if instance.heading.has_autoincrement:
+                    warnings.warn(
+                        'Contents has changed but cannot be inserted because {table} has autoincrement.'.format(
+                            table=instance.__class__.__name__))
+                else:
+                    instance.insert(contents, skip_duplicates=True)
 
     def __call__(self, cls):
         """
