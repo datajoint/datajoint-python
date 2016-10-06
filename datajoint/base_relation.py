@@ -491,7 +491,8 @@ class FreeRelation(BaseRelation):
 
 class Log(BaseRelation):
     """
-    A base relation with no definition. Allows reserving jobs
+    The log table for each database.
+    Instances are callable.  Calls log the time and identifying information along with the event.
     """
 
     def __init__(self, arg, database=None):
@@ -536,11 +537,11 @@ class Log(BaseRelation):
             event=event), replace=True, ignore_extra_fields=True)
 
     def delete(self):
-        """bypass interactive prompts and dependencies"""
+        """bypass interactive prompts and cascading dependencies"""
         self.delete_quick()
 
     def drop(self):
-        """bypass interactive prompts and dependencies"""
+        """bypass interactive prompts and cascading dependencies"""
         self.drop_quick()
 
 
