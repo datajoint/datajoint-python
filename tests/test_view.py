@@ -9,14 +9,14 @@ def test_view():
 
 
 @raises(dj.DataJointError)
-def missing_definition():
+def test_missing_definition():
     @schema.schema
     class BadView(dj.View):
         misspelled = schema.Glot()
 
 
 @raises(dj.DataJointError)
-def missing_definition():
+def test_invalid_definition():
 
     @schema.schema
     class BadView(dj.View):
