@@ -534,7 +534,7 @@ class Log(BaseRelation):
             user=self._user,
             version=version + 'py',
             host=os.uname().nodename,
-            event=event), replace=True, ignore_extra_fields=True)
+            event=event), ignore_errors=True, ignore_extra_fields=True)
 
     def delete(self):
         """bypass interactive prompts and cascading dependencies"""

@@ -15,14 +15,12 @@ class View(RelationalOperand):
         """
         raise NotImplementedError('Subclasses of BaseRelation must implement the property "definition"')
 
-    def declare(self, connection, database):
+    def declare(self):
         """
         Declare the view in the database.  Is called by the schema decorator
         """
         if not isinstance(self.definition, RelationalOperand):
-            raise DataJointError('The d')
-        self._database = database
-        self._connection = connection
+            raise DataJointError('The definition of a view must be relational expression')
         self.connection.query(
             """
             CREATE OR REPLACE VIEW {view} AS {select}
