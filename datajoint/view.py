@@ -9,7 +9,7 @@ class View(RelationalOperand):
         """
         :return: a query to be defined as view.
         """
-        raise NotImplementedError('Subclasses of BaseRelation must implement the property "definition"')
+        raise DataJointError('Subclasses of BaseRelation must implement the property "definition"')
 
     def declare(self):
         """
