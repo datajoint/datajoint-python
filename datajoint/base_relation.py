@@ -508,7 +508,7 @@ class Log(BaseRelation):
 
         self.database = database
         self._connection = arg
-        self._definition = """    # job reservation table for `{database}`
+        self._definition = """    # even logging table for `{database}`
         timestamp  : timestamp(3)
         ---
         version  :varchar(12)   # datajoint version
