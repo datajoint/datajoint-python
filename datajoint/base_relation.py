@@ -508,7 +508,7 @@ class Log(BaseRelation):
 
         self.database = database
         self._connection = arg
-        self._definition = """    # even logging table for `{database}`
+        self._definition = """    # event logging table for `{database}`
         timestamp  : timestamp
         ---
         version  :varchar(12)   # datajoint version

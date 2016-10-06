@@ -1,11 +1,10 @@
 from .relational_operand import RelationalOperand
-from .utils import from_camel_case, ClassProperty
+from .utils import from_camel_case
 from . import DataJointError
 
 
 class View(RelationalOperand):
 
-    @ClassProperty
     def definition(self):
         """
         :return: a query to be defined as view.
@@ -17,11 +16,8 @@ class View(RelationalOperand):
         Declare the view in the database.  Is called by the schema decorator
         """
         if not isinstance(self.definition, RelationalOperand):
-            raise DataJointError('The definition of a view must be relational expression')
-        self.connection.query(
-            """
-            CREATE OR REPLACE VIEW {view} AS {select}
-            """.format(
+            raise DataJointError('The definition of a view must be a relational expression')
+        self.connection.query("CREATE OR REPLACE VIEW {view} AS {select}".format(
                 view=self.from_clause,
                 select=self.definition.make_sql()))
 
