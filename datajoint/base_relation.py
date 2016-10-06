@@ -495,11 +495,19 @@ class Log(BaseRelation):
     Instances are callable.  Calls log the time and identifying information along with the event.
     """
 
-    def __init__(self, connection, database):
+    def __init__(self, arg, database=None):
         super().__init__()
 
-        self._connection = connection
+        if isinstance(arg, Log):
+            # copy constructor
+            self.database = arg.database
+            self._connection = arg._connection
+            self._definition = arg._definition
+            self._user = arg._user
+            return
+
         self.database = database
+        self._connection = arg
         self._definition = """    # event logging table for `{database}`
         timestamp  : timestamp
         ---

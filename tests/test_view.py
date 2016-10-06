@@ -10,17 +10,18 @@ def test_view():
 
 @raises(dj.DataJointError)
 def missing_definition():
+    @schema.schema
     class BadView(dj.View):
         misspelled = schema.Glot()
-    BadView()
 
 
 @raises(dj.DataJointError)
 def missing_definition():
+
+    @schema.schema
     class BadView(dj.View):
         definition = """
         id : int
         ---
         value : double
         """
-    BadView()
