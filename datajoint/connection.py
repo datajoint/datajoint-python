@@ -129,6 +129,12 @@ class Connection:
                 raise
         return cur
 
+    def get_user(self):
+        """
+        :return: the user name and host name provided by the client to the server.
+        """
+        return self.query('SELECT user()').fetchone()[0]
+
     # ---------- transaction processing
     @property
     def in_transaction(self):

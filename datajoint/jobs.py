@@ -14,15 +14,16 @@ def key_hash(key):
     return hashed.hexdigest()
 
 
-class JobRelation(BaseRelation):
+class JobTable(BaseRelation):
     """
     A base relation with no definition. Allows reserving jobs
     """
     _table_name = '~jobs'
+    _user = ''
 
     def __init__(self, arg, database=None):
         super().__init__()
-        if isinstance(arg, JobRelation):
+        if isinstance(arg, JobTable):
             # copy constructor
             self.database = arg.database
             self._connection = arg._connection
@@ -39,12 +40,14 @@ class JobRelation(BaseRelation):
         key=null  :blob  # structure containing the key
         error_message=""  :varchar(1023)  # error message returned if failed
         error_stack=null  :blob  # error stack if failed
+        user="" :varchar(255) # database user
         host=""  :varchar(255)  # system hostname
         pid=0  :int unsigned  # system process id
         timestamp=CURRENT_TIMESTAMP  :timestamp   # automatic timestamp
         """.format(database=database)
         if not self.is_declared:
             self.declare()
+        self._user = self.connection.get_user()
 
     @property
     def definition(self):
@@ -70,14 +73,18 @@ class JobRelation(BaseRelation):
         :param key: the dict of the job's primary key
         :return: True if reserved job successfully. False = the jobs is already taken
         """
+        job = dict(
+            table_name=table_name,
+            key_hash=key_hash(key),
+            status='reserved',
+            host=os.uname().nodename,
+            pid=os.getpid(),
+            user=self._user)
         try:
-            job_key = dict(table_name=table_name, key_hash=key_hash(key),
-                           status='reserved', host=os.uname().nodename, pid=os.getpid())
-            self.insert1(job_key)
+            self.insert1(job)
         except pymysql.err.IntegrityError:
             return False
-        else:
-            return True
+        return True
 
     def complete(self, table_name, key):
         """
@@ -102,7 +109,8 @@ class JobRelation(BaseRelation):
                  status="error",
                  host=os.uname().nodename,
                  pid=os.getpid(),
-                 error_message=error_message), replace=True)
+                 user=self._user,
+                 error_message=error_message), replace=True, ignore_extra_fields=True)
 
 
 class JobManager:
@@ -115,5 +123,5 @@ class JobManager:
 
     def __getitem__(self, database):
         if database not in self._jobs:
-            self._jobs[database] = JobRelation(self.connection, database)
+            self._jobs[database] = JobTable(self.connection, database)
         return self._jobs[database]
