@@ -5,9 +5,6 @@ from . import DataJointError
 
 class View(RelationalOperand):
 
-    _connection = None
-    _database = None
-
     @ClassProperty
     def definition(self):
         """
@@ -34,7 +31,7 @@ class View(RelationalOperand):
         :return: the FROM clause of SQL SELECT statements.
         """
         return '`{db}`.`{view}`'.format(
-            db=self._database,
+            db=self.database,
             view=from_camel_case(self.__class__.__name__))
 
     @property
@@ -43,3 +40,7 @@ class View(RelationalOperand):
         :return: the selected attributes from the SQL SELECT statement.
         """
         return '*'
+
+    @property
+    def heading(self):
+        return self.definition.heading
