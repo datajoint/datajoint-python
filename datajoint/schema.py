@@ -7,8 +7,7 @@ from . import conn, DataJointError, config
 from .heading import Heading
 from .utils import user_choice, to_camel_case
 from .user_relations import Part, Computed, Imported, Manual, Lookup
-from .base_relation import lookup_class_name
-from .log import Log
+from .base_relation import lookup_class_name, Log
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +32,10 @@ class Schema:
         self.database = database
         self.connection = connection
         self.context = context
-        if not self.exists:
+        if self.exists:
+            log = Log(self.connection, database=database)
+            log('connect')
+        else:
             # create database
             logger.info("Database `{database}` could not be found. "
                         "Attempting to create the database.".format(database=database))
@@ -44,8 +46,9 @@ class Schema:
                 raise DataJointError("Database named `{database}` was not defined, and"
                                      " an attempt to create has failed. Check"
                                      " permissions.".format(database=database))
-        self.log = Log(self.connection, database=database)
-        self.log('connect')
+            else:
+                log = Log(self.connection, database=database)
+                log('created database ' + database)
         connection.register(self)
 
     def __repr__(self):
@@ -120,6 +123,7 @@ class Schema:
         relation_class._connection = self.connection
         relation_class._heading = Heading()
         relation_class._context = context
+        relation_class._schema = self
         # instantiate the class, declare the table if not already, and fill it with initial values.
         instance = relation_class()
         if not instance.is_declared:
