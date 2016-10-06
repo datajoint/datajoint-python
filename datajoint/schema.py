@@ -29,13 +29,11 @@ class Schema:
         """
         if connection is None:
             connection = conn()
+        self._log = None
         self.database = database
         self.connection = connection
         self.context = context
-        if self.exists:
-            self.log = Log(self.connection, database=database)
-            self.log('connect')
-        else:
+        if not self.exists:
             # create database
             logger.info("Database `{database}` could not be found. "
                         "Attempting to create the database.".format(database=database))
@@ -47,9 +45,15 @@ class Schema:
                                      " an attempt to create has failed. Check"
                                      " permissions.".format(database=database))
             else:
-                self.log = Log(self.connection, database=database)
-                self.log('created database ' + database)
+                self.log('created')
+        self.log('connect')
         connection.register(self)
+
+    @property
+    def log(self):
+        if self._log is None:
+            self._log = Log(self.connection, self.database)
+        return self._log
 
     def __repr__(self):
         return 'Schema database: `{database}` in module: {context}\n'.format(

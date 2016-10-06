@@ -53,10 +53,11 @@ class BaseRelation(RelationalOperand):
         try:
             self.connection.query(
                 declare(self.full_table_name, self.definition, self._context))
-            self.log('Declared ' + self.full_table_name)
         except pymysql.OperationalError as error:
             if error.args[0] == server_error_codes['command denied']:
                 logger.warning(error.args[1])
+        else:
+            self.log('Declared ' + self.full_table_name)
 
     @property
     def from_clause(self):
