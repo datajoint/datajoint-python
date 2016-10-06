@@ -8,6 +8,7 @@ from .heading import Heading
 from .utils import user_choice, to_camel_case
 from .user_relations import Part, Computed, Imported, Manual, Lookup
 from .base_relation import lookup_class_name
+from .log import Log
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,8 @@ class Schema:
                 raise DataJointError("Database named `{database}` was not defined, and"
                                      " an attempt to create has failed. Check"
                                      " permissions.".format(database=database))
+        self.log = Log(self.connection, database=database)
+        self.log('connect')
         connection.register(self)
 
     def __repr__(self):

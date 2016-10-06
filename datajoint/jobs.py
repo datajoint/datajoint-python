@@ -18,9 +18,6 @@ class JobTable(BaseRelation):
     """
     A base relation with no definition. Allows reserving jobs
     """
-    _table_name = '~jobs'
-    _user = ''
-
     def __init__(self, arg, database=None):
         super().__init__()
         if isinstance(arg, JobTable):
@@ -28,6 +25,7 @@ class JobTable(BaseRelation):
             self.database = arg.database
             self._connection = arg._connection
             self._definition = arg._definition
+            self._user = arg._user
             return
 
         self.database = database
@@ -55,7 +53,7 @@ class JobTable(BaseRelation):
 
     @property
     def table_name(self):
-        return self._table_name
+        return '~jobs'
 
     def delete(self):
         """bypass interactive prompts and dependencies"""
