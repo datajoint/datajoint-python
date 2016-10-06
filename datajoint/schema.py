@@ -33,8 +33,8 @@ class Schema:
         self.connection = connection
         self.context = context
         if self.exists:
-            log = Log(self.connection, database=database)
-            log('connect')
+            self.log = Log(self.connection, database=database)
+            self.log('connect')
         else:
             # create database
             logger.info("Database `{database}` could not be found. "
@@ -47,8 +47,8 @@ class Schema:
                                      " an attempt to create has failed. Check"
                                      " permissions.".format(database=database))
             else:
-                log = Log(self.connection, database=database)
-                log('created database ' + database)
+                self.log = Log(self.connection, database=database)
+                self.log('created database ' + database)
         connection.register(self)
 
     def __repr__(self):
