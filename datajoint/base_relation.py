@@ -509,7 +509,7 @@ class Log(BaseRelation):
         self.database = database
         self._connection = arg
         self._definition = """    # even logging table for `{database}`
-        timestamp  : timestamp(3)
+        timestamp  : timestamp
         ---
         version  :varchar(12)   # datajoint version
         user     :varchar(255)  # user@host
@@ -532,7 +532,7 @@ class Log(BaseRelation):
     def __call__(self, event):
         self.insert1(dict(
             user=self._user,
-            version=version+'py',
+            version=version + 'py',
             host=os.uname().nodename,
             event=event), replace=True, ignore_extra_fields=True)
 
