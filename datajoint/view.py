@@ -5,6 +5,7 @@ from . import DataJointError
 
 class View(RelationalOperand):
 
+    @property
     def definition(self):
         """
         :return: a query to be defined as view.
