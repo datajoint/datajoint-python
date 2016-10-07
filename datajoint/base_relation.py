@@ -27,7 +27,7 @@ class BaseRelation(RelationalOperand):
     _heading = None
     _context = None
     database = None
-    _log = None
+    _log_ = None
 
     # -------------- required by RelationalOperand ----------------- #
     @property
@@ -57,7 +57,7 @@ class BaseRelation(RelationalOperand):
             if error.args[0] == server_error_codes['command denied']:
                 logger.warning(error.args[1])
         else:
-            self.log('Declared ' + self.full_table_name)
+            self._log('Declared ' + self.full_table_name)
 
     @property
     def from_clause(self):
@@ -115,10 +115,10 @@ class BaseRelation(RelationalOperand):
         return r"`{0:s}`.`{1:s}`".format(self.database, self.table_name)
 
     @property
-    def log(self):
-        if self._log is None:
-            self._log = Log(self.connection, database=self.database)
-        return self._log
+    def _log(self):
+        if self._log_ is None:
+            self._log_ = Log(self.connection, database=self.database)
+        return self._log_
 
     def insert1(self, row, **kwargs):
         """
@@ -254,7 +254,7 @@ class BaseRelation(RelationalOperand):
         """
         query = 'DELETE FROM ' + self.full_table_name + self.where_clause
         self.connection.query(query)
-        self.log(query[0:255])
+        self._log(query[0:255])
 
     def delete(self):
         """
@@ -318,7 +318,7 @@ class BaseRelation(RelationalOperand):
             query = 'DROP TABLE %s' % self.full_table_name
             self.connection.query(query)
             logger.info("Dropped table %s" % self.full_table_name)
-            self.log(query[0:255])
+            self._log(query[0:255])
         else:
             logger.info("Nothing to drop: table %s is not declared" % self.full_table_name)
 

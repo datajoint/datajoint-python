@@ -12,7 +12,7 @@ def test_view():
 def test_missing_definition():
 
     @schema.schema
-    class BadView(dj.View):
+    class BadView(dj._View):
         misspelled = schema.Glot()
 
 
@@ -20,7 +20,7 @@ def test_missing_definition():
 def test_invalid_definition():
 
     @schema.schema
-    class BadView(dj.View):
+    class BadView(dj._View):
         definition = """
         id : int
         ---

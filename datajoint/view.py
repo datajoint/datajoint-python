@@ -3,7 +3,13 @@ from .utils import from_camel_case
 from . import DataJointError
 
 
-class View(RelationalOperand):
+class _View(RelationalOperand):
+    """
+    View creates objects that wrap a query.
+
+    The use of views in datajoint is not yet fully justified and supported.  For this reason, we prefixed the class name
+    with an underscore to indicate that the use of Views is not yet standard practice.
+    """
 
     @property
     def definition(self):

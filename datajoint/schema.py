@@ -7,7 +7,7 @@ from . import conn, DataJointError, config
 from .heading import Heading
 from .utils import user_choice, to_camel_case
 from .user_relations import Part, Computed, Imported, Manual, Lookup
-from .view import View
+from .view import _View as View
 from .base_relation import lookup_class_name, Log
 
 logger = logging.getLogger(__name__)

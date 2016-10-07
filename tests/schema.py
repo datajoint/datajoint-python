@@ -79,7 +79,7 @@ class Language(dj.Lookup):
 
 
 @schema
-class Glot(dj.View):
+class Glot(dj._View):
     definition = dj.U('name').aggr(Language(), n_languages='count(language)')
 
 
