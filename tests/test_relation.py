@@ -3,12 +3,13 @@ import re
 
 import numpy as np
 from nose.tools import assert_equal, assert_not_equal, assert_true, assert_list_equal, raises
-from . import schema
 from pymysql import IntegrityError, ProgrammingError
 import datajoint as dj
 from datajoint import utils
 from datajoint.base_relation import BaseRelation
 from unittest.mock import patch
+
+from . import schema
 
 
 def relation_selector(attr):

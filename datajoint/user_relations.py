@@ -45,7 +45,6 @@ class UserRelation(BaseRelation, metaclass=OrderedClass):
     tier_regexp = None
     _prefix = None
 
-
     @property
     def definition(self):
         """

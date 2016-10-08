@@ -16,12 +16,12 @@ import logging
 import os
 
 __author__ = "Dimitri Yatsenko, Edgar Walker, and Fabian Sinz at Baylor College of Medicine"
-__version__ = "0.3.9"
-__date__ = "Sept 27, 2016"
+__version__ = "0.4.0"
+__date__ = "Oct 6, 2016"
 __all__ = ['__author__', '__version__',
            'config', 'conn', 'kill', 'BaseRelation',
            'Connection', 'Heading', 'FreeRelation', 'Not', 'schema',
-           'Manual', 'Lookup', 'Imported', 'Computed', 'Part',
+           'Manual', 'Lookup', 'Imported', 'Computed', 'Part', '_View',
            'AndList', 'OrList', 'ERD', 'U',
            'set_password']
 
@@ -79,6 +79,7 @@ logger.setLevel(log_levels[config['loglevel']])
 from .connection import conn, Connection
 from .base_relation import FreeRelation, BaseRelation
 from .user_relations import Manual, Lookup, Imported, Computed, Part
+from .view import _View
 from .relational_operand import Not, AndList, OrList, U
 from .heading import Heading
 from .schema import Schema as schema

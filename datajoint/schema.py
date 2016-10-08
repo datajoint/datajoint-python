@@ -7,7 +7,8 @@ from . import conn, DataJointError, config
 from .heading import Heading
 from .utils import user_choice, to_camel_case
 from .user_relations import Part, Computed, Imported, Manual, Lookup
-from .base_relation import lookup_class_name
+from .view import _View as View
+from .base_relation import lookup_class_name, Log
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,7 @@ class Schema:
         """
         if connection is None:
             connection = conn()
+        self._log = None
         self.database = database
         self.connection = connection
         self.context = context
@@ -43,7 +45,16 @@ class Schema:
                 raise DataJointError("Database named `{database}` was not defined, and"
                                      " an attempt to create has failed. Check"
                                      " permissions.".format(database=database))
+            else:
+                self.log('created')
+        self.log('connect')
         connection.register(self)
+
+    @property
+    def log(self):
+        if self._log is None:
+            self._log = Log(self.connection, self.database)
+        return self._log
 
     def __repr__(self):
         return 'Schema database: `{database}` in module: {context}\n'.format(
@@ -142,16 +153,20 @@ class Schema:
         if issubclass(cls, Part):
             raise DataJointError('The schema decorator should not be applied to Part relations')
 
-        self.process_relation_class(cls, context=self.context)
-
-        # Process part relations
-        for part in cls._ordered_class_members:
-            if part[0].isupper():
-                part = getattr(cls, part)
-                if inspect.isclass(part) and issubclass(part, Part):
-                    part._master = cls
-                    # allow addressing master
-                    self.process_relation_class(part, context=dict(self.context, **{cls.__name__: cls}))
+        if issubclass(cls, View):
+            cls.database = self.database
+            cls._connection = self.connection
+            cls().declare()
+        else:
+            self.process_relation_class(cls, context=self.context)
+            # Process part relations
+            for part in cls._ordered_class_members:
+                if part[0].isupper():
+                    part = getattr(cls, part)
+                    if inspect.isclass(part) and issubclass(part, Part):
+                        part._master = cls
+                        # allow addressing master
+                        self.process_relation_class(part, context=dict(self.context, **{cls.__name__: cls}))
         return cls
 
     @property

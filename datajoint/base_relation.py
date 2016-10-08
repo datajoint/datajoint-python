@@ -1,6 +1,7 @@
 import collections
 import itertools
 import inspect
+import os
 import numpy as np
 import pymysql
 import logging
@@ -11,6 +12,7 @@ from .blob import pack
 from .utils import user_choice
 from .heading import Heading
 from .settings import server_error_codes
+from . import __version__ as version
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +27,7 @@ class BaseRelation(RelationalOperand):
     _heading = None
     _context = None
     database = None
+    _log_ = None
 
     # -------------- required by RelationalOperand ----------------- #
     @property
@@ -53,6 +56,8 @@ class BaseRelation(RelationalOperand):
         except pymysql.OperationalError as error:
             if error.args[0] == server_error_codes['command denied']:
                 logger.warning(error.args[1])
+        else:
+            self._log('Declared ' + self.full_table_name)
 
     @property
     def from_clause(self):
@@ -108,6 +113,12 @@ class BaseRelation(RelationalOperand):
         :return: full table name in the database
         """
         return r"`{0:s}`.`{1:s}`".format(self.database, self.table_name)
+
+    @property
+    def _log(self):
+        if self._log_ is None:
+            self._log_ = Log(self.connection, database=self.database)
+        return self._log_
 
     def insert1(self, row, **kwargs):
         """
@@ -241,7 +252,9 @@ class BaseRelation(RelationalOperand):
         Deletes the table without cascading and without user prompt. If this table has any dependent
         table(s), this will fail.
         """
-        self.connection.query('DELETE FROM ' + self.from_clause + self.where_clause)
+        query = 'DELETE FROM ' + self.full_table_name + self.where_clause
+        self.connection.query(query)
+        self._log(query[0:255])
 
     def delete(self):
         """
@@ -302,8 +315,10 @@ class BaseRelation(RelationalOperand):
         If the table has any dependent table(s), this call will fail with an error.
         """
         if self.is_declared:
-            self.connection.query('DROP TABLE %s' % self.full_table_name)
+            query = 'DROP TABLE %s' % self.full_table_name
+            self.connection.query(query)
             logger.info("Dropped table %s" % self.full_table_name)
+            self._log(query[0:255])
         else:
             logger.info("Nothing to drop: table %s is not declared" % self.full_table_name)
 
@@ -472,5 +487,61 @@ class FreeRelation(BaseRelation):
         :return: the table name in the database
         """
         return self._table_name
+
+
+class Log(BaseRelation):
+    """
+    The log table for each database.
+    Instances are callable.  Calls log the time and identifying information along with the event.
+    """
+
+    def __init__(self, arg, database=None):
+        super().__init__()
+
+        if isinstance(arg, Log):
+            # copy constructor
+            self.database = arg.database
+            self._connection = arg._connection
+            self._definition = arg._definition
+            self._user = arg._user
+            return
+
+        self.database = database
+        self._connection = arg
+        self._definition = """    # event logging table for `{database}`
+        timestamp  : timestamp
+        ---
+        version  :varchar(12)   # datajoint version
+        user     :varchar(255)  # user@host
+        host=""  :varchar(255)  # system hostname
+        event="" :varchar(255)  # custom message
+        """.format(database=database)
+
+        if not self.is_declared:
+            self.declare()
+        self._user = self.connection.get_user()
+
+    @property
+    def definition(self):
+        return self._definition
+
+    @property
+    def table_name(self):
+        return '~log'
+
+    def __call__(self, event):
+        self.insert1(dict(
+            user=self._user,
+            version=version + 'py',
+            host=os.uname().nodename,
+            event=event), ignore_errors=True, ignore_extra_fields=True)
+
+    def delete(self):
+        """bypass interactive prompts and cascading dependencies"""
+        self.delete_quick()
+
+    def drop(self):
+        """bypass interactive prompts and cascading dependencies"""
+        self.drop_quick()
 
 
