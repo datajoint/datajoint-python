@@ -509,7 +509,7 @@ class Log(BaseRelation):
         self.database = database
         self._connection = arg
         self._definition = """    # event logging table for `{database}`
-        timestamp  : timestamp
+        timestamp = CURRENT_TIMESTAMP : timestamp
         ---
         version  :varchar(12)   # datajoint version
         user     :varchar(255)  # user@host
