@@ -737,7 +737,7 @@ class U:
         """
 
         return (
-            GroupBy.create(self, group=group, keep_all_rows=False, attributes=(),named_attributes=named_attributes)
+            GroupBy.create(self, group=group, keep_all_rows=False, attributes=(), named_attributes=named_attributes)
             if self.primary_key else
             Projection.create(group, attributes=(), named_attributes=named_attributes, include_primary_key=False))
 
