@@ -1,7 +1,7 @@
 import collections
 import itertools
 import inspect
-import os
+import platform
 import numpy as np
 import pymysql
 import logging
@@ -533,7 +533,7 @@ class Log(BaseRelation):
         self.insert1(dict(
             user=self._user,
             version=version + 'py',
-            host=os.uname().nodename,
+            host=platform.uname().node,
             event=event), ignore_errors=True, ignore_extra_fields=True)
 
     def delete(self):
@@ -543,5 +543,3 @@ class Log(BaseRelation):
     def drop(self):
         """bypass interactive prompts and cascading dependencies"""
         self.drop_quick()
-
-
