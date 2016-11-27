@@ -15,9 +15,9 @@ Please cite:
 import logging
 import os
 
-__author__ = "Dimitri Yatsenko, Edgar Walker, and Fabian Sinz at Baylor College of Medicine"
-__version__ = "0.4.1"
-__date__ = "Oct 28, 2016"
+__author__ = "Dimitri Yatsenko, Edgar Y. Walker, and Fabian Sinz at Baylor College of Medicine"
+__version__ = "0.4.2"
+__date__ = "Nov 27, 2016"
 __all__ = ['__author__', '__version__',
            'config', 'conn', 'kill', 'BaseRelation',
            'Connection', 'Heading', 'FreeRelation', 'Not', 'schema',
