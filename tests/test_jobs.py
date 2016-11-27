@@ -53,7 +53,7 @@ def test_long_error_message():
     assert_true(subjects)
     table_name = 'fake_table'
 
-    key = subjects.fetch.keys()[0]
+    key = list(subjects.fetch.keys())[0]
 
     # test long error message
     schema.schema.jobs.reserve(table_name, key)
