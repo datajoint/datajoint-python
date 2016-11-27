@@ -39,13 +39,13 @@ class JobTable(BaseRelation):
         ---
         status  :enum('reserved','error','ignore')  # if tuple is missing, the job is available
         key=null  :blob  # structure containing the key
-        error_message=""  :varchar({error_messsage_length})  # error message returned if failed
+        error_message=""  :varchar({error_message_length})  # error message returned if failed
         error_stack=null  :blob  # error stack if failed
         user="" :varchar(255) # database user
         host=""  :varchar(255)  # system hostname
         pid=0  :int unsigned  # system process id
         timestamp=CURRENT_TIMESTAMP  :timestamp   # automatic timestamp
-        """.format(database=database, error_messsage_length=ERROR_MESSAGE_LENGTH)
+        """.format(database=database, error_message_length=ERROR_MESSAGE_LENGTH)
         if not self.is_declared:
             self.declare()
         self._user = self.connection.get_user()
