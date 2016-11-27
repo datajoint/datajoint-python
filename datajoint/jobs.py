@@ -3,6 +3,9 @@ import os
 import pymysql
 from .base_relation import BaseRelation
 
+ERROR_MESSAGE_LENGTH = 2047
+TRUNCATION_APPENDIX = '...truncated'
+
 
 def key_hash(key):
     """
@@ -36,13 +39,13 @@ class JobTable(BaseRelation):
         ---
         status  :enum('reserved','error','ignore')  # if tuple is missing, the job is available
         key=null  :blob  # structure containing the key
-        error_message=""  :varchar(1023)  # error message returned if failed
+        error_message=""  :varchar({error_messsage_lenth})  # error message returned if failed
         error_stack=null  :blob  # error stack if failed
         user="" :varchar(255) # database user
         host=""  :varchar(255)  # system hostname
         pid=0  :int unsigned  # system process id
         timestamp=CURRENT_TIMESTAMP  :timestamp   # automatic timestamp
-        """.format(database=database)
+        """.format(database=database, error_messsage_lenth=ERROR_MESSAGE_LENGTH)
         if not self.is_declared:
             self.declare()
         self._user = self.connection.get_user()
@@ -101,6 +104,8 @@ class JobTable(BaseRelation):
         :param key: the dict of the job's primary key
         :param error_message: string error message
         """
+        if len(error_message) > ERROR_MESSAGE_LENGTH:
+            error_message = error_message[:ERROR_MESSAGE_LENGTH-len(TRUNCATION_APPENDIX)] + TRUNCATION_APPENDIX
         job_key = dict(table_name=table_name, key_hash=key_hash(key))
         self.insert1(
             dict(job_key,
