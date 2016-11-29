@@ -376,6 +376,7 @@ class RelationalOperand:
             }
             .Relation th{
                 background: #A0A0A0; color: #ffffff; padding:4px; border:#f0e0e0 1px solid;
+                font-weight: normal; font-family: monospace; font-size: 75%;
             }
             .Relation td{
                 padding:4px; border:#f0e0e0 1px solid; font-size:75%;
@@ -401,8 +402,8 @@ class RelationalOperand:
             <p>{count} tuples</p></div>
             """.format(
             css=css,
-            title="" if info is None else "<h3>%s</h3>" % info['comment'],
-            head='</th><th>'.join("<em>" + c + "</em>" if c in self.primary_key else c
+            title="" if info is None else "<b>%s</b>" % info['comment'],
+            head='</th><th>'.join('<b><font color="black">' + c + "</font></b>" if c in self.primary_key else c
                                   for c in rel.heading.names),
             ellipsis='<p>...</p>' if count > config['display.limit'] else '',
             body='</tr><tr>'.join(
