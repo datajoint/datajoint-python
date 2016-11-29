@@ -378,13 +378,13 @@ class RelationalOperand:
                 padding:7px; border:#f0e0e0 1px solid;
             }
             .Relation th{
-                background: #707070; color: #ffffff; padding:7px; border:#f0e0e0 1px solid;
+                background: #A0A0A0; color: #ffffff; padding:7px; border:#f0e0e0 1px solid;
             }
             .Relation tr:nth-child(odd){
                 background: #ffffff;
             }
             .Relation tr:nth-child(even){
-                background: #f2f2ff;
+                background: #f3f1ff;
             }
         </style>
         """
