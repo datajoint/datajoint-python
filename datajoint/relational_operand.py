@@ -360,7 +360,7 @@ class RelationalOperand:
             ' '.join([templates[f] % ('*'+f if f in rel.primary_key else f) for f in columns]) + '\n' +
             ' '.join(['+' + '-' * (widths[column] - 2) + '+' for column in columns]) + '\n' +
             '\n'.join(' '.join(templates[f] % tup[f] for f in columns) for tup in tuples) +
-            ('\n...\n' if len(rel) > limit else '\n') +
+            ('\n   ...\n' if len(rel) > limit else '\n') +
             ' (%d tuples)\n' % len(rel))
 
     def _repr_html_(self):
