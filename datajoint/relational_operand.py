@@ -374,11 +374,11 @@ class RelationalOperand:
             .Relation{
                 border-collapse:collapse;
             }
-            .Relation td{
-                padding:7px; border:#f0e0e0 1px solid;
-            }
             .Relation th{
-                background: #A0A0A0; color: #ffffff; padding:7px; border:#f0e0e0 1px solid;
+                background: #A0A0A0; color: #ffffff; padding:4px; border:#f0e0e0 1px solid;
+            }
+            .Relation td{
+                padding:4px; border:#f0e0e0 1px solid; font-size:75%;
             }
             .Relation tr:nth-child(odd){
                 background: #ffffff;
