@@ -368,15 +368,39 @@ class RelationalOperand:
                         **dict(zip_longest(self.heading.blobs, [], fillvalue="'=BLOB='")))  # replace blobs with =BLOB=
         info = self.heading.table_info
         count = len(rel)
-        return """ {title}
+
+        css = """
+        <style type="text/css">
+            .Relation{
+                border-collapse:collapse;
+            }
+            .Relation td{
+                padding:7px; border:#f0e0e0 1px solid;
+            }
+            .Relation th{
+                background: #707070; color: #ffffff; padding:7px; border:#f0e0e0 1px solid;
+            }
+            .Relation tr:nth-child(odd){
+                background: #ffffff;
+            }
+            .Relation tr:nth-child(even){
+                background: #f2f2ff;
+            }
+        </style>
+        """
+
+        return """
+        {css}
+        {title}
             <div style="max-height:1000px;max-width:1500px;overflow:auto;">
-            <table border="1" class="dataframe">
+            <table border="1" class="Relation">
                 <thead> <tr style="text-align: right;"> <th> {head} </th> </tr> </thead>
                 <tbody> <tr> {body} </tr> </tbody>
             </table>
             {ellipsis}
             <p>{count} tuples</p></div>
             """.format(
+            css=css,
             title="" if info is None else "<h3>%s</h3>" % info['comment'],
             head='</th><th>'.join("<em>" + c + "</em>" if c in self.primary_key else c
                                   for c in rel.heading.names),
