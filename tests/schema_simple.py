@@ -3,6 +3,8 @@ A simple, abstract schema to test relational algebra
 """
 import random
 import datajoint as dj
+import itertools
+
 from . import PREFIX, CONN_INFO
 import numpy as np
 
@@ -121,6 +123,7 @@ class DataB(dj.Lookup):
     """
     contents = list(zip(range(5), range(5, 10)))
 
+
 @schema
 class TestUpdate(dj.Lookup):
     definition = """
@@ -132,6 +135,25 @@ class TestUpdate(dj.Lookup):
     """
 
     contents = [
-        (0, 'my_string', 0.0, np.random.randn(10,2)),
-        (1, 'my_other_string', 1.0, np.random.randn(20,1)),
+        (0, 'my_string', 0.0, np.random.randn(10, 2)),
+        (1, 'my_other_string', 1.0, np.random.randn(20, 1)),
     ]
+
+
+@schema
+class ArgmaxTest(dj.Lookup):
+    definition = """
+    primary_key     : int
+    ---
+    secondary_key   : char(2)
+    val             : float
+    """
+
+    n = 10
+
+    @property
+    def contents(self):
+        n = self.n
+        yield from zip(range(n ** 2),
+                       itertools.chain(*itertools.repeat(tuple(map(chr, range(100, 100 + n))), n)),
+                       np.random.rand(n ** 2))
