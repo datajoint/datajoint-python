@@ -91,10 +91,6 @@ class RelationalOperand:
         """abstract method for creating an instance"""
         assert False, "Abstract method `create` must be overridden in subclass."
 
-    def get_select_fields(self):  # pragma: no cover
-        """abstract property: a string specifying the field list in SQL queries"""
-        assert False, "Abstract method `get_select_fields` must be overridden in subclass."
-
     @property
     def connection(self):
         """
