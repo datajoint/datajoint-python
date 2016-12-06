@@ -213,7 +213,7 @@ class Heading:
                     attr['dtype'] = numeric_types[(t, is_unsigned)]
         self.attributes = OrderedDict([(q['name'], Attribute(**q)) for q in attributes])
 
-    def project(self, attribute_list, named_attributes={}, force_primary_key=None):
+    def project(self, attribute_list, named_attributes=None, force_primary_key=None):
         """
         derive a new heading by selecting, renaming, or computing attributes.
         In relational algebra these operators are known as project, rename, and extend.
@@ -221,6 +221,8 @@ class Heading:
         try:  # check for missing attributes
             raise DataJointError('Attribute `%s` is not found' % next(a for a in attribute_list if a not in self.names))
         except StopIteration:
+            if named_attributes is None:
+                named_attributes = {}
             return Heading(
                 [dict(v.todict(), **dict(
                     () if force_primary_key is None else [('in_key', k in force_primary_key)]))
