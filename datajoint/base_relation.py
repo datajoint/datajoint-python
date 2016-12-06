@@ -66,12 +66,11 @@ class BaseRelation(RelationalOperand):
         """
         return self.full_table_name
 
-    @property
-    def select_fields(self):
+    def get_select_fields(self, select_fields=None):
         """
         :return: the selected attributes from the SQL SELECT statement.
         """
-        return '*'
+        return '*' if select_fields is None else self.heading.project(select_fields).as_sql
 
     def parents(self, primary=None):
         """
