@@ -3,8 +3,9 @@ from . import conn
 from .utils import user_choice
 
 
-def set_password(new_password, connection=conn()):   # pragma: no cover
+def set_password(new_password, connection=None):   # pragma: no cover
     if 'yes' == user_choice('Do you wish to change the password?'):
+        connection = conn() if connection is None else connection
         connection.query("SET PASSWORD = PASSWORD('%s')" % new_password)
         print('Done!')
     else:

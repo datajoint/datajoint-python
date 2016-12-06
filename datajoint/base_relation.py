@@ -530,11 +530,14 @@ class Log(BaseRelation):
         return '~log'
 
     def __call__(self, event):
-        self.insert1(dict(
-            user=self._user,
-            version=version + 'py',
-            host=platform.uname().node,
-            event=event), ignore_errors=True, ignore_extra_fields=True)
+        try:
+            self.insert1(dict(
+                user=self._user,
+                version=version + 'py',
+                host=platform.uname().node,
+                event=event), ignore_errors=True, ignore_extra_fields=True)
+        except pymysql.err.OperationalError:
+            logger.info('could not log event in table ~log')
 
     def delete(self):
         """bypass interactive prompts and cascading dependencies"""

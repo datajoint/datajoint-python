@@ -92,11 +92,6 @@ class RelationalOperand:
         assert False, "Abstract method `create` must be overridden in subclass."
 
     @property
-    def select_fields(self):  # pragma: no cover
-        """abstract property: a string specifying the field list in SQL queries"""
-        assert False, "Abstract property `select_fields` must be overridden in subclass."
-
-    @property
     def connection(self):
         """
         :return:  the dj.Connection object
@@ -147,9 +142,8 @@ class RelationalOperand:
                 if not common_attributes:
                     condition = 'FALSE' if _negate else 'TRUE'
                 else:
-                    common_attributes = '`' + '`,`'.join(common_attributes) + '`'
                     condition = '({fields}) {not_}in ({subquery})'.format(
-                        fields=common_attributes,
+                        fields='`' + '`,`'.join(common_attributes) + '`',
                         not_="not " if _negate else "",
                         subquery=arg.make_sql(common_attributes))
                 return condition, False  # _negate is cleared
@@ -186,12 +180,11 @@ class RelationalOperand:
             conditions.append(('NOT (%s)' if negate else '(%s)') % item)
         return ' WHERE ' + ' AND '.join(conditions)
 
-    @property
-    def select_fields(self):
+    def get_select_fields(self, select_fields=None):
         """
         :return: string specifying the attributes to return
         """
-        return self.heading.as_sql
+        return self.heading.as_sql if select_fields is None else self.heading.project(select_fields).as_sql
 
     # --------- relational operators -----------
 
@@ -413,8 +406,7 @@ class RelationalOperand:
 
     def make_sql(self, select_fields=None):
         return 'SELECT {fields} FROM {from_}{where}'.format(
-            fields=select_fields or (
-                ("DISTINCT " if self.distinct and self.primary_key else "") + self.select_fields),
+            fields=("DISTINCT " if self.distinct else "") + self.get_select_fields(select_fields),
             from_=self.from_clause,
             where=self.where_clause)
 
@@ -422,9 +414,7 @@ class RelationalOperand:
         """
         number of tuples in the relation.
         """
-        return self.connection.query(self.make_sql('count(%s)' % (
-            "DISTINCT `%s`" % '`,`'.join(self.primary_key)
-            if self.distinct and self.primary_key else "*"))).fetchone()[0]
+        return U().aggr(self, n='count(*)').fetch1['n']
 
     def __bool__(self):
         """
@@ -552,7 +542,7 @@ class Projection(RelationalOperand):
             # make distinct if the primary key is not completely selected
             obj._distinct = obj._distinct or not set(arg.primary_key).issubset(
                 set(attributes) | set(named_attributes.values()))
-        if cls._need_subquery(arg, attributes, named_attributes):
+        if obj._distinct or cls._need_subquery(arg, attributes, named_attributes):
             obj._arg = Subquery.create(arg)
             obj._heading = obj._arg.heading.project(attributes, named_attributes)
         else:
@@ -566,7 +556,7 @@ class Projection(RelationalOperand):
         """
         Decide whether the projection argument needs to be wrapped in a subquery
         """
-        if arg.heading.expressions:  # argument has any renamed (computed) attributes
+        if arg.heading.expressions or arg.distinct:  # argument has any renamed (computed) attributes
             return True
         restricting_attributes = arg.attributes_in_restriction()
         return (not restricting_attributes.issubset(attributes) or # if any restricting attribute is projected out or
@@ -616,7 +606,7 @@ class GroupBy(RelationalOperand):
 
     def make_sql(self, select_fields=None):
         return 'SELECT {fields} FROM {from_}{where} GROUP  BY `{group_by}`{having}'.format(
-            fields=select_fields or self.select_fields,
+            fields=self.get_select_fields(select_fields),
             from_=self._arg.from_clause,
             where=self._arg.where_clause,
             group_by='`,`'.join(self.primary_key),
@@ -663,9 +653,8 @@ class Subquery(RelationalOperand):
     def from_clause(self):
         return '(' + self._arg.make_sql() + ') as `_s%x`' % self.counter
 
-    @property
-    def select_fields(self):
-        return '*'
+    def get_select_fields(self, select_fields=None):
+        return '*' if select_fields is None else self.heading.project(select_fields).as_sql
 
 
 class U:
@@ -760,7 +749,6 @@ class U:
         :param named_attributes: computations of the form new_attribute="sql expression on attributes of group"
         :return: The new relation
         """
-
         return (
             GroupBy.create(self, group=group, keep_all_rows=False, attributes=(), named_attributes=named_attributes)
             if self.primary_key else
