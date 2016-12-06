@@ -21,7 +21,7 @@ __date__ = "Nov 29, 2016"
 __all__ = ['__author__', '__version__',
            'config', 'conn', 'kill', 'BaseRelation',
            'Connection', 'Heading', 'FreeRelation', 'Not', 'schema',
-           'Manual', 'Lookup', 'Imported', 'Computed', 'Part', '_View',
+           'Manual', 'Lookup', 'Imported', 'Computed', 'Part',
            'AndList', 'OrList', 'ERD', 'U',
            'set_password']
 
@@ -79,7 +79,6 @@ logger.setLevel(log_levels[config['loglevel']])
 from .connection import conn, Connection
 from .base_relation import FreeRelation, BaseRelation
 from .user_relations import Manual, Lookup, Imported, Computed, Part
-from .view import _View
 from .relational_operand import Not, AndList, OrList, U
 from .heading import Heading
 from .schema import Schema as schema

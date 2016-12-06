@@ -79,11 +79,6 @@ class Language(dj.Lookup):
 
 
 @schema
-class Glot(dj._View):
-    definition = dj.U('name').aggr(Language(), n_languages='count(language)')
-
-
-@schema
 class Experiment(dj.Imported):
     definition = """  # information about experiments
     -> Subject
