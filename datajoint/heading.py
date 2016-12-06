@@ -1,7 +1,10 @@
 import numpy as np
-from . import DataJointError
 from collections import namedtuple, OrderedDict
 import re
+import logging
+from . import DataJointError
+
+logger = logging.getLogger(__name__)
 
 default_attribute_properties = dict(    # these default values are set in computed attributes
     name=None, type='expression', in_key=False, nullable=False, default=None, comment='calculated attribute',
@@ -127,8 +130,11 @@ class Heading:
         info = conn.query('SHOW TABLE STATUS FROM `{database}` WHERE name="{table_name}"'.format(
             table_name=table_name, database=database), as_dict=True).fetchone()
         if info is None:
-            raise DataJointError('The table `{database}`.`{table_name}` is not defined.'.format(
-                table_name=table_name, database=database))
+            if table_name == '~log':
+                logger.warning('Could not create the ~log table')
+            else:
+                raise DataJointError('The table `{database}`.`{table_name}` is not defined.'.format(
+                    table_name=table_name, database=database))
         self.table_info = {k.lower(): v for k, v in info.items()}
 
         cur = conn.query(
