@@ -1,5 +1,5 @@
 from nose.tools import assert_equal, assert_true, raises, assert_list_equal
-from . import schema
+from . import schema, schema_simple
 import datajoint as dj
 
 
@@ -60,3 +60,9 @@ class TestU:
         mx = rel & dj.U().aggr(rel, value='max(value)')
         assert_equal(mx.fetch['value'][0], max(rel.fetch['value']))
 
+    def test_aggr(self):
+        rel = schema_simple.ArgmaxTest()
+        amax1 = (dj.U('val') * rel) & dj.U('secondary_key').aggr(rel, val='min(val)')
+        amax2 = (dj.U('val') * rel) * dj.U('secondary_key').aggr(rel, val='min(val)')
+        assert_true(len(amax1) == len(amax2) == rel.n,
+                    'Aggregated argmax with join and restriction does not yield same length.')
