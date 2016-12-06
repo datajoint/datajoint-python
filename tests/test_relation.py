@@ -182,4 +182,4 @@ class TestRelation:
         assert_true(self.experiment.size_on_disk > 100)
 
     def test_repr_html(self):
-        assert_true(self.ephys._repr_html_().strip().startswith("<h3>"))
+        assert_true(self.ephys._repr_html_().strip().startswith("<style"))

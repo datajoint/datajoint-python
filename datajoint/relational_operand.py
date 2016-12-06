@@ -360,7 +360,7 @@ class RelationalOperand:
             ' '.join([templates[f] % ('*'+f if f in rel.primary_key else f) for f in columns]) + '\n' +
             ' '.join(['+' + '-' * (widths[column] - 2) + '+' for column in columns]) + '\n' +
             '\n'.join(' '.join(templates[f] % tup[f] for f in columns) for tup in tuples) +
-            ('\n...\n' if len(rel) > limit else '\n') +
+            ('\n   ...\n' if len(rel) > limit else '\n') +
             ' (%d tuples)\n' % len(rel))
 
     def _repr_html_(self):
@@ -368,17 +368,42 @@ class RelationalOperand:
                         **dict(zip_longest(self.heading.blobs, [], fillvalue="'=BLOB='")))  # replace blobs with =BLOB=
         info = self.heading.table_info
         count = len(rel)
-        return """ {title}
+
+        css = """
+        <style type="text/css">
+            .Relation{
+                border-collapse:collapse;
+            }
+            .Relation th{
+                background: #A0A0A0; color: #ffffff; padding:4px; border:#f0e0e0 1px solid;
+                font-weight: normal; font-family: monospace; font-size: 75%;
+            }
+            .Relation td{
+                padding:4px; border:#f0e0e0 1px solid; font-size:75%;
+            }
+            .Relation tr:nth-child(odd){
+                background: #ffffff;
+            }
+            .Relation tr:nth-child(even){
+                background: #f3f1ff;
+            }
+        </style>
+        """
+
+        return """
+        {css}
+        {title}
             <div style="max-height:1000px;max-width:1500px;overflow:auto;">
-            <table border="1" class="dataframe">
+            <table border="1" class="Relation">
                 <thead> <tr style="text-align: right;"> <th> {head} </th> </tr> </thead>
                 <tbody> <tr> {body} </tr> </tbody>
             </table>
             {ellipsis}
             <p>{count} tuples</p></div>
             """.format(
-            title="" if info is None else "<h3>%s</h3>" % info['comment'],
-            head='</th><th>'.join("<em>" + c + "</em>" if c in self.primary_key else c
+            css=css,
+            title="" if info is None else "<b>%s</b>" % info['comment'],
+            head='</th><th>'.join('<b><font color="black">' + c + "</font></b>" if c in self.primary_key else c
                                   for c in rel.heading.names),
             ellipsis='<p>...</p>' if count > config['display.limit'] else '',
             body='</tr><tr>'.join(
