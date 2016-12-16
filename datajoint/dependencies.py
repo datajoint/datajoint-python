@@ -56,8 +56,14 @@ class Dependencies(nx.DiGraph):
             except pp.ParseException:
                 pass
             else:
+                referencing_attributes = [r.strip('` ') for r in result.attributes.split(',')]
+                referenced_attributes = [r.strip('` ') for r in result.referenced_attributes.split(',')]
                 self.add_edge(result.referenced_table, table_name,
-                              primary=all(r.strip('` ') in primary_key for r in result.attributes.split(',')))
+                              primary=all(a in primary_key for a in referencing_attributes),
+                              referenced_attributes=referenced_attributes,
+                              referencing_attributes=referencing_attributes,
+                              aliased=any(a != b for a, b in zip(referenced_attributes, referenced_attributes)),
+                              multi=any(a not in primary_key for a in referencing_attributes))
 
     def load(self, target=None):
         """
