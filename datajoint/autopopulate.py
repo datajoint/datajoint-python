@@ -81,15 +81,13 @@ class AutoPopulate:
 
         jobs = self.connection.jobs[self.target.database] if reserve_jobs else None
         todo -= self.target.proj()
-        keys = todo.fetch.keys()
+        keys = list(todo.fetch.keys())
         if order == "reverse":
-            keys = list(keys)
             keys.reverse()
         elif order == "random":
-            keys = list(keys)
             random.shuffle(keys)
 
-        logger.info('Found %d keys to populate' % len(todo))
+        logger.info('Found %d keys to populate' % len(keys))
         for key in keys:
             if not reserve_jobs or jobs.reserve(self.target.table_name, key):
                 self.connection.start_transaction()
