@@ -6,7 +6,6 @@ from pymysql import OperationalError
 from .relational_operand import RelationalOperand, AndList
 from . import DataJointError
 from .base_relation import FreeRelation
-import sys
 import signal
 
 # noinspection PyExceptionInherit,PyCallingNonCallable
