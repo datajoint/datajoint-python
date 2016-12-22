@@ -52,7 +52,7 @@ default = OrderedDict({
     'display.width': 14
 })
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 log_levels = {
     'INFO': logging.INFO,
     'WARNING': logging.WARNING,
