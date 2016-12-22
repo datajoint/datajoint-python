@@ -87,9 +87,8 @@ class AutoPopulate:
         # define and setup signal handler for SIGTERM
         if reserve_jobs:
             def handler(signum, frame):
-                logger.info('Populate process terminated!')
-                jobs.error(self.target.table_name, handler.key, error_message='Process terminated')
-                sys.exit(1)
+                logger.info('Populate terminated by SIGTERM')
+                raise SystemExit('SIGTERM received')
             old_handler = signal.signal(signal.SIGTERM, handler)
 
         todo -= self.target.proj()
@@ -102,11 +101,6 @@ class AutoPopulate:
         logger.info('Found %d keys to populate' % len(keys))
         for key in keys:
             if not reserve_jobs or jobs.reserve(self.target.table_name, key):
-
-                # updated the key tracked by the signal handler
-                if reserve_jobs:
-                    handler.key = key
-
                 self.connection.start_transaction()
                 if key in self.target:  # already populated
                     self.connection.cancel_transaction()
@@ -116,15 +110,17 @@ class AutoPopulate:
                     logger.info('Populating: ' + str(key))
                     try:
                         self._make_tuples(dict(key))
-                    except (KeyboardInterrupt, Exception) as error:
+                    except (KeyboardInterrupt, SystemExit, Exception) as error:
                         try:
                             self.connection.cancel_transaction()
                         except OperationalError:
                             pass
-
                         if reserve_jobs:
-                            jobs.error(self.target.table_name, key, error_message=str(error))
-                        if not suppress_errors:
+                            # show error name and error message (if any)
+                            error_message = ': '.join([error.__class__.__name__, str(error)]).strip(': ')
+                            jobs.error(self.target.table_name, key, error_message=error_message)
+
+                        if not suppress_errors or isinstance(error, SystemExit):
                             raise
                         else:
                             logger.error(error)
