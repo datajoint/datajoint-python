@@ -131,12 +131,13 @@ class RelationalOperand:
         """
         convert self.restrictions to the SQL WHERE clause
         """
+
         def make_condition(arg, _negate=False):
             if isinstance(arg, str):
                 return arg, _negate
             elif isinstance(arg, AndList):
                 return '(' + ' AND '.join([make_condition(element)[0] for element in arg]) + ')', _negate
-            #  semijoin or antijoin
+            # semijoin or antijoin
             elif isinstance(arg, RelationalOperand):
                 common_attributes = [q for q in self.heading.names if q in arg.heading.names]
                 if not common_attributes:
@@ -192,7 +193,7 @@ class RelationalOperand:
         """
         natural join of relations self and other
         """
-        return other*self if isinstance(other, U) else Join.create(self, other)
+        return other * self if isinstance(other, U) else Join.create(self, other)
 
     def proj(self, *attributes, **named_attributes):
         """
@@ -222,7 +223,7 @@ class RelationalOperand:
         return GroupBy.create(self, group, keep_all_rows=keep_all_rows,
                               attributes=attributes, named_attributes=named_attributes)
 
-    aggr = aggregate    # shorthand
+    aggr = aggregate  # shorthand
 
     def __iand__(self, restriction):
         """
@@ -239,7 +240,7 @@ class RelationalOperand:
         :return: a restricted copy of the argument
         See relational_operand.restrict for more detail.
         """
-        return (Subquery.create(self)    # the HAVING clause in GroupBy can handle renamed attributes but WHERE cannot
+        return (Subquery.create(self)  # the HAVING clause in GroupBy can handle renamed attributes but WHERE cannot
                 if self.heading.expressions and not isinstance(self, GroupBy)
                 else self.__class__(self)).restrict(restriction)
 
@@ -347,10 +348,10 @@ class RelationalOperand:
         width = config['display.width']
         tuples = rel.fetch(limit=limit)
         columns = rel.heading.names
-        widths = {f: min(max([len(f)] + [len(str(e)) for e in tuples[f]])+4, width) for f in columns}
+        widths = {f: min(max([len(f)] + [len(str(e)) for e in tuples[f]]) + 4, width) for f in columns}
         templates = {f: '%%-%d.%ds' % (widths[f], widths[f]) for f in columns}
         return (
-            ' '.join([templates[f] % ('*'+f if f in rel.primary_key else f) for f in columns]) + '\n' +
+            ' '.join([templates[f] % ('*' + f if f in rel.primary_key else f) for f in columns]) + '\n' +
             ' '.join(['+' + '-' * (widths[column] - 2) + '+' for column in columns]) + '\n' +
             '\n'.join(' '.join(templates[f] % tup[f] for f in columns) for tup in tuples) +
             ('\n   ...\n' if len(rel) > limit else '\n') +
@@ -380,8 +381,46 @@ class RelationalOperand:
             .Relation tr:nth-child(even){
                 background: #f3f1ff;
             }
+            /* Tooltip container */
+            .djtooltip {
+            }
+
+            /* Tooltip text */
+            .djtooltip .djtooltiptext {
+                visibility: hidden;
+                width: 120px;
+                background-color: black;
+                color: #fff;
+                text-align: center;
+                padding: 5px 0;
+                border-radius: 6px;
+
+                /* Position the tooltip text - see examples below! */
+                position: absolute;
+                z-index: 1;
+            }
+
+
+            #primary {
+                font-weight: bold;
+                color: black;
+            }
+
+            #nonprimary {
+                font-weight: normal;
+                color: white;
+            }
+
+            /* Show the tooltip text when you mouse over the tooltip container */
+            .djtooltip:hover .djtooltiptext {
+                visibility: visible;
+            }
         </style>
         """
+        head_template = """<div class="djtooltip">
+                                <p id="{primary}">{column}</p>
+                                <span class="djtooltiptext">{comment}</span>
+                            </div>"""
 
         return """
         {css}
@@ -396,8 +435,10 @@ class RelationalOperand:
             """.format(
             css=css,
             title="" if info is None else "<b>%s</b>" % info['comment'],
-            head='</th><th>'.join('<b><font color="black">' + c + "</font></b>" if c in self.primary_key else c
-                                  for c in rel.heading.names),
+            head='</th><th>'.join(
+                head_template.format(column=c, comment=rel.heading.attributes[c].comment,
+                                     primary='primary' if c in self.primary_key else 'nonprimary') for c in
+                rel.heading.names),
             ellipsis='<p>...</p>' if count > config['display.limit'] else '',
             body='</tr><tr>'.join(
                 ['\n'.join(['<td>%s</td>' % column for column in tup])
@@ -428,7 +469,7 @@ class RelationalOperand:
         :param item: any restriction
         (item in relation) is equivalent to bool(self & item) but may be executed more efficiently.
         """
-        return bool(self & item)   # May be optimized e.g. using an EXISTS query
+        return bool(self & item)  # May be optimized e.g. using an EXISTS query
 
     def cursor(self, offset=0, limit=None, order_by=None, as_dict=False):
         """
@@ -535,7 +576,7 @@ class Projection(RelationalOperand):
         obj._connection = arg.connection
         named_attributes = {k: v.strip() for k, v in named_attributes.items()}  # clean up values
         obj._distinct = arg.distinct
-        if include_primary_key:   # include primary key of relation
+        if include_primary_key:  # include primary key of relation
             attributes = (list(a for a in arg.primary_key if a not in named_attributes.values()) +
                           list(a for a in attributes if a not in arg.primary_key))
         else:
@@ -559,7 +600,7 @@ class Projection(RelationalOperand):
         if arg.heading.expressions or arg.distinct:  # argument has any renamed (computed) attributes
             return True
         restricting_attributes = arg.attributes_in_restriction()
-        return (not restricting_attributes.issubset(attributes) or # if any restricting attribute is projected out or
+        return (not restricting_attributes.issubset(attributes) or  # if any restricting attribute is projected out or
                 any(v.strip() in restricting_attributes for v in named_attributes.values()))  # or renamed
 
     @property
@@ -591,7 +632,7 @@ class GroupBy(RelationalOperand):
             raise DataJointError('a relation can only be joined with another relation')
         obj = cls()
         obj._keep_all_rows = keep_all_rows
-        if not(set(group.primary_key) - set(arg.primary_key) or set(group.primary_key) == set(arg.primary_key)):
+        if not (set(group.primary_key) - set(arg.primary_key) or set(group.primary_key) == set(arg.primary_key)):
             raise DataJointError(
                 'The aggregated relation should have additional fields in its primary key for aggregation to work')
         obj._arg = (Join.make_argument_subquery(group) if isinstance(arg, U)
