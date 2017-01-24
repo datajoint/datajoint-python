@@ -63,7 +63,6 @@ log_levels = {
 }
 
 
-
 class Config(collections.MutableMapping):
 
     instance = None

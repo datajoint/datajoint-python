@@ -4,4 +4,3 @@ pymysql
 pyparsing
 networkx
 matplotlib
-getpass

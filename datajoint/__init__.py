@@ -48,7 +48,7 @@ from .settings import Config, LOCALCONFIG, GLOBALCONFIG, logger, log_levels
 config = Config()
 
 
-if os.getenv('DJ_HOST') is not None and os.getenv('DJ_USER') is not None and os.getenv('DJ_PASS') is not None:  # pragma: no cover
+if os.getenv('DJ_HOST') is not None and os.getenv('DJ_USER') is not None:  # pragma: no cover
     print("Loading local settings from environment variables")
     config['database.host'] = os.getenv('DJ_HOST')
     config['database.user'] = os.getenv('DJ_USER')
