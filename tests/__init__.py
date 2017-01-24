@@ -22,7 +22,7 @@ __all__ = ['__author__', 'PREFIX', 'CONN_INFO']
 CONN_INFO = dict(
     host=environ.get('DJ_TEST_HOST', 'localhost'),
     user=environ.get('DJ_TEST_USER', 'datajoint'),
-    passwd=environ.get('DJ_TEST_PASSWORD', 'datajoint'))
+    password=environ.get('DJ_TEST_PASSWORD', 'datajoint'))
 
 # Prefix for all databases used during testing
 PREFIX = environ.get('DJ_TEST_DB_PREFIX', 'djtest')

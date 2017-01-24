@@ -47,23 +47,25 @@ class DataJointError(Exception):
 from .settings import Config, LOCALCONFIG, GLOBALCONFIG, logger, log_levels
 config = Config()
 
-
-if os.getenv('DJ_HOST') is not None and os.getenv('DJ_USER') is not None:  # pragma: no cover
-    print("Loading local settings from environment variables")
-    config['database.host'] = os.getenv('DJ_HOST')
-    config['database.user'] = os.getenv('DJ_USER')
-    config['database.password'] = os.getenv('DJ_PASS')
-elif os.path.exists(LOCALCONFIG):  # pragma: no cover
-    local_config_file = os.path.expanduser(LOCALCONFIG)
-    print("Loading local settings from {0:s}".format(local_config_file))
-    logger.log(logging.INFO, "Loading local settings from {0:s}".format(local_config_file))
-    config.load(local_config_file)
-elif os.path.exists(os.path.expanduser('~/') + GLOBALCONFIG):  # pragma: no cover
-    local_config_file = os.path.expanduser('~/') + GLOBALCONFIG
-    print("Loading local settings from {0:s}".format(local_config_file))
-    logger.log(logging.INFO, "Loading local settings from {0:s}".format(local_config_file))
-    config.load(local_config_file)
+config_files = (os.path.expanduser(n) for n in (LOCALCONFIG, '~/' + GLOBALCONFIG))
+try:
+    local_config_file = next(n for n in config_files if os.path.exists(n))
+except StopIteration:
+    local_config_file = None
 else:
+    print("Loading local settings from {0:s}".format(local_config_file))
+    logger.log(logging.INFO, "Loading local settings from {0:s}".format(local_config_file))
+    config.load(local_config_file)
+
+# override login credentials with environment variables
+mapping = {k: v for k, v in zip(
+    ('database.host', 'database.user', 'database.password'),
+    map(os.getenv, ('DJ_HOST', 'DJ_USER', 'DJ_PASS')))
+           if v is not None}
+config.update(mapping)
+
+# create local config file if neither local nor global file exists
+if not mapping and local_config_file is None:
     print("""Cannot find configuration settings. Using default configuration. To change that, either
     * modify the local copy of %s that datajoint just saved for you
     * put a file named %s with the same configuration format in your home
