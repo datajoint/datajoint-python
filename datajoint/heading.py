@@ -229,16 +229,16 @@ class Heading:
             if force_primary_key is None:
                 force_primary_key = set()
             return Heading(
-                [dict(self.attributes[k].todict(), in_key=self.attributes[k].in_key or k in force_primary_key)
+                [dict(   # copied attributes
+                    self.attributes[k].todict(), in_key=self.attributes[k].in_key or k in force_primary_key)
                  for k in attribute_list] +
-                # then renamed and computed attributes
-                [dict(  # rename attribute
+                [dict(  # renamed attributes
                     self.attributes[sql_expression].todict(),
                     name=new_name,
                     sql_expression='`%s`' % sql_expression,
                     in_key=self.attributes[sql_expression].in_key or sql_expression in force_primary_key)
                  if sql_expression in self.names else
-                 dict(  # compute attribute
+                 dict(  # computed attributes
                      default_attribute_properties,
                      name=new_name,
                      sql_expression=sql_expression)
