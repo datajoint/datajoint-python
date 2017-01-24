@@ -6,6 +6,7 @@ import warnings
 from contextlib import contextmanager
 import pymysql as client
 import logging
+from getpass import getpass
 
 from . import config
 from . import DataJointError
@@ -35,7 +36,7 @@ def conn(host=None, user=None, passwd=None, init_fun=None, reset=False):
         user = user if user is not None else config['database.user']
         passwd = passwd if passwd is not None else config['database.password']
         if passwd is None:  # pragma: no cover
-            passwd = input("Please enter database password: ")
+            passwd = getpass(prompt="Please enter database password: ")
         init_fun = init_fun if init_fun is not None else config['connection.init_function']
         conn.connection = Connection(host, user, passwd, init_fun)
     return conn.connection

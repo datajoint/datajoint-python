@@ -230,7 +230,8 @@ class Heading:
                 force_primary_key = set()
             return Heading(
                 [dict(   # copied attributes
-                    self.attributes[k].todict(), in_key=self.attributes[k].in_key or k in force_primary_key)
+                    self.attributes[k].todict(),
+                    in_key=self.attributes[k].in_key or k in force_primary_key)
                  for k in attribute_list] +
                 [dict(  # renamed attributes
                     self.attributes[sql_expression].todict(),

@@ -37,7 +37,7 @@ server_error_codes = {
 
 default = OrderedDict({
     'database.host': 'localhost',
-    'database.password': 'datajoint',
+    'database.password': None,
     'database.user': 'datajoint',
     'database.port': 3306,
     'database.reconnect': False,
