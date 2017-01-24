@@ -6,6 +6,7 @@ from pymysql import OperationalError
 from .relational_operand import RelationalOperand, AndList
 from . import DataJointError
 from .base_relation import FreeRelation
+import signal
 
 # noinspection PyExceptionInherit,PyCallingNonCallable
 
@@ -80,15 +81,23 @@ class AutoPopulate:
         error_list = [] if suppress_errors else None
 
         jobs = self.connection.jobs[self.target.database] if reserve_jobs else None
+
+
+        # define and setup signal handler for SIGTERM
+        if reserve_jobs:
+            def handler(signum, frame):
+                logger.info('Populate terminated by SIGTERM')
+                raise SystemExit('SIGTERM received')
+            old_handler = signal.signal(signal.SIGTERM, handler)
+
         todo -= self.target.proj()
-        keys = todo.fetch.keys()
+        keys = list(todo.fetch.keys())
         if order == "reverse":
-            keys = list(keys)
             keys.reverse()
         elif order == "random":
-            keys = list(keys)
             random.shuffle(keys)
 
+        logger.info('Found %d keys to populate' % len(keys))
         for key in keys:
             if not reserve_jobs or jobs.reserve(self.target.table_name, key):
                 self.connection.start_transaction()
@@ -100,15 +109,17 @@ class AutoPopulate:
                     logger.info('Populating: ' + str(key))
                     try:
                         self._make_tuples(dict(key))
-                    except Exception as error:
+                    except (KeyboardInterrupt, SystemExit, Exception) as error:
                         try:
                             self.connection.cancel_transaction()
                         except OperationalError:
                             pass
-
                         if reserve_jobs:
-                            jobs.error(self.target.table_name, key, error_message=str(error))
-                        if not suppress_errors:
+                            # show error name and error message (if any)
+                            error_message = ': '.join([error.__class__.__name__, str(error)]).strip(': ')
+                            jobs.error(self.target.table_name, key, error_message=error_message)
+
+                        if not suppress_errors or isinstance(error, SystemExit):
                             raise
                         else:
                             logger.error(error)
@@ -117,6 +128,11 @@ class AutoPopulate:
                         self.connection.commit_transaction()
                         if reserve_jobs:
                             jobs.complete(self.target.table_name, key)
+
+        # place back the original signal handler
+        if reserve_jobs:
+            signal.signal(signal.SIGTERM, old_handler)
+
         return error_list
 
     def progress(self, *restrictions, display=True):

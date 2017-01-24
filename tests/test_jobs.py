@@ -1,4 +1,4 @@
-from nose.tools import assert_true, assert_false
+from nose.tools import assert_true, assert_false, assert_equals
 from . import schema
 from datajoint.jobs import ERROR_MESSAGE_LENGTH, TRUNCATION_APPENDIX
 import random
@@ -42,6 +42,34 @@ def test_reserve_job():
     (schema.schema.jobs & dict(status="error")).delete()
     assert_false(schema.schema.jobs,
                  'failed to clear error jobs')
+
+
+def test_sigint():
+    # clear out job table
+    schema.schema.jobs.delete()
+    try:
+        schema.SigIntTable().populate(reserve_jobs=True)
+    except KeyboardInterrupt:
+        pass
+
+    status, error_message = schema.schema.jobs.fetch1['status', 'error_message']
+    assert_equals(status, 'error')
+    assert_equals(error_message, 'KeyboardInterrupt')
+    schema.schema.jobs.delete()
+
+def test_sigterm():
+    # clear out job table
+    schema.schema.jobs.delete()
+    try:
+        schema.SigTermTable().populate(reserve_jobs=True)
+    except SystemExit:
+        pass
+
+    status, error_message = schema.schema.jobs.fetch1['status', 'error_message']
+    assert_equals(status, 'error')
+    assert_equals(error_message, 'SystemExit: SIGTERM received')
+    schema.schema.jobs.delete()
+
 
 def test_long_error_message():
     # clear out jobs table

@@ -5,6 +5,7 @@ Sample schema with realistic tables for testing
 import random
 import numpy as np
 import datajoint as dj
+import os, signal
 from . import PREFIX, CONN_INFO
 
 schema = dj.schema(PREFIX + '_test1', locals(), connection=dj.conn(**CONN_INFO))
@@ -204,3 +205,28 @@ class UnterTrash(dj.Manual):
     ---
     """
     contents = [(1, 1), (1, 2)]
+
+
+@schema
+class SimpleSource(dj.Lookup):
+    definition = """
+    id : int  # id
+    """
+    contents = ((x,) for x in range(10))
+
+@schema
+class SigIntTable(dj.Computed):
+    definition = """
+    -> SimpleSource
+    """
+    def _make_tuples(self, key):
+        os.kill(os.getpid(), signal.SIGINT)
+
+@schema
+class SigTermTable(dj.Computed):
+    definition = """
+    -> SimpleSource
+    """
+    def _make_tuples(self, key):
+        os.kill(os.getpid(), signal.SIGTERM)
+
