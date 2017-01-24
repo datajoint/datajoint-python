@@ -6,7 +6,7 @@ from nose.tools import assert_raises, assert_equal, \
     assert_false, assert_true, assert_list_equal, \
     assert_tuple_equal, assert_dict_equal, raises
 import datajoint as dj
-from .schema_simple import A, B, D, E, L, DataA, DataB, TestUpdate
+from .schema_simple import A, B, D, E, L, DataA, DataB, TestUpdate, IJ, JI
 from .schema import Experiment
 
 
@@ -218,6 +218,23 @@ class TestRelational:
                 assert_true(np.isclose(max_, values.max(), rtol=1e-4, atol=1e-5),
                             "aggregation failed (max)")
 
+    @staticmethod
+    def test_semijoin():
+        """
+        test that semijoins and antijoins are formed correctly
+        """
+        x = IJ()
+        y = JI()
+        n = len(x & y.fetch.as_dict())
+        m = len(x - y.fetch.as_dict())
+        assert_true(n > 0 and m > 0)
+        assert_true(len(x) == m + n)
+        assert_true(len(x & y.fetch()) == n)
+        assert_true(len(x - y.fetch()) == m)
+        semi = x & y
+        anti = x - y
+        assert_true(len(semi) == n)
+        assert_true(len(anti) == m)
 
     @staticmethod
     def test_restrictions_by_lists():

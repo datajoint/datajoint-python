@@ -217,21 +217,26 @@ class Heading:
         """
         derive a new heading by selecting, renaming, or computing attributes.
         In relational algebra these operators are known as project, rename, and extend.
+        :param attribute_list:  the full list of existing attributes to include
+        :param force_primary_key:  attributes to force to be converted to primary
+        :param named_attributes:  dictionary of renamed attributes
         """
         try:  # check for missing attributes
             raise DataJointError('Attribute `%s` is not found' % next(a for a in attribute_list if a not in self.names))
         except StopIteration:
             if named_attributes is None:
                 named_attributes = {}
+            if force_primary_key is None:
+                force_primary_key = set()
             return Heading(
-                [dict(v.todict(), **dict(
-                    () if force_primary_key is None else [('in_key', k in force_primary_key)]))
-                 for k, v in self.attributes.items() if k in attribute_list] +
+                [dict(self.attributes[k].todict(), in_key=self.attributes[k].in_key or k in force_primary_key)
+                 for k in attribute_list] +
+                # then renamed and computed attributes
                 [dict(  # rename attribute
                     self.attributes[sql_expression].todict(),
                     name=new_name,
-                    sql_expression='`' + sql_expression + '`',
-                    **dict(() if force_primary_key is None else [('in_key', sql_expression in force_primary_key)]))
+                    sql_expression='`%s`' % sql_expression,
+                    in_key=self.attributes[sql_expression].in_key or sql_expression in force_primary_key)
                  if sql_expression in self.names else
                  dict(  # compute attribute
                      default_attribute_properties,

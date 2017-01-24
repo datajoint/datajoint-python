@@ -12,6 +12,24 @@ schema = dj.schema(PREFIX + '_relational', locals(), connection=dj.conn(**CONN_I
 
 
 @schema
+class IJ(dj.Manual):
+    definition = """  # tests restrictions
+    i  : int
+    j  : int
+    """
+    contents = list(dict(i=i, j=j+2) for i in range(3) for j in range(3))
+
+
+@schema
+class JI(dj.Manual):
+    definition = """  # tests restrictions by relations when attributes are reordered
+    j  : int
+    i  : int
+    """
+    contents = list(dict(i=i+1, j=j) for i in range(3) for j in range(3))
+
+
+@schema
 class A(dj.Lookup):
     definition = """
     id_a :int
