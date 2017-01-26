@@ -348,6 +348,9 @@ class BaseRelation(RelationalOperand):
                 database=self.database, table=self.table_name), as_dict=True).fetchone()
         return ret['Data_length'] + ret['Index_length']
 
+    def describe(self):
+        return self.show_definition()
+
     def show_definition(self):
         """
         :return:  the definition string for the relation using DataJoint DDL.

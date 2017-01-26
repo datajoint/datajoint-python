@@ -37,17 +37,13 @@ server_error_codes = {
 
 default = OrderedDict({
     'database.host': 'localhost',
-    'database.password': 'datajoint',
-    'database.user': 'datajoint',
+    'database.password': None,
+    'database.user': None,
     'database.port': 3306,
-    'database.reconnect': False,
-    #
     'connection.init_function': None,
-    #
+    'database.reconnect': False,
     'loglevel': 'INFO',
-    #
     'safemode': True,
-    #
     'display.limit': 7,
     'display.width': 14
 })
@@ -61,7 +57,6 @@ log_levels = {
     'ERROR': logging.ERROR,
     None:  logging.NOTSET
 }
-
 
 
 class Config(collections.MutableMapping):
@@ -98,7 +93,6 @@ class Config(collections.MutableMapping):
     def __len__(self):
         return len(self.instance._conf)
 
-
     @contextmanager
     def __call__(self, **kwargs):
         """
@@ -107,17 +101,15 @@ class Config(collections.MutableMapping):
         double underscore '__'. The context manager yields the changed config object.
 
         Example:
-
         >>> import datajoint as dj
-        >>> with dj.config(safe__mode=False) as cfg:
+        >>> with dj.config(safemode=False, database__host="localhost") as cfg:
         >>>     # do dangerous stuff here
-
         """
 
         try:
             backup = self.instance
             self.instance = Config.__Config(self.instance._conf)
-            new = {k.replace('__','.'):v for k,v in kwargs.items()}
+            new = {k.replace('__', '.'): v for k, v in kwargs.items()}
             self.instance._conf.update(new)
             yield self
         except:
@@ -126,7 +118,6 @@ class Config(collections.MutableMapping):
         else:
             self.instance = backup
 
-
     class __Config:
         """
         Stores datajoint settings. Behaves like a dictionary, but applies validator functions
@@ -134,7 +125,6 @@ class Config(collections.MutableMapping):
 
         The default parameters are stored in datajoint.settings.default . If a local config file
         exists, the settings specified in this file override the default settings.
-
         """
 
         def __init__(self, *args, **kwargs):
@@ -166,8 +156,7 @@ class Config(collections.MutableMapping):
         def load(self, filename):
             """
             Updates the setting from config file in JSON format.
-
-            :param filename=None: filename of the local JSON settings file. If None, the local config file is used.
+            :param filename: filename of the local JSON settings file. If None, the local config file is used.
             """
             if filename is None:
                 filename = LOCALCONFIG

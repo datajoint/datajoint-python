@@ -13,7 +13,7 @@ schema = dj.schema(PREFIX + '_test1', locals(), connection=dj.conn(**CONN_INFO))
 
 @schema
 class Test(dj.Computed):
-    definition="""
+    definition = """
     key   :   int     # key
     ---
     value   :   int     # value
