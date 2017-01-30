@@ -9,10 +9,10 @@ all:
 	
 
 sdist:
-	python setup.py sdist >/dev/null 2>&1
+	python3 setup.py sdist >/dev/null 2>&1
 
 wheel:
-	python setup.py bdist_wheel >/dev/null 2>&1
+	python3 setup.py bdist_wheel >/dev/null 2>&1
 
 pypi:purge sdist wheel
 	twine upload dist/*
@@ -21,7 +21,7 @@ pypitest: purge sdist wheel
 	twine upload -r pypitest dist/*
 
 purge:
-	rm -rf dist && rm -rf build && rm -rf datajoint.egg-info
+	rm -rf dist && rm -rf build && rm -rf *.egg-info
 
 
 
