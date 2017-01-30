@@ -5,7 +5,7 @@ all:
 	@echo 'make wheel                              Creates Wheel distribution            '
 	@echo 'make pypi                               Package and upload to PyPI            '
 	@echo 'make pypitest                           Package and upload to PyPI test server'
-	@echo 'make purge                              Remove all build related directories  '
+	@echo 'make clean                              Remove all build related directories  '
 	
 
 sdist:
@@ -14,13 +14,13 @@ sdist:
 wheel:
 	python3 setup.py bdist_wheel >/dev/null 2>&1
 
-pypi:purge sdist wheel
+pypi:clean sdist wheel
 	twine upload dist/*
 	
-pypitest: purge sdist wheel
+pypitest: clean sdist wheel
 	twine upload -r pypitest dist/*
 
-purge:
+clean:
 	rm -rf dist && rm -rf build && rm -rf *.egg-info
 
 
