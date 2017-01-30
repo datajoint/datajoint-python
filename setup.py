@@ -4,14 +4,15 @@ from os import path
 
 here = path.abspath(path.dirname(__file__))
 
-# with open(path.join(here, 'VERSION')) as version_file:
-#   version = version_file.read().strip()
 long_description = "An object-relational mapping and relational algebra to facilitate data definition and data manipulation in MySQL databases."
 
+# read in version number
+with open(path.join(here, 'datajoint', 'version.py')) as f:
+    exec(f.read())
 
 setup(
     name='datajoint',
-    version='0.1.0.dev5',
+    version=__version__,
     description="An ORM with closed relational algebra",
     long_description=long_description,
     author='Dimitri Yatsenko',

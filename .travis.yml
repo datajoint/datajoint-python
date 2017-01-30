@@ -5,6 +5,7 @@ env:
 python:
   - "3.4"
   - "3.5"
+  - "3.6"
 services: mysql
 before_install:
   - sudo apt-get -qq update
