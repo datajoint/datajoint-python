@@ -26,7 +26,5 @@ setup(
         'Development Status :: 4 - Beta',
         'Intended Audience :: Science/Research',
         'Programming Language :: Python :: 3 :: Only',
-        'License :: OSI Approved :: LGPL License',
-        'Topic :: Database :: Front-Ends',
     ],
 )
