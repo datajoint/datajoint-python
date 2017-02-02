@@ -10,6 +10,9 @@ long_description = "An object-relational mapping and relational algebra to facil
 with open(path.join(here, 'datajoint', 'version.py')) as f:
     exec(f.read())
 
+with open(path.join(here, 'requirements.txt')) as f:
+    requirements = f.read().split()
+
 setup(
     name='datajoint',
     version=__version__,
@@ -21,7 +24,7 @@ setup(
     url='https://github.com/datajoint/datajoint-python',
     keywords='database organization',
     packages=find_packages(exclude=['contrib', 'docs', 'tests*']),
-    install_requires=['numpy', 'pyparsing', 'networkx', 'matplotlib', 'pymysql>=0.7.2', 'scipy'],
+    install_requires=requirements,
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Science/Research',
