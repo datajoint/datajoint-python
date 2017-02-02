@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 from setuptools import setup, find_packages
 from os import path
+import sys
+
+if sys.version_info < (3,4):
+    sys.exit('DataJoint is only supported on Python 3.4 or higher')
 
 here = path.abspath(path.dirname(__file__))
 
