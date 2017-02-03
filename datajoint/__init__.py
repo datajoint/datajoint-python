@@ -17,7 +17,7 @@ import os
 from .version import __version__
 
 __author__ = "Dimitri Yatsenko, Edgar Y. Walker, and Fabian Sinz at Baylor College of Medicine"
-__date__ = "January 24, 2017"
+__date__ = "February 3, 2017"
 __all__ = ['__author__', '__version__',
            'config', 'conn', 'kill', 'BaseRelation',
            'Connection', 'Heading', 'FreeRelation', 'Not', 'schema',
@@ -63,17 +63,6 @@ mapping = {k: v for k, v in zip(
     map(os.getenv, ('DJ_HOST', 'DJ_USER', 'DJ_PASS')))
            if v is not None}
 config.update(mapping)
-
-# create local config file if neither local nor global file exists
-if not mapping and local_config_file is None:
-    print("""Cannot find configuration settings. Using default configuration. To change that, either
-    * modify the local copy of %s that datajoint just saved for you
-    * put a file named %s with the same configuration format in your home
-    * specify the environment variables DJ_USER, DJ_HOST, DJ_PASS
-          """ % (LOCALCONFIG, GLOBALCONFIG))
-    local_config_file = os.path.expanduser(LOCALCONFIG)
-    logger.log(logging.INFO, "No config found. Generating {0:s}".format(local_config_file))
-    config.save(local_config_file)
 
 logger.setLevel(log_levels[config['loglevel']])
 

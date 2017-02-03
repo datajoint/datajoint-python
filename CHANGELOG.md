@@ -1,5 +1,8 @@
 ## Release notes
 
+### Upcoming release 
+* Removed Vagrant and Readthedocs support 
+
 ### 0.4.9 (#285) -- February 2, 2017
 * Fixed setup.py for pip install 
 
