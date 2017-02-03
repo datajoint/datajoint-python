@@ -79,7 +79,7 @@ def test_save():
     if os.path.isfile(settings.LOCALCONFIG):
         os.rename(settings.LOCALCONFIG, tmpfile)
         moved = True
-    dj.config.save()
+    dj.config.save_local()
     assert_true(os.path.isfile(settings.LOCALCONFIG))
     if moved:
         os.rename(tmpfile, settings.LOCALCONFIG)
@@ -89,7 +89,7 @@ def test_load_save():
     filename_old = dj.settings.LOCALCONFIG
     filename = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(50)) + '.json'
     dj.settings.LOCALCONFIG = filename
-    dj.config.save()
+    dj.config.save_local()
     dj.config.load(filename=filename)
     dj.settings.LOCALCONFIG = filename_old
     os.remove(filename)
