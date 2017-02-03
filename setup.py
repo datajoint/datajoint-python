@@ -1,17 +1,25 @@
 #!/usr/bin/env python
 from setuptools import setup, find_packages
 from os import path
+import sys
+
+if sys.version_info < (3,4):
+    sys.exit('DataJoint is only supported on Python 3.4 or higher')
 
 here = path.abspath(path.dirname(__file__))
 
-# with open(path.join(here, 'VERSION')) as version_file:
-#   version = version_file.read().strip()
 long_description = "An object-relational mapping and relational algebra to facilitate data definition and data manipulation in MySQL databases."
 
+# read in version number
+with open(path.join(here, 'datajoint', 'version.py')) as f:
+    exec(f.read())
+
+with open(path.join(here, 'requirements.txt')) as f:
+    requirements = f.read().split()
 
 setup(
     name='datajoint',
-    version='0.1.0.dev5',
+    version=__version__,
     description="An ORM with closed relational algebra",
     long_description=long_description,
     author='Dimitri Yatsenko',
@@ -20,12 +28,10 @@ setup(
     url='https://github.com/datajoint/datajoint-python',
     keywords='database organization',
     packages=find_packages(exclude=['contrib', 'docs', 'tests*']),
-    install_requires=['numpy', 'pyparsing', 'networkx', 'matplotlib', 'pymysql>=0.7.2'],
+    install_requires=requirements,
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Science/Research',
         'Programming Language :: Python :: 3 :: Only',
-        'License :: OSI Approved :: LGPL License',
-        'Topic :: Database :: Front-Ends',
     ],
 )
