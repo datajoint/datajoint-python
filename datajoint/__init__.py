@@ -51,6 +51,7 @@ config_files = (os.path.expanduser(n) for n in (LOCALCONFIG, '~/' + GLOBALCONFIG
 try:
     config_file = next(n for n in config_files if os.path.exists(n))
 except StopIteration:
+    print('No config file found, using default settings.')
     config_file = None
 else:
     print("Loading settings from {0:s}".format(config_file))
