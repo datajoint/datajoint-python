@@ -49,13 +49,13 @@ config = Config()
 
 config_files = (os.path.expanduser(n) for n in (LOCALCONFIG, '~/' + GLOBALCONFIG))
 try:
-    local_config_file = next(n for n in config_files if os.path.exists(n))
+    config_file = next(n for n in config_files if os.path.exists(n))
 except StopIteration:
-    local_config_file = None
+    config_file = None
 else:
-    print("Loading local settings from {0:s}".format(local_config_file))
-    logger.log(logging.INFO, "Loading local settings from {0:s}".format(local_config_file))
-    config.load(local_config_file)
+    print("Loading settings from {0:s}".format(config_file))
+    logger.log(logging.INFO, "Loading local settings from {0:s}".format(config_file))
+    config.load(config_file)
 
 # override login credentials with environment variables
 mapping = {k: v for k, v in zip(
