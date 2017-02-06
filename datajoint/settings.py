@@ -95,16 +95,16 @@ class Config(collections.MutableMapping):
 
     def save_local(self):
         """
-        saves the settings in the local config file  
+        saves the settings in the local config file
         """
         self.save(LOCALCONFIG)
 
     def save_global(self):
         """
-        saves the settings in the global config file  
+        saves the settings in the global config file
         """
-        self.save(os.path.expanduser('~/' + GLOBALCONFIG))
-	
+        self.save(os.path.expanduser(os.path.join('~', GLOBALCONFIG)))
+
     @contextmanager
     def __call__(self, **kwargs):
         """
@@ -158,7 +158,7 @@ class Config(collections.MutableMapping):
         def save(self, filename):
             """
             Saves the settings in JSON format to the given file path.
-            :param filename: filename of the local JSON settings file. 
+            :param filename: filename of the local JSON settings file.
             """
             with open(filename, 'w') as fid:
                 json.dump(self._conf, fid, indent=4)
