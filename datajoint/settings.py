@@ -1,15 +1,15 @@
 """
 Settings for DataJoint.
 """
-from . import DataJointError
 from contextlib import contextmanager
 import json
+import os
 import pprint
 from collections import OrderedDict
-
 import logging
 import collections
 from enum import Enum
+from . import DataJointError
 
 LOCALCONFIG = 'dj_local_conf.json'
 GLOBALCONFIG = '.datajoint_config.json'
@@ -93,6 +93,18 @@ class Config(collections.MutableMapping):
     def __len__(self):
         return len(self.instance._conf)
 
+    def save_local(self):
+        """
+        saves the settings in the local config file
+        """
+        self.save(LOCALCONFIG)
+
+    def save_global(self):
+        """
+        saves the settings in the global config file
+        """
+        self.save(os.path.expanduser(os.path.join('~', GLOBALCONFIG)))
+
     @contextmanager
     def __call__(self, **kwargs):
         """
@@ -143,13 +155,11 @@ class Config(collections.MutableMapping):
             else:
                 raise DataJointError(u'Validator for {0:s} did not pass'.format(key, ))
 
-        def save(self, filename=None):
+        def save(self, filename):
             """
             Saves the settings in JSON format to the given file path.
-            :param filename: filename of the local JSON settings file. If None, the local config file is used.
+            :param filename: filename of the local JSON settings file.
             """
-            if filename is None:
-                filename = LOCALCONFIG
             with open(filename, 'w') as fid:
                 json.dump(self._conf, fid, indent=4)
 
