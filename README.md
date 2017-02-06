@@ -15,7 +15,7 @@ DataJoint was initially developed in 2009 by Dimitri Yatsenko in Andreas Tolias'
 pip3 install datajoint
 ```
 
-## Documentation and Tutorial 
+## Documentation and Tutorials
 A number of labs are currently adopting DataJoint and we are quickly getting the documentation in shape in February 2017.
 
 * https://datajoint.github.io -- this is where comprehensive information will be ultimately provided.
