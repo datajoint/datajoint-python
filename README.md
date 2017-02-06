@@ -10,13 +10,13 @@ DataJoint for Python is a high-level programming interface for relational databa
 
 DataJoint was initially developed in 2009 by Dimitri Yatsenko in Andreas Tolias' Lab for the distributed processing and management of large volumes of data streaming from regular experiments. Starting in 2011, DataJoint has been available as an open-source project adopted by other labs and improved through contributions from several developers.
 
-## Quick start guide
+## Installation
 ```
-pip install datajoint
+pip3 install datajoint
 ```
 
-## Documentation Tutorial 
-Since a number of labs are currently adopting DataJoint, we are quickly getting the documentation in shape 
+## Documentation and Tutorial 
+A number of labs are currently adopting DataJoint and we are quickly getting the documentation in shape in February 2017.
 
 * https://datajoint.github.io -- this is where comprehensive information will be ultimately provided.
 * The IPython Notebook-based primer for DataJoint is at https://github.com/datajoint/ipython-notebook-tutorial. 
