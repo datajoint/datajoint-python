@@ -6,25 +6,26 @@
 [![Join the chat at https://gitter.im/datajoint/datajoint-python](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/datajoint/datajoint-python?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 # Welcome to DataJoint for Python!
-The Python version of DataJoint is undergoing major revamping to match the features and capabilities of its more mature MATLAB counterpart. We expect to complete the revamp within a few weeks: August -- September, 2015.
-
-Learn more on http://datajoint.github.io.
-
 DataJoint for Python is a high-level programming interface for relational databases designed to support data processing chains in science labs. DataJoint is built on the foundation of the relational data model and prescribes a consistent method for organizing, populating, and querying data.
 
 DataJoint was initially developed in 2009 by Dimitri Yatsenko in Andreas Tolias' Lab for the distributed processing and management of large volumes of data streaming from regular experiments. Starting in 2011, DataJoint has been available as an open-source project adopted by other labs and improved through contributions from several developers.
 
-## Quick start guide
-The current pip version is ancient. We will update it as soon as datajoint release 1.0 is out. 
-~~To install datajoint using `pip` just run:~~
+DataJoint for Python is developed and maintained by [Dimitri Yatsenko](https://github.com/dimitri-yatsenko), [Fabian Sinz](https://github.com/fabiansinz), and [Edgar Y. Walker](https://github.com/eywalker).  As with any open-source project, everyone is welcome to contribute.
 
+## Installation
 ```
-pip install datajoint
+pip3 install datajoint
 ```
 
-~~in your favorite terminal app.~~
+If you already have an older version of DataJoint installed using `pip`, upgrade with
+```bash
+pip3 install --upgrade datajoint
+```
 
-~~However, please be aware that DataJoint for Python is still undergoing major changes, and thus what's available on PyPI via `pip` is in **pre-release state**!~~
+## Documentation and Tutorials
+A number of labs are currently adopting DataJoint and we are quickly getting the documentation in shape in February 2017.
 
-## Tutorial 
-The IPython Notebook-based primer for DataJoint is at https://github.com/datajoint/ipython-notebook-tutorial. 
+* https://datajoint.github.io -- this is where comprehensive information will be ultimately provided.
+* The IPython Notebook-based primer for DataJoint is at https://github.com/datajoint/ipython-notebook-tutorial. 
+* https://datajoint.github.com/wiki/wiki -- most current but tentative documentation with newest features specified.
+* https://datajoint.gihub.com/datajoint-python/wiki  -- submit questions and report issues.
