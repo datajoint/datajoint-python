@@ -27,5 +27,5 @@ A number of labs are currently adopting DataJoint and we are quickly getting the
 
 * https://datajoint.github.io -- this is where comprehensive information will be ultimately provided.
 * The IPython Notebook-based primer for DataJoint is at https://github.com/datajoint/ipython-notebook-tutorial. 
-* https://datajoint.github.com/wiki/wiki -- most current, tentative documentation with newest features specified.
-* https://datajoint.gihub.com/datajoint-python/wiki  -- you are welcome to submit questions and report issues.
+* https://datajoint.github.com/wiki/wiki -- most current but tentative documentation with newest features specified.
+* https://datajoint.gihub.com/datajoint-python/wiki  -- submit questions and report issues.
