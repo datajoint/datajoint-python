@@ -43,6 +43,22 @@ def test_reserve_job():
     assert_false(schema.schema.jobs,
                  'failed to clear error jobs')
 
+def test_restrictions():
+    # clear out jobs table
+    jobs = schema.schema.jobs
+    jobs.delete()
+    jobs.reserve('a', {'key': 'a1'})
+    jobs.reserve('a', {'key': 'a2'})
+    jobs.reserve('b', {'key': 'b1'})
+    jobs.error('a', {'key': 'a2'}, 'error')
+    jobs.error('b', {'key': 'b1'}, 'error')
+
+    assert_true(len(jobs & 'table_name = "a"') == 2, 'There should be two entries for table a')
+    assert_true(len(jobs & 'status = "error"') == 2, 'There should be two entries with error status')
+    assert_true(len(jobs & 'table_name = "a"' & 'status = "error"') == 1,
+                'There should be only one entries with error status in table a')
+    jobs.delete()
+
 
 def test_sigint():
     # clear out job table
