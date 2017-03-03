@@ -177,7 +177,7 @@ class BaseRelation(RelationalOperand):
                     value = pack(value)
                     placeholder = '%s'
                 elif heading[name].numeric:
-                    if value in [None, ''] or np.isnan(np.float(value)): # nans are turned into NULLs
+                    if value is None or value == '' or np.isnan(np.float(value)): # nans are turned into NULLs
                         placeholder = 'NULL'
                         value = None
                     else:
