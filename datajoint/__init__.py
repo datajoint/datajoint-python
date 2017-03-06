@@ -14,6 +14,7 @@ Please cite:
 
 import logging
 import os
+from types import ModuleType
 from .version import __version__
 
 __author__ = "Dimitri Yatsenko, Edgar Y. Walker, and Fabian Sinz at Baylor College of Medicine"
@@ -75,3 +76,18 @@ from .heading import Heading
 from .schema import Schema as schema
 from .erd import ERD
 from .admin import set_password, kill
+
+
+def create_virtual_module(modulename, dbname):
+    """
+    Creates a python module with the given name from a database name in mysql with datajoint tables.
+    Automatically creates the classed of the appropriate tier in the module.
+
+    :param modulename: desired name of the module
+    :param dbname:     name of the database in mysql
+    :return: the python module
+    """
+    mod = ModuleType(modulename)
+    s = schema(dbname, mod.__dict__)
+    s.spawn_missing_classes()
+    return mod
