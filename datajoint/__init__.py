@@ -90,4 +90,5 @@ def create_virtual_module(modulename, dbname):
     mod = ModuleType(modulename)
     s = schema(dbname, mod.__dict__)
     s.spawn_missing_classes()
+    mod.__dict__['schema'] = s
     return mod
