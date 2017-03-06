@@ -338,14 +338,16 @@ class RelationalOperand:
     def __repr__(self):
         return super().__repr__() if config['loglevel'].lower() == 'debug' else self.preview()
 
-    def preview(self):
+    def preview(self, limit=None, width=None):
         """
         returns a preview of the contents of the relation.
         """
         rel = self.proj(*self.heading.non_blobs,
                         **dict(zip_longest(self.heading.blobs, [], fillvalue="'<BLOB>'")))  # replace blobs with <BLOB>
-        limit = config['display.limit']
-        width = config['display.width']
+        if limit is None:
+            limit = config['display.limit']
+        if width is None:
+            width = config['display.width']
         tuples = rel.fetch(limit=limit)
         columns = rel.heading.names
         widths = {f: min(max([len(f)] + [len(str(e)) for e in tuples[f]]) + 4, width) for f in columns}
