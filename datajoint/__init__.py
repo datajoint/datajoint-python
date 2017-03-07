@@ -81,7 +81,7 @@ from .admin import set_password, kill
 def create_virtual_module(modulename, dbname):
     """
     Creates a python module with the given name from a database name in mysql with datajoint tables.
-    Automatically creates the classed of the appropriate tier in the module.
+    Automatically creates the classes of the appropriate tier in the module.
 
     :param modulename: desired name of the module
     :param dbname:     name of the database in mysql
