@@ -1,6 +1,6 @@
 ## Release notes
 
-### 0.4.11 (#298)
+### 0.5.0 (#298)
 * All fetched integers are now 64-bit long and all fetched floats are double precision.
 * Added `dj.create_virtual_module`
 
