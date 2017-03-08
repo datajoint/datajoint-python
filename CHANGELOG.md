@@ -1,5 +1,9 @@
 ## Release notes
 
+### 0.4.11 (#298)
+* All fetched integers are now 64-bit long and all fetched floats are double precision.
+* Added `dj.create_virtual_module`
+
 ### 0.4.10 (#286) 
 * Removed Vagrant and Readthedocs support 
 * Explicit saving of configuration (issue #284)
