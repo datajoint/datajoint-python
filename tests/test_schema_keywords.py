@@ -5,6 +5,7 @@ from nose.tools import assert_true
 
 schema = dj.schema(PREFIX + '_keywords', locals(), connection=dj.conn(**CONN_INFO))
 
+
 class A(dj.Manual):
     definition = """
     a_id: int   # a id
@@ -26,8 +27,8 @@ class D(B):
     source = A
 
 def setup():
-    nonlocal A
-    nonlocal D
+    global A
+    global D
     A = schema(A)
     D = schema(D)
 
