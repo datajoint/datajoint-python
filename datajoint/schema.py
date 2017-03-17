@@ -95,13 +95,14 @@ class Schema:
             self.process_relation_class(part_class, context=self.context, assert_declared=True)
             setattr(master_class, class_name, part_class)
 
-    def drop(self):
+    def drop(self, force=False):
         """
         Drop the associated database if it exists
         """
         if not self.exists:
             logger.info("Database named `{database}` does not exist. Doing nothing.".format(database=self.database))
         elif (not config['safemode'] or
+              force or
               user_choice("Proceed to delete entire schema `%s`?" % self.database, default='no') == 'yes'):
             logger.info("Dropping `{database}`.".format(database=self.database))
             try:
@@ -151,15 +152,26 @@ class Schema:
 
         if issubclass(cls, Part):
             raise DataJointError('The schema decorator should not be applied to Part relations')
-        self.process_relation_class(cls, context=self.context)
+        ext = {
+            cls.__name__: cls,
+            'self': cls
+        }
+        self.process_relation_class(cls, context=dict(self.context, **ext))
+
         # Process part relations
-        for part in cls._ordered_class_members:
+        for part in dir(cls):
             if part[0].isupper():
                 part = getattr(cls, part)
                 if inspect.isclass(part) and issubclass(part, Part):
                     part._master = cls
-                    # allow addressing master
-                    self.process_relation_class(part, context=dict(self.context, **{cls.__name__: cls}))
+                    # allow addressing master by name or keyword 'master'
+                    ext = {
+                        cls.__name__: cls,
+                        part.__name__: part,
+                        'master': cls,
+                        'self': part
+                    }
+                    self.process_relation_class(part, context=dict(self.context, **ext))
         return cls
 
     @property
