@@ -11,6 +11,22 @@ from .base_relation import lookup_class_name, Log
 
 logger = logging.getLogger(__name__)
 
+def ordered_dir(klass):
+    """
+    List (most) attributes of the class including inherited ones, similar to `dir` build-in function,
+    but respects order of attribute declaration as much as possible.
+    :param klass: class to list members for
+    :return: a list of attributes declared in klass and its superclasses
+    """
+    m = []
+    mro = klass.mro()
+    for c in mro:
+        if hasattr(c, '_ordered_class_members'):
+            elements = c._ordered_class_members
+        else:
+            elements = c.__dict__.keys()
+        m = [e for e in elements if e not in m] + m
+    return m
 
 class Schema:
     """
@@ -159,7 +175,7 @@ class Schema:
         self.process_relation_class(cls, context=dict(self.context, **ext))
 
         # Process part relations
-        for part in dir(cls):
+        for part in ordered_dir(cls):
             if part[0].isupper():
                 part = getattr(cls, part)
                 if inspect.isclass(part) and issubclass(part, Part):

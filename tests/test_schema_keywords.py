@@ -17,11 +17,18 @@ class B(dj.Manual):
     -> self.source
     b_id: int   # b id
     """
-    class C(dj.Part):
+    class H(dj.Part):
         definition = """
         -> master
         name: varchar(128)  # name
         """
+
+    class C(dj.Part):
+        definition = """
+        -> master
+        -> master.H
+        """
+
 
 class D(B):
     source = A
