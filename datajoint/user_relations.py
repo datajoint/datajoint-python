@@ -61,6 +61,8 @@ class UserRelation(BaseRelation, metaclass=OrderedClass):
         """
         :returns: the table name of the table formatted for mysql.
         """
+        if cls._prefix is None:
+            raise AttributeError('Class prefix is not defined!')
         return cls._prefix + from_camel_case(cls.__name__)
 
     @ClassProperty
