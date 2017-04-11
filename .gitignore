@@ -14,3 +14,5 @@ MANIFEST
 .vagrant/
 dj_local_conf.json
 build/
+.coverage
+./tests/.coverage
