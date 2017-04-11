@@ -159,18 +159,18 @@ class Heading:
                       for x in attributes]
 
         numeric_types = {
-            ('float', False): np.float32,
-            ('float', True): np.float32,
+            ('float', False): np.float64,
+            ('float', True): np.float64,
             ('double', False): np.float64,
             ('double', True): np.float64,
-            ('tinyint', False): np.int8,
-            ('tinyint', True): np.uint8,
-            ('smallint', False): np.int16,
-            ('smallint', True): np.uint16,
-            ('mediumint', False): np.int32,
-            ('mediumint', True): np.uint32,
-            ('int', False): np.int32,
-            ('int', True): np.uint32,
+            ('tinyint', False): np.int64,
+            ('tinyint', True): np.int64,
+            ('smallint', False): np.int64,
+            ('smallint', True): np.int64,
+            ('mediumint', False): np.int64,
+            ('mediumint', True): np.int64,
+            ('int', False): np.int64,
+            ('int', True): np.int64,
             ('bigint', False): np.int64,
             ('bigint', True): np.uint64
             }

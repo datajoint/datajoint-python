@@ -1,7 +1,6 @@
 import re
 from datajoint import DataJointError
 
-
 class ClassProperty:
     def __init__(self, f):
         self.f = f

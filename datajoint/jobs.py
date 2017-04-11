@@ -22,15 +22,15 @@ class JobTable(BaseRelation):
     A base relation with no definition. Allows reserving jobs
     """
     def __init__(self, arg, database=None):
-        super().__init__()
         if isinstance(arg, JobTable):
+            super().__init__(arg)
             # copy constructor
             self.database = arg.database
             self._connection = arg._connection
             self._definition = arg._definition
             self._user = arg._user
             return
-
+        super().__init__()
         self.database = database
         self._connection = arg
         self._definition = """    # job reservation table for `{database}`
