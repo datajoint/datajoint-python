@@ -80,6 +80,7 @@ class JobTable(BaseRelation):
             status='reserved',
             host=os.uname().nodename,
             pid=os.getpid(),
+            key=key,
             user=self._user)
         try:
             self.insert1(job)
