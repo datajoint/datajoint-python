@@ -114,6 +114,7 @@ class JobTable(BaseRelation):
                  host=os.uname().nodename,
                  pid=os.getpid(),
                  user=self._user,
+                 key=key,
                  error_message=error_message), replace=True, ignore_extra_fields=True)
 
 
