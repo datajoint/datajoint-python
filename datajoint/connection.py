@@ -129,6 +129,10 @@ class Connection:
                 cur.execute(query, args)
             else:
                 raise
+        except err.ProgrammingError as e:
+            print('Error in query:')
+            print(query)
+            raise
         return cur
 
     def get_user(self):
