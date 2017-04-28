@@ -33,7 +33,8 @@ def test_reserve_job():
                     'failed to reserve new jobs')
     # finish with error
     for key in subjects.fetch.keys():
-        schema.schema.jobs.error(table_name, key, "error message")
+        schema.schema.jobs.error(table_name, key,
+                                 "error message")
     # refuse jobs with errors
     for key in subjects.fetch.keys():
         assert_false(schema.schema.jobs.reserve(table_name, key),
@@ -42,6 +43,7 @@ def test_reserve_job():
     (schema.schema.jobs & dict(status="error")).delete()
     assert_false(schema.schema.jobs,
                  'failed to clear error jobs')
+
 
 def test_restrictions():
     # clear out jobs table
@@ -72,6 +74,7 @@ def test_sigint():
     assert_equals(status, 'error')
     assert_equals(error_message, 'KeyboardInterrupt')
     schema.schema.jobs.delete()
+
 
 def test_sigterm():
     # clear out job table

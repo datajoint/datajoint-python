@@ -84,7 +84,7 @@ class JobTable(BaseRelation):
             connection_id=self.connection.connection_id,
             user=self._user)
         try:
-            self.insert1(job)
+            self.insert1(job, ignore_extra_fields=True)
         except pymysql.err.IntegrityError:
             return False
         return True
