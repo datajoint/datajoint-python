@@ -44,6 +44,7 @@ class JobTable(BaseRelation):
         user="" :varchar(255) # database user
         host=""  :varchar(255)  # system hostname
         pid=0  :int unsigned  # system process id
+        connection_id = 0  : bigint unsigned          # connection_id()
         timestamp=CURRENT_TIMESTAMP  :timestamp   # automatic timestamp
         """.format(database=database, error_message_length=ERROR_MESSAGE_LENGTH)
         if not self.is_declared:
@@ -80,6 +81,7 @@ class JobTable(BaseRelation):
             status='reserved',
             host=os.uname().nodename,
             pid=os.getpid(),
+            connection_id=self.connection.connection_id,
             user=self._user)
         try:
             self.insert1(job)
@@ -112,6 +114,7 @@ class JobTable(BaseRelation):
                  status="error",
                  host=os.uname().nodename,
                  pid=os.getpid(),
+                 connection_id=self.connection.connection_id,
                  user=self._user,
                  error_message=error_message), replace=True, ignore_extra_fields=True)
 

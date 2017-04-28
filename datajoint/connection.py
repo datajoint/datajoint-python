@@ -70,6 +70,7 @@ class Connection:
         self.connect()
         if self.is_connected:
             logger.info("Connected {user}@{host}:{port}".format(**self.conn_info))
+            self.connection_id = self.query('SELECT connection_id()').fetchone()[0]
         else:
             raise DataJointError('Connection failed.')
         self._conn.autocommit(True)
