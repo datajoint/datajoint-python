@@ -7,6 +7,7 @@ from .blob import unpack
 from . import DataJointError
 from . import key as PRIMARY_KEY
 
+
 def update_dict(d1, d2):
     return {k: (d2[k] if k in d2 else d1[k]) for k in d1}
 
@@ -28,7 +29,6 @@ class FetchBase:
         :return: copy FetchBase derivatives
         """
         return self.__class__(self)
-
 
     def _initialize_behavior(self):
         self.sql_behavior = {}
@@ -89,7 +89,6 @@ class Fetch(FetchBase, Callable, Iterable):
         if len(args) > 0:
             self.sql_behavior['order_by'] = args
         return self
-
 
     @property
     def as_dict(self):

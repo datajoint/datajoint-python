@@ -132,6 +132,7 @@ class Heading:
         if info is None:
             if table_name == '~log':
                 logger.warning('Could not create the ~log table')
+                return
             else:
                 raise DataJointError('The table `{database}`.`{table_name}` is not defined.'.format(
                     table_name=table_name, database=database))

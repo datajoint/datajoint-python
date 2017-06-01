@@ -76,12 +76,11 @@ class AutoPopulate:
         todo = self.key_source
         if not isinstance(todo, RelationalOperand):
             raise DataJointError('Invalid key_source value')
-        todo = todo & AndList(restrictions)
+        todo &= AndList(restrictions)
 
         error_list = [] if suppress_errors else None
 
         jobs = self.connection.jobs[self.target.database] if reserve_jobs else None
-
 
         # define and setup signal handler for SIGTERM
         if reserve_jobs:
