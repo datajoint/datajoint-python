@@ -76,7 +76,7 @@ class AutoPopulate:
         todo = self.key_source
         if not isinstance(todo, RelationalOperand):
             raise DataJointError('Invalid key_source value')
-        todo &= AndList(restrictions)
+        todo = todo.proj() & AndList(restrictions)
 
         error_list = [] if suppress_errors else None
 
@@ -89,7 +89,7 @@ class AutoPopulate:
                 raise SystemExit('SIGTERM received')
             old_handler = signal.signal(signal.SIGTERM, handler)
 
-        todo -= self.target.proj(*todo.primary_key)
+        todo -= self.target
         keys = list(todo.fetch.keys())
         if order == "reverse":
             keys.reverse()
@@ -141,7 +141,7 @@ class AutoPopulate:
         """
         todo = self.key_source & AndList(restrictions)
         total = len(todo)
-        remaining = len(todo - self.target.proj(*todo.primary_key))
+        remaining = len(todo.proj() - self.target)
         if display:
             print('%-20s' % self.__class__.__name__,
                   'Completed %d of %d (%2.1f%%)   %s' % (
