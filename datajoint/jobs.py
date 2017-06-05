@@ -82,6 +82,7 @@ class JobTable(BaseRelation):
             host=os.uname().nodename,
             pid=os.getpid(),
             connection_id=self.connection.connection_id,
+            key=key,
             user=self._user)
         try:
             self.insert1(job, ignore_extra_fields=True)
@@ -116,6 +117,7 @@ class JobTable(BaseRelation):
                  pid=os.getpid(),
                  connection_id=self.connection.connection_id,
                  user=self._user,
+                 key=key,
                  error_message=error_message), replace=True, ignore_extra_fields=True)
 
 
