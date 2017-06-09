@@ -155,6 +155,10 @@ class BaseRelation(RelationalOperand):
             return
 
         heading = self.heading
+        if heading.attributes is None:
+            logger.warning('Could not access table {table}'.format(table=self.full_table_name))
+            return
+
         field_list = None  # ensures that all rows have the same attributes in the same order as the first row.
 
         def make_row_to_insert(row):

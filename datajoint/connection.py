@@ -70,6 +70,7 @@ class Connection:
         self.connect()
         if self.is_connected:
             logger.info("Connected {user}@{host}:{port}".format(**self.conn_info))
+            self.connection_id = self.query('SELECT connection_id()').fetchone()[0]
         else:
             raise DataJointError('Connection failed.')
         self._conn.autocommit(True)
@@ -129,6 +130,10 @@ class Connection:
                 cur.execute(query, args)
             else:
                 raise
+        except err.ProgrammingError as e:
+            print('Error in query:')
+            print(query)
+            raise
         return cur
 
     def get_user(self):
