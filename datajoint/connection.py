@@ -112,13 +112,17 @@ class Connection:
         :param as_dict: If as_dict is set to True, the returned cursor objects returns
                         query results as dictionary.
         """
+
         cursor = client.cursors.DictCursor if as_dict else client.cursors.Cursor
         cur = self._conn.cursor(cursor=cursor)
 
-        # Log the query
         try:
+            # Log the query
             logger.debug("Executing SQL:" + query[0:300])
-            cur.execute(query, args)
+            # suppress all warnings arising from underlying SQL library
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                cur.execute(query, args)
         except err.OperationalError as e:
             if 'MySQL server has gone away' in str(e) and config['database.reconnect']:
                 warnings.warn('''Mysql server has gone away.
