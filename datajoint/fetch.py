@@ -26,9 +26,13 @@ class FetchBase:
 
     def copy(self):
         """
+        DEPRECATED
+
         Creates and returns a copy of this object
         :return: copy FetchBase derivatives
         """
+        warnings.warn('Use of `copy` on `fetch` object is deprecated', stacklevel=2)
+
         return self.__class__(self)
 
     def _initialize_behavior(self):
@@ -197,14 +201,13 @@ class Fetch(FetchBase, Callable, Iterable):
                     ret[blob_name] = list(map(unpack_, ret[blob_name]))
 
         else:  # if list of attributes provided
-            single_output = len(attrs) == 1
             attributes = [a for a in attrs if a is not PRIMARY_KEY]
             result = self._relation.proj(*attributes).fetch(**total_behavior)
             return_values = [
                 list(to_dicts(result[self._relation.primary_key]))
                 if attribute is PRIMARY_KEY else result[attribute]
                 for attribute in attrs]
-            ret = return_values[0] if single_output else return_values
+            ret = return_values[0] if len(attrs) == 1 else return_values
 
         return ret
 
@@ -305,7 +308,6 @@ class Fetch1(FetchBase, Callable):
             ret = OrderedDict((name, unpack_(ret[name]) if heading[name].is_blob else ret[name])
                                for name in heading.names)
         else:
-            single_output = len(attrs) == 1
             attributes = [a for a in attrs if a is not PRIMARY_KEY]
             result = self._relation.proj(*attributes).fetch(**ext_behavior)
             if len(result) != 1:
@@ -314,7 +316,7 @@ class Fetch1(FetchBase, Callable):
                 next(to_dicts(result[self._relation.primary_key]))
                 if attribute is PRIMARY_KEY else result[attribute][0]
                 for attribute in attrs)
-            ret = return_values[0] if single_output else return_values
+            ret = return_values[0] if len(attrs) == 1 else return_values
 
 
         return ret
