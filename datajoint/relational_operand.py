@@ -457,7 +457,7 @@ class RelationalOperand:
         """
         number of tuples in the relation.
         """
-        return U().aggr(self, n='count(*)').fetch1['n']
+        return U().aggr(self, n='count(*)').fetch1('n')
 
     def __bool__(self):
         """
