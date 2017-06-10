@@ -52,6 +52,16 @@ class TestFetchDeprecated:
             (self.subject & 'subject_id = 10').fetch1.squeeze()
         assert_warning_about(w, "deprecated")
 
+    def test_fetch_copy_deprecation(self):
+        with warnings.catch_warnings(record=True) as w:
+            self.subject.fetch.copy()
+        assert_warning_about(w, "deprecated")
+
+    def test_fetch1_copy_deprecation(self):
+        with warnings.catch_warnings(record=True) as w:
+            (self.subject & 'subject_id = 10').fetch1.copy()
+        assert_warning_about(w, "deprecated")
+
     def test_limit_deprecation(self):
         with warnings.catch_warnings(record=True) as w:
             self.subject.fetch.limit(10)
