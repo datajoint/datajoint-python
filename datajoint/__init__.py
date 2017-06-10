@@ -28,8 +28,6 @@ __all__ = ['__author__', '__version__',
 
 print('DataJoint', __version__, '('+__date__+')')
 
-logging.captureWarnings(True)
-
 
 class key:
     """
