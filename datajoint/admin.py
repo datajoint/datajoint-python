@@ -7,7 +7,10 @@ from getpass import getpass
 def set_password(new_password=None, connection=None):   # pragma: no cover
     connection = conn() if connection is None else connection
     if new_password is None:
-        new_password = getpass()
+        new_password = getpass('New password: ')
+        confirm_password = getpass('Confirm password: ')
+        if new_password != confirm_password:
+            print('Failed to confirm the password! Aborting password change.)
     connection.query("SET PASSWORD = PASSWORD('%s')" % new_password)
     print('Password updated.')
 
