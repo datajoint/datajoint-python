@@ -10,7 +10,7 @@ def set_password(new_password=None, connection=None):   # pragma: no cover
         new_password = getpass('New password: ')
         confirm_password = getpass('Confirm password: ')
         if new_password != confirm_password:
-            print('Failed to confirm the password! Aborting password change.)
+            print('Failed to confirm the password! Aborting password change.')
     connection.query("SET PASSWORD = PASSWORD('%s')" % new_password)
     print('Password updated.')
 
