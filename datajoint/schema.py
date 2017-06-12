@@ -76,6 +76,12 @@ class Schema:
             database=self.database,
             context=self.context['__name__'] if '__name__' in self.context else "__")
 
+    @property
+    def size_on_disk(self):
+        return float(self.connection.query(
+            """SELECT Sum(data_length + index_length) FROM information_schema.tables WHERE table_schema='{}';""".format(
+                self.database)).fetchone()[0])
+
     def spawn_missing_classes(self):
         """
         Creates the appropriate python user relation classes from tables in the database and places them
