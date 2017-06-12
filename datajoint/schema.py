@@ -78,6 +78,9 @@ class Schema:
 
     @property
     def size_on_disk(self):
+        """
+        :return: size of the database in bytes
+        """
         return float(self.connection.query(
             """SELECT Sum(data_length + index_length) FROM information_schema.tables WHERE table_schema='{}';""".format(
                 self.database)).fetchone()[0])
