@@ -94,6 +94,24 @@ class Config(collections.MutableMapping):
     def __len__(self):
         return len(self.instance._conf)
 
+    def save(self, filename):
+        """
+        Saves the settings in JSON format to the given file path.
+        :param filename: filename of the local JSON settings file.
+        """
+        with open(filename, 'w') as fid:
+            json.dump(self._conf, fid, indent=4)
+
+    def load(self, filename):
+        """
+        Updates the setting from config file in JSON format.
+        :param filename: filename of the local JSON settings file. If None, the local config file is used.
+        """
+        if filename is None:
+            filename = LOCALCONFIG
+        with open(filename, 'r') as fid:
+            self._conf.update(json.load(fid))
+
     def save_local(self):
         """
         saves the settings in the local config file
@@ -105,6 +123,7 @@ class Config(collections.MutableMapping):
         saves the settings in the global config file
         """
         self.save(os.path.expanduser(os.path.join('~', GLOBALCONFIG)))
+
 
     @contextmanager
     def __call__(self, **kwargs):
@@ -155,25 +174,3 @@ class Config(collections.MutableMapping):
                 self._conf[key] = value
             else:
                 raise DataJointError(u'Validator for {0:s} did not pass'.format(key, ))
-
-        def save(self, filename):
-            """
-            Saves the settings in JSON format to the given file path.
-            :param filename: filename of the local JSON settings file.
-            """
-            with open(filename, 'w') as fid:
-                json.dump(self._conf, fid, indent=4)
-
-        def load(self, filename):
-            """
-            Updates the setting from config file in JSON format.
-            :param filename: filename of the local JSON settings file. If None, the local config file is used.
-            """
-            if filename is None:
-                filename = LOCALCONFIG
-            with open(filename, 'r') as fid:
-                self._conf.update(json.load(fid))
-
-
-
-
