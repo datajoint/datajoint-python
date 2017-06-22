@@ -45,7 +45,8 @@ default = OrderedDict({
     'loglevel': 'INFO',
     'safemode': True,
     'display.limit': 7,
-    'display.width': 14
+    'display.width': 14,
+    'display.tuple_count': True
 })
 
 logger = logging.getLogger(__name__)
