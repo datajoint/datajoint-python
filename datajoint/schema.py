@@ -158,8 +158,8 @@ class Schema:
         if not instance.is_declared:
             assert not assert_declared, 'incorrect table name generation'
             instance.declare()
-        if instance.is_declared and hasattr(instance, 'contents'):
-            # process the contents attribute
+        if instance.is_declared and hasattr(instance, 'contents') and isinstance(instance, Lookup):
+            # process the contents attribute for Lookup tables
             contents = list(instance.contents)
             if len(contents) > len(instance):
                 if instance.heading.has_autoincrement:

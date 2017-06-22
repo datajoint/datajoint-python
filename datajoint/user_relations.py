@@ -50,6 +50,9 @@ class UserRelation(BaseRelation, metaclass=OrderedClass):
         """
         :return: a string containing the table definition using the DataJoint DDL.
         """
+        if self.__doc__ is not None:
+            # if the definition string is missing, use the doc string as definition
+            return self.__doc__
         raise NotImplementedError('Subclasses of BaseRelation must implement the property "definition"')
 
     @ClassProperty
