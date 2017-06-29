@@ -5,6 +5,7 @@ import random
 from pymysql import OperationalError
 from .relational_operand import RelationalOperand, AndList
 from . import DataJointError
+from . import key as KEY
 from .base_relation import FreeRelation
 import signal
 
@@ -56,7 +57,7 @@ class AutoPopulate:
         """
         return self
 
-    def populate(self, *restrictions, suppress_errors=False, reserve_jobs=False, order="original"):
+    def populate(self, *restrictions, suppress_errors=False, reserve_jobs=False, order="original", limit=None):
         """
         rel.populate() calls rel._make_tuples(key) for every primary key in self.key_source
         for which there is not already a tuple in rel.
@@ -65,6 +66,7 @@ class AutoPopulate:
         :param suppress_errors: suppresses error if true
         :param reserve_jobs: if true, reserves job to populate in asynchronous fashion
         :param order: "original"|"reverse"|"random"  - the order of execution
+        :param limit: if not None, populates at max that many keys
         """
         if self.connection.in_transaction:
             raise DataJointError('Populate cannot be called during a transaction.')
@@ -90,7 +92,7 @@ class AutoPopulate:
             old_handler = signal.signal(signal.SIGTERM, handler)
 
         todo -= self.target
-        keys = list(todo.fetch.keys())
+        keys = todo.fetch(KEY, limit=limit)
         if order == "reverse":
             keys.reverse()
         elif order == "random":
