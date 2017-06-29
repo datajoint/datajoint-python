@@ -355,4 +355,4 @@ class Fetch1(FetchBase, Callable):
 
 def to_dicts(recarray):
     for rec in recarray:
-        yield dict(zip(recarray.dtype.names, rec))
+        yield dict(zip(recarray.dtype.names, rec.tolist()))
