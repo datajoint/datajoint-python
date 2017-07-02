@@ -174,6 +174,13 @@ class ERD(nx.DiGraph):
         :param font_scale: the scalar used to scale all the fonts.
         :param layout_options:  kwargs passed into the layout function.
         """
+
+        import matplotlib.pyplot as plt
+        import matplotlib.lines as lines
+        import matplotlib.patches as patches
+        import matplotlib.path as path
+        import numpy as np
+
         if not self.nodes_to_show:
             print('There is nothing to plot')
             return
@@ -190,38 +197,51 @@ class ERD(nx.DiGraph):
         if pos is None:
             pos = (layout if layout else self._layout)(graph, **layout_options)
 
-        import matplotlib.pyplot as plt
 
-        edge_list = graph.edges(data=True)
-        edge_styles = ['solid' if e[2]['primary'] else 'dashed' for e in edge_list]
-        nx.draw_networkx_edges(graph, pos=pos, edgelist=edge_list, style=edge_styles, alpha=0.2)
+        ax = plt.gca()
+        for u, v, d in graph.edges(data=True):
+            tail = np.array(pos[u])
+            head = np.array(pos[v])
+            # ax.add_patch(patches.FancyArrowPatch(
+            #     head*0.6+tail*0.4, head*0.4+tail*0.6,
+            #     connectionstyle='arc3',
+            #     mutation_scale=20,
+            #     color='black',
+            #     alpha=0.2))
+            # #
+            # l = lines.Line2D([tail[0], head[0]], [tail[1], head[1]],
+            #            color='black',
+            #            linewidth=1,
+            #            solid_capstyle='round',
+            #            linestyle='solid' if d['primary'] else 'dashed',
+            #            alpha=0.1)
+            # ax.add_line(l)
+
+            p = np.array([0, 0.2])
+            q = np.array([0, 0.1])
+            ppp = patches.PathPatch(
+                path.Path([tail, tail*(1-p)+head*p, tail*p+head*(1-p), tail*q+head*(1-q), tail],
+                          [path.Path.MOVETO, path.Path.CURVE3, path.Path.CURVE3, path.Path.CURVE3, path.Path.CLOSEPOLY]),
+                color='black', fc="none", transform=ax.transData, alpha=0.2, linestyle=':')
+            ax.add_patch(ppp)
 
         label_props = {  # http://matplotlib.org/examples/color/named_colors.html
-            None: dict(bbox=dict(boxstyle='round,pad=0.1', facecolor='yellow', alpha=0.3), size=round(font_scale*8)),
-            Manual: dict(bbox=dict(boxstyle='round,pad=0.1', edgecolor='white', facecolor='darkgreen', alpha=0.3), size=round(font_scale*10)),
-            Lookup: dict(bbox=dict(boxstyle='round,pad=0.1', edgecolor='white', facecolor='gray', alpha=0.2), size=round(font_scale*8)),
-            Computed: dict(bbox=dict(boxstyle='round,pad=0.1', edgecolor='white', facecolor='red', alpha=0.2), size=round(font_scale*10)),
-            Imported: dict(bbox=dict(boxstyle='round,pad=0.1', edgecolor='white', facecolor='darkblue', alpha=0.2), size=round(font_scale*10)),
-            Part: dict(size=round(font_scale*7))}
-        ax = plt.gca()
+            None: dict(fontdict=dict(color='yellow', size=round(font_scale*8))),
+            Manual: dict(fontdict=dict(color='darkgreen', size=round(font_scale*10))),
+            Lookup: dict(fontdict=dict(color='gray', size=round(font_scale*8))),
+            Computed: dict(fontdict=dict(color='darkred', size=round(font_scale*10))),
+            Imported: dict(fontdict=dict(color='mediumblue', size=round(font_scale*10))),
+            Part: dict(fontdict=dict(color='black', size=round(font_scale*7), weight='light'))}
+
         for node in graph.nodes(data=True):
             ax.text(pos[node[0]][0], pos[node[0]][1], node[0],
-                    horizontalalignment='left',
+                    horizontalalignment='left', verticalalignment='bottom', rotation=10,
                     **label_props[node[1]['node_type']])
         ax = plt.gca()
         ax.axis('off')
-        ax.set_xlim([-0.05, 1.4])  # allow a margin for labels
+        ax.autoscale()
         plt.show()
 
     @staticmethod
     def _layout(graph, **kwargs):
-        """
-        :param graph:  a networkx.DiGraph object
-        :return: position dict keyed by node names
-        """
-        pos = graphviz_layout(graph, prog='dot', **kwargs)
-        m = dict(x=(min(v[0] for v in pos.values()), max(v[0] for v in pos.values())),
-                 y=(min(v[1] for v in pos.values()), max(v[1] for v in pos.values())))
-        return {k: ((v[0]-m['x'][0])/(m['x'][1]-m['x'][0]),
-                    (v[1]-m['x'][1])/(m['y'][1]-m['y'][0]))
-                for k, v in pos.items()}
+        return graphviz_layout(graph, prog='dot', **kwargs)
