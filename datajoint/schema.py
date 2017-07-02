@@ -156,7 +156,7 @@ class Schema:
         # instantiate the class, declare the table if not already, and fill it with initial values.
         instance = relation_class()
         if not instance.is_declared:
-            assert not assert_declared, 'incorrect table name generation'
+            assert not assert_declared, 'incorrect table name generation %s' % instance.table_name
             instance.declare()
         if instance.is_declared and hasattr(instance, 'contents') and isinstance(instance, Lookup):
             # process the contents attribute for Lookup tables

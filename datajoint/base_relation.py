@@ -101,10 +101,9 @@ class BaseRelation(RelationalOperand):
         """
         :return: True is the table is declared in the database
         """
-        cur = self.connection.query(
-            'SHOW TABLES in `{database}`LIKE "{table_name}"'.format(
-                database=self.database, table_name=self.table_name))
-        return cur.rowcount > 0
+        return self.connection.query(
+            'SHOW TABLES in `{database}` LIKE "{table_name}"'.format(
+                database=self.database, table_name=self.table_name)).rowcount > 0
 
     @property
     def full_table_name(self):
@@ -307,9 +306,13 @@ class BaseRelation(RelationalOperand):
                 print('Nothing to delete')
         else:
             if not config['safemode'] or user_choice("Proceed?", default='no') == 'yes':
-                with self.connection.transaction:
-                    for r in reversed(list(relations_to_delete.values())):
-                        r.delete_quick()
+                already_in_transaction = self.connection._in_transaction
+                if not already_in_transaction:
+                    self.connection.start_transaction()
+                for r in reversed(list(relations_to_delete.values())):
+                    r.delete_quick()
+                if not already_in_transaction:
+                    self.connection.commit_transaction()
                 print('Done')
 
     def drop_quick(self):
