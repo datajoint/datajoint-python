@@ -63,7 +63,7 @@ class Dependencies(nx.DiGraph):
                               referenced_attributes=referenced_attributes,
                               referencing_attributes=referencing_attributes,
                               aliased=any(a != b for a, b in zip(referenced_attributes, referenced_attributes)),
-                              multi=any(a not in primary_key for a in referencing_attributes))
+                              multi=any(a not in referencing_attributes for a in primary_key))
 
     def load(self, target=None):
         """

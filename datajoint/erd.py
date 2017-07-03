@@ -38,11 +38,21 @@ class ERD(nx.DiGraph):
     Note that erd + 1 - 1  may differ from erd - 1 + 1 and so forth.
     Only those tables that are loaded in the connection object are displayed
     """
-    def __init__(self, source):
+    def __init__(self, source, context=None):
+
+        # get the caller's locals()
+        self.context = None
+        import inspect
+        frame = inspect.currentframe()
+        try:
+            self.context = frame.f_back.f_locals
+        finally:
+            del frame
 
         if isinstance(source, ERD):
             # copy constructor
             self.nodes_to_show = set(source.nodes_to_show)
+            self.context = source.context
             super().__init__(source)
             return
 
@@ -151,96 +161,71 @@ class ERD(nx.DiGraph):
         self.nodes_to_show.intersection_update(arg.nodes_to_show)
         return self
 
-    def _make_graph(self, context):
+    def _make_graph(self):
         """
         Make the self.graph - a graph object ready for drawing
         """
         graph = nx.DiGraph(self).subgraph(self.nodes_to_show)
         nx.set_node_attributes(graph, 'node_type', {n: _get_tier(n) for n in graph})
         # relabel nodes to class names
-        mapping = {node: (lookup_class_name(node, context) or node) for node in graph.nodes()}
+        mapping = {node: (lookup_class_name(node, self.context) or node) for node in graph.nodes()}
         new_names = [mapping.values()]
         if len(new_names) > len(set(new_names)):
             raise DataJointError('Some classes have identical names. The ERD cannot be plotted.')
         nx.relabel_nodes(graph, mapping, copy=False)
         return graph
 
-    def draw(self, pos=None, layout=None, context=None, font_scale=1.5, **layout_options):   # pragma: no cover
-        """
-        Draws the graph of dependencies.
-        :param pos: dict with positions for every node.  If None, then layout is called.
-        :param layout: the graph layout function. If None, then self._layout is used.
-        :param context: the context in which to look for the class names.  If None, the caller's context is used.
-        :param font_scale: the scalar used to scale all the fonts.
-        :param layout_options:  kwargs passed into the layout function.
-        """
+    def make_svg(self):
+        from IPython.display import SVG
+        import networkx as nx
 
-        import matplotlib.pyplot as plt
-        import matplotlib.lines as lines
-        import matplotlib.patches as patches
-        import matplotlib.path as path
-        import numpy as np
+        graph = self._make_graph()
+        graph.nodes()
 
-        if not self.nodes_to_show:
-            print('There is nothing to plot')
-            return
-        if context is None:
-            # get the caller's locals()
-            import inspect
-            frame = inspect.currentframe()
-            try:
-                context = frame.f_back.f_locals
-            finally:
-                del frame
-
-        graph = self._make_graph(context)
-        if pos is None:
-            pos = (layout if layout else self._layout)(graph, **layout_options)
-
-
-        ax = plt.gca()
-        for u, v, d in graph.edges(data=True):
-            tail = np.array(pos[u])
-            head = np.array(pos[v])
-            # ax.add_patch(patches.FancyArrowPatch(
-            #     head*0.6+tail*0.4, head*0.4+tail*0.6,
-            #     connectionstyle='arc3',
-            #     mutation_scale=20,
-            #     color='black',
-            #     alpha=0.2))
-            # #
-            # l = lines.Line2D([tail[0], head[0]], [tail[1], head[1]],
-            #            color='black',
-            #            linewidth=1,
-            #            solid_capstyle='round',
-            #            linestyle='solid' if d['primary'] else 'dashed',
-            #            alpha=0.1)
-            # ax.add_line(l)
-
-            p = np.array([0, 0.2])
-            q = np.array([0, 0.1])
-            ppp = patches.PathPatch(
-                path.Path([tail, tail*(1-p)+head*p, tail*p+head*(1-p), tail*q+head*(1-q), tail],
-                          [path.Path.MOVETO, path.Path.CURVE3, path.Path.CURVE3, path.Path.CURVE3, path.Path.CLOSEPOLY]),
-                color='black', fc="none", transform=ax.transData, alpha=0.2, linestyle=':')
-            ax.add_patch(ppp)
-
+        font_scale = 1.0
         label_props = {  # http://matplotlib.org/examples/color/named_colors.html
-            None: dict(fontdict=dict(color='yellow', size=round(font_scale*8))),
-            Manual: dict(fontdict=dict(color='darkgreen', size=round(font_scale*10))),
-            Lookup: dict(fontdict=dict(color='gray', size=round(font_scale*8))),
-            Computed: dict(fontdict=dict(color='darkred', size=round(font_scale*10))),
-            Imported: dict(fontdict=dict(color='mediumblue', size=round(font_scale*10))),
-            Part: dict(fontdict=dict(color='black', size=round(font_scale*7), weight='light'))}
+            None: dict(shape='circle', color="#FFFF0040", fontcolor='yellow', fontsize=round(font_scale*8), size=0.4, fixed=False),
+            Manual: dict(shape='box', color="#00FF0030", fontcolor='darkgreen', fontsize=round(font_scale*10), size=0.4, fixed=False),
+            Lookup: dict(shape='plaintext', color='#00000020', fontcolor='black', fontsize=round(font_scale*8), size=0.4, fixed=False),
+            Computed: dict(shape='circle', color='#FF000020', fontcolor='darkred', fontsize=round(font_scale*10), size=0.3, fixed=True),
+            Imported: dict(shape='ellipse', color='#00007F40', fontcolor='darkblue', fontsize=round(font_scale*10), size=0.4, fixed=False),
+            Part: dict(shape='plaintext', color='#00000000', fontcolor='black', fontsize=round(font_scale*8), size=0.1, fixed=False)}
+        node_props = {node: label_props[d['node_type']] for node, d in dict(graph.nodes(data=True)).items()}
 
-        for node in graph.nodes(data=True):
-            ax.text(pos[node[0]][0], pos[node[0]][1], node[0],
-                    horizontalalignment='left', verticalalignment='bottom', rotation=10,
-                    **label_props[node[1]['node_type']])
-        ax = plt.gca()
-        ax.axis('off')
-        ax.autoscale()
-        plt.show()
+        dot = nx.drawing.nx_pydot.to_pydot(graph)
+        for node in dot.get_nodes():
+            node.set_shape('circle')
+            name = node.get_name().strip('"')
+            props = node_props[name]
+            node.set_fontsize(props['fontsize'])
+            node.set_fontcolor(props['fontcolor'])
+            node.set_shape(props['shape'])
+            node.set_fontname('arial')
+            node.set_fixedsize('shape' if props['fixed'] else False)
+            node.set_width(props['size'])
+            node.set_height(props['size'])
+            node.set_label(name)
+            # node.set_margin(0.05)
+            node.set_color(props['color'])
+            node.set_style('filled')
+
+        for edge in dot.get_edges():
+            # see http://www.graphviz.org/content/attrs
+            src = edge.get_source().strip('"')
+            dest = edge.get_destination().strip('"')
+            props = graph.get_edge_data(src, dest)
+            edge.set_color('#00000040')
+            edge.set_style('solid' if props['primary'] else 'dashed')
+            master_part = graph.node[dest]['node_type'] is Part and dest.startswith(src+'.')
+            edge.set_weight(3 if master_part else 1)
+            edge.set_arrowhead('none')
+            edge.set_penwidth(.75 if props['multi'] else 2)
+
+        return SVG(dot.create_svg())
+
+    def _repr_svg_(self):
+        return self.make_svg()._repr_svg_()
+
 
     @staticmethod
     def _layout(graph, **kwargs):
