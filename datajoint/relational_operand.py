@@ -29,7 +29,7 @@ def restricts_to_empty(arg):
     """
     returns True if restriction with arg must produce the empty relation.
     """
-    or_lists = (list, set, tuple, np.ndarray, RelationalOperand)
+    or_lists = (list, set, tuple, np.ndarray)
     return (arg is None or (isinstance(arg, AndList) and any(restricts_to_empty(r) for r in arg)) or
             arg is None or arg is False or equal_ignore_case(arg, "FALSE") or
             isinstance(arg, or_lists) and len(arg) == 0 or  # empty OR-list equals FALSE
