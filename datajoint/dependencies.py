@@ -1,5 +1,6 @@
 import pyparsing as pp
 import networkx as nx
+import itertools
 from . import DataJointError
 
 
@@ -13,6 +14,7 @@ class Dependencies(nx.DiGraph):
     def __init__(self, connection):
         self._conn = connection
         self.loaded_tables = set()
+        self._node_alias_count = itertools.count()
         super().__init__(self)
 
     @staticmethod
@@ -58,12 +60,20 @@ class Dependencies(nx.DiGraph):
             else:
                 referencing_attributes = [r.strip('` ') for r in result.attributes.split(',')]
                 referenced_attributes = [r.strip('` ') for r in result.referenced_attributes.split(',')]
-                self.add_edge(result.referenced_table, table_name,
-                              primary=all(a in primary_key for a in referencing_attributes),
-                              referenced_attributes=referenced_attributes,
-                              referencing_attributes=referencing_attributes,
-                              aliased=any(a != b for a, b in zip(referenced_attributes, referenced_attributes)),
-                              multi=any(a not in referencing_attributes for a in primary_key))
+                props = dict(
+                    primary=all(a in primary_key for a in referencing_attributes),
+                    referencing_attributes=referencing_attributes,
+                    aliased=not all(a == b for a, b in zip(referencing_attributes, referenced_attributes)),
+                    multi=not all(a in referencing_attributes for a in primary_key))
+                if not props['aliased']:
+                    self.add_edge(result.referenced_table, table_name, **props)
+                else:
+                    # for aliased dependencies, add an extra node in the format '1', '2', etc
+                    alias_node = '%d' % next(self._node_alias_count)
+                    self.add_node(alias_node)
+                    self.add_edge(result.referenced_table, alias_node, **props)
+                    self.add_edge(alias_node, table_name, **props)
+
 
     def load(self, target=None):
         """

@@ -8,12 +8,22 @@ from networkx.drawing.nx_agraph import graphviz_layout
 user_relation_classes = (Manual, Lookup, Computed, Imported, Part)
 
 
+class _AliasNode:
+    """
+    special class to indicate aliased foreign keys
+    """
+    pass
+
+
 def _get_tier(table_name):
-    try:
-        return next(tier for tier in user_relation_classes
-                    if re.fullmatch(tier.tier_regexp, table_name.split('`')[-2]))
-    except StopIteration:
-        return None
+    if not table_name.startswith('`'):
+        return _AliasNode
+    else:
+        try:
+            return next(tier for tier in user_relation_classes
+                        if re.fullmatch(tier.tier_regexp, table_name.split('`')[-2]))
+        except StopIteration:
+            return None
 
 
 class ERD(nx.DiGraph):
@@ -185,11 +195,12 @@ class ERD(nx.DiGraph):
         font_scale = 1.0
         label_props = {  # http://matplotlib.org/examples/color/named_colors.html
             None: dict(shape='circle', color="#FFFF0040", fontcolor='yellow', fontsize=round(font_scale*8), size=0.4, fixed=False),
+            _AliasNode: dict(shape='circle', color="#FF880080", fontcolor='white', fontsize=round(font_scale*6), size=0.15, fixed=True),
             Manual: dict(shape='box', color="#00FF0030", fontcolor='darkgreen', fontsize=round(font_scale*10), size=0.4, fixed=False),
             Lookup: dict(shape='plaintext', color='#00000020', fontcolor='black', fontsize=round(font_scale*8), size=0.4, fixed=False),
             Computed: dict(shape='circle', color='#FF000020', fontcolor='darkred', fontsize=round(font_scale*10), size=0.3, fixed=True),
             Imported: dict(shape='ellipse', color='#00007F40', fontcolor='darkblue', fontsize=round(font_scale*10), size=0.4, fixed=False),
-            Part: dict(shape='plaintext', color='#00000000', fontcolor='black', fontsize=round(font_scale*8), size=0.1, fixed=False)}
+            Part: dict(shape='plaintext', color='#0000000', fontcolor='black', fontsize=round(font_scale*8), size=0.1, fixed=False)}
         node_props = {node: label_props[d['node_type']] for node, d in dict(graph.nodes(data=True)).items()}
 
         dot = nx.drawing.nx_pydot.to_pydot(graph)
