@@ -1,9 +1,12 @@
 import networkx as nx
 import re
 import functools
+import io
+from matplotlib import pyplot as plt
+from networkx.drawing.nx_agraph import graphviz_layout
 from . import Manual, Imported, Computed, Lookup, Part, DataJointError
 from .base_relation import lookup_class_name
-from networkx.drawing.nx_agraph import graphviz_layout
+
 
 user_relation_classes = (Manual, Lookup, Computed, Imported, Part)
 
@@ -185,8 +188,7 @@ class ERD(nx.DiGraph):
         nx.relabel_nodes(graph, mapping, copy=False)
         return graph
 
-    def make_svg(self):
-        from IPython.display import SVG
+    def make_dot(self):
         import networkx as nx
 
         graph = self._make_graph()
@@ -198,8 +200,8 @@ class ERD(nx.DiGraph):
             _AliasNode: dict(shape='circle', color="#FF880080", fontcolor='white', fontsize=round(font_scale*6), size=0.15, fixed=True),
             Manual: dict(shape='box', color="#00FF0030", fontcolor='darkgreen', fontsize=round(font_scale*10), size=0.4, fixed=False),
             Lookup: dict(shape='plaintext', color='#00000020', fontcolor='black', fontsize=round(font_scale*8), size=0.4, fixed=False),
-            Computed: dict(shape='circle', color='#FF000020', fontcolor='darkred', fontsize=round(font_scale*10), size=0.3, fixed=True),
-            Imported: dict(shape='ellipse', color='#00007F40', fontcolor='darkblue', fontsize=round(font_scale*10), size=0.4, fixed=False),
+            Computed: dict(shape='circle', color='#FF000020', fontcolor='#7F0000A0', fontsize=round(font_scale*10), size=0.3, fixed=True),
+            Imported: dict(shape='ellipse', color='#00007F40', fontcolor='#00007FA0', fontsize=round(font_scale*10), size=0.4, fixed=False),
             Part: dict(shape='plaintext', color='#0000000', fontcolor='black', fontsize=round(font_scale*8), size=0.1, fixed=False)}
         node_props = {node: label_props[d['node_type']] for node, d in dict(graph.nodes(data=True)).items()}
 
@@ -232,10 +234,25 @@ class ERD(nx.DiGraph):
             edge.set_arrowhead('none')
             edge.set_penwidth(.75 if props['multi'] else 2)
 
-        return SVG(dot.create_svg())
+        return dot
+
+    def make_svg(self):
+        from IPython.display import SVG
+        return SVG(self.make_dot().create_svg())
+
+    def make_png(self):
+        return io.BytesIO(self.make_dot().create_png())
+
+    def make_image(self):
+        return plt.imread(self.make_png())
 
     def _repr_svg_(self):
         return self.make_svg()._repr_svg_()
+
+    def draw(self):
+        plt.imshow(self.make_image())
+        plt.gca().axis('off')
+        plt.show()
 
 
     @staticmethod
