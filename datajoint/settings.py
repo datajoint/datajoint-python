@@ -70,6 +70,9 @@ class Config(collections.MutableMapping):
             else:
                 Config.instance._conf.update(dict(*args, **kwargs))
 
+    def add_history(self, item):
+        self.update({'history': self.get('history', []) + [item]})
+
     def __getattr__(self, name):
         return getattr(self.instance, name)
 
@@ -111,6 +114,7 @@ class Config(collections.MutableMapping):
             filename = LOCALCONFIG
         with open(filename, 'r') as fid:
             self._conf.update(json.load(fid))
+        self.add_history('Updated from config file: %s' % filename)
 
     def save_local(self):
         """

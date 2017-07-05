@@ -26,8 +26,6 @@ __all__ = ['__author__', '__version__',
            'AndList', 'OrList', 'ERD', 'U',
            'set_password']
 
-print('DataJoint', __version__, '('+__date__+')')
-
 
 class key:
     """
@@ -49,11 +47,8 @@ config_files = (os.path.expanduser(n) for n in (LOCALCONFIG, os.path.join('~', G
 try:
     config_file = next(n for n in config_files if os.path.exists(n))
 except StopIteration:
-    print('No config file found, using default settings.')
-    config_file = None
+    config.add_history('No config file found, using default settings.')
 else:
-    print("Loading settings from {0:s}".format(config_file))
-    logger.log(logging.INFO, "Loading local settings from {0:s}".format(config_file))
     config.load(config_file)
 
 # override login credentials with environment variables
@@ -61,6 +56,8 @@ mapping = {k: v for k, v in zip(
     ('database.host', 'database.user', 'database.password'),
     map(os.getenv, ('DJ_HOST', 'DJ_USER', 'DJ_PASS')))
            if v is not None}
+for k in mapping:
+    config.add_history('Updated login credentials from %s' % k)
 config.update(mapping)
 
 logger.setLevel(log_levels[config['loglevel']])

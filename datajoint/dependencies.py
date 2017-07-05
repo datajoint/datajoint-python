@@ -6,7 +6,7 @@ from . import DataJointError
 
 class Dependencies(nx.DiGraph):
     """
-    Lookup for dependencies between tables
+    The graph of dependencies (foreign keys) between loaded tables.
     """
     __primary_key_parser = (pp.CaselessLiteral('PRIMARY KEY') +
                             pp.QuotedString('(', endQuoteChar=')').setResultsName('primary_key'))
@@ -73,7 +73,6 @@ class Dependencies(nx.DiGraph):
                     self.add_node(alias_node)
                     self.add_edge(result.referenced_table, alias_node, **props)
                     self.add_edge(alias_node, table_name, **props)
-
 
     def load(self, target=None):
         """
