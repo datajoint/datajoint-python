@@ -4,6 +4,7 @@ import logging
 import inspect
 import re
 from . import conn, DataJointError, config
+from .erd import ERD
 from .heading import Heading
 from .utils import user_choice, to_camel_case
 from .user_relations import Part, Computed, Imported, Manual, Lookup
@@ -206,4 +207,11 @@ class Schema:
         :return: jobs relation
         """
         return self.connection.jobs[self.database]
+
+    def erd(self):
+        # get the caller's locals()
+        import inspect
+        frame = inspect.currentframe()
+        context = frame.f_back.f_locals
+        return ERD(self, context=context)
 

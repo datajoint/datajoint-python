@@ -12,7 +12,7 @@ schema = dj.schema(PREFIX + '_relational', locals(), connection=dj.conn(**CONN_I
 
 
 @schema
-class IJ(dj.Manual):
+class IJ(dj.Lookup):
     definition = """  # tests restrictions
     i  : int
     j  : int
@@ -21,7 +21,7 @@ class IJ(dj.Manual):
 
 
 @schema
-class JI(dj.Manual):
+class JI(dj.Lookup):
     definition = """  # tests restrictions by relations when attributes are reordered
     j  : int
     i  : int

@@ -53,21 +53,22 @@ class ERD(nx.DiGraph):
     """
     def __init__(self, source, context=None):
 
-        # get the caller's locals()
-        self.context = None
-        import inspect
-        frame = inspect.currentframe()
-        try:
-            self.context = frame.f_back.f_locals
-        finally:
-            del frame
-
         if isinstance(source, ERD):
             # copy constructor
             self.nodes_to_show = set(source.nodes_to_show)
             self.context = source.context
             super().__init__(source)
             return
+
+        # get the caller's locals()
+        if context is None:
+            import inspect
+            frame = inspect.currentframe()
+            try:
+                context = frame.f_back.f_locals
+            finally:
+                del frame
+        self.context = context
 
         # find connection in the source
         try:
@@ -194,15 +195,15 @@ class ERD(nx.DiGraph):
         graph = self._make_graph()
         graph.nodes()
 
-        font_scale = 1.0
+        scale = 1.2   # scaling factor for fonts and boxes
         label_props = {  # http://matplotlib.org/examples/color/named_colors.html
-            None: dict(shape='circle', color="#FFFF0040", fontcolor='yellow', fontsize=round(font_scale*8), size=0.4, fixed=False),
-            _AliasNode: dict(shape='circle', color="#FF880080", fontcolor='white', fontsize=round(font_scale*6), size=0.15, fixed=True),
-            Manual: dict(shape='box', color="#00FF0030", fontcolor='darkgreen', fontsize=round(font_scale*10), size=0.4, fixed=False),
-            Lookup: dict(shape='plaintext', color='#00000020', fontcolor='black', fontsize=round(font_scale*8), size=0.4, fixed=False),
-            Computed: dict(shape='circle', color='#FF000020', fontcolor='#7F0000A0', fontsize=round(font_scale*10), size=0.3, fixed=True),
-            Imported: dict(shape='ellipse', color='#00007F40', fontcolor='#00007FA0', fontsize=round(font_scale*10), size=0.4, fixed=False),
-            Part: dict(shape='plaintext', color='#0000000', fontcolor='black', fontsize=round(font_scale*8), size=0.1, fixed=False)}
+            None: dict(shape='circle', color="#FFFF0040", fontcolor='yellow', fontsize=round(scale*8), size=0.4*scale, fixed=False),
+            _AliasNode: dict(shape='circle', color="#FF880080", fontcolor='white', fontsize=round(scale*6), size=0.15*scale, fixed=True),
+            Manual: dict(shape='box', color="#00FF0030", fontcolor='darkgreen', fontsize=round(scale*10), size=0.4*scale, fixed=False),
+            Lookup: dict(shape='plaintext', color='#00000020', fontcolor='black', fontsize=round(scale*8), size=0.4*scale, fixed=False),
+            Computed: dict(shape='circle', color='#FF000020', fontcolor='#7F0000A0', fontsize=round(scale*10), size=0.3*scale, fixed=True),
+            Imported: dict(shape='ellipse', color='#00007F40', fontcolor='#00007FA0', fontsize=round(scale*10), size=0.4*scale, fixed=False),
+            Part: dict(shape='plaintext', color='#0000000', fontcolor='black', fontsize=round(scale*8), size=0.1*scale, fixed=False)}
         node_props = {node: label_props[d['node_type']] for node, d in dict(graph.nodes(data=True)).items()}
 
         dot = nx.drawing.nx_pydot.to_pydot(graph)
@@ -254,6 +255,20 @@ class ERD(nx.DiGraph):
         plt.gca().axis('off')
         plt.show()
 
+    def save(self, filename, format=None):
+        if format is None:
+            if filename.lower().endswith('.png'):
+                format = 'png'
+            elif filename.lower().endswith('.svg'):
+                format = 'svg'
+        if format.lower() == 'png':
+            with open(filename, 'wb') as f:
+                f.write(self.make_png().getbuffer().tobytes())
+        elif format.lower() == 'svg':
+            with open(filename, 'w') as f:
+                f.write(self.make_svg().data)
+        else:
+            raise DataJointError('Unsupported file format')
 
     @staticmethod
     def _layout(graph, **kwargs):

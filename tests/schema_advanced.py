@@ -5,7 +5,7 @@ schema = dj.schema(PREFIX + '_advanced', locals(), connection=dj.conn(**CONN_INF
 
 
 @schema
-class Person(dj.Manual):
+class Person(dj.Lookup):
     definition = """
     person_id : int
     ----
@@ -38,7 +38,7 @@ class Person(dj.Manual):
 
 
 @schema
-class Parent(dj.Manual):
+class Parent(dj.Lookup):
     definition = """
     -> Person
     parent_sex  : enum('M','F')
