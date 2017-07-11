@@ -12,7 +12,7 @@ schema = dj.schema(PREFIX + '_test1', locals(), connection=dj.conn(**CONN_INFO))
 
 
 @schema
-class Test(dj.Computed):
+class Test(dj.Lookup):
     definition = """
     key   :   int     # key
     ---
@@ -43,7 +43,7 @@ class User(dj.Lookup):
 
 
 @schema
-class Subject(dj.Manual):
+class Subject(dj.Lookup):
     definition = """  # Basic information about animal subjects used in experiments
     subject_id   :int  #  unique subject id
     ---
@@ -189,7 +189,7 @@ class Image(dj.Manual):
 
 
 @schema
-class UberTrash(dj.Manual):
+class UberTrash(dj.Lookup):
     definition = """
     id : int
     ---
@@ -198,7 +198,7 @@ class UberTrash(dj.Manual):
 
 
 @schema
-class UnterTrash(dj.Manual):
+class UnterTrash(dj.Lookup):
     definition = """
     -> UberTrash
     my_id   : int

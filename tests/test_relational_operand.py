@@ -225,8 +225,8 @@ class TestRelational:
         """
         x = IJ()
         y = JI()
-        n = len(x & y.fetch.as_dict())
-        m = len(x - y.fetch.as_dict())
+        n = len(x & y.fetch(as_dict=True))
+        m = len(x - y.fetch(as_dict=True))
         assert_true(n > 0 and m > 0)
         assert_true(len(x) == m + n)
         assert_true(len(x & y.fetch()) == n)
