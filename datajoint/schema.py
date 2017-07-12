@@ -35,7 +35,7 @@ class Schema:
     It also specifies the namespace `context` in which other UserRelation classes are defined.
     """
 
-    def __init__(self, database, context, connection=None):
+    def __init__(self, database, context, connection=None, create=True):
         """
         Associates the specified database with this schema object. If the target database does not exist
         already, will attempt on creating the database.
@@ -50,19 +50,24 @@ class Schema:
         self.database = database
         self.connection = connection
         self.context = context
+        self.create = create
         if not self.exists:
-            # create database
-            logger.info("Database `{database}` could not be found. "
-                        "Attempting to create the database.".format(database=database))
-            try:
-                connection.query("CREATE DATABASE `{database}`".format(database=database))
-                logger.info('Created database `{database}`.'.format(database=database))
-            except pymysql.OperationalError:
-                raise DataJointError("Database named `{database}` was not defined, and"
-                                     " an attempt to create has failed. Check"
-                                     " permissions.".format(database=database))
+            if not self.create:
+                raise DataJointError("Database named `{database}` was not defined. "
+                                     "Set the create flag to create it.".format(database=database))
             else:
-                self.log('created')
+                # create database
+                logger.info("Database `{database}` could not be found. "
+                            "Attempting to create the database.".format(database=database))
+                try:
+                    connection.query("CREATE DATABASE `{database}`".format(database=database))
+                    logger.info('Created database `{database}`.'.format(database=database))
+                except pymysql.OperationalError:
+                    raise DataJointError("Database named `{database}` was not defined, and"
+                                         " an attempt to create has failed. Check"
+                                         " permissions.".format(database=database))
+                else:
+                    self.log('created')
         self.log('connect')
         connection.register(self)
 
@@ -154,7 +159,7 @@ class Schema:
         relation_class._connection = self.connection
         relation_class._heading = Heading()
         relation_class._context = context
-        # instantiate the class, declare the table if not already, and fill it with initial values.
+        # instantiate the class, declare the table if not already, and fill it with initial values (for lookups)
         instance = relation_class()
         if not instance.is_declared:
             assert not assert_declared, 'incorrect table name generation %s' % instance.table_name

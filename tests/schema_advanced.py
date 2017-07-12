@@ -5,7 +5,7 @@ schema = dj.schema(PREFIX + '_advanced', locals(), connection=dj.conn(**CONN_INF
 
 
 @schema
-class Person(dj.Lookup):
+class Person(dj.Manual):
     definition = """
     person_id : int
     ----
@@ -38,12 +38,12 @@ class Person(dj.Lookup):
 
 
 @schema
-class Parent(dj.Lookup):
+class Parent(dj.Manual):
     definition = """
     -> Person
     parent_sex  : enum('M','F')
     ---
-    parent -> Person
+    (parent) -> Person
     """
 
     def fill(self):
@@ -60,3 +60,39 @@ class Parent(dj.Lookup):
 
 
 
+
+@schema
+class Prep(dj.Manual):
+    """
+    prep   : int
+    """
+
+
+@schema
+class Slice(dj.Manual):
+    """
+    -> Prep
+    slice  : int
+    """
+
+@schema
+class Cell(dj.Manual):
+    """
+    -> Slice
+    cell  : int
+    """
+
+@schema
+class LocalSynapse(dj.Manual):
+    """  # a synapse within the slice
+    (presynaptic) -> Cell(cell_id)
+    (postsynaptic)-> Cell
+    """
+
+@schema
+class GlobalSynapse(dj.Manual):
+    """
+    # a synapse within the slice
+    (pre_slice, pre_cell) -> Cell(slice, cell)
+    (post_slice, post_cell)-> Cell(slice, cell)
+    """

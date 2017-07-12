@@ -12,12 +12,12 @@ logger = logging.getLogger(__name__)
 
 
 def build_foreign_key_parser():
-    attribute_name = pp.Word(pp.srange('[a-z]'), pp.srange('[a-z0-9_]'))
-    new_attributes = pp.Optional(pp.delimitedList(attribute_name)).setResultsName('new_attributes')
-    arrow = pp.Literal('->').suppress()
-    ref_table = pp.Word(pp.alphas, pp.alphanums + '._').setResultsName('ref_table')
     left = pp.Literal('(').suppress()
     right = pp.Literal(')').suppress()
+    attribute_name = pp.Word(pp.srange('[a-z]'), pp.srange('[a-z0-9_]'))
+    new_attributes = pp.Optional(left + pp.delimitedList(attribute_name) + right).setResultsName('new_attributes')
+    arrow = pp.Literal('->').suppress()
+    ref_table = pp.Word(pp.alphas, pp.alphanums + '._').setResultsName('ref_table')
     ref_attrs = pp.Optional(left + pp.delimitedList(attribute_name) + right).setResultsName('ref_attrs')
     return new_attributes + arrow + ref_table + ref_attrs
 
