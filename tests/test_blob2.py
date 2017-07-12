@@ -56,7 +56,11 @@ class TestFetch:
         insert_blobs()
 
     def test_complex_matlab_blobs(self):
+<<<<<<< HEAD
+        blobs = Blob().fetch('blob', order_by='id')
+=======
         blobs = Blob().fetch('blob', order_by=('id'))
+>>>>>>> 531b030e3dc8eea3173e347d1bf9d5e191a4c3f3
         assert_equal(blobs[0][0], 'character string')
         assert_true(np.array_equal(blobs[1][0], np.r_[1:180:15]))
         assert_list_equal([r[0] for r in blobs[2]], ['string1', 'string2'])
