@@ -2,6 +2,8 @@ from nose.tools import assert_false, assert_true
 import datajoint as dj
 from .schema_simple import A, B, D, E, L, schema
 
+namespace = locals()
+
 
 class TestERD:
 
@@ -31,7 +33,7 @@ class TestERD:
 
     @staticmethod
     def test_erd():
-        erd = dj.ERD(schema)
+        erd = dj.ERD(schema, context=namespace)
         graph = erd._make_graph()
         assert_true(set(cls.__name__ for cls in (A, B, D, E, L)).issubset(graph.nodes()))
 

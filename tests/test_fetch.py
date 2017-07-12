@@ -100,7 +100,7 @@ class TestFetch:
         for (name, lang), (tname, tlang) in list(zip(cur, languages)):
             assert_true(name == tname and lang == tlang, 'Values are not the same')
         # now as dict
-        cur = self.lang.fetch.as_dict.order_by('language', 'name DESC')
+        cur = self.lang.fetch(as_dict=True, order_by=('language', 'name DESC'))
         for row, (tname, tlang) in list(zip(cur, languages)):
             assert_true(row['name'] == tname and row['language'] == tlang, 'Values are not the same')
 

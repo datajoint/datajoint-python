@@ -51,7 +51,7 @@ class Parent(dj.Lookup):
         def make_parent(pid, parent):
             return dict(person_id=pid,
                         parent=parent,
-                        parent_sex=(Person() & dict(person_id=parent)).fetch['sex'][0])
+                        parent_sex=(Person() & dict(person_id=parent)).fetch('sex')[0])
 
         self.insert(make_parent(*r) for r in (
             (0, 2), (0, 3), (1, 4), (1, 5), (2, 4), (2, 5), (3, 4), (3, 7), (4, 7),

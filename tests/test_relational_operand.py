@@ -180,10 +180,10 @@ class TestRelational:
         assert_equal(len(x), len(B()))
         y = x & 'mean>0'  # restricted aggregation
         assert_true(len(y) > 0)
-        assert_true(all(y.fetch['mean'] > 0))
-        for n, count, mean, max_, key in zip(*x.fetch['n', 'count', 'mean', 'max', dj.key]):
+        assert_true(all(y.fetch('mean') > 0))
+        for n, count, mean, max_, key in zip(*x.fetch('n', 'count', 'mean', 'max', dj.key)):
             assert_equal(n, count, 'aggregation failed (count)')
-            values = (B.C() & key).fetch['value']
+            values = (B.C() & key).fetch('value')
             assert_true(bool(len(values)) == bool(n),
                         'aggregation failed (restriction)')
             if n:
@@ -206,10 +206,10 @@ class TestRelational:
         assert_equal(len(x), len(B()))
         y = x & 'mean>0'  # restricted aggregation
         assert_true(len(y) > 0)
-        assert_true(all(y.fetch['mean'] > 0))
-        for n, count, mean, max_, key in zip(*x.fetch['n', 'count', 'mean', 'max', dj.key]):
+        assert_true(all(y.fetch('mean') > 0))
+        for n, count, mean, max_, key in zip(*x.fetch('n', 'count', 'mean', 'max', dj.key)):
             assert_equal(n, count, 'aggregation failed (count)')
-            values = (B.C() & key).fetch['value']
+            values = (B.C() & key).fetch('value')
             assert_true(bool(len(values)) == bool(n),
                         'aggregation failed (restriction)')
             if n:
@@ -284,7 +284,7 @@ class TestRelational:
     @staticmethod
     def test_datetime():
         """Test date retrieval"""
-        date = Experiment().fetch['experiment_date'][0]
+        date = Experiment().fetch('experiment_date')[0]
         e1 = Experiment() & dict(experiment_date=str(date))
         e2 = Experiment() & dict(experiment_date=date)
         assert_true(len(e1) == len(e2) > 0, 'Two date restriction do not yield the same result')
@@ -319,7 +319,7 @@ class TestRelational:
         rel = (TestUpdate() & dict(primary_key=0))
         s = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
         rel._update('string_attr', s)
-        assert_equal(s, rel.fetch1['string_attr'], "Updated string does not match")
+        assert_equal(s, rel.fetch1('string_attr'), "Updated string does not match")
 
     @staticmethod
     def test_update_numeric_attribute():
@@ -327,14 +327,14 @@ class TestRelational:
         rel = (TestUpdate() & dict(primary_key=0))
         s = random.randint(0,10)
         rel._update('num_attr', s)
-        assert_equal(s, rel.fetch1['num_attr'], "Updated integer does not match")
+        assert_equal(s, rel.fetch1('num_attr'), "Updated integer does not match")
         rel._update('num_attr', None)
-        assert_true(np.isnan(rel.fetch1['num_attr']), "Numeric value is not NaN")
+        assert_true(np.isnan(rel.fetch1('num_attr')), "Numeric value is not NaN")
 
     @staticmethod
     def test_update_blob_attribute():
         """Test replacing a string value"""
         rel = (TestUpdate() & dict(primary_key=0))
-        s = rel.fetch1['blob_attr']
+        s = rel.fetch1('blob_attr')
         rel._update('blob_attr', s.T)
-        assert_equal(s.T.shape, rel.fetch1['blob_attr'].shape, "Array dimensions do not match")
+        assert_equal(s.T.shape, rel.fetch1('blob_attr').shape, "Array dimensions do not match")
