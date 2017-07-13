@@ -15,11 +15,15 @@ def build_foreign_key_parser():
     left = pp.Literal('(').suppress()
     right = pp.Literal(')').suppress()
     attribute_name = pp.Word(pp.srange('[a-z]'), pp.srange('[a-z0-9_]'))
-    new_attributes = pp.Optional(left + pp.delimitedList(attribute_name) + right).setResultsName('new_attributes')
+    new_attrs = pp.Optional(left + pp.delimitedList(attribute_name) + right).setResultsName('new_attrs')
     arrow = pp.Literal('->').suppress()
+    lbracket = pp.Literal('[').suppress()
+    rbracket = pp.Literal(']').suppress()
+    option = pp.Word(pp.srange('[a-zA-Z]'))
+    options = pp.Optional(lbracket + pp.delimitedList(option) + rbracket)
     ref_table = pp.Word(pp.alphas, pp.alphanums + '._').setResultsName('ref_table')
     ref_attrs = pp.Optional(left + pp.delimitedList(attribute_name) + right).setResultsName('ref_attrs')
-    return new_attributes + arrow + ref_table + ref_attrs
+    return new_attrs + arrow + options + ref_table + ref_attrs
 
 
 def build_attribute_parser():
@@ -66,36 +70,27 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
         raise DataJointError('Foreign key reference %s could not be resolved' % result.ref_table)
     if not issubclass(referenced_class, BaseRelation):
         raise DataJointError('Foreign key reference %s must be a subclass of UserRelation' % result.ref_table)
-    if result.ref_attrs and len(result.new_attributes) != len(result.ref_attrs):
-        raise DataJointError('The number of new attributes and referenced attributes does not match in "%s"' % line)
     ref = referenced_class()
-    if not result.new_attributes:
-        #  a simple foreign key
-        for attr in ref.primary_key:
-            if attr not in attributes:
-                attributes.append(attr)
-                attr_sql.append(ref.heading[attr].sql)
-                if primary_key is not None:
-                    primary_key.append(attr)
-        fk = ref.primary_key
-    elif len(result.new_attributes) == 1 and not result.ref_attrs:
-        #  a one-alias foreign key
-        ref_attr = (ref.primary_key if len(ref.primary_key) == 1 else
-                    [attr for attr in ref.primary_key if attr not in attributes])
-        if len(ref_attr) != 1:
-            raise DataJointError('Mismatched attributes in foreign key "%s"' % line)
-        ref_attr = ref_attr[0]
-        attr = result.new_attributes[0]
-        attributes.append(attr)
-        assert ref.heading[ref_attr].sql.startswith('`%s`' % ref_attr)
-        attr_sql.append(ref.heading[ref_attr].sql.replace(ref_attr, attr, 1))
-        if primary_key is not None:
-            primary_key.append(attr)
-        fk = [attr if k == ref_attr else k for k in ref.primary_key]
-    else:
-        #  a mapped foreign key
-        raise NotImplementedError('TBD mapped foreign keys ')
+    if not all(r in ref.primary_key for r in result.ref_attrs):
+        raise DataJointError('Invalid foreign key attributes in "%s"' % line)
 
+    # match new attributes and referenced attributes and create foreign keys
+    missing_attrs = [attr for attr in ref.primary_key if attr not in attributes] or (
+        len(result.new_attrs) == len(ref.primary_key) == 1 and ref.primary_key)
+    new_attrs = result.new_attrs or missing_attrs
+    ref_attrs = result.ref_attrs or missing_attrs
+    if len(new_attrs) != len(ref_attrs):
+        raise DataJointError('Mismatched attributes in foreign key "%s"' % line)
+
+    # declare foreign key attributes and foreign keys
+    lookup = dict(zip(ref_attrs, new_attrs))
+    for attr in missing_attrs:
+        new_attr = lookup.get(attr, attr)
+        attributes.append(new_attr)
+        if primary_key is not None:
+            primary_key.append(new_attr)
+        attr_sql.append(ref.heading[attr].sql.replace(attr, new_attr, 1))
+    fk = [lookup.get(attr, attr) for attr in ref.primary_key]
     foreign_key_sql.append(
         'FOREIGN KEY (`{fk}`) REFERENCES {ref} (`{pk}`) ON UPDATE CASCADE ON DELETE RESTRICT'.format(
             fk='`,`'.join(fk), pk='`,`'.join(ref.primary_key), ref=ref.full_table_name))
