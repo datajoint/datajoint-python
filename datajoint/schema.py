@@ -12,6 +12,7 @@ from .base_relation import lookup_class_name, Log
 
 logger = logging.getLogger(__name__)
 
+
 def ordered_dir(klass):
     """
     List (most) attributes of the class including inherited ones, similar to `dir` build-in function,
@@ -29,13 +30,14 @@ def ordered_dir(klass):
         m = [e for e in elements if e not in m] + m
     return m
 
+
 class Schema:
     """
     A schema object is a decorator for UserRelation classes that binds them to their database.
     It also specifies the namespace `context` in which other UserRelation classes are defined.
     """
 
-    def __init__(self, database, context, connection=None, create=True):
+    def __init__(self, database, context, connection=None, create_tables=True):
         """
         Associates the specified database with this schema object. If the target database does not exist
         already, will attempt on creating the database.
@@ -50,11 +52,11 @@ class Schema:
         self.database = database
         self.connection = connection
         self.context = context
-        self.create = create
+        self.create_tables = create_tables
         if not self.exists:
-            if not self.create:
+            if not self.create_tables:
                 raise DataJointError("Database named `{database}` was not defined. "
-                                     "Set the create flag to create it.".format(database=database))
+                                     "Set the create_tables flag to create it.".format(database=database))
             else:
                 # create database
                 logger.info("Database `{database}` could not be found. "
@@ -162,7 +164,7 @@ class Schema:
         # instantiate the class, declare the table if not already
         instance = relation_class()
         if not instance.is_declared:
-            if not self.create or assert_declared:
+            if not self.create_tables or assert_declared:
                 raise DataJointError('Table not declared %s' % instance.table_name)
             else:
                 instance.declare()

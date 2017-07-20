@@ -49,3 +49,9 @@ class TestERD:
         assert_true(erd2.nodes_to_show == set(cls.full_table_name for cls in (A, B, D, E, L)))
         assert_true(erd3.nodes_to_show == set(cls.full_table_name for cls in (B, E)))
         assert_true(erd4.nodes_to_show == set(cls.full_table_name for cls in (B.C, E.F)))
+
+    @staticmethod
+    def test_repr_svg():
+        erd = dj.ERD(schema, context=namespace)
+        svg = erd.make_svg().data
+        assert_true(svg.startswith('<svg') and svg.endswith('svg>'))

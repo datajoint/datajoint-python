@@ -376,6 +376,8 @@ class BaseRelation(RelationalOperand):
             attributes_thus_far.add(attr.name)
             do_include = True
             for parent, primary_key in list(parents.items()):
+                if all(p in '0123746789' for p in parent):
+                    raise DataJointError('Cannot describe renamed foreign keys')
                 if attr.name in primary_key:
                     do_include = False
                 if attributes_thus_far.issuperset(primary_key):
