@@ -67,19 +67,19 @@ class TestDeclare:
         assert_true(channel.heading.attributes['voltage'].is_blob)
 
     def test_dependencies(self):
-        assert_equal(user.children(primary=False), [experiment.full_table_name])
-        assert_equal(experiment.parents(primary=False), [user.full_table_name])
+        assert_equal(set(user.children(primary=False)), set([experiment.full_table_name]))
+        assert_equal(set(experiment.parents(primary=False)), set([user.full_table_name]))
 
-        assert_equal(subject.children(primary=True), [experiment.full_table_name])
-        assert_equal(experiment.parents(primary=True), [subject.full_table_name])
+        assert_equal(set(subject.children(primary=True)), set([experiment.full_table_name]))
+        assert_equal(set(experiment.parents(primary=True)), set([subject.full_table_name]))
 
-        assert_equal(experiment.children(primary=True), [trial.full_table_name])
-        assert_equal(trial.parents(primary=True), [experiment.full_table_name])
+        assert_equal(set(experiment.children(primary=True)), set([trial.full_table_name]))
+        assert_equal(set(trial.parents(primary=True)), set([experiment.full_table_name]))
 
         assert_equal(set(trial.children(primary=True)),
                      set((ephys.full_table_name, trial.Condition.full_table_name)))
-        assert_equal(ephys.parents(primary=True), [trial.full_table_name])
+        assert_equal(set(ephys.parents(primary=True)), set([trial.full_table_name]))
 
-        assert_equal(ephys.children(primary=True), [channel.full_table_name])
-        assert_equal(channel.parents(primary=True), [ephys.full_table_name])
+        assert_equal(set(ephys.children(primary=True)), set([channel.full_table_name]))
+        assert_equal(set(channel.parents(primary=True)), set([ephys.full_table_name]))
 

@@ -32,7 +32,7 @@ class AutoPopulate:
         """
         if self._key_source is None:
             self.connection.dependencies.load(self.full_table_name)
-            parents = self.target.parents(primary=True)
+            parents = list(self.target.parents(primary=True))
             if not parents:
                 raise DataJointError('A relation must have parent relations to be able to be populated')
             self._key_source = FreeRelation(self.connection, parents.pop(0)).proj()
