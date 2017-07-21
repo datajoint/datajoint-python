@@ -12,6 +12,8 @@ trial = schema.Trial()
 ephys = schema.Ephys()
 channel = schema.Ephys.Channel()
 
+context = schema.schema.context
+
 
 class TestDeclare:
 
@@ -21,12 +23,11 @@ class TestDeclare:
         assert_true(not issubclass(schema.Subject, dj.Part))
 
     @staticmethod
-    def test_show_definition():
+    def test_describe():
         """real_definition should match original definition"""
         rel = schema.Experiment()
-        context = rel._context
         s1 = declare(rel.full_table_name, rel.definition, context)
-        s2 = declare(rel.full_table_name, rel.show_definition(), context)
+        s2 = declare(rel.full_table_name, rel.describe(), context)
         assert_equal(s1, s2)
 
     @staticmethod
