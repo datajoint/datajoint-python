@@ -53,5 +53,11 @@ class TestERD:
     @staticmethod
     def test_repr_svg():
         erd = dj.ERD(schema, context=namespace)
-        svg = erd.make_svg().data
+        svg = erd._repr_svg_()
         assert_true(svg.startswith('<svg') and svg.endswith('svg>'))
+
+    @staticmethod
+    def test_make_image():
+        erd = dj.ERD(schema, context=namespace)
+        img = erd.make_image()
+        assert_true(img.ndim == 3 and img.shape[2] in (3, 4))
