@@ -202,13 +202,20 @@ class ERD(nx.DiGraph):
 
         scale = 1.2   # scaling factor for fonts and boxes
         label_props = {  # http://matplotlib.org/examples/color/named_colors.html
-            None: dict(shape='circle', color="#FFFF0040", fontcolor='yellow', fontsize=round(scale*8), size=0.4*scale, fixed=False),
-            _AliasNode: dict(shape='circle', color="#FF880080", fontcolor='white', fontsize=round(scale*6), size=0.15*scale, fixed=True),
-            Manual: dict(shape='box', color="#00FF0030", fontcolor='darkgreen', fontsize=round(scale*10), size=0.4*scale, fixed=False),
-            Lookup: dict(shape='plaintext', color='#00000020', fontcolor='black', fontsize=round(scale*8), size=0.4*scale, fixed=False),
-            Computed: dict(shape='circle', color='#FF000020', fontcolor='#7F0000A0', fontsize=round(scale*10), size=0.3*scale, fixed=True),
-            Imported: dict(shape='ellipse', color='#00007F40', fontcolor='#00007FA0', fontsize=round(scale*10), size=0.4*scale, fixed=False),
-            Part: dict(shape='plaintext', color='#0000000', fontcolor='black', fontsize=round(scale*8), size=0.1*scale, fixed=False)}
+            None: dict(shape='circle', color="#FFFF0040", fontcolor='yellow', fontsize=round(scale*8),
+                       size=0.4*scale, fixed=False),
+            _AliasNode: dict(shape='circle', color="#FF880080", fontcolor='white', fontsize=round(scale*6),
+                             size=0.15*scale, fixed=True),
+            Manual: dict(shape='box', color="#00FF0030", fontcolor='darkgreen', fontsize=round(scale*10),
+                         size=0.4*scale, fixed=False),
+            Lookup: dict(shape='plaintext', color='#00000020', fontcolor='black', fontsize=round(scale*8),
+                         size=0.4*scale, fixed=False),
+            Computed: dict(shape='circle', color='#FF000020', fontcolor='#7F0000A0', fontsize=round(scale*10),
+                           size=0.3*scale, fixed=True),
+            Imported: dict(shape='ellipse', color='#00007F40', fontcolor='#00007FA0', fontsize=round(scale*10),
+                           size=0.4*scale, fixed=False),
+            Part: dict(shape='plaintext', color='#0000000', fontcolor='black', fontsize=round(scale*8),
+                       size=0.1*scale, fixed=False)}
         node_props = {node: label_props[d['node_type']] for node, d in dict(graph.nodes(data=True)).items()}
 
         dot = nx.drawing.nx_pydot.to_pydot(graph)
