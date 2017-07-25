@@ -78,11 +78,11 @@ class BaseRelation(RelationalOperand):
             primary key attributes are considered.  If False, the only foreign keys including at least one non-primary
             attribute are considered.
 
-        :return: list of tables referenced with self's foreign keys
+        :return: dict of tables referenced with self's foreign keys
 
         """
-        return [p[0] for p in self.connection.dependencies.in_edges(self.full_table_name, data=True)
-                if primary is None or p[2]['primary'] == primary]
+        return {p[0]: p[2] for p in self.connection.dependencies.in_edges(self.full_table_name, data=True)
+                if primary is None or p[2]['primary'] == primary}
 
     def children(self, primary=None):
         """
@@ -90,11 +90,11 @@ class BaseRelation(RelationalOperand):
             primary key attributes are considered.  If False, the only foreign keys including at least one non-primary
             attribute are considered.
 
-        :return: list of tables with foreign keys referencing self
+        :return: dict of tables with foreign keys referencing self
 
         """
-        return [p[1] for p in self.connection.dependencies.out_edges(self.full_table_name, data=True)
-                if primary is None or p[2]['primary'] == primary]
+        return {p[1]: p[2] for p in self.connection.dependencies.out_edges(self.full_table_name, data=True)
+                if primary is None or p[2]['primary'] == primary}
 
     @property
     def is_declared(self):
@@ -376,6 +376,8 @@ class BaseRelation(RelationalOperand):
             attributes_thus_far.add(attr.name)
             do_include = True
             for parent, primary_key in list(parents.items()):
+                if all(p in '0123746789' for p in parent):
+                    raise DataJointError('Cannot describe renamed foreign keys')
                 if attr.name in primary_key:
                     do_include = False
                 if attributes_thus_far.issuperset(primary_key):

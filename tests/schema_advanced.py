@@ -6,7 +6,7 @@ schema = dj.schema(PREFIX + '_advanced', locals(), connection=dj.conn(**CONN_INF
 
 @schema
 class Person(dj.Manual):
-    """
+    definition = """
     person_id : int
     ----
     full_name : varchar(60)
@@ -39,7 +39,7 @@ class Person(dj.Manual):
 
 @schema
 class Parent(dj.Manual):
-    """
+    definition = """
     -> Person
     parent_sex  : enum('M','F')
     ---
@@ -61,7 +61,7 @@ class Parent(dj.Manual):
 
 @schema
 class Subject(dj.Manual):
-    """
+    definition = """
     subject : int
     ---
     -> [unique, optional] Person
@@ -70,35 +70,35 @@ class Subject(dj.Manual):
 
 @schema
 class Prep(dj.Manual):
-    """
+    definition = """
     prep   : int
     """
 
 
 @schema
 class Slice(dj.Manual):
-    """
+    definition = """
     -> Prep
     slice  : int
     """
 
 @schema
 class Cell(dj.Manual):
-    """
+    definition = """
     -> Slice
     cell  : int
     """
 
 @schema
 class LocalSynapse(dj.Manual):
-    """  # a synapse within the slice
+    definition = """  # a synapse within the slice
     (presynaptic) -> Cell(cell)
     (postsynaptic)-> Cell
     """
 
 @schema
 class GlobalSynapse(dj.Manual):
-    """
+    definition = """
     # a synapse within the slice
     (pre_slice, pre_cell) -> Cell(slice, cell)
     (post_slice, post_cell)-> Cell(slice, cell)
