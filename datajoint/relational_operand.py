@@ -359,7 +359,7 @@ class RelationalOperand:
             ' '.join(['+' + '-' * (widths[column] - 2) + '+' for column in columns]) + '\n' +
             '\n'.join(' '.join(templates[f] % tup[f] for f in columns) for tup in tuples) +
             ('\n   ...\n' if has_more else '\n') +
-            (' (%d tuples)\n' % len(rel) if config['display.tuple_count'] else ''))
+            (' (%d tuples)\n' % len(rel) if config['display.show_tuple_count'] else ''))
 
     def _repr_html_(self):
         rel = self.proj(*self.heading.non_blobs,
@@ -449,7 +449,7 @@ class RelationalOperand:
             body='</tr><tr>'.join(
                 ['\n'.join(['<td>%s</td>' % column for column in tup])
                  for tup in tuples]),
-            count=('<p>%d tuples</p>' % len(rel)) if config['display.tuple_count'] else '')
+            count=('<p>%d tuples</p>' % len(rel)) if config['display.show_tuple_count'] else '')
 
     def make_sql(self, select_fields=None):
         return 'SELECT {fields} FROM {from_}{where}'.format(
