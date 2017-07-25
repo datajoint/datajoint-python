@@ -79,10 +79,9 @@ class BaseRelation(RelationalOperand):
             attribute are considered.
 
         :return: dict of tables referenced with self's foreign keys
-
         """
-        return {p[0]: p[2] for p in self.connection.dependencies.in_edges(self.full_table_name, data=True)
-                if primary is None or p[2]['primary'] == primary}
+        return dict(p[::2] for p in self.connection.dependencies.in_edges(self.full_table_name, data=True)
+                    if primary is None or p[2]['primary'] == primary)
 
     def children(self, primary=None):
         """
@@ -91,10 +90,9 @@ class BaseRelation(RelationalOperand):
             attribute are considered.
 
         :return: dict of tables with foreign keys referencing self
-
         """
-        return {p[1]: p[2] for p in self.connection.dependencies.out_edges(self.full_table_name, data=True)
-                if primary is None or p[2]['primary'] == primary}
+        return dict(p[1:3] for p in self.connection.dependencies.out_edges(self.full_table_name, data=True)
+                    if primary is None or p[2]['primary'] == primary)
 
     @property
     def is_declared(self):
@@ -365,25 +363,40 @@ class BaseRelation(RelationalOperand):
             This does not yet work for aliased foreign keys.
         """
         self.connection.dependencies.load()
-        parents = {r: FreeRelation(self.connection, r).primary_key for r in self.parents()}
+        parents = self.parents()
         in_key = True
         definition = '# ' + self.heading.table_info['comment'] + '\n'
         attributes_thus_far = set()
+        attributes_declared = set()
         for attr in self.heading.attributes.values():
             if in_key and not attr.in_key:
                 definition += '---\n'
                 in_key = False
             attributes_thus_far.add(attr.name)
             do_include = True
-            for parent, primary_key in list(parents.items()):
-                if all(p in '0123746789' for p in parent):
-                    raise DataJointError('Cannot describe renamed foreign keys')
-                if attr.name in primary_key:
+            for parent_name, fk_props in list(parents.items()):  # need list() to force a copy
+                if attr.name in fk_props['referencing_attributes']:
                     do_include = False
-                if attributes_thus_far.issuperset(primary_key):
-                    parents.pop(parent)
-                    definition += '-> ' + (lookup_class_name(parent, self.context) or parent) + '\n'
+                    if attributes_thus_far.issuperset(fk_props['referencing_attributes']):
+                        # simple foreign keys
+                        parents.pop(parent_name)
+                        if not parent_name.isdigit():
+                            definition += '-> {class_name}\n'.format(
+                                class_name=lookup_class_name(parent_name, self.context) or parent_name)
+                        else:
+                            # aliased foreign key
+                            parent_name = self.connection.dependencies.in_edges(parent_name)[0][0]
+                            lst = [(attr, ref) for attr, ref in zip(
+                                fk_props['referencing_attributes'], fk_props['referenced_attributes'])
+                                   if ref != attr]
+                            definition += '({attr_list}) -> {class_name}{ref_list}\n'.format(
+                                attr_list=','.join(r[0] for r in lst),
+                                class_name=lookup_class_name(parent_name, self.context) or parent_name,
+                                ref_list=('' if len(attributes_thus_far) - len(attributes_declared) == 1
+                                          else '(%s)' % ','.join(r[1] for r in lst)))
+                            attributes_declared.update(fk_props['referencing_attributes'])
             if do_include:
+                attributes_declared.add(attr.name)
                 definition += '%-20s : %-28s # %s\n' % (
                     attr.name if attr.default is None else '%s=%s' % (attr.name, attr.default),
                     '%s%s' % (attr.type, 'auto_increment' if attr.autoincrement else ''), attr.comment)
