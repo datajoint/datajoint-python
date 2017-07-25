@@ -1,6 +1,7 @@
 from nose.tools import assert_false, assert_true
 import datajoint as dj
 from .schema_simple import A, B, D, E, L, schema
+from . import schema_advanced
 
 namespace = locals()
 
@@ -52,7 +53,7 @@ class TestERD:
 
     @staticmethod
     def test_repr_svg():
-        erd = dj.ERD(schema, context=namespace)
+        erd = dj.ERD(schema_advanced, context=namespace)
         svg = erd._repr_svg_()
         assert_true(svg.startswith('<svg') and svg.endswith('svg>'))
 

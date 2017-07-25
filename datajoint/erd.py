@@ -123,7 +123,7 @@ class ERD(nx.DiGraph):
             master = [s.strip('`') for s in master.split('.')]
             return master[0] == part[0] and master[1] + '__' == part[1][:len(master[1])+2]
 
-        self = ERD(self)  #  copy
+        self = ERD(self)  # copy
         self.nodes_to_show.update(n for n in self.nodes() if any(is_part(n, m) for m in self.nodes_to_show))
         return self
 
@@ -179,7 +179,12 @@ class ERD(nx.DiGraph):
         """
         Make the self.graph - a graph object ready for drawing
         """
-        graph = nx.DiGraph(self).subgraph(self.nodes_to_show)
+        # include aliased nodes
+        gaps = set(nx.algorithms.boundary.node_boundary(self, self.nodes_to_show)).intersection(
+            nx.algorithms.boundary.node_boundary(nx.DiGraph(self).reverse(), self.nodes_to_show))
+        nodes = self.nodes_to_show.union(a for a in gaps if a.isdigit)
+        # construct subgraph and rename nodes to class names
+        graph = nx.DiGraph(self).subgraph(nodes)
         nx.set_node_attributes(graph, 'node_type', {n: _get_tier(n) for n in graph})
         # relabel nodes to class names
         mapping = {node: (lookup_class_name(node, self.context) or node) for node in graph.nodes()}
