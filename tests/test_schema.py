@@ -68,7 +68,7 @@ def test_unauthorized_database():
 
 
 def test_drop_database():
-    schema = dj.schema(PREFIX + '_drop_test', locals(), connection=dj.conn(**CONN_INFO, reset=True))
+    schema = dj.schema(PREFIX + '_drop_test', locals(), connection=dj.conn(reset=True, **CONN_INFO))
     assert_true(schema.exists)
     schema.drop()
     assert_false(schema.exists)

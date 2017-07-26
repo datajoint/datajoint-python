@@ -20,7 +20,7 @@ class TestUnprivileged:
             user='djview',
             password='djview')
         self.previous_connection = dj.conn.connection if hasattr(dj.conn, 'connection') else None
-        self.connection = dj.conn(**view_connection, reset=True)
+        self.connection = dj.conn(reset=True, **view_connection)
 
     def tearDown(self):
         # restore connection
