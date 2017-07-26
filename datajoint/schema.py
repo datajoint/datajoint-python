@@ -89,9 +89,9 @@ class Schema:
         """
         :return: size of the database in bytes
         """
-        return float(self.connection.query(
+        return self.connection.query(
             """SELECT Sum(data_length + index_length) FROM information_schema.tables WHERE table_schema='{}';""".format(
-                self.database)).fetchone()[0])
+                self.database)).fetchone()[0]
 
     def spawn_missing_classes(self):
         """

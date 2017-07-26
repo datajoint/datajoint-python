@@ -67,3 +67,4 @@ class TestERD:
     def test_schema_erd():
         erd = schema_advanced.schema.erd()
         assert_true(isinstance(erd, dj.ERD))
+
