@@ -26,7 +26,7 @@ class TestNaNInsert:
 
     def test_insert_nan(self):
         """Test fetching of null values"""
-        b = self.rel.fetch.order_by('id')['value']
+        b = self.rel.fetch('value', order_by='id')
         assert_true((np.isnan(self.a) == np.isnan(b)).all(),
                     'incorrect handling of Nans')
         assert_true(np.allclose(self.a[np.logical_not(np.isnan(self.a))], b[np.logical_not(np.isnan(b))]),

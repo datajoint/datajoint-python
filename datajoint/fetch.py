@@ -155,7 +155,7 @@ class Fetch(FetchBase, Callable, Iterable):
                       'the call to `fetch`/`keys` instead', stacklevel=2)
         ret = Fetch(self)
         if ret.sql_behavior['limit'] is None:
-            warnings.warn('You should supply a limit together with an offset,')
+            warnings.warn('Fetch offset should be used with a limit.')
         ret.sql_behavior['offset'] = offset
         return ret
 

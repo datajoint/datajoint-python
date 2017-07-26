@@ -106,15 +106,15 @@ class TestRelation:
         date = "2015-01-01"
         self.subject.insert1(
             dict(key, real_id=7, date_of_birth=date, subject_notes=""))
-        assert_equal(date, str((self.subject & key).fetch1['date_of_birth']), 'incorrect insert')
+        assert_equal(date, str((self.subject & key).fetch1('date_of_birth')), 'incorrect insert')
         date = "2015-01-02"
         self.subject.insert1(
             dict(key, real_id=7, date_of_birth=date, subject_notes=""), skip_duplicates=True)
-        assert_not_equal(date, str((self.subject & key).fetch1['date_of_birth']),
+        assert_not_equal(date, str((self.subject & key).fetch1('date_of_birth')),
                          'inappropriate replace')
         self.subject.insert1(
             dict(key, real_id=7, date_of_birth=date, subject_notes=""), replace=True)
-        assert_equal(date, str((self.subject & key).fetch1['date_of_birth']), "replace failed")
+        assert_equal(date, str((self.subject & key).fetch1('date_of_birth')), "replace failed")
 
     def test_delete_quick(self):
         """Tests quick deletion"""

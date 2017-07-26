@@ -70,7 +70,7 @@ def test_sigint():
     except KeyboardInterrupt:
         pass
 
-    status, error_message = schema.schema.jobs.fetch1['status', 'error_message']
+    status, error_message = schema.schema.jobs.fetch1('status', 'error_message')
     assert_equals(status, 'error')
     assert_equals(error_message, 'KeyboardInterrupt')
     schema.schema.jobs.delete()
@@ -84,7 +84,7 @@ def test_sigterm():
     except SystemExit:
         pass
 
-    status, error_message = schema.schema.jobs.fetch1['status', 'error_message']
+    status, error_message = schema.schema.jobs.fetch1('status', 'error_message')
     assert_equals(status, 'error')
     assert_equals(error_message, 'SystemExit: SIGTERM received')
     schema.schema.jobs.delete()
@@ -105,7 +105,7 @@ def test_long_error_message():
     # test long error message
     schema.schema.jobs.reserve(table_name, key)
     schema.schema.jobs.error(table_name, key, long_error_message)
-    error_message = schema.schema.jobs.fetch1['error_message']
+    error_message = schema.schema.jobs.fetch1('error_message')
     assert_true(len(error_message) == ERROR_MESSAGE_LENGTH, 'error message is longer than max allowed')
     assert_true(error_message.endswith(TRUNCATION_APPENDIX), 'appropriate ending missing for truncated error message')
     schema.schema.jobs.delete()
@@ -113,7 +113,7 @@ def test_long_error_message():
     # test long error message
     schema.schema.jobs.reserve(table_name, key)
     schema.schema.jobs.error(table_name, key, short_error_message)
-    error_message = schema.schema.jobs.fetch1['error_message']
+    error_message = schema.schema.jobs.fetch1('error_message')
     assert_true(error_message == short_error_message, 'error messages do not agree')
     assert_false(error_message.endswith(TRUNCATION_APPENDIX), 'error message should not be truncated')
     schema.schema.jobs.delete()

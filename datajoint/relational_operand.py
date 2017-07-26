@@ -29,7 +29,7 @@ def restricts_to_empty(arg):
     """
     returns True if restriction with arg must produce the empty relation.
     """
-    or_lists = (list, set, tuple, np.ndarray, RelationalOperand)
+    or_lists = (list, set, tuple, np.ndarray)
     return (arg is None or (isinstance(arg, AndList) and any(restricts_to_empty(r) for r in arg)) or
             arg is None or arg is False or equal_ignore_case(arg, "FALSE") or
             isinstance(arg, or_lists) and len(arg) == 0 or  # empty OR-list equals FALSE
@@ -348,7 +348,9 @@ class RelationalOperand:
             limit = config['display.limit']
         if width is None:
             width = config['display.width']
-        tuples = rel.fetch(limit=limit)
+        tuples = rel.fetch(limit=limit+1)
+        has_more = len(tuples) > limit
+        tuples = tuples[:limit]
         columns = rel.heading.names
         widths = {f: min(max([len(f)] + [len(str(e)) for e in tuples[f]]) + 4, width) for f in columns}
         templates = {f: '%%-%d.%ds' % (widths[f], widths[f]) for f in columns}
@@ -356,14 +358,16 @@ class RelationalOperand:
             ' '.join([templates[f] % ('*' + f if f in rel.primary_key else f) for f in columns]) + '\n' +
             ' '.join(['+' + '-' * (widths[column] - 2) + '+' for column in columns]) + '\n' +
             '\n'.join(' '.join(templates[f] % tup[f] for f in columns) for tup in tuples) +
-            ('\n   ...\n' if len(rel) > limit else '\n') +
-            ' (%d tuples)\n' % len(rel))
+            ('\n   ...\n' if has_more else '\n') +
+            (' (%d tuples)\n' % len(rel) if config['display.show_tuple_count'] else ''))
 
     def _repr_html_(self):
         rel = self.proj(*self.heading.non_blobs,
                         **dict(zip_longest(self.heading.blobs, [], fillvalue="'=BLOB='")))  # replace blobs with =BLOB=
         info = self.heading.table_info
-        count = len(rel)
+        tuples = rel.fetch(limit=config['display.limit']+1)
+        has_more = len(tuples) > config['display.limit']
+        tuples = tuples[0:config['display.limit']]
 
         css = """
         <style type="text/css">
@@ -433,7 +437,7 @@ class RelationalOperand:
                 <tbody> <tr> {body} </tr> </tbody>
             </table>
             {ellipsis}
-            <p>{count} tuples</p></div>
+            {count}</div>
             """.format(
             css=css,
             title="" if info is None else "<b>%s</b>" % info['comment'],
@@ -441,11 +445,11 @@ class RelationalOperand:
                 head_template.format(column=c, comment=rel.heading.attributes[c].comment,
                                      primary='primary' if c in self.primary_key else 'nonprimary') for c in
                 rel.heading.names),
-            ellipsis='<p>...</p>' if count > config['display.limit'] else '',
+            ellipsis='<p>...</p>' if has_more else '',
             body='</tr><tr>'.join(
                 ['\n'.join(['<td>%s</td>' % column for column in tup])
-                 for tup in rel.fetch(limit=config['display.limit'])]),
-            count=count)
+                 for tup in tuples]),
+            count=('<p>%d tuples</p>' % len(rel)) if config['display.show_tuple_count'] else '')
 
     def make_sql(self, select_fields=None):
         return 'SELECT {fields} FROM {from_}{where}'.format(

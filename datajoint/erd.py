@@ -1,9 +1,9 @@
 import networkx as nx
 import re
-import numpy as np
 import functools
-from scipy.optimize import basinhopping
-import itertools
+import io
+from matplotlib import pyplot as plt
+from networkx.drawing.nx_agraph import graphviz_layout
 from . import Manual, Imported, Computed, Lookup, Part, DataJointError
 from .base_relation import lookup_class_name
 
@@ -11,12 +11,22 @@ from .base_relation import lookup_class_name
 user_relation_classes = (Manual, Lookup, Computed, Imported, Part)
 
 
+class _AliasNode:
+    """
+    special class to indicate aliased foreign keys
+    """
+    pass
+
+
 def _get_tier(table_name):
-    try:
-        return next(tier for tier in user_relation_classes
-                    if re.fullmatch(tier.tier_regexp, table_name.split('`')[-2]))
-    except StopIteration:
-        return None
+    if not table_name.startswith('`'):
+        return _AliasNode
+    else:
+        try:
+            return next(tier for tier in user_relation_classes
+                        if re.fullmatch(tier.tier_regexp, table_name.split('`')[-2]))
+        except StopIteration:
+            return None
 
 
 class ERD(nx.DiGraph):
@@ -41,13 +51,24 @@ class ERD(nx.DiGraph):
     Note that erd + 1 - 1  may differ from erd - 1 + 1 and so forth.
     Only those tables that are loaded in the connection object are displayed
     """
-    def __init__(self, source):
+    def __init__(self, source, context=None):
 
         if isinstance(source, ERD):
             # copy constructor
             self.nodes_to_show = set(source.nodes_to_show)
+            self.context = source.context
             super().__init__(source)
             return
+
+        # get the caller's locals()
+        if context is None:
+            import inspect
+            frame = inspect.currentframe()
+            try:
+                context = frame.f_back.f_locals
+            finally:
+                del frame
+        self.context = context
 
         # find connection in the source
         try:
@@ -102,7 +123,7 @@ class ERD(nx.DiGraph):
             master = [s.strip('`') for s in master.split('.')]
             return master[0] == part[0] and master[1] + '__' == part[1][:len(master[1])+2]
 
-        self = ERD(self)  #  copy
+        self = ERD(self)  # copy
         self.nodes_to_show.update(n for n in self.nodes() if any(is_part(n, m) for m in self.nodes_to_show))
         return self
 
@@ -154,153 +175,113 @@ class ERD(nx.DiGraph):
         self.nodes_to_show.intersection_update(arg.nodes_to_show)
         return self
 
-    def _make_graph(self, context):
+    def _make_graph(self):
         """
         Make the self.graph - a graph object ready for drawing
         """
-        graph = nx.DiGraph(self).subgraph(self.nodes_to_show)
+        # include aliased nodes
+        gaps = set(nx.algorithms.boundary.node_boundary(self, self.nodes_to_show)).intersection(
+            nx.algorithms.boundary.node_boundary(nx.DiGraph(self).reverse(), self.nodes_to_show))
+        nodes = self.nodes_to_show.union(a for a in gaps if a.isdigit)
+        # construct subgraph and rename nodes to class names
+        graph = nx.DiGraph(self).subgraph(nodes)
         nx.set_node_attributes(graph, 'node_type', {n: _get_tier(n) for n in graph})
         # relabel nodes to class names
-        mapping = {node: (lookup_class_name(node, context) or node) for node in graph.nodes()}
+        mapping = {node: (lookup_class_name(node, self.context) or node) for node in graph.nodes()}
         new_names = [mapping.values()]
         if len(new_names) > len(set(new_names)):
             raise DataJointError('Some classes have identical names. The ERD cannot be plotted.')
         nx.relabel_nodes(graph, mapping, copy=False)
         return graph
 
-    def draw(self, pos=None, layout=None, context=None, font_scale=1.5, **layout_options):   # pragma: no cover
-        """
-        Draws the graph of dependencies.
-        :param pos: dict with positions for every node.  If None, then layout is called.
-        :param layout: the graph layout function. If None, then self._layout is used.
-        :param context: the context in which to look for the class names.  If None, the caller's context is used.
-        :param font_scale: the scalar used to scale all the fonts.
-        :param layout_options:  kwargs passed into the layout function.
-        """
-        if not self.nodes_to_show:
-            print('There is nothing to plot')
-            return
-        if context is None:
-            # get the caller's locals()
-            import inspect
-            frame = inspect.currentframe()
-            try:
-                context = frame.f_back.f_locals
-            finally:
-                del frame
+    def make_dot(self):
+        import networkx as nx
 
-        graph = self._make_graph(context)
-        if pos is None:
-            pos = (layout if layout else self._layout)(graph, **layout_options)
-        import matplotlib.pyplot as plt
+        graph = self._make_graph()
+        graph.nodes()
 
-        edge_list = graph.edges(data=True)
-        edge_styles = ['solid' if e[2]['primary'] else 'dashed' for e in edge_list]
-        nx.draw_networkx_edges(graph, pos=pos, edgelist=edge_list, style=edge_styles, alpha=0.2)
-
+        scale = 1.2   # scaling factor for fonts and boxes
         label_props = {  # http://matplotlib.org/examples/color/named_colors.html
-            None: dict(bbox=dict(boxstyle='round,pad=0.1', facecolor='yellow', alpha=0.3), size=round(font_scale*8)),
-            Manual: dict(bbox=dict(boxstyle='round,pad=0.1', edgecolor='white', facecolor='darkgreen', alpha=0.3), size=round(font_scale*10)),
-            Lookup: dict(bbox=dict(boxstyle='round,pad=0.1', edgecolor='white', facecolor='gray', alpha=0.2), size=round(font_scale*8)),
-            Computed: dict(bbox=dict(boxstyle='round,pad=0.1', edgecolor='white', facecolor='red', alpha=0.2), size=round(font_scale*10)),
-            Imported: dict(bbox=dict(boxstyle='round,pad=0.1', edgecolor='white', facecolor='darkblue', alpha=0.2), size=round(font_scale*10)),
-            Part: dict(size=round(font_scale*7))}
-        ax = plt.gca()
-        for node in graph.nodes(data=True):
-            ax.text(pos[node[0]][0], pos[node[0]][1], node[0],
-                    horizontalalignment=('right' if pos[node[0]][0] < 0.5 else 'left'),
-                    **label_props[node[1]['node_type']])
-        ax = plt.gca()
-        ax.axis('off')
-        ax.set_xlim([-0.4, 1.4])  # allow a margin for labels
+            None: dict(shape='circle', color="#FFFF0040", fontcolor='yellow', fontsize=round(scale*8),
+                       size=0.4*scale, fixed=False),
+            _AliasNode: dict(shape='circle', color="#FF880080", fontcolor='white', fontsize=round(scale*6),
+                             size=0.15*scale, fixed=True),
+            Manual: dict(shape='box', color="#00FF0030", fontcolor='darkgreen', fontsize=round(scale*10),
+                         size=0.4*scale, fixed=False),
+            Lookup: dict(shape='plaintext', color='#00000020', fontcolor='black', fontsize=round(scale*8),
+                         size=0.4*scale, fixed=False),
+            Computed: dict(shape='circle', color='#FF000020', fontcolor='#7F0000A0', fontsize=round(scale*10),
+                           size=0.3*scale, fixed=True),
+            Imported: dict(shape='ellipse', color='#00007F40', fontcolor='#00007FA0', fontsize=round(scale*10),
+                           size=0.4*scale, fixed=False),
+            Part: dict(shape='plaintext', color='#0000000', fontcolor='black', fontsize=round(scale*8),
+                       size=0.1*scale, fixed=False)}
+        node_props = {node: label_props[d['node_type']] for node, d in dict(graph.nodes(data=True)).items()}
+
+        dot = nx.drawing.nx_pydot.to_pydot(graph)
+        for node in dot.get_nodes():
+            node.set_shape('circle')
+            name = node.get_name().strip('"')
+            props = node_props[name]
+            node.set_fontsize(props['fontsize'])
+            node.set_fontcolor(props['fontcolor'])
+            node.set_shape(props['shape'])
+            node.set_fontname('arial')
+            node.set_fixedsize('shape' if props['fixed'] else False)
+            node.set_width(props['size'])
+            node.set_height(props['size'])
+            node.set_label(name)
+            # node.set_margin(0.05)
+            node.set_color(props['color'])
+            node.set_style('filled')
+
+        for edge in dot.get_edges():
+            # see http://www.graphviz.org/content/attrs
+            src = edge.get_source().strip('"')
+            dest = edge.get_destination().strip('"')
+            props = graph.get_edge_data(src, dest)
+            edge.set_color('#00000040')
+            edge.set_style('solid' if props['primary'] else 'dashed')
+            master_part = graph.node[dest]['node_type'] is Part and dest.startswith(src+'.')
+            edge.set_weight(3 if master_part else 1)
+            edge.set_arrowhead('none')
+            edge.set_penwidth(.75 if props['multi'] else 2)
+
+        return dot
+
+    def make_svg(self):
+        from IPython.display import SVG
+        return SVG(self.make_dot().create_svg())
+
+    def make_png(self):
+        return io.BytesIO(self.make_dot().create_png())
+
+    def make_image(self):
+        return plt.imread(self.make_png())
+
+    def _repr_svg_(self):
+        return self.make_svg()._repr_svg_()
+
+    def draw(self):
+        plt.imshow(self.make_image())
+        plt.gca().axis('off')
         plt.show()
 
+    def save(self, filename, format=None):
+        if format is None:
+            if filename.lower().endswith('.png'):
+                format = 'png'
+            elif filename.lower().endswith('.svg'):
+                format = 'svg'
+        if format.lower() == 'png':
+            with open(filename, 'wb') as f:
+                f.write(self.make_png().getbuffer().tobytes())
+        elif format.lower() == 'svg':
+            with open(filename, 'w') as f:
+                f.write(self.make_svg().data)
+        else:
+            raise DataJointError('Unsupported file format')
+
     @staticmethod
-    def _layout(graph, quality=2):
-        """
-        :param graph:  a networkx.DiGraph object
-        :param quality: 0=dirty, 1=draft, 2=good, 3=great, 4=publish
-        :return: position dict keyed by node names
-        """
-        if not nx.is_directed_acyclic_graph(graph):  # pragma: no cover
-            DataJointError('This layout only works for acyclic graphs')
-
-        # assign depths
-        nodes = set(node for node in graph.nodes() if not graph.in_edges(node))  # root
-        depth = 0
-        depths = {}
-        while nodes:
-            depths = dict(depths, **dict.fromkeys(nodes, depth))
-            nodes = set(edge[1] for edge in graph.out_edges(nodes))
-            depth += 1
-        # push depth down as far as possible
-        updated = True
-        while updated:
-            updated = False
-            for node in graph.nodes():
-                if graph.successors(node):
-                    m = min(depths[n] for n in graph.successors(node)) - 1
-                    updated = updated or m > depths[node]
-                    depths[node] = m
-        longest_path = nx.dag_longest_path(graph)  # place at x=0
-
-        # assign initial x positions
-        x = dict.fromkeys(graph, 0)
-        unplaced = set(node for node in graph if node not in longest_path)
-        for node in sorted(unplaced, key=graph.degree, reverse=True):
-            neighbors = set(nx.all_neighbors(graph, node))
-            placed_neighbors = neighbors.difference(unplaced)
-            placed_other = set(graph.nodes()).difference(unplaced).difference(neighbors)
-            x[node] = (sum(x[n] for n in placed_neighbors) -
-                       sum(x[n] for n in placed_other) +
-                       0.05*(np.random.ranf()-0.5))/(len(placed_neighbors) + len(placed_other) + 0.01)
-            x[node] += 2*(x[node] > 0)-1
-            unplaced.remove(node)
-
-        nodes = nx.topological_sort(graph)
-        x = np.array([x[n] for n in nodes])
-
-        intersecting_edge_pairs = list(
-            [[nodes.index(n) for n in edge1],
-             [nodes.index(n) for n in edge2]]
-            for edge1, edge2 in itertools.combinations(graph.edges(), 2)
-            if len(set(edge1 + edge2)) == 4 and (
-                depths[edge1[1]] > depths[edge2[0]] and
-                depths[edge2[1]] > depths[edge1[0]]))
-        depths = depth - np.array([depths[n] for n in nodes])
-
-        #  minimize layout cost function (for x-coordinate only)
-        A = np.asarray(nx.to_numpy_matrix(graph, dtype=bool))   # adjacency matrix
-        A = np.logical_or(A, A.transpose())
-        D = np.zeros_like(A,dtype=bool)         # neighbor matrix
-        for d in set(depths):
-            ix = depths == d
-            D[np.outer(ix,ix)]=True
-        D = np.logical_xor(D, np.identity(len(nodes), bool))
-
-        def cost(xx):
-            xx = np.expand_dims(xx, 1)
-            g = xx.transpose()-xx
-            h = g**2 + 1e-8
-            crossings = sum((xx[edge1[0]][0] > xx[edge2[0]][0]) != (xx[edge1[1]][0] > xx[edge2[1]][0])
-                            for edge1, edge2 in intersecting_edge_pairs)
-            return crossings*1000 + h[A].sum() + 0.1*h[D].sum() + (1/h[D]).sum()
-
-        def grad(xx):
-            xx = np.expand_dims(xx, 1)
-            g = xx.transpose()-xx
-            h = g**2 + 1e-8
-            return -2*((A*g).sum(axis=1) + 0.1*(D*g).sum(axis=1) - (D*g/h**2).sum(axis=1))
-        niter = [100, 200, 500, 1000, 3000][quality]
-        maxiter = [1, 2, 3, 4, 4][quality]
-        x = basinhopping(cost, x, niter=niter, interval=40, T=30, stepsize=1.0, disp=False,
-                         minimizer_kwargs=dict(jac=grad, options=dict(maxiter=maxiter))).x
-        # normalize coordinates to unit square
-        phi = np.pi*20/180   # rotate coordinate slightly
-        cs, sn = np.cos(phi), np.sin(phi)
-        x, depths = cs*x - sn*depths,  sn*x + cs*depths
-        x -= x.min()
-        x /= x.max()+0.01
-        depths -= depths.min()
-        depths = depths/(depths.max()+0.01)
-        return {node: (x, y) for node, x, y in zip(nodes, x, depths)}
+    def _layout(graph, **kwargs):
+        return graphviz_layout(graph, prog='dot', **kwargs)

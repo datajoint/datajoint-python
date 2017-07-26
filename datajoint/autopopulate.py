@@ -20,7 +20,6 @@ class AutoPopulate:
     Auto-populated relations must inherit from both Relation and AutoPopulate,
     must define the property `key_source`, and must define the callback method _make_tuples.
     """
-    _jobs = None
     _key_source = None
 
     @property
@@ -33,7 +32,7 @@ class AutoPopulate:
         """
         if self._key_source is None:
             self.connection.dependencies.load(self.full_table_name)
-            parents = self.target.parents(primary=True)
+            parents = list(self.target.parents(primary=True))
             if not parents:
                 raise DataJointError('A relation must have parent relations to be able to be populated')
             self._key_source = FreeRelation(self.connection, parents.pop(0)).proj()
@@ -56,6 +55,13 @@ class AutoPopulate:
         Typically, AutoPopulate are mixed into a Relation object and the target is self.
         """
         return self
+
+    def _job_key(self, key):
+        """
+        :param key:  they key returned for the job from the key source
+        :return: the dict to use to generate the job reservation hash
+        """
+        return key
 
     def populate(self, *restrictions, suppress_errors=False, reserve_jobs=False, order="original", limit=None):
         """
@@ -100,12 +106,12 @@ class AutoPopulate:
 
         logger.info('Found %d keys to populate' % len(keys))
         for key in keys:
-            if not reserve_jobs or jobs.reserve(self.target.table_name, key):
+            if not reserve_jobs or jobs.reserve(self.target.table_name, self._job_key(key)):
                 self.connection.start_transaction()
                 if key in self.target:  # already populated
                     self.connection.cancel_transaction()
                     if reserve_jobs:
-                        jobs.complete(self.target.table_name, key)
+                        jobs.complete(self.target.table_name, self._job_key(key))
                 else:
                     logger.info('Populating: ' + str(key))
                     try:
@@ -118,7 +124,7 @@ class AutoPopulate:
                         if reserve_jobs:
                             # show error name and error message (if any)
                             error_message = ': '.join([error.__class__.__name__, str(error)]).strip(': ')
-                            jobs.error(self.target.table_name, key, error_message=error_message)
+                            jobs.error(self.target.table_name, self._job_key(key), error_message=error_message)
 
                         if not suppress_errors or isinstance(error, SystemExit):
                             raise
@@ -128,7 +134,7 @@ class AutoPopulate:
                     else:
                         self.connection.commit_transaction()
                         if reserve_jobs:
-                            jobs.complete(self.target.table_name, key)
+                            jobs.complete(self.target.table_name, self._job_key(key))
 
         # place back the original signal handler
         if reserve_jobs:

@@ -1,6 +1,5 @@
 import pymysql
 from . import conn
-from .utils import user_choice
 from getpass import getpass
 
 
