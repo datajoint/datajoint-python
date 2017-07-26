@@ -1,4 +1,4 @@
-from nose.tools import assert_false, assert_true, raises
+from nose.tools import assert_true, raises
 import datajoint as dj
 from os import environ
 from . import schema
@@ -9,25 +9,8 @@ namespace = locals()
 class TestUnprivileged:
 
     def __init__(self):
-        self.connection = None
-        self.previous_connection = None
-
-    def setUp(self):
-        # a connection with only SELECT privileges.  This user must be defined through mysql with only SELECT
-        # privileges to djtest schemas
-        view_connection = dict(
-            host=environ.get('DJ_TEST_HOST', 'localhost'),
-            user='djview',
-            password='djview')
-        self.previous_connection = dj.conn.connection if hasattr(dj.conn, 'connection') else None
-        self.connection = dj.conn(reset=True, **view_connection)
-
-    def tearDown(self):
-        # restore connection
-        if self.previous_connection is None:
-            del dj.conn.connection
-        else:
-            dj.conn.connection = self.previous_connection
+        """A connection with only SELECT privilege to djtest schemas"""
+        self.connection = dj.Connection(host=environ.get('DJ_TEST_HOST', 'localhost'), user='djview', password='djview')
 
     @raises(dj.DataJointError)
     def test_fail_create_schema(self):
@@ -54,5 +37,5 @@ class TestUnprivileged:
             value : float
             """
 
-        Try().insert((1, 1.5))
+        Try().insert1((1, 1.5))
 
