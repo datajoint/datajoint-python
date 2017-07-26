@@ -61,3 +61,8 @@ class TestERD:
         erd = dj.ERD(schema, context=namespace)
         img = erd.make_image()
         assert_true(img.ndim == 3 and img.shape[2] in (3, 4))
+
+    @staticmethod
+    def test_schema_erd():
+        erd = schema.schema.erd()
+        assert_true(isinstance(erd, dj.ERD))

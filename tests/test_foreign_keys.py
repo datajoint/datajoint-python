@@ -16,6 +16,7 @@ def test_aliased_fk():
     parents &= dict(full_name="May K. Hall")
     assert_equal(set(parents.fetch('parent_name')), {'Hanna R. Walters', 'Russel S. James'})
 
+
 def test_describe():
     """real_definition should match original definition"""
     for rel in (schema_advanced.LocalSynapse(), schema_advanced.GlobalSynapse()):
