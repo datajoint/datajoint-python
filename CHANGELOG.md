@@ -1,10 +1,25 @@
 ## Release notes
 
-### 0.5.0 (#298)
+### 0.8.0 -- July 26, 2017 
+Documentation and tutorials available at https://docs.datajoint.io and https://tutorials.datajoint.io
+* improved the ERD graphics and features using the graphviz libraries (#207, #333)
+* improved password handling logic (#322, #321)
+* the use of the `contents` property to populate tables now only works in `dj.Lookup` classes (#310).
+* allwed to suppress the size of query results through the `show_tuple_count` configuration option (#309)
+* implemented renamed foreign keys to spec (#333)
+* added the `limit` keyword argument to populate (#329)
+* reduced the number of displayed messages (#308)
+* added `size_on_disk property for dj.Schema() objects (#323)
+* job keys are entered in the jobs table (#316, #243)
+* simplified the `fetch` and `fetch1` syntax, deprecating the `fetch[...]` syntax (#319)
+* the jobs tables now store the connection ids to allow identifying abandoned jobs (#288, #317)
+
+
+### 0.5.0 (#298) -- March 8, 2017
 * All fetched integers are now 64-bit long and all fetched floats are double precision.
 * Added `dj.create_virtual_module`
 
-### 0.4.10 (#286) 
+### 0.4.10 (#286) -- February 6, 2017
 * Removed Vagrant and Readthedocs support 
 * Explicit saving of configuration (issue #284)
 
