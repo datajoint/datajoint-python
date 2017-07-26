@@ -179,7 +179,8 @@ class TestRelation:
 
     def test_table_size(self):
         """test getting the size of the table and its indices in bytes"""
-        assert_true(self.experiment.size_on_disk > 100)
+        number_of_bytes = self.experiment.size_on_disk
+        assert_true(isinstance(number_of_bytes, int) and number_of_bytes > 100)
 
     def test_repr_html(self):
         assert_true(self.ephys._repr_html_().strip().startswith("<style"))
