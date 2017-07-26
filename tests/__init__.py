@@ -5,18 +5,16 @@ exists. The content of the test database will be destroyed
 after the test.
 """
 
-__author__ = 'Edgar Walker, Fabian Sinz, Dimitri Yatsenko'
-
 import logging
 from os import environ
+import datajoint as dj
+
+__author__ = 'Edgar Walker, Fabian Sinz, Dimitri Yatsenko'
 
 # turn on verbose logging
 logging.basicConfig(level=logging.DEBUG)
 
-import datajoint as dj
-
 __all__ = ['__author__', 'PREFIX', 'CONN_INFO']
-
 
 # Connection for testing
 CONN_INFO = dict(

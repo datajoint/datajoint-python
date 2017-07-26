@@ -4,6 +4,7 @@ import logging
 import numpy as np
 import re
 import datetime
+import decimal
 from . import DataJointError, config
 from .fetch import Fetch, Fetch1
 
@@ -151,12 +152,13 @@ class RelationalOperand:
 
             # mappings are turned into ANDed equality conditions
             elif isinstance(arg, collections.abc.Mapping):
-                condition = ['`%s`=%r' %
-                             (k, v if not isinstance(v, (datetime.date, datetime.datetime, datetime.time)) else str(v))
+                condition = ['`%s`=%r' % (k, (v if not isinstance(v, (
+                    datetime.date, datetime.datetime, datetime.time, decimal.Decimal)) else str(v)))
                              for k, v in arg.items() if k in self.heading]
             elif isinstance(arg, np.void):
                 # element of a record array
-                condition = ['`%s`=%r' % (k, arg[k]) for k in arg.dtype.fields if k in self.heading]
+                condition = [('`%s`='+('%s' if self.heading[k].numeric else '"%s"')) % (k, arg[k])
+                             for k in arg.dtype.fields if k in self.heading]
             else:
                 raise DataJointError('Invalid restriction type')
             return ' AND '.join(condition) if condition else 'TRUE', _negate
@@ -359,7 +361,7 @@ class RelationalOperand:
             ' '.join(['+' + '-' * (widths[column] - 2) + '+' for column in columns]) + '\n' +
             '\n'.join(' '.join(templates[f] % tup[f] for f in columns) for tup in tuples) +
             ('\n   ...\n' if has_more else '\n') +
-            (' (%d tuples)\n' % len(rel) if config['display.tuple_count'] else ''))
+            (' (%d tuples)\n' % len(rel) if config['display.show_tuple_count'] else ''))
 
     def _repr_html_(self):
         rel = self.proj(*self.heading.non_blobs,
@@ -449,7 +451,7 @@ class RelationalOperand:
             body='</tr><tr>'.join(
                 ['\n'.join(['<td>%s</td>' % column for column in tup])
                  for tup in tuples]),
-            count=('<p>%d tuples</p>' % len(rel)) if config['display.tuple_count'] else '')
+            count=('<p>%d tuples</p>' % len(rel)) if config['display.show_tuple_count'] else '')
 
     def make_sql(self, select_fields=None):
         return 'SELECT {fields} FROM {from_}{where}'.format(

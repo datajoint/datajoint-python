@@ -36,8 +36,7 @@ class TestDelete:
     @staticmethod
     def test_delete_tree_restricted():
         assert_false(dj.config['safemode'], 'safemode must be off for testing')
-        assert_true(L() and A() and B() and B.C() and D() and E() and E.F(),
-                    'schema is not populated')
+        assert_true(L() and A() and B() and B.C() and D() and E() and E.F(), 'schema is not populated')
         cond = 'cond_in_a'
         rel = A() & cond
         rest = dict(
@@ -46,8 +45,7 @@ class TestDelete:
             C=len(B.C()-rel),
             D=len(D()-rel),
             E=len(E()-rel),
-            F=len(E.F()-rel)
-        )
+            F=len(E.F()-rel))
         rel.delete()
         assert_false(rel or
                      (B() & rel) or
@@ -68,20 +66,17 @@ class TestDelete:
     @staticmethod
     def test_delete_lookup():
         assert_false(dj.config['safemode'], 'safemode must be off for testing')
-        assert_true(bool(L() and A() and B() and B.C() and D() and E() and E.F()),
-                    'schema is not populated')
-        try:
-            L().delete()
-        except Exception:
-            raise
-
+        assert_true(bool(L() and A() and B() and B.C() and D() and E() and E.F()), 'schema is not populated')
+        L().delete()
         assert_false(bool(L() or D() or E() or E.F()), 'incomplete delete')
         A().delete()  # delete all is necessary because delete L deletes from subtables.
 
-    # @staticmethod
-    # def test_delete_lookup_restricted():
-    #     assert_false(dj.config['safemode'], 'safemode must be off for testing')
-    #     assert_true(L() and A() and B() and C() and D() and E() and F(),
-    #                 'schema is not populated')
-    #     rel = L() & 'cond_in_l'
-    #     L().delete()
+    @staticmethod
+    def test_delete_lookup_restricted():
+        assert_false(dj.config['safemode'], 'safemode must be off for testing')
+        assert_true(L() and A() and B() and B.C() and D() and E() and E.F(), 'schema is not populated')
+        rel = L() & 'cond_in_l'
+        original_count = len(L())
+        deleted_count = len(rel)
+        rel.delete()
+        assert_true(len(L()) == original_count - deleted_count)

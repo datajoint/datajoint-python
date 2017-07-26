@@ -155,9 +155,9 @@ def compile_attribute(line, in_key=False):
 
     try:
         match = attribute_parser.parseString(line+'#', parseAll=True)
-    except pp.ParseException:
-        logger.error('Declaration error in line: ', line)
-        raise
+    except pp.ParseException as err:
+        raise DataJointError('Declaration error in position {pos} in line:\n  {line}\n{msg}'.format(
+            line=err.args[0], pos=err.args[1], msg=err.args[2]))
     match['comment'] = match['comment'].rstrip('#')
     if 'default' not in match:
         match['default'] = ''

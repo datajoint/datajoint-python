@@ -20,6 +20,7 @@ def test_aliased_fk():
 def test_describe():
     """real_definition should match original definition"""
     for rel in (schema_advanced.LocalSynapse(), schema_advanced.GlobalSynapse()):
+        describe = rel.describe()
         s1 = declare(rel.full_table_name, rel.definition, context)
-        s2 = declare(rel.full_table_name, rel.describe(), context)
+        s2 = declare(rel.full_table_name, describe, context)
         assert_equal(s1, s2)

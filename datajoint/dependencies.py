@@ -63,6 +63,7 @@ class Dependencies(nx.DiGraph):
                 props = dict(
                     primary=all(a in primary_key for a in referencing_attributes),
                     referencing_attributes=referencing_attributes,
+                    referenced_attributes=referenced_attributes,
                     aliased=not all(a == b for a, b in zip(referencing_attributes, referenced_attributes)),
                     multi=not all(a in referencing_attributes for a in primary_key))
                 if not props['aliased']:

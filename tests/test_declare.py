@@ -84,3 +84,11 @@ class TestDeclare:
         assert_equal(set(ephys.children(primary=True)), set([channel.full_table_name]))
         assert_equal(set(channel.parents(primary=True)), set([ephys.full_table_name]))
 
+    @raises(dj.DataJointError)
+    def test_bad_attribute_name(self):
+
+        @schema.schema
+        class BadName(dj.Manual):
+            definition = """
+            Bad_name : int
+            """

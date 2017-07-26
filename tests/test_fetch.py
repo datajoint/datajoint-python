@@ -1,8 +1,8 @@
 from operator import itemgetter
 import itertools
-from nose.tools import assert_true, raises, assert_equal, assert_dict_equal, assert_in
-from datajoint.fetch import Fetch, Fetch1
+from nose.tools import assert_true, raises, assert_equal, assert_dict_equal
 import numpy as np
+import decimal
 import warnings
 from . import schema
 import datajoint as dj
@@ -48,25 +48,20 @@ class TestFetch:
             for c, l in zip(cur, languages):
                 assert_true(np.all(cc == ll for cc, ll in zip(c, l)), 'Sorting order is different')
 
-    def test_squeeze(self):
-        pass
-
     def test_order_by_default(self):
         """Tests order_by sorting order with defaults"""
         languages = schema.Language.contents
         cur = self.lang.fetch(order_by=('language', 'name DESC'))
         languages.sort(key=itemgetter(0), reverse=True)
         languages.sort(key=itemgetter(1), reverse=False)
-
         for c, l in zip(cur, languages):
             assert_true(np.all([cc == ll for cc, ll in zip(c, l)]), 'Sorting order is different')
 
     def test_limit(self):
         """Test the limit kwarg"""
-        languages = schema.Language.contents
-
-        cur = self.lang.fetch(limit=4)
-        assert_equal(len(cur), 4, 'Length is not correct')
+        limit = 4
+        cur = self.lang.fetch(limit=limit)
+        assert_equal(len(cur), limit, 'Length is not correct')
 
     def test_order_by_limit(self):
         """Test the combination of order by and limit kwargs"""
@@ -78,7 +73,6 @@ class TestFetch:
         assert_equal(len(cur), 4, 'Length is not correct')
         for c, l in list(zip(cur, languages))[:4]:
             assert_true(np.all([cc == ll for cc, ll in zip(c, l)]), 'Sorting order is different')
-
 
     def test_limit_offset(self):
         """Test the limit and offset kwargs together"""
@@ -174,3 +168,12 @@ class TestFetch:
     def test_fetch1_step3(self):
         """Tests whether fetch1 raises error"""
         self.lang.fetch1('name')
+
+    def test_decimal(self):
+        """Tests that decimal fields are correctly fetched and used in restrictions, see issue #334"""
+        rel = schema.DecimalPrimaryKey()
+        rel.insert1([decimal.Decimal('3.1415926')])
+        keys = rel.fetch()
+        assert_true(len(rel & keys[0]) == 1)
+        keys = rel.fetch(dj.key)
+        assert_true(len(rel & keys[1]) == 1)

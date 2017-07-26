@@ -46,7 +46,7 @@ default = OrderedDict({
     'safemode': True,
     'display.limit': 7,
     'display.width': 14,
-    'display.tuple_count': True
+    'display.show_tuple_count': True
 })
 
 logger = logging.getLogger(__name__)
@@ -127,7 +127,6 @@ class Config(collections.MutableMapping):
         saves the settings in the global config file
         """
         self.save(os.path.expanduser(os.path.join('~', GLOBALCONFIG)))
-
 
     @contextmanager
     def __call__(self, **kwargs):

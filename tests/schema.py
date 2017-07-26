@@ -141,7 +141,6 @@ class Trial(dj.Imported):
                               orientation=random.random()*360) for cond_idx in range(30))
 
 
-
 @schema
 class Ephys(dj.Imported):
     definition = """    # some kind of electrophysiological recording
@@ -214,19 +213,30 @@ class SimpleSource(dj.Lookup):
     """
     contents = ((x,) for x in range(10))
 
+
 @schema
 class SigIntTable(dj.Computed):
     definition = """
     -> SimpleSource
     """
+
     def _make_tuples(self, key):
         os.kill(os.getpid(), signal.SIGINT)
+
 
 @schema
 class SigTermTable(dj.Computed):
     definition = """
     -> SimpleSource
     """
+
     def _make_tuples(self, key):
         os.kill(os.getpid(), signal.SIGTERM)
 
+
+@schema
+class DecimalPrimaryKey(dj.Lookup):
+    definition = """
+    id  :  decimal(4,3)
+    """
+    contents = zip((0.1, 0.25, 3.99))
