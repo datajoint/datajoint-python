@@ -325,7 +325,7 @@ class TestRelational:
     def test_update_numeric_attribute():
         """Test replacing a string value"""
         rel = (TestUpdate() & dict(primary_key=0))
-        s = random.randint(0,10)
+        s = random.randint(0, 10)
         rel._update('num_attr', s)
         assert_equal(s, rel.fetch1('num_attr'), "Updated integer does not match")
         rel._update('num_attr', None)

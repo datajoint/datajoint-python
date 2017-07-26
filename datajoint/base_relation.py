@@ -178,7 +178,7 @@ class BaseRelation(RelationalOperand):
                     value = pack(value)
                     placeholder = '%s'
                 elif heading[name].numeric:
-                    if value is None or value == '' or np.isnan(np.float(value)): # nans are turned into NULLs
+                    if value is None or value == '' or np.isnan(np.float(value)):  # nans are turned into NULLs
                         placeholder = 'NULL'
                         value = None
                     else:
@@ -239,13 +239,19 @@ class BaseRelation(RelationalOperand):
 
         rows = list(make_row_to_insert(row) for row in rows)
         if rows:
-            self.connection.query(
-                "{command} INTO {destination}(`{fields}`) VALUES {placeholders}".format(
-                    command='REPLACE' if replace else 'INSERT IGNORE' if ignore_errors or skip_duplicates else 'INSERT',
-                    destination=self.from_clause,
-                    fields='`,`'.join(field_list),
-                    placeholders=','.join('(' + ','.join(row['placeholders']) + ')' for row in rows)),
-                args=list(itertools.chain.from_iterable((v for v in r['values'] if v is not None) for r in rows)))
+            try:
+                self.connection.query(
+                    "{command} INTO {destination}(`{fields}`) VALUES {placeholders}".format(
+                        command='REPLACE' if replace else 'INSERT IGNORE' if ignore_errors or skip_duplicates else 'INSERT',
+                        destination=self.from_clause,
+                        fields='`,`'.join(field_list),
+                        placeholders=','.join('(' + ','.join(row['placeholders']) + ')' for row in rows)),
+                    args=list(itertools.chain.from_iterable((v for v in r['values'] if v is not None) for r in rows)))
+            except pymysql.err.OperationalError as err:
+                if err.args[0] == server_error_codes['command denied']:
+                    raise DataJointError('Command denied:  %s' % err.args[1])
+                else:
+                    raise
 
     def delete_quick(self):
         """

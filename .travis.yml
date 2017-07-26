@@ -12,6 +12,7 @@ before_install:
   - sudo apt-get install -y libblas-dev liblapack-dev libatlas-dev gfortran
   - sudo apt-get install -y graphviz graphviz-dev pkg-config
   - mysql -e "create user 'datajoint'@'%' identified by 'datajoint'; GRANT ALL PRIVILEGES ON \`djtest\_%\`.* TO 'datajoint'@'%';" -uroot
+  - mysql -e "create user 'djview'@'%' identified by 'djview'; GRANT SELECT ON \`djtest\_%\`.* TO 'djview'@'%';" -uroot
 install:
   - travis_wait 30 pip install -r requirements.txt
   - pip install nose nose-cov python-coveralls
