@@ -4,6 +4,7 @@ import logging
 import numpy as np
 import re
 import datetime
+import decimal
 from . import DataJointError, config
 from .fetch import Fetch, Fetch1
 
@@ -151,12 +152,13 @@ class RelationalOperand:
 
             # mappings are turned into ANDed equality conditions
             elif isinstance(arg, collections.abc.Mapping):
-                condition = ['`%s`=%r' %
-                             (k, v if not isinstance(v, (datetime.date, datetime.datetime, datetime.time)) else str(v))
+                condition = ['`%s`=%r' % (k, (v if not isinstance(v, (
+                    datetime.date, datetime.datetime, datetime.time, decimal.Decimal)) else str(v)))
                              for k, v in arg.items() if k in self.heading]
             elif isinstance(arg, np.void):
                 # element of a record array
-                condition = ['`%s`=%r' % (k, arg[k]) for k in arg.dtype.fields if k in self.heading]
+                condition = [('`%s`='+('%s' if self.heading[k].numeric else '"%s"')) % (k, arg[k])
+                             for k in arg.dtype.fields if k in self.heading]
             else:
                 raise DataJointError('Invalid restriction type')
             return ' AND '.join(condition) if condition else 'TRUE', _negate

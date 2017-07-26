@@ -1,6 +1,4 @@
-from nose.tools import assert_raises, assert_equal, assert_not_equal, \
-    assert_false, assert_true, assert_list_equal, \
-    assert_tuple_equal, assert_dict_equal, raises
+from nose.tools import assert_false, assert_true, raises
 import datajoint as dj
 from inspect import getmembers
 from . import schema
@@ -74,4 +72,4 @@ def test_drop_database():
     assert_true(schema.exists)
     schema.drop()
     assert_false(schema.exists)
-    schema.drop()   # should do nothing
+    schema.drop()  # should do nothing

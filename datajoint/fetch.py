@@ -2,7 +2,6 @@ from collections import OrderedDict
 from collections.abc import Callable, Iterable
 from functools import partial
 import numpy as np
-import warnings
 from .blob import unpack
 from . import DataJointError
 from . import key as PRIMARY_KEY
@@ -75,13 +74,11 @@ class FetchBase:
         return len(self._relation)
 
 
-
-
 class Fetch(FetchBase, Callable, Iterable):
     """
     A fetch object that handles retrieving elements from the database table.
 
-    :param relation: relation the fetch object retrieves data from.
+    :param relation: relation the fetch object fetches data from
     """
 
     def _initialize_behavior(self):
@@ -279,8 +276,6 @@ class Fetch(FetchBase, Callable, Iterable):
         return repr_str
 
 
-
-
 class Fetch1(FetchBase, Callable):
     """
     Fetch object for fetching exactly one row.
@@ -294,10 +289,7 @@ class Fetch1(FetchBase, Callable):
         :return: the one tuple in the relation in the form of a dict
         """
         heading = self._relation.heading
-
-        # sql_behavior = update_dict(self.sql_behavior, kwargs)
         ext_behavior = update_dict(self.ext_behavior, kwargs)
-
         unpack_ = partial(unpack, squeeze=ext_behavior['squeeze'])
 
         if len(attrs) == 0:  # fetch all attributes
@@ -317,7 +309,6 @@ class Fetch1(FetchBase, Callable):
                 if attribute is PRIMARY_KEY else result[attribute][0]
                 for attribute in attrs)
             ret = return_values[0] if len(attrs) == 1 else return_values
-
 
         return ret
 
