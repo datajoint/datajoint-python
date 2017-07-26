@@ -128,7 +128,6 @@ class Config(collections.MutableMapping):
         """
         self.save(os.path.expanduser(os.path.join('~', GLOBALCONFIG)))
 
-
     @contextmanager
     def __call__(self, **kwargs):
         """

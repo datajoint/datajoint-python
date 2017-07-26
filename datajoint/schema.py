@@ -190,8 +190,7 @@ class Schema:
             raise DataJointError('The schema decorator should not be applied to Part relations')
         ext = {
             cls.__name__: cls,
-            'self': cls
-        }
+            'self': cls}
         self.process_relation_class(cls, context=dict(self.context, **ext))
 
         # Process part relations
@@ -205,8 +204,7 @@ class Schema:
                         cls.__name__: cls,
                         part.__name__: part,
                         'master': cls,
-                        'self': part
-                    }
+                        'self': part}
                     self.process_relation_class(part, context=dict(self.context, **ext))
         return cls
 
