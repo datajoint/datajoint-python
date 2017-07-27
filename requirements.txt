@@ -4,6 +4,4 @@ pyparsing
 IPython
 networkx
 pydotplus
-graphviz
-pygraphviz
 matplotlib
