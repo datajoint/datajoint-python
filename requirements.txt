@@ -4,4 +4,3 @@ pyparsing
 ipython
 networkx
 pydotplus
-matplotlib
