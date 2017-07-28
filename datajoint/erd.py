@@ -35,7 +35,11 @@ def _get_tier(table_name):
         except StopIteration:
             return None
 
-if erd_active:
+if not erd_active:
+    def ERD(*args, **kwargs):
+        warnings.warn('ERD functionality depends on Matplotlib and PyGraphviz. Please install both of these libraries '
+                      'to be able to use ERD.')
+else:
     class ERD(nx.DiGraph):
         """
         Entity relationship diagram.
@@ -292,7 +296,4 @@ if erd_active:
         @staticmethod
         def _layout(graph, **kwargs):
             return graphviz_layout(graph, prog='dot', **kwargs)
-else:
-    def ERD(*args, **kwargs):
-        warnings.warn('ERD functionality depends on Matplotlib and PyGraphviz. Please install both of these libraries '
-                      'to be able to use ERD.')
+
