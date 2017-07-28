@@ -36,9 +36,18 @@ def _get_tier(table_name):
             return None
 
 if not erd_active:
-    def ERD(*args, **kwargs):
-        warnings.warn('ERD functionality depends on Matplotlib and PyGraphviz. Please install both of these libraries '
-                      'to be able to use ERD.')
+    class ERD:
+        """
+        Entity relationship diagram, currently disabled due to the lack of required packages: matplotlib and pygraphviz.
+
+        To enable ERD feature, please install both matplotlib and pygraphviz. For instructions on how to install
+        these two packages, refer to http://docs.datajoint.io/setup/Install-and-connect.html#python and
+        http://tutorials.datajoint.io/setting-up/datajoint-python.html
+        """
+
+        def __init__(self, *args, **kwargs):
+            warnings.warn('ERD functionality depends on matplotlib and pygraphviz. Please install both of these '
+                          'libraries to enable the ERD feature.')
 else:
     class ERD(nx.DiGraph):
         """
