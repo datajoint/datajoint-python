@@ -581,7 +581,7 @@ class Projection(RelationalOperand):
         :param include_primary_key:  True if the primary key must be included even if it's not in attributes.
         :return: the resulting Projection object
         """
-        # TODO:  revisit the h
+        # TODO:  revisit the handling of the primary key when not include_primary_key
         obj = cls()
         obj._connection = arg.connection
         named_attributes = {k: v.strip() for k, v in named_attributes.items()}  # clean up values
