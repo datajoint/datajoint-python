@@ -25,6 +25,9 @@ class TestU:
         assert_list_equal(rel.heading.names, ['language'])
         assert_true(len(rel) == len(language_set))
         assert_true(set(rel.fetch('language')) == language_set)
+        # Test for issue #342
+        rel = self.trial*dj.U('start_time')
+        assert_list_equal(rel.primary_key, (rel & 'trial_id>3').primary_key)
 
     @staticmethod
     @raises(dj.DataJointError)
