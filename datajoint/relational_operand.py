@@ -82,10 +82,12 @@ class RelationalOperand:
             # initialize
             self._restrictions = AndList()
             self._distinct = False
+            self._heading = None
         else:  # copy
             assert isinstance(arg, RelationalOperand), 'Cannot make RelationalOperand from %s' % arg.__class__.__name__
             self._restrictions = AndList(arg._restrictions)
             self._distinct = arg.distinct
+            self._heading = arg._heading
 
     @classmethod
     def create(cls):  # pragma: no cover
@@ -210,8 +212,7 @@ class RelationalOperand:
         self.proj(a='(id)') adds a new computed field named 'a' that has the same value as id
         Each attribute can only be used once in attributes or named_attributes.
         """
-        ret = Projection.create(self, attributes, named_attributes)
-        return ret
+        return Projection.create(self, attributes, named_attributes)
 
     def aggregate(self, group, *attributes, keep_all_rows=False, **named_attributes):
         """
