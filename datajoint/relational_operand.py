@@ -48,7 +48,9 @@ class AndList(list):
     is equivalent to
     rel2 = rel & cond1 & cond2 & cond3
     """
-    pass
+
+    def simplify(self):
+        return self[0] if len(self) == 1 else self
 
 
 class OrList(list):
@@ -212,11 +214,7 @@ class RelationalOperand:
         self.proj(a='(id)') adds a new computed field named 'a' that has the same value as id
         Each attribute can only be used once in attributes or named_attributes.
         """
-<<<<<<< HEAD
-        return Projection.create(self, attributes, named_attributes) if attributes or named_attributes else self
-=======
         return Projection.create(self, attributes, named_attributes)
->>>>>>> e111db827b365e58d7e65c7b64ca1c8bbc23d7ea
 
     def aggregate(self, group, *attributes, keep_all_rows=False, **named_attributes):
         """
