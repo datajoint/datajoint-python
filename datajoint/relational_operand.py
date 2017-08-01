@@ -210,8 +210,7 @@ class RelationalOperand:
         self.proj(a='(id)') adds a new computed field named 'a' that has the same value as id
         Each attribute can only be used once in attributes or named_attributes.
         """
-        ret = Projection.create(self, attributes, named_attributes)
-        return ret
+        return Projection.create(self, attributes, named_attributes) if attributes or named_attributes else self
 
     def aggregate(self, group, *attributes, keep_all_rows=False, **named_attributes):
         """

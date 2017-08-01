@@ -77,22 +77,18 @@ class BaseRelation(RelationalOperand):
         :param primary: if None, then all parents are returned. If True, then only foreign keys composed of
             primary key attributes are considered.  If False, the only foreign keys including at least one non-primary
             attribute are considered.
-
         :return: dict of tables referenced with self's foreign keys
         """
-        return dict(p[::2] for p in self.connection.dependencies.in_edges(self.full_table_name, data=True)
-                    if primary is None or p[2]['primary'] == primary)
+        return self.connection.dependencies.parents(self.full_table_name, primary)
 
     def children(self, primary=None):
         """
         :param primary: if None, then all parents are returned. If True, then only foreign keys composed of
             primary key attributes are considered.  If False, the only foreign keys including at least one non-primary
             attribute are considered.
-
         :return: dict of tables with foreign keys referencing self
         """
-        return dict(p[1:3] for p in self.connection.dependencies.out_edges(self.full_table_name, data=True)
-                    if primary is None or p[2]['primary'] == primary)
+        return self.connection.dependencies.childen(self.full_table_name, primary)
 
     @property
     def is_declared(self):
@@ -267,11 +263,18 @@ class BaseRelation(RelationalOperand):
         Deletes the contents of the table and its dependent tables, recursively.
         User is prompted for confirmation if config['safemode'] is set to True.
         """
-        self.connection.dependencies.load()
+        def rename_map(edge):
+            return {new_name: old_name
+                    for new_name, old_name in zip(edge['referencing_attributes'], edge['referenced_attributes'])
+                    if new_name != old_name}
 
-        relations_to_delete = collections.OrderedDict(
-            (r, FreeRelation(self.connection, r))
-            for r in self.connection.dependencies.descendants(self.full_table_name))
+        graph = self.connection.dependencies
+        graph.dependencies.load()
+        delete_list = collections.OrderedDict(
+            (table, rel.proj(**renames) if table.isdigit else rel)
+            for table, rel, renames in (
+                table, FreeRelation(self.connection, graph.parents(table)) if table.isdigit else FreeRelation(self.connection, table) if table.isdigit else {}
+                for table in graph.descendants(self.full_table_name)))
 
         # construct restrictions for each relation
         restrict_by_me = set()
@@ -279,17 +282,17 @@ class BaseRelation(RelationalOperand):
         if self.restrictions:
             restrict_by_me.add(self.full_table_name)
             restrictions[self.full_table_name].append(self.restrictions)  # copy own restrictions
-        for r in relations_to_delete.values():
-            restrict_by_me.update(r.children(primary=False))
-        for name, r in relations_to_delete.items():
-            for dep in r.children():
-                if name in restrict_by_me:
-                    restrictions[dep].append(r)
+        for table in delete_list:
+            restrict_by_me.update(graph.children(table, primary=False))
+        for table in tables_to_delete:
+            for dep in graph.children(table):
+                if table in restrict_by_me:
+                    restrictions[dep].append(table)
                 else:
-                    restrictions[dep].extend(restrictions[name])
+                    restrictions[dep].extend(restrictions[table])
 
         # apply restrictions
-        for name, r in relations_to_delete.items():
+        for name, r in tables_to_delete.items():
             if restrictions[name]:  # do not restrict by an empty list
                 r.restrict([r.proj() if isinstance(r, RelationalOperand) else r
                             for r in restrictions[name]])  # project
@@ -297,14 +300,14 @@ class BaseRelation(RelationalOperand):
         do_delete = False  # indicate if there is anything to delete
         if config['safemode']:  # pragma: no cover
             print('The contents of the following tables are about to be deleted:')
-        for relation in list(relations_to_delete.values()):
+        for relation in list(tables_to_delete.values()):
             count = len(relation)
             if count:
                 do_delete = True
                 if config['safemode']:
                     print(relation.full_table_name, '(%d tuples)' % count)
             else:
-                relations_to_delete.pop(relation.full_table_name)
+                tables_to_delete.pop(relation.full_table_name)
         if not do_delete:
             if config['safemode']:
                 print('Nothing to delete')
@@ -313,7 +316,7 @@ class BaseRelation(RelationalOperand):
                 already_in_transaction = self.connection._in_transaction
                 if not already_in_transaction:
                     self.connection.start_transaction()
-                for r in reversed(list(relations_to_delete.values())):
+                for r in reversed(list(tables_to_delete.values())):
                     r.delete_quick()
                 if not already_in_transaction:
                     self.connection.commit_transaction()
