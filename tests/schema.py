@@ -22,6 +22,18 @@ class Test(dj.Lookup):
 
 
 @schema
+class TestExtra(dj.Manual):
+    ''' clone of Test but with an extra field '''
+    definition = Test.definition + "\nextra : int # extra int\n"
+
+
+@schema
+class TestNoExtra(dj.extra):
+    ''' clone of Test but with no extra fields '''
+    definition = Test.definition
+
+
+@schema
 class Auto(dj.Lookup):
     definition = """
     id  :int auto_increment
