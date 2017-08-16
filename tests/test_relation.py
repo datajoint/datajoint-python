@@ -120,6 +120,13 @@ class TestRelation:
         self.test_no_extra.delete()
         self.test_no_extra.insert(self.test, ignore_extra_fields=True)
 
+    def test_insert_select_ignore_extra_fields3(self):
+        ''' make sure insert select works for from query result '''
+        self.test_no_extra.delete()
+        keystr = str(self.test_extra.fetch('key').max())
+        self.test_no_extra.insert((self.test_extra & '`key`=' + keystr),
+                                  ignore_extra_fields=True)
+
     def test_replace(self):
         """
         Test replacing or ignoring duplicate entries
