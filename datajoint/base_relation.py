@@ -142,8 +142,15 @@ class BaseRelation(RelationalOperand):
         """
 
         if isinstance(rows, RelationalOperand):
-            # INSERT FROM SELECT
-            query = 'INSERT{ignore} INTO {table} ({fields}) {select}'.format(
+            # INSERT FROM SELECT - build alternate field-narrowing query (only) when needed
+            if ignore_extra_fields and not all(name in self.heading.names for name in rows.heading.names):
+                query = 'INSERT{ignore} INTO {table} ({fields}) SELECT {fields} FROM ({select}) as `__alias`'.format(
+                ignore=" IGNORE" if ignore_errors or skip_duplicates else "",
+                table=self.full_table_name,
+                fields='`'+'`,`'.join(self.heading.names)+'`',
+                select=rows.make_sql())
+            else:
+                query = 'INSERT{ignore} INTO {table} ({fields}) {select}'.format(
                 ignore=" IGNORE" if ignore_errors or skip_duplicates else "",
                 table=self.full_table_name,
                 fields='`'+'`,`'.join(rows.heading.names)+'`',
