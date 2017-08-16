@@ -28,7 +28,7 @@ class TestExtra(dj.Manual):
 
 
 @schema
-class TestNoExtra(dj.extra):
+class TestNoExtra(dj.Manual):
     ''' clone of Test but with no extra fields '''
     definition = Test.definition
 
