@@ -104,7 +104,7 @@ class TestRelation:
     @raises(InternalError)
     def test_insert_select_ignore_extra_fields0(self):
         ''' need ignore extra fields for insert select '''
-        self.test_extra.insert1((self.test.fetch('key').max() + 1))
+        self.test_extra.insert1((self.test.fetch('key').max() + 1, 0, 0))
         self.test.insert(self.test_extra)
 
     def test_insert_select_ignore_extra_fields1(self):
