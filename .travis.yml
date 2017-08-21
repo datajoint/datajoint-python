@@ -14,7 +14,6 @@ before_install:
   - mysql -e "create user 'datajoint'@'%' identified by 'datajoint'; GRANT ALL PRIVILEGES ON \`djtest\_%\`.* TO 'datajoint'@'%';" -uroot
   - mysql -e "create user 'djview'@'%' identified by 'djview'; GRANT SELECT ON \`djtest\_%\`.* TO 'djview'@'%';" -uroot
 install:
-  - travis_retry pip install boto==2.45.0
   - travis_wait 30 pip install -r requirements.txt
   - travis_wait 30 pip install -r test_requirements.txt
   - pip install nose nose-cov python-coveralls
