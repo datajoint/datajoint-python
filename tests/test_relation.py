@@ -101,7 +101,7 @@ class TestRelation:
             'real_id', 'date_of_birth', 'subject_notes', subject_id='subject_id+1000', species='"human"'))
         assert_equal(len(self.subject), 2*original_length)
 
-    @raises(InternalError)
+    @raises(dj.DataJointError)
     def test_insert_select_ignore_extra_fields0(self):
         ''' need ignore extra fields for insert select '''
         self.test_extra.insert1((self.test.fetch('key').max() + 1, 0, 0))

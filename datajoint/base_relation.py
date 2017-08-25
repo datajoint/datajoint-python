@@ -155,7 +155,14 @@ class BaseRelation(RelationalOperand):
                 table=self.full_table_name,
                 fields='`'+'`,`'.join(rows.heading.names)+'`',
                 select=rows.make_sql())
-            self.connection.query(query)
+            try:
+                self.connection.query(query)
+            except pymysql.err.InternalError as err:
+                if err.args[0] == server_error_codes['unknown column']:
+                    # args[1] -> Unknown column 'extra' in 'field list'
+                    raise DataJointError('%s : To ignore extra fields, set ignore_extra_fields=True in insert.' % err.args[1])
+                else:
+                    raise
             return
 
         heading = self.heading
