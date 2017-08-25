@@ -160,7 +160,7 @@ class BaseRelation(RelationalOperand):
             except pymysql.err.InternalError as err:
                 if err.args[0] == server_error_codes['unknown column']:
                     # args[1] -> Unknown column 'extra' in 'field list'
-                    raise DataJointError('%s : set ignore_extra_fields?' % err.args[1])
+                    raise DataJointError('%s : To ignore extra fields, set ignore_extra_fields=True in insert.' % err.args[1])
                 else:
                     raise
             return
