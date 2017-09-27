@@ -1,6 +1,6 @@
 numpy
-scipy
 pymysql>=0.7.2
 pyparsing
+ipython
 networkx
-matplotlib
+pydotplus

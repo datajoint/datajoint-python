@@ -7,16 +7,19 @@ import warnings
 from . import schema
 import datajoint as dj
 
+
 def check_warning_content(warnings, phrase):
     for w in warnings:
         if phrase.lower() in w.message.args[0].lower():
             return True
     return False
 
+
 def assert_warning_about(warnings, phrase, message=None):
     if message is None:
         message = "Warning message did not contain phrase {}".format(phrase)
     assert_true(check_warning_content(warnings, phrase), message)
+
 
 class TestFetchDeprecated:
     """
@@ -129,7 +132,6 @@ class TestFetchDeprecated:
         for l1, l2 in zip(list1, list2):
             assert_dict_equal(l1, l2,  'Primary key is not returned correctly')
 
-
     def test_getitem_for_fetch1(self):
         """Testing Fetch1.__getitem__"""
         assert_true((self.subject & "subject_id=10").fetch1['subject_id'] == 10)
@@ -181,7 +183,6 @@ class TestFetchDeprecated:
         assert_equal(len(cur), 4, 'Length is not correct')
         for c, l in list(zip(cur, languages[2:6])):
             assert_true(np.all([cc == ll for cc, ll in zip(c, l)]), 'Sorting order is different')
-
 
     @raises(dj.DataJointError)
     def test_prepare_attributes(self):

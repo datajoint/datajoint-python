@@ -1,9 +1,6 @@
 import numpy as np
 import datajoint as dj
-from nose.tools import assert_raises, assert_equal, \
-    assert_false, assert_true, assert_list_equal, \
-    assert_tuple_equal, assert_dict_equal, raises
-from numpy.testing import assert_array_equal, raises
+from nose.tools import assert_equal, assert_true, assert_list_equal, assert_tuple_equal
 
 from . import PREFIX, CONN_INFO
 
@@ -56,7 +53,7 @@ class TestFetch:
         insert_blobs()
 
     def test_complex_matlab_blobs(self):
-        blobs = Blob().fetch.order_by('id')['blob']
+        blobs = Blob().fetch('blob', order_by='id')
         assert_equal(blobs[0][0], 'character string')
         assert_true(np.array_equal(blobs[1][0], np.r_[1:180:15]))
         assert_list_equal([r[0] for r in blobs[2]], ['string1', 'string2'])

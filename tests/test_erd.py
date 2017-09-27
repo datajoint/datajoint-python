@@ -1,6 +1,9 @@
 from nose.tools import assert_false, assert_true
 import datajoint as dj
 from .schema_simple import A, B, D, E, L, schema
+from . import schema_advanced
+
+namespace = locals()
 
 
 class TestERD:
@@ -31,11 +34,9 @@ class TestERD:
 
     @staticmethod
     def test_erd():
-        erd = dj.ERD(schema)
-        graph = erd._make_graph(schema.context)
+        erd = dj.ERD(schema, context=namespace)
+        graph = erd._make_graph()
         assert_true(set(cls.__name__ for cls in (A, B, D, E, L)).issubset(graph.nodes()))
-        pos = erd._layout(graph)
-        assert_true(set(cls.__name__ for cls in (A, B, D, E, L)).issubset(pos.keys()))
 
     @staticmethod
     def test_erd_algebra():
@@ -49,3 +50,21 @@ class TestERD:
         assert_true(erd2.nodes_to_show == set(cls.full_table_name for cls in (A, B, D, E, L)))
         assert_true(erd3.nodes_to_show == set(cls.full_table_name for cls in (B, E)))
         assert_true(erd4.nodes_to_show == set(cls.full_table_name for cls in (B.C, E.F)))
+
+    @staticmethod
+    def test_repr_svg():
+        erd = dj.ERD(schema_advanced, context=namespace)
+        svg = erd._repr_svg_()
+        assert_true(svg.startswith('<svg') and svg.endswith('svg>'))
+
+    @staticmethod
+    def test_make_image():
+        erd = dj.ERD(schema, context=namespace)
+        img = erd.make_image()
+        assert_true(img.ndim == 3 and img.shape[2] in (3, 4))
+
+    @staticmethod
+    def test_schema_erd():
+        erd = schema_advanced.schema.erd()
+        assert_true(isinstance(erd, dj.ERD))
+

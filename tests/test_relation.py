@@ -106,15 +106,15 @@ class TestRelation:
         date = "2015-01-01"
         self.subject.insert1(
             dict(key, real_id=7, date_of_birth=date, subject_notes=""))
-        assert_equal(date, str((self.subject & key).fetch1['date_of_birth']), 'incorrect insert')
+        assert_equal(date, str((self.subject & key).fetch1('date_of_birth')), 'incorrect insert')
         date = "2015-01-02"
         self.subject.insert1(
             dict(key, real_id=7, date_of_birth=date, subject_notes=""), skip_duplicates=True)
-        assert_not_equal(date, str((self.subject & key).fetch1['date_of_birth']),
+        assert_not_equal(date, str((self.subject & key).fetch1('date_of_birth')),
                          'inappropriate replace')
         self.subject.insert1(
             dict(key, real_id=7, date_of_birth=date, subject_notes=""), replace=True)
-        assert_equal(date, str((self.subject & key).fetch1['date_of_birth']), "replace failed")
+        assert_equal(date, str((self.subject & key).fetch1('date_of_birth')), "replace failed")
 
     def test_delete_quick(self):
         """Tests quick deletion"""
@@ -179,7 +179,8 @@ class TestRelation:
 
     def test_table_size(self):
         """test getting the size of the table and its indices in bytes"""
-        assert_true(self.experiment.size_on_disk > 100)
+        number_of_bytes = self.experiment.size_on_disk
+        assert_true(isinstance(number_of_bytes, int) and number_of_bytes > 100)
 
     def test_repr_html(self):
         assert_true(self.ephys._repr_html_().strip().startswith("<style"))

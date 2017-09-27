@@ -1,5 +1,0 @@
-ipython
-jinja
-tornado
-jsonschema
-pyzmq

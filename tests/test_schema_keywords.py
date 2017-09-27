@@ -11,12 +11,14 @@ class A(dj.Manual):
     a_id: int   # a id
     """
 
+
 class B(dj.Manual):
     source = None
     definition = """
     -> self.source
     b_id: int   # b id
     """
+
     class H(dj.Part):
         definition = """
         -> master
@@ -33,14 +35,17 @@ class B(dj.Manual):
 class D(B):
     source = A
 
+
 def setup():
     global A
     global D
     A = schema(A)
     D = schema(D)
 
+
 def teardown():
     schema.drop(force=True)
+
 
 def test_inherited_part_table():
     assert_true('a_id' in D().heading.attributes)

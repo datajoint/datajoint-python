@@ -1,6 +1,4 @@
-from nose.tools import assert_raises, assert_equal, assert_not_equal, \
-    assert_false, assert_true, assert_list_equal, \
-    assert_tuple_equal, assert_dict_equal, raises
+from nose.tools import assert_false, assert_true, raises
 import datajoint as dj
 from inspect import getmembers
 from . import schema
@@ -20,6 +18,11 @@ def part_selector(attr):
         return issubclass(attr, dj.Part)
     except TypeError:
         return False
+
+
+def test_schema_size_on_disk():
+    number_of_bytes = schema.schema.size_on_disk
+    assert_true(isinstance(number_of_bytes, int))
 
 
 def test_namespace_population():
@@ -70,8 +73,8 @@ def test_unauthorized_database():
 
 
 def test_drop_database():
-    schema = dj.schema(PREFIX + '_drop_test', locals(), connection=dj.conn(**CONN_INFO))
+    schema = dj.schema(PREFIX + '_drop_test', locals(), connection=dj.conn(reset=True, **CONN_INFO))
     assert_true(schema.exists)
     schema.drop()
     assert_false(schema.exists)
-    schema.drop()   # should do nothing
+    schema.drop()  # should do nothing

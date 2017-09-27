@@ -1,9 +1,7 @@
-version: '2'
+version: '3'
 services:
   datajoint:
-    build:
-      context: .
-      dockerfile: DevDockerfile
+    build: .
     environment:
       - DJ_HOST=db
       - DJ_USER=root
@@ -15,7 +13,7 @@ services:
     ports:
       - "8888:8888"
   db:
-    image: mysql:5.7
+    image: datajoint/mysql
     environment:
       - MYSQL_ROOT_PASSWORD=simple
 

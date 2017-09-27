@@ -12,7 +12,7 @@ schema = dj.schema(PREFIX + '_test1', locals(), connection=dj.conn(**CONN_INFO))
 
 
 @schema
-class Test(dj.Computed):
+class Test(dj.Lookup):
     definition = """
     key   :   int     # key
     ---
@@ -43,7 +43,7 @@ class User(dj.Lookup):
 
 
 @schema
-class Subject(dj.Manual):
+class Subject(dj.Lookup):
     definition = """  # Basic information about animal subjects used in experiments
     subject_id   :int  #  unique subject id
     ---
@@ -141,7 +141,6 @@ class Trial(dj.Imported):
                               orientation=random.random()*360) for cond_idx in range(30))
 
 
-
 @schema
 class Ephys(dj.Imported):
     definition = """    # some kind of electrophysiological recording
@@ -189,7 +188,7 @@ class Image(dj.Manual):
 
 
 @schema
-class UberTrash(dj.Manual):
+class UberTrash(dj.Lookup):
     definition = """
     id : int
     ---
@@ -198,7 +197,7 @@ class UberTrash(dj.Manual):
 
 
 @schema
-class UnterTrash(dj.Manual):
+class UnterTrash(dj.Lookup):
     definition = """
     -> UberTrash
     my_id   : int
@@ -214,19 +213,30 @@ class SimpleSource(dj.Lookup):
     """
     contents = ((x,) for x in range(10))
 
+
 @schema
 class SigIntTable(dj.Computed):
     definition = """
     -> SimpleSource
     """
+
     def _make_tuples(self, key):
         os.kill(os.getpid(), signal.SIGINT)
+
 
 @schema
 class SigTermTable(dj.Computed):
     definition = """
     -> SimpleSource
     """
+
     def _make_tuples(self, key):
         os.kill(os.getpid(), signal.SIGTERM)
 
+
+@schema
+class DecimalPrimaryKey(dj.Lookup):
+    definition = """
+    id  :  decimal(4,3)
+    """
+    contents = zip((0.1, 0.25, 3.99))

@@ -1,7 +1,0 @@
-FROM eywalker/jupyter
-
-MAINTAINER Edgar Y. Walker <edgar.walker@gmail.com>
-
-ADD . /src
-RUN pip install -e /src &&\
-    pip install nose
