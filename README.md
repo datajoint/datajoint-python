@@ -25,6 +25,6 @@ pip3 install --upgrade datajoint
 ## Documentation and Tutorials
 A number of labs are currently adopting DataJoint and we are quickly getting the documentation in shape in February 2017.
 
-* https://datajoint.github.com  -- start page
-* https://docs.datajoint.io -- up-to-date documentation
-* https://tutorials.datajoint.io -- step by step tutorials
+* https://datajoint.io  -- start page
+* http://docs.datajoint.io -- up-to-date documentation
+* http://tutorials.datajoint.io -- step by step tutorials
