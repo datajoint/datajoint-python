@@ -78,3 +78,34 @@ def test_drop_database():
     schema.drop()
     assert_false(schema.exists)
     schema.drop()  # should do nothing
+
+
+def test_overlapping_name():
+    test_schema = dj.schema(PREFIX + '_overlapping_schema', locals(), connection=dj.conn(**CONN_INFO))
+
+    @test_schema
+    class Unit(dj.Manual):
+        definition = """
+        id:  int     # simple id
+        """
+
+    error_raised = False
+    try:
+        @test_schema
+        class Cell(dj.Manual):
+            definition = """
+            type:  varchar(32)    # type of cell
+            """
+
+            class Unit(dj.Part):
+                definition = """
+                -> master
+                -> Unit
+                """
+    except:
+        error_raised = True
+
+    assert_false(error_raised, 'The name of part table should not hide the same named non-part table outside')
+    test_schema.drop()
+
+
