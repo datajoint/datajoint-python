@@ -89,23 +89,17 @@ def test_overlapping_name():
         id:  int     # simple id
         """
 
-    error_raised = False
-    try:
-        @test_schema
-        class Cell(dj.Manual):
+    @test_schema
+    class Cell(dj.Manual):
+        definition = """
+        type:  varchar(32)    # type of cell
+        """
+
+        class Unit(dj.Part):
             definition = """
-            type:  varchar(32)    # type of cell
+            -> master
+            -> Unit
             """
-
-            class Unit(dj.Part):
-                definition = """
-                -> master
-                -> Unit
-                """
-    except:
-        error_raised = True
-
-    assert_false(error_raised, 'The name of part table should not hide the same named non-part table outside')
     test_schema.drop()
 
 
