@@ -80,14 +80,18 @@ def test_drop_database():
     schema.drop()  # should do nothing
 
 
-test_schema = dj.schema(PREFIX + '_overlapping_schema', locals(), connection=dj.conn(**CONN_INFO))
 
 def test_overlapping_name():
+    test_schema = dj.schema(PREFIX + '_overlapping_schema', locals(), connection=dj.conn(**CONN_INFO))
+
     @test_schema
     class Unit(dj.Manual):
         definition = """
         id:  int     # simple id
         """
+
+    # hack to update the locals dictionary
+    locals()
 
     @test_schema
     class Cell(dj.Manual):
@@ -100,9 +104,4 @@ def test_overlapping_name():
             -> master
             -> Unit
             """
-
-
-def teardown():
-    test_schema.drop()
-
 
