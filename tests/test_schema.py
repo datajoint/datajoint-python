@@ -80,9 +80,9 @@ def test_drop_database():
     schema.drop()  # should do nothing
 
 
-def test_overlapping_name():
-    test_schema = dj.schema(PREFIX + '_overlapping_schema', locals(), connection=dj.conn(**CONN_INFO))
+test_schema = dj.schema(PREFIX + '_overlapping_schema', locals(), connection=dj.conn(**CONN_INFO))
 
+def test_overlapping_name():
     @test_schema
     class Unit(dj.Manual):
         definition = """
@@ -100,6 +100,9 @@ def test_overlapping_name():
             -> master
             -> Unit
             """
+
+
+def teardown():
     test_schema.drop()
 
 
