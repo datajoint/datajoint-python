@@ -105,3 +105,5 @@ def test_overlapping_name():
             -> Unit
             """
 
+    test_schema.drop()
+
