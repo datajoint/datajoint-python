@@ -92,6 +92,28 @@ class Dependencies(nx.DiGraph):
         if not nx.is_directed_acyclic_graph(self):  # pragma: no cover
             raise DataJointError('DataJoint can only work with acyclic dependencies')
 
+    def parents(self, table_name, primary=None):
+        """
+        :param table_name: `schema`.`table`
+        :param primary: if None, then all parents are returned. If True, then only foreign keys composed of
+            primary key attributes are considered.  If False, the only foreign keys including at least one non-primary
+            attribute are considered.
+        :return: dict of tables referenced by the foreign keys of table
+        """
+        return dict(p[::2] for p in self.in_edges(table_name, data=True)
+                    if primary is None or p[2]['primary'] == primary)
+
+    def children(self, table_name, primary=None):
+        """
+        :param table_name: `schema`.`table`
+        :param primary: if None, then all children are returned. If True, then only foreign keys composed of
+            primary key attributes are considered.  If False, the only foreign keys including at least one non-primary
+            attribute are considered.
+        :return: dict of tables referencing the table through foreign keys
+        """
+        return dict(p[1:3] for p in self.out_edges(table_name, data=True)
+                    if primary is None or p[2]['primary'] == primary)
+
     def descendants(self, full_table_name):
         """
         :param full_table_name:  In form `schema`.`table_name`

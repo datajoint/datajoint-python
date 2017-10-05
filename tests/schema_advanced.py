@@ -33,8 +33,7 @@ class Person(dj.Manual):
             (12, "Nelda T. Ruggeri", "F"),
             (13, "Bryan M. Cummings", "M"),
             (14, "Sara C. Le", "F"),
-            (15, "Myron S. Jaramillo", "M")
-        ))
+            (15, "Myron S. Jaramillo", "M")))
 
 
 @schema
@@ -82,6 +81,7 @@ class Slice(dj.Manual):
     slice  : int
     """
 
+
 @schema
 class Cell(dj.Manual):
     definition = """
@@ -89,12 +89,14 @@ class Cell(dj.Manual):
     cell  : int
     """
 
+
 @schema
 class LocalSynapse(dj.Manual):
     definition = """  # a synapse within the slice
     (presynaptic) -> Cell(cell)
     (postsynaptic)-> Cell
     """
+
 
 @schema
 class GlobalSynapse(dj.Manual):
