@@ -48,7 +48,9 @@ class AndList(list):
     is equivalent to
     rel2 = rel & cond1 & cond2 & cond3
     """
-    pass
+
+    def simplify(self):
+        return self[0] if len(self) == 1 else self
 
 
 class OrList(list):
@@ -82,10 +84,12 @@ class RelationalOperand:
             # initialize
             self._restrictions = AndList()
             self._distinct = False
+            self._heading = None
         else:  # copy
             assert isinstance(arg, RelationalOperand), 'Cannot make RelationalOperand from %s' % arg.__class__.__name__
             self._restrictions = AndList(arg._restrictions)
             self._distinct = arg.distinct
+            self._heading = arg._heading
 
     @classmethod
     def create(cls):  # pragma: no cover
@@ -210,8 +214,7 @@ class RelationalOperand:
         self.proj(a='(id)') adds a new computed field named 'a' that has the same value as id
         Each attribute can only be used once in attributes or named_attributes.
         """
-        ret = Projection.create(self, attributes, named_attributes)
-        return ret
+        return Projection.create(self, attributes, named_attributes)
 
     def aggregate(self, group, *attributes, keep_all_rows=False, **named_attributes):
         """
@@ -580,6 +583,7 @@ class Projection(RelationalOperand):
         :param include_primary_key:  True if the primary key must be included even if it's not in attributes.
         :return: the resulting Projection object
         """
+        # TODO:  revisit the handling of the primary key when not include_primary_key
         obj = cls()
         obj._connection = arg.connection
         named_attributes = {k: v.strip() for k, v in named_attributes.items()}  # clean up values
@@ -594,6 +598,8 @@ class Projection(RelationalOperand):
         if obj._distinct or cls._need_subquery(arg, attributes, named_attributes):
             obj._arg = Subquery.create(arg)
             obj._heading = obj._arg.heading.project(attributes, named_attributes)
+            if not include_primary_key:
+                obj._heading = obj._heading.extend_primary_key(attributes)
         else:
             obj._arg = arg
             obj._heading = obj._arg.heading.project(attributes, named_attributes)

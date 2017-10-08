@@ -28,7 +28,7 @@ class TestDelete:
     def test_stepwise_delete():
         assert_false(dj.config['safemode'], 'safemode must be off for testing') #TODO: just turn it off instead of warning
         assert_true(L() and A() and B() and B.C(), 'schema population failed as a precondition to test')
-        B.C().delete()
+        B.C().delete(force=True)
         assert_false(B.C(), 'failed to delete child tables')
         B().delete()
         assert_false(B(), 'failed to delete the parent table following child table deletion')

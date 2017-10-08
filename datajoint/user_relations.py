@@ -145,3 +145,21 @@ class Part(UserRelation):
     @ClassProperty
     def table_name(cls):
         return None if cls.master is None else cls.master.table_name + '__' + from_camel_case(cls.__name__)
+
+    def delete(self, force=False):
+        """
+        unless force is True, prohibits direct deletes from parts.
+        """
+        if force:
+            super().delete()
+        else:
+            raise DataJointError('Cannot delete from a Part directly.  Delete from master instead')
+
+    def drop(self, force=False):
+        """
+        unless force is True, prohibits direct deletes from parts.
+        """
+        if force:
+            super().drop()
+        else:
+            raise DataJointError('Cannot drop a Part directly.  Delete from master instead')
