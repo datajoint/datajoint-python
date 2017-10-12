@@ -2,6 +2,7 @@
 import logging
 import datetime
 import random
+from tqdm import tqdm
 from pymysql import OperationalError
 from .relational_operand import RelationalOperand, AndList
 from . import DataJointError
@@ -63,7 +64,7 @@ class AutoPopulate:
         """
         return key
 
-    def populate(self, *restrictions, suppress_errors=False, reserve_jobs=False, order="original", limit=None):
+    def populate(self, *restrictions, suppress_errors=False, reserve_jobs=False, order="original", limit=None, progress=False):
         """
         rel.populate() calls rel._make_tuples(key) for every primary key in self.key_source
         for which there is not already a tuple in rel.
@@ -73,6 +74,7 @@ class AutoPopulate:
         :param reserve_jobs: if true, reserves job to populate in asynchronous fashion
         :param order: "original"|"reverse"|"random"  - the order of execution
         :param limit: if not None, populates at max that many keys
+        :param progress: if True, report progress
         """
         if self.connection.in_transaction:
             raise DataJointError('Populate cannot be called during a transaction.')
@@ -105,7 +107,9 @@ class AutoPopulate:
             random.shuffle(keys)
 
         logger.info('Found %d keys to populate' % len(keys))
-        for key in keys:
+        if progress:
+            progress_report = tqdm if progress else lambda x: x
+        for key in tqdm(keys):
             if not reserve_jobs or jobs.reserve(self.target.table_name, self._job_key(key)):
                 self.connection.start_transaction()
                 if key in self.target:  # already populated
