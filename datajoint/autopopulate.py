@@ -4,7 +4,7 @@ import datetime
 import random
 from tqdm import tqdm
 from pymysql import OperationalError
-from .relational_operand import RelationalOperand, AndList
+from .relational_operand import RelationalOperand, AndList, U
 from . import DataJointError
 from . import key as KEY
 from .base_relation import FreeRelation
@@ -64,7 +64,7 @@ class AutoPopulate:
         """
         return key
 
-    def populate(self, *restrictions, suppress_errors=False, reserve_jobs=False, order="original", limit=None, progress=False):
+    def populate(self, *restrictions, suppress_errors=False, reserve_jobs=False, order="original", limit=None, report_progress=False):
         """
         rel.populate() calls rel._make_tuples(key) for every primary key in self.key_source
         for which there is not already a tuple in rel.
@@ -74,7 +74,7 @@ class AutoPopulate:
         :param reserve_jobs: if true, reserves job to populate in asynchronous fashion
         :param order: "original"|"reverse"|"random"  - the order of execution
         :param limit: if not None, populates at max that many keys
-        :param progress: if True, report progress
+        :param report_progress: if True, report progress_bar
         """
         if self.connection.in_transaction:
             raise DataJointError('Populate cannot be called during a transaction.')
@@ -86,10 +86,12 @@ class AutoPopulate:
         todo = self.key_source
         if not isinstance(todo, RelationalOperand):
             raise DataJointError('Invalid key_source value')
-        todo = todo.proj() & AndList(restrictions)
+        todo = (todo & AndList(restrictions)).proj()
+        if any(name not in self.target.heading for name in todo.heading):
+            raise DataJointError('The populated target must have all the attributes of the key source')
+        todo -= self.target
 
         error_list = [] if suppress_errors else None
-
         jobs = self.connection.jobs[self.target.database] if reserve_jobs else None
 
         # define and setup signal handler for SIGTERM
@@ -99,7 +101,6 @@ class AutoPopulate:
                 raise SystemExit('SIGTERM received')
             old_handler = signal.signal(signal.SIGTERM, handler)
 
-        todo -= self.target
         keys = todo.fetch(KEY, limit=limit)
         if order == "reverse":
             keys.reverse()
@@ -107,9 +108,7 @@ class AutoPopulate:
             random.shuffle(keys)
 
         logger.info('Found %d keys to populate' % len(keys))
-        if progress:
-            progress_report = tqdm if progress else lambda x: x
-        for key in tqdm(keys):
+        for key in (tqdm(keys) if report_progress else keys):
             if not reserve_jobs or jobs.reserve(self.target.table_name, self._job_key(key)):
                 self.connection.start_transaction()
                 if key in self.target:  # already populated
@@ -152,6 +151,8 @@ class AutoPopulate:
         :return: remaining, total -- tuples to be populated
         """
         todo = self.key_source & AndList(restrictions)
+        if any(name not in self.target.heading for name in todo.heading):
+            raise DataJointError('The populated target must have all the attributes of the key source')
         total = len(todo)
         remaining = len(todo.proj() - self.target)
         if display:
