@@ -1,5 +1,5 @@
 import collections
-from itertools import zip_longest
+from itertools import zip_longest, count
 import logging
 import numpy as np
 import re
@@ -200,6 +200,12 @@ class RelationalOperand:
         natural join of relations self and other
         """
         return other * self if isinstance(other, U) else Join.create(self, other)
+
+    def __add__(self, other):
+        """
+        union of relations
+        """
+        return Union.create(self, other)
 
     def proj(self, *attributes, **named_attributes):
         """
@@ -560,9 +566,57 @@ class Join(RelationalOperand):
             from2=self._arg2.from_clause)
 
 
+class Union(RelationalOperand):
+    """
+    Union is a private DataJoint class that implements relational union.
+    """
+
+    __count = count()
+
+    def __init__(self, arg=None):
+        super().__init__(arg)
+        if arg is not None:
+            assert isinstance(arg, Union), "Union copy constructore requires a Union object"
+            self._connection = arg.connection
+            self._heading = arg.heading
+            self._arg1 = arg._arg1
+            self._arg2 = arg._arg2
+
+    @classmethod
+    def create(cls, arg1, arg2):
+        obj = cls()
+        if not isinstance(arg1, RelationalOperand) or not isinstance(arg2, RelationalOperand):
+            raise DataJointError('a relation can only be unioned with another relation')
+        if arg1.connection != arg2.connection:
+            raise DataJointError("Cannot operate on relations from different connections.")
+        if set(arg1.heading.names) != set(arg2.heading.names):
+            raise DataJointError('Union requires the same attributes in both arguments')
+        if not all(v.in_key for v in arg1.heading.attributes.values()):
+            raise DataJointError('The left argument of union must not have any secondary attributes')
+        obj._connection = arg1.connection
+        obj._heading = arg1.heading
+        obj._arg1 = arg1
+        obj._arg2 = arg2
+        return obj
+
+    def make_sql(self, select_fields=None):
+        return "SELECT {_fields} FROM {_from}{_where}".format(
+            _fields=self.get_select_fields(select_fields),
+            _from=self.from_clause,
+            _where=self.where_clause)
+
+    @property
+    def from_clause(self):
+        return ("(SELECT {fields} FROM {from1}{where1} UNION SELECT {fields} FROM {from2}{where2}) as `_u%x`".format(
+            fields=self.get_select_fields(None), from1=self._arg1.from_clause,
+            where1=self._arg1.where_clause,
+            from2=self._arg2.from_clause,
+            where2=self._arg2.where_clause)) % next(self.__count)
+
+
 class Projection(RelationalOperand):
     """
-    Projection is an private DataJoint class that implements relational projection.
+    Projection is a private DataJoint class that implements relational projection.
     See RelationalOperand.proj() for user interface.
     """
 
@@ -677,7 +731,7 @@ class Subquery(RelationalOperand):
     The attribute list and the WHERE clause are resolved.  Thus, a subquery no longer has any renamed attributes.
     A subquery of a subquery is a just a copy of the subquery with no change in SQL.
     """
-    __counter = 0
+    __count = count()
 
     def __init__(self, arg=None):
         super().__init__(arg)
@@ -700,13 +754,8 @@ class Subquery(RelationalOperand):
         return obj
 
     @property
-    def counter(self):
-        Subquery.__counter += 1
-        return Subquery.__counter
-
-    @property
     def from_clause(self):
-        return '(' + self._arg.make_sql() + ') as `_s%x`' % self.counter
+        return '(' + self._arg.make_sql() + ') as `_s%x`' % next(self.__count)
 
     def get_select_fields(self, select_fields=None):
         return '*' if select_fields is None else self.heading.project(select_fields).as_sql
