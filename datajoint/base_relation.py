@@ -139,11 +139,11 @@ class BaseRelation(RelationalOperand):
 
         if isinstance(rows, RelationalOperand):
             # INSERT FROM SELECT - build alternate field-narrowing query (only) when needed
-            if ignore_extra_fields and not all(name in self.heading.names for name in rows.heading.names):
+            if ignore_extra_fields and not all(name in self.heading for name in rows.heading):
                 query = 'INSERT{ignore} INTO {table} ({fields}) SELECT {fields} FROM ({select}) as `__alias`'.format(
                 ignore=" IGNORE" if ignore_errors or skip_duplicates else "",
                 table=self.full_table_name,
-                fields='`'+'`,`'.join(self.heading.names)+'`',
+                fields='`'+'`,`'.join(name for name in self.heading if name in rows.heading) + '`',
                 select=rows.make_sql())
             else:
                 query = 'INSERT{ignore} INTO {table} ({fields}) {select}'.format(
@@ -155,6 +155,7 @@ class BaseRelation(RelationalOperand):
                 self.connection.query(query)
             except pymysql.err.InternalError as err:
                 if err.args[0] == server_error_codes['unknown column']:
+                    print(query)
                     # args[1] -> Unknown column 'extra' in 'field list'
                     raise DataJointError('%s : To ignore extra fields, set ignore_extra_fields=True in insert.' % err.args[1])
                 else:
