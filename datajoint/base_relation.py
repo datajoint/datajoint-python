@@ -263,45 +263,33 @@ class BaseRelation(RelationalOperand):
         Deletes the contents of the table and its dependent tables, recursively.
         User is prompted for confirmation if config['safemode'] is set to True.
         """
+
+        # fill out the delete list in topological order
         graph = self.connection.dependencies
         graph.load()
-        delete_list = collections.OrderedDict()
-        for table in graph.descendants(self.full_table_name):
-            if not table.isdigit():
-                delete_list[table] = FreeRelation(self.connection, table)
-            else:
-                parent, edge = next(iter(graph.parents(table).items()))
-                delete_list[table] = FreeRelation(self.connection, parent).proj(
-                    **{new_name: old_name
-                       for new_name, old_name in zip(edge['referencing_attributes'], edge['referenced_attributes'])
-                       if new_name != old_name})
-
-        # construct restrictions for each relation
-        restrict_by_me = set()
-        restrictions = collections.defaultdict(list)
-        # restrict by self
-        if self.restrictions:
-            restrict_by_me.add(self.full_table_name)
-            restrictions[self.full_table_name].append(self.restrictions.simplify())  # copy own restrictions
-        # restrict by renamed nodes
-        restrict_by_me.update(table for table in delete_list if table.isdigit())  # restrict by all renamed nodes
-        # restrict by tables restricted by a non-primary semijoin
-        for table in delete_list:
-            restrict_by_me.update(graph.children(table, primary=False))   # restrict by any non-primary dependents
-
-        # compile restriction lists
-        for table, rel in delete_list.items():
-            for dep in graph.children(table):
-                if table in restrict_by_me:
-                    restrictions[dep].append(rel)   # if restrict by me, then restrict by the entire relation
-                else:
-                    restrictions[dep].extend(restrictions[table])   # or re-apply the same restrictions
-
+        delete_list = collections.OrderedDict(
+            (table, None if table.isdigit() else FreeRelation(self.connection, table))
+            for table in graph.descendants(self.full_table_name))
+        for rel in delete_list.values():
+            rel.restrict(False)    # initially prohibit all
         # apply restrictions
-        for name, r in delete_list.items():
-            if restrictions[name]:  # do not restrict by an empty list
-                r.restrict([r.proj() if isinstance(r, RelationalOperand) else r
-                            for r in restrictions[name]])
+        delete_list[self.full_table_name].set(self.restrictions)
+        for name, rel in delete_list.items():
+            all_children = graph.children(name)
+            semi = set(all_children)
+            if not name.isdigit() and not (name == self.full_table_name and self.restrictions):
+                semi.difference_update(graph.children(name, primary=True))
+            for child in semi:
+                if not child.isdigit():
+                    delete_list[child].allow(rel)
+                else:
+                    # allow aliased
+                    for child, props in graph.children(child).items():
+                        delete_list[child].allow(rel.proj(
+                            **dict(zip(props['referencing_attributes'], props['referenced_attributes']))))
+            for child in set(all_children).difference(semi):
+                delete_list[child].allow(rel.restrictions)
+
         # execute
         do_delete = False  # indicate if there is anything to delete
         if config['safemode']:  # pragma: no cover
@@ -327,7 +315,10 @@ class BaseRelation(RelationalOperand):
                 if not already_in_transaction:
                     self.connection.start_transaction()
                 for r in reversed(list(delete_list.values())):
-                    r.delete_quick()
+                    try:
+                        r.delete_quick()
+                    except Exception as e:
+                        print(e)
                 if not already_in_transaction:
                     self.connection.commit_transaction()
                 print('Done')
