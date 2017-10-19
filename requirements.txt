@@ -2,5 +2,6 @@ numpy
 pymysql>=0.7.2
 pyparsing
 ipython
-networkx
+tqdm
+networkx~=1.11
 pydotplus

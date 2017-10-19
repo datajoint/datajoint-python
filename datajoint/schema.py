@@ -204,7 +204,6 @@ class Schema:
                     # allow addressing master by name or keyword 'master'
                     ext = {
                         cls.__name__: cls,
-                        part.__name__: part,
                         'master': cls,
                         'self': part}
                     self.process_relation_class(part, context=dict(self.context, **ext))

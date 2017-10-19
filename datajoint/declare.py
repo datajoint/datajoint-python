@@ -76,7 +76,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
 
     # match new attributes and referenced attributes and create foreign keys
     missing_attrs = [attr for attr in ref.primary_key if attr not in attributes] or (
-        len(result.new_attrs) == len(ref.primary_key) == 1 and ref.primary_key)
+        ref.primary_key if len(result.new_attrs) == len(ref.primary_key) == 1 else [])
     new_attrs = result.new_attrs or missing_attrs
     ref_attrs = result.ref_attrs or missing_attrs
     if len(new_attrs) != len(ref_attrs):
