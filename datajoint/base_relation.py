@@ -151,7 +151,7 @@ class BaseRelation(RelationalOperand):
                ignore=" IGNORE" if ignore_errors or skip_duplicates else "",
                fields=fields,
                table=self.full_table_name,
-               select=rows.make_sql(select_fields=fields)))
+               select=rows.make_sql(select_fields=fields))
             self.connection.query(query)
             return 
 
