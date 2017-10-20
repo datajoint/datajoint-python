@@ -1,20 +1,10 @@
-import hashlib
+from .hash import key_hash
 import os
 import pymysql
 from .base_relation import BaseRelation
 
 ERROR_MESSAGE_LENGTH = 2047
 TRUNCATION_APPENDIX = '...truncated'
-
-
-def key_hash(key):
-    """
-    32-byte hash used for lookup of primary keys of jobs
-    """
-    hashed = hashlib.md5()
-    for k, v in sorted(key.items()):
-        hashed.update(str(v).encode())
-    return hashed.hexdigest()
 
 
 class JobTable(BaseRelation):

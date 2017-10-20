@@ -75,7 +75,7 @@ class AutoPopulate:
         :param suppress_errors: suppresses error if true
         :param reserve_jobs: if true, reserves job to populate in asynchronous fashion
         :param order: "original"|"reverse"|"random"  - the order of execution
-        :param limit: if not None, checks out at most that many keys
+        :param limit: if not None, checks at most that many keys
         :param report_progress: if True, report progress_bar
         """
         if self.connection.in_transaction:
