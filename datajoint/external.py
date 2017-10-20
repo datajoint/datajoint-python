@@ -103,6 +103,7 @@ class Bucket:
         :param lpath: local path
         """
         try:
+            self.connect()
             self._s3.Object(self._bucket, rpath).upload_file(lpath)
         except Exception as e:
             raise DataJointError('Error uploading file', str(lpath),
@@ -118,6 +119,7 @@ class Bucket:
         :param lpath: local path
         """
         try:
+            self.connect()
             self._s3.Object(self._bucket, rpath).download_file(lpath)
         except Exception as e:
             raise DataJointError('Error downloading file', str(rpath),
@@ -133,9 +135,9 @@ class Bucket:
 
         :param rpath: remote path within bucket
         '''
-        self.connect()
-        r = self._s3.Object(self._bucket, rpath).delete()
         try:
+            self.connect()
+            r = self._s3.Object(self._bucket, rpath).delete()
             # XXX: if/when does 'False' occur? - s3 returns ok if no file...
             return r['ResponseMetadata']['HTTPStatusCode'] == 204
         except Exception as e:
