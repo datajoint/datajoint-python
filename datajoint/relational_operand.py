@@ -37,6 +37,41 @@ def restricts_to_empty(arg):
             isinstance(arg, Not) and restricts_to_same(arg.restriction))
 
 
+class OrList(list):
+    """
+    A list of conditions to restrict a relation.  The conditions are OR-ed.
+    If any restriction is True, then the overall condition is True.
+    Each condition can be a AndList.
+
+    Example:
+    rel2 = rel & dj.ORList((cond1, cond2, cond3))
+    is equivalent to
+    rel2 = rel & [cond1, cond2, cond3]
+    """
+
+    @staticmethod
+    def _recurse(other):
+        for item in other:
+            if isinstance(item, OrList):
+                yield from OrList._recurse(item)  # flatten list
+            else:
+                if not isinstance(item, AndList):
+                    yield item
+                elif len(item) == 0:
+                    yield True
+                elif len(item) == 1:
+                    if isinstance(item[0], OrList):
+                        OrList._recurse(item[0])
+                    else:
+                        yield item[0]
+                else:
+                    yield item
+
+    def __init__(self, other):
+        lst = list(self._recurse(other))
+        super().__init__([True] if any(i is True for i in lst) else lst)
+
+
 class AndList(list):
     """
     A list of restrictions to by applied to a relation.  The restrictions are AND-ed.
@@ -49,25 +84,24 @@ class AndList(list):
     rel2 = rel & cond1 & cond2 & cond3
     """
 
-    def simplify(self):
-        return self[0] if len(self) == 1 else self
+    def set(self, items):
+        self.clear()
+        self.append(items)
 
-
-class OrList(list):
-    """
-    A list of restrictions to by applied to a relation.  The restrictions are OR-ed.
-    If any restriction is .
-    But the elements that are lists can contain other AndLists.
-
-    Example:
-    rel2 = rel & dj.ORList((cond1, cond2, cond3))
-    is equivalent to
-    rel2 = rel & [cond1, cond2, cond3]
-
-    Since ORList is just an alias for list, it is not necessary and is only provided
-    for consistency with AndList.
-    """
-    pass
+    def append(self, item):
+        # append item, reducing nesting
+        if isinstance(item, AndList):
+            self.extend(item)
+        elif isinstance(item, OrList):
+            if not item:  # an empty OrList is equivalent to False
+                super().append(False)
+            else:  # an OrList with one element is equivalent to the element
+                super().append(item[0] if len(item) == 1 else item)
+        else:
+            super().append(item)
+        # an AndList with a False in it is False
+        if len(self) > 1 and any(i is False for i in self):
+            self.set(False)
 
 
 class RelationalOperand:
@@ -142,6 +176,8 @@ class RelationalOperand:
                 return arg, _negate
             elif isinstance(arg, AndList):
                 return '(' + ' AND '.join([make_condition(element)[0] for element in arg]) + ')', _negate
+            elif arg is True or arg is False:
+                return 'FALSE' if _negate == arg else 'TRUE', False
             # semijoin or antijoin
             elif isinstance(arg, RelationalOperand):
                 common_attributes = [q for q in self.heading.names if q in arg.heading.names]
@@ -272,7 +308,7 @@ class RelationalOperand:
         """
         return self & Not(restriction)
 
-    def restrict(self, restriction):
+    def restrict(self, arg):
         """
         In-place restriction.  Restricts the relation to a subset of its original tuples.
         rel.restrict(restriction)  is equivalent to  rel = rel & restriction  or  rel &= restriction
@@ -318,14 +354,24 @@ class RelationalOperand:
 
         :param restriction: a sequence or an array (treated as OR list), another relation, an SQL condition string, or
             an AndList.
+        :param as_or: if True than the applied restriction becomes or-listed with already existing conditions
         """
-        if not restricts_to_same(restriction):
-            assert not self.heading.expressions or isinstance(self, GroupBy), \
-                "Cannot restrict in place a projection with renamed attributes."
-            if isinstance(restriction, AndList):
-                self.restrictions.extend(restriction)
+        assert not self.heading.expressions or isinstance(self, GroupBy), \
+            "Cannot restrict in place a projection with renamed attributes."
+        if not restricts_to_same(arg):
+            self.restrictions.append(arg)
+        elif restricts_to_empty(arg):
+            self.restrictions.set(False)
+        return self
+
+    def allow(self, arg):
+        assert not self.heading.expressions or isinstance(self, GroupBy), \
+            "Cannot restrict in place a projection with renamed attributes."
+        if self.restrictions:
+            if restricts_to_same(arg):
+                self.restrictions.clear()
             else:
-                self.restrictions.append(restriction)
+                self.restrictions.set(OrList([self.restrictions, arg]))
         return self
 
     @property

@@ -3,6 +3,7 @@ import logging
 import datetime
 import random
 from tqdm import tqdm
+from itertools import count
 from pymysql import OperationalError
 from .relational_operand import RelationalOperand, AndList, U
 from . import DataJointError
@@ -64,7 +65,8 @@ class AutoPopulate:
         """
         return key
 
-    def populate(self, *restrictions, suppress_errors=False, reserve_jobs=False, order="original", limit=None, display_progress=False):
+    def populate(self, *restrictions, suppress_errors=False, reserve_jobs=False,
+		 order="original", limit=None, max_calls=None, display_progress=False):
         """
         rel.populate() calls rel._make_tuples(key) for every primary key in self.key_source
         for which there is not already a tuple in rel.
@@ -73,8 +75,9 @@ class AutoPopulate:
         :param suppress_errors: suppresses error if true
         :param reserve_jobs: if true, reserves job to populate in asynchronous fashion
         :param order: "original"|"reverse"|"random"  - the order of execution
-        :param limit: if not None, populates at max that many keys
         :param display_progress: if True, report progress_bar
+        :param limit: if not None, checks at most that many keys
+        :param max_calls: if not None, populates at max that many keys
         """
         if self.connection.in_transaction:
             raise DataJointError('Populate cannot be called during a transaction.')
@@ -107,8 +110,12 @@ class AutoPopulate:
         elif order == "random":
             random.shuffle(keys)
 
+        call_count = count()
         logger.info('Found %d keys to populate' % len(keys))
+
         for key in (tqdm(keys) if display_progress else keys):
+            if max_calls is not None and call_count >= max_calls:
+                break
             if not reserve_jobs or jobs.reserve(self.target.table_name, self._job_key(key)):
                 self.connection.start_transaction()
                 if key in self.target:  # already populated
@@ -117,6 +124,7 @@ class AutoPopulate:
                         jobs.complete(self.target.table_name, self._job_key(key))
                 else:
                     logger.info('Populating: ' + str(key))
+                    next(call_count)
                     try:
                         self._make_tuples(dict(key))
                     except (KeyboardInterrupt, SystemExit, Exception) as error:
@@ -142,7 +150,6 @@ class AutoPopulate:
         # place back the original signal handler
         if reserve_jobs:
             signal.signal(signal.SIGTERM, old_handler)
-
         return error_list
 
     def progress(self, *restrictions, display=True):
