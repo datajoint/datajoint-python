@@ -70,8 +70,10 @@ class Bucket:
         try:
             self._bucket = config['external.location'].split("s3://")[1]
         except (AttributeError, IndexError, KeyError) as e:
-            raise DataJointError('external.location not properly configured: '
-                                 + str(config['external.location'])) from None
+            raise DataJointError(
+                'external.location not properly configured: {l}'.format(
+                    l=config['external.location'])
+                ) from None
 
     def connect(self):
         if self._s3 is None:
@@ -88,9 +90,9 @@ class Bucket:
             self._s3.Object(self._bucket, rpath).load()
         except ClientError as e:
             if e.response['Error']['Code'] != "404":
-                raise DataJointError('Error checking remote file', str(rpath),
-                                     '(', str(e), ')')
-
+                raise DataJointError(
+                    'Error checking remote file {r} ({e})'.format(r=rpath, e=e)
+                )
             return False
 
         return True
@@ -106,8 +108,10 @@ class Bucket:
             self.connect()
             self._s3.Object(self._bucket, rpath).upload_file(lpath)
         except Exception as e:
-            raise DataJointError('Error uploading file', str(lpath),
-                                 'to', str(rpath), '(', str(e), ')')
+            raise DataJointError(
+                'Error uploading file {l} to {r} ({e})'.format(
+                    l=lpath, r=rpath, e=e)
+            )
 
         return True
 
@@ -122,8 +126,10 @@ class Bucket:
             self.connect()
             self._s3.Object(self._bucket, rpath).download_file(lpath)
         except Exception as e:
-            raise DataJointError('Error downloading file', str(rpath),
-                                 'to', str(lpath), '(', str(e), ')')
+            raise DataJointError(
+                'Error downloading file {r} to {l} ({e})'.format(
+                    r=rpath, l=lpath, e=e)
+            )
 
         return True
 
@@ -141,5 +147,6 @@ class Bucket:
             # XXX: if/when does 'False' occur? - s3 returns ok if no file...
             return r['ResponseMetadata']['HTTPStatusCode'] == 204
         except Exception as e:
-            raise DataJointError('error deleting file ' + str(rpath),
-                                 '(', str(e), ')')
+            raise DataJointError(
+                'error deleting file {r} ({e})'.format(r=rpath, e=e)
+            )
