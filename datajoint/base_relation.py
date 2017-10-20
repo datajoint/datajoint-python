@@ -142,8 +142,9 @@ class BaseRelation(RelationalOperand):
             # insert from select
             if not ignore_extra_fields:
                 try:
-                    raise DataJointError("Attribute %s not found.  To ignore extra attributes in insert, set ignore_extra_fields=True.",
-                        next(name for name in rows.heading if name not in heading))
+                    raise DataJointError(
+                            "Attribute %s not found.  To ignore extra attributes in insert, set ignore_extra_fields=True." %
+                            next(name for name in rows.heading if name not in heading))
                 except StopIteration:
                     pass
             fields=list(name for name in heading if name in rows.heading)
