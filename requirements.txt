@@ -4,3 +4,4 @@ pyparsing
 ipython
 networkx~=1.11
 pydotplus
+boto3
