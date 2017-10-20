@@ -79,38 +79,49 @@ class Bucket:
 
     def stat(self, rpath=None):
         """
-        check if a file exists in the bucket
+        Check if a file exists in the bucket.
+
+        :param rpath: remote path within bucket
         """
         try:
             self.connect()
             self._s3.Object(self._bucket, rpath).load()
         except ClientError as e:
-            if e.response['Error']['Code'] == "404":
-                return False
-            else:
-                raise DataJointError('error checking remote file')
+            if e.response['Error']['Code'] != "404":
+                raise DataJointError('Error checking remote file', str(rpath),
+                                     '(', str(e), ')')
+
+            return False
 
         return True
 
     def put(self, lpath=None, rpath=None):
         """
-        Upload a file
+        Upload a file to the bucket.
+
+        :param rpath: remote path within bucket
+        :param lpath: local path
         """
         try:
             self._s3.Object(self._bucket, rpath).upload_file(lpath)
-        except:
-            raise DataJointError('Error uploading file')
+        except Exception as e:
+            raise DataJointError('Error uploading file', str(lpath),
+                                 'to', str(rpath), '(', str(e), ')')
 
         return True
 
     def get(self, rpath=None, lpath=None):
         """
-        Retrieve a file
+        Retrieve a file from the bucket.
+
+        :param rpath: remote path within bucket
+        :param lpath: local path
         """
         try:
             self._s3.Object(self._bucket, rpath).download_file(lpath)
         except Exception as e:
-            raise DataJointError('file download error')
+            raise DataJointError('Error downloading file', str(rpath),
+                                 'to', str(lpath), '(', str(e), ')')
 
         return True
 
@@ -119,14 +130,14 @@ class Bucket:
         Delete a single remote object.
         Note: will return True even if object doesn't exist;
         for explicit verification combine with a .stat() call.
+
+        :param rpath: remote path within bucket
         '''
         self.connect()
         r = self._s3.Object(self._bucket, rpath).delete()
         try:
-            if r['ResponseMetadata']['HTTPStatusCode'] == 204:
-                return True
-            else:
-                # XXX: if/when does this occur? - s3 returns ok if no file...
-                return False
-        except:
-            raise DataJointError('error deleting file: ' + str(rpath))
+            # XXX: if/when does 'False' occur? - s3 returns ok if no file...
+            return r['ResponseMetadata']['HTTPStatusCode'] == 204
+        except Exception as e:
+            raise DataJointError('error deleting file ' + str(rpath),
+                                 '(', str(e), ')')
