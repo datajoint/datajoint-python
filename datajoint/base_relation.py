@@ -146,10 +146,10 @@ class BaseRelation(RelationalOperand):
                         next(name for name in rows.heading if name not in heading))
                 except StopIteration:
                     pass
-            fields='`'+'`,`'.join(name for name in heading if name in rows.heading) + '`'
+            fields=list(name for name in heading if name in rows.heading)
             query = 'INSERT{ignore} INTO {table} ({fields}) {select}'.format(
                ignore=" IGNORE" if ignore_errors or skip_duplicates else "",
-               fields=fields,
+               fields='`' + '`,`'.join(fields) + '`',
                table=self.full_table_name,
                select=rows.make_sql(select_fields=fields))
             self.connection.query(query)
@@ -289,7 +289,7 @@ class BaseRelation(RelationalOperand):
          # restrict by self
          if self.restrictions:
              restrict_by_me.add(self.full_table_name)
-             restrictions[self.full_table_name].append(self.restrictions.simplify())  # copy own restrictions
+             restrictions[self.full_table_name].append(self.restrictions)  # copy own restrictions
          # restrict by renamed nodes
          restrict_by_me.update(table for table in delete_list if table.isdigit())  # restrict by all renamed nodes
          # restrict by tables restricted by a non-primary semijoin

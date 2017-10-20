@@ -95,7 +95,7 @@ class AutoPopulate:
         todo -= self.target
 
         error_list = [] if suppress_errors else None
-        jobs = self.connection.jobs[self.target.database] if reserve_jobs else None
+        jobs = self.connection.schemas[self.target.database].jobs if reserve_jobs else None
 
         # define and setup signal handler for SIGTERM
         if reserve_jobs:
