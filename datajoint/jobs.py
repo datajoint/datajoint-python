@@ -109,17 +109,3 @@ class JobTable(BaseRelation):
                  user=self._user,
                  key=key,
                  error_message=error_message), replace=True, ignore_extra_fields=True)
-
-
-class JobManager:
-    """
-    A container for all job tables (one job table per schema).
-    """
-    def __init__(self, connection):
-        self.connection = connection
-        self._jobs = {}
-
-    def __getitem__(self, database):
-        if database not in self._jobs:
-            self._jobs[database] = JobTable(self.connection, database)
-        return self._jobs[database]

@@ -11,7 +11,6 @@ from getpass import getpass
 from . import config
 from . import DataJointError
 from .dependencies import Dependencies
-from .jobs import JobManager
 from pymysql import err
 
 logger = logging.getLogger(__name__)
@@ -75,7 +74,6 @@ class Connection:
             raise DataJointError('Connection failed.')
         self._conn.autocommit(True)
         self._in_transaction = False
-        self.jobs = JobManager(self)
         self.schemas = dict()
         self.dependencies = Dependencies(self)
 
