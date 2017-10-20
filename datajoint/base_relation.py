@@ -77,22 +77,18 @@ class BaseRelation(RelationalOperand):
         :param primary: if None, then all parents are returned. If True, then only foreign keys composed of
             primary key attributes are considered.  If False, the only foreign keys including at least one non-primary
             attribute are considered.
-
         :return: dict of tables referenced with self's foreign keys
         """
-        return dict(p[::2] for p in self.connection.dependencies.in_edges(self.full_table_name, data=True)
-                    if primary is None or p[2]['primary'] == primary)
+        return self.connection.dependencies.parents(self.full_table_name, primary)
 
     def children(self, primary=None):
         """
         :param primary: if None, then all parents are returned. If True, then only foreign keys composed of
             primary key attributes are considered.  If False, the only foreign keys including at least one non-primary
             attribute are considered.
-
         :return: dict of tables with foreign keys referencing self
         """
-        return dict(p[1:3] for p in self.connection.dependencies.out_edges(self.full_table_name, data=True)
-                    if primary is None or p[2]['primary'] == primary)
+        return self.connection.dependencies.children(self.full_table_name, primary)
 
     @property
     def is_declared(self):
@@ -155,7 +151,14 @@ class BaseRelation(RelationalOperand):
                 table=self.full_table_name,
                 fields='`'+'`,`'.join(rows.heading.names)+'`',
                 select=rows.make_sql())
-            self.connection.query(query)
+            try:
+                self.connection.query(query)
+            except pymysql.err.InternalError as err:
+                if err.args[0] == server_error_codes['unknown column']:
+                    # args[1] -> Unknown column 'extra' in 'field list'
+                    raise DataJointError('%s : To ignore extra fields, set ignore_extra_fields=True in insert.' % err.args[1])
+                else:
+                    raise
             return
 
         heading = self.heading
@@ -267,51 +270,68 @@ class BaseRelation(RelationalOperand):
         """
         query = 'DELETE FROM ' + self.full_table_name + self.where_clause
         self.connection.query(query)
-        self._log(query[0:255])
+        self._log(query[:255])
 
     def delete(self):
         """
         Deletes the contents of the table and its dependent tables, recursively.
         User is prompted for confirmation if config['safemode'] is set to True.
         """
-        self.connection.dependencies.load()
-
-        relations_to_delete = collections.OrderedDict(
-            (r, FreeRelation(self.connection, r))
-            for r in self.connection.dependencies.descendants(self.full_table_name))
+        graph = self.connection.dependencies
+        graph.load()
+        delete_list = collections.OrderedDict()
+        for table in graph.descendants(self.full_table_name):
+            if not table.isdigit():
+                delete_list[table] = FreeRelation(self.connection, table)
+            else:
+                parent, edge = next(iter(graph.parents(table).items()))
+                delete_list[table] = FreeRelation(self.connection, parent).proj(
+                    **{new_name: old_name
+                       for new_name, old_name in zip(edge['referencing_attributes'], edge['referenced_attributes'])
+                       if new_name != old_name})
 
         # construct restrictions for each relation
         restrict_by_me = set()
         restrictions = collections.defaultdict(list)
+        # restrict by self
         if self.restrictions:
             restrict_by_me.add(self.full_table_name)
-            restrictions[self.full_table_name].append(self.restrictions)  # copy own restrictions
-        for r in relations_to_delete.values():
-            restrict_by_me.update(r.children(primary=False))
-        for name, r in relations_to_delete.items():
-            for dep in r.children():
-                if name in restrict_by_me:
-                    restrictions[dep].append(r)
+            restrictions[self.full_table_name].append(self.restrictions.simplify())  # copy own restrictions
+        # restrict by renamed nodes
+        restrict_by_me.update(table for table in delete_list if table.isdigit())  # restrict by all renamed nodes
+        # restrict by tables restricted by a non-primary semijoin
+        for table in delete_list:
+            restrict_by_me.update(graph.children(table, primary=False))   # restrict by any non-primary dependents
+
+        # compile restriction lists
+        for table, rel in delete_list.items():
+            for dep in graph.children(table):
+                if table in restrict_by_me:
+                    restrictions[dep].append(rel)   # if restrict by me, then restrict by the entire relation
                 else:
-                    restrictions[dep].extend(restrictions[name])
+                    restrictions[dep].extend(restrictions[table])   # or re-apply the same restrictions
 
         # apply restrictions
-        for name, r in relations_to_delete.items():
+        for name, r in delete_list.items():
             if restrictions[name]:  # do not restrict by an empty list
                 r.restrict([r.proj() if isinstance(r, RelationalOperand) else r
-                            for r in restrictions[name]])  # project
+                            for r in restrictions[name]])
         # execute
         do_delete = False  # indicate if there is anything to delete
         if config['safemode']:  # pragma: no cover
             print('The contents of the following tables are about to be deleted:')
-        for relation in list(relations_to_delete.values()):
-            count = len(relation)
-            if count:
-                do_delete = True
-                if config['safemode']:
-                    print(relation.full_table_name, '(%d tuples)' % count)
+
+        for table, relation in list(delete_list.items()):   # need list to force a copy
+            if table.isdigit():
+                delete_list.pop(table)  # remove alias nodes from the delete list
             else:
-                relations_to_delete.pop(relation.full_table_name)
+                count = len(relation)
+                if count:
+                    do_delete = True
+                    if config['safemode']:
+                        print(table, '(%d tuples)' % count)
+                else:
+                    delete_list.pop(table)
         if not do_delete:
             if config['safemode']:
                 print('Nothing to delete')
@@ -320,7 +340,7 @@ class BaseRelation(RelationalOperand):
                 already_in_transaction = self.connection._in_transaction
                 if not already_in_transaction:
                     self.connection.start_transaction()
-                for r in reversed(list(relations_to_delete.values())):
+                for r in reversed(list(delete_list.values())):
                     r.delete_quick()
                 if not already_in_transaction:
                     self.connection.commit_transaction()
@@ -335,7 +355,7 @@ class BaseRelation(RelationalOperand):
             query = 'DROP TABLE %s' % self.full_table_name
             self.connection.query(query)
             logger.info("Dropped table %s" % self.full_table_name)
-            self._log(query[0:255])
+            self._log(query[:255])
         else:
             logger.info("Nothing to drop: table %s is not declared" % self.full_table_name)
 
@@ -346,7 +366,8 @@ class BaseRelation(RelationalOperand):
         """
         self.connection.dependencies.load()
         do_drop = True
-        tables = self.connection.dependencies.descendants(self.full_table_name)
+        tables = [table for table in self.connection.dependencies.descendants(self.full_table_name)
+                  if not table.isdigit()]
         if config['safemode']:
             for table in tables:
                 print(table, '(%d tuples)' % len(FreeRelation(self.connection, table)))
@@ -367,7 +388,7 @@ class BaseRelation(RelationalOperand):
         return ret['Data_length'] + ret['Index_length']
 
     def show_definition(self):
-        logger.warn('show_definition is deprecated.  Use describe instead.')
+        logger.warning('show_definition is deprecated.  Use describe instead.')
         return self.describe()
 
     def describe(self):

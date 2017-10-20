@@ -29,6 +29,7 @@ prefix_to_role = dict(zip(role_to_prefix.values(), role_to_prefix.keys()))
 
 
 server_error_codes = {
+    'unknown column': 1054,
     'command denied': 1142,
     'tables does not exist': 1146,
     'syntax error': 1149
