@@ -29,11 +29,11 @@ class ExternalTable(BaseRelation):
     def definition(self):
         return """
         # external storage tracking 
-        store   : char(8)    # the name of external store
-        hash    : char(43)   # the hash of stored object
+        store :char(8)  # the name of external store
+        hash  :char(43) # the hash of stored object
         ---
-        count = 1 : int    # reference count
-        size      : int       # size of object in bytes
+        count = 1 :int               # reference count
+        size      :bigint unsigned   # size of object in bytes
         timestamp=CURRENT_TIMESTAMP  :timestamp   # automatic timestamp
         """
 
