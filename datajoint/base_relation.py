@@ -266,78 +266,78 @@ class BaseRelation(RelationalOperand):
         self._log(query[:255])
 
     def delete(self):
-         """
-         Deletes the contents of the table and its dependent tables, recursively.
-         User is prompted for confirmation if config['safemode'] is set to True.
-         """
-         graph = self.connection.dependencies
-         graph.load()
-         delete_list = collections.OrderedDict()
-         for table in graph.descendants(self.full_table_name):
-             if not table.isdigit():
-                 delete_list[table] = FreeRelation(self.connection, table)
-             else:
-                 parent, edge = next(iter(graph.parents(table).items()))
-                 delete_list[table] = FreeRelation(self.connection, parent).proj(
-                     **{new_name: old_name
-                        for new_name, old_name in zip(edge['referencing_attributes'], edge['referenced_attributes'])
-                        if new_name != old_name})
+        """
+        Deletes the contents of the table and its dependent tables, recursively.
+        User is prompted for confirmation if config['safemode'] is set to True.
+        """
+        graph = self.connection.dependencies
+        graph.load()
+        delete_list = collections.OrderedDict()
+        for table in graph.descendants(self.full_table_name):
+            if not table.isdigit():
+                delete_list[table] = FreeRelation(self.connection, table)
+            else:
+                parent, edge = next(iter(graph.parents(table).items()))
+                delete_list[table] = FreeRelation(self.connection, parent).proj(
+                    **{new_name: old_name
+                       for new_name, old_name in zip(edge['referencing_attributes'], edge['referenced_attributes'])
+                       if new_name != old_name})
 
-         # construct restrictions for each relation
-         restrict_by_me = set()
-         restrictions = collections.defaultdict(list)
-         # restrict by self
-         if self.restrictions:
-             restrict_by_me.add(self.full_table_name)
-             restrictions[self.full_table_name].append(self.restrictions)  # copy own restrictions
-         # restrict by renamed nodes
-         restrict_by_me.update(table for table in delete_list if table.isdigit())  # restrict by all renamed nodes
-         # restrict by tables restricted by a non-primary semijoin
-         for table in delete_list:
-             restrict_by_me.update(graph.children(table, primary=False))   # restrict by any non-primary dependents
+        # construct restrictions for each relation
+        restrict_by_me = set()
+        restrictions = collections.defaultdict(list)
+        # restrict by self
+        if self.restrictions:
+            restrict_by_me.add(self.full_table_name)
+            restrictions[self.full_table_name].append(self.restrictions)  # copy own restrictions
+        # restrict by renamed nodes
+        restrict_by_me.update(table for table in delete_list if table.isdigit())  # restrict by all renamed nodes
+        # restrict by tables restricted by a non-primary semijoin
+        for table in delete_list:
+            restrict_by_me.update(graph.children(table, primary=False))   # restrict by any non-primary dependents
 
-         # compile restriction lists
-         for table, rel in delete_list.items():
-             for dep in graph.children(table):
-                 if table in restrict_by_me:
-                     restrictions[dep].append(rel)   # if restrict by me, then restrict by the entire relation
-                 else:
-                     restrictions[dep].extend(restrictions[table])   # or re-apply the same restrictions
+        # compile restriction lists
+        for table, rel in delete_list.items():
+            for dep in graph.children(table):
+                if table in restrict_by_me:
+                    restrictions[dep].append(rel)   # if restrict by me, then restrict by the entire relation
+                else:
+                    restrictions[dep].extend(restrictions[table])   # or re-apply the same restrictions
 
-         # apply restrictions
-         for name, r in delete_list.items():
-             if restrictions[name]:  # do not restrict by an empty list
-                 r.restrict([r.proj() if isinstance(r, RelationalOperand) else r
-                             for r in restrictions[name]])
-         # execute
-         do_delete = False  # indicate if there is anything to delete
-         if config['safemode']:  # pragma: no cover
-             print('The contents of the following tables are about to be deleted:')
+        # apply restrictions
+        for name, r in delete_list.items():
+            if restrictions[name]:  # do not restrict by an empty list
+                r.restrict([r.proj() if isinstance(r, RelationalOperand) else r
+                            for r in restrictions[name]])
+        # execute
+        do_delete = False  # indicate if there is anything to delete
+        if config['safemode']:  # pragma: no cover
+            print('The contents of the following tables are about to be deleted:')
 
-         for table, relation in list(delete_list.items()):   # need list to force a copy
-             if table.isdigit():
-                 delete_list.pop(table)  # remove alias nodes from the delete list
-             else:
-                 count = len(relation)
-                 if count:
-                     do_delete = True
-                     if config['safemode']:
-                         print(table, '(%d tuples)' % count)
-                 else:
-                     delete_list.pop(table)
-         if not do_delete:
-             if config['safemode']:
-                 print('Nothing to delete')
-         else:
-             if not config['safemode'] or user_choice("Proceed?", default='no') == 'yes':
-                 already_in_transaction = self.connection._in_transaction
-                 if not already_in_transaction:
-                     self.connection.start_transaction()
-                 for r in reversed(list(delete_list.values())):
-                     r.delete_quick()
-                 if not already_in_transaction:
-                     self.connection.commit_transaction()
-                 print('Done')
+        for table, relation in list(delete_list.items()):   # need list to force a copy
+            if table.isdigit():
+                delete_list.pop(table)  # remove alias nodes from the delete list
+            else:
+                count = len(relation)
+                if count:
+                    do_delete = True
+                    if config['safemode']:
+                        print(table, '(%d tuples)' % count)
+                else:
+                    delete_list.pop(table)
+        if not do_delete:
+            if config['safemode']:
+                print('Nothing to delete')
+        else:
+            if not config['safemode'] or user_choice("Proceed?", default='no') == 'yes':
+                already_in_transaction = self.connection._in_transaction
+                if not already_in_transaction:
+                    self.connection.start_transaction()
+                for r in reversed(list(delete_list.values())):
+                    r.delete_quick()
+                if not already_in_transaction:
+                    self.connection.commit_transaction()
+                print('Done')
 
     def drop_quick(self):
         """
