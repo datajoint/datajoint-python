@@ -53,8 +53,10 @@ else:
 
 # override login credentials with environment variables
 mapping = {k: v for k, v in zip(
-    ('database.host', 'database.user', 'database.password'),
-    map(os.getenv, ('DJ_HOST', 'DJ_USER', 'DJ_PASS')))
+    ('database.host', 'database.user', 'database.password',
+     'external.aws_access_key_id', 'external.aws_secret_access_key',),
+    map(os.getenv, ('DJ_HOST', 'DJ_USER', 'DJ_PASS',
+                    'DJ_AWS_ACCESS_KEY_ID', 'DJ_AWS_SECRET_ACCESS_KEY',)))
            if v is not None}
 for k in mapping:
     config.add_history('Updated login credentials from %s' % k)
@@ -64,6 +66,7 @@ logger.setLevel(log_levels[config['loglevel']])
 
 # ------------- flatten import hierarchy -------------------------
 from .connection import conn, Connection
+from .s3 import bucket, Bucket
 from .base_relation import FreeRelation, BaseRelation
 from .user_relations import Manual, Lookup, Imported, Computed, Part
 from .relational_operand import Not, AndList, OrList, U
