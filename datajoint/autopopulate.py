@@ -64,7 +64,7 @@ class AutoPopulate:
         """
         return key
 
-    def populate(self, *restrictions, suppress_errors=False, reserve_jobs=False, order="original", limit=None, report_progress=False):
+    def populate(self, *restrictions, suppress_errors=False, reserve_jobs=False, order="original", limit=None, display_progress=False):
         """
         rel.populate() calls rel._make_tuples(key) for every primary key in self.key_source
         for which there is not already a tuple in rel.
@@ -74,7 +74,7 @@ class AutoPopulate:
         :param reserve_jobs: if true, reserves job to populate in asynchronous fashion
         :param order: "original"|"reverse"|"random"  - the order of execution
         :param limit: if not None, populates at max that many keys
-        :param report_progress: if True, report progress_bar
+        :param display_progress: if True, report progress_bar
         """
         if self.connection.in_transaction:
             raise DataJointError('Populate cannot be called during a transaction.')
@@ -108,7 +108,7 @@ class AutoPopulate:
             random.shuffle(keys)
 
         logger.info('Found %d keys to populate' % len(keys))
-        for key in (tqdm(keys) if report_progress else keys):
+        for key in (tqdm(keys) if display_progress else keys):
             if not reserve_jobs or jobs.reserve(self.target.table_name, self._job_key(key)):
                 self.connection.start_transaction()
                 if key in self.target:  # already populated
@@ -150,11 +150,11 @@ class AutoPopulate:
         report progress of populating this table
         :return: remaining, total -- tuples to be populated
         """
-        todo = self.key_source & AndList(restrictions)
+        todo = (self.key_source & AndList(restrictions)).proj()
         if any(name not in self.target.heading for name in todo.heading):
             raise DataJointError('The populated target must have all the attributes of the key source')
         total = len(todo)
-        remaining = len(todo.proj() - self.target)
+        remaining = len(todo - self.target)
         if display:
             print('%-20s' % self.__class__.__name__,
                   'Completed %d of %d (%2.1f%%)   %s' % (
