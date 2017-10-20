@@ -51,7 +51,7 @@ class ExternalTable(BaseRelation):
 
 	# write object
         try:
-            path = config['external.%s' % store]
+            path = config['external.%s' % store]['location']
         except KeyError:
             raise DataJointError('storage.%s is not configured' % store)
 
@@ -87,7 +87,7 @@ class ExternalTable(BaseRelation):
         get an object from external store
         """
         try:
-            path = config['external.%s' % store]
+            path = config['external.%s' % store]['location']
         except KeyError:
             raise DataJointError('storage.%s is not configured' % store)
 
