@@ -51,12 +51,12 @@ class ExternalTable(BaseRelation):
 
 	# write object
         try:
-            path = config['external.%s' % store]['location']
+            spec = config['external.%s' % store]
         except KeyError:
             raise DataJointError('storage.%s is not configured' % store)
 
-	if path.beginswith('file://'):
-            folder = os.path.join(path[len('file://'):], self.database)
+	if spec.protocol == 'file':
+            folder = os.path.join(spec['location'], self.database)
             full_path = os.path.join(folder, hash)
             if not os.path.isfile(full_path):
                 try:
@@ -87,12 +87,12 @@ class ExternalTable(BaseRelation):
         get an object from external store
         """
         try:
-            path = config['external.%s' % store]['location']
+            spec = config['external.%s' % store]
         except KeyError:
             raise DataJointError('storage.%s is not configured' % store)
 
-	if path.beginswith('file://'):
-            full_path = os.path.join(path[len('file://'):], self.database, hash)
+	if spec['protocol'] == 'file': 
+            full_path = os.path.join(spec['location'], self.database, hash)
 	    try:
 	        with open(full_path, 'rb') as f:
 	            blob = f.read()
