@@ -5,7 +5,7 @@ import inspect
 import re
 from . import conn, DataJointError, config
 from .erd import ERD
-from .jobs import JobsTable
+from .jobs import JobTable
 from .heading import Heading
 from .utils import user_choice, to_camel_case
 from .user_relations import Part, Computed, Imported, Manual, Lookup
@@ -218,7 +218,7 @@ class Schema:
         :return: jobs relation
         """
         if self._jobs is None:
-            self._jobs = JobsTable(self.connection, self.database)
+            self._jobs = JobTable(self.connection, self.database)
         return self._jobs
 
     def erd(self):
