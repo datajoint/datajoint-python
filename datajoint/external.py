@@ -55,7 +55,7 @@ class ExternalTable(BaseRelation):
         except KeyError:
             raise DataJointError('storage.%s is not configured' % store)
 
-	if spec.protocol == 'file':
+	if spec['protocol'] == 'file':
             folder = os.path.join(spec['location'], self.database)
             full_path = os.path.join(folder, hash)
             if not os.path.isfile(full_path):
