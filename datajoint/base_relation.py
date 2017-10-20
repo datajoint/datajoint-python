@@ -141,17 +141,17 @@ class BaseRelation(RelationalOperand):
         if isinstance(rows, RelationalOperand):
             # insert from select
             if not ignore_extra_fields:
-		try:
-		    raise DataJointError("Attribute %s not found.", 
+                try:
+                    raise DataJointError("Attribute %s not found.", 
                         next(name for name in rows.heading if name not in heading))
                 except StopIteration:
                     pass
             fields='`'+'`,`'.join(name for name in heading if name in rows.heading) + '`'
-	    query = 'INSERT{ignore} INTO {table} ({fields}) {select}'.format( 
-	       ignore=" IGNORE" if ignore_errors or skip_duplicates else "",
-	       fields=fields,
-	       table=self.full_table_name,
-	       select=rows.make_sql(select_fields=fields)))
+            query = 'INSERT{ignore} INTO {table} ({fields}) {select}'.format( 
+               ignore=" IGNORE" if ignore_errors or skip_duplicates else "",
+               fields=fields,
+               table=self.full_table_name,
+               select=rows.make_sql(select_fields=fields)))
             self.connection.query(query)
             return 
 
