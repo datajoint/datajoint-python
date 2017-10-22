@@ -21,15 +21,12 @@ def ordered_dir(klass):
     :param klass: class to list members for
     :return: a list of attributes declared in klass and its superclasses
     """
-    m = []
-    mro = klass.mro()
-    for c in mro:
-        if hasattr(c, '_ordered_class_members'):
-            elements = c._ordered_class_members
-        else:
-            elements = c.__dict__.keys()
-        m = [e for e in elements if e not in m] + m
-    return m
+    attr_list = list()
+    for c in reversed(klass.mro()):
+        attr_list.extend(e for e in (
+            c._ordered_class_members if hasattr(c, '_ordered_class_members') else
+            c.__dict__.keys()) if e not in attr_list)
+    return attr_list
 
 
 class Schema:
