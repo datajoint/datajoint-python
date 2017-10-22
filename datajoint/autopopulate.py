@@ -90,7 +90,14 @@ class AutoPopulate:
         if not isinstance(todo, RelationalOperand):
             raise DataJointError('Invalid key_source value')
         todo = (todo & AndList(restrictions)).proj()
-        if any(name not in self.target.heading for name in todo.heading):
+
+        try:
+            raiseDataJointError(
+                    'The populate target lacks attribute %s from the key_source' % next(
+                        name not in self.target.heading for name in todo.heading))
+        except StopIteration:
+            pass
+
             raise DataJointError('The populated target must have all the attributes of the key source')
         todo -= self.target
 
