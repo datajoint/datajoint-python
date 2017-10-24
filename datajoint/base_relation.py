@@ -122,7 +122,7 @@ class BaseRelation(RelationalOperand):
         """
         self.insert((row,), **kwargs)
 
-    def insert(self, rows, replace=False, skip_duplicates=False, ignore_extra_fields=False):
+    def insert(self, rows, replace=False, skip_duplicates=False, ignore_extra_fields=False, ignore_errors=False):
         """
         Insert a collection of rows.
 
@@ -137,6 +137,10 @@ class BaseRelation(RelationalOperand):
         >>>     dict(subject_id=7, species="mouse", date_of_birth="2014-09-01"),
         >>>     dict(subject_id=8, species="mouse", date_of_birth="2014-09-02")])
         """
+
+        if ignore_errors:
+            warnings.warn('Use of `ignore_errors` in `insert` and `insert1` is deprecated. Use try...except... '
+                          'to explicitly handle any errors', stacklevel=2)
 
         # handle query safely - if skip_duplicates=True, wraps the query with transaction and checks for warning
         def safe_query(*args, **kwargs):
