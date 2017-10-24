@@ -146,7 +146,7 @@ class BaseRelation(RelationalOperand):
         def safe_query(*args, **kwargs):
             if not skip_duplicates:
                 self.connection.query(*args, **kwargs)
-            else
+            else:
                 already_in_transaction = self.connection.in_transaction
                 if not already_in_transaction:
                     self.connection.start_transaction()
