@@ -154,7 +154,6 @@ class BaseRelation(RelationalOperand):
                         warnings.simplefilter('always')
                         self.connection.query(*args, suppress_warnings=False, **kwargs)
                         for w in ws:
-                            # 1062 is MySQL's error code for duplicated entry
                             if w.message.args[0] != server_error_codes['duplicate entry']:
                                 raise InternalError(w.message.args)
                 except:
