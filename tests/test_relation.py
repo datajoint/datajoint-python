@@ -5,7 +5,7 @@ import numpy as np
 from nose.tools import assert_equal, assert_not_equal, assert_true, assert_list_equal, raises
 from pymysql import IntegrityError, InternalError, ProgrammingError
 import datajoint as dj
-from datajoint import utils
+from datajoint import utils, DataJointError
 from datajoint.base_relation import BaseRelation
 from unittest.mock import patch
 
@@ -170,7 +170,7 @@ class TestRelation:
             dtype=self.subject.heading.as_dtype)
         self.subject.insert(tmp, skip_duplicates=True)
 
-    @raises(IntegrityError)
+    @raises(DataJointError)
     def test_not_skip_duplicate(self):
         """Tests if duplicates are not skipped."""
         tmp = np.array([
@@ -179,6 +179,12 @@ class TestRelation:
             (1, 'Peter', 'mouse', '2015-01-01', '')],
             dtype=self.subject.heading.as_dtype)
         self.subject.insert(tmp, skip_duplicates=False)
+
+    @raises(InternalError)
+    def test_no_error_suppression(self):
+        """skip_duplicates=True should not suppress other errors"""
+        self.test.insert([dict(key=100)], skip_duplicates=True)
+
 
     def test_blob_insert(self):
         """Tests inserting and retrieving blobs."""

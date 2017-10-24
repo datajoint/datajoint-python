@@ -101,7 +101,7 @@ class Connection:
         """
         return self._conn.ping()
 
-    def query(self, query, args=(), as_dict=False):
+    def query(self, query, args=(), as_dict=False, suppress_warnings=True):
         """
         Execute the specified query and return the tuple generator (cursor).
 
@@ -109,6 +109,7 @@ class Connection:
         :param args: additional arguments for the client.cursor
         :param as_dict: If as_dict is set to True, the returned cursor objects returns
                         query results as dictionary.
+        :param suppress_warning: If True, suppress all warnings arising from underlying query library
         """
 
         cursor = client.cursors.DictCursor if as_dict else client.cursors.Cursor
@@ -117,10 +118,13 @@ class Connection:
         try:
             # Log the query
             logger.debug("Executing SQL:" + query[0:300])
-            # suppress all warnings arising from underlying SQL library
+
             with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
+                if suppress_warnings:
+                    # suppress all warnings arising from underlying SQL library
+                    warnings.simplefilter("ignore")
                 cur.execute(query, args)
+
         except err.OperationalError as e:
             if 'MySQL server has gone away' in str(e) and config['database.reconnect']:
                 warnings.warn('''Mysql server has gone away.

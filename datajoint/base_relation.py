@@ -5,6 +5,8 @@ import platform
 import numpy as np
 import pymysql
 import logging
+import warnings
+from pymysql import OperationalError, InternalError, IntegrityError
 from . import config, DataJointError
 from .declare import declare
 from .relational_operand import RelationalOperand
@@ -120,14 +122,13 @@ class BaseRelation(RelationalOperand):
         """
         self.insert((row,), **kwargs)
 
-    def insert(self, rows, replace=False, ignore_errors=False, skip_duplicates=False, ignore_extra_fields=False):
+    def insert(self, rows, replace=False, skip_duplicates=False, ignore_extra_fields=False, ignore_errors=False):
         """
         Insert a collection of rows.
 
         :param rows: An iterable where an element is a numpy record, a dict-like object, or an ordered sequence.
             rows may also be another relation with the same heading.
         :param replace: If True, replaces the existing tuple.
-        :param ignore_errors: If True, ignore errors: e.g. constraint violations.
         :param skip_duplicates: If True, silently skip duplicate inserts.
         :param ignore_extra_fields: If False, fields that are not in the heading raise error.
 
@@ -136,6 +137,36 @@ class BaseRelation(RelationalOperand):
         >>>     dict(subject_id=7, species="mouse", date_of_birth="2014-09-01"),
         >>>     dict(subject_id=8, species="mouse", date_of_birth="2014-09-02")])
         """
+
+        if ignore_errors:
+            warnings.warn('Use of `ignore_errors` in `insert` and `insert1` is deprecated. Use try...except... '
+                          'to explicitly handle any errors', stacklevel=2)
+
+        # handle query safely - if skip_duplicates=True, wraps the query with transaction and checks for warning
+        def safe_query(*args, **kwargs):
+            if not skip_duplicates:
+                self.connection.query(*args, **kwargs)
+            else
+                already_in_transaction = self.connection.in_transaction
+                if not already_in_transaction:
+                    self.connection.start_transaction()
+                try:
+                    with warnings.catch_warnings(record=True) as ws:
+                        warnings.simplefilter('always')
+                        self.connection.query(*args, suppress_warnings=False, **kwargs)
+                        for w in ws:
+                            if w.message.args[0] != server_error_codes['duplicate entry']:
+                                raise InternalError(w.message.args)
+                except:
+                    if not already_in_transaction:
+                        try:
+                            self.connection.cancel_transaction()
+                        except OperationalError:
+                            pass
+                    raise
+                else:
+                    if not already_in_transaction:
+                        self.connection.commit_transaction()
 
         heading = self.heading
         if isinstance(rows, RelationalOperand):
@@ -244,18 +275,26 @@ class BaseRelation(RelationalOperand):
         rows = list(make_row_to_insert(row) for row in rows)
         if rows:
             try:
-                self.connection.query(
+                safe_query(
                     "{command} INTO {destination}(`{fields}`) VALUES {placeholders}".format(
-                        command='REPLACE' if replace else 'INSERT IGNORE' if ignore_errors or skip_duplicates else 'INSERT',
+                        command='REPLACE' if replace else 'INSERT IGNORE' if skip_duplicates else 'INSERT',
                         destination=self.from_clause,
                         fields='`,`'.join(field_list),
                         placeholders=','.join('(' + ','.join(row['placeholders']) + ')' for row in rows)),
                     args=list(itertools.chain.from_iterable((v for v in r['values'] if v is not None) for r in rows)))
-            except pymysql.err.OperationalError as err:
+            except (OperationalError, InternalError, IntegrityError) as err:
                 if err.args[0] == server_error_codes['command denied']:
-                    raise DataJointError('Command denied:  %s' % err.args[1])
+                    raise DataJointError('Command denied:  %s' % err.args[1]) from None
+                elif err.args[0] == server_error_codes['unknown column']:
+                    # args[1] -> Unknown column 'extra' in 'field list'
+                    raise DataJointError(
+                        '{} : To ignore extra fields, set ignore_extra_fields=True in insert.'.format(err.args[1])) from None
+                elif err.args[0] == server_error_codes['duplicate entry']:
+                    raise DataJointError(
+                        '{} : To ignore duplicate entries, set skip_duplicates=True in insert.'.format(err.args[1])) from None
                 else:
                     raise
+
 
     def delete_quick(self):
         """
@@ -588,7 +627,7 @@ class Log(BaseRelation):
                 user=self._user,
                 version=version + 'py',
                 host=platform.uname().node,
-                event=event), ignore_errors=True, ignore_extra_fields=True)
+                event=event), skip_duplicates=True, ignore_extra_fields=True)
         except pymysql.err.OperationalError:
             logger.info('could not log event in table ~log')
 

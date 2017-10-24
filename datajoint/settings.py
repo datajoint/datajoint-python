@@ -32,7 +32,8 @@ server_error_codes = {
     'unknown column': 1054,
     'command denied': 1142,
     'table does not exist': 1146,
-    'syntax error': 1149
+    'syntax error': 1149,
+    'duplicate entry': 1062,
 }
 
 
