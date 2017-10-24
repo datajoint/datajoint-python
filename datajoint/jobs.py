@@ -2,6 +2,7 @@ import hashlib
 import os
 import pymysql
 from .base_relation import BaseRelation
+from . import DataJointError
 
 ERROR_MESSAGE_LENGTH = 2047
 TRUNCATION_APPENDIX = '...truncated'
@@ -86,7 +87,7 @@ class JobTable(BaseRelation):
             user=self._user)
         try:
             self.insert1(job, ignore_extra_fields=True)
-        except pymysql.err.IntegrityError:
+        except (pymysql.err.IntegrityError, DataJointError):
             return False
         return True
 
