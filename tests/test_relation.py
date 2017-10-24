@@ -180,6 +180,12 @@ class TestRelation:
             dtype=self.subject.heading.as_dtype)
         self.subject.insert(tmp, skip_duplicates=False)
 
+    @raises(InternalError)
+    def test_no_error_suppression(self):
+        """skip_duplicates=True should not suppress other errors"""
+        self.test.insert([dict(key=100)], skip_duplicates=True)
+
+
     def test_blob_insert(self):
         """Tests inserting and retrieving blobs."""
         X = np.random.randn(20, 10)
