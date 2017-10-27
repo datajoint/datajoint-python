@@ -445,7 +445,7 @@ class BaseRelation(RelationalOperand):
                 if attr.name in fk_props['referencing_attributes']:
                     do_include = False
                     if attributes_thus_far.issuperset(fk_props['referencing_attributes']):
-                        # simple foreign keys
+                        # simple foreign key
                         parents.pop(parent_name)
                         if not parent_name.isdigit():
                             definition += '-> {class_name}\n'.format(
@@ -466,7 +466,7 @@ class BaseRelation(RelationalOperand):
                 attributes_declared.add(attr.name)
                 definition += '%-20s : %-28s # %s\n' % (
                     attr.name if attr.default is None else '%s=%s' % (attr.name, attr.default),
-                    '%s%s' % (attr.type, 'auto_increment' if attr.autoincrement else ''), attr.comment)
+                    '%s%s' % (attr.type, ' auto_increment' if attr.autoincrement else ''), attr.comment)
         print(definition)
         return definition
 
