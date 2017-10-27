@@ -538,7 +538,7 @@ def lookup_class_name(name, context, depth=3):
                 except AttributeError:
                     pass  # not a UserRelation -- cannot have part tables.
                 else:
-                    for part in (getattr(member, p) for p in parts):
+                    for part in (getattr(member, p) for p in parts if hasattr(member, p)):
                         if inspect.isclass(part) and issubclass(part, BaseRelation) and part.full_table_name == name:
                             return '.'.join([node['context_name'], member_name, part.__name__]).lstrip('.')
             elif node['depth'] > 0 and inspect.ismodule(member) and member.__name__ != 'datajoint':
