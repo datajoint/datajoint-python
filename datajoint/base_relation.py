@@ -146,10 +146,10 @@ class BaseRelation(RelationalOperand):
                         next(name for name in rows.heading if name not in heading))
                 except StopIteration:
                     pass
-            fields='`'+'`,`'.join(name for name in heading if name in rows.heading) + '`'
+            fields=list(name for name in heading if name in rows.heading)
             query = 'INSERT{ignore} INTO {table} ({fields}) {select}'.format( 
                ignore=" IGNORE" if ignore_errors or skip_duplicates else "",
-               fields=fields,
+               fields='`'+'`,`'.join(fields)+'`',
                table=self.full_table_name,
                select=rows.make_sql(select_fields=fields))
             self.connection.query(query)
@@ -280,7 +280,7 @@ class BaseRelation(RelationalOperand):
         for rel in delete_list.values():
             rel.restrict(False)    # initially prohibit all
         # apply restrictions
-        delete_list[self.full_table_name].set(self.restrictions)
+        delete_list[self.full_table_name].restrict(self.restrictions)
         for name, rel in delete_list.items():
             all_children = graph.children(name)
             semi = set(all_children)

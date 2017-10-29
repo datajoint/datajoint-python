@@ -5,7 +5,6 @@ import inspect
 import re
 from . import conn, DataJointError, config
 from .erd import ERD
-from .jobs import JobsTable
 from .heading import Heading
 from .utils import user_choice, to_camel_case
 from .user_relations import Part, Computed, Imported, Manual, Lookup
