@@ -5,6 +5,8 @@ import platform
 import numpy as np
 import pymysql
 import logging
+import warnings
+from pymysql import OperationalError, InternalError, IntegrityError
 from . import config, DataJointError
 from .declare import declare
 from .relational_operand import RelationalOperand
@@ -120,14 +122,13 @@ class BaseRelation(RelationalOperand):
         """
         self.insert((row,), **kwargs)
 
-    def insert(self, rows, replace=False, ignore_errors=False, skip_duplicates=False, ignore_extra_fields=False):
+    def insert(self, rows, replace=False, skip_duplicates=False, ignore_extra_fields=False, ignore_errors=False):
         """
         Insert a collection of rows.
 
         :param rows: An iterable where an element is a numpy record, a dict-like object, or an ordered sequence.
             rows may also be another relation with the same heading.
         :param replace: If True, replaces the existing tuple.
-        :param ignore_errors: If True, ignore errors: e.g. constraint violations.
         :param skip_duplicates: If True, silently skip duplicate inserts.
         :param ignore_extra_fields: If False, fields that are not in the heading raise error.
 
@@ -137,23 +138,54 @@ class BaseRelation(RelationalOperand):
         >>>     dict(subject_id=8, species="mouse", date_of_birth="2014-09-02")])
         """
 
+        if ignore_errors:
+            warnings.warn('Use of `ignore_errors` in `insert` and `insert1` is deprecated. Use try...except... '
+                          'to explicitly handle any errors', stacklevel=2)
+
+        # handle query safely - if skip_duplicates=True, wraps the query with transaction and checks for warning
+        def safe_query(*args, **kwargs):
+            if not skip_duplicates:
+                self.connection.query(*args, **kwargs)
+            else:
+                already_in_transaction = self.connection.in_transaction
+                if not already_in_transaction:
+                    self.connection.start_transaction()
+                try:
+                    with warnings.catch_warnings(record=True) as ws:
+                        warnings.simplefilter('always')
+                        self.connection.query(*args, suppress_warnings=False, **kwargs)
+                        for w in ws:
+                            if w.message.args[0] != server_error_codes['duplicate entry']:
+                                raise InternalError(w.message.args)
+                except:
+                    if not already_in_transaction:
+                        try:
+                            self.connection.cancel_transaction()
+                        except OperationalError:
+                            pass
+                    raise
+                else:
+                    if not already_in_transaction:
+                        self.connection.commit_transaction()
+
         heading = self.heading
         if isinstance(rows, RelationalOperand):
             # insert from select
             if not ignore_extra_fields:
                 try:
-                    raise DataJointError("Attribute %s not found.", 
-                        next(name for name in rows.heading if name not in heading))
+                    raise DataJointError(
+                            "Attribute %s not found.  To ignore extra attributes in insert, set ignore_extra_fields=True." %
+                            next(name for name in rows.heading if name not in heading))
                 except StopIteration:
                     pass
             fields=list(name for name in heading if name in rows.heading)
             query = 'INSERT{ignore} INTO {table} ({fields}) {select}'.format( 
                ignore=" IGNORE" if ignore_errors or skip_duplicates else "",
-               fields='`'+'`,`'.join(fields)+'`',
+               fields='`' + '`,`'.join(fields) + '`',
                table=self.full_table_name,
                select=rows.make_sql(select_fields=fields))
             self.connection.query(query)
-            return 
+            return
 
         if heading.attributes is None:
             logger.warning('Could not access table {table}'.format(table=self.full_table_name))
@@ -243,18 +275,26 @@ class BaseRelation(RelationalOperand):
         rows = list(make_row_to_insert(row) for row in rows)
         if rows:
             try:
-                self.connection.query(
+                safe_query(
                     "{command} INTO {destination}(`{fields}`) VALUES {placeholders}".format(
-                        command='REPLACE' if replace else 'INSERT IGNORE' if ignore_errors or skip_duplicates else 'INSERT',
+                        command='REPLACE' if replace else 'INSERT IGNORE' if skip_duplicates else 'INSERT',
                         destination=self.from_clause,
                         fields='`,`'.join(field_list),
                         placeholders=','.join('(' + ','.join(row['placeholders']) + ')' for row in rows)),
                     args=list(itertools.chain.from_iterable((v for v in r['values'] if v is not None) for r in rows)))
-            except pymysql.err.OperationalError as err:
+            except (OperationalError, InternalError, IntegrityError) as err:
                 if err.args[0] == server_error_codes['command denied']:
-                    raise DataJointError('Command denied:  %s' % err.args[1])
+                    raise DataJointError('Command denied:  %s' % err.args[1]) from None
+                elif err.args[0] == server_error_codes['unknown column']:
+                    # args[1] -> Unknown column 'extra' in 'field list'
+                    raise DataJointError(
+                        '{} : To ignore extra fields, set ignore_extra_fields=True in insert.'.format(err.args[1])) from None
+                elif err.args[0] == server_error_codes['duplicate entry']:
+                    raise DataJointError(
+                        '{} : To ignore duplicate entries, set skip_duplicates=True in insert.'.format(err.args[1])) from None
                 else:
                     raise
+
 
     def delete_quick(self):
         """
@@ -270,8 +310,6 @@ class BaseRelation(RelationalOperand):
         Deletes the contents of the table and its dependent tables, recursively.
         User is prompted for confirmation if config['safemode'] is set to True.
         """
-
-        # fill out the delete list in topological order
         graph = self.connection.dependencies
         graph.load()
         delete_list = collections.OrderedDict(
@@ -290,13 +328,13 @@ class BaseRelation(RelationalOperand):
                 if not child.isdigit():
                     delete_list[child].allow(rel)
                 else:
-                    # allow aliased
-                    for child, props in graph.children(child).items():
-                        delete_list[child].allow(rel.proj(
-                            **dict(zip(props['referencing_attributes'], props['referenced_attributes']))))
-            for child in set(all_children).difference(semi):
-                delete_list[child].allow(rel.restrictions)
+                    restrictions[dep].extend(restrictions[table])   # or re-apply the same restrictions
 
+        # apply restrictions
+        for name, r in delete_list.items():
+            if restrictions[name]:  # do not restrict by an empty list
+                r.restrict([r.proj() if isinstance(r, RelationalOperand) else r
+                            for r in restrictions[name]])
         # execute
         do_delete = False  # indicate if there is anything to delete
         if config['safemode']:  # pragma: no cover
@@ -322,10 +360,7 @@ class BaseRelation(RelationalOperand):
                 if not already_in_transaction:
                     self.connection.start_transaction()
                 for r in reversed(list(delete_list.values())):
-                    try:
-                        r.delete_quick()
-                    except Exception as e:
-                        print(e)
+                    r.delete_quick()
                 if not already_in_transaction:
                     self.connection.commit_transaction()
                 print('Done')
@@ -396,7 +431,7 @@ class BaseRelation(RelationalOperand):
                 if attr.name in fk_props['referencing_attributes']:
                     do_include = False
                     if attributes_thus_far.issuperset(fk_props['referencing_attributes']):
-                        # simple foreign keys
+                        # simple foreign key
                         parents.pop(parent_name)
                         if not parent_name.isdigit():
                             definition += '-> {class_name}\n'.format(
@@ -417,7 +452,7 @@ class BaseRelation(RelationalOperand):
                 attributes_declared.add(attr.name)
                 definition += '%-20s : %-28s # %s\n' % (
                     attr.name if attr.default is None else '%s=%s' % (attr.name, attr.default),
-                    '%s%s' % (attr.type, 'auto_increment' if attr.autoincrement else ''), attr.comment)
+                    '%s%s' % (attr.type, ' auto_increment' if attr.autoincrement else ''), attr.comment)
         print(definition)
         return definition
 
@@ -489,7 +524,7 @@ def lookup_class_name(name, context, depth=3):
                 except AttributeError:
                     pass  # not a UserRelation -- cannot have part tables.
                 else:
-                    for part in (getattr(member, p) for p in parts):
+                    for part in (getattr(member, p) for p in parts if hasattr(member, p)):
                         if inspect.isclass(part) and issubclass(part, BaseRelation) and part.full_table_name == name:
                             return '.'.join([node['context_name'], member_name, part.__name__]).lstrip('.')
             elif node['depth'] > 0 and inspect.ismodule(member) and member.__name__ != 'datajoint':
@@ -578,7 +613,7 @@ class Log(BaseRelation):
                 user=self._user,
                 version=version + 'py',
                 host=platform.uname().node,
-                event=event), ignore_errors=True, ignore_extra_fields=True)
+                event=event), skip_duplicates=True, ignore_extra_fields=True)
         except pymysql.err.OperationalError:
             logger.info('could not log event in table ~log')
 

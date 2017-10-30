@@ -20,7 +20,7 @@ class AutoPopulate:
     """
     AutoPopulate is a mixin class that adds the method populate() to a Relation class.
     Auto-populated relations must inherit from both Relation and AutoPopulate,
-    must define the property `key_source`, and must define the callback method _make_tuples.
+    must define the property `key_source`, and must define the callback method `make`.
     """
     _key_source = None
 
@@ -28,7 +28,7 @@ class AutoPopulate:
     def key_source(self):
         """
         :return: the relation whose primary key values are passed, sequentially, to the
-                `_make_tuples` method when populate() is called.The default value is the
+                ``make`` method when populate() is called.The default value is the
                 join of the parent relations. Users may override to change the granularity
                 or the scope of populate() calls.
         """
@@ -42,13 +42,15 @@ class AutoPopulate:
                 self._key_source *= FreeRelation(self.connection, parents.pop(0)).proj()
         return self._key_source
 
-    def _make_tuples(self, key):
+
+    def make(self, key):
         """
-        Derived classes must implement method _make_tuples that fetches data from tables that are
+        Derived classes must implement method `make` that fetches data from tables that are
         above them in the dependency hierarchy, restricting by the given key, computes dependent
         attributes, and inserts the new tuples into self.
         """
-        raise NotImplementedError('Subclasses of AutoPopulate must implement the method "_make_tuples"')
+        raise NotImplementedError('Subclasses of AutoPopulate must implement the method `make`')
+
 
     @property
     def target(self):
@@ -65,18 +67,19 @@ class AutoPopulate:
         """
         return key
 
-    def populate(self, *restrictions, suppress_errors=False, reserve_jobs=False, 
-		 order="original", limit=None, max_calls=None, report_progress=False):
+    def populate(self, *restrictions, suppress_errors=False, reserve_jobs=False,
+		 order="original", limit=None, max_calls=None, display_progress=False):
         """
-        rel.populate() calls rel._make_tuples(key) for every primary key in self.key_source
+        rel.populate() calls rel.make(key) for every primary key in self.key_source
         for which there is not already a tuple in rel.
 
         :param restrictions: a list of restrictions each restrict (rel.key_source - target.proj())
         :param suppress_errors: suppresses error if true
         :param reserve_jobs: if true, reserves job to populate in asynchronous fashion
         :param order: "original"|"reverse"|"random"  - the order of execution
+        :param display_progress: if True, report progress_bar
         :param limit: if not None, checks at most that many keys
-        :param report_progress: if True, report progress_bar
+        :param max_calls: if not None, populates at max that many keys
         """
         if self.connection.in_transaction:
             raise DataJointError('Populate cannot be called during a transaction.')
@@ -89,12 +92,19 @@ class AutoPopulate:
         if not isinstance(todo, RelationalOperand):
             raise DataJointError('Invalid key_source value')
         todo = (todo & AndList(restrictions)).proj()
-        if any(name not in self.target.heading for name in todo.heading):
-            raise DataJointError('The populated target must have all the attributes of the key source')
+
+        # raise error if the populated target lacks any attributes from the primary key of key_source
+        try:
+            raise DataJointError(
+                    'The populate target lacks attribute %s from the primary key of key_source' % next(
+                        name for name in todo.heading if name not in self.target.heading))
+        except StopIteration:
+            pass
+
         todo -= self.target
 
         error_list = [] if suppress_errors else None
-        jobs = self.connection.jobs[self.target.database] if reserve_jobs else None
+        jobs = self.connection.schemas[self.target.database].jobs if reserve_jobs else None
 
         # define and setup signal handler for SIGTERM
         if reserve_jobs:
@@ -111,7 +121,10 @@ class AutoPopulate:
 
         call_count = count()
         logger.info('Found %d keys to populate' % len(keys))
-        for key in (tqdm(keys) if report_progress else keys):
+
+        make = self._make_tuples if hasattr(self, '_make_tuples') else self.make
+
+        for key in (tqdm(keys) if display_progress else keys):
             if max_calls is not None and call_count >= max_calls:
                 break
             if not reserve_jobs or jobs.reserve(self.target.table_name, self._job_key(key)):
@@ -124,7 +137,7 @@ class AutoPopulate:
                     logger.info('Populating: ' + str(key))
                     next(call_count)
                     try:
-                        self._make_tuples(dict(key))
+                        make(dict(key))
                     except (KeyboardInterrupt, SystemExit, Exception) as error:
                         try:
                             self.connection.cancel_transaction()
@@ -155,11 +168,11 @@ class AutoPopulate:
         report progress of populating this table
         :return: remaining, total -- tuples to be populated
         """
-        todo = self.key_source & AndList(restrictions)
+        todo = (self.key_source & AndList(restrictions)).proj()
         if any(name not in self.target.heading for name in todo.heading):
             raise DataJointError('The populated target must have all the attributes of the key source')
         total = len(todo)
-        remaining = len(todo.proj() - self.target)
+        remaining = len(todo - self.target)
         if display:
             print('%-20s' % self.__class__.__name__,
                   'Completed %d of %d (%2.1f%%)   %s' % (
