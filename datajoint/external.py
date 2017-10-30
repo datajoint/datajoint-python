@@ -3,7 +3,7 @@ from . import config, DataJointError
 from .hash import long_hash
 from .blob import pack, unpack
 from .base_relation import BaseRelation
-from .declare import STORE_HASH_LENGTH, STORE_NAME_LENGTH
+from .declare import STORE_HASH_LENGTH, HASH_DATA_TYPE
 
 
 class ExternalTable(BaseRelation):
@@ -28,12 +28,12 @@ class ExternalTable(BaseRelation):
     def definition(self):
         return """
         # external storage tracking 
-        hash  :char({hash_len})  # the hash of stored object + store name
+        hash  : {hash_data_type}  # the hash of stored object + store name
         ---
         count = 1 :int               # reference count
         size      :bigint unsigned   # size of object in bytes
         timestamp=CURRENT_TIMESTAMP  :timestamp   # automatic timestamp
-        """.format(hash_len=STORE_HASH_LENGTH + STORE_NAME_LENGTH)
+        """.format(hash_data_type=HASH_DATA_TYPE)
 
     @property
     def table_name(self):

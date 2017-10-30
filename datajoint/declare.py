@@ -185,10 +185,9 @@ def compile_attribute(line, in_key, foreign_key_sql):
             match['default'] = 'NOT NULL'
     match['comment'] = match['comment'].replace('"', '\\"')   # escape double quotes in comment
 
-    is_external = match['type'] == 'external' or match['type'].startswith('external_')
+    is_external = match['type'] == 'external'
     if not is_external:
-        sql = ('`{name}` {type} {default}' + (' COMMENT "{comment}"'
-                                              if match['comment'] else '')).format(**match)
+        sql = ('`{name}` {type} {default}' + (' COMMENT "{comment}"' if match['comment'] else '')).format(**match)
     else:
         # process externally stored attribute
         if in_key:
