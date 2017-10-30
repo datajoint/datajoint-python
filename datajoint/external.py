@@ -74,11 +74,10 @@ class ExternalTable(BaseRelation):
 
         # insert tracking info
         self.connection.query(
-            "INSERT INTO `{db}`.`{table}` (hash, size) VALUES ('{hash}', {size}) "
+            "INSERT INTO {tab} (hash, size) VALUES ('{hash}', {size}) "
             "ON DUPLICATE KEY UPDATE count=count+1, timestamp=CURRENT_TIMESTAMP".format(
-                db=self.database,
-                table=self.table_name,
-                hash=hash,  # append the name of the store to the hash
+                tab=self.full_table_name,
+                hash=hash,
                 size=len(blob)))
         return hash
 
@@ -116,7 +115,4 @@ class ExternalTable(BaseRelation):
         """
         # decrement count 
         self.connection.query(
-            'UPDATE `{db}`.`{table}` SET count=count-1 WHERE hash="{hash}"'.format(
-                db=self.database,
-                table=self.table_name,
-                hash=hash))
+            'UPDATE {tab} SET count=count-1 WHERE hash="{hash}"'.format(tab=self.full_table_name, hash=hash))
