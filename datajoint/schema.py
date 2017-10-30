@@ -6,6 +6,7 @@ import re
 from . import conn, DataJointError, config
 from .erd import ERD
 from .jobs import JobTable
+from .external import ExternalTable
 from .heading import Heading
 from .utils import user_choice, to_camel_case
 from .user_relations import Part, Computed, Imported, Manual, Lookup
@@ -51,7 +52,8 @@ class Schema:
         self.connection = connection
         self.context = context
         self.create_tables = create_tables
-        self._jobs=None
+        self._jobs = None
+        self._external = None
         if not self.exists:
             if not self.create_tables:
                 raise DataJointError("Database named `{database}` was not defined. "
@@ -212,11 +214,21 @@ class Schema:
     def jobs(self):
         """
         schema.jobs provides a view of the job reservation table for the schema
-        :return: jobs relation
+        :return: jobs table
         """
         if self._jobs is None:
             self._jobs = JobTable(self.connection, self.database)
         return self._jobs
+
+    @property
+    def external_table(self):
+        """
+        schema.external provides a view of the external hash table for the schema
+        :return: external table
+        """
+        if self._external is None:
+            self._external = ExternalTable(self.connection, self.database)
+        return self._external
 
     def erd(self):
         # get the caller's locals()
@@ -224,4 +236,3 @@ class Schema:
         frame = inspect.currentframe()
         context = frame.f_back.f_locals
         return ERD(self, context=context)
-

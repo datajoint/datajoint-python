@@ -1,14 +1,15 @@
 import os
-import pymysql
 from . import config, DataJointError
 from .hash import long_hash
 from .blob import pack, unpack
 from .base_relation import BaseRelation
+from .declare import HASH_DATA_TYPE, STORE_NAME_LENGTH
 
 
 class ExternalTable(BaseRelation):
     """
-    The table tracking externally stored objects
+    The table tracking externally stored objects.
+    Declare as ExternalTable(connection, database)
     """
     def __init__(self, arg, database=None):
         if isinstance(arg, ExternalTable):
@@ -29,13 +30,13 @@ class ExternalTable(BaseRelation):
     def definition(self):
         return """
         # external storage tracking 
-        store :char(8)  # the name of external store
-        hash  :char(43) # the hash of stored object
+        store :char({store_name_length})  # the name of external store
+        hash  :{hash_data_type} # the hash of stored object
         ---
         count = 1 :int               # reference count
         size      :bigint unsigned   # size of object in bytes
         timestamp=CURRENT_TIMESTAMP  :timestamp   # automatic timestamp
-        """
+        """.format(store_name_length=STORE_NAME_LENGTH, hash_data_type=HASH_DATA_TYPE)
 
     @property
     def table_name(self):
@@ -45,42 +46,41 @@ class ExternalTable(BaseRelation):
         """
         put an object in external store
         """
-	# serialize object 
+        # serialize object
         blob = pack(obj)
         hash = long_hash(blob)
 
-	# write object
+        # write object
         try:
             spec = config['external.%s' % store]
         except KeyError:
             raise DataJointError('storage.%s is not configured' % store)
 
-	if spec['protocol'] == 'file':
+        if spec['protocol'] == 'file':
             folder = os.path.join(spec['location'], self.database)
             full_path = os.path.join(folder, hash)
             if not os.path.isfile(full_path):
                 try:
-		    with open(full_path, 'wb') as f:
+                    with open(full_path, 'wb') as f:
                         f.write(blob)
                 except FileNotFoundError:
                     os.makedirs(folder)
-		    with open(full_path, 'wb') as f:
-                        f.write(blob)
+                    with open(full_path, 'wb') as f:
+                                f.write(blob)
         else:
             raise DataJointError('Unknown external storage %s' % store)
 
-	# insert tracking info
-        query = """INSERT INTO `{db}`.`{table}` (store, hash, size) VALUES ({store}, {hash}, {size}) 
-                   ON DUPLICATE KEY count=count+1, timestamp=CURRENT_TIMESTAMP""".format(
-                          db=self.database,
-                          table=self.table_name,
-                          store=store,
-                          hash=hash,
-                          size=len(blob))
-	self.connection.
-
+        # insert tracking info
+        self.connection.query(
+            """
+            INSERT INTO `{db}`.`{table}` (store, hash, size) VALUES ({store}, {hash}, {size}) 
+            ON DUPLICATE KEY count=count+1, timestamp=CURRENT_TIMESTAMP""".format(
+                db=self.database,
+                table=self.table_name,
+                store=store,
+                hash=hash,
+                size=len(blob)))
         return hash
-
 
     def get(self, store, hash):
         """
@@ -91,26 +91,28 @@ class ExternalTable(BaseRelation):
         except KeyError:
             raise DataJointError('storage.%s is not configured' % store)
 
-	if spec['protocol'] == 'file': 
+        if spec['protocol'] == 'file':
             full_path = os.path.join(spec['location'], self.database, hash)
-	    try:
-	        with open(full_path, 'rb') as f:
-	            blob = f.read()
-	    except FileNotFoundError:
-                raise DataJointError('Lost external blob')
+            try:
+                with open(full_path, 'rb') as f:
+                    blob = f.read()
+            except FileNotFoundError:
+                    raise DataJointError('Lost external blob')
         else:
             raise DataJointError('Unknown external storage %s' % store)
 
-	return unpack(blob)        
+        return unpack(blob)
 
-
-    def remove(self, store, hash)
+    def remove(self, store, hash):
         """
         delete an object from external store
         """
         # decrement count 
-        query = "UPDATE `{db}`.`{table}` count=count-1 WHERE store={store} and hash={hash}".format(
-                     db=self.database,
-                     table=self.table_name,
-                     store=store,
-                     hash=hash)
+        self.connection.query(
+            """
+            UPDATE `{db}`.`{table}` count=count-1 WHERE store={store} and hash={hash}
+            """.format(
+                db=self.database,
+                table=self.table_name,
+                store=store,
+                hash=hash))

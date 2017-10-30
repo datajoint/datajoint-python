@@ -50,11 +50,14 @@ class BaseRelation(RelationalOperand):
 
     def declare(self):
         """
-        Loads the table heading. If the table is not declared, use self.definition to declare
+        Use self.definition to declare the table in the database
         """
         try:
-            self.connection.query(
-                declare(self.full_table_name, self.definition, self._context))
+            sql, uses_external = declare(self.full_table_name, self.definition, self._context)
+            if uses_external:
+                # trigger the creation of the external hash lookup for the current schema
+                sql = sql.format(external_table_name=self.connection.schemas[self.database].external_table)
+            self.connection.query(sql)
         except pymysql.OperationalError as error:
             if error.args[0] == server_error_codes['command denied']:
                 logger.warning(error.args[1])

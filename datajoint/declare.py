@@ -6,7 +6,10 @@ import re
 import pyparsing as pp
 import logging
 
-from . import DataJointError
+from . import DataJointError, config
+
+STORE_NAME_LENGTH = 8
+HASH_DATA_TYPE = 'varchar(43)'
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +117,7 @@ def declare(full_table_name, definition, context):
     attribute_sql = []
     foreign_key_sql = []
     index_sql = []
+    uses_external = False
 
     for line in definition:
         if line.startswith('#'):  # additional comments are ignored
@@ -127,7 +131,8 @@ def declare(full_table_name, definition, context):
         elif re.match(r'^(unique\s+)?index[^:]*$', line, re.I):   # index
             index_sql.append(line)  # the SQL syntax is identical to DataJoint's
         else:
-            name, sql = compile_attribute(line, in_key)
+            name, sql, is_external = compile_attribute(line, in_key, foreign_key_sql)
+            uses_external = uses_external or is_external
             if in_key and name not in primary_key:
                 primary_key.append(name)
             if name not in attributes:
@@ -141,16 +146,17 @@ def declare(full_table_name, definition, context):
                        ['PRIMARY KEY (`' + '`,`'.join(primary_key) + '`)'] +
                        foreign_key_sql +
                        index_sql) +
-            '\n) ENGINE=InnoDB, COMMENT "%s"' % table_comment)
+            '\n) ENGINE=InnoDB, COMMENT "%s"' % table_comment), uses_external
 
 
-def compile_attribute(line, in_key=False):
+def compile_attribute(line, in_key, foreign_key_sql):
     """
     Convert attribute definition from DataJoint format to SQL
 
     :param line: attribution line
     :param in_key: set to True if attribute is in primary key set
-    :returns: (name, sql) -- attribute name and sql code for its declaration
+    :param foreign_key_sql:
+    :returns: (name, sql, is_external) -- attribute name and sql code for its declaration
     """
 
     try:
@@ -177,5 +183,33 @@ def compile_attribute(line, in_key=False):
         else:
             match['default'] = 'NOT NULL'
     match['comment'] = match['comment'].replace('"', '\\"')   # escape double quotes in comment
-    sql = ('`{name}` {type} {default}' + (' COMMENT "{comment}"' if match['comment'] else '')).format(**match)
-    return match['name'], sql
+
+    is_external = match['type'] == 'external' or match['type'].startswith('external_')
+    if not is_external:
+        sql = ('`{name}` {type} {default}' + (' COMMENT "{comment}"'
+                                              if match['comment'] else '')).format(**match)
+    else:
+        # process externally stored attribute
+        if in_key:
+            raise DataJointError('External attributes cannot be primary.')
+        if match['type'] not in config:
+            raise DataJointError('The external store `{type}` is not configured.'.format(**match))
+        if len(match['type']) > STORE_NAME_LENGTH + STORE_NAME_LENGTH + 1:
+            raise DataJointError(
+                'The external store name `{type}` is too long. Must be <={max_len} characters.'.format(
+                    max_len=STORE_NAME_LENGTH, **match))
+        sql = """
+        `_{name}` char({store_name_len}) COMMENT "{type}",
+        `{name}` {hash_type} {default}{comment}'
+        """.format(
+            comment=' COMMENT "{comment}"' if match['comment'] else '',
+            hash_type=HASH_DATA_TYPE,
+            store_name_len=STORE_NAME_LENGTH,
+            **match)
+        foreign_key_sql.append(
+            """
+            FOREIGN KEY (`_{name}`,`name`) REFERENCES {{external_table}} (`store`, `hash`) 
+            ON UPDATE RESTRICT ON DELETE RESTRICT
+            """.format(**match))
+
+    return match['name'], sql, is_external
