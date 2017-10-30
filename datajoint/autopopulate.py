@@ -68,7 +68,7 @@ class AutoPopulate:
         return key
 
     def populate(self, *restrictions, suppress_errors=False, reserve_jobs=False,
-		 order="original", limit=None, max_calls=None, display_progress=False):
+                 order="original", limit=None, max_calls=None, display_progress=False):
         """
         rel.populate() calls rel.make(key) for every primary key in self.key_source
         for which there is not already a tuple in rel.

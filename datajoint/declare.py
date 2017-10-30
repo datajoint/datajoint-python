@@ -9,7 +9,8 @@ import logging
 from . import DataJointError, config
 
 STORE_NAME_LENGTH = 8
-HASH_DATA_TYPE = 'varchar(43)'
+STORE_HASH_LENGTH = 43
+HASH_DATA_TYPE = 'char(51)'
 
 logger = logging.getLogger(__name__)
 
@@ -191,25 +192,19 @@ def compile_attribute(line, in_key, foreign_key_sql):
     else:
         # process externally stored attribute
         if in_key:
-            raise DataJointError('External attributes cannot be primary.')
+            raise DataJointError('External attributes cannot be primary in:\n%s' % line)
+        if not match['default'] in ('DEFAULT NULL', 'NOT NULL'):
+            raise DataJointError('The only acceptable default value for an external field is null in:\n%s' % line)
         if match['type'] not in config:
             raise DataJointError('The external store `{type}` is not configured.'.format(**match))
         if len(match['type']) > STORE_NAME_LENGTH + STORE_NAME_LENGTH + 1:
             raise DataJointError(
                 'The external store name `{type}` is too long. Must be <={max_len} characters.'.format(
                     max_len=STORE_NAME_LENGTH, **match))
-        sql = """
-        `_{name}` char({store_name_len}) COMMENT "{type}",
-        `{name}` {hash_type} {default}{comment}'
-        """.format(
-            comment=' COMMENT "{comment}"' if match['comment'] else '',
-            hash_type=HASH_DATA_TYPE,
-            store_name_len=STORE_NAME_LENGTH,
-            **match)
+        sql = "`_{name}` {hash_type} {default} COMMENT {comment:type}'".format(
+            hash_type=HASH_DATA_TYPE, **match)
         foreign_key_sql.append(
-            """
-            FOREIGN KEY (`_{name}`,`name`) REFERENCES {{external_table}} (`store`, `hash`) 
-            ON UPDATE RESTRICT ON DELETE RESTRICT
-            """.format(**match))
+            "FOREIGN KEY (`_{name}`) REFERENCES {{external_table}} (`hash`) "
+            "ON UPDATE RESTRICT ON DELETE RESTRICT".format(**match))
 
     return match['name'], sql, is_external

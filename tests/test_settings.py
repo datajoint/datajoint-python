@@ -37,13 +37,6 @@ def test_singleton2():
     assert_true(conf['dummy.val'] == 2, 'Config does not behave like a singleton.')
 
 
-@raises(ValueError)
-def test_nested_check():
-    """Testing nested rejection"""
-    dummy = {'dummy.testval': {'notallowed': 2}}
-    dj.config.update(dummy)
-
-
 @raises(dj.DataJointError)
 def test_validator():
     """Testing validator"""
@@ -71,12 +64,6 @@ def test_str():
 def test_repr():
     """Testing repr"""
     assert_equal(repr(dj.config), pprint.pformat(dj.config._conf, indent=4))
-
-
-@raises(ValueError)
-def test_nested_check2():
-    """Testing nested dictionary rejection"""
-    dj.config['dummy'] = {'dummy2':2}
 
 
 def test_save():

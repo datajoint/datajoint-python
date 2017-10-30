@@ -3,7 +3,7 @@ from . import config, DataJointError
 from .hash import long_hash
 from .blob import pack, unpack
 from .base_relation import BaseRelation
-from .declare import HASH_DATA_TYPE, STORE_NAME_LENGTH
+from .declare import STORE_HASH_LENGTH, STORE_NAME_LENGTH
 
 
 class ExternalTable(BaseRelation):
@@ -17,8 +17,6 @@ class ExternalTable(BaseRelation):
             # copy constructor
             self.database = arg.database
             self._connection = arg._connection
-            self._definition = arg._definition
-            self._user = arg._user
             return
         super().__init__()
         self.database = database
@@ -30,13 +28,12 @@ class ExternalTable(BaseRelation):
     def definition(self):
         return """
         # external storage tracking 
-        store :char({store_name_length})  # the name of external store
-        hash  :{hash_data_type} # the hash of stored object
+        hash  :char({hash_len})  # the hash of stored object + store name
         ---
         count = 1 :int               # reference count
         size      :bigint unsigned   # size of object in bytes
         timestamp=CURRENT_TIMESTAMP  :timestamp   # automatic timestamp
-        """.format(store_name_length=STORE_NAME_LENGTH, hash_data_type=HASH_DATA_TYPE)
+        """.format(hash_len=STORE_HASH_LENGTH + STORE_NAME_LENGTH)
 
     @property
     def table_name(self):
@@ -46,17 +43,21 @@ class ExternalTable(BaseRelation):
         """
         put an object in external store
         """
+        try:
+            spec = config[store]
+        except KeyError:
+            raise DataJointError('Storage {store} is not configured'.format(store=store))
+
         # serialize object
         blob = pack(obj)
-        hash = long_hash(blob)
+        hash = long_hash(blob) + store[len('external-'):]
 
-        # write object
         try:
-            spec = config['external.%s' % store]
+            protocol = spec['protocol']
         except KeyError:
-            raise DataJointError('storage.%s is not configured' % store)
+            raise DataJointError('Storage {store} config is missing the protocol field'.format(store=store))
 
-        if spec['protocol'] == 'file':
+        if protocol == 'file':
             folder = os.path.join(spec['location'], self.database)
             full_path = os.path.join(folder, hash)
             if not os.path.isfile(full_path):
@@ -66,32 +67,38 @@ class ExternalTable(BaseRelation):
                 except FileNotFoundError:
                     os.makedirs(folder)
                     with open(full_path, 'wb') as f:
-                                f.write(blob)
+                        f.write(blob)
         else:
-            raise DataJointError('Unknown external storage %s' % store)
+            raise DataJointError('Unknown external storage protocol {protocol} for {store}'.format(
+                store=store, protocol=protocol))
 
         # insert tracking info
         self.connection.query(
-            """
-            INSERT INTO `{db}`.`{table}` (store, hash, size) VALUES ({store}, {hash}, {size}) 
-            ON DUPLICATE KEY count=count+1, timestamp=CURRENT_TIMESTAMP""".format(
+            "INSERT INTO `{db}`.`{table}` (hash, size) VALUES ('{hash}', {size}) "
+            "ON DUPLICATE KEY UPDATE count=count+1, timestamp=CURRENT_TIMESTAMP".format(
                 db=self.database,
                 table=self.table_name,
-                store=store,
-                hash=hash,
+                hash=hash,  # append the name of the store to the hash
                 size=len(blob)))
         return hash
 
-    def get(self, store, hash):
+    def get(self, hash):
         """
         get an object from external store
         """
+        store = hash[STORE_HASH_LENGTH:]
+        store = 'external' + ('-' if store else '') + store
         try:
-            spec = config['external.%s' % store]
+            spec = config[store]
         except KeyError:
             raise DataJointError('storage.%s is not configured' % store)
 
-        if spec['protocol'] == 'file':
+        try:
+            protocol = spec['protocol']
+        except KeyError:
+            raise DataJointError('Storage {store} config is missing the protocol field'.format(store=store))
+
+        if protocol == 'file':
             full_path = os.path.join(spec['location'], self.database, hash)
             try:
                 with open(full_path, 'rb') as f:
@@ -103,16 +110,13 @@ class ExternalTable(BaseRelation):
 
         return unpack(blob)
 
-    def remove(self, store, hash):
+    def remove(self, hash):
         """
         delete an object from external store
         """
         # decrement count 
         self.connection.query(
-            """
-            UPDATE `{db}`.`{table}` count=count-1 WHERE store={store} and hash={hash}
-            """.format(
+            'UPDATE `{db}`.`{table}` SET count=count-1 WHERE hash="{hash}"'.format(
                 db=self.database,
                 table=self.table_name,
-                store=store,
                 hash=hash))

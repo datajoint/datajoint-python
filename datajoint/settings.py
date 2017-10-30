@@ -176,8 +176,6 @@ class Config(collections.MutableMapping):
 
         def __setitem__(self, key, value):
             logger.log(logging.INFO, u"Setting {0:s} to {1:s}".format(str(key), str(value)))
-            if isinstance(value, collections.Mapping):
-                raise ValueError("Nested settings are not supported!")
             if validators[key](value):
                 self._conf[key] = value
             else:
