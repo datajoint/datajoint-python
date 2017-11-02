@@ -6,7 +6,7 @@ import warnings
 
 try:
     from matplotlib import pyplot as plt
-    from networkx.drawing.nx_agraph import graphviz_layout
+    from networkx.drawing.nx_pydot import pydot_layout
     erd_active = True
 except:
     erd_active = False
@@ -304,5 +304,4 @@ else:
 
         @staticmethod
         def _layout(graph, **kwargs):
-            return graphviz_layout(graph, prog='dot', **kwargs)
-
+            return pydot_layout(graph, prog='dot', **kwargs)
