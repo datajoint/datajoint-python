@@ -92,3 +92,19 @@ class TestDeclare:
             definition = """
             Bad_name : int
             """
+
+#    @raises(dj.DataJointError)
+    def test_bad_fk_rename(self):
+        """issue #381"""
+
+        @schema.schema
+        class A(dj.Manual):
+            definition = """
+            a : int
+            """
+
+        @schema.schema
+        class B(dj.Manual):
+            definition = """
+            b -> A()
+            """

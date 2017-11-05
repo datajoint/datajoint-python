@@ -67,7 +67,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
     try:
         result = foreign_key_parser.parseString(line)
     except pp.ParseException as err:
-        raise DataJointError('Parsing error in line "%s". %s.' % line, err)
+        raise DataJointError('Parsing error in line "%s". %s.' % (line, err))
     try:
         referenced_class = eval(result.ref_table, context)
     except NameError:

@@ -7,8 +7,6 @@ from . import schema_advanced
 context = schema_advanced.schema.context
 
 
-
-
 def test_aliased_fk():
     person = schema_advanced.Person()
     parent = schema_advanced.Parent()
