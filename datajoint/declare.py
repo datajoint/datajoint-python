@@ -209,10 +209,10 @@ def compile_attribute(line, in_key, foreign_key_sql):
             raise DataJointError('The external store `{type}` is not configured.'.format(**match))
 
         # append external configuration name to the end of the comment
-        sql = '`_{name}` {hash_type} {default} COMMENT "{comment}:{type}"'.format(
+        sql = '`{name}` {hash_type} {default} COMMENT ":{type}:{comment}"'.format(
             hash_type=HASH_DATA_TYPE, **match)
         foreign_key_sql.append(
-            "FOREIGN KEY (`_{name}`) REFERENCES {{external_table}} (`hash`) "
+            "FOREIGN KEY (`{name}`) REFERENCES {{external_table}} (`hash`) "
             "ON UPDATE RESTRICT ON DELETE RESTRICT".format(**match))
 
     return match['name'], sql, is_external

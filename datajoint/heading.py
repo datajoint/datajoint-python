@@ -8,7 +8,8 @@ logger = logging.getLogger(__name__)
 
 default_attribute_properties = dict(    # these default values are set in computed attributes
     name=None, type='expression', in_key=False, nullable=False, default=None, comment='calculated attribute',
-    autoincrement=False, numeric=None, string=None, is_blob=False, is_external=False, sql_expression=None, dtype=object)
+    autoincrement=False, numeric=None, string=None, is_blob=False, is_external=False, sql_expression=None,
+    database=None, dtype=object)
 
 
 class Attribute(namedtuple('_Attribute', default_attribute_properties.keys())):
@@ -87,6 +88,9 @@ class Heading:
         return self.attributes[name]
 
     def __repr__(self):
+        """
+        :return:  heading representation in DataJoint declaration format but without foreign key expansion
+        """
         if self.attributes is None:
             return 'heading not loaded'
         in_key = True
@@ -120,8 +124,7 @@ class Heading:
         """
         represent heading as SQL field list
         """
-        return ','.join('`%s`' % ('_' + name if self.attributes[name].is_external else name)
-                        if self.attributes[name].sql_expression is None
+        return ','.join('`%s`' % name if self.attributes[name].sql_expression is None
                         else '%s as `%s`' % (self.attributes[name].sql_expression, name)
                         for name in self.names)
 
@@ -186,12 +189,11 @@ class Heading:
         # additional attribute properties
         for attr in attributes:
             # process external attributes
-            is_external = attr['name'].startswith('_')
-            if is_external:
-                comment = attr['comment'].split(':')
-                attr['type'] = comment[-1]
-                attr['comment'] = ':'.join(comment[:-1])
-                attr['name'] = attr['name'][1:]
+            split_comment = attr['comment'].split(':')
+            attr['is_external'] = len(split_comment) >= 3 and split_comment[1].startswith('external')
+            if attr['is_external']:
+                attr['comment'] = ':'.join(split_comment[2:])
+                attr['type'] = split_comment[1]
 
             attr['nullable'] = (attr['nullable'] == 'YES')
             attr['in_key'] = (attr['in_key'] == 'PRI')
@@ -199,8 +201,8 @@ class Heading:
             attr['type'] = re.sub(r'int\(\d+\)', 'int', attr['type'], count=1)   # strip size off integers
             attr['numeric'] = bool(re.match(r'(tiny|small|medium|big)?int|decimal|double|float', attr['type']))
             attr['string'] = bool(re.match(r'(var)?char|enum|date|year|time|timestamp', attr['type']))
-            attr['is_blob'] = is_external or bool(re.match(r'(tiny|medium|long)?blob', attr['type']))
-            attr['is_external'] = is_external
+            attr['is_blob'] = attr['is_external'] or bool(re.match(r'(tiny|medium|long)?blob', attr['type']))
+            attr['database'] = database
 
             if attr['string'] and attr['default'] is not None and attr['default'] not in sql_literals:
                 attr['default'] = '"%s"' % attr['default']

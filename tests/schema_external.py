@@ -58,7 +58,7 @@ class Dimension(dj.Lookup):
 
 
 @schema
-class Image(dj.Manual):
+class Image(dj.Computed):
     definition = """
     # table for storing
     -> Seed

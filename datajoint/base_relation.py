@@ -30,6 +30,7 @@ class BaseRelation(RelationalOperand):
     _context = None
     database = None
     _log_ = None
+    _external_table = None
 
     # -------------- required by RelationalOperand ----------------- #
     @property
@@ -121,6 +122,12 @@ class BaseRelation(RelationalOperand):
             self._log_ = Log(self.connection, database=self.database)
         return self._log_
 
+    @property
+    def external_table(self):
+        if self._external_table is None:
+            self._external_table = self.connection.schemas[self.database].external_table
+        return self._external_table
+
     def insert1(self, row, **kwargs):
         """
         Insert one data record or one Mapping (like a dict).
@@ -181,11 +188,11 @@ class BaseRelation(RelationalOperand):
             if not ignore_extra_fields:
                 try:
                     raise DataJointError(
-                            "Attribute %s not found.  To ignore extra attributes in insert, set ignore_extra_fields=True." %
-                            next(name for name in rows.heading if name not in heading))
+                        "Attribute %s not found.  To ignore extra attributes in insert, set ignore_extra_fields=True." %
+                        next(name for name in rows.heading if name not in heading))
                 except StopIteration:
                     pass
-            fields=list(name for name in heading if name in rows.heading)
+            fields = list(name for name in heading if name in rows.heading)
             query = 'INSERT{ignore} INTO {table} ({fields}) {select}'.format( 
                ignore=" IGNORE" if ignore_errors or skip_duplicates else "",
                fields='`' + '`,`'.join(fields) + '`',
@@ -216,7 +223,10 @@ class BaseRelation(RelationalOperand):
                 """
                 if ignore_extra_fields and name not in heading:
                     return None
-                if heading[name].is_blob:
+                if heading[name].is_external:
+                    value = self.external_table.put(heading[name].type, value)
+                    placeholder = '%s'
+                elif heading[name].is_blob:
                     value = pack(value)
                     placeholder = '%s'
                 elif heading[name].numeric:
@@ -471,8 +481,9 @@ class BaseRelation(RelationalOperand):
                             attributes_declared.update(fk_props['referencing_attributes'])
             if do_include:
                 attributes_declared.add(attr.name)
+                name = attr.name.lstrip('_')  # for external
                 definition += '%-20s : %-28s # %s\n' % (
-                    attr.name if attr.default is None else '%s=%s' % (attr.name, attr.default),
+                    name if attr.default is None else '%s=%s' % (name, attr.default),
                     '%s%s' % (attr.type, ' auto_increment' if attr.autoincrement else ''), attr.comment)
         print(definition)
         return definition

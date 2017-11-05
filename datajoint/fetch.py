@@ -194,8 +194,12 @@ class Fetch(FetchBase, Callable, Iterable):
             else:
                 ret = list(cur.fetchall())
                 ret = np.array(ret, dtype=heading.as_dtype)
-                for blob_name in heading.blobs:
-                    ret[blob_name] = list(map(unpack_, ret[blob_name]))
+                for name in heading:
+                    if heading[name].is_external:
+                        external_table = self._relation.connection.schemas[heading[name].database].external_table
+                        ret[name] = list(map(external_table.get, ret[name]))
+                    elif heading[name].is_blob:
+                        ret[name] = list(map(unpack_, ret[name]))
 
         else:  # if list of attributes provided
             attributes = [a for a in attrs if a is not PRIMARY_KEY]
@@ -292,13 +296,19 @@ class Fetch1(FetchBase, Callable):
         ext_behavior = update_dict(self.ext_behavior, kwargs)
         unpack_ = partial(unpack, squeeze=ext_behavior['squeeze'])
 
-        if len(attrs) == 0:  # fetch all attributes
+        if len(attrs) == 0:  # fetch all attributes, return as ordered dict
             cur = self._relation.cursor(as_dict=True)
             ret = cur.fetchone()
             if not ret or cur.fetchone():
                 raise DataJointError('fetch1 should only be used for relations with exactly one tuple')
-            ret = OrderedDict((name, unpack_(ret[name]) if heading[name].is_blob else ret[name])
-                               for name in heading.names)
+
+            def get_external(attr, _hash):
+                external_table = self._relation.connection[attr.database].external_table
+                external_table.get(_hash)
+
+            ret = OrderedDict((name, get_external(heading[name], ret[name])) if heading[name].is_external
+                              else (name, unpack_(ret[name]) if heading[name].is_blob else ret[name])
+                              for name in heading.names)
         else:
             attributes = [a for a in attrs if a is not PRIMARY_KEY]
             result = self._relation.proj(*attributes).fetch(**ext_behavior)
