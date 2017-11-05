@@ -224,18 +224,17 @@ class BaseRelation(RelationalOperand):
                 if ignore_extra_fields and name not in heading:
                     return None
                 if heading[name].is_external:
-                    value = self.external_table.put(heading[name].type, value)
-                    placeholder = '%s'
+                    placeholder, value = '%s', self.external_table.put(heading[name].type, value)
                 elif heading[name].is_blob:
-                    value = pack(value)
-                    placeholder = '%s'
+                    if value is None:
+                        placeholder, value = 'NULL', None
+                    else:
+                        placeholder, value = '%s', pack(value)
                 elif heading[name].numeric:
                     if value is None or value == '' or np.isnan(np.float(value)):  # nans are turned into NULLs
-                        placeholder = 'NULL'
-                        value = None
+                        placeholder, value = 'NULL', None
                     else:
-                        placeholder = '%s'
-                        value = str(int(value) if isinstance(value, bool) else value)
+                        placeholder, value = '%s', (str(int(value) if isinstance(value, bool) else value))
                 else:
                     placeholder = '%s'
                 return name, placeholder, value
