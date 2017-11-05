@@ -156,32 +156,7 @@ class BaseRelation(RelationalOperand):
             warnings.warn('Use of `ignore_errors` in `insert` and `insert1` is deprecated. Use try...except... '
                           'to explicitly handle any errors', stacklevel=2)
 
-        # handle query safely - if skip_duplicates=True, wraps the query with transaction and checks for warning
-        def safe_query(*args, **kwargs):
-            if not skip_duplicates:
-                self.connection.query(*args, **kwargs)
-            else:
-                already_in_transaction = self.connection.in_transaction
-                if not already_in_transaction:
-                    self.connection.start_transaction()
-                try:
-                    with warnings.catch_warnings(record=True) as ws:
-                        warnings.simplefilter('always')
-                        self.connection.query(*args, suppress_warnings=False, **kwargs)
-                        for w in ws:
-                            if w.message.args[0] != server_error_codes['duplicate entry']:
-                                raise InternalError(w.message.args)
-                except:
-                    if not already_in_transaction:
-                        try:
-                            self.connection.cancel_transaction()
-                        except OperationalError:
-                            pass
-                    raise
-                else:
-                    if not already_in_transaction:
-                        self.connection.commit_transaction()
-
+        fpk = self.heading.primary_key[0]  # first primary key attribute
         heading = self.heading
         if isinstance(rows, RelationalOperand):
             # insert from select
@@ -193,11 +168,15 @@ class BaseRelation(RelationalOperand):
                 except StopIteration:
                     pass
             fields = list(name for name in heading if name in rows.heading)
-            query = 'INSERT{ignore} INTO {table} ({fields}) {select}'.format( 
-               ignore=" IGNORE" if ignore_errors or skip_duplicates else "",
-               fields='`' + '`,`'.join(fields) + '`',
-               table=self.full_table_name,
-               select=rows.make_sql(select_fields=fields))
+
+            query = 'INSERT{ignore} INTO {table} ({fields}) {select}{duplicate}'.format(
+                ignore=" IGNORE" if ignore_errors or skip_duplicates else "",
+                fields='`' + '`,`'.join(fields) + '`',
+                table=self.full_table_name,
+                select=rows.make_sql(select_fields=fields),
+                duplicate=(' ON DUPLICATE KEY UPDATE `{pk}`=`{pk}`'.format(pk=self.primary_key[0])
+                           if skip_duplicates else '')
+            )
             self.connection.query(query)
             return
 
@@ -291,13 +270,15 @@ class BaseRelation(RelationalOperand):
         rows = list(make_row_to_insert(row) for row in rows)
         if rows:
             try:
-                safe_query(
-                    "{command} INTO {destination}(`{fields}`) VALUES {placeholders}".format(
-                        command='REPLACE' if replace else 'INSERT IGNORE' if skip_duplicates else 'INSERT',
-                        destination=self.from_clause,
-                        fields='`,`'.join(field_list),
-                        placeholders=','.join('(' + ','.join(row['placeholders']) + ')' for row in rows)),
-                    args=list(itertools.chain.from_iterable((v for v in r['values'] if v is not None) for r in rows)))
+                query = "{command} INTO {destination}(`{fields}`) VALUES {placeholders}{duplicate}".format(
+                    command='REPLACE' if replace else 'INSERT',
+                    destination=self.from_clause,
+                    fields='`,`'.join(field_list),
+                    placeholders=','.join('(' + ','.join(row['placeholders']) + ')' for row in rows),
+                    duplicate=(' ON DUPLICATE KEY UPDATE `{pk}`=`{pk}`'.format(pk=self.primary_key[0])
+                               if skip_duplicates else ''))
+                self.connection.query(query, args=list(
+                    itertools.chain.from_iterable((v for v in r['values'] if v is not None) for r in rows)))
             except (OperationalError, InternalError, IntegrityError) as err:
                 if err.args[0] == server_error_codes['command denied']:
                     raise DataJointError('Command denied:  %s' % err.args[1]) from None
@@ -310,7 +291,6 @@ class BaseRelation(RelationalOperand):
                         '{} : To ignore duplicate entries, set skip_duplicates=True in insert.'.format(err.args[1])) from None
                 else:
                     raise
-
 
     def delete_quick(self):
         """
