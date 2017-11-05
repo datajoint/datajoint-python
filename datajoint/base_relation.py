@@ -156,7 +156,6 @@ class BaseRelation(RelationalOperand):
             warnings.warn('Use of `ignore_errors` in `insert` and `insert1` is deprecated. Use try...except... '
                           'to explicitly handle any errors', stacklevel=2)
 
-        fpk = self.heading.primary_key[0]  # first primary key attribute
         heading = self.heading
         if isinstance(rows, RelationalOperand):
             # insert from select
@@ -169,8 +168,8 @@ class BaseRelation(RelationalOperand):
                     pass
             fields = list(name for name in heading if name in rows.heading)
 
-            query = 'INSERT{ignore} INTO {table} ({fields}) {select}{duplicate}'.format(
-                ignore=" IGNORE" if ignore_errors else "",
+            query = '{command} INTO {table} ({fields}) {select}{duplicate}'.format(
+                command='REPLACE' if replace else 'INSERT',
                 fields='`' + '`,`'.join(fields) + '`',
                 table=self.full_table_name,
                 select=rows.make_sql(select_fields=fields),
