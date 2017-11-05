@@ -1,6 +1,7 @@
 """autopopulate containing the dj.AutoPopulate class. See `dj.AutoPopulate` for more info."""
 import logging
 import datetime
+import traceback
 import random
 from tqdm import tqdm
 from itertools import count
@@ -146,7 +147,8 @@ class AutoPopulate:
                         if reserve_jobs:
                             # show error name and error message (if any)
                             error_message = ': '.join([error.__class__.__name__, str(error)]).strip(': ')
-                            jobs.error(self.target.table_name, self._job_key(key), error_message=error_message)
+                            jobs.error(self.target.table_name, self._job_key(key),
+                                       error_message=error_message, error_stack=traceback.format_exc())
 
                         if not suppress_errors or isinstance(error, SystemExit):
                             raise

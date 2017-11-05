@@ -76,10 +76,6 @@ class Heading:
         return [k for k, v in self.attributes.items() if not v.is_blob]
 
     @property
-    def externals(self):
-        return [k for k, v in self.attributes.items() if v.is_external]
-
-    @property
     def expressions(self):
         return [k for k, v in self.attributes.items() if v.sql_expression is not None]
 

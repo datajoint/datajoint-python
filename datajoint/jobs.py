@@ -90,13 +90,14 @@ class JobTable(BaseRelation):
         job_key = dict(table_name=table_name, key_hash=key_hash(key))
         (self & job_key).delete_quick()
 
-    def error(self, table_name, key, error_message):
+    def error(self, table_name, key, error_message, error_stack):
         """
         Log an error message.  The job reservation is replaced with an error entry.
         if an error occurs, leave an entry describing the problem
         :param table_name: `database`.`table_name`
         :param key: the dict of the job's primary key
         :param error_message: string error message
+        :param error_stack: stack trace
         """
         if len(error_message) > ERROR_MESSAGE_LENGTH:
             error_message = error_message[:ERROR_MESSAGE_LENGTH-len(TRUNCATION_APPENDIX)] + TRUNCATION_APPENDIX
@@ -109,4 +110,6 @@ class JobTable(BaseRelation):
                  connection_id=self.connection.connection_id,
                  user=self._user,
                  key=key,
-                 error_message=error_message), replace=True, ignore_extra_fields=True)
+                 error_message=error_message,
+                 error_stack=error_stack),
+            replace=True, ignore_extra_fields=True)
