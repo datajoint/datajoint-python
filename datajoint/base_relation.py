@@ -170,7 +170,7 @@ class BaseRelation(RelationalOperand):
             fields = list(name for name in heading if name in rows.heading)
 
             query = 'INSERT{ignore} INTO {table} ({fields}) {select}{duplicate}'.format(
-                ignore=" IGNORE" if ignore_errors or skip_duplicates else "",
+                ignore=" IGNORE" if ignore_errors else "",
                 fields='`' + '`,`'.join(fields) + '`',
                 table=self.full_table_name,
                 select=rows.make_sql(select_fields=fields),
