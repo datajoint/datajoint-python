@@ -58,7 +58,7 @@ class Dependencies(nx.DiGraph):
             except pp.ParseException:
                 pass
             else:
-                if not result.referenced_table.startswith('~'):  # omit external tables
+                if '`.`~' not in result.referenced_table:  # omit external tables
                     referencing_attributes = [r.strip('` ') for r in result.attributes.split(',')]
                     referenced_attributes = [r.strip('` ') for r in result.referenced_attributes.split(',')]
                     props = dict(
