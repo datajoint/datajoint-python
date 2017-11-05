@@ -185,22 +185,31 @@ def compile_attribute(line, in_key, foreign_key_sql):
             match['default'] = 'NOT NULL'
     match['comment'] = match['comment'].replace('"', '\\"')   # escape double quotes in comment
 
-    is_external = match['type'] == 'external'
+    is_external = match['type'].startswith('external')
     if not is_external:
         sql = ('`{name}` {type} {default}' + (' COMMENT "{comment}"' if match['comment'] else '')).format(**match)
     else:
         # process externally stored attribute
         if in_key:
             raise DataJointError('External attributes cannot be primary in:\n%s' % line)
+        store_name = match['type'].split('-')
+        if store_name[0] != 'external':
+            raise DataJointError('External store types must be in format external-<name>')
+        store_name = '-'.join(store_name[1:])
+        if not store_name.isidentifier():
+            raise DataJointError(
+                'The external store name `{type}` is invalid. Make like a python identifier.'.format(**match))
+        if len(store_name)>STORE_NAME_LENGTH:
+            raise DataJointError(
+                'The external store name `{type}` is too long. Must be <={max_len} characters.'.format(
+                    max_len=STORE_NAME_LENGTH, **match))
         if not match['default'] in ('DEFAULT NULL', 'NOT NULL'):
             raise DataJointError('The only acceptable default value for an external field is null in:\n%s' % line)
         if match['type'] not in config:
             raise DataJointError('The external store `{type}` is not configured.'.format(**match))
-        if len(match['type']) > STORE_NAME_LENGTH + STORE_NAME_LENGTH + 1:
-            raise DataJointError(
-                'The external store name `{type}` is too long. Must be <={max_len} characters.'.format(
-                    max_len=STORE_NAME_LENGTH, **match))
-        sql = "`_{name}` {hash_type} {default} COMMENT {comment:type}'".format(
+
+        # append external configuration name to the end of the comment
+        sql = '`_{name}` {hash_type} {default} COMMENT "{comment}:{type}"'.format(
             hash_type=HASH_DATA_TYPE, **match)
         foreign_key_sql.append(
             "FOREIGN KEY (`_{name}`) REFERENCES {{external_table}} (`hash`) "

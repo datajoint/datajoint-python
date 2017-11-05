@@ -56,11 +56,15 @@ class BaseRelation(RelationalOperand):
             sql, uses_external = declare(self.full_table_name, self.definition, self._context)
             if uses_external:
                 # trigger the creation of the external hash lookup for the current schema
-                sql = sql.format(external_table_name=self.connection.schemas[self.database].external_table)
+                external_table = self.connection.schemas[self.database].external_table
+                sql = sql.format(external_table=external_table.full_table_name)
             self.connection.query(sql)
         except pymysql.OperationalError as error:
+            # skip if no create privilege
             if error.args[0] == server_error_codes['command denied']:
                 logger.warning(error.args[1])
+            else:
+                raise
         else:
             self._log('Declared ' + self.full_table_name)
 

@@ -1,6 +1,6 @@
+from nose.tools import assert_true, raises, assert_equal, assert_dict_equal
 from operator import itemgetter
 import itertools
-from nose.tools import assert_true, raises, assert_equal, assert_dict_equal
 import numpy as np
 import decimal
 import warnings

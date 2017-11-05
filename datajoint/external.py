@@ -30,7 +30,6 @@ class ExternalTable(BaseRelation):
         # external storage tracking 
         hash  : {hash_data_type}  # the hash of stored object + store name
         ---
-        count = 1 :int               # reference count
         size      :bigint unsigned   # size of object in bytes
         timestamp=CURRENT_TIMESTAMP  :timestamp   # automatic timestamp
         """.format(hash_data_type=HASH_DATA_TYPE)
@@ -75,7 +74,7 @@ class ExternalTable(BaseRelation):
         # insert tracking info
         self.connection.query(
             "INSERT INTO {tab} (hash, size) VALUES ('{hash}', {size}) "
-            "ON DUPLICATE KEY UPDATE count=count+1, timestamp=CURRENT_TIMESTAMP".format(
+            "ON DUPLICATE KEY UPDATE timestamp=CURRENT_TIMESTAMP".format(
                 tab=self.full_table_name,
                 hash=hash,
                 size=len(blob)))
@@ -90,7 +89,7 @@ class ExternalTable(BaseRelation):
         try:
             spec = config[store]
         except KeyError:
-            raise DataJointError('storage.%s is not configured' % store)
+            raise DataJointError('Store `%s` is not configured' % store)
 
         try:
             protocol = spec['protocol']
@@ -108,11 +107,3 @@ class ExternalTable(BaseRelation):
             raise DataJointError('Unknown external storage %s' % store)
 
         return unpack(blob)
-
-    def remove(self, hash):
-        """
-        delete an object from external store
-        """
-        # decrement count 
-        self.connection.query(
-            'UPDATE {tab} SET count=count-1 WHERE hash="{hash}"'.format(tab=self.full_table_name, hash=hash))
