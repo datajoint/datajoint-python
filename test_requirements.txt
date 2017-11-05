@@ -1,4 +1,3 @@
 matplotlib
-pygraphviz
-tqdm
+pydotplus
 moto

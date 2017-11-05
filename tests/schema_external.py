@@ -29,6 +29,13 @@ dj.config['cache'] = {
     'location': '/media/dimitri/ExtraDrive1/dj-store/cache'}
 
 
+@schema
+class Simple(dj.Manual):
+    definition = """
+    simple  : int
+    ---
+    item  : external-raw 
+    """
 
 @schema
 class Seed(dj.Lookup):
