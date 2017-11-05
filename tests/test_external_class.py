@@ -21,9 +21,9 @@ def test_insert_and_fetch():
 
 
 def test_populate():
-    img = modu.Image()
-    img.populate()
-    remaining, total = img.progress()
-    assert_true(total > 0 and remaining == 0)
-    for img, dimensions in zip(*(img * modu.Dimension()).fetch('img', 'dimensions')):
+    image = modu.Image()
+    image.populate()
+    remaining, total = image.progress()
+    assert_true(total == len(modu.Dimension() * modu.Seed()) and remaining == 0)
+    for img, dimensions in zip(*(image * modu.Dimension()).fetch('img', 'dimensions')):
         assert_list_equal(list(img.shape), list(dimensions))
