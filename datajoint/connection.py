@@ -90,7 +90,8 @@ class Connection:
         Connects to the database server.
         """
         self._conn = client.connect(init_command=self.init_fun,
-                                    sql_mode="STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
+                                    sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
+                                             "STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
                                     **self.conn_info)
 
     def register(self, schema):
