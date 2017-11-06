@@ -89,7 +89,8 @@ class Connection:
         """
         Connects to the database server.
         """
-        self._conn = client.connect(init_command=self.init_fun, **self.conn_info)
+        self._conn = client.connect(init_command=self.init_fun, 
+                mode="STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION", **self.conn_info)
 
     def register(self, schema):
         self.schemas[schema.database] = schema
