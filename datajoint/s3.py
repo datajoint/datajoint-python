@@ -1,5 +1,5 @@
 """
-This module contains logic related to external file storage
+This module contains logic related to S3 file storage
 """
 
 import logging
