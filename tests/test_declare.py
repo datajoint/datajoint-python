@@ -106,5 +106,5 @@ class TestDeclare:
         @schema.schema
         class B(dj.Manual):
             definition = """
-            b -> A()
+            b -> A    # invalid, the new syntax is (b) -> A
             """
