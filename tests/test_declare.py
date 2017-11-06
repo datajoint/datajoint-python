@@ -93,7 +93,7 @@ class TestDeclare:
             Bad_name : int
             """
 
-#    @raises(dj.DataJointError)
+    @raises(dj.DataJointError)
     def test_bad_fk_rename(self):
         """issue #381"""
 
