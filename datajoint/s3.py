@@ -3,49 +3,18 @@ This module contains logic related to S3 file storage
 """
 
 import logging
-from getpass import getpass
 
 import boto3
 from botocore.exceptions import ClientError
 
-from . import config
 from . import DataJointError
 
 logger = logging.getLogger(__name__)
 
 
-def bucket(aws_access_key_id=None, aws_secret_access_key=None, reset=False):
-    """
-    Returns a boto3 AWS session object to be shared by multiple modules.
-    If the connection is not yet established or reset=True, a new
-    connection is set up. If connection information is not provided,
-    it is taken from config which takes the information from
-    dj_local_conf.json. If the password is not specified in that file
-    datajoint prompts for the password.
-
-    :param aws_access_key_id: AWS Access Key ID
-    :param aws_secret_access_key: AWS Secret Key
-    :param reset: whether the connection should be reset or not
-    """
-    if not hasattr(bucket, 'bucket') or reset:
-        aws_access_key_id = aws_access_key_id \
-            if aws_access_key_id is not None \
-            else config['external.aws_access_key_id']
-
-        aws_secret_access_key = aws_secret_access_key \
-            if aws_secret_access_key is not None \
-            else config['external.aws_secret_access_key']
-
-        if aws_access_key_id is None:  # pragma: no cover
-            aws_access_key_id = input("Please enter AWS Access Key ID: ")
-
-        if aws_secret_access_key is None:  # pragma: no cover
-            aws_secret_access_key = getpass(
-                "Please enter AWS Secret Access Key: "
-            )
-
-        bucket.bucket = Bucket(aws_access_key_id, aws_secret_access_key)
-    return bucket.bucket
+def bucket(**kwargs):
+    ''' factory function '''
+    return Bucket.get_bucket(**kwargs)
 
 
 class Bucket:
@@ -55,25 +24,51 @@ class Bucket:
     Currently, basic CRUD operations are supported; of note permissions and
     object versioning are not currently supported.
 
-    Most of the parameters below should be set in the local configuration file.
-
-    :param aws_access_key_id: AWS Access Key ID
-    :param aws_secret_access_key: AWS Secret Key
+    To prevent session creation overhead, session establishment only occurs
+    with the first remote operation, and bucket objects will be cached and
+    reused when requested via the get_bucket() class method.
     """
+    _bucket_cache = {}
 
-    def __init__(self, aws_access_key_id, aws_secret_access_key):
+    def __init__(self, aws_access_key_id=None, aws_secret_access_key=None,
+                 bucket=None):
+        """
+        Create a Bucket object.
+
+        Note this bypasses the bucket session cache which should be used in
+        most cases via `get_bucket()`
+
+        :param aws_access_key_id: AWS Access Key ID
+        :param aws_secret_access_key: AWS Secret Key
+        :param bucket: name of remote bucket
+        """
         self._session = boto3.Session(
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key
         )
         self._s3 = None
-        try:
-            self._bucket = config['external.location'].split("s3://")[1]
-        except (AttributeError, IndexError, KeyError) as e:
-            raise DataJointError(
-                'external.location not properly configured: {l}'.format(
-                    l=config['external.location'])
-                ) from None
+        self._bucket = bucket
+
+    @staticmethod
+    def get_bucket(aws_access_key_id=None, aws_secret_access_key=None,
+                   bucket=None, reset=False):
+        """
+        Returns Bucket object to be shared by multiple modules.
+
+        If the connection is not yet established or reset=True, a new
+        connection is set up.
+
+        :param aws_access_key_id: AWS Access Key ID
+        :param aws_secret_access_key: AWS Secret Key
+        :param bucket: name of remote bucket
+        :param reset: whether the connection should be reset or not
+        """
+        if bucket not in Bucket._bucket_cache or reset:
+            b = Bucket(aws_access_key_id, aws_secret_access_key, bucket)
+            Bucket._bucket_cache[bucket] = b
+            return b
+        else:
+            return Bucket._bucket_cache[bucket]
 
     def connect(self):
         if self._s3 is None:

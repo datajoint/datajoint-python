@@ -3,6 +3,7 @@
 Test of dj.Bucket() using moto *MOCKED* S3 library
 Using real s3 could incur cost, requires appropriate credentials managment;
 but probably should be done at some point once best methodology is determined.
+
 """
 
 import os
@@ -50,33 +51,26 @@ def test_moto_test():
 @mock_s3
 def test_dj_bucket_factory():
     '''
-    Test *part of* the dj.bucket() singleton/factory function.
-    The user-interactive portion is not tested.
+    Test the dj.bucket() singleton/factory function.
     '''
-    try:
-        b = dj.Bucket(None, None)
-    except dj.DataJointError:  # no dj.config['external.location']
-        pass
-
-    # monkey patch dj.bucket.bucket to use mocked implementation
-    dj.config['external.location'] = 's3://djtest.datajoint.io'
-    b = dj.Bucket(None, None)
-    dj.bucket.bucket = b
-
-    assert dj.bucket() == b
+    b = dj.Bucket.get_bucket(aws_access_key_id=None,
+                             aws_secret_access_key=None,
+                             bucket='test')
+    assert dj.bucket(aws_access_key_id=None, aws_secret_access_key=None,
+                     bucket='test') == b
 
 
 @mock_s3
 class DjBucketTest(TestCase):
 
     def setUp(self):
-        dj.config['external.location'] = 's3://djtest.datajoint.io'
-        b = dj.Bucket(None, None)
-        dj.bucket.bucket = b
+        b = dj.Bucket.get_bucket(aws_access_key_id=None,
+                                 aws_secret_access_key=None,
+                                 bucket='test')
 
         # create moto's virtual bucket
         b.connect()  # note: implicit test of b.connect(), which is trivial
-        b._s3.create_bucket(Bucket='djtest.datajoint.io')
+        b._s3.create_bucket(Bucket='test')
         self._bucket = b
 
         # todo:
