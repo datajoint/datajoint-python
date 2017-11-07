@@ -132,9 +132,7 @@ class ExternalTable(BaseRelation):
         self.connection.query(
             "INSERT INTO {tab} (hash, size) VALUES ('{hash}', {size}) "
             "ON DUPLICATE KEY UPDATE timestamp=CURRENT_TIMESTAMP".format(
-                tab=self.full_table_name,
-                hash=hash,
-                size=len(blob)))
+                tab=self.full_table_name, hash=hash, size=len(blob)))
 
         return hash
 
