@@ -38,6 +38,11 @@ class ExternalFileHandler:
 
         return cls._handlers[protocol](store, database)
 
+    def hash_obj(self, obj):
+        blob = pack(obj)
+        hash = long_hash(blob) + self._store[len('external-'):]
+        return (blob, hash)
+
     @staticmethod
     def hash_to_store(hash):
         store = hash[STORE_HASH_LENGTH:]
@@ -55,8 +60,7 @@ class ExternalFileHandler:
 class RawFileHandler(ExternalFileHandler):
 
     def put(self, obj):
-        blob = pack(obj)
-        hash = long_hash(blob) + self._store[len('external-'):]
+        (blob, hash) = self.hash_obj(obj)
 
         folder = os.path.join(self._spec['location'], self._database)
         full_path = os.path.join(folder, hash)
