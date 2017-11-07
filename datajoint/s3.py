@@ -3,11 +3,16 @@ This module contains logic related to S3 file storage
 """
 
 import logging
+from io import BytesIO
 
 import boto3
 from botocore.exceptions import ClientError
 
 from . import DataJointError
+from .hash import long_hash
+from .blob import pack, unpack
+
+from .external import ExternalFileHandler
 
 logger = logging.getLogger(__name__)
 
@@ -184,3 +189,45 @@ class Bucket:
             raise DataJointError(
                 'error deleting file {r} ({e})'.format(r=rpath, e=e)
             )
+
+
+class S3FileHandler(ExternalFileHandler):
+
+    # BytesIO(obj)
+    # TODO: flip bucket to use upload_fileobj when required
+
+    def __init__(self, store, database):
+        super().__init__(store, database)
+
+        required = ('bucket', 'location', 'aws_access_key_id',
+                    'aws_secret_access_key',)
+
+        missing = list(i for i in required if i not in self._spec)
+
+        if len(missing):
+            raise DataJointError(
+                'Store "{store}" incorrectly configured for "s3"'.format(
+                    store=store), 'missing', *missing)
+
+        self._bucket = bucket(
+            aws_access_key_id=self._spec['aws_access_key_id'],
+            aws_secret_access_key=self._spec['aws_secret_access_key'],
+            bucket=self._spec['bucket'])
+
+        self._location = self._spec['location']
+
+    def make_path(self, hash):
+        return self._location + '/' + hash  # s3 - no path.join
+
+    def put(self, obj):
+        (blob, hash) = self.hash_obj(obj)
+        rpath = self.make_path(hash)
+        self._bucket.put(obj, rpath)
+        return (blob, hash)
+
+    def get(self, hash):
+        rpath = self.make_path(hash)
+        return unpack(self._bucket.get(rpath, BytesIO()))
+
+
+ExternalFileHandler._handlers['s3'] = S3FileHandler
