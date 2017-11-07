@@ -92,16 +92,35 @@ class Bucket:
 
         return True
 
-    def put(self, lpath=None, rpath=None):
+    def put(self, obj=None, rpath=None):
         """
-        Upload a file to the bucket.
+        Upload a 'bytes-like-object' to the bucket.
 
+        :param obj: local object
         :param rpath: remote path within bucket
-        :param lpath: local path
         """
         try:
             self.connect()
-            self._s3.Object(self._bucket, rpath).upload_file(lpath)
+            self._s3.Object(self._bucket, rpath).upload_fileobj(obj)
+        except Exception as e:
+            # XXX: risk of concatenating huge object? hmm.
+            raise DataJointError(
+                'Error uploading object {o} to {r} ({e})'.format(
+                    o=obj, r=rpath, e=e)
+            )
+
+        return True
+
+    def putfile(self, lpath=None, rpath=None):
+        """
+        Upload a file to the bucket.
+
+        :param lpath: local path
+        :param rpath: remote path within bucket
+        """
+        try:
+            with open(lpath, 'rb') as obj:
+                self.put(obj, rpath)
         except Exception as e:
             raise DataJointError(
                 'Error uploading file {l} to {r} ({e})'.format(
@@ -110,7 +129,26 @@ class Bucket:
 
         return True
 
-    def get(self, rpath=None, lpath=None):
+    def get(self, rpath=None, obj=None):
+        """
+        Retrieve a file from the bucket into a 'bytes-like-object'
+
+        :param rpath: remote path within bucket
+        :param obj: local object
+        """
+        try:
+            self.connect()
+            self._s3.Object(self._bucket, rpath).download_fileobj(obj)
+        except Exception as e:
+            # XXX: risk of concatenating huge object? hmm.
+            raise DataJointError(
+                'Error downloading object {r} to {o} ({e})'.format(
+                    r=rpath, o=obj, e=e)
+            )
+
+        return True
+
+    def getfile(self, rpath=None, lpath=None):
         """
         Retrieve a file from the bucket.
 
@@ -118,9 +156,10 @@ class Bucket:
         :param lpath: local path
         """
         try:
-            self.connect()
-            self._s3.Object(self._bucket, rpath).download_file(lpath)
+            with open(lpath, 'wb') as obj:
+                self.get(rpath, obj)
         except Exception as e:
+            # XXX: risk of concatenating huge object? hmm.
             raise DataJointError(
                 'Error downloading file {r} to {l} ({e})'.format(
                     r=rpath, l=lpath, e=e)

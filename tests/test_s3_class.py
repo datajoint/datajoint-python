@@ -93,8 +93,14 @@ class DjBucketTest(TestCase):
 
     def test_bucket_methods(self):
         '''
-        Test dj.Bucket.(put,state,get,delete,)()
+        Test dj.Bucket.(putfile,stat,getfile,delete,)()
         Currently done in one test to simplify interdependencies.
+
+        Note:
+        putfile/getfile are currently implemented in terms of put/get
+        and so put/get not directly tested.
+
+        TODO: Test failure modes.
         '''
 
         # ensure no initial files
@@ -103,13 +109,13 @@ class DjBucketTest(TestCase):
         assert os.path.exists(self._lfile_cpy) is False
 
         # test put
-        assert self._bucket.put(self._lfile, self._rfile) is True
+        assert self._bucket.putfile(self._lfile, self._rfile) is True
 
         # test stat
         assert self._bucket.stat(self._rfile) is True
 
         # test get
-        assert self._bucket.get(self._rfile, self._lfile_cpy) is True
+        assert self._bucket.getfile(self._rfile, self._lfile_cpy) is True
         assert os.path.exists(self._lfile_cpy) is True
 
         # test delete
