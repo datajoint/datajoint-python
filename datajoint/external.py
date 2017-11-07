@@ -6,6 +6,85 @@ from .base_relation import BaseRelation
 from .declare import STORE_HASH_LENGTH, HASH_DATA_TYPE
 
 
+class ExternalFileHandler:
+
+    _handlers = {}  # handler mapping - statically initialized below.
+
+    def __init__(self, store, database):
+        self._store = store
+        self._database = database
+        self._spec = config[store]
+
+    @classmethod
+    def get_handler(cls, store, database):
+
+        if store not in config:
+            raise DataJointError(
+                'Store "{store}" is not configured'.format(store=store))
+
+        spec = config[store]
+
+        if 'protocol' not in spec:
+            raise DataJointError(
+                'Store "{store}" config is missing the protocol field'
+                .format(store=store))
+
+        protocol = spec['protocol']
+
+        if protocol not in cls._handlers:
+            raise DataJointError(
+                'Unknown external storage protocol "{protocol}" for "{store}"'
+                .format(store=store, protocol=protocol))
+
+        return cls._handlers[protocol](store, database)
+
+    @staticmethod
+    def hash_to_store(hash):
+        store = hash[STORE_HASH_LENGTH:]
+        return 'external' + ('-' if store else '') + store
+
+    def put(self, obj):
+        ''' returns (blob, hash) '''
+        raise NotImplementedError('put method not implemented for', type(self))
+
+    def get(self, hash):
+        ''' returns 'obj' '''
+        raise NotImplementedError('get method not implemented for', type(self))
+
+
+class RawFileHandler(ExternalFileHandler):
+
+    def put(self, obj):
+        blob = pack(obj)
+        hash = long_hash(blob) + self._store[len('external-'):]
+
+        folder = os.path.join(self._spec['location'], self._database)
+        full_path = os.path.join(folder, hash)
+        if not os.path.isfile(full_path):
+            try:
+                with open(full_path, 'wb') as f:
+                    f.write(blob)
+            except FileNotFoundError:
+                os.makedirs(folder)
+                with open(full_path, 'wb') as f:
+                    f.write(blob)
+
+        return (blob, hash)
+
+    def get(self, hash):
+        full_path = os.path.join(self._spec['location'], self._database, hash)
+        try:
+            with open(full_path, 'rb') as f:
+                return unpack(f.read())
+        except FileNotFoundError:
+                raise DataJointError('Lost external blob')
+
+
+ExternalFileHandler._handlers = {
+    'file': RawFileHandler,
+}
+
+
 class ExternalTable(BaseRelation):
     """
     The table tracking externally stored objects.
@@ -27,7 +106,7 @@ class ExternalTable(BaseRelation):
     @property
     def definition(self):
         return """
-        # external storage tracking 
+        # external storage tracking
         hash  : {hash_data_type}  # the hash of stored object + store name
         ---
         size      :bigint unsigned   # size of object in bytes
@@ -42,34 +121,8 @@ class ExternalTable(BaseRelation):
         """
         put an object in external store
         """
-        try:
-            spec = config[store]
-        except KeyError:
-            raise DataJointError('Storage {store} is not configured'.format(store=store))
-
-        # serialize object
-        blob = pack(obj)
-        hash = long_hash(blob) + store[len('external-'):]
-
-        try:
-            protocol = spec['protocol']
-        except KeyError:
-            raise DataJointError('Storage {store} config is missing the protocol field'.format(store=store))
-
-        if protocol == 'file':
-            folder = os.path.join(spec['location'], self.database)
-            full_path = os.path.join(folder, hash)
-            if not os.path.isfile(full_path):
-                try:
-                    with open(full_path, 'wb') as f:
-                        f.write(blob)
-                except FileNotFoundError:
-                    os.makedirs(folder)
-                    with open(full_path, 'wb') as f:
-                        f.write(blob)
-        else:
-            raise DataJointError('Unknown external storage protocol {protocol} for {store}'.format(
-                store=store, protocol=protocol))
+        (blob, hash) = ExternalFileHandler.get_handler(
+            store, self.database).put(obj)
 
         # insert tracking info
         self.connection.query(
@@ -78,32 +131,12 @@ class ExternalTable(BaseRelation):
                 tab=self.full_table_name,
                 hash=hash,
                 size=len(blob)))
+
         return hash
 
     def get(self, hash):
         """
         get an object from external store
         """
-        store = hash[STORE_HASH_LENGTH:]
-        store = 'external' + ('-' if store else '') + store
-        try:
-            spec = config[store]
-        except KeyError:
-            raise DataJointError('Store `%s` is not configured' % store)
-
-        try:
-            protocol = spec['protocol']
-        except KeyError:
-            raise DataJointError('Storage {store} config is missing the protocol field'.format(store=store))
-
-        if protocol == 'file':
-            full_path = os.path.join(spec['location'], self.database, hash)
-            try:
-                with open(full_path, 'rb') as f:
-                    blob = f.read()
-            except FileNotFoundError:
-                    raise DataJointError('Lost external blob')
-        else:
-            raise DataJointError('Unknown external storage %s' % store)
-
-        return unpack(blob)
+        return ExternalFileHandler.get_handler(
+            ExternalFileHandler.hash_to_store(hash), self.database).get(hash)
