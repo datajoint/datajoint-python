@@ -112,7 +112,7 @@ class Bucket:
                     o=obj, r=rpath, e=e)
             )
 
-        return True
+        return obj
 
     def putfile(self, lpath=None, rpath=None):
         """
@@ -149,7 +149,7 @@ class Bucket:
                     r=rpath, o=obj, e=e)
             )
 
-        return True
+        return obj
 
     def getfile(self, rpath=None, lpath=None):
         """
