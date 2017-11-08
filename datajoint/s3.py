@@ -9,9 +9,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 from . import DataJointError
-from .hash import long_hash
-from .blob import pack, unpack
-
+from .blob import unpack
 from .external import ExternalFileHandler
 
 logger = logging.getLogger(__name__)
@@ -192,9 +190,6 @@ class Bucket:
 
 
 class S3FileHandler(ExternalFileHandler):
-
-    # BytesIO(obj)
-    # TODO: flip bucket to use upload_fileobj when required
 
     def __init__(self, store, database):
         super().__init__(store, database)
