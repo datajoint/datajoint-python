@@ -217,12 +217,12 @@ class S3FileHandler(ExternalFileHandler):
     def put(self, obj):
         (blob, hash) = self.hash_obj(obj)
         rpath = self.make_path(hash)
-        self._bucket.put(obj, rpath)
+        self._bucket.put(BytesIO(blob), rpath)
         return (blob, hash)
 
     def get(self, hash):
         rpath = self.make_path(hash)
-        return unpack(self._bucket.get(rpath, BytesIO()))
+        return unpack(self._bucket.get(rpath, BytesIO()).getvalue())
 
 
 ExternalFileHandler._handlers['s3'] = S3FileHandler
