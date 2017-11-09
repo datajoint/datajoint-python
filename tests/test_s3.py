@@ -13,7 +13,7 @@ from . schema_s3 import schema
 
 
 @mock_s3
-class DjS3Test(TestCase):
+class DjS3MockTest(TestCase):
 
     def setUp(self):
         # create moto's virtual bucket
