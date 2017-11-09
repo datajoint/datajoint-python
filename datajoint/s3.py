@@ -212,7 +212,23 @@ class S3FileHandler(ExternalFileHandler):
         self._location = self._spec['location']
 
     def make_path(self, hash):
-        return self._location + '/' + hash  # s3 - no path.join
+        '''
+        create a remote s3 path for the given hash.
+
+        S3 has no path.join; '' is root, '/' is delimiter.
+
+        Leading slashes will create an empty-named top-level folder.
+        therefore we leading slashes from location and do not create them.
+
+        This is done here and not in the Bucket class since it is not
+        technically 'illegal' and Bucket encapsulates low-level access.
+        '''
+        if(len(self._location) == 0 or self._location == '/'):
+            return hash
+        if self._location[0] == '/':
+            return self._location[1:] + '/' + hash
+        else:
+            return self._location + '/' + hash
 
     def put(self, obj):
         (blob, hash) = self.hash_obj(obj)
