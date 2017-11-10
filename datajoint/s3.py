@@ -191,18 +191,13 @@ class Bucket:
 
 class S3FileHandler(ExternalFileHandler):
 
+    required = ('bucket', 'location', 'aws_access_key_id',
+                'aws_secret_access_key',)
+
     def __init__(self, store, database):
         super().__init__(store, database)
 
-        required = ('bucket', 'location', 'aws_access_key_id',
-                    'aws_secret_access_key',)
-
-        missing = list(i for i in required if i not in self._spec)
-
-        if len(missing):
-            raise DataJointError(
-                'Store "{store}" incorrectly configured for "s3"'.format(
-                    store=store), 'missing', *missing)
+        self.check_required(store, 's3', S3FileHandler.required)
 
         self._bucket = bucket(
             aws_access_key_id=self._spec['aws_access_key_id'],

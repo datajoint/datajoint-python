@@ -38,6 +38,15 @@ class ExternalFileHandler:
 
         return cls._handlers[protocol](store, database)
 
+    def check_required(self, store, storetype, required):
+
+        missing = list(i for i in required if i not in self._spec)
+
+        if len(missing):
+            raise DataJointError(
+                'Store "{s}" incorrectly configured for "{n}"'.format(
+                    store=store, storetype=storetype), 'missing', *missing)
+
     def hash_obj(self, obj):
         blob = pack(obj)
         hash = long_hash(blob) + self._store[len('external-'):]
@@ -58,6 +67,13 @@ class ExternalFileHandler:
 
 
 class RawFileHandler(ExternalFileHandler):
+
+    required = ('location',)
+
+    def __init__(self, store, database):
+        super().__init__(store, database)
+        self.check_required(store, 's3', RawFileHandler.required)
+        self._location = self._spec['location']
 
     def put(self, obj):
         (blob, hash) = self.hash_obj(obj)
