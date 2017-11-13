@@ -76,7 +76,7 @@ class RawFileHandler(ExternalFileHandler):
         self._location = self._spec['location']
 
     def get_folder(self):
-        return os.path.join(self.location, self._database)
+        return os.path.join(self._location, self._database)
 
     def put(self, obj):
         (blob, hash) = self.hash_obj(obj)
