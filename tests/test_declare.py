@@ -31,6 +31,32 @@ class TestDeclare:
         assert_equal(s1, s2)
 
     @staticmethod
+    def test_part():
+        # Lookup and part with the same name.  See issue #365
+        local_schema = dj.schema(schema.schema.database, locals())
+
+        @local_schema
+        class Type(dj.Lookup):
+            definition = """
+            type :  varchar(255)
+            """
+            contents = zip(('Type1', 'Type2', 'Type3'))
+
+        locals()   # this is to overcome the issue described in issue #368
+
+        @local_schema
+        class TypeMaster(dj.Manual):
+            definition = """
+            master_id : int
+            """
+
+            class Type(dj.Part):
+                definition = """
+                -> TypeMaster
+                -> Type
+                """
+
+    @staticmethod
     def test_attributes():
         # test autoincrement declaration
         assert_list_equal(auto.heading.names, ['id', 'name'])

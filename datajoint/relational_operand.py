@@ -176,7 +176,7 @@ class RelationalOperand:
                 return arg, _negate
             elif isinstance(arg, AndList):
                 return '(' + ' AND '.join([make_condition(element)[0] for element in arg]) + ')', _negate
-            elif arg is True or arg is False:
+            elif isinstance(arg, bool):
                 return 'FALSE' if _negate == arg else 'TRUE', False
             # semijoin or antijoin
             elif isinstance(arg, RelationalOperand):
@@ -308,7 +308,7 @@ class RelationalOperand:
         """
         return self & Not(restriction)
 
-    def restrict(self, arg):
+    def restrict(self, restriction):
         """
         In-place restriction.  Restricts the relation to a subset of its original tuples.
         rel.restrict(restriction)  is equivalent to  rel = rel & restriction  or  rel &= restriction
@@ -354,19 +354,18 @@ class RelationalOperand:
 
         :param restriction: a sequence or an array (treated as OR list), another relation, an SQL condition string, or
             an AndList.
-        :param as_or: if True than the applied restriction becomes or-listed with already existing conditions
         """
-        assert not self.heading.expressions or isinstance(self, GroupBy), \
-            "Cannot restrict in place a projection with renamed attributes."
-        if not restricts_to_same(arg):
-            self.restrictions.append(arg)
-        elif restricts_to_empty(arg):
+        assert not self.heading.expressions or isinstance(self, GroupBy), "Cannot restrict in place" \
+                                                                          " a projection with renamed attributes."
+        if not restricts_to_same(restriction):
+            self.restrictions.append(restriction)
+        elif restricts_to_empty(restriction):
             self.restrictions.set(False)
         return self
 
     def allow(self, arg):
-        assert not self.heading.expressions or isinstance(self, GroupBy), \
-            "Cannot restrict in place a projection with renamed attributes."
+        assert not self.heading.expressions or isinstance(self, GroupBy), "Cannot restrict in place" \
+                                                                          " a projection with renamed attributes."
         if self.restrictions:
             if restricts_to_same(arg):
                 self.restrictions.clear()
@@ -637,8 +636,9 @@ class Union(RelationalOperand):
             raise DataJointError("Cannot operate on relations from different connections.")
         if set(arg1.heading.names) != set(arg2.heading.names):
             raise DataJointError('Union requires the same attributes in both arguments')
-        if not all(v.in_key for v in arg1.heading.attributes.values()):
-            raise DataJointError('The left argument of union must not have any secondary attributes')
+        if any(not v.in_key for v in arg1.heading.attributes.values()) or \
+                all(not v.in_key for v in arg2.heading.attributes.values()):
+            raise DataJointError('Union arguments must not have any secondary attributes.')
         obj._connection = arg1.connection
         obj._heading = arg1.heading
         obj._arg1 = arg1

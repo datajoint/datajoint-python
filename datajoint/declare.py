@@ -194,9 +194,9 @@ def compile_attribute(line, in_key, foreign_key_sql):
             raise DataJointError('External attributes cannot be primary in:\n%s' % line)
         store_name = match['type'].split('-')
         if store_name[0] != 'external':
-            raise DataJointError('External store types must be in format external-<name>')
+            raise DataJointError('External store types must be specified as "external" or "external-<name>"')
         store_name = '-'.join(store_name[1:])
-        if not store_name.isidentifier():
+        if store_name != '' and not store_name.isidentifier():
             raise DataJointError(
                 'The external store name `{type}` is invalid. Make like a python identifier.'.format(**match))
         if len(store_name)>STORE_NAME_LENGTH:

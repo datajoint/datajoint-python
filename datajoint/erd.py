@@ -35,6 +35,7 @@ def _get_tier(table_name):
         except StopIteration:
             return None
 
+
 if not erd_active:
     class ERD:
         """
