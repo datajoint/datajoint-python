@@ -75,10 +75,13 @@ class RawFileHandler(ExternalFileHandler):
         self.check_required(store, 's3', RawFileHandler.required)
         self._location = self._spec['location']
 
+    def get_folder(self):
+        return os.path.join(self.location, self._database)
+
     def put(self, obj):
         (blob, hash) = self.hash_obj(obj)
 
-        folder = os.path.join(self._spec['location'], self._database)
+        folder = self.get_folder()
         full_path = os.path.join(folder, hash)
         if not os.path.isfile(full_path):
             try:
@@ -92,7 +95,7 @@ class RawFileHandler(ExternalFileHandler):
         return (blob, hash)
 
     def get(self, hash):
-        full_path = os.path.join(self._spec['location'], self._database, hash)
+        full_path = os.path.join(self.get_folder(), hash)
         try:
             with open(full_path, 'rb') as f:
                 return unpack(f.read())
