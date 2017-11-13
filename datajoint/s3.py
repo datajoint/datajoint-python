@@ -10,7 +10,9 @@ from botocore.exceptions import ClientError
 
 from . import DataJointError
 from .blob import unpack
+
 from .external import ExternalFileHandler
+from .external import CacheFileHandler
 
 logger = logging.getLogger(__name__)
 
@@ -236,4 +238,9 @@ class S3FileHandler(ExternalFileHandler):
         return unpack(self._bucket.get(rpath, BytesIO()).getvalue())
 
 
+class CachedS3FileHandler(CacheFileHandler, S3FileHandler):
+    pass
+
+
 ExternalFileHandler._handlers['s3'] = S3FileHandler
+ExternalFileHandler._handlers['cache-s3'] = CachedS3FileHandler

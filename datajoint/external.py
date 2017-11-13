@@ -103,8 +103,58 @@ class RawFileHandler(ExternalFileHandler):
                 raise DataJointError('Lost external blob')
 
 
+class CacheFileHandler(ExternalFileHandler):
+    '''
+    A CacheFileHandler.
+
+    Will cache objects in 'cache_location'.
+    Cleanup currently not implemented.
+    '''
+    required = ('cache_location')
+
+    def __init__(self, store, database):
+        super().__init__(store, database)
+        self.check_required(store, 'cache', CacheFileHandler.required)
+        self._location = self._spec['cache_location']
+
+    def _clean_cache(self):
+        # TODO: implement _clean_cache
+        pass
+
+    def _put_cache(self, blob, hash):
+
+        self._clean_cache()
+
+        folder = self.get_folder()
+        full_path = os.path.join(folder, hash)
+
+        if not os.path.isfile(full_path):
+
+            try:
+                with open(full_path, 'wb') as f:
+                    f.write(blob)
+            except FileNotFoundError:
+                os.makedirs(folder)
+                with open(full_path, 'wb') as f:
+                    f.write(blob)
+
+        return (blob, hash)
+
+    def put(self, obj):
+        return self._put_cache(super().get(self, hash))
+
+    def get(self, hash):
+        return self._put_cache(super().get(self, hash))
+
+
+class CachedRawFileHandler(CacheFileHandler, RawFileHandler):
+    pass
+
+
 ExternalFileHandler._handlers = {
     'file': RawFileHandler,
+    'cache': CacheFileHandler,
+    'cache-file': CachedRawFileHandler,
 }
 
 
