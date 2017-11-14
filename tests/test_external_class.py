@@ -15,9 +15,12 @@ def test_insert_and_fetch():
     # test fetch
     q = (modu.Simple() & {'simple': 1}).fetch('item')[0]
     assert_list_equal(list(q), original_list)
-    # test fetch1
+    # test fetch1 as a tuple
     q = (modu.Simple() & {'simple': 1}).fetch1('item')
     assert_list_equal(list(q), original_list)
+    # test fetch1 as a dict
+    q = (modu.Simple() & {'simple': 1}).fetch1()
+    assert_list_equal(list(q['item']), original_list)
 
 
 def test_populate():
