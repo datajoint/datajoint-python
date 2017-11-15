@@ -65,7 +65,7 @@ class Image(dj.Computed):
     -> Dimension
     ----
     img  : external-raw    #  objects are stored as specified by dj.config['external-raw']
-    neg : external    # objects are stored as specified by dj.congif['external']
+    neg : external    # objects are stored as specified by dj.config['external']
     """
 
     def make(self, key):

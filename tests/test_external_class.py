@@ -1,4 +1,5 @@
 from nose.tools import assert_true, assert_list_equal
+from numpy.testing import assert_almost_equal
 
 from . import schema_external as modu
 
@@ -28,5 +29,6 @@ def test_populate():
     image.populate()
     remaining, total = image.progress()
     assert_true(total == len(modu.Dimension() * modu.Seed()) and remaining == 0)
-    for img, dimensions in zip(*(image * modu.Dimension()).fetch('img', 'dimensions')):
+    for img, neg, dimensions in zip(*(image * modu.Dimension()).fetch('img', 'neg', 'dimensions')):
         assert_list_equal(list(img.shape), list(dimensions))
+        assert_almost_equal(img, -neg)
