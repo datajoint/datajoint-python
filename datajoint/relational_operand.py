@@ -1,5 +1,5 @@
 import collections
-from itertools import zip_longest
+from itertools import zip_longest, count
 import logging
 import numpy as np
 import re
@@ -37,6 +37,41 @@ def restricts_to_empty(arg):
             isinstance(arg, Not) and restricts_to_same(arg.restriction))
 
 
+class OrList(list):
+    """
+    A list of conditions to restrict a relation.  The conditions are OR-ed.
+    If any restriction is True, then the overall condition is True.
+    Each condition can be a AndList.
+
+    Example:
+    rel2 = rel & dj.ORList((cond1, cond2, cond3))
+    is equivalent to
+    rel2 = rel & [cond1, cond2, cond3]
+    """
+
+    @staticmethod
+    def _recurse(other):
+        for item in other:
+            if isinstance(item, OrList):
+                yield from OrList._recurse(item)  # flatten list
+            else:
+                if not isinstance(item, AndList):
+                    yield item
+                elif len(item) == 0:
+                    yield True
+                elif len(item) == 1:
+                    if isinstance(item[0], OrList):
+                        OrList._recurse(item[0])
+                    else:
+                        yield item[0]
+                else:
+                    yield item
+
+    def __init__(self, other):
+        lst = list(self._recurse(other))
+        super().__init__([True] if any(i is True for i in lst) else lst)
+
+
 class AndList(list):
     """
     A list of restrictions to by applied to a relation.  The restrictions are AND-ed.
@@ -49,25 +84,24 @@ class AndList(list):
     rel2 = rel & cond1 & cond2 & cond3
     """
 
-    def simplify(self):
-        return self[0] if len(self) == 1 else self
+    def set(self, items):
+        self.clear()
+        self.append(items)
 
-
-class OrList(list):
-    """
-    A list of restrictions to by applied to a relation.  The restrictions are OR-ed.
-    If any restriction is .
-    But the elements that are lists can contain other AndLists.
-
-    Example:
-    rel2 = rel & dj.ORList((cond1, cond2, cond3))
-    is equivalent to
-    rel2 = rel & [cond1, cond2, cond3]
-
-    Since ORList is just an alias for list, it is not necessary and is only provided
-    for consistency with AndList.
-    """
-    pass
+    def append(self, item):
+        # append item, reducing nesting
+        if isinstance(item, AndList):
+            self.extend(item)
+        elif isinstance(item, OrList):
+            if not item:  # an empty OrList is equivalent to False
+                super().append(False)
+            else:  # an OrList with one element is equivalent to the element
+                super().append(item[0] if len(item) == 1 else item)
+        else:
+            super().append(item)
+        # an AndList with a False in it is False
+        if len(self) > 1 and any(i is False for i in self):
+            self.set(False)
 
 
 class RelationalOperand:
@@ -142,6 +176,8 @@ class RelationalOperand:
                 return arg, _negate
             elif isinstance(arg, AndList):
                 return '(' + ' AND '.join([make_condition(element)[0] for element in arg]) + ')', _negate
+            elif isinstance(arg, bool):
+                return 'FALSE' if _negate == arg else 'TRUE', False
             # semijoin or antijoin
             elif isinstance(arg, RelationalOperand):
                 common_attributes = [q for q in self.heading.names if q in arg.heading.names]
@@ -200,6 +236,12 @@ class RelationalOperand:
         natural join of relations self and other
         """
         return other * self if isinstance(other, U) else Join.create(self, other)
+
+    def __add__(self, other):
+        """
+        union of relations
+        """
+        return Union.create(self, other)
 
     def proj(self, *attributes, **named_attributes):
         """
@@ -313,13 +355,22 @@ class RelationalOperand:
         :param restriction: a sequence or an array (treated as OR list), another relation, an SQL condition string, or
             an AndList.
         """
+        assert not self.heading.expressions or isinstance(self, GroupBy), "Cannot restrict in place" \
+                                                                          " a projection with renamed attributes."
         if not restricts_to_same(restriction):
-            assert not self.heading.expressions or isinstance(self, GroupBy), \
-                "Cannot restrict in place a projection with renamed attributes."
-            if isinstance(restriction, AndList):
-                self.restrictions.extend(restriction)
+            self.restrictions.append(restriction)
+        elif restricts_to_empty(restriction):
+            self.restrictions.set(False)
+        return self
+
+    def allow(self, arg):
+        assert not self.heading.expressions or isinstance(self, GroupBy), "Cannot restrict in place" \
+                                                                          " a projection with renamed attributes."
+        if self.restrictions:
+            if restricts_to_same(arg):
+                self.restrictions.clear()
             else:
-                self.restrictions.append(restriction)
+                self.restrictions.set(OrList([self.restrictions, arg]))
         return self
 
     @property
@@ -560,9 +611,58 @@ class Join(RelationalOperand):
             from2=self._arg2.from_clause)
 
 
+class Union(RelationalOperand):
+    """
+    Union is a private DataJoint class that implements relational union.
+    """
+
+    __count = count()
+
+    def __init__(self, arg=None):
+        super().__init__(arg)
+        if arg is not None:
+            assert isinstance(arg, Union), "Union copy constructore requires a Union object"
+            self._connection = arg.connection
+            self._heading = arg.heading
+            self._arg1 = arg._arg1
+            self._arg2 = arg._arg2
+
+    @classmethod
+    def create(cls, arg1, arg2):
+        obj = cls()
+        if not isinstance(arg1, RelationalOperand) or not isinstance(arg2, RelationalOperand):
+            raise DataJointError('a relation can only be unioned with another relation')
+        if arg1.connection != arg2.connection:
+            raise DataJointError("Cannot operate on relations from different connections.")
+        if set(arg1.heading.names) != set(arg2.heading.names):
+            raise DataJointError('Union requires the same attributes in both arguments')
+        if any(not v.in_key for v in arg1.heading.attributes.values()) or \
+                all(not v.in_key for v in arg2.heading.attributes.values()):
+            raise DataJointError('Union arguments must not have any secondary attributes.')
+        obj._connection = arg1.connection
+        obj._heading = arg1.heading
+        obj._arg1 = arg1
+        obj._arg2 = arg2
+        return obj
+
+    def make_sql(self, select_fields=None):
+        return "SELECT {_fields} FROM {_from}{_where}".format(
+            _fields=self.get_select_fields(select_fields),
+            _from=self.from_clause,
+            _where=self.where_clause)
+
+    @property
+    def from_clause(self):
+        return ("(SELECT {fields} FROM {from1}{where1} UNION SELECT {fields} FROM {from2}{where2}) as `_u%x`".format(
+            fields=self.get_select_fields(None), from1=self._arg1.from_clause,
+            where1=self._arg1.where_clause,
+            from2=self._arg2.from_clause,
+            where2=self._arg2.where_clause)) % next(self.__count)
+
+
 class Projection(RelationalOperand):
     """
-    Projection is an private DataJoint class that implements relational projection.
+    Projection is a private DataJoint class that implements relational projection.
     See RelationalOperand.proj() for user interface.
     """
 
@@ -677,7 +777,7 @@ class Subquery(RelationalOperand):
     The attribute list and the WHERE clause are resolved.  Thus, a subquery no longer has any renamed attributes.
     A subquery of a subquery is a just a copy of the subquery with no change in SQL.
     """
-    __counter = 0
+    __count = count()
 
     def __init__(self, arg=None):
         super().__init__(arg)
@@ -700,13 +800,8 @@ class Subquery(RelationalOperand):
         return obj
 
     @property
-    def counter(self):
-        Subquery.__counter += 1
-        return Subquery.__counter
-
-    @property
     def from_clause(self):
-        return '(' + self._arg.make_sql() + ') as `_s%x`' % self.counter
+        return '(' + self._arg.make_sql() + ') as `_s%x`' % next(self.__count)
 
     def get_select_fields(self, select_fields=None):
         return '*' if select_fields is None else self.heading.project(select_fields).as_sql

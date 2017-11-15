@@ -50,6 +50,7 @@ def insert_blobs():
 
 class TestFetch:
     def __init__(self):
+        Blob().delete()
         insert_blobs()
 
     def test_complex_matlab_blobs(self):

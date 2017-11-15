@@ -16,3 +16,5 @@ dj_local_conf.json
 build/
 .coverage
 ./tests/.coverage
+./tests/dj-store/*
+*.log

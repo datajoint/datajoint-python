@@ -6,7 +6,11 @@ import re
 import pyparsing as pp
 import logging
 
-from . import DataJointError
+from . import DataJointError, config
+
+STORE_NAME_LENGTH = 8
+STORE_HASH_LENGTH = 43
+HASH_DATA_TYPE = 'char(51)'
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +67,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
     try:
         result = foreign_key_parser.parseString(line)
     except pp.ParseException as err:
-        raise DataJointError('Parsing error in line "%s". %s.' % line, err)
+        raise DataJointError('Parsing error in line "%s". %s.' % (line, err))
     try:
         referenced_class = eval(result.ref_table, context)
     except NameError:
@@ -114,6 +118,7 @@ def declare(full_table_name, definition, context):
     attribute_sql = []
     foreign_key_sql = []
     index_sql = []
+    uses_external = False
 
     for line in definition:
         if line.startswith('#'):  # additional comments are ignored
@@ -127,7 +132,8 @@ def declare(full_table_name, definition, context):
         elif re.match(r'^(unique\s+)?index[^:]*$', line, re.I):   # index
             index_sql.append(line)  # the SQL syntax is identical to DataJoint's
         else:
-            name, sql = compile_attribute(line, in_key)
+            name, sql, is_external = compile_attribute(line, in_key, foreign_key_sql)
+            uses_external = uses_external or is_external
             if in_key and name not in primary_key:
                 primary_key.append(name)
             if name not in attributes:
@@ -141,16 +147,17 @@ def declare(full_table_name, definition, context):
                        ['PRIMARY KEY (`' + '`,`'.join(primary_key) + '`)'] +
                        foreign_key_sql +
                        index_sql) +
-            '\n) ENGINE=InnoDB, COMMENT "%s"' % table_comment)
+            '\n) ENGINE=InnoDB, COMMENT "%s"' % table_comment), uses_external
 
 
-def compile_attribute(line, in_key=False):
+def compile_attribute(line, in_key, foreign_key_sql):
     """
     Convert attribute definition from DataJoint format to SQL
 
     :param line: attribution line
     :param in_key: set to True if attribute is in primary key set
-    :returns: (name, sql) -- attribute name and sql code for its declaration
+    :param foreign_key_sql:
+    :returns: (name, sql, is_external) -- attribute name and sql code for its declaration
     """
 
     try:
@@ -177,5 +184,35 @@ def compile_attribute(line, in_key=False):
         else:
             match['default'] = 'NOT NULL'
     match['comment'] = match['comment'].replace('"', '\\"')   # escape double quotes in comment
-    sql = ('`{name}` {type} {default}' + (' COMMENT "{comment}"' if match['comment'] else '')).format(**match)
-    return match['name'], sql
+
+    is_external = match['type'].startswith('external')
+    if not is_external:
+        sql = ('`{name}` {type} {default}' + (' COMMENT "{comment}"' if match['comment'] else '')).format(**match)
+    else:
+        # process externally stored attribute
+        if in_key:
+            raise DataJointError('External attributes cannot be primary in:\n%s' % line)
+        store_name = match['type'].split('-')
+        if store_name[0] != 'external':
+            raise DataJointError('External store types must be specified as "external" or "external-<name>"')
+        store_name = '-'.join(store_name[1:])
+        if store_name != '' and not store_name.isidentifier():
+            raise DataJointError(
+                'The external store name `{type}` is invalid. Make like a python identifier.'.format(**match))
+        if len(store_name)>STORE_NAME_LENGTH:
+            raise DataJointError(
+                'The external store name `{type}` is too long. Must be <={max_len} characters.'.format(
+                    max_len=STORE_NAME_LENGTH, **match))
+        if not match['default'] in ('DEFAULT NULL', 'NOT NULL'):
+            raise DataJointError('The only acceptable default value for an external field is null in:\n%s' % line)
+        if match['type'] not in config:
+            raise DataJointError('The external store `{type}` is not configured.'.format(**match))
+
+        # append external configuration name to the end of the comment
+        sql = '`{name}` {hash_type} {default} COMMENT ":{type}:{comment}"'.format(
+            hash_type=HASH_DATA_TYPE, **match)
+        foreign_key_sql.append(
+            "FOREIGN KEY (`{name}`) REFERENCES {{external_table}} (`hash`) "
+            "ON UPDATE RESTRICT ON DELETE RESTRICT".format(**match))
+
+    return match['name'], sql, is_external

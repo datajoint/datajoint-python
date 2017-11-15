@@ -11,7 +11,6 @@ from getpass import getpass
 from . import config
 from . import DataJointError
 from .dependencies import Dependencies
-from .jobs import JobManager
 from pymysql import err
 
 logger = logging.getLogger(__name__)
@@ -75,7 +74,6 @@ class Connection:
             raise DataJointError('Connection failed.')
         self._conn.autocommit(True)
         self._in_transaction = False
-        self.jobs = JobManager(self)
         self.schemas = dict()
         self.dependencies = Dependencies(self)
 
@@ -91,7 +89,10 @@ class Connection:
         """
         Connects to the database server.
         """
-        self._conn = client.connect(init_command=self.init_fun, **self.conn_info)
+        self._conn = client.connect(init_command=self.init_fun,
+                                    sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
+                                             "STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
+                                    **self.conn_info)
 
     def register(self, schema):
         self.schemas[schema.database] = schema

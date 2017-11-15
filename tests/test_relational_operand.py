@@ -2,9 +2,8 @@ import random
 import string
 
 import numpy as np
-from nose.tools import assert_raises, assert_equal, \
-    assert_false, assert_true, assert_list_equal, \
-    assert_tuple_equal, assert_dict_equal, raises
+from nose.tools import assert_equal, assert_false, assert_true, raises, assert_set_equal
+
 import datajoint as dj
 from .schema_simple import A, B, D, E, L, DataA, DataB, TestUpdate, IJ, JI
 from .schema import Experiment
@@ -145,6 +144,14 @@ class TestRelational:
                      'failed semijoin or antijoin')
         assert_equal(len((D() & cond).proj()), len((D() & cond)),
                      'projection failed: altered its argument''s cardinality')
+
+    @staticmethod
+    def test_union():
+        x = set(zip(*IJ().fetch('i','j')))
+        y = set(zip(*JI().fetch('i','j')))
+        assert_true(len(x) > 0 and len(y) > 0 and len(IJ() * JI()) < len(x))  # ensure the IJ and JI are non-trivial
+        z = set(zip(*(IJ() + JI()).fetch('i','j')))   # union
+        assert_set_equal(x.union(y), z)
 
     @staticmethod
     def test_preview():

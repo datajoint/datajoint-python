@@ -1,0 +1,26 @@
+import numpy as np
+from numpy.testing import assert_array_equal
+from nose.tools import assert_true, assert_equal
+from datajoint.external import ExternalTable
+
+from . schema_external import schema
+
+
+def test_external_put():
+    """
+    external storage put and get and remove
+    """
+    ext = ExternalTable(schema.connection, schema.database)
+    input_ = np.random.randn(3, 7, 8)
+    count = 7
+    extra = 3
+    for i in range(count):
+        hash1 = ext.put('external-raw', input_)
+    for i in range(extra):
+        hash2 = ext.put('external-raw', np.random.randn(4, 3, 2))
+
+    assert_true(all(hash in ext.fetch('hash') for hash in (hash1, hash2)))
+    assert_equal(len(ext), 1 + extra)
+
+    output_ = ext.get(hash1)
+    assert_array_equal(input_, output_)

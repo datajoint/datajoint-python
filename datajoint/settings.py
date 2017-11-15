@@ -31,7 +31,7 @@ prefix_to_role = dict(zip(role_to_prefix.values(), role_to_prefix.keys()))
 server_error_codes = {
     'unknown column': 1054,
     'command denied': 1142,
-    'tables does not exist': 1146,
+    'table does not exist': 1146,
     'syntax error': 1149,
     'duplicate entry': 1062,
 }
@@ -176,8 +176,6 @@ class Config(collections.MutableMapping):
 
         def __setitem__(self, key, value):
             logger.log(logging.INFO, u"Setting {0:s} to {1:s}".format(str(key), str(value)))
-            if isinstance(value, collections.Mapping):
-                raise ValueError("Nested settings are not supported!")
             if validators[key](value):
                 self._conf[key] = value
             else:

@@ -1,4 +1,4 @@
-import hashlib
+from .hash import key_hash
 import os
 import pymysql
 from .base_relation import BaseRelation
@@ -6,16 +6,6 @@ from . import DataJointError
 
 ERROR_MESSAGE_LENGTH = 2047
 TRUNCATION_APPENDIX = '...truncated'
-
-
-def key_hash(key):
-    """
-    32-byte hash used for lookup of primary keys of jobs
-    """
-    hashed = hashlib.md5()
-    for k, v in sorted(key.items()):
-        hashed.update(str(v).encode())
-    return hashed.hexdigest()
 
 
 class JobTable(BaseRelation):
@@ -100,13 +90,14 @@ class JobTable(BaseRelation):
         job_key = dict(table_name=table_name, key_hash=key_hash(key))
         (self & job_key).delete_quick()
 
-    def error(self, table_name, key, error_message):
+    def error(self, table_name, key, error_message, error_stack=None):
         """
         Log an error message.  The job reservation is replaced with an error entry.
         if an error occurs, leave an entry describing the problem
         :param table_name: `database`.`table_name`
         :param key: the dict of the job's primary key
         :param error_message: string error message
+        :param error_stack: stack trace
         """
         if len(error_message) > ERROR_MESSAGE_LENGTH:
             error_message = error_message[:ERROR_MESSAGE_LENGTH-len(TRUNCATION_APPENDIX)] + TRUNCATION_APPENDIX
@@ -119,18 +110,6 @@ class JobTable(BaseRelation):
                  connection_id=self.connection.connection_id,
                  user=self._user,
                  key=key,
-                 error_message=error_message), replace=True, ignore_extra_fields=True)
-
-
-class JobManager:
-    """
-    A container for all job tables (one job table per schema).
-    """
-    def __init__(self, connection):
-        self.connection = connection
-        self._jobs = {}
-
-    def __getitem__(self, database):
-        if database not in self._jobs:
-            self._jobs[database] = JobTable(self.connection, database)
-        return self._jobs[database]
+                 error_message=error_message,
+                 error_stack=error_stack),
+            replace=True, ignore_extra_fields=True)

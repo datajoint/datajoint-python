@@ -30,6 +30,7 @@ class BaseRelation(RelationalOperand):
     _context = None
     database = None
     _log_ = None
+    _external_table = None
 
     # -------------- required by RelationalOperand ----------------- #
     @property
@@ -50,14 +51,21 @@ class BaseRelation(RelationalOperand):
 
     def declare(self):
         """
-        Loads the table heading. If the table is not declared, use self.definition to declare
+        Use self.definition to declare the table in the database
         """
         try:
-            self.connection.query(
-                declare(self.full_table_name, self.definition, self._context))
+            sql, uses_external = declare(self.full_table_name, self.definition, self._context)
+            if uses_external:
+                # trigger the creation of the external hash lookup for the current schema
+                external_table = self.connection.schemas[self.database].external_table
+                sql = sql.format(external_table=external_table.full_table_name)
+            self.connection.query(sql)
         except pymysql.OperationalError as error:
+            # skip if no create privilege
             if error.args[0] == server_error_codes['command denied']:
                 logger.warning(error.args[1])
+            else:
+                raise
         else:
             self._log('Declared ' + self.full_table_name)
 
@@ -114,6 +122,12 @@ class BaseRelation(RelationalOperand):
             self._log_ = Log(self.connection, database=self.database)
         return self._log_
 
+    @property
+    def external_table(self):
+        if self._external_table is None:
+            self._external_table = self.connection.schemas[self.database].external_table
+        return self._external_table
+
     def insert1(self, row, **kwargs):
         """
         Insert one data record or one Mapping (like a dict).
@@ -142,60 +156,29 @@ class BaseRelation(RelationalOperand):
             warnings.warn('Use of `ignore_errors` in `insert` and `insert1` is deprecated. Use try...except... '
                           'to explicitly handle any errors', stacklevel=2)
 
-        # handle query safely - if skip_duplicates=True, wraps the query with transaction and checks for warning
-        def safe_query(*args, **kwargs):
-            if skip_duplicates:
-                # check if there is already an open transaction
-                open_transaction = self.connection.in_transaction
-                if not open_transaction:
-                    self.connection.start_transaction()
-                try:
-                    with warnings.catch_warnings(record=True) as ws:
-                        warnings.simplefilter('always')
-                        self.connection.query(*args, suppress_warnings=False, **kwargs)
-                        for w in ws:
-                            if w.message.args[0] != server_error_codes['duplicate entry']:
-                                raise InternalError(w.message.args)
-                except:
-                    if not open_transaction:
-                        try:
-                            self.connection.cancel_transaction()
-                        except OperationalError:
-                            pass
-                    raise
-                else:
-                    if not open_transaction:
-                        self.connection.commit_transaction()
-            else:
-                self.connection.query(*args, **kwargs)
-
+        heading = self.heading
         if isinstance(rows, RelationalOperand):
-            # INSERT FROM SELECT - build alternate field-narrowing query (only) when needed
-            if ignore_extra_fields and not all(name in self.heading.names for name in rows.heading.names):
-                query = 'INSERT{ignore} INTO {table} ({fields}) SELECT {fields} FROM ({select}) as `__alias`'.format(
-                ignore=" IGNORE" if skip_duplicates else "",
+            # insert from select
+            if not ignore_extra_fields:
+                try:
+                    raise DataJointError(
+                        "Attribute %s not found.  To ignore extra attributes in insert, set ignore_extra_fields=True." %
+                        next(name for name in rows.heading if name not in heading))
+                except StopIteration:
+                    pass
+            fields = list(name for name in heading if name in rows.heading)
+
+            query = '{command} INTO {table} ({fields}) {select}{duplicate}'.format(
+                command='REPLACE' if replace else 'INSERT',
+                fields='`' + '`,`'.join(fields) + '`',
                 table=self.full_table_name,
-                fields='`'+'`,`'.join(self.heading.names)+'`',
-                select=rows.make_sql())
-            else:
-                query = 'INSERT{ignore} INTO {table} ({fields}) {select}'.format(
-                ignore=" IGNORE" if skip_duplicates else "",
-                table=self.full_table_name,
-                fields='`'+'`,`'.join(rows.heading.names)+'`',
-                select=rows.make_sql())
-            try:
-                safe_query(query)
-            except (InternalError, IntegrityError) as err:
-                if err.args[0] == server_error_codes['unknown column']:
-                    # args[1] -> Unknown column 'extra' in 'field list'
-                    raise DataJointError('{} : To ignore extra fields, set ignore_extra_fields=True in insert.'.format(err.args[1]))
-                elif err.args[0] == server_error_codes['duplicate entry']:
-                    raise DataJointError('{} : To ignore duplicate entries, set skip_duplicates=True in insert.'.format(err.args[1]))
-                else:
-                    raise
+                select=rows.make_sql(select_fields=fields),
+                duplicate=(' ON DUPLICATE KEY UPDATE `{pk}`=`{pk}`'.format(pk=self.primary_key[0])
+                           if skip_duplicates else '')
+            )
+            self.connection.query(query)
             return
 
-        heading = self.heading
         if heading.attributes is None:
             logger.warning('Could not access table {table}'.format(table=self.full_table_name))
             return
@@ -218,16 +201,18 @@ class BaseRelation(RelationalOperand):
                 """
                 if ignore_extra_fields and name not in heading:
                     return None
-                if heading[name].is_blob:
-                    value = pack(value)
-                    placeholder = '%s'
+                if heading[name].is_external:
+                    placeholder, value = '%s', self.external_table.put(heading[name].type, value)
+                elif heading[name].is_blob:
+                    if value is None:
+                        placeholder, value = 'NULL', None
+                    else:
+                        placeholder, value = '%s', pack(value)
                 elif heading[name].numeric:
                     if value is None or value == '' or np.isnan(np.float(value)):  # nans are turned into NULLs
-                        placeholder = 'NULL'
-                        value = None
+                        placeholder, value = 'NULL', None
                     else:
-                        placeholder = '%s'
-                        value = str(int(value) if isinstance(value, bool) else value)
+                        placeholder, value = '%s', (str(int(value) if isinstance(value, bool) else value))
                 else:
                     placeholder = '%s'
                 return name, placeholder, value
@@ -284,13 +269,15 @@ class BaseRelation(RelationalOperand):
         rows = list(make_row_to_insert(row) for row in rows)
         if rows:
             try:
-                safe_query(
-                    "{command} INTO {destination}(`{fields}`) VALUES {placeholders}".format(
-                        command='REPLACE' if replace else 'INSERT IGNORE' if skip_duplicates else 'INSERT',
-                        destination=self.from_clause,
-                        fields='`,`'.join(field_list),
-                        placeholders=','.join('(' + ','.join(row['placeholders']) + ')' for row in rows)),
-                    args=list(itertools.chain.from_iterable((v for v in r['values'] if v is not None) for r in rows)))
+                query = "{command} INTO {destination}(`{fields}`) VALUES {placeholders}{duplicate}".format(
+                    command='REPLACE' if replace else 'INSERT',
+                    destination=self.from_clause,
+                    fields='`,`'.join(field_list),
+                    placeholders=','.join('(' + ','.join(row['placeholders']) + ')' for row in rows),
+                    duplicate=(' ON DUPLICATE KEY UPDATE `{pk}`=`{pk}`'.format(pk=self.primary_key[0])
+                               if skip_duplicates else ''))
+                self.connection.query(query, args=list(
+                    itertools.chain.from_iterable((v for v in r['values'] if v is not None) for r in rows)))
             except (OperationalError, InternalError, IntegrityError) as err:
                 if err.args[0] == server_error_codes['command denied']:
                     raise DataJointError('Command denied:  %s' % err.args[1]) from None
@@ -303,7 +290,6 @@ class BaseRelation(RelationalOperand):
                         '{} : To ignore duplicate entries, set skip_duplicates=True in insert.'.format(err.args[1])) from None
                 else:
                     raise
-
 
     def delete_quick(self):
         """
@@ -338,7 +324,7 @@ class BaseRelation(RelationalOperand):
         # restrict by self
         if self.restrictions:
             restrict_by_me.add(self.full_table_name)
-            restrictions[self.full_table_name].append(self.restrictions.simplify())  # copy own restrictions
+            restrictions[self.full_table_name].append(self.restrictions)  # copy own restrictions
         # restrict by renamed nodes
         restrict_by_me.update(table for table in delete_list if table.isdigit())  # restrict by all renamed nodes
         # restrict by tables restricted by a non-primary semijoin
@@ -454,7 +440,7 @@ class BaseRelation(RelationalOperand):
                 if attr.name in fk_props['referencing_attributes']:
                     do_include = False
                     if attributes_thus_far.issuperset(fk_props['referencing_attributes']):
-                        # simple foreign keys
+                        # simple foreign key
                         parents.pop(parent_name)
                         if not parent_name.isdigit():
                             definition += '-> {class_name}\n'.format(
@@ -473,9 +459,10 @@ class BaseRelation(RelationalOperand):
                             attributes_declared.update(fk_props['referencing_attributes'])
             if do_include:
                 attributes_declared.add(attr.name)
+                name = attr.name.lstrip('_')  # for external
                 definition += '%-20s : %-28s # %s\n' % (
-                    attr.name if attr.default is None else '%s=%s' % (attr.name, attr.default),
-                    '%s%s' % (attr.type, 'auto_increment' if attr.autoincrement else ''), attr.comment)
+                    name if attr.default is None else '%s=%s' % (name, attr.default),
+                    '%s%s' % (attr.type, ' auto_increment' if attr.autoincrement else ''), attr.comment)
         print(definition)
         return definition
 
@@ -547,7 +534,7 @@ def lookup_class_name(name, context, depth=3):
                 except AttributeError:
                     pass  # not a UserRelation -- cannot have part tables.
                 else:
-                    for part in (getattr(member, p) for p in parts):
+                    for part in (getattr(member, p) for p in parts if hasattr(member, p)):
                         if inspect.isclass(part) and issubclass(part, BaseRelation) and part.full_table_name == name:
                             return '.'.join([node['context_name'], member_name, part.__name__]).lstrip('.')
             elif node['depth'] > 0 and inspect.ismodule(member) and member.__name__ != 'datajoint':

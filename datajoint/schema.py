@@ -5,6 +5,8 @@ import inspect
 import re
 from . import conn, DataJointError, config
 from .erd import ERD
+from .jobs import JobTable
+from .external import ExternalTable
 from .heading import Heading
 from .utils import user_choice, to_camel_case
 from .user_relations import Part, Computed, Imported, Manual, Lookup
@@ -20,15 +22,12 @@ def ordered_dir(klass):
     :param klass: class to list members for
     :return: a list of attributes declared in klass and its superclasses
     """
-    m = []
-    mro = klass.mro()
-    for c in mro:
-        if hasattr(c, '_ordered_class_members'):
-            elements = c._ordered_class_members
-        else:
-            elements = c.__dict__.keys()
-        m = [e for e in elements if e not in m] + m
-    return m
+    attr_list = list()
+    for c in reversed(klass.mro()):
+        attr_list.extend(e for e in (
+            c._ordered_class_members if hasattr(c, '_ordered_class_members') else
+            c.__dict__.keys()) if e not in attr_list)
+    return attr_list
 
 
 class Schema:
@@ -53,6 +52,8 @@ class Schema:
         self.connection = connection
         self.context = context
         self.create_tables = create_tables
+        self._jobs = None
+        self._external = None
         if not self.exists:
             if not self.create_tables:
                 raise DataJointError("Database named `{database}` was not defined. "
@@ -213,9 +214,21 @@ class Schema:
     def jobs(self):
         """
         schema.jobs provides a view of the job reservation table for the schema
-        :return: jobs relation
+        :return: jobs table
         """
-        return self.connection.jobs[self.database]
+        if self._jobs is None:
+            self._jobs = JobTable(self.connection, self.database)
+        return self._jobs
+
+    @property
+    def external_table(self):
+        """
+        schema.external provides a view of the external hash table for the schema
+        :return: external table
+        """
+        if self._external is None:
+            self._external = ExternalTable(self.connection, self.database)
+        return self._external
 
     def erd(self):
         # get the caller's locals()
@@ -223,4 +236,3 @@ class Schema:
         frame = inspect.currentframe()
         context = frame.f_back.f_locals
         return ERD(self, context=context)
-
