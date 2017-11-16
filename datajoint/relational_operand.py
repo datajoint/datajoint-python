@@ -407,7 +407,7 @@ class RelationalOperand:
         tuples = rel.fetch(limit=limit+1)
         has_more = len(tuples) > limit
         tuples = tuples[:limit]
-        columns = rel.heading.names
+        columns = self.heading.names
         widths = {f: min(max([len(f)] + [len(str(e)) for e in tuples[f]]) + 4, width) for f in columns}
         templates = {f: '%%-%d.%ds' % (widths[f], widths[f]) for f in columns}
         return (
@@ -500,7 +500,7 @@ class RelationalOperand:
             head='</th><th>'.join(
                 head_template.format(column=c, comment=rel.heading.attributes[c].comment,
                                      primary='primary' if c in self.primary_key else 'nonprimary') for c in
-                rel.heading.names),
+                self.heading.names),
             ellipsis='<p>...</p>' if has_more else '',
             body='</tr><tr>'.join(
                 ['\n'.join(['<td>%s</td>' % column for column in tup])
