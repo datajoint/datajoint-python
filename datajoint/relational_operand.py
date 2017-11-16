@@ -498,7 +498,7 @@ class RelationalOperand:
             css=css,
             title="" if info is None else "<b>%s</b>" % info['comment'],
             head='</th><th>'.join(
-                head_template.format(column=c, comment=rel.heading.attributes[c].comment,
+                head_template.format(column=c, comment=self.heading.attributes[c].comment,
                                      primary='primary' if c in self.primary_key else 'nonprimary') for c in
                 self.heading.names),
             ellipsis='<p>...</p>' if has_more else '',
