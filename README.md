@@ -10,7 +10,7 @@ DataJoint for Python is a high-level programming interface for relational databa
 
 DataJoint was initially developed in 2009 by Dimitri Yatsenko in Andreas Tolias' Lab for the distributed processing and management of large volumes of data streaming from regular experiments. Starting in 2011, DataJoint has been available as an open-source project adopted by other labs and improved through contributions from several developers.
 
-DataJoint for Python is developed and maintained by [Dimitri Yatsenko](https://github.com/dimitri-yatsenko), [Fabian Sinz](https://github.com/fabiansinz), and [Edgar Y. Walker](https://github.com/eywalker).  As with any open-source project, everyone is welcome to contribute.
+Vathes LLC supports DataJoint for Python as an open-source project and everyone is welcome to contribute.
 
 ## Installation
 ```
@@ -26,5 +26,6 @@ pip3 install --upgrade datajoint
 A number of labs are currently adopting DataJoint and we are quickly getting the documentation in shape in February 2017.
 
 * https://datajoint.io  -- start page
-* http://docs.datajoint.io -- up-to-date documentation
-* http://tutorials.datajoint.io -- step by step tutorials
+* https://docs.datajoint.io -- up-to-date documentation
+* https://tutorials.datajoint.io -- step-by-step tutorials
+* https://catalog.datajoint.io -- catalog of example pipelines
