@@ -1,5 +1,5 @@
 import collections
-from itertools import cycle, count
+from itertools import count
 import logging
 import numpy as np
 import re
@@ -399,8 +399,7 @@ class RelationalOperand:
         returns a preview of the contents of the relation.
         """
         heading = self.heading
-        rel = self.proj(*heading.non_blobs,
-                        **dict(zip(heading.blobs, cycle(["'<BLOB>'"]))))  # replace blobs with <BLOB>
+        rel = self.proj(*heading.non_blobs)
         if limit is None:
             limit = config['display.limit']
         if width is None:
@@ -409,19 +408,20 @@ class RelationalOperand:
         has_more = len(tuples) > limit
         tuples = tuples[:limit]
         columns = heading.names
-        widths = {f: min(max([len(f)] + [len(str(e)) for e in tuples[f]]) + 4, width) for f in columns}
+        widths = {f: min(max([len(f)] +
+            [len(str(e)) for e in tuples[f]] if f in tuples.dtype.names else [len('=BLOB=')]) + 4, width) for f in columns}
         templates = {f: '%%-%d.%ds' % (widths[f], widths[f]) for f in columns}
         return (
             ' '.join([templates[f] % ('*' + f if f in rel.primary_key else f) for f in columns]) + '\n' +
             ' '.join(['+' + '-' * (widths[column] - 2) + '+' for column in columns]) + '\n' +
-            '\n'.join(' '.join(templates[f] % tup[f] for f in columns) for tup in tuples) +
+            '\n'.join(' '.join(templates[f] % (tup[f] if f in tup.dtype.names else '=BLOB=')
+                for f in columns) for tup in tuples) +
             ('\n   ...\n' if has_more else '\n') +
             (' (%d tuples)\n' % len(rel) if config['display.show_tuple_count'] else ''))
 
     def _repr_html_(self):
         heading = self.heading
-        rel = self.proj(*heading.non_blobs,
-                        **dict(zip(heading.blobs, cycle(["'=BLOB='"]))))  # replace blobs with =BLOB=
+        rel = self.proj(*heading.non_blobs)
         info = heading.table_info
         tuples = rel.fetch(limit=config['display.limit']+1)
         has_more = len(tuples) > config['display.limit']
@@ -505,7 +505,8 @@ class RelationalOperand:
                 heading.names),
             ellipsis='<p>...</p>' if has_more else '',
             body='</tr><tr>'.join(
-                ['\n'.join(['<td>%s</td>' % tup[name] for name in heading.names])
+                ['\n'.join(['<td>%s</td>' % (tup[name] if name in tup.dtype.names else '=BLOB=')
+                    for name in heading.names])
                  for tup in tuples]),
             count=('<p>%d tuples</p>' % len(rel)) if config['display.show_tuple_count'] else '')
 

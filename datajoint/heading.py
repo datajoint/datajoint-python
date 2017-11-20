@@ -12,7 +12,7 @@ default_attribute_properties = dict(    # these default values are set in comput
     database=None, dtype=object)
 
 
-class Attribute(namedtuple('_Attribute', default_attribute_properties.keys())):
+class Attribute(namedtuple('_Attribute', default_attribute_properties)):
     """
     Properties of a table column (attribute)
     """
