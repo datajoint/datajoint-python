@@ -235,7 +235,7 @@ class BaseRelation(RelationalOperand):
                 attributes = [make_placeholder(name, row[name])
                               for name in heading if name in row.dtype.fields]
             elif isinstance(row, collections.abc.Mapping):  # dict-based
-                check_fields(row.keys())
+                check_fields(row)
                 attributes = [make_placeholder(name, row[name]) for name in heading if name in row]
             else:  # positional
                 try:
