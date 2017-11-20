@@ -1,5 +1,5 @@
 import collections
-from itertools import zip_longest, count
+from itertools import cycle, count
 import logging
 import numpy as np
 import re
@@ -398,8 +398,9 @@ class RelationalOperand:
         """
         returns a preview of the contents of the relation.
         """
-        rel = self.proj(*self.heading.non_blobs,
-                        **dict(zip_longest(self.heading.blobs, [], fillvalue="'<BLOB>'")))  # replace blobs with <BLOB>
+        heading = self.heading
+        rel = self.proj(*heading.non_blobs,
+                        **dict(zip(heading.blobs, cycle(["'<BLOB>'"]))))  # replace blobs with <BLOB>
         if limit is None:
             limit = config['display.limit']
         if width is None:
@@ -407,7 +408,7 @@ class RelationalOperand:
         tuples = rel.fetch(limit=limit+1)
         has_more = len(tuples) > limit
         tuples = tuples[:limit]
-        columns = self.heading.names
+        columns = heading.names
         widths = {f: min(max([len(f)] + [len(str(e)) for e in tuples[f]]) + 4, width) for f in columns}
         templates = {f: '%%-%d.%ds' % (widths[f], widths[f]) for f in columns}
         return (
@@ -418,9 +419,10 @@ class RelationalOperand:
             (' (%d tuples)\n' % len(rel) if config['display.show_tuple_count'] else ''))
 
     def _repr_html_(self):
-        rel = self.proj(*self.heading.non_blobs,
-                        **dict(zip_longest(self.heading.blobs, [], fillvalue="'=BLOB='")))  # replace blobs with =BLOB=
-        info = self.heading.table_info
+        heading = self.heading
+        rel = self.proj(*heading.non_blobs,
+                        **dict(zip(heading.blobs, cycle(["'=BLOB='"]))))  # replace blobs with =BLOB=
+        info = heading.table_info
         tuples = rel.fetch(limit=config['display.limit']+1)
         has_more = len(tuples) > config['display.limit']
         tuples = tuples[0:config['display.limit']]
@@ -498,12 +500,12 @@ class RelationalOperand:
             css=css,
             title="" if info is None else "<b>%s</b>" % info['comment'],
             head='</th><th>'.join(
-                head_template.format(column=c, comment=self.heading.attributes[c].comment,
+                head_template.format(column=c, comment=heading.attributes[c].comment,
                                      primary='primary' if c in self.primary_key else 'nonprimary') for c in
-                self.heading.names),
+                heading.names),
             ellipsis='<p>...</p>' if has_more else '',
             body='</tr><tr>'.join(
-                ['\n'.join(['<td>%s</td>' % column for column in tup])
+                ['\n'.join(['<td>%s</td>' % tup[name] for name in heading.names])
                  for tup in tuples]),
             count=('<p>%d tuples</p>' % len(rel)) if config['display.show_tuple_count'] else '')
 
