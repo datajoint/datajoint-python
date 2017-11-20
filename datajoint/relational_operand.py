@@ -409,7 +409,7 @@ class RelationalOperand:
         tuples = tuples[:limit]
         columns = heading.names
         widths = {f: min(max([len(f)] +
-            [len(str(e)) for e in tuples[f]] if f in tuples.dtype.names else len('=BLOB=')) + 4, width) for f in columns}
+            [len(str(e)) for e in tuples[f]] if f in tuples.dtype.names else [len('=BLOB=')]) + 4, width) for f in columns}
         templates = {f: '%%-%d.%ds' % (widths[f], widths[f]) for f in columns}
         return (
             ' '.join([templates[f] % ('*' + f if f in rel.primary_key else f) for f in columns]) + '\n' +
