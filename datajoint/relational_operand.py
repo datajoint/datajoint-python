@@ -1,5 +1,5 @@
 import collections
-from itertools import cycle, count
+from itertools import count
 import logging
 import numpy as np
 import re
