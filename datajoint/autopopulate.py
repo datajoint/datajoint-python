@@ -29,9 +29,9 @@ class AutoPopulate:
     def key_source(self):
         """
         :return: the relation whose primary key values are passed, sequentially, to the
-                ``make`` method when populate() is called.The default value is the
-                join of the parent relations. Users may override to change the granularity
-                or the scope of populate() calls.
+                ``make`` method when populate() is called.
+                The default value is the join of the parent relations.
+                Users may override to change the granularity or the scope of populate() calls.
         """
         if self._key_source is None:
             self.connection.dependencies.load(self.full_table_name)
@@ -43,7 +43,6 @@ class AutoPopulate:
                 self._key_source *= FreeRelation(self.connection, parents.pop(0)).proj()
         return self._key_source
 
-
     def make(self, key):
         """
         Derived classes must implement method `make` that fetches data from tables that are
@@ -51,7 +50,6 @@ class AutoPopulate:
         attributes, and inserts the new tuples into self.
         """
         raise NotImplementedError('Subclasses of AutoPopulate must implement the method `make`')
-
 
     @property
     def target(self):

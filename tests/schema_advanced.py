@@ -91,6 +91,14 @@ class Cell(dj.Manual):
 
 
 @schema
+class InputCell(dj.Manual):
+    definition = """  # a synapse within the slice
+    -> Cell
+    (input)-> Cell(cell)
+    """
+
+
+@schema
 class LocalSynapse(dj.Manual):
     definition = """  # a synapse within the slice
     (presynaptic) -> Cell(cell)
