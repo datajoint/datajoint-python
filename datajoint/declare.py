@@ -85,8 +85,8 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
     except StopIteration:
         pass   # the normal outcome
 
-    new_attrs = list(result.new_attrs) or []
-    ref_attrs = list(result.ref_attrs) or []
+    new_attrs = list(result.new_attrs)
+    ref_attrs = list(result.ref_attrs)
 
     if new_attrs and not ref_attrs:
         # special case, the renamed attribute is implicit
