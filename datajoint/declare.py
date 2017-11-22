@@ -63,6 +63,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
     :param attr_sql: a list of sql statements defining attributes -- to be updated by this function.
     :param foreign_key_sql: a list of sql statements specifying foreign key constraints -- to be updated by this function.
     """
+    # Parse and validate 
     from .base_relation import BaseRelation
     try:
         result = foreign_key_parser.parseString(line)
@@ -77,7 +78,6 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
     ref = referenced_class()
     if not all(r in ref.primary_key for r in result.ref_attrs):
         raise DataJointError('Invalid foreign key attributes in "%s"' % line)
-
     try:
         raise DataJointError('Duplicate attributes "{attr}" in "{line}"'.format(
             attr=next(attr for attr in result.new_attrs if attr in attributes),
@@ -85,18 +85,19 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
     except StopIteration:
         pass   # the normal outcome
 
+    # Match the primary attributes of the referenced table to local attributes
     new_attrs = list(result.new_attrs)
     ref_attrs = list(result.ref_attrs)
 
+    # special case, the renamed attribute is implicit
     if new_attrs and not ref_attrs:
-        # special case, the renamed attribute is implicit
         if len(new_attrs) != 1:
             raise DataJointError('Renamed foreign key must be mapped to the primary key in "%s"' % line)
         if len(ref.primary_key) == 1:
             # if the primary key has one attribute, allow implicit renaming
             ref_attrs = ref.primary_key
         else:
-            # if only one primary key attribute is not yet used, then allow implicit renaming
+            # if only one primary key attribute remains, then allow implicit renaming
             ref_attrs = [attr for attr in ref.primary_key if attr not in attributes]
             if len(ref_attrs) != 1:
                 raise DataJointError('Could not resovle which primary key attribute should be referenced in "%s"' % line)
@@ -112,7 +113,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
     # sanity check
     assert len(new_attrs) == len(ref_attrs) and not any(attr in attributes for attr in new_attrs)
 
-    # declare foreign key attributes and foreign key
+    # declare new foreign key attributes
     for ref_attr in ref_attrs:
         new_attr = lookup(ref_attr, ref_attr)
         attributes.append(new_attr)
@@ -120,6 +121,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
             primary_key.append(new_attr)
         attr_sql.append(ref.heading[ref_attr].sql.replace(ref_attr, new_attr, 1))
 
+    # declare the foreign key
     foreign_key_sql.append(
         'FOREIGN KEY (`{fk}`) REFERENCES {ref} (`{pk}`) ON UPDATE CASCADE ON DELETE RESTRICT'.format(
             fk='`,`'.join(lookup(attr, attr) for attr in ref.primary_key),
