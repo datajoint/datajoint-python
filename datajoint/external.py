@@ -105,9 +105,16 @@ class RawFileHandler(ExternalFileHandler):
 
 class CacheFileHandler(ExternalFileHandler):
     '''
-    A CacheFileHandler.
+    A CacheFileHandler mixin implementation.
+    Requires a concrete file-handling implementation to properly function.
 
-    Will cache objects in 'cache_location'.
+    Should be 1st in inheritance list e.g.:
+
+      CachedFoo(CacheFileHandler, OtherFileHandler)
+
+    Will cache objects in 'cache_location', relies on superclass for
+    coherent get/put operations on the 'reference' blobs.
+
     Cleanup currently not implemented.
     '''
     required = ('cache_location')
@@ -141,10 +148,10 @@ class CacheFileHandler(ExternalFileHandler):
         return (blob, hash)
 
     def put(self, obj):
-        return self._put_cache(super().get(self, hash))
+        return self._put_cache(super().put(self, obj))
 
     def get(self, hash):
-        return self._put_cache(super().get(self, hash))
+        return self._put_cache(super().get(self, hash), hash)[1]
 
 
 class CachedRawFileHandler(CacheFileHandler, RawFileHandler):
