@@ -65,8 +65,10 @@ class Image(dj.Computed):
     -> Dimension
     ----
     img  : external-raw    #  objects are stored as specified by dj.config['external-raw']
+    neg : external    # objects are stored as specified by dj.config['external']
     """
 
     def make(self, key):
         np.random.seed(key['seed'])
-        self.insert1(dict(key, img=np.random.rand(*(Dimension() & key).fetch1('dimensions'))))
+        img = np.random.rand(*(Dimension() & key).fetch1('dimensions'))
+        self.insert1(dict(key, img=img, neg=-img.astype(np.float32)))

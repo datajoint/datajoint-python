@@ -58,27 +58,6 @@ class Parent(dj.Manual):
             (9, 11), (9, 12), (10, 13), (10, 14), (11, 14), (11, 15), (12, 14), (12, 15)))
 
 
-# @schema
-# class Type(dj.Lookup):
-#     definition = """
-#     type :  varchar(255)
-#     """
-#     contents = zip(('Type1', 'Type2', 'Type3'))
-#
-#
-# @schema
-# class TypeMaster(dj.Manual):
-#     definition= """
-#     master_id : int
-#     """
-#
-#     class Type(dj.Part):
-#         definition = """
-#         -> TypeMaster
-#         -> Type
-#         """
-
-
 @schema
 class Subject(dj.Manual):
     definition = """

@@ -25,7 +25,7 @@ role_to_prefix = {
     Role.computed: '__',
     Role.job: '~'
 }
-prefix_to_role = dict(zip(role_to_prefix.values(), role_to_prefix.keys()))
+prefix_to_role = dict(zip(role_to_prefix.values(), role_to_prefix))
 
 
 server_error_codes = {

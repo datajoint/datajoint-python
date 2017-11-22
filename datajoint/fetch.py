@@ -46,7 +46,6 @@ class FetchBase:
         Changes the state of the fetch object to squeeze the returned values as much as possible.
         :return: a copy of the fetch object
         """
-
         warnings.warn('Use of `squeeze` on `fetch` object is deprecated. Please use `squeeze=True` keyword arguments '
                       'in the call to `fetch`/`keys` instead', stacklevel=2)
 
@@ -113,9 +112,7 @@ class Fetch(FetchBase, Callable, Iterable):
         Changes the state of the fetch object to return dictionaries.
         :return: a copy of the fetch object
         Example:
-
         >>> my_relation.fetch.as_dict()
-
         """
         warnings.warn('Use of `as_dict` on `fetch` object is deprecated. Please use `as_dict` keyword arguments in the '
                       'call to `fetch`/`keys` instead', stacklevel=2)
@@ -158,7 +155,7 @@ class Fetch(FetchBase, Callable, Iterable):
 
     def __call__(self, *attrs, **kwargs):
         """
-        Fetches the relation from the database table into an np.array and unpacks blob attributes.
+        Fetches the query results from the database into an np.array or list of dictionaries and unpacks blob attributes.
 
         :param attrs: OPTIONAL. one or more attributes to fetch. If not provided, the call will return
         all attributes of this relation. If provided, returns tuples with an entry for each attribute.
@@ -166,8 +163,17 @@ class Fetch(FetchBase, Callable, Iterable):
         :param limit: the maximum number of tuples to return
         :param order_by: the list of attributes to order the results. No ordering should be assumed if order_by=None.
         :param as_dict: returns a list of dictionaries instead of a record array
-        :return: the contents of the relation in the form of a structured numpy.array
+        :param squeeze:  if True, remove extra dimensions from arrays
+        :return: the contents of the relation in the form of a structured numpy.array or a dict list
         """
+
+        # check unexpected arguments
+        try:
+            raise TypeError("fetch() got an unexpected argument '%s'" % next(
+                k for k in kwargs if k not in {'offset', 'limit', 'as_dict', 'squeeze', 'order_by'}))
+        except StopIteration:
+            pass   # arguments are okay
+
         # if 'order_by' passed in a string, make into list
         if isinstance(kwargs.get('order_by'), str):
             kwargs['order_by'] = [kwargs['order_by']]
@@ -176,6 +182,11 @@ class Fetch(FetchBase, Callable, Iterable):
         ext_behavior = update_dict(self.ext_behavior, kwargs)
         total_behavior = dict(sql_behavior)
         total_behavior.update(ext_behavior)
+
+        # if attrs are specified then as_dict cannot be true
+        if attrs and sql_behavior['as_dict']:
+            raise DataJointError('Cannot specify attributes to return when as_dict=True. '
+                                 'Use proj() to select attributes or set as_dict=False')
 
         unpack_ = partial(unpack, squeeze=ext_behavior['squeeze'])
 
@@ -216,6 +227,9 @@ class Fetch(FetchBase, Callable, Iterable):
         """
         Iterator that returns the contents of the database.
         """
+        warnings.warn('Iteration on the fetch object is deprecated.  '
+                      'Iterate over the result of fetch() or fetch.keys() instead')
+
         sql_behavior = dict(self.sql_behavior)
         ext_behavior = dict(self.ext_behavior)
 
@@ -254,9 +268,8 @@ class Fetch(FetchBase, Callable, Iterable):
         >>> a, b = relation['a', 'b']
         >>> a, b, key = relation['a', 'b', datajoint.key]
         """
-
-        warnings.warn('Use of `rel.fetch[a, b]` notation is deprecated. Please use `rel.fetch(a, b) for equivalent '
-                      'result', stacklevel=2)
+        warnings.warn('Use of `rel.fetch[a, b]` notation is deprecated. '
+                      'Please use `rel.fetch(a, b) for equivalent result', stacklevel=2)
 
         behavior = dict(self.sql_behavior)
         behavior.update(self.ext_behavior)
@@ -287,31 +300,42 @@ class Fetch1(FetchBase, Callable):
     :param relation: relation the fetch object fetches data from
     """
 
-    def __call__(self, *attrs, **kwargs):
+    def __call__(self, *attrs, squeeze=False):
         """
-        This version of fetch is called when self is expected to contain exactly one tuple.
+        Fetches the query results from the database when the query is known to contain only one entry.
+
+        If no attributes are specified, returns the result as a dict.
+        If attributes are specified returns the corresponding results as a tuple.
+
+        Examples:
+        d = rel.fetch1()   # as a dictionary
+        a, b = rel.fetch1('a', 'b')   # as a tuple
+
+        :params *attrs: attributes to return when expanding into a tuple. If empty, the return result is a dict
+        :param squeeze:  When true, remove extra dimensions from arrays in attributes
         :return: the one tuple in the relation in the form of a dict
         """
-        heading = self._relation.heading
-        ext_behavior = update_dict(self.ext_behavior, kwargs)
-        unpack_ = partial(unpack, squeeze=ext_behavior['squeeze'])
 
-        if len(attrs) == 0:  # fetch all attributes, return as ordered dict
+        heading = self._relation.heading
+        squeeze = squeeze or self.ext_behavior['squeeze']  # for backward compatibility
+        unpack_ = partial(unpack, squeeze=squeeze)
+
+        if not attrs:  # fetch all attributes, return as ordered dict
             cur = self._relation.cursor(as_dict=True)
             ret = cur.fetchone()
             if not ret or cur.fetchone():
                 raise DataJointError('fetch1 should only be used for relations with exactly one tuple')
 
             def get_external(attr, _hash):
-                external_table = self._relation.connection[attr.database].external_table
-                external_table.get(_hash)
+                return self._relation.connection.schemas[attr.database].external_table.get(_hash)
 
             ret = OrderedDict((name, get_external(heading[name], ret[name])) if heading[name].is_external
                               else (name, unpack_(ret[name]) if heading[name].is_blob else ret[name])
                               for name in heading.names)
-        else:
+
+        else:  # fetch some attributes, return as tuple
             attributes = [a for a in attrs if a is not PRIMARY_KEY]
-            result = self._relation.proj(*attributes).fetch(**ext_behavior)
+            result = self._relation.proj(*attributes).fetch(squeeze=squeeze)
             if len(result) != 1:
                 raise DataJointError('fetch1 should only return one tuple. %d tuples were found' % len(result))
             return_values = tuple(

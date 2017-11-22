@@ -26,7 +26,7 @@ def ordered_dir(klass):
     for c in reversed(klass.mro()):
         attr_list.extend(e for e in (
             c._ordered_class_members if hasattr(c, '_ordered_class_members') else
-            c.__dict__.keys()) if e not in attr_list)
+            c.__dict__) if e not in attr_list)
     return attr_list
 
 

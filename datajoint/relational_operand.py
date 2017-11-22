@@ -1,5 +1,5 @@
 import collections
-from itertools import zip_longest, count
+from itertools import count
 import logging
 import numpy as np
 import re
@@ -176,7 +176,7 @@ class RelationalOperand:
                 return arg, _negate
             elif isinstance(arg, AndList):
                 return '(' + ' AND '.join([make_condition(element)[0] for element in arg]) + ')', _negate
-            elif arg is True or arg is False:
+            elif isinstance(arg, bool):
                 return 'FALSE' if _negate == arg else 'TRUE', False
             # semijoin or antijoin
             elif isinstance(arg, RelationalOperand):
@@ -308,7 +308,7 @@ class RelationalOperand:
         """
         return self & Not(restriction)
 
-    def restrict(self, arg):
+    def restrict(self, restriction):
         """
         In-place restriction.  Restricts the relation to a subset of its original tuples.
         rel.restrict(restriction)  is equivalent to  rel = rel & restriction  or  rel &= restriction
@@ -354,19 +354,18 @@ class RelationalOperand:
 
         :param restriction: a sequence or an array (treated as OR list), another relation, an SQL condition string, or
             an AndList.
-        :param as_or: if True than the applied restriction becomes or-listed with already existing conditions
         """
-        assert not self.heading.expressions or isinstance(self, GroupBy), \
-            "Cannot restrict in place a projection with renamed attributes."
-        if not restricts_to_same(arg):
-            self.restrictions.append(arg)
-        elif restricts_to_empty(arg):
+        assert not self.heading.expressions or isinstance(self, GroupBy), "Cannot restrict in place" \
+                                                                          " a projection with renamed attributes."
+        if not restricts_to_same(restriction):
+            self.restrictions.append(restriction)
+        elif restricts_to_empty(restriction):
             self.restrictions.set(False)
         return self
 
     def allow(self, arg):
-        assert not self.heading.expressions or isinstance(self, GroupBy), \
-            "Cannot restrict in place a projection with renamed attributes."
+        assert not self.heading.expressions or isinstance(self, GroupBy), "Cannot restrict in place" \
+                                                                          " a projection with renamed attributes."
         if self.restrictions:
             if restricts_to_same(arg):
                 self.restrictions.clear()
@@ -399,8 +398,8 @@ class RelationalOperand:
         """
         returns a preview of the contents of the relation.
         """
-        rel = self.proj(*self.heading.non_blobs,
-                        **dict(zip_longest(self.heading.blobs, [], fillvalue="'<BLOB>'")))  # replace blobs with <BLOB>
+        heading = self.heading
+        rel = self.proj(*heading.non_blobs)
         if limit is None:
             limit = config['display.limit']
         if width is None:
@@ -408,20 +407,22 @@ class RelationalOperand:
         tuples = rel.fetch(limit=limit+1)
         has_more = len(tuples) > limit
         tuples = tuples[:limit]
-        columns = rel.heading.names
-        widths = {f: min(max([len(f)] + [len(str(e)) for e in tuples[f]]) + 4, width) for f in columns}
+        columns = heading.names
+        widths = {f: min(max([len(f)] +
+            [len(str(e)) for e in tuples[f]] if f in tuples.dtype.names else [len('=BLOB=')]) + 4, width) for f in columns}
         templates = {f: '%%-%d.%ds' % (widths[f], widths[f]) for f in columns}
         return (
             ' '.join([templates[f] % ('*' + f if f in rel.primary_key else f) for f in columns]) + '\n' +
             ' '.join(['+' + '-' * (widths[column] - 2) + '+' for column in columns]) + '\n' +
-            '\n'.join(' '.join(templates[f] % tup[f] for f in columns) for tup in tuples) +
+            '\n'.join(' '.join(templates[f] % (tup[f] if f in tup.dtype.names else '=BLOB=')
+                for f in columns) for tup in tuples) +
             ('\n   ...\n' if has_more else '\n') +
             (' (%d tuples)\n' % len(rel) if config['display.show_tuple_count'] else ''))
 
     def _repr_html_(self):
-        rel = self.proj(*self.heading.non_blobs,
-                        **dict(zip_longest(self.heading.blobs, [], fillvalue="'=BLOB='")))  # replace blobs with =BLOB=
-        info = self.heading.table_info
+        heading = self.heading
+        rel = self.proj(*heading.non_blobs)
+        info = heading.table_info
         tuples = rel.fetch(limit=config['display.limit']+1)
         has_more = len(tuples) > config['display.limit']
         tuples = tuples[0:config['display.limit']]
@@ -499,12 +500,13 @@ class RelationalOperand:
             css=css,
             title="" if info is None else "<b>%s</b>" % info['comment'],
             head='</th><th>'.join(
-                head_template.format(column=c, comment=rel.heading.attributes[c].comment,
+                head_template.format(column=c, comment=heading.attributes[c].comment,
                                      primary='primary' if c in self.primary_key else 'nonprimary') for c in
-                rel.heading.names),
+                heading.names),
             ellipsis='<p>...</p>' if has_more else '',
             body='</tr><tr>'.join(
-                ['\n'.join(['<td>%s</td>' % column for column in tup])
+                ['\n'.join(['<td>%s</td>' % (tup[name] if name in tup.dtype.names else '=BLOB=')
+                    for name in heading.names])
                  for tup in tuples]),
             count=('<p>%d tuples</p>' % len(rel)) if config['display.show_tuple_count'] else '')
 
@@ -637,8 +639,9 @@ class Union(RelationalOperand):
             raise DataJointError("Cannot operate on relations from different connections.")
         if set(arg1.heading.names) != set(arg2.heading.names):
             raise DataJointError('Union requires the same attributes in both arguments')
-        if not all(v.in_key for v in arg1.heading.attributes.values()):
-            raise DataJointError('The left argument of union must not have any secondary attributes')
+        if any(not v.in_key for v in arg1.heading.attributes.values()) or \
+                all(not v.in_key for v in arg2.heading.attributes.values()):
+            raise DataJointError('Union arguments must not have any secondary attributes.')
         obj._connection = arg1.connection
         obj._heading = arg1.heading
         obj._arg1 = arg1

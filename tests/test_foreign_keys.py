@@ -1,6 +1,5 @@
 from nose.tools import assert_equal, assert_false, assert_true
 from datajoint.declare import declare
-from datajoint import AndList, OrList
 
 from . import schema_advanced
 
