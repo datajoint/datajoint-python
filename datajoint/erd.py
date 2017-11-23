@@ -208,8 +208,7 @@ else:
             graph = nx.DiGraph(self).subgraph(nodes)
             nx.set_node_attributes(graph, 'node_type', {n: _get_tier(n) for n in graph})
             # relabel nodes to class names
-            clean_context = dict((k, self.context[k]) for k in self.context
-                                 if '_' not in k)  # hack for ipython '_' var
+            clean_context = dict((k, v) for k, v in self.context.items() if not k.startswith('_'))  # exclude ipython's implicit variables
             mapping = {node: (lookup_class_name(node, clean_context) or node)
                        for node in graph.nodes()}
             new_names = [mapping.values()]
