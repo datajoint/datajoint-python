@@ -117,12 +117,16 @@ class CacheFileHandler(ExternalFileHandler):
 
     Cleanup currently not implemented.
     '''
-    required = ('cache_location')
+    required = ('cache_location',)
 
     def __init__(self, store, database):
         super().__init__(store, database)
         self.check_required(store, 'cache', CacheFileHandler.required)
+        # XXX: move ._location logic to base? currently duplicated
         self._location = self._spec['cache_location']
+
+    def get_folder(self):
+        return os.path.join(self._location, self._database)
 
     def _clean_cache(self):
         # TODO: implement _clean_cache
@@ -148,10 +152,27 @@ class CacheFileHandler(ExternalFileHandler):
         return (blob, hash)
 
     def put(self, obj):
-        return self._put_cache(super().put(self, obj))
+        return self._put_cache(*super().put(obj))
 
     def get(self, hash):
-        return self._put_cache(super().get(self, hash), hash)[1]
+        full_path = os.path.join(self.get_folder(), hash)
+
+        try:
+            with open(full_path, 'rb') as f:
+                # TODO: indicate usage in cross-platform manner
+                return unpack(f.read())
+        except FileNotFoundError:
+                pass
+
+        # TODO/FIXME: inefficient - decodes->reencodes
+        # to fix need to refactor other classes to allow blob access shortcut
+        # return self._put_cache_obj(super().get(hash), hash)[1]
+        obj = super().get(hash)
+
+        (blob, nhash) = self._put_cache(self.hash_obj(obj))
+        assert(hash == nhash)
+
+        return obj
 
 
 class CachedRawFileHandler(CacheFileHandler, RawFileHandler):
