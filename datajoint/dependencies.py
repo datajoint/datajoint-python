@@ -76,20 +76,16 @@ class Dependencies(nx.DiGraph):
                         self.add_edge(result.referenced_table, alias_node, **props)
                         self.add_edge(alias_node, table_name, **props)
 
-    def load(self, target=None):
+    def load(self):
         """
         Load dependencies for all loaded schemas.
         This method gets called before any operation that requires dependencies: delete, drop, populate, progress.
         """
-        if target is not None and '.' in target:  # `database`.`table`
-            self.add_table(target)
-        else:
-            databases = self._conn.schemas if target is None else [target]
-            for database in databases:
-                for row in self._conn.query('SHOW TABLES FROM `{database}`'.format(database=database)):
-                    table = row[0]
-                    if not table.startswith('~'):  # exclude service tables
-                        self.add_table('`{db}`.`{tab}`'.format(db=database, tab=table))
+        for database in self._conn.schemas:
+            for row in self._conn.query('SHOW TABLES FROM `{database}`'.format(database=database)):
+                table = row[0]
+                if not table.startswith('~'):  # exclude service tables
+                    self.add_table('`{db}`.`{tab}`'.format(db=database, tab=table))
         if not nx.is_directed_acyclic_graph(self):  # pragma: no cover
             raise DataJointError('DataJoint can only work with acyclic dependencies')
 
