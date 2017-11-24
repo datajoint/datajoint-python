@@ -44,8 +44,8 @@ class ExternalFileHandler:
 
         if len(missing):
             raise DataJointError(
-                'Store "{s}" incorrectly configured for "{n}"'.format(
-                    store=store, storetype=storetype), 'missing', *missing)
+                'Store "{s}" incorrectly configured for "{t}"'.format(
+                    s=store, t=storetype), 'missing', *missing)
 
     def hash_obj(self, obj):
         blob = pack(obj)
