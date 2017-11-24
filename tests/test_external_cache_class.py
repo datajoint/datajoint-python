@@ -2,9 +2,7 @@
 from nose.tools import raises
 import numpy as np
 
-import datajoint as dj
-
-from datajoint.external import CacheFileHandler
+from datajoint.external import CacheFileHandler, ExternalFileHandler
 from datajoint.blob import unpack
 
 from . import schema_cache as modu
@@ -12,7 +10,7 @@ from . import schema_cache as modu
 [modu]  # flakes.
 
 
-class MemHandler(dj.external.ExternalFileHandler):
+class MemHandler(ExternalFileHandler):
     '''
     dummy in-memory handler for objects
     XXX: useful elsewhere?
