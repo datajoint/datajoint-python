@@ -15,7 +15,7 @@ from . import schema_cache as modu
 class MemHandler(dj.external.ExternalFileHandler):
     '''
     dummy in-memory handler for objects
-    XXX: useful?
+    XXX: useful elsewhere?
     '''
 
     def __init__(self, store, database):
