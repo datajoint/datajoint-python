@@ -233,9 +233,15 @@ class S3FileHandler(ExternalFileHandler):
         self._bucket.put(BytesIO(blob), rpath)
         return (blob, hash)
 
-    def get(self, hash):
+    def get_blob(self, hash):
         rpath = self.make_path(hash)
-        return unpack(self._bucket.get(rpath, BytesIO()).getvalue())
+        return self._bucket.get(rpath, BytesIO()).getvalue()
+
+    def get_obj(self, hash):
+        return unpack(self.get_blob(hash))
+
+    def get(self, hash):
+        return self.get_obj(hash)
 
 
 class CachedS3FileHandler(CacheFileHandler, S3FileHandler):

@@ -5,6 +5,7 @@ import numpy as np
 import datajoint as dj
 
 from datajoint.external import CacheFileHandler
+from datajoint.blob import unpack
 
 from . import schema_cache as modu
 
@@ -26,8 +27,14 @@ class MemHandler(dj.external.ExternalFileHandler):
         self._backend[hash] = blob
         return (blob, hash)
 
-    def get(self, hash):
+    def get_blob(self, hash):
         return self._backend[hash]
+
+    def get_obj(self, hash):
+        return unpack(self._backend[hash])
+
+    def get(self, hash):
+        return self.get_obj(hash)
 
 
 class CacheMemHandler(CacheFileHandler, MemHandler):

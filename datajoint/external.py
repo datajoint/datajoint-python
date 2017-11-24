@@ -59,11 +59,23 @@ class ExternalFileHandler:
 
     def put(self, obj):
         ''' returns (blob, hash) '''
-        raise NotImplementedError('put method not implemented for', type(self))
+        raise NotImplementedError(
+            'put method not implemented for', type(self))
+
+    def get_blob(self, hash):
+        ''' returns undecoded 'blob' '''
+        raise NotImplementedError(
+            'get_blob method not implemented for', type(self))
+
+    def get_obj(self, hash):
+        ''' returns decoded 'obj' '''
+        raise NotImplementedError(
+            'get_obj method not implemented for', type(self))
 
     def get(self, hash):
-        ''' returns 'obj' '''
-        raise NotImplementedError('get method not implemented for', type(self))
+        # BOOKMARK: base done w/r/t get_{obj,blob}; now reimplement others
+        ''' returns decoded 'obj' '''
+        return self.get_obj(hash)
 
 
 class RawFileHandler(ExternalFileHandler):
@@ -94,13 +106,19 @@ class RawFileHandler(ExternalFileHandler):
 
         return (blob, hash)
 
-    def get(self, hash):
+    def get_blob(self, hash):
         full_path = os.path.join(self.get_folder(), hash)
         try:
             with open(full_path, 'rb') as f:
-                return unpack(f.read())
+                return f.read()
         except FileNotFoundError:
                 raise DataJointError('Lost external blob')
+
+    def get_obj(self, hash):
+        return unpack(self.get_blob(hash))
+
+    def get(self, hash):
+        return self.get_obj(hash)
 
 
 class CacheFileHandler(ExternalFileHandler):
@@ -140,7 +158,6 @@ class CacheFileHandler(ExternalFileHandler):
         full_path = os.path.join(folder, hash)
 
         if not os.path.isfile(full_path):
-
             try:
                 with open(full_path, 'wb') as f:
                     f.write(blob)
@@ -148,31 +165,25 @@ class CacheFileHandler(ExternalFileHandler):
                 os.makedirs(folder)
                 with open(full_path, 'wb') as f:
                     f.write(blob)
+        else:
+            # TODO: note recent file usage to assist _clean_cache
+            pass
 
         return (blob, hash)
 
     def put(self, obj):
         return self._put_cache(*super().put(obj))
 
+    def get_blob(self, hash):
+        blob = super().get_blob(hash)
+        self._put_cache(blob, hash)
+        return blob
+
+    def get_obj(self, hash):
+        return unpack(self.get_blob(hash))
+
     def get(self, hash):
-        full_path = os.path.join(self.get_folder(), hash)
-
-        try:
-            with open(full_path, 'rb') as f:
-                # TODO: indicate usage in cross-platform manner
-                return unpack(f.read())
-        except FileNotFoundError:
-                pass
-
-        # TODO/FIXME: inefficient - decodes->reencodes
-        # to fix need to refactor other classes to allow blob access shortcut
-        # return self._put_cache_obj(super().get(hash), hash)[1]
-        obj = super().get(hash)
-
-        (blob, nhash) = self._put_cache(self.hash_obj(obj))
-        assert(hash == nhash)
-
-        return obj
+        return self.get_obj(hash)
 
 
 class CachedRawFileHandler(CacheFileHandler, RawFileHandler):
