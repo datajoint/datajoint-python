@@ -10,33 +10,6 @@ from .fetch import Fetch, Fetch1
 
 logger = logging.getLogger(__name__)
 
-
-def equal_ignore_case(str1, str2):
-    try:
-        return str1.upper() == str2.upper()
-    except AttributeError:
-        return False
-
-
-def restricts_true(arg):
-    """
-    returns True if restriction with arg produces the same result as not restricting at all
-    """
-    return (isinstance(arg, U) or arg is True or equal_ignore_case(arg, "TRUE") or
-            isinstance(arg, Not) and restricts_false(arg.restriction))
-
-
-def restricts_false(arg):
-    """
-    returns True if restriction with arg must produce the empty relation.
-    """
-    or_lists = (list, set, tuple, np.ndarray)
-    return (arg is None or (isinstance(arg, AndList) and any(restricts_false(r) for r in arg)) or
-            arg is False or equal_ignore_case(arg, "FALSE") or
-            isinstance(arg, or_lists) and len(arg) == 0 or  # empty OR-list equals FALSE
-            isinstance(arg, Not) and restricts_true(arg.restriction))
-
-
 class OrList(list):
     """
     A list of conditions to restrict a relation.  The conditions are OR-ed.
@@ -148,6 +121,10 @@ class RelationalOperand:
         if isinstance(arg, AndList):
             return (template % (' AND '.join(self._make_condition(item) for item in arg))
                     if arg else not negate)  # an empty AndList is equivalent to True
+
+        # restrict by None -- equivalent to False
+        if arg is None:
+            return False
 
         # restrict by boolean
         if isinstance(arg, bool):
