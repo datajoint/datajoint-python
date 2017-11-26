@@ -108,13 +108,9 @@ class RelationalOperand:
             return (template % (' AND '.join(self._make_condition(item) for item in arg))
                     if arg else not negate)  # an empty AndList is equivalent to True
 
-        # restrict by None -- equivalent to False
-        if arg is None:
-            return False
-
         # restrict by boolean
         if isinstance(arg, bool):
-            return not arg if negate else arg
+            return negate != arg
 
         # restrict by a mapping such as a dict -- convert to an AndList of string equality conditions
         if isinstance(arg, collections.abc.Mapping):
