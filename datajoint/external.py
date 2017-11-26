@@ -82,7 +82,8 @@ class ExternalTable(BaseRelation):
 
     def get(self, hash):
         """
-        get an object from external store
+        get an object from external store.
+        Does not need to check whether it's in the table.
         """
         store = hash[STORE_HASH_LENGTH:]
         store = 'external' + ('-' if store else '') + store
@@ -107,3 +108,20 @@ class ExternalTable(BaseRelation):
             raise DataJointError('Unknown external storage %s' % store)
 
         return unpack(blob)
+
+    def clean(self, batch=10000):
+        """
+        Perform garbage collection.  Remove all objects that are not longer referenced in this schema.
+        """
+        # get all the tables that reference this table
+        tables = self.connection.query("""
+        SELECT concat('`', table_schema, '`.`', table_name, '`') as referencing_table
+        FROM information_schema.key_column_usage 
+        WHERE referenced_table_name NOT LIKE "~%%" AND (referenced_table_schema={db} and referenced_table={tab}        
+        """.format(db=self.database, tab=self.table_name))
+        # query all hashes that are not referenced by any table
+        restriction = ' AND '.join(
+            'hash NOT in (SELECT hash FROM {tab})'.format(tab=tab) for tab in tables)
+        hashes_to_delete = self.connection.query(
+            "SELECT hash WHERE TRUE AND {restriction}".format(restriction=restriction)).fetchall()
+

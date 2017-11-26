@@ -9,7 +9,7 @@ import warnings
 from pymysql import OperationalError, InternalError, IntegrityError
 from . import config, DataJointError
 from .declare import declare
-from .relational_operand import RelationalOperand
+from .relational_operand import RelationalOperand, OrList
 from .blob import pack
 from .utils import user_choice
 from .heading import Heading
@@ -319,7 +319,7 @@ class BaseRelation(RelationalOperand):
 
         # construct restrictions for each relation
         restrict_by_me = set()
-        restrictions = collections.defaultdict(list)
+        restrictions = collections.defaultdict(OrList)
         # restrict by self
         if self.restrictions:
             restrict_by_me.add(self.full_table_name)

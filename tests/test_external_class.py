@@ -32,3 +32,24 @@ def test_populate():
     for img, neg, dimensions in zip(*(image * modu.Dimension()).fetch('img', 'neg', 'dimensions')):
         assert_list_equal(list(img.shape), list(dimensions))
         assert_almost_equal(img, -neg)
+
+
+def test_clean():
+    image = modu.Image()
+    ext = modu.schema.external_table
+    assert_true(image.external_table is ext)
+
+    image.populate()
+
+    set1 = (image & 'seed MOD 2 = 0')   # to keep
+    set2 = image - set1.proj()          # to delete
+
+    keys1 = list(set1.fetch.keys())
+    keys2 = list(set1.fetch.keys())
+
+    (image & keys2).delete()
+    hashes_before = ext.fetch('hash')
+    ext.clean()
+    hashes_after = ext.fetch('hash')
+
+

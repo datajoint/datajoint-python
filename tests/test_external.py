@@ -19,7 +19,8 @@ def test_external_put():
     for i in range(extra):
         hash2 = ext.put('external-raw', np.random.randn(4, 3, 2))
 
-    assert_true(all(hash in ext.fetch('hash') for hash in (hash1, hash2)))
+    fetched_hashes = ext.fetch('hash')
+    assert_true(all(hash in fetched_hashes for hash in (hash1, hash2)))
     assert_equal(len(ext), 1 + extra)
 
     output_ = ext.get(hash1)
