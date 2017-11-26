@@ -10,20 +10,6 @@ from .fetch import Fetch, Fetch1
 
 logger = logging.getLogger(__name__)
 
-class OrList(list):
-    """
-    A list of conditions to restrict a relation.  The conditions are OR-ed.
-    If any restriction is True, then the overall condition is True.
-    Each condition can be a AndList.
-
-    Example:
-    rel2 = rel & dj.ORList((cond1, cond2, cond3))
-    is equivalent to
-    rel2 = rel & [cond1, cond2, cond3]
-    """
-    pass
-
-
 class AndList(list):
     """
     A list of restrictions to by applied to a relation.  The restrictions are AND-ed.
@@ -148,7 +134,7 @@ class RelationalOperand:
             common_attributes = [q for q in self.heading.names if q in arg.heading.names]
             return (
                 # without common attributes, any non-empty relation matches everything
-                not negate if arg else negate if not common_attributes
+                (not negate if arg else negate) if not common_attributes
                 else '({fields}) {not_}in ({subquery})'.format(
                     fields='`' + '`,`'.join(common_attributes) + '`',
                     not_="not " if negate else "",
@@ -156,7 +142,7 @@ class RelationalOperand:
 
         # if iterable (but not a string, a relation, or an AndList), treat as an OrList
         try:
-            or_list = OrList(self._make_condition(q) for q in arg if q is not False)
+            or_list = [self._make_condition(q) for q in arg if q is not False]
         except TypeError:
             raise DataJointError('Invalid restriction type %r' % arg)
         else:
