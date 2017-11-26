@@ -14,7 +14,7 @@ class Dependencies(nx.DiGraph):
         self._node_alias_count = itertools.count()
         super().__init__(self)
 
-    def load(self, target=None):
+    def load(self):
         """
         Load dependencies for all loaded schemas.
         This method gets called before any operation that requires dependencies: delete, drop, populate, progress.
