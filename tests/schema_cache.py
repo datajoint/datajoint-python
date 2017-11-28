@@ -26,7 +26,7 @@ dj.config['external-compute'] = {
     'token': '2e05709792545ce'}
 
 dj.config['external-cache'] = {
-    'protocol': 'file',
+    'protocol': 'cache',
     'cache_location': './cache'}
 
 
