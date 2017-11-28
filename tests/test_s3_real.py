@@ -13,47 +13,43 @@ from datajoint.external import ExternalTable
 from . schema_s3 import schema
 
 
+'''
+Test *real* S3 access.
+
+Requires environment variables:
+
+  - AWS_ACCESS_KEY_ID
+  - AWS_SECRET_ACCESS_KEY
+  - AWS_BUCKET
+
+be properly configured; will raise SkipTest (and not test) if they are not.
+
+See also DJS3MockTest for a mock test implementation -
+Not included in this module due to apparent side effects w/moto's mock_s3.
+'''
+
+
 class DjS3TestReal(TestCase):
-    '''
-    Test *real* S3 access.
-
-    Requires environment variables:
-
-      - AWS_ACCESS_KEY_ID
-      - AWS_SECRET_ACCESS_KEY
-      - AWS_BUCKET
-
-    be properly configured; will raise SkipTest (and not test) if they are not.
-
-    See also DJS3MockTest for a mock test implementation -
-    Not included in this module due to apparent side effects w/moto's mock_s3.
-    '''
-    _oldcfg = None
 
     def setUp(self):
-        # clone cfg - we will be modifying here
-        self._oldcfg = dj.config['external-s3']
-        cfg = dict(self._oldcfg)
+        # self._oldcfg = dj.config['external-s3']
+        # cfg = dict(self._oldcfg)
 
         testvars = {'AWS_ACCESS_KEY_ID': 'aws_access_key_id',
                     'AWS_SECRET_ACCESS_KEY': 'aws_secret_access_key',
                     'AWS_BUCKET': 'bucket'}
 
-        updates = dict(((testvars[k], os.getenv(k))
+        updates = dict(((testvars[k], os.environ.get(k))
                         for k in testvars if k in os.environ))
 
         if len(updates) != len(testvars):
             raise SkipTest
 
-        cfg.update(updates)
-        dj.config['external-s3'] = cfg
-
-    def tearDown(self):
-        # TODO: clean bucket.
-        dj.config['external-s3'] = self._oldcfg
+        dj.config['external-s3'].update(updates)
 
     def test_s3_methods(self):
         ext = ExternalTable(schema.connection, schema.database)
+        ext.delete_quick()
         input_ = np.random.randn(3, 7, 8)
         count = 7
         extra = 3
@@ -61,6 +57,43 @@ class DjS3TestReal(TestCase):
             hash1 = ext.put('external-s3', input_)
         for i in range(extra):
             hash2 = ext.put('external-s3', np.random.randn(4, 3, 2))
+
+        assert_true(all(hash in ext.fetch('hash') for hash in (hash1, hash2)))
+        assert_equal(len(ext), 1 + extra)
+
+        output_ = ext.get(hash1)
+        assert_array_equal(input_, output_)
+
+
+class DjCachedS3TestReal(TestCase):
+
+    def setUp(self):
+        # self._oldcfg = dj.config['external-cache-s3']
+        # cfg = dict(self._oldcfg)
+
+        testvars = {'AWS_ACCESS_KEY_ID': 'aws_access_key_id',
+                    'AWS_SECRET_ACCESS_KEY': 'aws_secret_access_key',
+                    'AWS_BUCKET': 'bucket'}
+
+        updates = dict(((testvars[k], os.environ.get(k))
+                        for k in testvars if k in os.environ))
+
+        if len(updates) != len(testvars):
+            raise SkipTest
+
+        # cfg.update(updates)
+        dj.config['external-cache-s3'].update(updates)
+
+    def test_s3_methods(self):
+        ext = ExternalTable(schema.connection, schema.database)
+        ext.delete_quick()
+        input_ = np.random.randn(3, 7, 8)
+        count = 7
+        extra = 3
+        for i in range(count):
+            hash1 = ext.put('external-cache-s3', input_)
+        for i in range(extra):
+            hash2 = ext.put('external-cache-s3', np.random.randn(4, 3, 2))
 
         assert_true(all(hash in ext.fetch('hash') for hash in (hash1, hash2)))
         assert_equal(len(ext), 1 + extra)
