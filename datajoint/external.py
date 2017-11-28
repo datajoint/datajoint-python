@@ -44,8 +44,8 @@ class ExternalFileHandler:
 
         if len(missing):
             raise DataJointError(
-                'Store "{s}" incorrectly configured for "{t}"'.format(
-                    s=store, t=storetype), 'missing', *missing)
+                'Store "{s}" incorrectly configured for "{t}", missing: {m}'
+                .format(s=store, t=storetype, m=missing))
 
     def hash_obj(self, obj):
         blob = pack(obj)
@@ -124,37 +124,45 @@ class RawFileHandler(ExternalFileHandler):
 class CacheFileHandler(ExternalFileHandler):
     '''
     A CacheFileHandler mixin implementation.
-    Requires a concrete file-handling implementation to properly function.
 
-    Should be 1st in inheritance list e.g.:
+    Requires a concrete 'upstream' backend file handling implementation.
+    Should be 1st in inheritance list w/r/t backend implementation - e.g.:
 
       CachedFoo(CacheFileHandler, OtherFileHandler)
 
-    Will cache objects in 'cache_location', relies on superclass for
-    coherent get/put operations on the 'reference' blobs.
+    Will cache objects in config['external-cache']['location'], relying on
+    superclass for coherent get/put operations on the 'reference' blobs.
 
     Cleanup currently not implemented.
     '''
-    required = ('cache_location',)
 
     def __init__(self, store, database):
-        super().__init__(store, database)
-        self.check_required(store, 'cache', CacheFileHandler.required)
-        # XXX: move ._location logic to base? currently duplicated
-        self._location = self._spec['cache_location']
+        super().__init__(store, database)  # initialize non-mixin parameters
 
-    def get_folder(self):
-        return os.path.join(self._location, self._database)
+        # validate mixin cache parameters
+        if 'external-cache' not in config:
+            raise DataJointError('External Cache is not configured')
+
+        cache_spec = config['external-cache']
+
+        if 'location' not in cache_spec:
+            raise DataJointError(
+                'External Cache configuration missing "location"')
+
+        self._cache_spec = cache_spec
+        self._cache_location = cache_spec['location']
+
+    def get_cache_folder(self):
+        return os.path.join(self._cache_location, self._database)
 
     def _clean_cache(self):
-        # TODO: implement _clean_cache
-        pass
+        pass  # TODO: implement _clean_cache
 
     def _put_cache(self, blob, hash):
 
         self._clean_cache()
 
-        folder = self.get_folder()
+        folder = self.get_cache_folder()
         full_path = os.path.join(folder, hash)
 
         if not os.path.isfile(full_path):
@@ -166,8 +174,7 @@ class CacheFileHandler(ExternalFileHandler):
                 with open(full_path, 'wb') as f:
                     f.write(blob)
         else:
-            # TODO: note recent file usage to assist _clean_cache
-            pass
+            pass  # TODO: track recent file usage to assist _clean_cache
 
         return (blob, hash)
 
