@@ -28,13 +28,20 @@ dj.config['external-compute'] = {
 dj.config['external-s3'] = {
     'protocol': 's3',
     'bucket': 'testbucket.datajoint.io',
-    'location': '/datajoint-projects/test',
+    'location': '/datajoint-projects/test-external-s3',
     'aws_access_key_id': '1234567',
     'aws_secret_access_key': 'deadbeef'}
 
-dj.config['cache'] = {
-    'protocol': 'file',
-    'location': '/media/dimitri/ExtraDrive1/dj-store/cache'}
+dj.config['external-cache-s3'] = {
+    'protocol': 'cache-s3',
+    'bucket': 'testbucket.datajoint.io',
+    'location': '/datajoint-projects/test-external-cache-s3',
+    'aws_access_key_id': '1234567',
+    'aws_secret_access_key': 'deadbeef'}
+
+dj.config['external-cache'] = {
+    'protocol': 'cache',
+    'location': './cache'}
 
 
 @schema

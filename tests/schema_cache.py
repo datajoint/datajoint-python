@@ -27,7 +27,7 @@ dj.config['external-compute'] = {
 
 dj.config['external-cache'] = {
     'protocol': 'cache',
-    'cache_location': './cache'}
+    'cache': './cache'}
 
 
 @schema
