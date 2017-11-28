@@ -73,7 +73,6 @@ class ExternalFileHandler:
             'get_obj method not implemented for', type(self))
 
     def get(self, hash):
-        # BOOKMARK: base done w/r/t get_{obj,blob}; now reimplement others
         ''' returns decoded 'obj' '''
         return self.get_obj(hash)
 
