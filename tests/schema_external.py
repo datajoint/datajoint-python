@@ -34,7 +34,7 @@ dj.config['external-cache-s3'] = {
 
 dj.config['external-cache'] = {
     'protocol': 'cache',
-    'location'./cache'}
+    'location': './cache'}
 
 
 @schema
