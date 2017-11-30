@@ -34,7 +34,8 @@ class AutoPopulate:
                 Users may override to change the granularity or the scope of populate() calls.
         """
         if self._key_source is None:
-            self.connection.dependencies.load()
+            if self.target.full_table_name not in self.connection.dependencies:
+                self.connection.dependencies.load()
             parents = list(self.target.parents(primary=True))
             if not parents:
                 raise DataJointError('A relation must have parent relations to be able to be populated')
