@@ -9,7 +9,7 @@ import warnings
 from pymysql import OperationalError, InternalError, IntegrityError
 from . import config, DataJointError
 from .declare import declare
-from .relational_operand import RelationalOperand, OrList
+from .relational_operand import RelationalOperand
 from .blob import pack
 from .utils import user_choice
 from .heading import Heading
@@ -319,11 +319,11 @@ class BaseRelation(RelationalOperand):
 
         # construct restrictions for each relation
         restrict_by_me = set()
-        restrictions = collections.defaultdict(OrList)
+        restrictions = collections.defaultdict(list)
         # restrict by self
-        if self.restrictions:
+        if self.restriction:
             restrict_by_me.add(self.full_table_name)
-            restrictions[self.full_table_name].append(self.restrictions)  # copy own restrictions
+            restrictions[self.full_table_name].append(self.restriction)  # copy own restrictions
         # restrict by renamed nodes
         restrict_by_me.update(table for table in delete_list if table.isdigit())  # restrict by all renamed nodes
         # restrict by tables restricted by a non-primary semijoin

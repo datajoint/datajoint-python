@@ -10,6 +10,7 @@ from .fetch import Fetch, Fetch1
 
 logger = logging.getLogger(__name__)
 
+
 class AndList(list):
     """
     A list of restrictions to by applied to a relation.  The restrictions are AND-ed.
@@ -27,7 +28,7 @@ class AndList(list):
             # extend to reduce nesting
             self.extend(restriction)
         else:
-            self.append(restriction)
+            super().append(restriction)
 
 
 class RelationalOperand:
@@ -105,8 +106,17 @@ class RelationalOperand:
 
         # restrict by AndList
         if isinstance(arg, AndList):
-            return (template % (' AND '.join(self._make_condition(item) for item in arg))
-                    if arg else not negate)  # an empty AndList is equivalent to True
+            # discard all Trues
+            items = [item for item in (self._make_condition(i) for i in arg) if item is not True]
+            if any(item is False for item in items):
+                return negate  # if any item is False, the whole thing is False
+            if not items:
+                return not negate   # and empty AndList is True
+            return template % ' AND '.join(items)
+
+        # restriction by dj.U has no effect
+        if isinstance(arg, U):
+            return True
 
         # restrict by boolean
         if isinstance(arg, bool):
@@ -142,7 +152,9 @@ class RelationalOperand:
         except TypeError:
             raise DataJointError('Invalid restriction type %r' % arg)
         else:
-            return template % ('(%s)' % ' OR '.join(or_list)) if or_list else False
+            if any(item is True for item in or_list):  # if any item is True, the whole thing is True
+                return not negate
+            return template % ('(%s)' % ' OR '.join(or_list)) if or_list else negate  # an empty or list is False
 
     @property
     def where_clause(self):
@@ -246,7 +258,6 @@ class RelationalOperand:
         Successive restrictions are combined using the logical AND.
         The AndList class is provided to play the role of successive restrictions.
         Any relation, collection, or sequence other than an AndList are treated as OrLists.
-        However, the class OrList is still provided for cases when explicitness is required.
         Inverse restriction is accomplished by either using the subtraction operator or the Not class.
 
         The expressions in each row equivalent:
@@ -473,8 +484,7 @@ class Not:
     invert restriction
     """
     def __init__(self, restriction):
-        assert isinstance(restriction, AndList)
-        self.restriction = restriction
+        self.restriction = restriction  if isinstance(restriction, AndList) else AndList([restriction])
 
 
 class Join(RelationalOperand):
