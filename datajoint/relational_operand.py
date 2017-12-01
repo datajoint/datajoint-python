@@ -114,9 +114,9 @@ class RelationalOperand:
                 return not negate   # and empty AndList is True
             return template % ' AND '.join(items)
 
-        # restriction by dj.U has no effect
+        # restriction by dj.U evaluates to True
         if isinstance(arg, U):
-            return True
+            return not negate
 
         # restrict by boolean
         if isinstance(arg, bool):
