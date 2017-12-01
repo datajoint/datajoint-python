@@ -49,7 +49,7 @@ class Dependencies(nx.DiGraph):
         """.format(schemas="','".join(self._conn.schemas)), as_dict=True)
         fks = defaultdict(lambda: dict(attr_map=dict()))
         for key in keys:
-            d = fks[key['constraint_name']]
+            d = fks[key['constraint_name'] + key['referencing_table'] + key['referenced_table']]
             d['referencing_table'] = key['referencing_table']
             d['referenced_table'] = key['referenced_table']
             d['attr_map'][key['column_name']] = key['referenced_column_name']
