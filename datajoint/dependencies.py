@@ -10,11 +10,10 @@ class Dependencies(nx.DiGraph):
     """
     def __init__(self, connection):
         self._conn = connection
-        self.loaded_tables = set()
         self._node_alias_count = itertools.count()
         super().__init__(self)
 
-    def load(self, target=None):
+    def load(self):
         """
         Load dependencies for all loaded schemas.
         This method gets called before any operation that requires dependencies: delete, drop, populate, progress.
@@ -25,10 +24,10 @@ class Dependencies(nx.DiGraph):
 
         # load primary key info
         keys = self._conn.query("""
-                SELECT 
+                SELECT
                     concat('`', table_schema, '`.`', table_name, '`') as tab, column_name
-                FROM information_schema.key_column_usage 
-                WHERE referenced_table_name IS NULL AND table_schema in ('{schemas}') AND constraint_name="PRIMARY" 
+                FROM information_schema.key_column_usage
+                WHERE table_name not LIKE "~%%" AND table_schema in ('{schemas}') AND constraint_name="PRIMARY"
                 """.format(schemas="','".join(self._conn.schemas)))
         pks = defaultdict(set)
         for key in keys:
@@ -40,13 +39,13 @@ class Dependencies(nx.DiGraph):
 
         # load foreign keys
         keys = self._conn.query("""
-        SELECT constraint_name,  
+        SELECT constraint_name,
             concat('`', table_schema, '`.`', table_name, '`') as referencing_table,
-            concat('`', referenced_table_schema, '`.`',  referenced_table_name, '`') as referenced_table, 
+            concat('`', referenced_table_schema, '`.`',  referenced_table_name, '`') as referenced_table,
             column_name, referenced_column_name
-        FROM information_schema.key_column_usage 
-        WHERE referenced_table_name NOT LIKE "~%%" AND (referenced_table_schema in ('{schemas}') OR 
-            referenced_table_schema is not NULL AND table_schema in ('{schemas}')) 
+        FROM information_schema.key_column_usage
+        WHERE referenced_table_name NOT LIKE "~%%" AND (referenced_table_schema in ('{schemas}') OR
+            referenced_table_schema is not NULL AND table_schema in ('{schemas}'))
         """.format(schemas="','".join(self._conn.schemas)), as_dict=True)
         fks = defaultdict(lambda: dict(attr_map=dict()))
         for key in keys:

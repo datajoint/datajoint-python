@@ -423,7 +423,8 @@ class BaseRelation(RelationalOperand):
         :return:  the definition string for the relation using DataJoint DDL.
             This does not yet work for aliased foreign keys.
         """
-        self.connection.dependencies.load()
+        if self.full_table_name not in self.connection.dependencies:
+            self.connection.dependencies.load()
         parents = self.parents()
         in_key = True
         definition = '# ' + self.heading.table_info['comment'] + '\n'
