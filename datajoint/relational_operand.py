@@ -295,8 +295,8 @@ class RelationalOperand:
         :param restriction: a sequence or an array (treated as OR list), another relation, an SQL condition string, or
             an AndList.
         """
-        assert not self.heading.expressions or isinstance(self, GroupBy), \
-                "Cannot restrict in place a projection with renamed attributes."
+        assert not self.heading.expressions or isinstance(self, GroupBy), "Cannot restrict a projection" \
+                                                                          " with renamed attributes in place."
         self.restriction.append(restriction)
         return self
 
