@@ -49,9 +49,6 @@ default = OrderedDict({
     'display.limit': 7,
     'display.width': 14,
     'display.show_tuple_count': True,
-    'external.aws_access_key_id': None,
-    'external.aws_secret_access_key': None,
-    'external.location' : None
 })
 
 logger = logging.getLogger(__name__)

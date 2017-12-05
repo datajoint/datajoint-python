@@ -1,5 +1,5 @@
 """
-a schema for testing external attributes
+a schema for testing external attributes & cache
 """
 
 import datajoint as dj
@@ -7,7 +7,8 @@ import datajoint as dj
 from . import PREFIX, CONN_INFO
 import numpy as np
 
-schema = dj.schema(PREFIX + '_extern', locals(), connection=dj.conn(**CONN_INFO))
+schema = dj.schema(PREFIX + '_extern', locals(),
+                   connection=dj.conn(**CONN_INFO))
 
 
 dj.config['external'] = {
@@ -18,23 +19,15 @@ dj.config['external-raw'] = {
     'protocol': 'file',
     'location': 'dj-store/raw'}
 
-dj.config['external-s3'] = {
+dj.config['external-compute'] = {
     'protocol': 's3',
-    'bucket': 'testbucket.datajoint.io',
     'location': '/datajoint-projects/test',
-    'aws_access_key_id': '1234567',
-    'aws_secret_access_key': 'deadbeef'}
-
-dj.config['external-cache-s3'] = {
-    'protocol': 'cache-s3',
-    'bucket': 'testbucket.datajoint.io',
-    'location': '/datajoint-projects/test',
-    'aws_access_key_id': '1234567',
-    'aws_secret_access_key': 'deadbeef'}
+    'user': 'djtest',
+    'token': '2e05709792545ce'}
 
 dj.config['external-cache'] = {
     'protocol': 'cache',
-    'location': './cache'}
+    'cache': './cache'}
 
 
 @schema
