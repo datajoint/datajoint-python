@@ -2,6 +2,7 @@
 a schema for testing external attributes
 """
 
+import os
 import datajoint as dj
 
 from . import PREFIX, CONN_INFO
@@ -24,9 +25,10 @@ dj.config['external-compute'] = {
     'user': 'djtest',
     'token': '2e05709792545ce'}
 
-dj.config['cache'] = {
-    'protocol': 'file',
-    'location': '/media/dimitri/ExtraDrive1/dj-store/cache'}
+cache_path = 'dj-cache'
+if not os.path.exists(cache_path):
+    os.makedirs(cache_path)
+dj.config['cache'] = cache_path
 
 
 @schema
