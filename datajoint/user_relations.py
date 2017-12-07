@@ -10,8 +10,12 @@ from . import DataJointError
 
 _base_regexp = r'[a-z][a-z0-9]*(_[a-z][a-z0-9]*)*'
 
+# attributes that trigger instantiation of user classes
 supported_class_attrs = set((
-    'describe', 'populate', 'proj', 'aggr', 'heading', 'fetch', 'fetch1', 'insert', 'insert1'))
+    'key_source', 'describe', 'populate', 'progress',
+    'proj', 'aggr', 'heading', 'fetch', 'fetch1',
+    'insert', 'insert1', 'drop', 'drop_quick',
+    'delete', 'delete_quick'))
 
 class OrderedClass(type):
     """
@@ -43,7 +47,19 @@ class OrderedClass(type):
     def __and__(cls, arg):
         return cls() & arg
 
+    def __sub__(cls, arg):
+        return cls() & arg
+
     def __mul__(cls, arg):
+        return cls() * arg
+
+    def __iand__(cls, arg):
+        return cls() & arg
+
+    def __isub__(cls, arg):
+        return cls() & arg
+
+    def __imul__(cls, arg):
         return cls() * arg
 
 
