@@ -27,7 +27,7 @@ class ExternalTable(BaseRelation):
     @property
     def definition(self):
         return """
-        # external storage tracking 
+        # external storage tracking
         hash  : {hash_data_type}  # the hash of stored object + store name
         ---
         size      :bigint unsigned   # size of object in bytes
@@ -87,24 +87,39 @@ class ExternalTable(BaseRelation):
         """
         store = hash[STORE_HASH_LENGTH:]
         store = 'external' + ('-' if store else '') + store
-        try:
-            spec = config[store]
-        except KeyError:
-            raise DataJointError('Store `%s` is not configured' % store)
+        cache_file = os.path.join(config['cache'], hash) if 'cache' in config else None
 
-        try:
-            protocol = spec['protocol']
-        except KeyError:
-            raise DataJointError('Storage {store} config is missing the protocol field'.format(store=store))
-
-        if protocol == 'file':
-            full_path = os.path.join(spec['location'], self.database, hash)
+        blob = None
+        if cache_file:
             try:
-                with open(full_path, 'rb') as f:
+                with open(cache_file, 'rb') as f:
                     blob = f.read()
             except FileNotFoundError:
-                    raise DataJointError('Lost external blob')
-        else:
-            raise DataJointError('Unknown external storage %s' % store)
+                pass
+
+        if blob is None:
+            try:
+                spec = config[store]
+            except KeyError:
+                raise DataJointError('Store `%s` is not configured' % store)
+
+            try:
+                protocol = spec['protocol']
+            except KeyError:
+                raise DataJointError('Storage {store} config is missing the protocol field'.format(store=store))
+
+            if protocol == 'file':
+                full_path = os.path.join(spec['location'], self.database, hash)
+                try:
+                    with open(full_path, 'rb') as f:
+                        blob = f.read()
+                except FileNotFoundError:
+                        raise DataJointError('Lost external blob')
+                finally:
+                    if cache_file:
+                        with open(cache_file, 'wb') as f:
+                            f.write(blob)
+            else:
+                raise DataJointError('Unknown external storage %s' % store)
 
         return unpack(blob)
