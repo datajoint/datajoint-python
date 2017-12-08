@@ -53,16 +53,6 @@ class OrderedClass(type):
     def __mul__(cls, arg):
         return cls() * arg
 
-    def __iand__(cls, arg):
-        return cls() & arg
-
-    def __isub__(cls, arg):
-        return cls() & arg
-
-    def __imul__(cls, arg):
-        return cls() * arg
-
-
 
 class UserRelation(BaseRelation, metaclass=OrderedClass):
     """
