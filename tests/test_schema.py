@@ -6,11 +6,6 @@ from . import schema_empty
 from . import PREFIX, CONN_INFO
 
 
-def test_declare_and_fetch():
-    a = schema.UberTrash().fetch()
-    print(a)
-
-
 def relation_selector(attr):
     try:
         return issubclass(attr, dj.BaseRelation)
@@ -34,13 +29,10 @@ def test_namespace_population():
     for name, rel in getmembers(schema, relation_selector):
         assert_true(hasattr(schema_empty, name), '{name} not found in schema_empty'.format(name=name))
         assert_true(rel.__base__ is getattr(schema_empty, name).__base__, 'Wrong tier for {name}'.format(name=name))
-
-        if rel.table_name == '#uber_trash':
-            print('got it')
-        for name_part, part in getmembers(rel, part_selector):
-            assert_true(hasattr(rel, name_part),
-                        '{name_part} not found in {name}'.format(name_part=name_part, name=name))
-            assert_true(getattr(rel, name_part).__base__ is dj.Part, 'Wrong tier for {name}'.format(name=name_part))
+        
+        for name_part in dir(rel):
+            if name_part[0].isupper() and part_selector(getattr(rel, name_part)):
+                assert_true(getattr(rel, name_part).__base__ is dj.Part, 'Wrong tier for {name}'.format(name=name_part))
 
 
 @raises(dj.DataJointError)
