@@ -115,11 +115,11 @@ class ExternalTable(BaseRelation):
                         blob = f.read()
                 except FileNotFoundError:
                         raise DataJointError('Lost external blob')
-                finally:
-                    if cache_file:
-                        with open(cache_file, 'wb') as f:
-                            f.write(blob)
             else:
-                raise DataJointError('Unknown external storage %s' % store)
+                raise DataJointError('Unknown external storage protocol "%s"' % protocol)
+
+        if cache_file:
+            with open(cache_file, 'wb') as f:
+                f.write(blob)
 
         return unpack(blob)
