@@ -1,9 +1,24 @@
 import os
+import shutil
 from . import config, DataJointError
 from .hash import long_hash
 from .blob import pack, unpack
 from .base_relation import BaseRelation
 from .declare import STORE_HASH_LENGTH, HASH_DATA_TYPE
+
+
+def safe_write(filename, blob):
+    """
+    A two-step write.
+    :param filename: full path
+    :param blob: binary data
+    :return: None
+    """
+    temp_file = filename + '.saving'
+    with open(temp_file, 'bw') as f:
+        f.write(blob)
+    shutil.copyfile(temp_file, filename)
+
 
 
 class ExternalTable(BaseRelation):
@@ -61,12 +76,10 @@ class ExternalTable(BaseRelation):
             full_path = os.path.join(folder, hash)
             if not os.path.isfile(full_path):
                 try:
-                    with open(full_path, 'wb') as f:
-                        f.write(blob)
+                    safe_write(full_path, blob)
                 except FileNotFoundError:
                     os.makedirs(folder)
-                    with open(full_path, 'wb') as f:
-                        f.write(blob)
+                    safe_write(full_path, blob)
         else:
             raise DataJointError('Unknown external storage protocol {protocol} for {store}'.format(
                 store=store, protocol=protocol))
@@ -119,7 +132,6 @@ class ExternalTable(BaseRelation):
                 raise DataJointError('Unknown external storage protocol "%s"' % protocol)
 
             if cache_file:
-                with open(cache_file, 'wb') as f:
-                    f.write(blob)
+                safe_write(cache_file, blob)
 
         return unpack(blob)
