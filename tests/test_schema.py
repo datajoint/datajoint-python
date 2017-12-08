@@ -6,11 +6,6 @@ from . import schema_empty
 from . import PREFIX, CONN_INFO
 
 
-def test_declare_and_fetch():
-    a = schema.UberTrash().fetch()
-    print(a)
-
-
 def relation_selector(attr):
     try:
         return issubclass(attr, dj.BaseRelation)
