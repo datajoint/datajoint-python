@@ -18,9 +18,11 @@ class Dependencies(nx.DiGraph):
         Load dependencies for all loaded schemas.
         This method gets called before any operation that requires dependencies: delete, drop, populate, progress.
         """
-        self.clear()  # reload from scratch and prevent duplication
 
-        # load primary keys
+        # reload from scratch to prevent duplication of renamed edges
+        self.clear()
+
+        # load primary key info
         keys = self._conn.query("""
                 SELECT
                     concat('`', table_schema, '`.`', table_name, '`') as tab, column_name

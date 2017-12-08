@@ -32,3 +32,6 @@ def test_populate():
     for img, neg, dimensions in zip(*(image * modu.Dimension()).fetch('img', 'neg', 'dimensions')):
         assert_list_equal(list(img.shape), list(dimensions))
         assert_almost_equal(img, -neg)
+
+
+
