@@ -99,7 +99,8 @@ class ExternalTable(BaseRelation):
 
     def get(self, hash):
         """
-        get an object from external store
+        get an object from external store.
+        Does not need to check whether it's in the table.
         """
         store = hash[STORE_HASH_LENGTH:]
         store = 'external' + ('-' if store else '') + store

@@ -11,6 +11,9 @@ import warnings
 def update_dict(d1, d2):
     return {k: (d2[k] if k in d2 else d1[k]) for k in d1}
 
+def iskey(attr):
+    return attr is PRIMARY_KEY or attr=='KEY'
+
 
 class FetchBase:
     def __init__(self, arg):
@@ -56,15 +59,17 @@ class FetchBase:
     @staticmethod
     def _prepare_attributes(item):
         """
+        DEPRECATED
+
         Used by fetch.__getitem__ to deal with slices
         :param item: the item passed to __getitem__. Can be a string, a tuple, a list, or a slice.
         :return: a tuple of items to fetch, a list of the corresponding attributes
         :raise DataJointError: if item does not match one of the datatypes above
         """
-        if isinstance(item, str) or item is PRIMARY_KEY:
+        if iskey(item) or isinstance(item, str):
             item = (item,)
         try:
-            attributes = tuple(i for i in item if i is not PRIMARY_KEY)
+            attributes = tuple(i for i in item if not iskey(i))
         except TypeError:
             raise DataJointError("Index must be a sequence or a string.")
         return item, attributes
@@ -93,9 +98,7 @@ class Fetch(FetchBase, Callable, Iterable):
         :param args: the attributes to sort by. If DESC is passed after the name, then the order is descending.
         :return: a copy of the fetch object
         Example:
-
         >>> my_relation.fetch.order_by('language', 'name DESC')
-
         """
         warnings.warn('Use of `order_by` on `fetch` object is deprecated. Please use `order_by` keyword arguments in '
                       'the call to `fetch`/`keys` instead', stacklevel=2)
@@ -213,11 +216,11 @@ class Fetch(FetchBase, Callable, Iterable):
                         ret[name] = list(map(unpack_, ret[name]))
 
         else:  # if list of attributes provided
-            attributes = [a for a in attrs if a is not PRIMARY_KEY]
+            attributes = [a for a in attrs if not iskey(a)]
             result = self._relation.proj(*attributes).fetch(**total_behavior)
             return_values = [
                 list(to_dicts(result[self._relation.primary_key]))
-                if attribute is PRIMARY_KEY else result[attribute]
+                if iskey(attribute) else result[attribute]
                 for attribute in attrs]
             ret = return_values[0] if len(attrs) == 1 else return_values
 
@@ -274,12 +277,12 @@ class Fetch(FetchBase, Callable, Iterable):
         behavior = dict(self.sql_behavior)
         behavior.update(self.ext_behavior)
 
-        single_output = isinstance(item, str) or item is PRIMARY_KEY or isinstance(item, int)
+        single_output = iskey(item) or isinstance(item, str) or isinstance(item, int)
         item, attributes = self._prepare_attributes(item)
         result = self._relation.proj(*attributes).fetch(**behavior)
         return_values = [
             list(to_dicts(result[self._relation.primary_key]))
-            if attribute is PRIMARY_KEY else result[attribute]
+            if iskey(attribute) else result[attribute]
             for attribute in item]
         return return_values[0] if single_output else return_values
 
@@ -334,13 +337,13 @@ class Fetch1(FetchBase, Callable):
                               for name in heading.names)
 
         else:  # fetch some attributes, return as tuple
-            attributes = [a for a in attrs if a is not PRIMARY_KEY]
+            attributes = [a for a in attrs if not iskey(a)]
             result = self._relation.proj(*attributes).fetch(squeeze=squeeze)
             if len(result) != 1:
                 raise DataJointError('fetch1 should only return one tuple. %d tuples were found' % len(result))
             return_values = tuple(
                 next(to_dicts(result[self._relation.primary_key]))
-                if attribute is PRIMARY_KEY else result[attribute][0]
+                if iskey(attribute) else result[attribute][0]
                 for attribute in attrs)
             ret = return_values[0] if len(attrs) == 1 else return_values
 
@@ -366,14 +369,14 @@ class Fetch1(FetchBase, Callable):
         behavior = dict(self.sql_behavior)
         behavior.update(self.ext_behavior)
 
-        single_output = isinstance(item, str) or item is PRIMARY_KEY
+        single_output = iskey(item) or isinstance(item, str)
         item, attributes = self._prepare_attributes(item)
         result = self._relation.proj(*attributes).fetch(**behavior)
         if len(result) != 1:
             raise DataJointError('fetch1 should only return one tuple. %d tuples were found' % len(result))
         return_values = tuple(
             next(to_dicts(result[self._relation.primary_key]))
-            if attribute is PRIMARY_KEY else result[attribute][0]
+            if iskey(attribute) else result[attribute][0]
             for attribute in item)
         return return_values[0] if single_output else return_values
 

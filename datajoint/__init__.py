@@ -68,7 +68,7 @@ logger.setLevel(log_levels[config['loglevel']])
 from .connection import conn, Connection
 from .base_relation import FreeRelation, BaseRelation
 from .user_relations import Manual, Lookup, Imported, Computed, Part
-from .relational_operand import Not, AndList, OrList, U
+from .relational_operand import Not, AndList, U
 from .heading import Heading
 from .schema import Schema as schema
 from .erd import ERD

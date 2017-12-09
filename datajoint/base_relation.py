@@ -315,16 +315,15 @@ class BaseRelation(RelationalOperand):
                 parent, edge = next(iter(graph.parents(table).items()))
                 delete_list[table] = FreeRelation(self.connection, parent).proj(
                     **{new_name: old_name
-                       for new_name, old_name in zip(edge['referencing_attributes'], edge['referenced_attributes'])
-                       if new_name != old_name})
+                       for new_name, old_name in edge['attr_map'].items() if new_name != old_name})
 
         # construct restrictions for each relation
         restrict_by_me = set()
         restrictions = collections.defaultdict(list)
         # restrict by self
-        if self.restrictions:
+        if self.restriction:
             restrict_by_me.add(self.full_table_name)
-            restrictions[self.full_table_name].append(self.restrictions)  # copy own restrictions
+            restrictions[self.full_table_name].append(self.restriction)  # copy own restrictions
         # restrict by renamed nodes
         restrict_by_me.update(table for table in delete_list if table.isdigit())  # restrict by all renamed nodes
         # restrict by tables restricted by a non-primary semijoin
@@ -424,7 +423,8 @@ class BaseRelation(RelationalOperand):
         :return:  the definition string for the relation using DataJoint DDL.
             This does not yet work for aliased foreign keys.
         """
-        self.connection.dependencies.load()
+        if self.full_table_name not in self.connection.dependencies:
+            self.connection.dependencies.load()
         parents = self.parents()
         in_key = True
         definition = '# ' + self.heading.table_info['comment'] + '\n'
@@ -437,9 +437,9 @@ class BaseRelation(RelationalOperand):
             attributes_thus_far.add(attr.name)
             do_include = True
             for parent_name, fk_props in list(parents.items()):  # need list() to force a copy
-                if attr.name in fk_props['referencing_attributes']:
+                if attr.name in fk_props['attr_map']:
                     do_include = False
-                    if attributes_thus_far.issuperset(fk_props['referencing_attributes']):
+                    if attributes_thus_far.issuperset(fk_props['attr_map']):
                         # simple foreign key
                         parents.pop(parent_name)
                         if not parent_name.isdigit():
@@ -448,15 +448,13 @@ class BaseRelation(RelationalOperand):
                         else:
                             # aliased foreign key
                             parent_name = self.connection.dependencies.in_edges(parent_name)[0][0]
-                            lst = [(attr, ref) for attr, ref in zip(
-                                fk_props['referencing_attributes'], fk_props['referenced_attributes'])
-                                   if ref != attr]
+                            lst = [(attr, ref) for attr, ref in fk_props['attr_map'].items() if ref != attr]
                             definition += '({attr_list}) -> {class_name}{ref_list}\n'.format(
                                 attr_list=','.join(r[0] for r in lst),
                                 class_name=lookup_class_name(parent_name, self.context) or parent_name,
                                 ref_list=('' if len(attributes_thus_far) - len(attributes_declared) == 1
                                           else '(%s)' % ','.join(r[1] for r in lst)))
-                            attributes_declared.update(fk_props['referencing_attributes'])
+                            attributes_declared.update(fk_props['attr_map'])
             if do_include:
                 attributes_declared.add(attr.name)
                 name = attr.name.lstrip('_')  # for external

@@ -11,67 +11,6 @@ from .fetch import Fetch, Fetch1
 logger = logging.getLogger(__name__)
 
 
-def equal_ignore_case(str1, str2):
-    try:
-        return str1.upper() == str2.upper()
-    except AttributeError:
-        return False
-
-
-def restricts_to_same(arg):
-    """
-    returns True if restriction with arg produces the same result as not restricting at all
-    """
-    return (isinstance(arg, U) or arg is True or equal_ignore_case(arg, "TRUE") or
-            isinstance(arg, Not) and restricts_to_empty(arg.restriction))
-
-
-def restricts_to_empty(arg):
-    """
-    returns True if restriction with arg must produce the empty relation.
-    """
-    or_lists = (list, set, tuple, np.ndarray)
-    return (arg is None or (isinstance(arg, AndList) and any(restricts_to_empty(r) for r in arg)) or
-            arg is None or arg is False or equal_ignore_case(arg, "FALSE") or
-            isinstance(arg, or_lists) and len(arg) == 0 or  # empty OR-list equals FALSE
-            isinstance(arg, Not) and restricts_to_same(arg.restriction))
-
-
-class OrList(list):
-    """
-    A list of conditions to restrict a relation.  The conditions are OR-ed.
-    If any restriction is True, then the overall condition is True.
-    Each condition can be a AndList.
-
-    Example:
-    rel2 = rel & dj.ORList((cond1, cond2, cond3))
-    is equivalent to
-    rel2 = rel & [cond1, cond2, cond3]
-    """
-
-    @staticmethod
-    def _recurse(other):
-        for item in other:
-            if isinstance(item, OrList):
-                yield from OrList._recurse(item)  # flatten list
-            else:
-                if not isinstance(item, AndList):
-                    yield item
-                elif len(item) == 0:
-                    yield True
-                elif len(item) == 1:
-                    if isinstance(item[0], OrList):
-                        OrList._recurse(item[0])
-                    else:
-                        yield item[0]
-                else:
-                    yield item
-
-    def __init__(self, other):
-        lst = list(self._recurse(other))
-        super().__init__([True] if any(i is True for i in lst) else lst)
-
-
 class AndList(list):
     """
     A list of restrictions to by applied to a relation.  The restrictions are AND-ed.
@@ -84,24 +23,12 @@ class AndList(list):
     rel2 = rel & cond1 & cond2 & cond3
     """
 
-    def set(self, items):
-        self.clear()
-        self.append(items)
-
-    def append(self, item):
-        # append item, reducing nesting
-        if isinstance(item, AndList):
-            self.extend(item)
-        elif isinstance(item, OrList):
-            if not item:  # an empty OrList is equivalent to False
-                super().append(False)
-            else:  # an OrList with one element is equivalent to the element
-                super().append(item[0] if len(item) == 1 else item)
+    def append(self, restriction):
+        if isinstance(restriction, AndList):
+            # extend to reduce nesting
+            self.extend(restriction)
         else:
-            super().append(item)
-        # an AndList with a False in it is False
-        if len(self) > 1 and any(i is False for i in self):
-            self.set(False)
+            super().append(restriction)
 
 
 class RelationalOperand:
@@ -116,12 +43,12 @@ class RelationalOperand:
     def __init__(self, arg=None):
         if arg is None:  # initialize
             # initialize
-            self._restrictions = AndList()
+            self._restriction = AndList()
             self._distinct = False
             self._heading = None
         else:  # copy
             assert isinstance(arg, RelationalOperand), 'Cannot make RelationalOperand from %s' % arg.__class__.__name__
-            self._restrictions = AndList(arg._restrictions)
+            self._restriction = AndList(arg._restriction)
             self._distinct = arg.distinct
             self._heading = arg._heading
 
@@ -150,78 +77,92 @@ class RelationalOperand:
         return self._distinct
 
     @property
-    def restrictions(self):
+    def restriction(self):
         """
         :return:  The AndList of restrictions applied to the relation.
         """
-        assert isinstance(self._restrictions, AndList)
-        return self._restrictions
-
-    @property
-    def is_restricted(self):
-        return len(self.restrictions) > 0
+        assert isinstance(self._restriction, AndList)
+        return self._restriction
 
     @property
     def primary_key(self):
         return self.heading.primary_key
 
+    def _make_condition(self, arg):
+        """
+        Translate the input arg into the equivalent SQL condition (a string)
+        :param arg: any valid restriction object.
+        :return: an SQL condition string.  It may also be a boolean that is intended to be treated as a string.
+        """
+        negate = False
+        while isinstance(arg, Not):
+            negate = not negate
+            arg = arg.restriction
+        template = "NOT (%s)" if negate else "%s"
+
+        # restrict by string
+        if isinstance(arg, str):
+            return template % arg.strip()
+
+        # restrict by AndList
+        if isinstance(arg, AndList):
+            # discard all Trues
+            items = [item for item in (self._make_condition(i) for i in arg) if item is not True]
+            if any(item is False for item in items):
+                return negate  # if any item is False, the whole thing is False
+            if not items:
+                return not negate   # and empty AndList is True
+            return template % ('(' + ') AND ('.join(items) + ')')
+
+        # restriction by dj.U evaluates to True
+        if isinstance(arg, U):
+            return not negate
+
+        # restrict by boolean
+        if isinstance(arg, bool):
+            return negate != arg
+
+        # restrict by a mapping such as a dict -- convert to an AndList of string equality conditions
+        if isinstance(arg, collections.abc.Mapping):
+            return template % self._make_condition(
+                AndList('`%s`=%r' % (k, (v if not isinstance(v, (
+                    datetime.date, datetime.datetime, datetime.time, decimal.Decimal)) else str(v)))
+                        for k, v in arg.items() if k in self.heading))
+
+        # restrict by a numpy record -- convert to an AndList of string equality conditions
+        if isinstance(arg, np.void):
+            return template % self._make_condition(
+                AndList(('`%s`='+('%s' if self.heading[k].numeric else '"%s"')) % (k, arg[k])
+                        for k in arg.dtype.fields if k in self.heading))
+
+        # restrict by another relation (aka semijoin and antijoin)
+        if isinstance(arg, RelationalOperand):
+            common_attributes = [q for q in self.heading.names if q in arg.heading.names]
+            return (
+                # without common attributes, any non-empty relation matches everything
+                (not negate if arg else negate) if not common_attributes
+                else '({fields}) {not_}in ({subquery})'.format(
+                    fields='`' + '`,`'.join(common_attributes) + '`',
+                    not_="not " if negate else "",
+                    subquery=arg.make_sql(common_attributes)))
+
+        # if iterable (but not a string, a relation, or an AndList), treat as an OrList
+        try:
+            or_list = [self._make_condition(q) for q in arg if q is not False]
+        except TypeError:
+            raise DataJointError('Invalid restriction type %r' % arg)
+        else:
+            if any(item is True for item in or_list):  # if any item is True, the whole thing is True
+                return not negate
+            return template % ('(%s)' % ' OR '.join(or_list)) if or_list else negate  # an empty or list is False
+
     @property
     def where_clause(self):
         """
-        convert self.restrictions to the SQL WHERE clause
+        convert self.restriction to the SQL WHERE clause
         """
-
-        def make_condition(arg, _negate=False):
-            if isinstance(arg, str):
-                return arg, _negate
-            elif isinstance(arg, AndList):
-                return '(' + ' AND '.join([make_condition(element)[0] for element in arg]) + ')', _negate
-            elif isinstance(arg, bool):
-                return 'FALSE' if _negate == arg else 'TRUE', False
-            # semijoin or antijoin
-            elif isinstance(arg, RelationalOperand):
-                common_attributes = [q for q in self.heading.names if q in arg.heading.names]
-                if not common_attributes:
-                    condition = 'FALSE' if _negate else 'TRUE'
-                else:
-                    condition = '({fields}) {not_}in ({subquery})'.format(
-                        fields='`' + '`,`'.join(common_attributes) + '`',
-                        not_="not " if _negate else "",
-                        subquery=arg.make_sql(common_attributes))
-                return condition, False  # _negate is cleared
-
-            # mappings are turned into ANDed equality conditions
-            elif isinstance(arg, collections.abc.Mapping):
-                condition = ['`%s`=%r' % (k, (v if not isinstance(v, (
-                    datetime.date, datetime.datetime, datetime.time, decimal.Decimal)) else str(v)))
-                             for k, v in arg.items() if k in self.heading]
-            elif isinstance(arg, np.void):
-                # element of a record array
-                condition = [('`%s`='+('%s' if self.heading[k].numeric else '"%s"')) % (k, arg[k])
-                             for k in arg.dtype.fields if k in self.heading]
-            else:
-                raise DataJointError('Invalid restriction type')
-            return ' AND '.join(condition) if condition else 'TRUE', _negate
-
-        if not self.is_restricted:
-            return ''
-
-        # An empty or-list in the restrictions immediately causes an empty result
-        if restricts_to_empty(self.restrictions):
-            return ' WHERE FALSE'
-
-        conditions = []
-        for item in self.restrictions:
-            negate = isinstance(item, Not)
-            if negate:
-                item = item.restriction  # NOT is added below
-            if isinstance(item, (list, tuple, set, np.ndarray)):
-                item = '(' + ') OR ('.join(
-                    [make_condition(q)[0] for q in item if q is not restricts_to_empty(q)]) + ')'
-            else:
-                item, negate = make_condition(item, negate)
-            conditions.append(('NOT (%s)' if negate else '(%s)') % item)
-        return ' WHERE ' + ' AND '.join(conditions)
+        cond = self._make_condition(self.restriction)
+        return '' if cond is True else ' WHERE %s' % cond
 
     def get_select_fields(self, select_fields=None):
         """
@@ -317,7 +258,6 @@ class RelationalOperand:
         Successive restrictions are combined using the logical AND.
         The AndList class is provided to play the role of successive restrictions.
         Any relation, collection, or sequence other than an AndList are treated as OrLists.
-        However, the class OrList is still provided for cases when explicitness is required.
         Inverse restriction is accomplished by either using the subtraction operator or the Not class.
 
         The expressions in each row equivalent:
@@ -355,22 +295,9 @@ class RelationalOperand:
         :param restriction: a sequence or an array (treated as OR list), another relation, an SQL condition string, or
             an AndList.
         """
-        assert not self.heading.expressions or isinstance(self, GroupBy), "Cannot restrict in place" \
-                                                                          " a projection with renamed attributes."
-        if not restricts_to_same(restriction):
-            self.restrictions.append(restriction)
-        elif restricts_to_empty(restriction):
-            self.restrictions.set(False)
-        return self
-
-    def allow(self, arg):
-        assert not self.heading.expressions or isinstance(self, GroupBy), "Cannot restrict in place" \
-                                                                          " a projection with renamed attributes."
-        if self.restrictions:
-            if restricts_to_same(arg):
-                self.restrictions.clear()
-            else:
-                self.restrictions.set(OrList([self.restrictions, arg]))
+        assert not self.heading.expressions or isinstance(self, GroupBy), "Cannot restrict a projection" \
+                                                                          " with renamed attributes in place."
+        self.restriction.append(restriction)
         return self
 
     @property
@@ -383,7 +310,7 @@ class RelationalOperand:
 
     def attributes_in_restriction(self):
         """
-        :return: list of attributes that are probably used in the restrictions.
+        :return: list of attributes that are probably used in the restriction.
             The function errs on the side of false positives.
             For example, if the restriction is "val='id'", then the attribute 'id' would be flagged.
             This is used internally for optimizing SQL statements.
@@ -556,9 +483,8 @@ class Not:
     """
     invert restriction
     """
-
     def __init__(self, restriction):
-        self.restriction = True if isinstance(restriction, U) else restriction
+        self.restriction = restriction  if isinstance(restriction, AndList) else AndList([restriction])
 
 
 class Join(RelationalOperand):
@@ -595,8 +521,8 @@ class Join(RelationalOperand):
                 obj._arg1.heading.dependent_attributes).intersection(obj._arg2.heading.dependent_attributes)))
         except StopIteration:
             obj._heading = obj._arg1.heading.join(obj._arg2.heading)
-            obj.restrict(obj._arg1.restrictions)
-            obj.restrict(obj._arg2.restrictions)
+            obj.restrict(obj._arg1.restriction)
+            obj.restrict(obj._arg2.restriction)
         return obj
 
     @staticmethod
@@ -706,7 +632,7 @@ class Projection(RelationalOperand):
         else:
             obj._arg = arg
             obj._heading = obj._arg.heading.project(attributes, named_attributes)
-            obj &= arg.restrictions  # copy restrictions when no subquery
+            obj &= arg.restriction  # copy restriction when no subquery
         return obj
 
     @staticmethod

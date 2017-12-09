@@ -208,7 +208,9 @@ else:
             graph = nx.DiGraph(self).subgraph(nodes)
             nx.set_node_attributes(graph, 'node_type', {n: _get_tier(n) for n in graph})
             # relabel nodes to class names
-            mapping = {node: (lookup_class_name(node, self.context) or node) for node in graph.nodes()}
+            clean_context = dict((k, v) for k, v in self.context.items() if not k.startswith('_'))  # exclude ipython's implicit variables
+            mapping = {node: (lookup_class_name(node, clean_context) or node)
+                       for node in graph.nodes()}
             new_names = [mapping.values()]
             if len(new_names) > len(set(new_names)):
                 raise DataJointError('Some classes have identical names. The ERD cannot be plotted.')

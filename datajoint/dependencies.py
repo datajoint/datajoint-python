@@ -1,6 +1,6 @@
-import pyparsing as pp
 import networkx as nx
 import itertools
+from collections import defaultdict
 from . import DataJointError
 
 
@@ -8,88 +8,68 @@ class Dependencies(nx.DiGraph):
     """
     The graph of dependencies (foreign keys) between loaded tables.
     """
-    __primary_key_parser = (pp.CaselessLiteral('PRIMARY KEY') +
-                            pp.QuotedString('(', endQuoteChar=')').setResultsName('primary_key'))
-
     def __init__(self, connection):
         self._conn = connection
-        self.loaded_tables = set()
         self._node_alias_count = itertools.count()
         super().__init__(self)
 
-    @staticmethod
-    def __foreign_key_parser(database):
-        def paste_database(unused1, unused2, toc):
-            return ['`{database}`.`{table}`'.format(database=database, table=toc[0])]
-
-        return (pp.CaselessLiteral('CONSTRAINT').suppress() +
-                pp.QuotedString('`').suppress() +
-                pp.CaselessLiteral('FOREIGN KEY').suppress() +
-                pp.QuotedString('(', endQuoteChar=')').setResultsName('attributes') +
-                pp.CaselessLiteral('REFERENCES') +
-                pp.Or([
-                    pp.QuotedString('`').setParseAction(paste_database),
-                    pp.Combine(pp.QuotedString('`', unquoteResults=False) + '.' +
-                               pp.QuotedString('`', unquoteResults=False))]).setResultsName('referenced_table') +
-                pp.QuotedString('(', endQuoteChar=')').setResultsName('referenced_attributes'))
-
-    def add_table(self, table_name):
-        """
-        Adds table to the dependency graph
-        :param table_name: in format `schema`.`table`
-        """
-        if table_name in self.loaded_tables:
-            return
-        fk_parser = self.__foreign_key_parser(table_name.split('.')[0].strip('`'))
-        self.loaded_tables.add(table_name)
-        self.add_node(table_name)
-        create_statement = self._conn.query('SHOW CREATE TABLE %s' % table_name).fetchone()[1].split('\n')
-        primary_key = None
-        for line in create_statement:
-            if primary_key is None:
-                try:
-                    result = self.__primary_key_parser.parseString(line)
-                except pp.ParseException:
-                    pass
-                else:
-                    primary_key = [s.strip(' `') for s in result.primary_key.split(',')]
-            try:
-                result = fk_parser.parseString(line)
-            except pp.ParseException:
-                pass
-            else:
-                if '`.`~' not in result.referenced_table:  # omit external tables
-                    referencing_attributes = [r.strip('` ') for r in result.attributes.split(',')]
-                    referenced_attributes = [r.strip('` ') for r in result.referenced_attributes.split(',')]
-                    props = dict(
-                        primary=all(a in primary_key for a in referencing_attributes),
-                        referencing_attributes=referencing_attributes,
-                        referenced_attributes=referenced_attributes,
-                        aliased=not all(a == b for a, b in zip(referencing_attributes, referenced_attributes)),
-                        multi=not all(a in referencing_attributes for a in primary_key))
-                    if not props['aliased']:
-                        self.add_edge(result.referenced_table, table_name, **props)
-                    else:
-                        # for aliased dependencies, add an extra node in the format '1', '2', etc
-                        alias_node = '%d' % next(self._node_alias_count)
-                        self.add_node(alias_node)
-                        self.add_edge(result.referenced_table, alias_node, **props)
-                        self.add_edge(alias_node, table_name, **props)
-
-    def load(self, target=None):
+    def load(self):
         """
         Load dependencies for all loaded schemas.
         This method gets called before any operation that requires dependencies: delete, drop, populate, progress.
         """
-        if target is not None and '.' in target:  # `database`.`table`
-            self.add_table(target)
-        else:
-            databases = self._conn.schemas if target is None else [target]
-            for database in databases:
-                for row in self._conn.query('SHOW TABLES FROM `{database}`'.format(database=database)):
-                    table = row[0]
-                    if not table.startswith('~'):  # exclude service tables
-                        self.add_table('`{db}`.`{tab}`'.format(db=database, tab=table))
+
+        # reload from scratch to prevent duplication of renamed edges
+        self.clear()
+
+        # load primary key info
+        keys = self._conn.query("""
+                SELECT
+                    concat('`', table_schema, '`.`', table_name, '`') as tab, column_name
+                FROM information_schema.key_column_usage
+                WHERE table_name not LIKE "~%%" AND table_schema in ('{schemas}') AND constraint_name="PRIMARY"
+                """.format(schemas="','".join(self._conn.schemas)))
+        pks = defaultdict(set)
+        for key in keys:
+            pks[key[0]].add(key[1])
+
+        # add nodes to the graph
+        for n, pk in pks.items():
+            self.add_node(n, primary_key=pk)
+
+        # load foreign keys
+        keys = self._conn.query("""
+        SELECT constraint_name,
+            concat('`', table_schema, '`.`', table_name, '`') as referencing_table,
+            concat('`', referenced_table_schema, '`.`',  referenced_table_name, '`') as referenced_table,
+            column_name, referenced_column_name
+        FROM information_schema.key_column_usage
+        WHERE referenced_table_name NOT LIKE "~%%" AND (referenced_table_schema in ('{schemas}') OR
+            referenced_table_schema is not NULL AND table_schema in ('{schemas}'))
+        """.format(schemas="','".join(self._conn.schemas)), as_dict=True)
+        fks = defaultdict(lambda: dict(attr_map=dict()))
+        for key in keys:
+            d = fks[(key['constraint_name'], key['referencing_table'], key['referenced_table'])]
+            d['referencing_table'] = key['referencing_table']
+            d['referenced_table'] = key['referenced_table']
+            d['attr_map'][key['column_name']] = key['referenced_column_name']
+
+        # add edges to the graph
+        for fk in fks.values():
+            props = dict(
+                primary=all(attr in pks[fk['referencing_table']] for attr in fk['attr_map']),
+                attr_map=fk['attr_map'],
+                aliased=any(k != v for k, v in fk['attr_map'].items()),
+                multi=not all(a in fk['attr_map'] for a in pks[fk['referencing_table']]))
+            if not props['aliased']:
+                self.add_edge(fk['referenced_table'], fk['referencing_table'], **props)
+            else:
+                # for aliased dependencies, add an extra node in the format '1', '2', etc
+                alias_node = '%d' % next(self._node_alias_count)
+                self.add_node(alias_node)
+                self.add_edge(fk['referenced_table'], alias_node, **props)
+                self.add_edge(alias_node, fk['referencing_table'], **props)
+
         if not nx.is_directed_acyclic_graph(self):  # pragma: no cover
             raise DataJointError('DataJoint can only work with acyclic dependencies')
 
