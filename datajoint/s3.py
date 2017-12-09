@@ -8,6 +8,7 @@ from io import BytesIO
 import boto3
 from botocore.exceptions import ClientError
 
+from . import config
 from . import DataJointError
 
 logger = logging.getLogger(__name__)
@@ -136,13 +137,14 @@ def bucket(aws_bucket_name, aws_access_key_id, aws_secret_access_key):
 
 def get_config(store):
     try:
-        bucket_name = store['aws_bucket_name']
-        key_id = store['aws_access_key_id']
-        key = store['aws_secret_access_key']
-        location = store['location']
-    except KeyError:
+        spec = config[store]
+        bucket_name = spec['bucket']
+        key_id = spec['aws_access_key_id']
+        key = spec['aws_secret_access_key']
+        location = spec['location']
+    except KeyError as e:
         raise DataJointError(
-            'S3 Storage {store} misconfigured.'.format(store=store))
+            'Store {s} misconfigured for s3 {e}.'.format(s=store, e=e))
 
     return bucket_name, key_id, key, location
 
