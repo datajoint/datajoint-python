@@ -57,21 +57,21 @@ def test_dj_bucket_factory():
     # test constructing OK
     dj.s3.Bucket(name='mybucket', key_id='123', key='abc')
 
-    uri = 's3://djtest.datajoint.io'
+    name = 'djtest.datajoint.io'
     key_id = '123'
     key = 'abc'
 
     # check bucket() factory function
-    b1 = dj.s3.bucket(uri, key_id, key)
+    b1 = dj.s3.bucket(name, key_id, key)
 
-    assert dj.s3.bucket(uri, key_id, key) == b1
+    assert dj.s3.bucket(name, key_id, key) == b1
 
 
 @mock_s3
 class DjBucketTest(TestCase):
 
     def setUp(self):
-        b = dj.s3.bucket('s3://djtest.datajoint.io', '123', 'abc')
+        b = dj.s3.bucket('djtest.datajoint.io', '123', 'abc')
 
         # create moto's virtual bucket
         b.connect()  # note: implicit test of b.connect(), which is trivial

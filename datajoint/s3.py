@@ -127,8 +127,7 @@ def bucket(aws_bucket_name, aws_access_key_id, aws_secret_access_key):
     if aws_bucket_name in bucket.bucket:
         return bucket.bucket[aws_bucket_name]
 
-    b = Bucket(aws_bucket_name.split("s3://")[1],
-               aws_access_key_id, aws_secret_access_key)
+    b = Bucket(aws_bucket_name, aws_access_key_id, aws_secret_access_key)
 
     bucket.bucket[aws_bucket_name] = b
 
