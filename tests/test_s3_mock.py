@@ -32,7 +32,7 @@ class DjS3MockTest(TestCase):
         count = 7
         extra = 3
         for i in range(count):
-            hash1 = ext.put('external-s3', input_)  # HEER
+            hash1 = ext.put('external-s3', input_)
         for i in range(extra):
             hash2 = ext.put('external-s3', np.random.randn(4, 3, 2))
 
