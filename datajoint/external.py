@@ -20,7 +20,6 @@ def safe_write(filename, blob):
     shutil.copyfile(temp_file, filename)
 
 
-
 class ExternalTable(BaseRelation):
     """
     The table tracking externally stored objects.
@@ -64,7 +63,7 @@ class ExternalTable(BaseRelation):
 
         # serialize object
         blob = pack(obj)
-        hash = long_hash(blob) + store[len('external-'):]
+        blob_hash = long_hash(blob) + store[len('external-'):]
 
         try:
             protocol = spec['protocol']
@@ -73,7 +72,7 @@ class ExternalTable(BaseRelation):
 
         if protocol == 'file':
             folder = os.path.join(spec['location'], self.database)
-            full_path = os.path.join(folder, hash)
+            full_path = os.path.join(folder, blob_hash)
             if not os.path.isfile(full_path):
                 try:
                     safe_write(full_path, blob)
@@ -89,18 +88,18 @@ class ExternalTable(BaseRelation):
             "INSERT INTO {tab} (hash, size) VALUES ('{hash}', {size}) "
             "ON DUPLICATE KEY UPDATE timestamp=CURRENT_TIMESTAMP".format(
                 tab=self.full_table_name,
-                hash=hash,
+                hash=blob_hash,
                 size=len(blob)))
-        return hash
+        return blob_hash
 
-    def get(self, hash):
+    def get(self, blob_hash):
         """
         get an object from external store.
         Does not need to check whether it's in the table.
         """
-        store = hash[STORE_HASH_LENGTH:]
+        store = blob_hash[STORE_HASH_LENGTH:]
         store = 'external' + ('-' if store else '') + store
-        cache_file = os.path.join(config['cache'], hash) if 'cache' in config else None
+        cache_file = os.path.join(config['cache'], blob_hash) if 'cache' in config and config['cache'] else None
 
         blob = None
         if cache_file:
@@ -122,7 +121,7 @@ class ExternalTable(BaseRelation):
                 raise DataJointError('Storage {store} config is missing the protocol field'.format(store=store))
 
             if protocol == 'file':
-                full_path = os.path.join(spec['location'], self.database, hash)
+                full_path = os.path.join(spec['location'], self.database, blob_hash)
                 try:
                     with open(full_path, 'rb') as f:
                         blob = f.read()

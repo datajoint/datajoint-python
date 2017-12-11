@@ -1,6 +1,7 @@
 import hashlib
 import base64
 
+
 def key_hash(key):
     """
     32-byte hash used for lookup of primary keys of jobs
