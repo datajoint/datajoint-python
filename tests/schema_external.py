@@ -2,7 +2,7 @@
 a schema for testing external attributes
 """
 
-import os
+import tempfile
 import datajoint as dj
 
 from . import PREFIX, CONN_INFO
@@ -25,10 +25,8 @@ dj.config['external-compute'] = {
     'user': 'djtest',
     'token': '2e05709792545ce'}
 
-cache_path = 'dj-cache'
-if not os.path.exists(cache_path):
-    os.makedirs(cache_path)
-dj.config['cache'] = cache_path
+dj.config['cache'] = 'dj-cache'
+tempfile.TemporaryDirectory(dj.config['cache'])
 
 
 @schema
