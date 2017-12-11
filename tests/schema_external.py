@@ -2,6 +2,7 @@
 a schema for testing external attributes
 """
 
+import tempfile
 import datajoint as dj
 
 from . import PREFIX, CONN_INFO
@@ -24,23 +25,20 @@ dj.config['external-compute'] = {
     'user': 'djtest',
     'token': '2e05709792545ce'}
 
-dj.config['cache'] = {
-    'protocol': 'file',
-    'location': '/media/dimitri/ExtraDrive1/dj-store/cache'}
-
+dj.config['cache'] =  tempfile.mkdtemp('dj-cache')
 
 @schema
 class Simple(dj.Manual):
     definition = """
     simple  : int
     ---
-    item  : external-raw 
+    item  : external-raw
     """
 
 @schema
 class Seed(dj.Lookup):
     definition = """
-    seed :  int 
+    seed :  int
     """
     contents = zip(range(4))
 
@@ -50,7 +48,7 @@ class Dimension(dj.Lookup):
     definition = """
     dim  : int
     ---
-    dimensions  : blob  
+    dimensions  : blob
     """
     contents = (
         [0, [100, 50]],

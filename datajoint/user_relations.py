@@ -10,6 +10,12 @@ from . import DataJointError
 
 _base_regexp = r'[a-z][a-z0-9]*(_[a-z][a-z0-9]*)*'
 
+# attributes that trigger instantiation of user classes
+supported_class_attrs = set((
+    'key_source', 'describe', 'populate', 'progress',
+    'proj', 'aggr', 'heading', 'fetch', 'fetch1',
+    'insert', 'insert1', 'drop', 'drop_quick',
+    'delete', 'delete_quick'))
 
 class OrderedClass(type):
     """
@@ -32,6 +38,20 @@ class OrderedClass(type):
         if hasattr(cls, '_ordered_class_members'):
             cls._ordered_class_members.append(name)
         super().__setattr__(name, value)
+
+    def __getattribute__(cls, name):
+        # trigger instantiation for supported class attrs
+        return (cls().__getattribute__(name) if name in supported_class_attrs
+                else super().__getattribute__(name))
+
+    def __and__(cls, arg):
+        return cls() & arg
+
+    def __sub__(cls, arg):
+        return cls() & arg
+
+    def __mul__(cls, arg):
+        return cls() * arg
 
 
 class UserRelation(BaseRelation, metaclass=OrderedClass):
