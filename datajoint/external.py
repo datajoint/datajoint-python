@@ -1,5 +1,4 @@
 import os
-import shutil
 from . import config, DataJointError
 from .hash import long_hash
 from .blob import pack, unpack
@@ -17,7 +16,7 @@ def safe_write(filename, blob):
     temp_file = filename + '.saving'
     with open(temp_file, 'bw') as f:
         f.write(blob)
-    shutil.copyfile(temp_file, filename)
+    os.rename(temp_file, filename)
 
 
 class ExternalTable(BaseRelation):
