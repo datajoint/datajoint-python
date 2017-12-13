@@ -157,10 +157,18 @@ class ExternalTable(BaseRelation):
             (" AND ".join('hash NOT IN (SELECT {column_name} FROM {referencing_table})'.format(**ref)
                           for ref in self.references) or "TRUE")).fetchone()[0]
 
+    def delete(self):
+        return self.delete_quick()
+
     def delete_quick(self):
-        raise DataJointError('Please use delete_garbage instead')
+        raise DataJointError('The external table does not support delete. Please use delete_garbage instead.')
+
+    def drop(self):
+        """drop the table"""
+        self.drop_quick()
 
     def drop_quick(self):
+        """drop the external table -- works only when it's empty"""
         if self:
             raise DataJointError('Cannot non-empty external table. Please use delete_garabge to clear it.')
         self.drop_quick()

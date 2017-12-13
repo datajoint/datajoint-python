@@ -51,8 +51,13 @@ def test_populate():
 def test_drop():
     image = modu.Image()
     image.populate()
-    image.drop()
+    image.external_table.drop()
 
+
+@raises(dj.DataJointError)
+def test_delete():
+    image = modu.Image()
+    image.external_table.delete()
 
 
 
