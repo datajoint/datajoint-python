@@ -1,5 +1,4 @@
 import os
-import shutil
 from . import config, DataJointError
 from .hash import long_hash
 from .blob import pack, unpack
@@ -7,20 +6,6 @@ from .base_relation import BaseRelation
 from .declare import STORE_HASH_LENGTH, HASH_DATA_TYPE
 
 from . import s3
-
-
-def safe_write(filename, blob):
-    """
-    A two-step write.
-    :param filename: full path
-    :param blob: binary data
-    :return: None
-    """
-    temp_file = filename + '.saving'
-    with open(temp_file, 'bw') as f:
-        f.write(blob)
-    shutil.copyfile(temp_file, filename)
-
 
 
 def safe_write(filename, blob):
