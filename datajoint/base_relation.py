@@ -167,15 +167,13 @@ class BaseRelation(RelationalOperand):
                 except StopIteration:
                     pass
             fields = list(name for name in heading if name in rows.heading)
-
             query = '{command} INTO {table} ({fields}) {select}{duplicate}'.format(
                 command='REPLACE' if replace else 'INSERT',
                 fields='`' + '`,`'.join(fields) + '`',
                 table=self.full_table_name,
                 select=rows.make_sql(select_fields=fields),
                 duplicate=(' ON DUPLICATE KEY UPDATE `{pk}`=`{pk}`'.format(pk=self.primary_key[0])
-                           if skip_duplicates else '')
-            )
+                           if skip_duplicates else ''))
             self.connection.query(query)
             return
 

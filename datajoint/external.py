@@ -1,4 +1,5 @@
 import os
+from tqdm import tqdm
 from . import config, DataJointError
 from .hash import long_hash
 from .blob import pack, unpack
@@ -133,3 +134,70 @@ class ExternalTable(BaseRelation):
                 safe_write(cache_file, blob)
 
         return unpack(blob)
+
+    @property
+    def references(self):
+        """
+        return the list of referencing tables and their referencing columns
+        :return:
+        """
+        return self.connection.query("""
+        SELECT concat('`', table_schema, '`.`', table_name, '`') as referencing_table, column_name
+        FROM information_schema.key_column_usage
+        WHERE referenced_table_name="{tab}" and referenced_table_schema="{db}"
+        """.format(tab=self.table_name, db=self.database), as_dict=True)
+
+    @property
+    def garbage_count(self):
+        """
+        :return: number of items that are no longer referenced
+        """
+        return self.connection.query(
+            "SELECT COUNT(*) FROM `{db}`.`{tab}` WHERE ".format(tab=self.table_name, db=self.database) +
+            (" AND ".join('hash NOT IN (SELECT {column_name} FROM {referencing_table})'.format(**ref)
+                          for ref in self.references) or "TRUE")).fetchone()[0]
+
+    def delete_quick(self):
+        raise DataJointError('Please use delete_garbage instead')
+
+    def drop_quick(self):
+        if not self:
+            raise DataJointError('Cannot non-empty external table. Please use delete_garabge to clear it.')
+        self.drop_quick()
+
+    def delete_garbage(self):
+        """
+        Delete items that are no longer referenced.
+        This operation is safe to perform at any time.
+        """
+        self.connection.query(
+            "DELETE FROM `{db}`.`{tab}` WHERE ".format(tab=self.table_name, db=self.database) +
+            " AND ".join(
+                'hash NOT IN (SELECT {column_name} FROM {referencing_table})'.format(**ref)
+                for ref in self.references) or "TRUE")
+        print('Deleted %d items' % self.connection.query("SELECT ROW_COUNT()").fetchone()[0])
+
+    def clean_store(self, store):
+        """
+        Clean unused data in an external storage repository from unused blobs.
+        This must be performed after delete_garbage during low-usage periods to reduce risks of data loss.
+        """
+        try:
+            spec = config[store]
+        except KeyError:
+            raise DataJointError('Storage {store} is not configured'.format(store=store))
+        try:
+            protocol = spec['protocol']
+        except KeyError:
+            raise DataJointError('Storage {store} config is missing the protocol field'.format(store=store))
+
+        if protocol == 'file':
+            folder = os.path.join(spec['location'], self.database)
+            lst = set(os.listdir(folder))
+            lst.difference_update(self.fetch('hash'))
+            print('Deleting %d unused items from %s' % (len(lst), folder), flush=True)
+            for f in tqdm(lst):
+                os.remove(os.path.join(folder, f))
+        else:
+            raise DataJointError('Unknown external storage protocol {protocol} for {store}'.format(
+                store=store, protocol=protocol))
