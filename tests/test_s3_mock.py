@@ -36,7 +36,7 @@ class DjS3MockTest(TestCase):
         for i in range(extra):
             hash2 = ext.put('external-s3', np.random.randn(4, 3, 2))
 
-        assert_true(all(hash in ext.fetch('hash') for hash in (hash1, hash2)))
+        assert_true(all(h in ext.fetch('hash') for h in (hash1, hash2)))
         assert_equal(len(ext), 1 + extra)
 
         output_ = ext.get(hash1)
