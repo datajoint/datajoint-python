@@ -81,7 +81,7 @@ class ExternalTable(BaseRelation):
                     os.makedirs(folder)
                     safe_write(full_path, blob)
         elif protocol == 's3':
-            s3.put(self.database, store, blob, hash)
+            s3.put(self.database, store, blob, blob_hash)
         else:
             raise DataJointError('Unknown external storage protocol {protocol} for {store}'.format(
                 store=store, protocol=protocol))
@@ -131,7 +131,7 @@ class ExternalTable(BaseRelation):
                 except FileNotFoundError:
                         raise DataJointError('Lost external blob')
             elif protocol == 's3':
-                blob = s3.get(self.database, store, blob, hash)
+                blob = s3.get(self.database, store, blob, blob_hash)
             else:
                 raise DataJointError('Unknown external storage protocol "%s"' % protocol)
 
