@@ -177,7 +177,7 @@ class ExternalTable(BaseRelation):
                 for ref in self.references) or "TRUE")
         print('Deleted %d items' % self.connection.query("SELECT ROW_COUNT()").fetchone()[0])
 
-    def clean_store(self, store):
+    def clean_store(self, store, display_progress=True):
         """
         Clean unused data in an external storage repository from unused blobs.
         This must be performed after delete_garbage during low-usage periods to reduce risks of data loss.
@@ -191,11 +191,13 @@ class ExternalTable(BaseRelation):
         except KeyError:
             raise DataJointError('Storage {store} config is missing the protocol field'.format(store=store))
 
+        progress = tqdm if display_progress else lambda x: x
+
         if protocol == 'file':
             folder = os.path.join(spec['location'], self.database)
             delete_list = set(os.listdir(folder)).difference(self.fetch('hash'))
             print('Deleting %d unused items from %s' % (len(delete_list), folder), flush=True)
-            for f in tqdm(delete_list):
+            for f in progress(delete_list):
                 os.remove(os.path.join(folder, f))
         else:
             raise DataJointError('Unknown external storage protocol {protocol} for {store}'.format(
