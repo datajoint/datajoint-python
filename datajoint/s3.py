@@ -162,14 +162,14 @@ def put(db, store, blob, blob_hash):
         b.put(BytesIO(blob), rpath)
 
 
-def get(db, store, blob, blob_hash):
+def get(db, store, blob_hash):
     name, kid, key, loc = get_config(store)
     b = bucket(name, kid, key)
     rpath = make_rpath_name(loc, db, blob_hash)
     return b.get(rpath, BytesIO()).getvalue()
 
 
-def delete(db, store, blob, blob_hash):
+def delete(db, store, blob_hash):
     name, kid, key, loc = get_config(store)
     b = bucket(name, kid, key)
     rpath = make_rpath_name(loc, db, blob_hash)

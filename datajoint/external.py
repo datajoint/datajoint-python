@@ -131,7 +131,7 @@ class ExternalTable(BaseRelation):
                 except FileNotFoundError:
                         raise DataJointError('Lost external blob')
             elif protocol == 's3':
-                blob = s3.get(self.database, store, blob, blob_hash)
+                blob = s3.get(self.database, store, blob_hash)
             else:
                 raise DataJointError('Unknown external storage protocol "%s"' % protocol)
 
