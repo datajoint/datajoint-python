@@ -1,29 +1,16 @@
 """
 a schema for testing external attributes
 """
+import tempfile
+
+import numpy as np
 
 import datajoint as dj
 
 from . import PREFIX, CONN_INFO
-import numpy as np
 
 schema = dj.schema(PREFIX + '_s3', locals(),
                    connection=dj.conn(**CONN_INFO))
-
-
-dj.config['external'] = {
-    'protocol': 'file',
-    'location': 'dj-store/external'}
-
-dj.config['external-raw'] = {
-    'protocol': 'file',
-    'location': 'dj-store/raw'}
-
-dj.config['external-compute'] = {
-    'protocol': 's3',
-    'location': '/datajoint-projects/test',
-    'user': 'djtest',
-    'token': '2e05709792545ce'}
 
 dj.config['external-s3'] = {
     'protocol': 's3',
@@ -32,16 +19,7 @@ dj.config['external-s3'] = {
     'aws_access_key_id': '1234567',
     'aws_secret_access_key': 'deadbeef'}
 
-dj.config['external-cache-s3'] = {
-    'protocol': 'cache-s3',
-    'bucket': 'testbucket.datajoint.io',
-    'location': '/datajoint-projects/test-external-cache-s3',
-    'aws_access_key_id': '1234567',
-    'aws_secret_access_key': 'deadbeef'}
-
-dj.config['external-cache'] = {
-    'protocol': 'cache',
-    'location': './cache'}
+dj.config['cache'] = tempfile.mkdtemp('dj-cache')
 
 
 @schema
