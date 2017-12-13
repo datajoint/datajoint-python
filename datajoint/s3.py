@@ -148,29 +148,29 @@ def get_config(store):
     return bucket_name, key_id, key, location
 
 
-def make_rpath_name(location, database, hash):
-    rpath = '{l}/{d}/{h}'.format(l=location, d=database, h=hash)
+def make_rpath_name(location, database, blob_hash):
+    rpath = '{l}/{d}/{h}'.format(l=location, d=database, h=blob_hash)
     # s3 is '' rooted; prevent useless '/' top-level 'directory'
     return rpath[1:] if rpath[0] == '/' else rpath
 
 
-def put(db, store, blob, hash):
+def put(db, store, blob, blob_hash):
     name, kid, key, loc = get_config(store)
     b = bucket(name, kid, key)
-    rpath = make_rpath_name(loc, db, hash)
+    rpath = make_rpath_name(loc, db, blob_hash)
     if not b.stat(rpath):
         b.put(BytesIO(blob), rpath)
 
 
-def get(db, store, blob, hash):
+def get(db, store, blob, blob_hash):
     name, kid, key, loc = get_config(store)
     b = bucket(name, kid, key)
-    rpath = make_rpath_name(loc, db, hash)
+    rpath = make_rpath_name(loc, db, blob_hash)
     return b.get(rpath, BytesIO()).getvalue()
 
 
-def delete(db, store, blob, hash):
+def delete(db, store, blob, blob_hash):
     name, kid, key, loc = get_config(store)
     b = bucket(name, kid, key)
-    rpath = make_rpath_name(loc, db, hash)
+    rpath = make_rpath_name(loc, db, blob_hash)
     b.delete(rpath)
