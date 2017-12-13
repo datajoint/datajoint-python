@@ -37,7 +37,7 @@ class RelationalOperand:
     RelationalOperand objects link other relational operands with relational operators.
     The leaves of this tree of objects are base relations.
     When fetching data from the database, this tree of objects is compiled into an SQL expression.
-    RelationalOperand operators are restrict, join, proj, and aggregate.
+    RelationalOperand operators are restrict, join, proj, and aggr.
     """
 
     def __init__(self, arg=None):
@@ -199,7 +199,7 @@ class RelationalOperand:
         """
         return Projection.create(self, attributes, named_attributes)
 
-    def aggregate(self, group, *attributes, keep_all_rows=False, **named_attributes):
+    def aggr(self, group, *attributes, keep_all_rows=False, **named_attributes):
         """
         Relational aggregation/projection operator
         :param group:  relation whose tuples can be used in aggregation operators
@@ -211,7 +211,7 @@ class RelationalOperand:
         return GroupBy.create(self, group, keep_all_rows=keep_all_rows,
                               attributes=attributes, named_attributes=named_attributes)
 
-    aggr = aggregate  # shorthand
+    aggregate = aggr  # aliased name for aggr
 
     def __iand__(self, restriction):
         """
@@ -655,7 +655,7 @@ class GroupBy(RelationalOperand):
     """
     GroupBy(rel, comp1='expr1', ..., compn='exprn')  produces a relation with the primary key specified by rel.heading.
     The computed arguments comp1, ..., compn use aggregation operators on the attributes of rel.
-    GroupBy is used RelationalOperand.aggregate and U.aggregate.
+    GroupBy is used RelationalOperand.aggr and U.aggr.
     GroupBy is a private class in DataJoint, not exposed to users.
     """
 
@@ -766,22 +766,22 @@ class U:
     The following expression produces a relation with one tuple and one attribute s containing the total number
     of tuples in relation:
 
-    >>> dj.U().aggregate(relation, n='count(*)')
+    >>> dj.U().aggr(relation, n='count(*)')
 
     The following expression produces a relation with one tuple containing the number n of distinct values of attr
     in relation.
 
-    >>> dj.U().aggregate(relation, n='count(distinct attr)')
+    >>> dj.U().aggr(relation, n='count(distinct attr)')
 
     The following expression produces a relation with one tuple and one attribute s containing the total sum of attr
     from relation:
 
-    >>> dj.U().aggregate(relation, s='sum(attr)')   # sum of attr from the entire relation
+    >>> dj.U().aggr(relation, s='sum(attr)')   # sum of attr from the entire relation
 
     The following expression produces a relation with the count n of tuples in relation containing each unique
     combination of values in attr1 and attr2.
 
-    >>> dj.U(attr1,attr2).aggregate(relation, n='count(*)')
+    >>> dj.U(attr1,attr2).aggr(relation, n='count(*)')
 
     Joins:
 
@@ -820,11 +820,11 @@ class U:
         copy._heading = copy.heading.extend_primary_key(self.primary_key)
         return copy
 
-    def aggregate(self, group, **named_attributes):
+    def aggr(self, group, **named_attributes):
         """
-        Aggregation of the type U('attr1','attr2').aggregate(rel, computation="expression")
+        Aggregation of the type U('attr1','attr2').aggr(rel, computation="expression")
         has the primary key ('attr1','attr2') and performs aggregation computations for all matching tuples of relation.
-        :param group:  The other relation which will be aggregated
+        :param group:  The other relation which will be aggregated.
         :param named_attributes: computations of the form new_attribute="sql expression on attributes of group"
         :return: The new relation
         """
@@ -833,4 +833,4 @@ class U:
             if self.primary_key else
             Projection.create(group, attributes=(), named_attributes=named_attributes, include_primary_key=False))
 
-    aggr = aggregate  # shorthand
+    aggregate = aggr  # alias for aggr

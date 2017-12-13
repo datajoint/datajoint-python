@@ -1,6 +1,6 @@
 from nose.tools import assert_true, assert_list_equal
 from numpy.testing import assert_almost_equal
-
+import datajoint as dj
 from . import schema_external as modu
 
 
@@ -20,6 +20,15 @@ def test_insert_and_fetch():
     q = (modu.Simple() & {'simple': 1}).fetch1('item')
     assert_list_equal(list(q), original_list)
     # test fetch1 as a dict
+    q = (modu.Simple() & {'simple': 1}).fetch1()
+    assert_list_equal(list(q['item']), original_list)
+    # test without cache
+    previous_cache = dj.config['cache']
+    dj.config['cache'] = None
+    q = (modu.Simple() & {'simple': 1}).fetch1()
+    assert_list_equal(list(q['item']), original_list)
+    # test with cache
+    dj.config['cache'] = previous_cache
     q = (modu.Simple() & {'simple': 1}).fetch1()
     assert_list_equal(list(q['item']), original_list)
 
