@@ -161,7 +161,7 @@ class ExternalTable(BaseRelation):
         raise DataJointError('Please use delete_garbage instead')
 
     def drop_quick(self):
-        if not self:
+        if self:
             raise DataJointError('Cannot non-empty external table. Please use delete_garabge to clear it.')
         self.drop_quick()
 
@@ -193,10 +193,9 @@ class ExternalTable(BaseRelation):
 
         if protocol == 'file':
             folder = os.path.join(spec['location'], self.database)
-            lst = set(os.listdir(folder))
-            lst.difference_update(self.fetch('hash'))
-            print('Deleting %d unused items from %s' % (len(lst), folder), flush=True)
-            for f in tqdm(lst):
+            delete_list = set(os.listdir(folder)).difference(self.fetch('hash'))
+            print('Deleting %d unused items from %s' % (len(delete_list), folder), flush=True)
+            for f in tqdm(delete_list):
                 os.remove(os.path.join(folder, f))
         else:
             raise DataJointError('Unknown external storage protocol {protocol} for {store}'.format(
