@@ -5,6 +5,8 @@ from .blob import pack, unpack
 from .base_relation import BaseRelation
 from .declare import STORE_HASH_LENGTH, HASH_DATA_TYPE
 
+from . import s3
+
 
 def safe_write(filename, blob):
     """
@@ -78,6 +80,8 @@ class ExternalTable(BaseRelation):
                 except FileNotFoundError:
                     os.makedirs(folder)
                     safe_write(full_path, blob)
+        elif protocol == 's3':
+            s3.put(self.database, store, blob, blob_hash)
         else:
             raise DataJointError('Unknown external storage protocol {protocol} for {store}'.format(
                 store=store, protocol=protocol))
@@ -126,6 +130,8 @@ class ExternalTable(BaseRelation):
                         blob = f.read()
                 except FileNotFoundError:
                         raise DataJointError('Lost external blob')
+            elif protocol == 's3':
+                blob = s3.get(self.database, store, blob_hash)
             else:
                 raise DataJointError('Unknown external storage protocol "%s"' % protocol)
 

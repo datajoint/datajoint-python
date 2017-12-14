@@ -25,7 +25,8 @@ dj.config['external-compute'] = {
     'user': 'djtest',
     'token': '2e05709792545ce'}
 
-dj.config['cache'] =  tempfile.mkdtemp('dj-cache')
+dj.config['cache'] = tempfile.mkdtemp('dj-cache')
+
 
 @schema
 class Simple(dj.Manual):
