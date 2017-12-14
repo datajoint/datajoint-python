@@ -1,5 +1,6 @@
 import warnings
 import pymysql
+import inspect
 import logging
 import inspect
 import re
@@ -36,7 +37,7 @@ class Schema:
     It also specifies the namespace `context` in which other UserRelation classes are defined.
     """
 
-    def __init__(self, database, context, connection=None, create_tables=True):
+    def __init__(self, database, context=None, connection=None, create_tables=True):
         """
         Associates the specified database with this schema object. If the target database does not exist
         already, will attempt on creating the database.
@@ -50,7 +51,7 @@ class Schema:
         self._log = None
         self.database = database
         self.connection = connection
-        self.context = context
+        self.context = context if context is not None else inspect.currentframe().f_back.f_locals
         self.create_tables = create_tables
         self._jobs = None
         self._external = None
