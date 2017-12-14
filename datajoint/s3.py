@@ -10,9 +10,9 @@ sessions = {}   # a dictionary of reused S3 sessions
 
 class S3:
     """
-    An S3 instance manipulates one specific object stored in AWS S3
+    An S3 instance manipulates an object stored in AWS S3
     """
-    def __init__(self, bucket, aws_access_key_id, aws_secret_access_key, location, database, blob_hash):
+    def __init__(self, bucket, aws_access_key_id, aws_secret_access_key, location, database, blob_hash, **_):
         cred = (aws_access_key_id, aws_secret_access_key)
         if cred not in sessions:
             # cache sessions
@@ -39,7 +39,7 @@ class S3:
 
     def get(self):
         obj = BytesIO()
-        self.download_fileobj(obj)
+        self.object.download_fileobj(obj)
         return obj.getvalue()
 
     def delete(self):

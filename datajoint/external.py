@@ -5,7 +5,7 @@ from .hash import long_hash
 from .blob import pack, unpack
 from .base_relation import BaseRelation
 from .declare import STORE_HASH_LENGTH, HASH_DATA_TYPE
-from . import s3
+from .s3 import S3
 
 
 def safe_write(filename, blob):
@@ -70,7 +70,10 @@ class ExternalTable(BaseRelation):
                     os.makedirs(folder)
                     safe_write(full_path, blob)
         elif spec['protocol'] == 's3':
-            s3.put(self.database, spec, blob, blob_hash)
+            try:
+                S3(database=self.database, blob_hash=blob_hash, **spec).put(blob)
+            except TypeError:
+                raise DataJointError('External store {store} configuration is incomplete.'.format(store=store))
 
         # insert tracking info
         self.connection.query(
@@ -108,7 +111,10 @@ class ExternalTable(BaseRelation):
                 except FileNotFoundError:
                     raise DataJointError('Lost external blob %s.' % full_path) from None
             elif spec['protocol'] == 's3':
-                blob = s3.get(self.database, spec, blob_hash)
+                try:
+                    blob = S3(database=self.database, blob_hash=blob_hash, **spec).get()
+                except TypeError:
+                    raise DataJointError('External store {store} configuration is incomplete.'.format(store=store))
 
             if cache_file:
                 safe_write(cache_file, blob)
