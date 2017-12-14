@@ -70,7 +70,7 @@ class ExternalTable(BaseRelation):
                     safe_write(full_path, blob)
         else:
             raise DataJointError('Unknown external storage protocol {protocol} for {store}'.format(
-                store=store, protocol=protocol))
+                store=store, protocol=spec['protocol']))
 
         # insert tracking info
         self.connection.query(
@@ -126,16 +126,6 @@ class ExternalTable(BaseRelation):
         FROM information_schema.key_column_usage
         WHERE referenced_table_name="{tab}" and referenced_table_schema="{db}"
         """.format(tab=self.table_name, db=self.database), as_dict=True)
-
-    @property
-    def garbage_count(self):
-        """
-        :return: number of items that are no longer referenced
-        """
-        return self.connection.query(
-            "SELECT COUNT(*) FROM `{db}`.`{tab}` WHERE ".format(tab=self.table_name, db=self.database) +
-            (" AND ".join('hash NOT IN (SELECT {column_name} FROM {referencing_table})'.format(**ref)
-                          for ref in self.references) or "TRUE")).fetchone()[0]
 
     def delete(self):
         return self.delete_quick()
