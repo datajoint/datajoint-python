@@ -16,7 +16,7 @@ def get_s3_object(bucket, aws_access_key_id, aws_secret_access_key, location, da
                                 aws_secret_access_key=aws_secret_access_key)
         sessions[cred] = session.resource('s3')
     remote_path = '/'.join((location.lstrip('/'), database, blob_hash))
-    return session.Object(bucket, remote_path)
+    return sessions[cred].Object(bucket, remote_path)
 
 
 def exists(**spec):
@@ -41,6 +41,5 @@ def get(**spec):
 
 
 def delete(**spec):
-    session, bucket, remote_path = get_s3_object(**spec)
-    r = session.Object(bucket, remote_path).delete()
+    r = get_s3_object(**spec).delete()
     return r['ResponseMetadata']['HTTPStatusCode'] == 204
