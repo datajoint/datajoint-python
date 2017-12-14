@@ -5,20 +5,8 @@ from .hash import long_hash
 from .blob import pack, unpack
 from .base_relation import BaseRelation
 from .declare import STORE_HASH_LENGTH, HASH_DATA_TYPE
-from .s3 import S3
-
-
-def safe_write(filename, blob):
-    """
-    A two-step write.
-    :param filename: full path
-    :param blob: binary data
-    :return: None
-    """
-    temp_file = filename + '.saving'
-    with open(temp_file, 'bw') as f:
-        f.write(blob)
-    os.rename(temp_file, filename)
+from .s3 import S3, delete_all_except
+from .utils import safe_write
 
 
 class ExternalTable(BaseRelation):
@@ -174,7 +162,10 @@ class ExternalTable(BaseRelation):
             for f in progress(delete_list):
                 os.remove(os.path.join(folder, f))
         elif spec['protocol'] == 's3':
-            raise NotImplementedError
+            try:
+                delete_all_except(self.fetch('hash'), database=self.database, **spec)
+            except TypeError:
+                raise DataJointError('External store {store} configuration is incomplete.'.format(store=store))
 
     @staticmethod
     def _get_store_spec(store):

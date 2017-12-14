@@ -42,6 +42,12 @@ class S3:
         self.object.download_fileobj(obj)
         return obj.getvalue()
 
-    def delete(self):
-        r = self.object.delete()
-        return r['ResponseMetadata']['HTTPStatusCode'] == 204
+
+def delete_all_except(except_list, bucket, aws_access_key_id, aws_secret_access_key, location, database, **_):
+    cred = (aws_access_key_id, aws_secret_access_key)
+    if cred not in sessions:
+        # cache sessions
+        session = boto3.Session(aws_access_key_id=aws_access_key_id,
+                                aws_secret_access_key=aws_secret_access_key)
+        sessions[cred] = session.resource('s3')
+    raise NotImplementedError
