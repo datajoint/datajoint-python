@@ -56,21 +56,10 @@ class ExternalTable(BaseRelation):
         """
         put an object in external store
         """
-        try:
-            spec = config[store]
-        except KeyError:
-            raise DataJointError('Storage {store} is not configured'.format(store=store))
-
-        # serialize object
+        spec = self._get_store_spec(store)
         blob = pack(obj)
         blob_hash = long_hash(blob) + store[len('external-'):]
-
-        try:
-            protocol = spec['protocol']
-        except KeyError:
-            raise DataJointError('Storage {store} config is missing the protocol field'.format(store=store))
-
-        if protocol == 'file':
+        if spec['protocol'] == 'file':
             folder = os.path.join(spec['location'], self.database)
             full_path = os.path.join(folder, blob_hash)
             if not os.path.isfile(full_path):
@@ -110,25 +99,16 @@ class ExternalTable(BaseRelation):
                 pass
 
         if blob is None:
-            try:
-                spec = config[store]
-            except KeyError:
-                raise DataJointError('Store `%s` is not configured' % store)
-
-            try:
-                protocol = spec['protocol']
-            except KeyError:
-                raise DataJointError('Storage {store} config is missing the protocol field'.format(store=store))
-
-            if protocol == 'file':
+            spec = self._get_store_spec(store)
+            if spec['protocol'] == 'file':
                 full_path = os.path.join(spec['location'], self.database, blob_hash)
                 try:
                     with open(full_path, 'rb') as f:
                         blob = f.read()
                 except FileNotFoundError:
-                        raise DataJointError('Lost external blob')
+                    raise DataJointError('Lost external blob %s.' % full_path) from None
             else:
-                raise DataJointError('Unknown external storage protocol "%s"' % protocol)
+                raise DataJointError('Unknown external storage protocol "%s"' % self['protocol'])
 
             if cache_file:
                 safe_write(cache_file, blob)
@@ -190,18 +170,9 @@ class ExternalTable(BaseRelation):
         Clean unused data in an external storage repository from unused blobs.
         This must be performed after delete_garbage during low-usage periods to reduce risks of data loss.
         """
-        try:
-            spec = config[store]
-        except KeyError:
-            raise DataJointError('Storage {store} is not configured'.format(store=store))
-        try:
-            protocol = spec['protocol']
-        except KeyError:
-            raise DataJointError('Storage {store} config is missing the protocol field'.format(store=store))
-
+        spec = self._get_store_spec(store)
         progress = tqdm if display_progress else lambda x: x
-
-        if protocol == 'file':
+        if spec['protocol'] == 'file':
             folder = os.path.join(spec['location'], self.database)
             delete_list = set(os.listdir(folder)).difference(self.fetch('hash'))
             print('Deleting %d unused items from %s' % (len(delete_list), folder), flush=True)
@@ -209,4 +180,15 @@ class ExternalTable(BaseRelation):
                 os.remove(os.path.join(folder, f))
         else:
             raise DataJointError('Unknown external storage protocol {protocol} for {store}'.format(
-                store=store, protocol=protocol))
+                store=store, protocol=self['protocol']))
+
+    @staticmethod
+    def _get_store_spec(store):
+        try:
+            spec = config[store]
+        except KeyError:
+            raise DataJointError('Storage {store} is not configured'.format(store=store)) from None
+        if 'protocol' not in spec:
+            raise DataJointError('Storage {store} config is missing the protocol field'.format(store=store))
+        return spec
+
