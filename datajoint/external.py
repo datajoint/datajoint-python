@@ -140,7 +140,7 @@ class ExternalTable(BaseRelation):
     def drop_quick(self):
         """drop the external table -- works only when it's empty"""
         if self:
-            raise DataJointError('Cannot non-empty external table. Please use delete_garabge to clear it.')
+            raise DataJointError('Cannot drop a non-empty external table. Please use delete_garabge to clear it.')
         self.drop_quick()
 
     def delete_garbage(self):
