@@ -620,7 +620,7 @@ class Log(BaseRelation):
                 version=version + 'py',
                 host=platform.uname().node,
                 event=event), skip_duplicates=True, ignore_extra_fields=True)
-        except pymysql.err.OperationalError:
+        except DataJointError:
             logger.info('could not log event in table ~log')
 
     def delete(self):
