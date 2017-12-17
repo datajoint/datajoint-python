@@ -22,7 +22,7 @@ class OrderedClass(type):
     Class whose members are ordered
     See https://docs.python.org/3/reference/datamodel.html#metaclass-example
 
-    TODO:  In Python 3.6, this will no longer be necessary and should be removed (PEP 520)
+    Note:  Since Python 3.6, this will no longer be necessary and should be removed (PEP 520)
     https://www.python.org/dev/peps/pep-0520/
     """
     @classmethod
@@ -43,6 +43,9 @@ class OrderedClass(type):
         # trigger instantiation for supported class attrs
         return (cls().__getattribute__(name) if name in supported_class_attrs
                 else super().__getattribute__(name))
+
+    def __len__(cls):
+        return len(cls())
 
     def __and__(cls, arg):
         return cls() & arg
