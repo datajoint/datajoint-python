@@ -27,7 +27,7 @@ class DjS3MockTest(TestCase):
 
     def test_s3_methods(self):
         ext = ExternalTable(schema.connection, schema.database)
-        ext.delete_quick()
+        ext.delete_garbage()
         input_ = np.random.randn(3, 7, 8)
         count = 7
         extra = 3
