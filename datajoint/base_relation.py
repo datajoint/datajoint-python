@@ -167,15 +167,13 @@ class BaseRelation(RelationalOperand):
                 except StopIteration:
                     pass
             fields = list(name for name in heading if name in rows.heading)
-
             query = '{command} INTO {table} ({fields}) {select}{duplicate}'.format(
                 command='REPLACE' if replace else 'INSERT',
                 fields='`' + '`,`'.join(fields) + '`',
                 table=self.full_table_name,
                 select=rows.make_sql(select_fields=fields),
                 duplicate=(' ON DUPLICATE KEY UPDATE `{pk}`=`{pk}`'.format(pk=self.primary_key[0])
-                           if skip_duplicates else '')
-            )
+                           if skip_duplicates else ''))
             self.connection.query(query)
             return
 
@@ -532,7 +530,7 @@ def lookup_class_name(name, context, depth=3):
                 except AttributeError:
                     pass  # not a UserRelation -- cannot have part tables.
                 else:
-                    for part in (getattr(member, p) for p in parts if hasattr(member, p)):
+                    for part in (getattr(member, p) for p in parts if p[0].isupper() and hasattr(member, p)):
                         if inspect.isclass(part) and issubclass(part, BaseRelation) and part.full_table_name == name:
                             return '.'.join([node['context_name'], member_name, part.__name__]).lstrip('.')
             elif node['depth'] > 0 and inspect.ismodule(member) and member.__name__ != 'datajoint':
@@ -622,7 +620,7 @@ class Log(BaseRelation):
                 version=version + 'py',
                 host=platform.uname().node,
                 event=event), skip_duplicates=True, ignore_extra_fields=True)
-        except pymysql.err.OperationalError:
+        except DataJointError:
             logger.info('could not log event in table ~log')
 
     def delete(self):

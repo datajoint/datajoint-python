@@ -18,9 +18,9 @@ import datajoint as dj
 
 
 class MotoTest:
-    '''
+    """
     Simple example to verify moto is itself working
-    '''
+    """
 
     def __init__(self, name, value):
         self.name = name
@@ -47,24 +47,6 @@ def test_moto_test():
 # END via Moto Docs
 
 
-@mock_s3
-def test_dj_bucket_factory():
-    '''
-    Test *part of* the dj.bucket() singleton/factory function.
-    The user-interactive portion is not tested.
-    '''
-
-    # test constructing OK
-    dj.s3.Bucket(name='mybucket', key_id='123', key='abc')
-
-    name = 'djtest.datajoint.io'
-    key_id = '123'
-    key = 'abc'
-
-    # check bucket() factory function
-    b1 = dj.s3.bucket(name, key_id, key)
-
-    assert dj.s3.bucket(name, key_id, key) == b1
 
 
 @mock_s3
