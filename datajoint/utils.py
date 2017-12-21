@@ -1,4 +1,7 @@
+"""General-purpose utilities"""
+
 import re
+import os
 from datajoint import DataJointError
 
 class ClassProperty:
@@ -18,12 +21,12 @@ def user_choice(prompt, choices=("yes", "no"), default=None):
     :param default: default choice
     :return: the user's choice
     """
+    assert default in choices
     choice_list = ', '.join((choice.title() if choice == default else choice for choice in choices))
-    valid = False
-    while not valid:
+    response = None
+    while response not in choices:
         response = input(prompt + ' [' + choice_list + ']: ')
         response = response.lower() if response else default
-        valid = response in choices
     return response
 
 
@@ -66,3 +69,16 @@ def from_camel_case(s):
         raise DataJointError(
             'ClassName must be alphanumeric in CamelCase, begin with a capital letter')
     return re.sub(r'(\B[A-Z])|(\b[A-Z])', convert, s)
+
+
+def safe_write(filename, blob):
+    """
+    A two-step write.
+    :param filename: full path
+    :param blob: binary data
+    :return: None
+    """
+    temp_file = filename + '.saving'
+    with open(temp_file, 'bw') as f:
+        f.write(blob)
+    os.rename(temp_file, filename)
