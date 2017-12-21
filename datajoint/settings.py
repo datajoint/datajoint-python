@@ -48,8 +48,7 @@ default = OrderedDict({
     'safemode': True,
     'display.limit': 7,
     'display.width': 14,
-    'display.show_tuple_count': True,
-    'external.location': None
+    'display.show_tuple_count': True
 })
 
 logger = logging.getLogger(__name__)
