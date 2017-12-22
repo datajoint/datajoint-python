@@ -30,13 +30,13 @@ class Folder:
     def get(self, blob_hash):
         return self.client.get_object(self.bucket, '/'.join((self.remote_path, blob_hash))).data
 
-    def clean(self, except_list, max_count=None):
+    def clean(self, exclude, max_count=None):
         """
-        Delete all objects except for those in the except_list
-        :param except_list: a list of blob_hashes to skip.
+        Delete all objects except for those in the exclude
+        :param exclude: a list of blob_hashes to skip.
         :param max_count: maximum number of object to delete
-        :return: a generator of objects that failed to delete
+        :return: generator of objects that failed to delete
         """
         return self.client.remove_objects(itertools.islice(
-            (x for x in self.client.list_object(self.bucket, self.client.remote_path + '/') if x not in except_list),
+            (x for x in self.client.list_object(self.bucket, self.client.remote_path + '/') if x not in exclude),
             max_count))
