@@ -1,4 +1,14 @@
 ## Release notes
+### 0.10.0 --  in progress
+* S3 external storage
+* Garbage collection for external sorage
+* Most operators and methods of tables can be invoked as class methods
+
+### 0.9.0 -- November 17, 2017
+* Made graphviz installation optional
+* Implement file-based external storage
+* Implement union operator +
+
 
 ### 0.8.0 -- July 26, 2017 
 Documentation and tutorials available at https://docs.datajoint.io and https://tutorials.datajoint.io

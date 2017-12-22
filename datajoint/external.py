@@ -58,10 +58,10 @@ class ExternalTable(BaseRelation):
                     os.makedirs(folder)
                     safe_write(full_path, blob)
         elif spec['protocol'] == 's3':
-            try:
-                S3(database=self.database, blob_hash=blob_hash, **spec).put(blob)
-            except TypeError:
-                raise DataJointError('External store {store} configuration is incomplete.'.format(store=store))
+            S3(database=self.database, blob_hash=blob_hash, **spec).put(blob)
+        else:
+            raise DataJointError('Unknown external storage protocol {protocol} for {store}'.format(
+                store=store, protocol=spec['protocol']))
 
         # insert tracking info
         self.connection.query(
@@ -103,6 +103,8 @@ class ExternalTable(BaseRelation):
                     blob = S3(database=self.database, blob_hash=blob_hash, **spec).get()
                 except TypeError:
                     raise DataJointError('External store {store} configuration is incomplete.'.format(store=store))
+            else:
+                raise DataJointError('Unknown external storage protocol "%s"' % spec['protocol'])
 
             if cache_file:
                 safe_write(cache_file, blob)
