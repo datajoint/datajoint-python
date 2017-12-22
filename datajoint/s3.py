@@ -28,7 +28,10 @@ class Folder:
             self.put(blob_hash, blob)
 
     def get(self, blob_hash):
-        return self.client.get_object(self.bucket, '/'.join((self.remote_path, blob_hash))).data
+        try:
+            return self.client.get_object(self.bucket, '/'.join((self.remote_path, blob_hash))).data
+        except minio.error.NoSuchKey:
+            return None
 
     def clean(self, exclude, max_count=None):
         """
@@ -37,6 +40,6 @@ class Folder:
         :param max_count: maximum number of object to delete
         :return: generator of objects that failed to delete
         """
-        return self.client.remove_objects(itertools.islice(
-            (x for x in self.client.list_object(self.bucket, self.client.remote_path + '/') if x not in exclude),
-            max_count))
+        return self.client.remove_objects(self.bucket, itertools.islice(
+            (x.object_name for x in self.client.list_objects(self.bucket, self.remote_path + '/')
+             if x not in exclude), max_count))
