@@ -44,17 +44,17 @@ class OrderedClass(type):
         return (cls().__getattribute__(name) if name in supported_class_attrs
                 else super().__getattribute__(name))
 
-    def __len__(cls):
-        return len(cls())
-
     def __and__(cls, arg):
         return cls() & arg
 
     def __sub__(cls, arg):
-        return cls() & arg
+        return cls() - arg
 
     def __mul__(cls, arg):
         return cls() * arg
+
+    def __add__(cls, arg):
+        return cls() + arg
 
 
 class UserRelation(BaseRelation, metaclass=OrderedClass):
