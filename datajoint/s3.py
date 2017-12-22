@@ -2,52 +2,44 @@
 AWS S3 operations
 """
 from io import BytesIO
-import boto3
-from botocore.exceptions import ClientError
+import minio   # https://docs.minio.io/docs/python-client-api-reference
+import warnings
+import itertools
 
-sessions = {}   # a dictionary of reused S3 sessions
 
-
-class S3:
+class Folder:
     """
-    An S3 instance manipulates an object stored in AWS S3
+    A Folder instance manipulates a flat folder of objects within an S3-compatible object store
     """
-    def __init__(self, bucket, aws_access_key_id, aws_secret_access_key, location, database, blob_hash, **_):
-        cred = (aws_access_key_id, aws_secret_access_key)
-        if cred not in sessions:
-            # cache sessions
-            session = boto3.Session(aws_access_key_id=aws_access_key_id,
-                                    aws_secret_access_key=aws_secret_access_key)
-            sessions[cred] = session.resource('s3')
-        remote_path = '/'.join((location.lstrip('/'), database, blob_hash))
-        self.object = sessions[cred].Object(bucket, remote_path)
+    def __init__(self, endpoint, bucket, access_key, secret_key, location, database, **_):
+        self.client = minio.Minio(endpoint, access_key=access_key, secret_key=secret_key, secure=False)
+        self.bucket = bucket
+        self.remote_path = '/'.join((location.lstrip('/'), database))
 
-    def __bool__(self):
-        # True if object is found
+    def make_bucket(self):
+        self.client.make_bucket(self.bucket)
+
+    def put(self, blob_hash, blob):
         try:
-            self.object.load()
-        except ClientError as e:
-            if e.response['Error']['Code'] != "404":
-                raise
-            return False
-        else:
-            return True
+            self.client.put_object(self.bucket, '/'.join((self.remote_path, blob_hash)), BytesIO(blob), len(blob))
+        except minio.error.NoSuchBucket:
+            warnings.warn('Creating bucket "%s"' % self.bucket)
+            self.client.make_bucket(self.bucket)
+            self.put(blob_hash, blob)
 
-    def put(self, blob):
-        if not self:
-            self.object.upload_fileobj(BytesIO(blob))
+    def get(self, blob_hash):
+        try:
+            return self.client.get_object(self.bucket, '/'.join((self.remote_path, blob_hash))).data
+        except minio.error.NoSuchKey:
+            return None
 
-    def get(self):
-        obj = BytesIO()
-        self.object.download_fileobj(obj)
-        return obj.getvalue()
-
-
-def delete_all_except(except_list, bucket, aws_access_key_id, aws_secret_access_key, location, database, **_):
-    cred = (aws_access_key_id, aws_secret_access_key)
-    if cred not in sessions:
-        # cache sessions
-        session = boto3.Session(aws_access_key_id=aws_access_key_id,
-                                aws_secret_access_key=aws_secret_access_key)
-        sessions[cred] = session.resource('s3')
-    raise NotImplementedError
+    def clean(self, exclude, max_count=None):
+        """
+        Delete all objects except for those in the exclude
+        :param exclude: a list of blob_hashes to skip.
+        :param max_count: maximum number of object to delete
+        :return: generator of objects that failed to delete
+        """
+        return self.client.remove_objects(self.bucket, itertools.islice(
+            (x.object_name for x in self.client.list_objects(self.bucket, self.remote_path + '/')
+             if x not in exclude), max_count))

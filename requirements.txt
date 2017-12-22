@@ -5,4 +5,4 @@ ipython
 tqdm
 networkx~=1.11
 pydotplus
-boto3
+minio
