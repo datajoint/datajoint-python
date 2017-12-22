@@ -102,7 +102,11 @@ class Connection:
         """
         Returns true if the object is connected to the database server.
         """
-        return self._conn.ping()
+        try:
+            self._conn.ping()
+            return True
+        except:
+            return False
 
     def query(self, query, args=(), as_dict=False, suppress_warnings=True):
         """
