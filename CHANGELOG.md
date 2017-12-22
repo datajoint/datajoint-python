@@ -3,6 +3,8 @@
 * S3 external storage
 * Garbage collection for external sorage
 * Most operators and methods of tables can be invoked as class methods
+* The schema decorator object no longer requires locals() to specify the context
+* Compatibility with pymysql 0.8.0+
 
 ### 0.9.0 -- November 17, 2017
 * Made graphviz installation optional
