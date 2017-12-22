@@ -5,7 +5,7 @@ from .hash import long_hash
 from .blob import pack, unpack
 from .base_relation import BaseRelation
 from .declare import STORE_HASH_LENGTH, HASH_DATA_TYPE
-from .s3 import S3, delete_all_except
+from . import s3
 from .utils import safe_write
 
 
@@ -58,7 +58,7 @@ class ExternalTable(BaseRelation):
                     os.makedirs(folder)
                     safe_write(full_path, blob)
         elif spec['protocol'] == 's3':
-            S3(database=self.database, blob_hash=blob_hash, **spec).put(blob)
+            s3.Folder(database=self.database, **spec).put(blob_hash, blob)
         else:
             raise DataJointError('Unknown external storage protocol {protocol} for {store}'.format(
                 store=store, protocol=spec['protocol']))
@@ -100,7 +100,7 @@ class ExternalTable(BaseRelation):
                     raise DataJointError('Lost external blob %s.' % full_path) from None
             elif spec['protocol'] == 's3':
                 try:
-                    blob = S3(database=self.database, blob_hash=blob_hash, **spec).get()
+                    blob = s3.Folder(database=self.database, **spec).get(blob_hash)
                 except TypeError:
                     raise DataJointError('External store {store} configuration is incomplete.'.format(store=store))
             else:
@@ -165,7 +165,7 @@ class ExternalTable(BaseRelation):
                 os.remove(os.path.join(folder, f))
         elif spec['protocol'] == 's3':
             try:
-                delete_all_except(self.fetch('hash'), database=self.database, **spec)
+                s3.Folder(database=self.database, **spec).clean(self.fetch('hash'))
             except TypeError:
                 raise DataJointError('External store {store} configuration is incomplete.'.format(store=store))
 
