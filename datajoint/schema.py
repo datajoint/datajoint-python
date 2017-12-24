@@ -192,10 +192,7 @@ class Schema:
         context = self.context if self.context is not None else inspect.currentframe().f_back.f_locals
         if issubclass(cls, Part):
             raise DataJointError('The schema decorator should not be applied to Part relations')
-        ext = {
-            cls.__name__: cls,
-            'self': cls}
-        self.process_relation_class(cls, context=dict(context, **ext))
+        self.process_relation_class(cls, context={**context, cls.__name__: cls, 'self': cls})
 
         # Process part relations
         for part in ordered_dir(cls):
@@ -204,11 +201,8 @@ class Schema:
                 if inspect.isclass(part) and issubclass(part, Part):
                     part._master = cls
                     # allow addressing master by name or keyword 'master'
-                    ext = {
-                        cls.__name__: cls,
-                        'master': cls,
-                        'self': part}
-                    self.process_relation_class(part, context=dict(context, **ext))
+                    self.process_relation_class(part, context={
+                        **context, cls.__name__: cls, 'master': cls, 'self': part})
         return cls
 
     @property

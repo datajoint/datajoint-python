@@ -8,7 +8,6 @@ from itertools import count
 from pymysql import OperationalError
 from .relational_operand import RelationalOperand, AndList, U
 from . import DataJointError
-from . import key as KEY
 from .base_relation import FreeRelation
 import signal
 
@@ -112,7 +111,7 @@ class AutoPopulate:
                 raise SystemExit('SIGTERM received')
             old_handler = signal.signal(signal.SIGTERM, handler)
 
-        keys = (self._jobs_to_do(restrictions) - self.target).fetch(KEY, limit=limit)
+        keys = (self._jobs_to_do(restrictions) - self.target).fetch("KEY", limit=limit)
         if order == "reverse":
             keys.reverse()
         elif order == "random":
