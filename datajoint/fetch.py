@@ -8,10 +8,6 @@ from . import key as PRIMARY_KEY
 import warnings
 
 
-def update_dict(d1, d2):
-    return {k: (d2[k] if k in d2 else d1[k]) for k in d1}
-
-
 def is_key(attr):
     return attr is PRIMARY_KEY or attr == 'KEY'
 
@@ -35,7 +31,7 @@ class Fetch(Callable):
         """
         Fetches the query results from the database into an np.array or list of dictionaries and unpacks blob attributes.
 
-        :param attrs: OPTIONAL. one or more attributes to fetch. If not provided, the call will return
+        :param attrs: zero or more attributes to fetch. If not provided, the call will return
         all attributes of this relation. If provided, returns tuples with an entry for each attribute.
         :param offset: the number of tuples to skip in the returned result
         :param limit: the maximum number of tuples to return
@@ -59,7 +55,8 @@ class Fetch(Callable):
                           'Consider setting a limit explicitly.')
             limit = 2 * len(self._relation)
 
-        if len(attrs) == 0: # fetch all attributes
+        if not attrs:
+            # fetch all attributes
             cur = self._relation.cursor(as_dict=as_dict, limit=limit, offset=offset, order_by=order_by)
             heading = self._relation.heading
             if as_dict:
