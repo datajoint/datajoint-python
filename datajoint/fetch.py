@@ -87,6 +87,15 @@ class Fetch(Callable):
 
         return ret
 
+    def keys(self, **kwargs):
+        """
+        DEPRECATED
+        Iterator that returns primary keys as a sequence of dicts.
+        """
+        warnings.warn('Use of `rel.fetch.key()` notation is deprecated. '
+                      'Please use `rel.fetch("KEY")` or `rel.fetch(dj.key)` for equivalent result', stacklevel=2)
+        yield from self._relation.proj().fetch(as_dict=True, **kwargs)
+
 
 class Fetch1(Callable):
     """
