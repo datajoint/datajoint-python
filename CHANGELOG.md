@@ -1,5 +1,5 @@
 ## Release notes
-### 0.10.0 --  in progress
+### 0.10.0 --  work in progress
 * S3 external storage
 * Garbage collection for external sorage
 * Most operators and methods of tables can be invoked as class methods
