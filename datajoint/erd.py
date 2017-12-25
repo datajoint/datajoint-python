@@ -259,7 +259,7 @@ else:
                     assert(issubclass(cls, BaseRelation))
                     description = cls().describe(printout=False).split('\n')
                     description = (
-                        '-'*12 if q.startswith('---') else q if '->' in q else q.split(':')[0]
+                        '-'*30 if q.startswith('---') else q if '->' in q else q.split(':')[0]
                         for q in description if not q.startswith('#'))
                     node.set_tooltip('&#13;'.join(description))
                 node.set_label(name)
