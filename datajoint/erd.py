@@ -257,7 +257,11 @@ else:
                 if name.split('.')[0] in self.context:
                     cls = eval(name, self.context)
                     assert(issubclass(cls, BaseRelation))
-                    node.set_tooltip('&#13;'.join(cls().describe(printout=False).split('\n')))
+                    description = cls().describe(printout=False).split('\n')
+                    description = (
+                        '-'*12 if q.startswith('---') else q if '->' in q else q.split(':')[0]
+                        for q in description if not q.startswith('#'))
+                    node.set_tooltip('&#13;'.join(description))
                 node.set_label(name)
                 node.set_color(props['color'])
                 node.set_style('filled')
