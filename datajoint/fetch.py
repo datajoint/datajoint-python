@@ -74,7 +74,7 @@ class Fetch:
         else:  # if list of attributes provided
             attributes = [a for a in attrs if not is_key(a)]
             result = self._relation.proj(*attributes).fetch(
-                offset=None, limit=None, order_by=None, as_dict=False, squeeze=squeeze)
+                offset=offset, limit=limit, order_by=order_by, as_dict=False, squeeze=squeeze)
             return_values = [
                 list(to_dicts(result[self._relation.primary_key]))
                 if is_key(attribute) else result[attribute]
