@@ -3,6 +3,7 @@ import re
 import functools
 import io
 import warnings
+from .base_relation import BaseRelation
 
 try:
     from matplotlib import pyplot as plt
@@ -253,8 +254,11 @@ else:
                 node.set_fixedsize('shape' if props['fixed'] else False)
                 node.set_width(props['size'])
                 node.set_height(props['size'])
+                if name.split('.')[0] in self.context:
+                    cls = eval(name, self.context)
+                    assert(issubclass(cls, BaseRelation))
+                    node.set_tooltip('&#13;'.join(cls().describe(printout=False).split('\n')))
                 node.set_label(name)
-                # node.set_margin(0.05)
                 node.set_color(props['color'])
                 node.set_style('filled')
 
