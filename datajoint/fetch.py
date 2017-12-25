@@ -1,5 +1,4 @@
 from collections import OrderedDict
-from collections.abc import Callable
 from functools import partial
 import numpy as np
 from .blob import unpack
@@ -18,7 +17,7 @@ def to_dicts(recarray):
         yield dict(zip(recarray.dtype.names, rec.tolist()))
 
 
-class Fetch(Callable):
+class Fetch:
     """
     A fetch object that handles retrieving elements from the database table.
     :param relation: relation the fetch object fetches data from
@@ -94,7 +93,7 @@ class Fetch(Callable):
         yield from self._relation.proj().fetch(as_dict=True, **kwargs)
 
 
-class Fetch1(Callable):
+class Fetch1:
     """
     Fetch object for fetching exactly one row.
     :param relation: relation the fetch object fetches data from
