@@ -91,7 +91,7 @@ class Schema:
         """
         return int(self.connection.query(
             """
-            SELECT Sum(data_length + index_length)
+            SELECT SUM(data_length + index_length)
             FROM information_schema.tables WHERE table_schema='{db}'
             """.format(db=self.database)).fetchone()[0])
 
