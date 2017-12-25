@@ -1,31 +1,33 @@
 from nose.tools import assert_true, assert_false, assert_equal, assert_list_equal, raises
-from . import schema
+from .schema import *
 import datajoint as dj
+import inspect
 from datajoint.declare import declare
 
-auto = schema.Auto()
-auto.fill()
-user = schema.User()
-subject = schema.Subject()
-experiment = schema.Experiment()
-trial = schema.Trial()
-ephys = schema.Ephys()
-channel = schema.Ephys.Channel()
 
-context = schema.schema.context
+auto = Auto()
+auto.fill()
+user = User()
+subject = Subject()
+experiment = Experiment()
+trial = Trial()
+ephys = Ephys()
+channel = Ephys.Channel()
+
 
 
 class TestDeclare:
 
     @staticmethod
     def test_schema_decorator():
-        assert_true(issubclass(schema.Subject, dj.Lookup))
-        assert_true(not issubclass(schema.Subject, dj.Part))
+        assert_true(issubclass(Subject, dj.Lookup))
+        assert_true(not issubclass(Subject, dj.Part))
 
     @staticmethod
     def test_describe():
         """real_definition should match original definition"""
-        rel = schema.Experiment()
+        rel = Experiment()
+        context = inspect.currentframe().f_globals
         s1 = declare(rel.full_table_name, rel.definition, context)
         s2 = declare(rel.full_table_name, rel.describe(), context)
         assert_equal(s1, s2)
@@ -33,7 +35,7 @@ class TestDeclare:
     @staticmethod
     def test_part():
         # Lookup and part with the same name.  See issue #365
-        local_schema = dj.schema(schema.schema.database, locals())
+        local_schema = dj.schema(schema.database)
 
         @local_schema
         class Type(dj.Lookup):
@@ -42,14 +44,11 @@ class TestDeclare:
             """
             contents = zip(('Type1', 'Type2', 'Type3'))
 
-        locals()   # this is to overcome the issue described in issue #368
-
         @local_schema
         class TypeMaster(dj.Manual):
             definition = """
             master_id : int
             """
-
             class Type(dj.Part):
                 definition = """
                 -> TypeMaster
@@ -113,7 +112,7 @@ class TestDeclare:
     @raises(dj.DataJointError)
     def test_bad_attribute_name(self):
 
-        @schema.schema
+        @schema
         class BadName(dj.Manual):
             definition = """
             Bad_name : int
@@ -123,13 +122,13 @@ class TestDeclare:
     def test_bad_fk_rename(self):
         """issue #381"""
 
-        @schema.schema
+        @schema
         class A(dj.Manual):
             definition = """
             a : int
             """
 
-        @schema.schema
+        @schema
         class B(dj.Manual):
             definition = """
             b -> A    # invalid, the new syntax is (b) -> A

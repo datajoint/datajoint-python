@@ -92,7 +92,7 @@ class D(dj.Computed):
     def _make_tuples(self, key):
         # make reference to a random tuple from L
         random.seed(str(key))
-        lookup = list(L().fetch.keys())
+        lookup = list(L().fetch('KEY'))
         self.insert(dict(key, id_d=i, **random.choice(lookup)) for i in range(4))
 
 
@@ -115,9 +115,9 @@ class E(dj.Computed):
 
     def _make_tuples(self, key):
         random.seed(str(key))
-        self.insert1(dict(key, **random.choice(list(L().fetch.keys()))))
+        self.insert1(dict(key, **random.choice(list(L().fetch('KEY')))))
         sub = E.F()
-        references = list((B.C() & key).fetch.keys())
+        references = list((B.C() & key).fetch('KEY'))
         random.shuffle(references)
         sub.insert(dict(key, id_f=i, **ref) for i, ref in enumerate(references) if random.getrandbits(1))
 

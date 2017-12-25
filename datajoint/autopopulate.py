@@ -8,7 +8,6 @@ from itertools import count
 from pymysql import OperationalError
 from .relational_operand import RelationalOperand, AndList, U
 from . import DataJointError
-from . import key as KEY
 from .base_relation import FreeRelation
 import signal
 
@@ -67,12 +66,27 @@ class AutoPopulate:
         """
         return key
 
+    def _jobs_to_do(self, restrictions):
+        """
+        :return: the relation containing the keys to be computed (derived from self.key_source)
+        """
+        todo = self.key_source
+        if not isinstance(todo, RelationalOperand):
+            raise DataJointError('Invalid key_source value')
+        # check if target lacks any attributes from the primary key of key_source
+        try:
+            raise DataJointError(
+                    'The populate target lacks attribute %s from the primary key of key_source' % next(
+                        name for name in todo.heading if name not in self.target.primary_key))
+        except StopIteration:
+            pass
+        return (todo & AndList(restrictions)).proj()
+
     def populate(self, *restrictions, suppress_errors=False, reserve_jobs=False,
                  order="original", limit=None, max_calls=None, display_progress=False):
         """
         rel.populate() calls rel.make(key) for every primary key in self.key_source
         for which there is not already a tuple in rel.
-
         :param restrictions: a list of restrictions each restrict (rel.key_source - target.proj())
         :param suppress_errors: suppresses error if true
         :param reserve_jobs: if true, reserves job to populate in asynchronous fashion
@@ -87,22 +101,6 @@ class AutoPopulate:
         valid_order = ['original', 'reverse', 'random']
         if order not in valid_order:
             raise DataJointError('The order argument must be one of %s' % str(valid_order))
-
-        todo = self.key_source
-        if not isinstance(todo, RelationalOperand):
-            raise DataJointError('Invalid key_source value')
-        todo = (todo & AndList(restrictions)).proj()
-
-        # raise error if the populated target lacks any attributes from the primary key of key_source
-        try:
-            raise DataJointError(
-                    'The populate target lacks attribute %s from the primary key of key_source' % next(
-                        name for name in todo.heading if name not in self.target.heading))
-        except StopIteration:
-            pass
-
-        todo -= self.target
-
         error_list = [] if suppress_errors else None
         jobs = self.connection.schemas[self.target.database].jobs if reserve_jobs else None
 
@@ -113,7 +111,7 @@ class AutoPopulate:
                 raise SystemExit('SIGTERM received')
             old_handler = signal.signal(signal.SIGTERM, handler)
 
-        keys = todo.fetch(KEY, limit=limit)
+        keys = (self._jobs_to_do(restrictions) - self.target).fetch("KEY", limit=limit)
         if order == "reverse":
             keys.reverse()
         elif order == "random":
@@ -166,12 +164,10 @@ class AutoPopulate:
 
     def progress(self, *restrictions, display=True):
         """
-        report progress of populating this table
+        report progress of populating the table
         :return: remaining, total -- tuples to be populated
         """
-        todo = (self.key_source & AndList(restrictions)).proj()
-        if any(name not in self.target.heading for name in todo.heading):
-            raise DataJointError('The populated target must have all the attributes of the key source')
+        todo = self._jobs_to_do(restrictions)
         total = len(todo)
         remaining = len(todo - self.target)
         if display:
