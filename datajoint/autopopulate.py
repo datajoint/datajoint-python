@@ -77,7 +77,7 @@ class AutoPopulate:
         try:
             raise DataJointError(
                     'The populate target lacks attribute %s from the primary key of key_source' % next(
-                        name for name in todo.heading if name not in self.target.primary_key))
+                        name for name in todo.heading.primary_key if name not in self.target.heading))
         except StopIteration:
             pass
         return (todo & AndList(restrictions)).proj()
