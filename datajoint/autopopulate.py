@@ -76,8 +76,8 @@ class AutoPopulate:
         # check if target lacks any attributes from the primary key of key_source
         try:
             raise DataJointError(
-                    'The populate target lacks attribute %s from the primary key of key_source' % next(
-                        name for name in todo.heading.primary_key if name not in self.target.heading))
+                'The populate target lacks attribute %s from the primary key of key_source' % next(
+                    name for name in todo.heading.primary_key if name not in self.target.heading))
         except StopIteration:
             pass
         return (todo & AndList(restrictions)).proj()
