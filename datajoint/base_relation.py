@@ -342,34 +342,28 @@ class BaseRelation(RelationalOperand):
                 r.restrict([r.proj() if isinstance(r, RelationalOperand) else r
                             for r in restrictions[name]])
         # execute
-        do_delete = False  # indicate if there is anything to delete
-        if config['safemode']:  # pragma: no cover
+        if config['safemode']:
             print('The contents of the following tables are about to be deleted:')
 
-        for table, relation in list(delete_list.items()):   # need list to force a copy
-            if table.isdigit():
-                delete_list.pop(table)  # remove alias nodes from the delete list
-            else:
-                count = len(relation)
-                if count:
-                    do_delete = True
-                    if config['safemode']:
-                        print(table, '(%d tuples)' % count)
-                else:
-                    delete_list.pop(table)
-        if not do_delete:
+        already_in_transaction = self.connection._in_transaction
+        if not already_in_transaction:
+            self.connection.start_transaction()
+        for r in reversed(list(delete_list.values())):
+            r.delete_quick()
             if config['safemode']:
-                print('Nothing to delete')
+                print('{table}: {count} items'.format(
+                    table=r.full_table_name,
+                    count=self.connection.query("SELECT ROW_COUNT()").fetchone()[0]))
+        if not config['safemode'] or user_choice("Proceed?", default='no') == 'yes':
+            if not already_in_transaction:
+                self.connection.commit_transaction()
+        elif already_in_transaction:
+            DataJointError(
+                'Already in transaction. Cannot rollback the delete without rolling back the ongoing transaction.')
         else:
-            if not config['safemode'] or user_choice("Proceed?", default='no') == 'yes':
-                already_in_transaction = self.connection._in_transaction
-                if not already_in_transaction:
-                    self.connection.start_transaction()
-                for r in reversed(list(delete_list.values())):
-                    r.delete_quick()
-                if not already_in_transaction:
-                    self.connection.commit_transaction()
-                print('Done')
+            self.connection.cancel_transaction()
+            print('Delete rolled back.')
+        print('Done')
 
     def drop_quick(self):
         """
