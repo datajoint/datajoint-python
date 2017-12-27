@@ -21,7 +21,7 @@ def user_choice(prompt, choices=("yes", "no"), default=None):
     :param default: default choice
     :return: the user's choice
     """
-    assert default in choices
+    assert default is None or  default in choices
     choice_list = ', '.join((choice.title() if choice == default else choice for choice in choices))
     response = None
     while response not in choices:
