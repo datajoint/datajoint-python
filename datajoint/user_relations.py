@@ -22,7 +22,7 @@ class OrderedClass(type):
     Class whose members are ordered
     See https://docs.python.org/3/reference/datamodel.html#metaclass-example
 
-    TODO:  In Python 3.6, this will no longer be necessary and should be removed (PEP 520)
+    Note:  Since Python 3.6, this will no longer be necessary and should be removed (PEP 520)
     https://www.python.org/dev/peps/pep-0520/
     """
     @classmethod
@@ -48,10 +48,13 @@ class OrderedClass(type):
         return cls() & arg
 
     def __sub__(cls, arg):
-        return cls() & arg
+        return cls() - arg
 
     def __mul__(cls, arg):
         return cls() * arg
+
+    def __add__(cls, arg):
+        return cls() + arg
 
 
 class UserRelation(BaseRelation, metaclass=OrderedClass):

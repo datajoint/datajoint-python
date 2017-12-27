@@ -1,5 +1,6 @@
 import warnings
 import pymysql
+import inspect
 import logging
 import inspect
 import re
@@ -36,13 +37,13 @@ class Schema:
     It also specifies the namespace `context` in which other UserRelation classes are defined.
     """
 
-    def __init__(self, database, context, connection=None, create_tables=True):
+    def __init__(self, database, context=None, connection=None, create_tables=True):
         """
         Associates the specified database with this schema object. If the target database does not exist
         already, will attempt on creating the database.
 
         :param database: name of the database to associate the decorated class with
-        :param context: dictionary for looking up foreign keys references, usually set to locals()
+        :param context: dictionary for looking up foreign keys references, leave None to use local context
         :param connection: Connection object. Defaults to datajoint.conn()
         """
         if connection is None:
@@ -81,9 +82,7 @@ class Schema:
         return self._log
 
     def __repr__(self):
-        return 'Schema database: `{database}` in module: {context}\n'.format(
-            database=self.database,
-            context=self.context['__name__'] if '__name__' in self.context else "__")
+        return 'Schema database: `{database}`\n'.format(database=self.database)
 
     @property
     def size_on_disk(self):
@@ -101,14 +100,16 @@ class Schema:
         Creates the appropriate python user relation classes from tables in the database and places them
         in the context.
         """
+        # if self.context is not set, use the calling namespace
+        context = self.context if self.context is not None else inspect.currentframe().f_back.f_locals
         tables = [
             row[0] for row in self.connection.query('SHOW TABLES in `%s`' % self.database)
-            if lookup_class_name('`{db}`.`{tab}`'.format(db=self.database, tab=row[0]), self.context, 0) is None]
+            if lookup_class_name('`{db}`.`{tab}`'.format(db=self.database, tab=row[0]), context, 0) is None]
         master_classes = (Lookup, Manual, Imported, Computed)
         part_tables = []
         for table_name in tables:
             class_name = to_camel_case(table_name)
-            if class_name not in self.context:
+            if class_name not in context:
                 try:
                     cls = next(cls for cls in master_classes if re.fullmatch(cls.tier_regexp, table_name))
                 except StopIteration:
@@ -116,19 +117,19 @@ class Schema:
                         part_tables.append(table_name)
                 else:
                     # declare and decorate master relation classes
-                    self.context[class_name] = self(type(class_name, (cls,), dict()))
+                    context[class_name] = self(type(class_name, (cls,), dict()))
 
         # attach parts to masters
         for table_name in part_tables:
             groups = re.fullmatch(Part.tier_regexp, table_name).groupdict()
             class_name = to_camel_case(groups['part'])
             try:
-                master_class = self.context[to_camel_case(groups['master'])]
+                master_class = context[to_camel_case(groups['master'])]
             except KeyError:
                 raise DataJointError('The table %s does not follow DataJoint naming conventions' % table_name)
             part_class = type(class_name, (Part,), dict(definition=...))
             part_class._master = master_class
-            self.process_relation_class(part_class, context=self.context, assert_declared=True)
+            self.process_relation_class(part_class, context=context, assert_declared=True)
             setattr(master_class, class_name, part_class)
 
     def drop(self, force=False):
@@ -188,13 +189,13 @@ class Schema:
         Binds the passed in class object to a database. This is intended to be used as a decorator.
         :param cls: class to be decorated
         """
-
+        context = self.context if self.context is not None else inspect.currentframe().f_back.f_locals
         if issubclass(cls, Part):
             raise DataJointError('The schema decorator should not be applied to Part relations')
         ext = {
             cls.__name__: cls,
             'self': cls}
-        self.process_relation_class(cls, context=dict(self.context, **ext))
+        self.process_relation_class(cls, context=dict(context, **ext))
 
         # Process part relations
         for part in ordered_dir(cls):
@@ -207,7 +208,7 @@ class Schema:
                         cls.__name__: cls,
                         'master': cls,
                         'self': part}
-                    self.process_relation_class(part, context=dict(self.context, **ext))
+                    self.process_relation_class(part, context=dict(context, **ext))
         return cls
 
     @property
@@ -231,8 +232,5 @@ class Schema:
         return self._external
 
     def erd(self):
-        # get the caller's locals()
-        import inspect
-        frame = inspect.currentframe()
-        context = frame.f_back.f_locals
-        return ERD(self, context=context)
+        # get the ERD of the schema in local context
+        return ERD(self, context=inspect.currentframe().f_back.f_locals)
