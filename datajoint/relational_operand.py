@@ -464,13 +464,23 @@ class RelationalOperand:
         return bool(self & item)  # May be optimized e.g. using an EXISTS query
 
     def __iter__(self):
+        self._iter_only_key = all(v.in_key for v in self.relation.heading.attributes.values())
         self._iter_keys = self.fetch('KEY')
 
     def __next__(self):
         try:
-            return (self & self._iter_keys.pop(0)).fetch1()
+            key = self._iter_keys.pop(0)
         except IndexError:
             raise StopIteration
+        else:
+            if self._iter_only_key:
+                return key
+            else:
+                try:
+                    return (self & key).fetch1()
+                except DataJointError:
+                    # The data may have been deleted since the moment the keys were fetched -- move on to next entry.
+                    return next(self)
 
     def cursor(self, offset=0, limit=None, order_by=None, as_dict=False):
         """
