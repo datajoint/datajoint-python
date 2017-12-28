@@ -380,7 +380,6 @@ class RelationalOperand:
             /* Tooltip container */
             .djtooltip {
             }
-
             /* Tooltip text */
             .djtooltip .djtooltiptext {
                 visibility: hidden;
@@ -390,13 +389,10 @@ class RelationalOperand:
                 text-align: center;
                 padding: 5px 0;
                 border-radius: 6px;
-
                 /* Position the tooltip text - see examples below! */
                 position: absolute;
                 z-index: 1;
             }
-
-
             #primary {
                 font-weight: bold;
                 color: black;
@@ -417,7 +413,6 @@ class RelationalOperand:
                                 <p id="{primary}">{column}</p>
                                 <span class="djtooltiptext">{comment}</span>
                             </div>"""
-
         return """
         {css}
         {title}
@@ -467,6 +462,15 @@ class RelationalOperand:
         (item in relation) is equivalent to bool(self & item) but may be executed more efficiently.
         """
         return bool(self & item)  # May be optimized e.g. using an EXISTS query
+
+    def __iter__(self):
+        self._iter_keys = self.fetch('KEY')
+
+    def __next__(self):
+        try:
+            return (self & self._iter_keys.pop(0)).fetch1()
+        except IndexError:
+            raise StopIteration
 
     def cursor(self, offset=0, limit=None, order_by=None, as_dict=False):
         """
