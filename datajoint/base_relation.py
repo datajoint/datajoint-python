@@ -289,7 +289,7 @@ class BaseRelation(RelationalOperand):
                 else:
                     raise
 
-    def delete_quick(self):
+    def delete_quick(self, get_count=False):
         """
         Deletes the table without cascading and without user prompt. If this table has any dependent
         table(s), this will fail.
@@ -297,12 +297,14 @@ class BaseRelation(RelationalOperand):
         query = 'DELETE FROM ' + self.full_table_name + self.where_clause
         self.connection.query(query)
         self._log(query[:255])
+        return self.connection.query("SELECT ROW_COUNT()").fetchone()[0] if get_count else None
 
     def delete(self):
         """
         Deletes the contents of the table and its dependent tables, recursively.
         User is prompted for confirmation if config['safemode'] is set to True.
         """
+        safe = config['safemode']
         graph = self.connection.dependencies
         graph.load()
         delete_list = collections.OrderedDict()
@@ -342,28 +344,34 @@ class BaseRelation(RelationalOperand):
                 r.restrict([r.proj() if isinstance(r, RelationalOperand) else r
                             for r in restrictions[name]])
         # execute
-        if config['safemode']:
+        if safe:
             print('The contents of the following tables are about to be deleted:')
 
-        already_in_transaction = self.connection._in_transaction
+        already_in_transaction = self.connection.in_transaction
         if not already_in_transaction:
             self.connection.start_transaction()
-        for r in reversed(list(delete_list.values())):
-            r.delete_quick()
-            if config['safemode']:
-                print('{table}: {count} items'.format(
-                    table=r.full_table_name,
-                    count=self.connection.query("SELECT ROW_COUNT()").fetchone()[0]))
-        if not config['safemode'] or user_choice("Proceed?", default='no') == 'yes':
+        try:
+            for r in reversed(list(delete_list.values())):
+                count = r.delete_quick(get_count=safe)
+                if safe:
+                    print('{table}: {count} items'.format(
+                        table=r.full_table_name,
+                        count=count))
+        except Exception:
             if not already_in_transaction:
-                self.connection.commit_transaction()
-        elif already_in_transaction:
-            DataJointError(
-                'Already in transaction. Cannot rollback the delete without rolling back the ongoing transaction.')
+                self.connection.cancel_transaction()
+            raise
         else:
-            self.connection.cancel_transaction()
-            print('Delete rolled back.')
-        print('Done')
+            if not safe or user_choice("Proceed?", default='no') == 'yes':
+                if not already_in_transaction:
+                    self.connection.commit_transaction()
+            elif already_in_transaction:
+                DataJointError(
+                    'Already in transaction. Cannot rollback the delete without rolling back the ongoing transaction.')
+            else:
+                self.connection.cancel_transaction()
+                print('Delete rolled back.')
+            print('Done')
 
     def drop_quick(self):
         """
