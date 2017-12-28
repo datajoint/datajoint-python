@@ -391,6 +391,8 @@ class BaseRelation(RelationalOperand):
         Drop the table and all tables that reference it, recursively.
         User is prompted for confirmation if config['safemode'] is set to True.
         """
+        if self.restriction:
+            raise DataJointError('A relation with an applied restriction condition cannot be dropped.')
         self.connection.dependencies.load()
         do_drop = True
         tables = [table for table in self.connection.dependencies.descendants(self.full_table_name)
