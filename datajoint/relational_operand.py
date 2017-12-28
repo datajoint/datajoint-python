@@ -503,7 +503,7 @@ class Not:
     invert restriction
     """
     def __init__(self, restriction):
-        self.restriction = restriction  if isinstance(restriction, AndList) else AndList([restriction])
+        self.restriction = restriction
 
 
 class Join(RelationalOperand):
