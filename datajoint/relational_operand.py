@@ -1,6 +1,7 @@
 import collections
 from itertools import count
 import logging
+import inspect
 import numpy as np
 import re
 import datetime
@@ -134,6 +135,10 @@ class RelationalOperand:
             return template % self._make_condition(
                 AndList(('`%s`='+('%s' if self.heading[k].numeric else '"%s"')) % (k, arg[k])
                         for k in arg.dtype.fields if k in self.heading))
+
+        # restrict by a Relation class -- triggers instantiation
+        if inspect.isclass(arg) and issubclass(arg, RelationalOperand):
+            arg = arg()
 
         # restrict by another relation (aka semijoin and antijoin)
         if isinstance(arg, RelationalOperand):
@@ -506,6 +511,8 @@ class Join(RelationalOperand):
     @classmethod
     def create(cls, arg1, arg2, keep_all_rows=False):
         obj = cls()
+        if inspect.isclass(arg2) and issubclass(arg2, RelationalOperand):
+            arg2 = arg2()   # instantiate if joining with a class
         if not isinstance(arg1, RelationalOperand) or not isinstance(arg2, RelationalOperand):
             raise DataJointError('a relation can only be joined with another relation')
         if arg1.connection != arg2.connection:
@@ -559,6 +566,8 @@ class Union(RelationalOperand):
     @classmethod
     def create(cls, arg1, arg2):
         obj = cls()
+        if inspect.isclass(arg2) and issubclass(arg2, RelationalOperand):
+            obj = obj()  # instantiate if a class
         if not isinstance(arg1, RelationalOperand) or not isinstance(arg2, RelationalOperand):
             raise DataJointError('a relation can only be unioned with another relation')
         if arg1.connection != arg2.connection:
@@ -671,6 +680,8 @@ class GroupBy(RelationalOperand):
 
     @classmethod
     def create(cls, arg, group, attributes=None, named_attributes=None, keep_all_rows=False):
+        if inspect.isclass(group) and issubclass(group, RelationalOperand):
+            group = group()   # instantiate if a class
         if not isinstance(group, RelationalOperand):
             raise DataJointError('a relation can only be joined with another relation')
         obj = cls()
@@ -802,6 +813,8 @@ class U:
         return self._primary_key
 
     def __and__(self, relation):
+        if inspect.isclass(relation) and issubclass(relation, RelationalOperand):
+            relation = relation()   # instantiate if a class
         if not isinstance(relation, RelationalOperand):
             raise DataJointError('Relation U can only be restricted with another relation.')
         return Projection.create(relation, attributes=self.primary_key,
@@ -814,6 +827,8 @@ class U:
         :param relation: other relation
         :return: a copy of the other relation with the primary key extended.
         """
+        if inspect.isclass(relation) and issubclass(relation, RelationalOperand):
+            relation = relation()   # instantiate if a class
         if not isinstance(relation, RelationalOperand):
             raise DataJointError('Relation U can only be joined with another relation.')
         copy = relation.__class__(relation)
