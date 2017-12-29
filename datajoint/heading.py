@@ -177,8 +177,7 @@ class Heading:
             ('int', False): np.int64,
             ('int', True): np.int64,
             ('bigint', False): np.int64,
-            ('bigint', True): np.uint64
-            }
+            ('bigint', True): np.uint64}
 
         sql_literals = ['CURRENT_TIMESTAMP']
 
