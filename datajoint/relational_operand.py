@@ -464,12 +464,16 @@ class RelationalOperand:
         return bool(self & item)  # May be optimized e.g. using an EXISTS query
 
     def __iter__(self):
-        self._iter_only_key = all(v.in_key for v in self.relation.heading.attributes.values())
+        self._iter_only_key = all(v.in_key for v in self.heading.attributes.values())
         self._iter_keys = self.fetch('KEY')
+        return self
 
     def __next__(self):
         try:
             key = self._iter_keys.pop(0)
+        except AttributeError:
+            # self._iter_keys is missing because __iter__ has not been called.
+            raise TypeError("'RelationalOperand' object is not an iterator. Use iter(obj) to create an iterator.")
         except IndexError:
             raise StopIteration
         else:
