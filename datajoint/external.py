@@ -5,21 +5,8 @@ from .hash import long_hash
 from .blob import pack, unpack
 from .base_relation import BaseRelation
 from .declare import STORE_HASH_LENGTH, HASH_DATA_TYPE
-
 from . import s3
-
-
-def safe_write(filename, blob):
-    """
-    A two-step write.
-    :param filename: full path
-    :param blob: binary data
-    :return: None
-    """
-    temp_file = filename + '.saving'
-    with open(temp_file, 'bw') as f:
-        f.write(blob)
-    os.rename(temp_file, filename)
+from .utils import safe_write
 
 
 class ExternalTable(BaseRelation):
@@ -71,7 +58,7 @@ class ExternalTable(BaseRelation):
                     os.makedirs(folder)
                     safe_write(full_path, blob)
         elif spec['protocol'] == 's3':
-            s3.put(self.database, store, blob, blob_hash)
+            s3.Folder(database=self.database, **spec).put(blob_hash, blob)
         else:
             raise DataJointError('Unknown external storage protocol {protocol} for {store}'.format(
                 store=store, protocol=spec['protocol']))
@@ -112,9 +99,12 @@ class ExternalTable(BaseRelation):
                 except FileNotFoundError:
                     raise DataJointError('Lost external blob %s.' % full_path) from None
             elif spec['protocol'] == 's3':
-                blob = s3.get(self.database, store, blob_hash)
+                try:
+                    blob = s3.Folder(database=self.database, **spec).get(blob_hash)
+                except TypeError:
+                    raise DataJointError('External store {store} configuration is incomplete.'.format(store=store))
             else:
-                raise DataJointError('Unknown external storage protocol "%s"' % self['protocol'])
+                raise DataJointError('Unknown external storage protocol "%s"' % spec['protocol'])
 
             if cache_file:
                 safe_write(cache_file, blob)
@@ -124,8 +114,7 @@ class ExternalTable(BaseRelation):
     @property
     def references(self):
         """
-        return the list of referencing tables and their referencing columns
-        :return:
+        :return: generator of referencing table names and their referencing columns
         """
         return self.connection.query("""
         SELECT concat('`', table_schema, '`.`', table_name, '`') as referencing_table, column_name
@@ -174,17 +163,22 @@ class ExternalTable(BaseRelation):
             print('Deleting %d unused items from %s' % (len(delete_list), folder), flush=True)
             for f in progress(delete_list):
                 os.remove(os.path.join(folder, f))
-        else:
-            raise DataJointError('Unknown external storage protocol {protocol} for {store}'.format(
-                store=store, protocol=spec['protocol']))
+        elif spec['protocol'] == 's3':
+            try:
+                s3.Folder(database=self.database, **spec).clean(self.fetch('hash'))
+            except TypeError:
+                raise DataJointError('External store {store} configuration is incomplete.'.format(store=store))
 
     @staticmethod
     def _get_store_spec(store):
         try:
             spec = config[store]
         except KeyError:
-            raise DataJointError('Storage {store} is not configured'.format(store=store)) from None
+            raise DataJointError('Storage {store} is requested but not configured'.format(store=store)) from None
         if 'protocol' not in spec:
             raise DataJointError('Storage {store} config is missing the protocol field'.format(store=store))
+        if spec['protocol'] not in {'file', 's3'}:
+            raise DataJointError(
+                'Unknown external storage protocol "{protocol}" in "{store}"'.format(store=store, **spec))
         return spec
 
