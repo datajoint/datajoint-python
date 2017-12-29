@@ -57,6 +57,9 @@ class OrderedClass(type):
     def __add__(cls, arg):
         return cls() + arg
 
+    def __iter__(cls):
+        return iter(cls())
+
 
 class UserRelation(BaseRelation, metaclass=OrderedClass):
     """
