@@ -97,7 +97,7 @@ class ExternalTable(BaseRelation):
                     with open(full_path, 'rb') as f:
                         blob = f.read()
                 except FileNotFoundError:
-                    raise DataJointError('Lost external blob %s.' % full_path) from None
+                    raise DataJointError('Lost access to external blob %s.' % full_path) from None
             elif spec['protocol'] == 's3':
                 try:
                     blob = s3.Folder(database=self.database, **spec).get(blob_hash)

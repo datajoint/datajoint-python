@@ -296,8 +296,9 @@ class BaseRelation(RelationalOperand):
         """
         query = 'DELETE FROM ' + self.full_table_name + self.where_clause
         self.connection.query(query)
+        count = self.connection.query("SELECT ROW_COUNT()").fetchone()[0] if get_count else None
         self._log(query[:255])
-        return self.connection.query("SELECT ROW_COUNT()").fetchone()[0] if get_count else None
+        return count
 
     def delete(self):
         """
@@ -343,7 +344,6 @@ class BaseRelation(RelationalOperand):
             if restrictions[name]:  # do not restrict by an empty list
                 r.restrict([r.proj() if isinstance(r, RelationalOperand) else r
                             for r in restrictions[name]])
-        # execute
         if safe:
             print('The contents of the following tables are about to be deleted:')
 
@@ -365,13 +365,13 @@ class BaseRelation(RelationalOperand):
             if not safe or user_choice("Proceed?", default='no') == 'yes':
                 if not already_in_transaction:
                     self.connection.commit_transaction()
+                    print('Committed.')
             elif already_in_transaction:
                 DataJointError(
                     'Already in transaction. Cannot rollback the delete without rolling back the ongoing transaction.')
             else:
                 self.connection.cancel_transaction()
                 print('Delete rolled back.')
-            print('Done')
 
     def drop_quick(self):
         """
