@@ -350,26 +350,32 @@ class BaseRelation(RelationalOperand):
         already_in_transaction = self.connection.in_transaction
         if not already_in_transaction:
             self.connection.start_transaction()
+        total = 0
         try:
             for r in reversed(list(delete_list.values())):
                 count = r.delete_quick(get_count=safe)
                 if count and safe:
                     print('{table}: {count} items'.format(table=r.full_table_name, count=count))
-        except Exception:
+                    total += count
+        except:
+            # Delete failed, perhaps due to insufficient privileges. Cancel transaction.
             if not already_in_transaction:
                 self.connection.cancel_transaction()
             raise
         else:
-            if not safe or user_choice("Proceed?", default='no') == 'yes':
+            if not total:
+                self.connection.cancel_transaction()
+                print('Nothing to delete')
+            elif not safe or user_choice("Proceed?", default='no') == 'yes':
                 if not already_in_transaction:
                     self.connection.commit_transaction()
                     print('Committed.')
             elif already_in_transaction:
-                DataJointError(
-                    'Already in transaction. Cannot rollback the delete without rolling back the ongoing transaction.')
+                DataJointError('Already in transaction. '
+                               'The delete will be rolled back if the ongoing transaction is cancelled.')
             else:
                 self.connection.cancel_transaction()
-                print('Delete rolled back.')
+                print('Delete has been rolled back.')
 
     def drop_quick(self):
         """
@@ -507,8 +513,7 @@ class BaseRelation(RelationalOperand):
             full_table_name=self.from_clause,
             attrname=attrname,
             placeholder=placeholder,
-            where_clause=self.where_clause
-        )
+            where_clause=self.where_clause)
         self.connection.query(command, args=(value, ) if value is not None else ())
 
 
