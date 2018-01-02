@@ -354,9 +354,9 @@ class BaseRelation(RelationalOperand):
         try:
             for r in reversed(list(delete_list.values())):
                 count = r.delete_quick(get_count=safe)
-                if count and safe:
+                total += count
+                if safe and count:
                     print('{table}: {count} items'.format(table=r.full_table_name, count=count))
-                    total += count
         except:
             # Delete failed, perhaps due to insufficient privileges. Cancel transaction.
             if not already_in_transaction:
@@ -366,16 +366,15 @@ class BaseRelation(RelationalOperand):
             if not total:
                 self.connection.cancel_transaction()
                 print('Nothing to delete')
-            elif not safe or user_choice("Proceed?", default='no') == 'yes':
-                if not already_in_transaction:
+            elif not already_in_transaction:
+                if not safe or user_choice("Proceed?", default='no') == 'yes':
                     self.connection.commit_transaction()
                     print('Committed.')
-            elif already_in_transaction:
-                DataJointError('Already in transaction. '
-                               'The delete will be rolled back if the ongoing transaction is cancelled.')
-            else:
-                self.connection.cancel_transaction()
-                print('Delete has been rolled back.')
+                else:
+                    self.connection.cancel_transaction()
+                    print('Delete has been rolled back.')
+            elif safe:
+                print('The delete is pending within the ongoing transaction.')
 
     def drop_quick(self):
         """
