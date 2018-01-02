@@ -12,6 +12,24 @@ from .fetch import Fetch, Fetch1
 logger = logging.getLogger(__name__)
 
 
+def assert_join_compatibility(rel1, rel2):
+    """
+    Determine if relations rel1 and rel2 are join-compatible.  To be join-compatible, the matching attributes
+    in the two relations must be in the primary key of one or the other relation.
+    Raises an exception if not compatible.
+    :param rel1: A RelationalOperand object
+    :param rel2: A RelationalOperand object
+    """
+    for rel in (rel1, rel2):
+        if not isinstance(rel, RelationalOperand):
+            raise DataJointError('Object {} is not a relation and cannot be joined.'.format(rel))
+    try:
+        raise DataJointError("Cannot join relations on dependent attribute `%s`" % next(r for r in set(
+            rel1.heading.dependent_attributes).intersection(rel2.heading.dependent_attributes)))
+    except StopIteration:
+        pass
+
+
 class AndList(list):
     """
     A list of restrictions to by applied to a relation.  The restrictions are AND-ed.
@@ -142,6 +160,7 @@ class RelationalOperand:
 
         # restrict by another relation (aka semijoin and antijoin)
         if isinstance(arg, RelationalOperand):
+            assert_join_compatibility(self, arg)
             common_attributes = [q for q in self.heading.names if q in arg.heading.names]
             return (
                 # without common attributes, any non-empty relation matches everything
@@ -531,8 +550,7 @@ class Join(RelationalOperand):
         obj = cls()
         if inspect.isclass(arg2) and issubclass(arg2, RelationalOperand):
             arg2 = arg2()   # instantiate if joining with a class
-        if not isinstance(arg1, RelationalOperand) or not isinstance(arg2, RelationalOperand):
-            raise DataJointError('a relation can only be joined with another relation')
+        assert_join_compatibility(arg1, arg2)
         if arg1.connection != arg2.connection:
             raise DataJointError("Cannot join relations from different connections.")
         obj._connection = arg1.connection
@@ -540,14 +558,9 @@ class Join(RelationalOperand):
         obj._arg2 = cls.make_argument_subquery(arg2)
         obj._distinct = obj._arg1.distinct or obj._arg2.distinct
         obj._left = keep_all_rows
-        try:
-            # ensure no common dependent attributes
-            raise DataJointError("Cannot join relations on dependent attribute `%s`" % next(r for r in set(
-                obj._arg1.heading.dependent_attributes).intersection(obj._arg2.heading.dependent_attributes)))
-        except StopIteration:
-            obj._heading = obj._arg1.heading.join(obj._arg2.heading)
-            obj.restrict(obj._arg1.restriction)
-            obj.restrict(obj._arg2.restriction)
+        obj._heading = obj._arg1.heading.join(obj._arg2.heading)
+        obj.restrict(obj._arg1.restriction)
+        obj.restrict(obj._arg2.restriction)
         return obj
 
     @staticmethod
@@ -700,8 +713,7 @@ class GroupBy(RelationalOperand):
     def create(cls, arg, group, attributes=None, named_attributes=None, keep_all_rows=False):
         if inspect.isclass(group) and issubclass(group, RelationalOperand):
             group = group()   # instantiate if a class
-        if not isinstance(group, RelationalOperand):
-            raise DataJointError('a relation can only be joined with another relation')
+        assert_join_compatibility(arg, group)
         obj = cls()
         obj._keep_all_rows = keep_all_rows
         if not (set(group.primary_key) - set(arg.primary_key) or set(group.primary_key) == set(arg.primary_key)):

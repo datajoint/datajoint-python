@@ -300,12 +300,15 @@ class BaseRelation(RelationalOperand):
         self._log(query[:255])
         return count
 
-    def delete(self):
+    def delete(self, verbose=True):
         """
         Deletes the contents of the table and its dependent tables, recursively.
         User is prompted for confirmation if config['safemode'] is set to True.
         """
+        already_in_transaction = self.connection.in_transaction
         safe = config['safemode']
+        if already_in_transaction and safe:
+            raise DataJointError('Cannot delete within a transaction in safemode.  Set dj.config["setmode"] = False.')
         graph = self.connection.dependencies
         graph.load()
         delete_list = collections.OrderedDict()
@@ -345,17 +348,16 @@ class BaseRelation(RelationalOperand):
                 r.restrict([r.proj() if isinstance(r, RelationalOperand) else r
                             for r in restrictions[name]])
         if safe:
-            print('The contents of the following tables are about to be deleted:', flush=True)
+            print('About to delete:')
 
-        already_in_transaction = self.connection.in_transaction
         if not already_in_transaction:
             self.connection.start_transaction()
         total = 0
         try:
             for r in reversed(list(delete_list.values())):
-                count = r.delete_quick(get_count=safe)
+                count = r.delete_quick(get_count=True)
                 total += count
-                if safe and count:
+                if (verbose or safe) and count:
                     print('{table}: {count} items'.format(table=r.full_table_name, count=count))
         except:
             # Delete failed, perhaps due to insufficient privileges. Cancel transaction.
@@ -363,18 +365,24 @@ class BaseRelation(RelationalOperand):
                 self.connection.cancel_transaction()
             raise
         else:
+            assert not (already_in_transaction and safe)
             if not total:
-                self.connection.cancel_transaction()
                 print('Nothing to delete')
-            elif not already_in_transaction:
-                if not safe or user_choice("Proceed?", default='no') == 'yes':
-                    self.connection.commit_transaction()
-                    print('Committed.', flush=True)
-                else:
+                if not already_in_transaction:
                     self.connection.cancel_transaction()
-                    print('Delete has been rolled back.', flush=True)
-            elif safe:
-                print('The delete is pending within the ongoing transaction.', flush=True)
+            else:
+                if already_in_transaction:
+                    if verbose:
+                        print('The delete is pending within the ongoing transaction.')
+                else:
+                    if not safe or user_choice("Proceed?", default='no') == 'yes':
+                        self.connection.commit_transaction()
+                        if verbose or safe:
+                            print('Committed.')
+                    else:
+                        self.connection.cancel_transaction()
+                        if verbose or safe:
+                            print('Cancelled deletes.')
 
     def drop_quick(self):
         """
