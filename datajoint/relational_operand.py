@@ -21,13 +21,14 @@ def assert_join_compatibility(rel1, rel2):
     :param rel2: A RelationalOperand object
     """
     for rel in (rel1, rel2):
-        if not isinstance(rel, RelationalOperand):
-            raise DataJointError('Object {} is not a relation and cannot be joined.'.format(rel))
-    try:
-        raise DataJointError("Cannot join relations on dependent attribute `%s`" % next(r for r in set(
-            rel1.heading.dependent_attributes).intersection(rel2.heading.dependent_attributes)))
-    except StopIteration:
-        pass
+        if not isinstance(rel, (U, RelationalOperand)):
+            raise DataJointError('Object %r is not a relation and cannot be joined.' % rel)
+    if not isinstance(rel1, U) and not isinstance(rel2, U):  # dj.U is always compatible
+        try:
+            raise DataJointError("Cannot join relations on dependent attribute `%s`" % next(r for r in set(
+                rel1.heading.dependent_attributes).intersection(rel2.heading.dependent_attributes)))
+        except StopIteration:
+            pass
 
 
 class AndList(list):
