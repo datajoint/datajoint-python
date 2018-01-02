@@ -291,8 +291,8 @@ class BaseRelation(RelationalOperand):
 
     def delete_quick(self, get_count=False):
         """
-        Deletes the table without cascading and without user prompt. If this table has any dependent
-        table(s), this will fail.
+        Deletes the table without cascading and without user prompt.
+        If this table has populated dependent tables, this will fail.
         """
         query = 'DELETE FROM ' + self.full_table_name + self.where_clause
         self.connection.query(query)
@@ -345,7 +345,7 @@ class BaseRelation(RelationalOperand):
                 r.restrict([r.proj() if isinstance(r, RelationalOperand) else r
                             for r in restrictions[name]])
         if safe:
-            print('The contents of the following tables are about to be deleted:')
+            print('The contents of the following tables are about to be deleted:', flush=True)
 
         already_in_transaction = self.connection.in_transaction
         if not already_in_transaction:
@@ -369,12 +369,12 @@ class BaseRelation(RelationalOperand):
             elif not already_in_transaction:
                 if not safe or user_choice("Proceed?", default='no') == 'yes':
                     self.connection.commit_transaction()
-                    print('Committed.')
+                    print('Committed.', flush=True)
                 else:
                     self.connection.cancel_transaction()
-                    print('Delete has been rolled back.')
+                    print('Delete has been rolled back.', flush=True)
             elif safe:
-                print('The delete is pending within the ongoing transaction.')
+                print('The delete is pending within the ongoing transaction.', flush=True)
 
     def drop_quick(self):
         """
