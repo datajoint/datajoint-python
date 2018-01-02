@@ -12,6 +12,11 @@
 * Implement union operator +
 
 
+### 0.9.0 -- November 17, 2017
+* Bug fixes
+* Made graphviz installation optional 
+* Implement file-based external storage
+
 ### 0.8.0 -- July 26, 2017 
 Documentation and tutorials available at https://docs.datajoint.io and https://tutorials.datajoint.io
 * improved the ERD graphics and features using the graphviz libraries (#207, #333)

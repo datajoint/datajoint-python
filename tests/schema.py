@@ -23,7 +23,9 @@ class Test(dj.Lookup):
 
 @schema
 class TestExtra(dj.Manual):
-    ''' clone of Test but with an extra field '''
+    """
+    clone of Test but with an extra field
+    """
     definition = Test.definition + "\nextra : int # extra int\n"
 
 

@@ -17,6 +17,7 @@ supported_class_attrs = set((
     'insert', 'insert1', 'drop', 'drop_quick',
     'delete', 'delete_quick'))
 
+
 class OrderedClass(type):
     """
     Class whose members are ordered
@@ -90,9 +91,10 @@ class UserRelation(BaseRelation, metaclass=OrderedClass):
 
     @ClassProperty
     def full_table_name(cls):
-        if cls.database is None:
-            raise DataJointError('Class %s is not properly declared (schema decorator not applied?)' % cls.__name__)
-        return r"`{0:s}`.`{1:s}`".format(cls.database, cls.table_name)
+        if cls not in {Manual, Imported, Lookup, Computed, Part}:
+            if cls.database is None:
+                raise DataJointError('Class %s is not properly declared (schema decorator not applied?)' % cls.__name__)
+            return r"`{0:s}`.`{1:s}`".format(cls.database, cls.table_name)
 
 
 class Manual(UserRelation):

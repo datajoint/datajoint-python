@@ -1,5 +1,4 @@
 from collections import OrderedDict
-from collections.abc import Callable, Iterable
 from functools import partial
 import numpy as np
 from .blob import unpack
@@ -8,159 +7,30 @@ from . import key as PRIMARY_KEY
 import warnings
 
 
-def update_dict(d1, d2):
-    return {k: (d2[k] if k in d2 else d1[k]) for k in d1}
-
-def iskey(attr):
-    return attr is PRIMARY_KEY or attr=='KEY'
+def is_key(attr):
+    return attr is PRIMARY_KEY or attr == 'KEY'
 
 
-class FetchBase:
-    def __init__(self, arg):
-        # prepare copy constructor
-        if isinstance(arg, self.__class__):
-            self.sql_behavior = dict(arg.sql_behavior)
-            self.ext_behavior = dict(arg.ext_behavior)
-            self._relation = arg._relation
-        else:
-            self._initialize_behavior()
-            self._relation = arg
-
-    def copy(self):
-        """
-        DEPRECATED
-
-        Creates and returns a copy of this object
-        :return: copy FetchBase derivatives
-        """
-        warnings.warn('Use of `copy` on `fetch` object is deprecated', stacklevel=2)
-
-        return self.__class__(self)
-
-    def _initialize_behavior(self):
-        self.sql_behavior = {}
-        self.ext_behavior = dict(squeeze=False)
-
-    @property
-    def squeeze(self):
-        """
-        DEPRECATED
-
-        Changes the state of the fetch object to squeeze the returned values as much as possible.
-        :return: a copy of the fetch object
-        """
-        warnings.warn('Use of `squeeze` on `fetch` object is deprecated. Please use `squeeze=True` keyword arguments '
-                      'in the call to `fetch`/`keys` instead', stacklevel=2)
-
-        ret = self.copy()
-        ret.ext_behavior['squeeze'] = True
-        return ret
-
-    @staticmethod
-    def _prepare_attributes(item):
-        """
-        DEPRECATED
-
-        Used by fetch.__getitem__ to deal with slices
-        :param item: the item passed to __getitem__. Can be a string, a tuple, a list, or a slice.
-        :return: a tuple of items to fetch, a list of the corresponding attributes
-        :raise DataJointError: if item does not match one of the datatypes above
-        """
-        if iskey(item) or isinstance(item, str):
-            item = (item,)
-        try:
-            attributes = tuple(i for i in item if not iskey(i))
-        except TypeError:
-            raise DataJointError("Index must be a sequence or a string.")
-        return item, attributes
-
-    def __len__(self):
-        return len(self._relation)
+def to_dicts(recarray):
+    """convert record array to a dictionaries"""
+    for rec in recarray:
+        yield dict(zip(recarray.dtype.names, rec.tolist()))
 
 
-class Fetch(FetchBase, Callable, Iterable):
+class Fetch:
     """
     A fetch object that handles retrieving elements from the database table.
-
     :param relation: relation the fetch object fetches data from
     """
 
-    def _initialize_behavior(self):
-        super()._initialize_behavior()
-        self.sql_behavior = dict(self.sql_behavior, offset=None, limit=None, order_by=None, as_dict=False)
+    def __init__(self, relation):
+        self._relation = relation
 
-    def order_by(self, *args):
-        """
-        DEPRECATED
-
-        Changes the state of the fetch object to order the results by a particular attribute.
-        The commands are handed down to mysql.
-        :param args: the attributes to sort by. If DESC is passed after the name, then the order is descending.
-        :return: a copy of the fetch object
-        Example:
-        >>> my_relation.fetch.order_by('language', 'name DESC')
-        """
-        warnings.warn('Use of `order_by` on `fetch` object is deprecated. Please use `order_by` keyword arguments in '
-                      'the call to `fetch`/`keys` instead', stacklevel=2)
-        self = Fetch(self)
-        if len(args) > 0:
-            self.sql_behavior['order_by'] = args
-        return self
-
-    @property
-    def as_dict(self):
-        """
-        DEPRECATED
-
-        Changes the state of the fetch object to return dictionaries.
-        :return: a copy of the fetch object
-        Example:
-        >>> my_relation.fetch.as_dict()
-        """
-        warnings.warn('Use of `as_dict` on `fetch` object is deprecated. Please use `as_dict` keyword arguments in the '
-                      'call to `fetch`/`keys` instead', stacklevel=2)
-        ret = Fetch(self)
-        ret.sql_behavior['as_dict'] = True
-        return ret
-
-    def limit(self, limit):
-        """
-        DEPRECATED
-
-        Limits the number of items fetched.
-
-        :param limit: limit on the number of items
-        :return: a copy of the fetch object
-        """
-        warnings.warn('Use of `limit` on `fetch` object is deprecated. Please use `limit` keyword arguments in '
-                      'the call to `fetch`/`keys` instead', stacklevel=2)
-        ret = Fetch(self)
-        ret.sql_behavior['limit'] = limit
-        return ret
-
-    def offset(self, offset):
-        """
-        DEPRECATED
-
-        Offsets the number of itms fetched. Needs to be applied with limit.
-
-        :param offset: offset
-        :return: a copy of the fetch object
-        """
-
-        warnings.warn('Use of `offset` on `fetch` object is deprecated. Please use `offset` keyword arguments in '
-                      'the call to `fetch`/`keys` instead', stacklevel=2)
-        ret = Fetch(self)
-        if ret.sql_behavior['limit'] is None:
-            warnings.warn('Fetch offset should be used with a limit.')
-        ret.sql_behavior['offset'] = offset
-        return ret
-
-    def __call__(self, *attrs, **kwargs):
+    def __call__(self, *attrs, offset=None, limit=None, order_by=None, as_dict=False, squeeze=False):
         """
         Fetches the query results from the database into an np.array or list of dictionaries and unpacks blob attributes.
 
-        :param attrs: OPTIONAL. one or more attributes to fetch. If not provided, the call will return
+        :param attrs: zero or more attributes to fetch. If not provided, the call will return
         all attributes of this relation. If provided, returns tuples with an entry for each attribute.
         :param offset: the number of tuples to skip in the returned result
         :param limit: the maximum number of tuples to return
@@ -170,39 +40,26 @@ class Fetch(FetchBase, Callable, Iterable):
         :return: the contents of the relation in the form of a structured numpy.array or a dict list
         """
 
-        # check unexpected arguments
-        try:
-            raise TypeError("fetch() got an unexpected argument '%s'" % next(
-                k for k in kwargs if k not in {'offset', 'limit', 'as_dict', 'squeeze', 'order_by'}))
-        except StopIteration:
-            pass   # arguments are okay
-
         # if 'order_by' passed in a string, make into list
-        if isinstance(kwargs.get('order_by'), str):
-            kwargs['order_by'] = [kwargs['order_by']]
-
-        sql_behavior = update_dict(self.sql_behavior, kwargs)
-        ext_behavior = update_dict(self.ext_behavior, kwargs)
-        total_behavior = dict(sql_behavior)
-        total_behavior.update(ext_behavior)
+        if isinstance(order_by, str):
+            order_by = [order_by]
 
         # if attrs are specified then as_dict cannot be true
-        if attrs and sql_behavior['as_dict']:
+        if attrs and as_dict:
             raise DataJointError('Cannot specify attributes to return when as_dict=True. '
                                  'Use proj() to select attributes or set as_dict=False')
 
-        unpack_ = partial(unpack, squeeze=ext_behavior['squeeze'])
-
-        if sql_behavior['limit'] is None and sql_behavior['offset'] is not None:
+        if limit is None and offset is not None:
             warnings.warn('Offset set, but no limit. Setting limit to a large number. '
                           'Consider setting a limit explicitly.')
-            sql_behavior['limit'] = 2 * len(self._relation)
+            limit = 2 * len(self._relation)
 
-        if len(attrs) == 0: # fetch all attributes
-            cur = self._relation.cursor(**sql_behavior)
+        if not attrs:
+            # fetch all attributes
+            cur = self._relation.cursor(as_dict=as_dict, limit=limit, offset=offset, order_by=order_by)
             heading = self._relation.heading
-            if sql_behavior['as_dict']:
-                ret = [OrderedDict((name, unpack_(d[name]) if heading[name].is_blob else d[name])
+            if as_dict:
+                ret = [OrderedDict((name, unpack(d[name], squeeze=squeeze) if heading[name].is_blob else d[name])
                                    for name in heading.names)
                        for d in cur.fetchall()]
             else:
@@ -213,95 +70,37 @@ class Fetch(FetchBase, Callable, Iterable):
                         external_table = self._relation.connection.schemas[heading[name].database].external_table
                         ret[name] = list(map(external_table.get, ret[name]))
                     elif heading[name].is_blob:
-                        ret[name] = list(map(unpack_, ret[name]))
-
+                        ret[name] = list(map(partial(unpack, squeeze=squeeze), ret[name]))
         else:  # if list of attributes provided
-            attributes = [a for a in attrs if not iskey(a)]
-            result = self._relation.proj(*attributes).fetch(**total_behavior)
+            attributes = [a for a in attrs if not is_key(a)]
+            result = self._relation.proj(*attributes).fetch(
+                offset=offset, limit=limit, order_by=order_by, as_dict=False, squeeze=squeeze)
             return_values = [
                 list(to_dicts(result[self._relation.primary_key]))
-                if iskey(attribute) else result[attribute]
+                if is_key(attribute) else result[attribute]
                 for attribute in attrs]
             ret = return_values[0] if len(attrs) == 1 else return_values
 
         return ret
 
-    def __iter__(self):
-        """
-        Iterator that returns the contents of the database.
-        """
-        warnings.warn('Iteration on the fetch object is deprecated.  '
-                      'Iterate over the result of fetch() or fetch.keys() instead')
-
-        sql_behavior = dict(self.sql_behavior)
-        ext_behavior = dict(self.ext_behavior)
-
-        unpack_ = partial(unpack, squeeze=ext_behavior['squeeze'])
-
-        cur = self._relation.cursor(**sql_behavior)
-
-        heading = self._relation.heading
-        do_unpack = tuple(h in heading.blobs for h in heading.names)
-        values = cur.fetchone()
-        while values:
-            if sql_behavior['as_dict']:
-                yield OrderedDict(
-                    (field_name, unpack_(values[field_name])) if up
-                    else (field_name, values[field_name])
-                    for field_name, up in zip(heading.names, do_unpack))
-            else:
-                yield tuple(unpack_(value) if up else value for up, value in zip(do_unpack, values))
-            values = cur.fetchone()
-
     def keys(self, **kwargs):
         """
+        DEPRECATED
         Iterator that returns primary keys as a sequence of dicts.
         """
-        yield from self._relation.proj().fetch(**dict(self.sql_behavior, as_dict=True, **kwargs))
-
-    def __getitem__(self, item):
-        """
-        DEPRECATED
-
-        Fetch attributes as separate outputs.
-        datajoint.key is a special value that requests the entire primary key
-        :return: tuple with an entry for each element of item
-
-        Examples:
-        >>> a, b = relation['a', 'b']
-        >>> a, b, key = relation['a', 'b', datajoint.key]
-        """
-        warnings.warn('Use of `rel.fetch[a, b]` notation is deprecated. '
-                      'Please use `rel.fetch(a, b) for equivalent result', stacklevel=2)
-
-        behavior = dict(self.sql_behavior)
-        behavior.update(self.ext_behavior)
-
-        single_output = iskey(item) or isinstance(item, str) or isinstance(item, int)
-        item, attributes = self._prepare_attributes(item)
-        result = self._relation.proj(*attributes).fetch(**behavior)
-        return_values = [
-            list(to_dicts(result[self._relation.primary_key]))
-            if iskey(attribute) else result[attribute]
-            for attribute in item]
-        return return_values[0] if single_output else return_values
-
-    def __repr__(self):
-        repr_str = """Fetch object for {items} items on {name}\n""".format(name=self._relation.__class__.__name__,
-                                                                           items=len(self._relation)    )
-        behavior = dict(self.sql_behavior)
-        behavior.update(self.ext_behavior)
-        repr_str += '\n'.join(
-            ["\t{key}:\t{value}".format(key=k, value=str(v)) for k, v in behavior.items() if v is not None])
-        return repr_str
+        warnings.warn('Use of `rel.fetch.keys()` notation is deprecated. '
+                      'Please use `rel.fetch("KEY")` or `rel.fetch(dj.key)` for equivalent result', stacklevel=2)
+        yield from self._relation.proj().fetch(as_dict=True, **kwargs)
 
 
-class Fetch1(FetchBase, Callable):
+class Fetch1:
     """
     Fetch object for fetching exactly one row.
-
     :param relation: relation the fetch object fetches data from
     """
+
+    def __init__(self, relation):
+        self._relation = relation
 
     def __call__(self, *attrs, squeeze=False):
         """
@@ -320,8 +119,6 @@ class Fetch1(FetchBase, Callable):
         """
 
         heading = self._relation.heading
-        squeeze = squeeze or self.ext_behavior['squeeze']  # for backward compatibility
-        unpack_ = partial(unpack, squeeze=squeeze)
 
         if not attrs:  # fetch all attributes, return as ordered dict
             cur = self._relation.cursor(as_dict=True)
@@ -333,54 +130,18 @@ class Fetch1(FetchBase, Callable):
                 return self._relation.connection.schemas[attr.database].external_table.get(_hash)
 
             ret = OrderedDict((name, get_external(heading[name], ret[name])) if heading[name].is_external
-                              else (name, unpack_(ret[name]) if heading[name].is_blob else ret[name])
+                              else (name, unpack(ret[name], squeeze=squeeze) if heading[name].is_blob else ret[name])
                               for name in heading.names)
 
         else:  # fetch some attributes, return as tuple
-            attributes = [a for a in attrs if not iskey(a)]
+            attributes = [a for a in attrs if not is_key(a)]
             result = self._relation.proj(*attributes).fetch(squeeze=squeeze)
             if len(result) != 1:
                 raise DataJointError('fetch1 should only return one tuple. %d tuples were found' % len(result))
             return_values = tuple(
                 next(to_dicts(result[self._relation.primary_key]))
-                if iskey(attribute) else result[attribute][0]
+                if is_key(attribute) else result[attribute][0]
                 for attribute in attrs)
             ret = return_values[0] if len(attrs) == 1 else return_values
 
         return ret
-
-    def __getitem__(self, item):
-        """
-        DEPRECATED
-
-        Fetch attributes as separate outputs.
-        datajoint.key is a special value that requests the entire primary key
-        :return: tuple with an entry for each element of item
-
-        Examples:
-
-        >>> a, b = relation['a', 'b']
-        >>> a, b, key = relation['a', 'b', datajoint.key]
-
-        """
-        warnings.warn('Use of `rel.fetch[a, b]` notation is deprecated. Please use `rel.fetch(a, b) for equivalent '
-                      'result', stacklevel=2)
-
-        behavior = dict(self.sql_behavior)
-        behavior.update(self.ext_behavior)
-
-        single_output = iskey(item) or isinstance(item, str)
-        item, attributes = self._prepare_attributes(item)
-        result = self._relation.proj(*attributes).fetch(**behavior)
-        if len(result) != 1:
-            raise DataJointError('fetch1 should only return one tuple. %d tuples were found' % len(result))
-        return_values = tuple(
-            next(to_dicts(result[self._relation.primary_key]))
-            if iskey(attribute) else result[attribute][0]
-            for attribute in item)
-        return return_values[0] if single_output else return_values
-
-
-def to_dicts(recarray):
-    for rec in recarray:
-        yield dict(zip(recarray.dtype.names, rec.tolist()))

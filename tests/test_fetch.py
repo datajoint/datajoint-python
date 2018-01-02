@@ -157,7 +157,7 @@ class TestFetch:
 
     def test_len(self):
         """Tests __len__"""
-        assert_true(len(self.lang.fetch) == len(self.lang), '__len__ is not behaving properly')
+        assert_true(len(self.lang.fetch()) == len(self.lang), '__len__ is not behaving properly')
 
     @raises(dj.DataJointError)
     def test_fetch1_step2(self):

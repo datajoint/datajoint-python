@@ -361,10 +361,10 @@ class RelationalOperand:
             }
             .Relation th{
                 background: #A0A0A0; color: #ffffff; padding:4px; border:#f0e0e0 1px solid;
-                font-weight: normal; font-family: monospace; font-size: 75%;
+                font-weight: normal; font-family: monospace; font-size: 100%;
             }
             .Relation td{
-                padding:4px; border:#f0e0e0 1px solid; font-size:75%;
+                padding:4px; border:#f0e0e0 1px solid; font-size:100%;
             }
             .Relation tr:nth-child(odd){
                 background: #ffffff;

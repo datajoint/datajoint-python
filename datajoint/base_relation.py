@@ -416,7 +416,7 @@ class BaseRelation(RelationalOperand):
         logger.warning('show_definition is deprecated.  Use describe instead.')
         return self.describe()
 
-    def describe(self):
+    def describe(self, printout=True):
         """
         :return:  the definition string for the relation using DataJoint DDL.
             This does not yet work for aliased foreign keys.
@@ -459,7 +459,8 @@ class BaseRelation(RelationalOperand):
                 definition += '%-20s : %-28s # %s\n' % (
                     name if attr.default is None else '%s=%s' % (name, attr.default),
                     '%s%s' % (attr.type, ' auto_increment' if attr.autoincrement else ''), attr.comment)
-        print(definition)
+        if printout:
+            print(definition)
         return definition
 
     def _update(self, attrname, value=None):
