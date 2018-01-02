@@ -79,12 +79,13 @@ class ExternalTable(BaseRelation):
         """
         store = blob_hash[STORE_HASH_LENGTH:]
         store = 'external' + ('-' if store else '') + store
-        cache_file = os.path.join(config['cache'], blob_hash) if 'cache' in config and config['cache'] else None
+
+        cache_folder = config.get('cache', None)
 
         blob = None
-        if cache_file:
+        if cache_folder:
             try:
-                with open(cache_file, 'rb') as f:
+                with open(os.path.join(cache_folder, blob_hash), 'rb') as f:
                     blob = f.read()
             except FileNotFoundError:
                 pass
@@ -106,8 +107,10 @@ class ExternalTable(BaseRelation):
             else:
                 raise DataJointError('Unknown external storage protocol "%s"' % spec['protocol'])
 
-            if cache_file:
-                safe_write(cache_file, blob)
+            if cache_folder:
+                if not os.path.exists(cache_folder):
+                    os.makedirs(cache_folder)
+                safe_write(os.path.join(cache_folder, blob_hash), blob)
 
         return unpack(blob)
 

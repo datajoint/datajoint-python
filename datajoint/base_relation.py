@@ -353,10 +353,8 @@ class BaseRelation(RelationalOperand):
         try:
             for r in reversed(list(delete_list.values())):
                 count = r.delete_quick(get_count=safe)
-                if safe:
-                    print('{table}: {count} items'.format(
-                        table=r.full_table_name,
-                        count=count))
+                if count and safe:
+                    print('{table}: {count} items'.format(table=r.full_table_name, count=count))
         except Exception:
             if not already_in_transaction:
                 self.connection.cancel_transaction()
