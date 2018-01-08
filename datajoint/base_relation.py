@@ -316,6 +316,7 @@ class BaseRelation(RelationalOperand):
             if not table.isdigit():
                 delete_list[table] = FreeRelation(self.connection, table)
             else:
+                raise DataJointError('Cascading deletes across renamed foreign keys is not supported.  See issue #300.')
                 parent, edge = next(iter(graph.parents(table).items()))
                 delete_list[table] = FreeRelation(self.connection, parent).proj(
                     **{new_name: old_name
