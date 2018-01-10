@@ -309,7 +309,7 @@ class BaseRelation(RelationalOperand):
         safe = config['safemode']
         if already_in_transaction and safe:
             raise DataJointError('Cannot delete within a transaction in safemode. '
-                                 'Set dj.config["setmode"] = False or complete the ongoing transaction first.')
+                                 'Set dj.config["safemode"] = False or complete the ongoing transaction first.')
         graph = self.connection.dependencies
         graph.load()
         delete_list = collections.OrderedDict()
