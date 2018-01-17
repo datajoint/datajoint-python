@@ -1,3 +1,4 @@
+from decimal import Decimal
 from nose.tools import assert_true, assert_false, assert_equals
 from . import schema
 from datajoint.jobs import ERROR_MESSAGE_LENGTH, TRUNCATION_APPENDIX
@@ -74,6 +75,13 @@ def test_sigint():
     assert_equals(status, 'error')
     assert_equals(error_message, 'KeyboardInterrupt')
     schema.schema.jobs.delete()
+
+def test_key_pack_testing():
+    jobs = schema.schema.jobs
+    key = dict(a='string', b=int, c=Decimal())
+    assert jobs.packable_or_none(key) is None
+    key.pop('c')
+    assert jobs.packable_or_none(key) is not None
 
 
 def test_sigterm():

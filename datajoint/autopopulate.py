@@ -4,7 +4,6 @@ import datetime
 import traceback
 import random
 from tqdm import tqdm
-from itertools import count
 from pymysql import OperationalError
 from .relational_operand import RelationalOperand, AndList, U
 from . import DataJointError
@@ -117,7 +116,7 @@ class AutoPopulate:
         elif order == "random":
             random.shuffle(keys)
 
-        call_count = count()
+        call_count = 0 
         logger.info('Found %d keys to populate' % len(keys))
 
         make = self._make_tuples if hasattr(self, '_make_tuples') else self.make
@@ -133,7 +132,7 @@ class AutoPopulate:
                         jobs.complete(self.target.table_name, self._job_key(key))
                 else:
                     logger.info('Populating: ' + str(key))
-                    next(call_count)
+                    call_count += 1
                     try:
                         make(dict(key))
                     except (KeyboardInterrupt, SystemExit, Exception) as error:

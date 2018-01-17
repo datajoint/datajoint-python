@@ -289,20 +289,27 @@ class BaseRelation(RelationalOperand):
                 else:
                     raise
 
-    def delete_quick(self):
+    def delete_quick(self, get_count=False):
         """
-        Deletes the table without cascading and without user prompt. If this table has any dependent
-        table(s), this will fail.
+        Deletes the table without cascading and without user prompt.
+        If this table has populated dependent tables, this will fail.
         """
         query = 'DELETE FROM ' + self.full_table_name + self.where_clause
         self.connection.query(query)
+        count = self.connection.query("SELECT ROW_COUNT()").fetchone()[0] if get_count else None
         self._log(query[:255])
+        return count
 
-    def delete(self):
+    def delete(self, verbose=True):
         """
         Deletes the contents of the table and its dependent tables, recursively.
         User is prompted for confirmation if config['safemode'] is set to True.
         """
+        already_in_transaction = self.connection.in_transaction
+        safe = config['safemode']
+        if already_in_transaction and safe:
+            raise DataJointError('Cannot delete within a transaction in safemode. '
+                                 'Set dj.config["safemode"] = False or complete the ongoing transaction first.')
         graph = self.connection.dependencies
         graph.load()
         delete_list = collections.OrderedDict()
@@ -310,6 +317,7 @@ class BaseRelation(RelationalOperand):
             if not table.isdigit():
                 delete_list[table] = FreeRelation(self.connection, table)
             else:
+                raise DataJointError('Cascading deletes across renamed foreign keys is not supported.  See issue #300.')
                 parent, edge = next(iter(graph.parents(table).items()))
                 delete_list[table] = FreeRelation(self.connection, parent).proj(
                     **{new_name: old_name
@@ -341,35 +349,42 @@ class BaseRelation(RelationalOperand):
             if restrictions[name]:  # do not restrict by an empty list
                 r.restrict([r.proj() if isinstance(r, RelationalOperand) else r
                             for r in restrictions[name]])
-        # execute
-        do_delete = False  # indicate if there is anything to delete
-        if config['safemode']:  # pragma: no cover
-            print('The contents of the following tables are about to be deleted:')
+        if safe:
+            print('About to delete:')
 
-        for table, relation in list(delete_list.items()):   # need list to force a copy
-            if table.isdigit():
-                delete_list.pop(table)  # remove alias nodes from the delete list
-            else:
-                count = len(relation)
-                if count:
-                    do_delete = True
-                    if config['safemode']:
-                        print(table, '(%d tuples)' % count)
-                else:
-                    delete_list.pop(table)
-        if not do_delete:
-            if config['safemode']:
-                print('Nothing to delete')
+        if not already_in_transaction:
+            self.connection.start_transaction()
+        total = 0
+        try:
+            for r in reversed(list(delete_list.values())):
+                count = r.delete_quick(get_count=True)
+                total += count
+                if (verbose or safe) and count:
+                    print('{table}: {count} items'.format(table=r.full_table_name, count=count))
+        except:
+            # Delete failed, perhaps due to insufficient privileges. Cancel transaction.
+            if not already_in_transaction:
+                self.connection.cancel_transaction()
+            raise
         else:
-            if not config['safemode'] or user_choice("Proceed?", default='no') == 'yes':
-                already_in_transaction = self.connection._in_transaction
+            assert not (already_in_transaction and safe)
+            if not total:
+                print('Nothing to delete')
                 if not already_in_transaction:
-                    self.connection.start_transaction()
-                for r in reversed(list(delete_list.values())):
-                    r.delete_quick()
-                if not already_in_transaction:
-                    self.connection.commit_transaction()
-                print('Done')
+                    self.connection.cancel_transaction()
+            else:
+                if already_in_transaction:
+                    if verbose:
+                        print('The delete is pending within the ongoing transaction.')
+                else:
+                    if not safe or user_choice("Proceed?", default='no') == 'yes':
+                        self.connection.commit_transaction()
+                        if verbose or safe:
+                            print('Committed.')
+                    else:
+                        self.connection.cancel_transaction()
+                        if verbose or safe:
+                            print('Cancelled deletes.')
 
     def drop_quick(self):
         """
@@ -389,6 +404,9 @@ class BaseRelation(RelationalOperand):
         Drop the table and all tables that reference it, recursively.
         User is prompted for confirmation if config['safemode'] is set to True.
         """
+        if self.restriction:
+            raise DataJointError('A relation with an applied restriction condition cannot be dropped.'
+                                 ' Call drop() on the unrestricted BaseRelation.')
         self.connection.dependencies.load()
         do_drop = True
         tables = [table for table in self.connection.dependencies.descendants(self.full_table_name)
@@ -505,8 +523,7 @@ class BaseRelation(RelationalOperand):
             full_table_name=self.from_clause,
             attrname=attrname,
             placeholder=placeholder,
-            where_clause=self.where_clause
-        )
+            where_clause=self.where_clause)
         self.connection.query(command, args=(value, ) if value is not None else ())
 
 

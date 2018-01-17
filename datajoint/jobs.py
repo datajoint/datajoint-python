@@ -1,3 +1,4 @@
+from _decimal import Decimal
 from .hash import key_hash
 import os
 import pymysql
@@ -58,6 +59,13 @@ class JobTable(BaseRelation):
         """bypass interactive prompts and dependencies"""
         self.drop_quick()
 
+    @staticmethod
+    def packable_or_none(key):
+        for v in key.values():
+            if isinstance(v, Decimal):
+                return None
+        return key
+
     def reserve(self, table_name, key):
         """
         Reserve a job for computation.  When a job is reserved, the job table contains an entry for the
@@ -73,7 +81,7 @@ class JobTable(BaseRelation):
             host=os.uname().nodename,
             pid=os.getpid(),
             connection_id=self.connection.connection_id,
-            key=key,
+            key=self.packable_or_none(key),
             user=self._user)
         try:
             self.insert1(job, ignore_extra_fields=True)
@@ -109,7 +117,7 @@ class JobTable(BaseRelation):
                  pid=os.getpid(),
                  connection_id=self.connection.connection_id,
                  user=self._user,
-                 key=key,
+                 key=self.packable_or_none(key),
                  error_message=error_message,
                  error_stack=error_stack),
             replace=True, ignore_extra_fields=True)
