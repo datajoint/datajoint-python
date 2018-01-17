@@ -16,9 +16,6 @@ class Folder:
         self.bucket = bucket
         self.remote_path = '/'.join((location.lstrip('/'), database))
 
-    def make_bucket(self):
-        self.client.make_bucket(self.bucket)
-
     def put(self, blob_hash, blob):
         try:
             self.client.put_object(self.bucket, '/'.join((self.remote_path, blob_hash)), BytesIO(blob), len(blob))
