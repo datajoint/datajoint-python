@@ -175,3 +175,16 @@ class ArgmaxTest(dj.Lookup):
         yield from zip(range(n ** 2),
                        itertools.chain(*itertools.repeat(tuple(map(chr, range(100, 100 + n))), n)),
                        np.random.rand(n ** 2))
+
+
+@schema
+class ReservedWord(dj.Manual):
+    definition = """
+    # Test of SQL reserved words
+    key : int
+    ---
+    in    :  varchar(25)    
+    from  :  varchar(25)   
+    int   :  int
+    select : varchar(25)
+    """
