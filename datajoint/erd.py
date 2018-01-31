@@ -206,8 +206,8 @@ else:
                 nx.algorithms.boundary.node_boundary(nx.DiGraph(self).reverse(), self.nodes_to_show))
             nodes = self.nodes_to_show.union(a for a in gaps if a.isdigit)
             # construct subgraph and rename nodes to class names
-            graph = nx.DiGraph(self).subgraph(nodes)
-            nx.set_node_attributes(graph, 'node_type', {n: _get_tier(n) for n in graph})
+            graph = nx.DiGraph(nx.DiGraph(self).subgraph(nodes))
+            nx.set_node_attributes(graph, name='node_type', values={n: _get_tier(n) for n in graph})
             # relabel nodes to class names
             clean_context = dict((k, v) for k, v in self.context.items()
                                  if not k.startswith('_'))  # exclude ipython's implicit variables
@@ -216,6 +216,7 @@ else:
             new_names = [mapping.values()]
             if len(new_names) > len(set(new_names)):
                 raise DataJointError('Some classes have identical names. The ERD cannot be plotted.')
+            # v2: either copy=True or make 'real graph' in subgraph call above
             nx.relabel_nodes(graph, mapping, copy=False)
             return graph
 
