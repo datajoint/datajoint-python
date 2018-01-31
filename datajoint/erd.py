@@ -216,7 +216,6 @@ else:
             new_names = [mapping.values()]
             if len(new_names) > len(set(new_names)):
                 raise DataJointError('Some classes have identical names. The ERD cannot be plotted.')
-            # v2: either copy=True or make 'real graph' in subgraph call above
             nx.relabel_nodes(graph, mapping, copy=False)
             return graph
 
