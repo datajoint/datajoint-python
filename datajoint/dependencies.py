@@ -100,5 +100,8 @@ class Dependencies(nx.DiGraph):
         :param full_table_name:  In form `schema`.`table_name`
         :return: all dependent tables sorted in topological order.  Self is included.
         """
-        nodes = nx.algorithms.dag.descendants(self, full_table_name)
-        return [full_table_name] + nx.algorithms.dag.topological_sort(self, nodes)
+        # nx v1
+        # nodes = nx.algorithms.dag.descendants(self, full_table_name)
+        # return [full_table_name] + nx.algorithms.dag.topological_sort(self, nodes)
+        desc = list(nx.algorithms.dag.descendants(self, full_table_name))
+        return [full_table_name] + desc
