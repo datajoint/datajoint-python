@@ -77,6 +77,8 @@ class ExternalTable(BaseRelation):
         get an object from external store.
         Does not need to check whether it's in the table.
         """
+        if blob_hash is None:
+            return None
         store = blob_hash[STORE_HASH_LENGTH:]
         store = 'external' + ('-' if store else '') + store
 
@@ -184,4 +186,3 @@ class ExternalTable(BaseRelation):
             raise DataJointError(
                 'Unknown external storage protocol "{protocol}" in "{store}"'.format(store=store, **spec))
         return spec
-

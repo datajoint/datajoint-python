@@ -3,7 +3,7 @@ import re
 
 import numpy as np
 from nose.tools import assert_equal, assert_not_equal, assert_true, assert_list_equal, raises
-from pymysql import IntegrityError, InternalError, ProgrammingError
+from pymysql import InternalError
 import datajoint as dj
 from datajoint import utils, DataJointError
 from datajoint.base_relation import BaseRelation
@@ -192,7 +192,7 @@ class TestRelation:
         Y = self.img.fetch()[0]['img']
         assert_true(np.all(X == Y), 'Inserted and retrieved image are not identical')
 
-    @raises(ProgrammingError)
+    @raises(DataJointError)
     def test_drop(self):
         """Tests dropping tables"""
         dj.config['safemode'] = True

@@ -3,6 +3,6 @@ pymysql>=0.7.2
 pyparsing
 ipython
 tqdm
-networkx~=1.11
-pydotplus
+networkx
+pydot
 minio
