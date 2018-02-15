@@ -69,6 +69,9 @@ class AutoPopulate:
         """
         :return: the relation containing the keys to be computed (derived from self.key_source)
         """
+        if self.restriction:
+            raise DataJointError('Cannot call populate on a restricted table. '
+                                 'Instead, pass conditions to populate() as arguments.')
         todo = self.key_source
         if not isinstance(todo, RelationalOperand):
             raise DataJointError('Invalid key_source value')
