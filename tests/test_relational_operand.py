@@ -5,7 +5,7 @@ import numpy as np
 from nose.tools import assert_equal, assert_false, assert_true, raises, assert_set_equal
 
 import datajoint as dj
-from .schema_simple import A, B, D, E, L, DataA, DataB, TestUpdate, IJ, JI
+from .schema_simple import A, B, D, E, L, DataA, DataB, TestUpdate, IJ, JI, ReservedWord
 from .schema import Experiment
 
 
@@ -345,3 +345,20 @@ class TestRelational:
         s = rel.fetch1('blob_attr')
         rel._update('blob_attr', s.T)
         assert_equal(s.T.shape, rel.fetch1('blob_attr').shape, "Array dimensions do not match")
+
+    @staticmethod
+    def test_reserved_words():
+        """Test the user of SQL reserved words as attributes"""
+        rel = ReservedWord()
+        rel.insert1({'key': 1, 'in': 'ouch', 'from': 'bummer', 'int': 3, 'select': 'major pain'})
+        assert_true((rel & {'key': 1, 'in': 'ouch', 'from': 'bummer'}).fetch1('int') == 3)
+        assert_true((rel.proj('int', double='from') & {'double': 'bummer'}).fetch1('int') == 3)
+        (rel & {'key': 1}).delete()
+
+    @staticmethod
+    @raises(dj.DataJointError)
+    def test_reserved_words2():
+        """Test the user of SQL reserved words as attributes"""
+        rel = ReservedWord()
+        rel.insert1({'key': 1, 'in': 'ouch', 'from': 'bummer', 'int': 3, 'select': 'major pain'})
+        (rel & 'key=1').fetch('in')  # error because reserved word `key` is not in backquotes. See issue #249

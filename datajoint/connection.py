@@ -122,10 +122,8 @@ class Connection:
         cursor = client.cursors.DictCursor if as_dict else client.cursors.Cursor
         cur = self._conn.cursor(cursor=cursor)
 
+        logger.debug("Executing SQL:" + query[0:300])
         try:
-            # Log the query
-            logger.debug("Executing SQL:" + query[0:300])
-
             with warnings.catch_warnings():
                 if suppress_warnings:
                     # suppress all warnings arising from underlying SQL library
@@ -144,9 +142,11 @@ class Connection:
             else:
                 raise
         except err.ProgrammingError as e:
-            print('Error in query:')
-            print(query)
-            raise
+            raise DataJointError("\n".join((
+                "Error in query:", query,
+                "Please check spelling, syntax, and existence of tables and attributes.",
+                "When restricting a relation by a condition in a string, enclose attributes in backquotes."
+            )))
         return cur
 
     def get_user(self):

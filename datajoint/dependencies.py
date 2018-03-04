@@ -7,8 +7,13 @@ from . import DataJointError
 class Dependencies(nx.DiGraph):
     """
     The graph of dependencies (foreign keys) between loaded tables.
+
+    Note: the 'connnection' argument should normally be supplied;
+    Empty use is permitted to facilliate use of networkx algorithms which
+    internally create objects with the expectation of empty constructors.
+    See also: https://github.com/datajoint/datajoint-python/pull/443
     """
-    def __init__(self, connection):
+    def __init__(self, connection=None):
         self._conn = connection
         self._node_alias_count = itertools.count()
         super().__init__(self)
@@ -100,5 +105,9 @@ class Dependencies(nx.DiGraph):
         :param full_table_name:  In form `schema`.`table_name`
         :return: all dependent tables sorted in topological order.  Self is included.
         """
-        nodes = nx.algorithms.dag.descendants(self, full_table_name)
-        return [full_table_name] + nx.algorithms.dag.topological_sort(self, nodes)
+
+        nodes = self.subgraph(
+            nx.algorithms.dag.descendants(self, full_table_name))
+
+        return [full_table_name] + list(
+            nx.algorithms.dag.topological_sort(nodes))
