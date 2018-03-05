@@ -172,7 +172,8 @@ class BaseRelation(RelationalOperand):
                 fields='`' + '`,`'.join(fields) + '`',
                 table=self.full_table_name,
                 select=rows.make_sql(select_fields=fields),
-                duplicate=(' ON DUPLICATE KEY UPDATE `{pk}`=`{pk}`'.format(pk=self.primary_key[0])
+                duplicate=(' ON DUPLICATE KEY UPDATE `{pk}`=`{table}`.`{pk}`'.format(
+                    table=self.full_table_name, pk=self.primary_key[0])
                            if skip_duplicates else ''))
             self.connection.query(query)
             return
