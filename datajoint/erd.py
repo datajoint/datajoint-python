@@ -12,7 +12,8 @@ try:
 except:
     erd_active = False
 
-from . import Manual, Imported, Computed, Lookup, Part, DataJointError
+from . import Manual, Imported, Computed, Lookup, Part
+from .errors import DataJointError
 from .base_relation import lookup_class_name
 
 

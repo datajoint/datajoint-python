@@ -7,13 +7,13 @@ import pymysql
 import logging
 import warnings
 from pymysql import OperationalError, InternalError, IntegrityError
-from . import config, DataJointError
+from . import config
 from .declare import declare
 from .relational_operand import RelationalOperand
 from .blob import pack
 from .utils import user_choice
 from .heading import Heading
-from .settings import server_error_codes
+from .errors import server_error_codes, DataJointError, DuplicateError
 from . import __version__ as version
 
 logger = logging.getLogger(__name__)
@@ -285,7 +285,7 @@ class BaseRelation(RelationalOperand):
                     raise DataJointError(
                         '{} : To ignore extra fields, set ignore_extra_fields=True in insert.'.format(err.args[1])) from None
                 elif err.args[0] == server_error_codes['duplicate entry']:
-                    raise DataJointError(
+                    raise DuplicateError(
                         '{} : To ignore duplicate entries, set skip_duplicates=True in insert.'.format(err.args[1])) from None
                 else:
                     raise

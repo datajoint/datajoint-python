@@ -6,7 +6,8 @@ import numpy as np
 import re
 import datetime
 import decimal
-from . import DataJointError, config
+from . import config
+from .errors import DataJointError
 from .fetch import Fetch, Fetch1
 
 logger = logging.getLogger(__name__)

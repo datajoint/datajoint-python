@@ -6,7 +6,7 @@ import collections
 from .base_relation import BaseRelation
 from .autopopulate import AutoPopulate
 from .utils import from_camel_case, ClassProperty
-from . import DataJointError
+from .errors import DataJointError
 
 _base_regexp = r'[a-z][a-z0-9]*(_[a-z][a-z0-9]*)*'
 

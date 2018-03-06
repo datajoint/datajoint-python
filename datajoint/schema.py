@@ -4,7 +4,8 @@ import inspect
 import logging
 import inspect
 import re
-from . import conn, DataJointError, config
+from . import conn, config
+from .errors import DataJointError
 from .erd import ERD
 from .jobs import JobTable
 from .external import ExternalTable

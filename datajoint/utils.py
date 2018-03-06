@@ -2,7 +2,7 @@
 
 import re
 import os
-from datajoint import DataJointError
+from .errors import DataJointError
 
 class ClassProperty:
     def __init__(self, f):

@@ -9,7 +9,7 @@ from collections import OrderedDict
 import logging
 import collections
 from enum import Enum
-from . import DataJointError
+from .errors import DataJointError
 
 LOCALCONFIG = 'dj_local_conf.json'
 GLOBALCONFIG = '.datajoint_config.json'
@@ -26,16 +26,6 @@ role_to_prefix = {
     Role.job: '~'
 }
 prefix_to_role = dict(zip(role_to_prefix.values(), role_to_prefix))
-
-
-server_error_codes = {
-    'unknown column': 1054,
-    'command denied': 1142,
-    'table does not exist': 1146,
-    'syntax error': 1149,
-    'duplicate entry': 1062,
-}
-
 
 default = OrderedDict({
     'database.host': 'localhost',
