@@ -101,7 +101,7 @@ class Schema:
         in the context.
         """
         # if self.context is not set, use the calling namespace
-        context = self.context if self.context is not None else inspect.currentframe().f_back.f_locals
+        context = self.context if self.context is not None else inspect.currentframe().f_back.f_globals
         tables = [
             row[0] for row in self.connection.query('SHOW TABLES in `%s`' % self.database)
             if lookup_class_name('`{db}`.`{tab}`'.format(db=self.database, tab=row[0]), context, 0) is None]
@@ -189,7 +189,7 @@ class Schema:
         Binds the passed in class object to a database. This is intended to be used as a decorator.
         :param cls: class to be decorated
         """
-        context = self.context if self.context is not None else inspect.currentframe().f_back.f_locals
+        context = self.context if self.context is not None else inspect.currentframe().f_back.f_globals
         if issubclass(cls, Part):
             raise DataJointError('The schema decorator should not be applied to Part relations')
         self.process_relation_class(cls, context=dict(context, self=cls, **{cls.__name__: cls}))
@@ -224,7 +224,3 @@ class Schema:
         if self._external is None:
             self._external = ExternalTable(self.connection, self.database)
         return self._external
-
-    def erd(self):
-        # get the ERD of the schema in local context
-        return ERD(self, context=inspect.currentframe().f_back.f_locals)
