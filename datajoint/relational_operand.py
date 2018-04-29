@@ -467,13 +467,12 @@ class RelationalOperand:
         """
         number of tuples in the relation.
         """
-        if self.distinct:
-            return len(Subquery.create(self))
-        else:
-            return self.connection.query(
-                'SELECT count(*) FROM {from_}{where}'.format(
-                    from_=self.from_clause,
-                    where=self.where_clause)).fetchone()[0]
+        return self.connection.query(
+            'SELECT ' + (
+                'count(DISTINCT `{pk}`)'.format(pk='`,`'.join(self.primary_key)) if self.distinct else 'count(*)') +
+            ' FROM {from_}{where}'.format(
+                from_=self.from_clause,
+                where=self.where_clause)).fetchone()[0]
 
     def __bool__(self):
         """
