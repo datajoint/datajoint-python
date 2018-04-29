@@ -574,7 +574,7 @@ class Join(RelationalOperand):
         """
         Decide when a Join argument needs to be wrapped in a subquery
         """
-        return Subquery.create(arg) if isinstance(arg, (GroupBy, Projection)) else arg
+        return Subquery.create(arg) if isinstance(arg, (GroupBy, Projection)) or arg.restriction else arg
 
     @property
     def from_clause(self):
