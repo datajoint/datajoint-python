@@ -721,9 +721,9 @@ class GroupBy(RelationalOperand):
         assert_join_compatibility(arg, group)
         obj = cls()
         obj._keep_all_rows = keep_all_rows
-        if not set(arg.primary_key).issubset(group.primary_key):
+        if not set(group.primary_key) - set(arg.primary_key):
             raise DataJointError(
-                'The primary key of the grouped relation must include the entire primary key of the grouping relation.')
+                'The primary key of the group relation must contain additional attributes.')
         obj._arg = (Join.make_argument_subquery(group) if isinstance(arg, U)
                     else Join.create(arg, group, keep_all_rows=keep_all_rows))
         obj._connection = obj._arg.connection

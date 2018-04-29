@@ -67,7 +67,7 @@ class TestU:
 
     def test_aggr(self):
         rel = schema_simple.ArgmaxTest()
-        amax1 = (dj.U('val') * rel) & dj.U('secondary_key').aggr(rel * dj.U('secondary_key'), val='min(val)')
-        amax2 = (dj.U('val') * rel) * dj.U('secondary_key').aggr(rel * dj.U('secondary_key'), val='min(val)')
+        amax1 = (dj.U('val') * rel) & dj.U('secondary_key').aggr(rel, val='min(val)')
+        amax2 = (dj.U('val') * rel) * dj.U('secondary_key').aggr(rel, val='min(val)')
         assert_true(len(amax1) == len(amax2) == rel.n,
                     'Aggregated argmax with join and restriction does not yield same length.')
