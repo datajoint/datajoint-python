@@ -189,7 +189,7 @@ class Schema:
         Binds the passed in class object to a database. This is intended to be used as a decorator.
         :param cls: class to be decorated
         """
-        context = self.context if self.context is not None else inspect.currentframe().f_back.f_globals
+        context = self.context if self.context is not None else inspect.currentframe().f_back.f_locals
         if issubclass(cls, Part):
             raise DataJointError('The schema decorator should not be applied to Part relations')
         self.process_relation_class(cls, context=dict(context, self=cls, **{cls.__name__: cls}))
