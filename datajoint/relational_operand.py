@@ -723,7 +723,7 @@ class GroupBy(RelationalOperand):
         obj._keep_all_rows = keep_all_rows
         if not set(group.primary_key) - set(arg.primary_key):
             raise DataJointError(
-                'The primary key of the group relation must contain additional attributes.')
+                'The primary key of the grouped relation must contain additional attributes.')
         obj._arg = (Join.make_argument_subquery(group) if isinstance(arg, U)
                     else Join.create(arg, group, keep_all_rows=keep_all_rows))
         obj._connection = obj._arg.connection
