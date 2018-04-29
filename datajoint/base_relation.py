@@ -42,7 +42,11 @@ class BaseRelation(RelationalOperand):
         if self._heading is None:
             self._heading = Heading()  # instance-level heading
         if not self._heading:  # lazy loading of heading
-            self._heading.init_from_database(self.connection, self.database, self.table_name)
+            if self.connection is None:
+                raise DataJointError(
+                    'DataJoint class is missing a database connection. Missing class decorator?')
+            else:
+                self._heading.init_from_database(self.connection, self.database, self.table_name)
         return self._heading
 
     @property
