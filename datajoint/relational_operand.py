@@ -467,7 +467,13 @@ class RelationalOperand:
         """
         number of tuples in the relation.
         """
-        return U().aggr(self, n='count(*)').fetch1('n')
+        if self.distinct:
+            return len(Subquery.create(self))
+        else:
+            return self.connection.query(
+                'SELECT count(*) FROM {from_}{where}'.format(
+                    from_=self.from_clause,
+                    where=self.where_clause)).fetchone()[0]
 
     def __bool__(self):
         """
@@ -653,7 +659,6 @@ class Projection(RelationalOperand):
         :param include_primary_key:  True if the primary key must be included even if it's not in attributes.
         :return: the resulting Projection object
         """
-        # TODO:  revisit the handling of the primary key when not include_primary_key
         obj = cls()
         obj._connection = arg.connection
         named_attributes = {k: v.strip() for k, v in named_attributes.items()}  # clean up values
@@ -717,9 +722,9 @@ class GroupBy(RelationalOperand):
         assert_join_compatibility(arg, group)
         obj = cls()
         obj._keep_all_rows = keep_all_rows
-        if not (set(group.primary_key) - set(arg.primary_key) or set(group.primary_key) == set(arg.primary_key)):
+        if not set(arg.primary_key).issubset(group.primary_key):
             raise DataJointError(
-                'The aggregated relation should have additional fields in its primary key for aggregation to work')
+                'The primary key of the grouped relation must include the entire primary key of the grouping relation.')
         obj._arg = (Join.make_argument_subquery(group) if isinstance(arg, U)
                     else Join.create(arg, group, keep_all_rows=keep_all_rows))
         obj._connection = obj._arg.connection
