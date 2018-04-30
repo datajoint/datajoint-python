@@ -1,10 +1,17 @@
 ## Release notes
-### 0.10.0 --  work in progress
+### 0.10.1 -- Work in progress
+* Networkx 2.0 support (#443)
+* Sped up queries (#428)
+
+### 0.10.0 -- January 10, 2018 
+* Deletes are more efficient (#424)
+* ERD shows table definition on tooltip hover in Jupyter (#422) 
 * S3 external storage
 * Garbage collection for external sorage
-* Most operators and methods of tables can be invoked as class methods
+* Most operators and methods of tables can be invoked as class methods rather than instance methods (#407)
 * The schema decorator object no longer requires locals() to specify the context
 * Compatibility with pymysql 0.8.0+
+* More efficient loading of dependencies (#403)
 
 ### 0.9.0 -- November 17, 2017
 * Made graphviz installation optional
