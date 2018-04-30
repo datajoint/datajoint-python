@@ -42,7 +42,11 @@ class BaseRelation(RelationalOperand):
         if self._heading is None:
             self._heading = Heading()  # instance-level heading
         if not self._heading:  # lazy loading of heading
-            self._heading.init_from_database(self.connection, self.database, self.table_name)
+            if self.connection is None:
+                raise DataJointError(
+                    'DataJoint class is missing a database connection. Missing class decorator?')
+            else:
+                self._heading.init_from_database(self.connection, self.database, self.table_name)
         return self._heading
 
     @property
@@ -435,11 +439,13 @@ class BaseRelation(RelationalOperand):
         logger.warning('show_definition is deprecated.  Use describe instead.')
         return self.describe()
 
-    def describe(self, printout=True):
+    def describe(self, context=None, printout=True):
         """
         :return:  the definition string for the relation using DataJoint DDL.
             This does not yet work for aliased foreign keys.
         """
+        if context is None:
+            context = inspect.currentframe().f_back.f_globals
         if self.full_table_name not in self.connection.dependencies:
             self.connection.dependencies.load()
         parents = self.parents()
@@ -461,14 +467,14 @@ class BaseRelation(RelationalOperand):
                         parents.pop(parent_name)
                         if not parent_name.isdigit():
                             definition += '-> {class_name}\n'.format(
-                                class_name=lookup_class_name(parent_name, self.context) or parent_name)
+                                class_name=lookup_class_name(parent_name, context) or parent_name)
                         else:
                             # aliased foreign key
                             parent_name = list(self.connection.dependencies.in_edges(parent_name))[0][0]
                             lst = [(attr, ref) for attr, ref in fk_props['attr_map'].items() if ref != attr]
                             definition += '({attr_list}) -> {class_name}{ref_list}\n'.format(
                                 attr_list=','.join(r[0] for r in lst),
-                                class_name=lookup_class_name(parent_name, self.context) or parent_name,
+                                class_name=lookup_class_name(parent_name, context) or parent_name,
                                 ref_list=('' if len(attributes_thus_far) - len(attributes_declared) == 1
                                           else '(%s)' % ','.join(r[1] for r in lst)))
                             attributes_declared.update(fk_props['attr_map'])
@@ -541,25 +547,26 @@ def lookup_class_name(name, context, depth=3):
     while nodes:
         node = nodes.pop(0)
         for member_name, member in node['context'].items():
-            if inspect.isclass(member) and issubclass(member, BaseRelation):
-                if member.full_table_name == name:   # found it!
-                    return '.'.join([node['context_name'],  member_name]).lstrip('.')
-                try:  # look for part tables
-                    parts = member._ordered_class_members
-                except AttributeError:
-                    pass  # not a UserRelation -- cannot have part tables.
-                else:
-                    for part in (getattr(member, p) for p in parts if p[0].isupper() and hasattr(member, p)):
-                        if inspect.isclass(part) and issubclass(part, BaseRelation) and part.full_table_name == name:
-                            return '.'.join([node['context_name'], member_name, part.__name__]).lstrip('.')
-            elif node['depth'] > 0 and inspect.ismodule(member) and member.__name__ != 'datajoint':
-                try:
-                    nodes.append(
-                        dict(context=dict(inspect.getmembers(member)),
-                             context_name=node['context_name'] + '.' + member_name,
-                             depth=node['depth']-1))
-                except ImportError:
-                    pass  # could not import, so do not attempt
+            if not member_name.startswith('_'):  # skip IPython's implicit variables
+                if inspect.isclass(member) and issubclass(member, BaseRelation):
+                    if member.full_table_name == name:   # found it!
+                        return '.'.join([node['context_name'],  member_name]).lstrip('.')
+                    try:  # look for part tables
+                        parts = member._ordered_class_members
+                    except AttributeError:
+                        pass  # not a UserRelation -- cannot have part tables.
+                    else:
+                        for part in (getattr(member, p) for p in parts if p[0].isupper() and hasattr(member, p)):
+                            if inspect.isclass(part) and issubclass(part, BaseRelation) and part.full_table_name == name:
+                                return '.'.join([node['context_name'], member_name, part.__name__]).lstrip('.')
+                elif node['depth'] > 0 and inspect.ismodule(member) and member.__name__ != 'datajoint':
+                    try:
+                        nodes.append(
+                            dict(context=dict(inspect.getmembers(member)),
+                                 context_name=node['context_name'] + '.' + member_name,
+                                 depth=node['depth']-1))
+                    except ImportError:
+                        pass  # could not import, so do not attempt
     return None
 
 

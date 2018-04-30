@@ -4,8 +4,6 @@ from datajoint import DataJointError
 
 from . import schema_advanced
 
-context = schema_advanced.schema.context
-
 
 @raises(DataJointError)     # TODO: remove after fixing issue #300
 def test_aliased_fk():
@@ -29,8 +27,8 @@ def test_describe():
     """real_definition should match original definition"""
     for rel in (schema_advanced.LocalSynapse(), schema_advanced.GlobalSynapse()):
         describe = rel.describe()
-        s1 = declare(rel.full_table_name, rel.definition, context)
-        s2 = declare(rel.full_table_name, describe, context)
+        s1 = declare(rel.full_table_name, rel.definition, schema_advanced.schema.context)
+        s2 = declare(rel.full_table_name, describe, globals())
         assert_equal(s1, s2)
 
 
