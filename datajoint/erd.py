@@ -3,6 +3,7 @@ import re
 import functools
 import io
 import warnings
+import inspect
 from .base_relation import BaseRelation
 
 try:
@@ -84,10 +85,9 @@ else:
 
             # get the caller's locals()
             if context is None:
-                import inspect
                 frame = inspect.currentframe()
                 try:
-                    context = frame.f_back.f_locals
+                    context = frame.f_back.f_globals
                 finally:
                     del frame
             self.context = context
@@ -209,10 +209,7 @@ else:
             graph = nx.DiGraph(nx.DiGraph(self).subgraph(nodes))
             nx.set_node_attributes(graph, name='node_type', values={n: _get_tier(n) for n in graph})
             # relabel nodes to class names
-            clean_context = dict((k, v) for k, v in self.context.items()
-                                 if not k.startswith('_'))  # exclude ipython's implicit variables
-            mapping = {node: (lookup_class_name(node, clean_context) or node)
-                       for node in graph.nodes()}
+            mapping = {node: lookup_class_name(node, self.context) or node for node in graph.nodes()}
             new_names = [mapping.values()]
             if len(new_names) > len(set(new_names)):
                 raise DataJointError('Some classes have identical names. The ERD cannot be plotted.')
@@ -258,7 +255,7 @@ else:
                 if name.split('.')[0] in self.context:
                     cls = eval(name, self.context)
                     assert(issubclass(cls, BaseRelation))
-                    description = cls().describe(printout=False).split('\n')
+                    description = cls().describe(context=self.context, printout=False).split('\n')
                     description = (
                         '-'*30 if q.startswith('---') else q.replace('->', '&#8594;') if '->' in q else q.split(':')[0]
                         for q in description if not q.startswith('#'))

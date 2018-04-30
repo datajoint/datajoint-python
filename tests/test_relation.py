@@ -127,6 +127,12 @@ class TestRelation:
         self.test_no_extra.insert((self.test_extra & '`key`=' + keystr),
                                   ignore_extra_fields=True)
 
+    def test_skip_duplicates(self):
+        ''' test that skip_dublicates works when inserting from another relation  '''
+        self.test_no_extra.delete()
+        self.test_no_extra.insert(self.test, ignore_extra_fields=True, skip_duplicates=True)
+        self.test_no_extra.insert(self.test, ignore_extra_fields=True, skip_duplicates=True)
+
     def test_replace(self):
         """
         Test replacing or ignoring duplicate entries
