@@ -127,7 +127,7 @@ class RelationalOperand:
 
         # restrict by AndList
         if isinstance(arg, AndList):
-            # discard all Trues
+            # omit all conditions that evaluate to True
             items = [item for item in (self._make_condition(i) for i in arg) if item is not True]
             if any(item is False for item in items):
                 return negate  # if any item is False, the whole thing is False

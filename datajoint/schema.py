@@ -102,7 +102,12 @@ class Schema:
         in the context.
         """
         # if self.context is not set, use the calling namespace
-        context = self.context if self.context is not None else inspect.currentframe().f_back.f_globals
+        if self.context is not None:
+            context = self.context
+        else:
+            frame = inspect.currentframe().f_back
+            context = dict(frame.f_globals, **frame.f_locals)
+            del frame
         tables = [
             row[0] for row in self.connection.query('SHOW TABLES in `%s`' % self.database)
             if lookup_class_name('`{db}`.`{tab}`'.format(db=self.database, tab=row[0]), context, 0) is None]

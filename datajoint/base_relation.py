@@ -44,7 +44,8 @@ class BaseRelation(RelationalOperand):
         if not self._heading:  # lazy loading of heading
             if self.connection is None:
                 raise DataJointError(
-                    'DataJoint class is missing a database connection. Missing schema decorator on the class?')
+                    'DataJoint class is missing a database connection. '
+                    'Missing schema decorator on the class? (e.g. @schema)')
             else:
                 self._heading.init_from_database(self.connection, self.database, self.table_name)
         return self._heading
@@ -445,7 +446,9 @@ class BaseRelation(RelationalOperand):
             This does not yet work for aliased foreign keys.
         """
         if context is None:
-            context = inspect.currentframe().f_back.f_globals
+            frame = inspect.currentframe().f_back
+            context = dict(frame.f_globals, **frame.f_locals)
+            del frame
         if self.full_table_name not in self.connection.dependencies:
             self.connection.dependencies.load()
         parents = self.parents()
