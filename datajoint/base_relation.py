@@ -288,10 +288,12 @@ class BaseRelation(RelationalOperand):
                 elif err.args[0] == server_error_codes['unknown column']:
                     # args[1] -> Unknown column 'extra' in 'field list'
                     raise DataJointError(
-                        '{} : To ignore extra fields, set ignore_extra_fields=True in insert.'.format(err.args[1])) from None
+                        '{} : To ignore extra fields, set ignore_extra_fields=True in insert.'.format(err.args[1])
+                    ) from None
                 elif err.args[0] == server_error_codes['duplicate entry']:
                     raise DuplicateError(
-                        '{} : To ignore duplicate entries, set skip_duplicates=True in insert.'.format(err.args[1])) from None
+                        '{} : To ignore duplicate entries, set skip_duplicates=True in insert.'.format(err.args[1])
+                    ) from None
                 else:
                     raise
 

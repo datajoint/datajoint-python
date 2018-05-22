@@ -106,7 +106,7 @@ class Schema:
             context = self.context
         else:
             frame = inspect.currentframe().f_back
-            context = dict(frame.f_globals, **frame.f_locals)
+            context = frame.f_locals
             del frame
         tables = [
             row[0] for row in self.connection.query('SHOW TABLES in `%s`' % self.database)
