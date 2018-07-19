@@ -605,7 +605,7 @@ class Union(RelationalOperand):
     def create(cls, arg1, arg2):
         obj = cls()
         if inspect.isclass(arg2) and issubclass(arg2, RelationalOperand):
-            obj = obj()  # instantiate if a class
+            arg2 = arg2()  # instantiate if a class
         if not isinstance(arg1, RelationalOperand) or not isinstance(arg2, RelationalOperand):
             raise DataJointError('a relation can only be unioned with another relation')
         if arg1.connection != arg2.connection:

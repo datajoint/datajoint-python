@@ -132,7 +132,7 @@ class TestRelational:
 
     @staticmethod
     def test_issue_463():
-        assert_equal(((A & B) * B).fetch().size, len(A*B))
+        assert_equal(((A & B) * B).fetch().size, len(A * B))
 
 
     @staticmethod
@@ -153,10 +153,10 @@ class TestRelational:
 
     @staticmethod
     def test_union():
-        x = set(zip(*IJ().fetch('i','j')))
-        y = set(zip(*JI().fetch('i','j')))
+        x = set(zip(*IJ.fetch('i','j')))
+        y = set(zip(*JI.fetch('i','j')))
         assert_true(len(x) > 0 and len(y) > 0 and len(IJ() * JI()) < len(x))  # ensure the IJ and JI are non-trivial
-        z = set(zip(*(IJ() + JI()).fetch('i','j')))   # union
+        z = set(zip(*(IJ + JI).fetch('i','j')))   # union
         assert_set_equal(x.union(y), z)
 
     @staticmethod
@@ -168,7 +168,7 @@ class TestRelational:
 
     @staticmethod
     def test_heading_repr():
-        x = A() * D()
+        x = A * D
         s = repr(x.heading)
         assert_equal(len(list(1 for g in s.split('\n') if g.strip() and not g.strip().startswith(('-', '#')))),
                      len(x.heading.attributes))
