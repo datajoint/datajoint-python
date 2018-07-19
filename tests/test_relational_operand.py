@@ -129,9 +129,11 @@ class TestRelational:
         y = (A & 'cond_in_a=1').proj(a2='id_a')
         assert_equal(len(rel), len(x * y))
 
-    def test_issue_463(self):
-        x = (A & B) * B
-        x.fetch()
+
+    @staticmethod
+    def test_issue_463():
+        assert_equal(((A & B) * B).fetch().size, len(A*B))
+
 
     @staticmethod
     def test_project():
