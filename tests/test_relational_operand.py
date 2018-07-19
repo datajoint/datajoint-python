@@ -115,8 +115,8 @@ class TestRelational:
 
         # test pairing
         # Approach 1: join then restrict
-        x = A().proj(a1='id_a', c1='cond_in_a')
-        y = A().proj(a2='id_a', c2='cond_in_a')
+        x = A.proj(a1='id_a', c1='cond_in_a')
+        y = A.proj(a2='id_a', c2='cond_in_a')
         rel = x * y & 'c1=0' & 'c2=1'
         lenx = len(x & 'c1=0')
         leny = len(y & 'c2=1')
@@ -125,9 +125,13 @@ class TestRelational:
         assert_equal(len(rel), len(x & 'c1=0') * len(y & 'c2=1'),
                      'incorrect pairing')
         # Approach 2: restrict then join
-        x = (A() & 'cond_in_a=0').proj(a1='id_a')
-        y = (A() & 'cond_in_a=1').proj(a2='id_a')
+        x = (A & 'cond_in_a=0').proj(a1='id_a')
+        y = (A & 'cond_in_a=1').proj(a2='id_a')
         assert_equal(len(rel), len(x * y))
+
+    def test_issue_463(self):
+        x = (A & B) * B
+        x.fetch()
 
     @staticmethod
     def test_project():
