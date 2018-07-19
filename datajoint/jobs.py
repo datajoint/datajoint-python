@@ -1,6 +1,7 @@
 from _decimal import Decimal
 from .hash import key_hash
 import os
+import platform
 import pymysql
 from .base_relation import BaseRelation
 from .errors import DuplicateError
@@ -78,7 +79,7 @@ class JobTable(BaseRelation):
             table_name=table_name,
             key_hash=key_hash(key),
             status='reserved',
-            host=os.uname().nodename,
+            host=platform.node(),
             pid=os.getpid(),
             connection_id=self.connection.connection_id,
             key=self.packable_or_none(key),
@@ -113,7 +114,7 @@ class JobTable(BaseRelation):
         self.insert1(
             dict(job_key,
                  status="error",
-                 host=os.uname().nodename,
+                 host=platform.node(),
                  pid=os.getpid(),
                  connection_id=self.connection.connection_id,
                  user=self._user,
