@@ -6,7 +6,8 @@ import numpy as np
 import re
 import datetime
 import decimal
-from . import DataJointError, config
+from . import config
+from .errors import DataJointError
 from .fetch import Fetch, Fetch1
 
 logger = logging.getLogger(__name__)
@@ -128,7 +129,7 @@ class RelationalOperand:
 
         # restrict by AndList
         if isinstance(arg, AndList):
-            # discard all Trues
+            # omit all conditions that evaluate to True
             items = [item for item in (self._make_condition(i) for i in arg) if item is not True]
             if any(item is False for item in items):
                 return negate  # if any item is False, the whole thing is False
@@ -606,7 +607,7 @@ class Union(RelationalOperand):
     def create(cls, arg1, arg2):
         obj = cls()
         if inspect.isclass(arg2) and issubclass(arg2, RelationalOperand):
-            obj = obj()  # instantiate if a class
+            arg2 = arg2()  # instantiate if a class
         if not isinstance(arg1, RelationalOperand) or not isinstance(arg2, RelationalOperand):
             raise DataJointError('a relation can only be unioned with another relation')
         if arg1.connection != arg2.connection:

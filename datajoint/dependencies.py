@@ -1,7 +1,7 @@
 import networkx as nx
 import itertools
 from collections import defaultdict
-from . import DataJointError
+from .errors import DataJointError
 
 
 class Dependencies(nx.DiGraph):

@@ -1,9 +1,10 @@
 from _decimal import Decimal
 from .hash import key_hash
 import os
+import platform
 import pymysql
 from .base_relation import BaseRelation
-from . import DataJointError
+from .errors import DuplicateError
 
 ERROR_MESSAGE_LENGTH = 2047
 TRUNCATION_APPENDIX = '...truncated'
@@ -78,14 +79,14 @@ class JobTable(BaseRelation):
             table_name=table_name,
             key_hash=key_hash(key),
             status='reserved',
-            host=os.uname().nodename,
+            host=platform.node(),
             pid=os.getpid(),
             connection_id=self.connection.connection_id,
             key=self.packable_or_none(key),
             user=self._user)
         try:
             self.insert1(job, ignore_extra_fields=True)
-        except (pymysql.err.IntegrityError, DataJointError):
+        except DuplicateError:
             return False
         return True
 
@@ -113,7 +114,7 @@ class JobTable(BaseRelation):
         self.insert1(
             dict(job_key,
                  status="error",
-                 host=os.uname().nodename,
+                 host=platform.node(),
                  pid=os.getpid(),
                  connection_id=self.connection.connection_id,
                  user=self._user,

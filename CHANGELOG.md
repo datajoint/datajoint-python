@@ -1,7 +1,11 @@
 ## Release notes
-### 0.10.1 -- Work in progress
+### 0.10.1 
+* Fix ERD Tooltip message (#431)
 * Networkx 2.0 support (#443)
-* Sped up queries (#428)
+* Fix insert from query with skip_duplicates=True (#451)
+* Sped up queries (#458)
+* Bugfix in restriction of the form (A & B) * B (#463)
+* Improved error messages (#466)
 
 ### 0.10.0 -- January 10, 2018 
 * Deletes are more efficient (#424)

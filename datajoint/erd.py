@@ -13,7 +13,8 @@ try:
 except:
     erd_active = False
 
-from . import Manual, Imported, Computed, Lookup, Part, DataJointError
+from . import Manual, Imported, Computed, Lookup, Part
+from .errors import DataJointError
 from .base_relation import lookup_class_name
 
 
@@ -83,14 +84,13 @@ else:
                 super().__init__(source)
                 return
 
-            # get the caller's locals()
+            # get the caller's context
             if context is None:
-                frame = inspect.currentframe()
-                try:
-                    context = frame.f_back.f_globals
-                finally:
-                    del frame
-            self.context = context
+                frame = inspect.currentframe().f_back
+                self.context = dict(frame.f_globals, **frame.f_locals)
+                del frame
+            else:
+                self.context = context
 
             # find connection in the source
             try:

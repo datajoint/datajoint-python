@@ -6,7 +6,7 @@ import random
 from tqdm import tqdm
 from pymysql import OperationalError
 from .relational_operand import RelationalOperand, AndList, U
-from . import DataJointError
+from .errors import DataJointError
 from .base_relation import FreeRelation
 import signal
 

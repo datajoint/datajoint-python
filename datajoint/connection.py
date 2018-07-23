@@ -7,11 +7,12 @@ from contextlib import contextmanager
 import pymysql as client
 import logging
 from getpass import getpass
+from pymysql import err
 
 from . import config
-from . import DataJointError
+from .errors import DataJointError, server_error_codes
 from .dependencies import Dependencies
-from pymysql import err
+
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +95,7 @@ class Connection:
             self._conn = client.connect(init_command=self.init_fun,
                                         sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
                                                  "STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
+                                        charset=config['connection.charset'],
                                         **self.conn_info)
 
     def register(self, schema):
@@ -118,7 +120,7 @@ class Connection:
         :param args: additional arguments for the client.cursor
         :param as_dict: If as_dict is set to True, the returned cursor objects returns
                         query results as dictionary.
-        :param suppress_warning: If True, suppress all warnings arising from underlying query library
+        :param suppress_warnings: If True, suppress all warnings arising from underlying query library
         """
 
         cursor = client.cursors.DictCursor if as_dict else client.cursors.Cursor
@@ -144,11 +146,12 @@ class Connection:
             else:
                 raise
         except err.ProgrammingError as e:
-            raise DataJointError("\n".join((
-                "Error in query:", query,
-                "Please check spelling, syntax, and existence of tables and attributes.",
-                "When restricting a relation by a condition in a string, enclose attributes in backquotes."
-            )))
+            if e.args[0] == server_error_codes['parse error']:
+                raise DataJointError("\n".join((
+                    "Error in query:", query,
+                    "Please check spelling, syntax, and existence of tables and attributes.",
+                    "When restricting a relation by a condition in a string, enclose attributes in backquotes."
+                ))) from None
         return cur
 
     def get_user(self):

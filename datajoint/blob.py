@@ -4,8 +4,9 @@ Provides serialization methods for numpy.ndarrays that ensure compatibility with
 
 import zlib
 from collections import OrderedDict, Mapping, Iterable
+from decimal import Decimal
 import numpy as np
-from . import DataJointError
+from .errors import DataJointError
 
 mxClassID = OrderedDict((
     # see http://www.mathworks.com/help/techdoc/apiref/mxclassid.html
@@ -223,7 +224,7 @@ def pack_obj(obj):
     blob = b''
     if isinstance(obj, np.ndarray):
         blob += pack_array(obj)
-    elif isinstance(obj, Mapping):  # TODO: check if this is a good inheritance check for dict etc.
+    elif isinstance(obj, Mapping):
         blob += pack_dict(obj)
     elif isinstance(obj, str):
         blob += pack_array(np.array(obj, dtype=np.dtype('c')))
@@ -231,6 +232,8 @@ def pack_obj(obj):
         blob += pack_array(np.array(list(obj)))
     elif isinstance(obj, int) or isinstance(obj, float):
         blob += pack_array(np.array(obj))
+    elif isinstance(obj, Decimal):
+        blob += pack_array(np.array(np.float64(obj)))
     else:
         raise DataJointError("Packing object of type %s currently not supported!" % type(obj))
 
