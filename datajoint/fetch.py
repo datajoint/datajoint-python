@@ -2,7 +2,7 @@ from collections import OrderedDict
 from functools import partial
 import numpy as np
 from .blob import unpack
-from . import DataJointError
+from .errors import DataJointError
 from . import key as PRIMARY_KEY
 import warnings
 

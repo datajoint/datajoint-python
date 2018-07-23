@@ -6,7 +6,8 @@ import re
 import pyparsing as pp
 import logging
 
-from . import DataJointError, config
+from . import config
+from .errors import DataJointError
 
 STORE_NAME_LENGTH = 8
 STORE_HASH_LENGTH = 43
@@ -176,7 +177,7 @@ def declare(full_table_name, definition, context):
                        ['PRIMARY KEY (`' + '`,`'.join(primary_key) + '`)'] +
                        foreign_key_sql +
                        index_sql) +
-            '\n) ENGINE=InnoDB, CHARACTER SET latin1, COMMENT "%s"' % table_comment), uses_external
+            '\n) ENGINE=InnoDB, COMMENT "%s"' % table_comment), uses_external
 
 
 def compile_attribute(line, in_key, foreign_key_sql):

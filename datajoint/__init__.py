@@ -24,6 +24,7 @@ __all__ = ['__author__', '__version__',
            'Connection', 'Heading', 'FreeRelation', 'Not', 'schema',
            'Manual', 'Lookup', 'Imported', 'Computed', 'Part',
            'AndList', 'OrList', 'ERD', 'U',
+           'DataJointError', 'DuplicateError',
            'set_password']
 
 
@@ -33,12 +34,6 @@ class key:
     """
     pass
 
-
-class DataJointError(Exception):
-    """
-    Base class for errors specific to DataJoint internal operation.
-    """
-    pass
 
 # ----------- loads local configuration from file ----------------
 from .settings import Config, LOCALCONFIG, GLOBALCONFIG, logger, log_levels
@@ -73,6 +68,7 @@ from .heading import Heading
 from .schema import Schema as schema
 from .erd import ERD
 from .admin import set_password, kill
+from .errors import DataJointError, DuplicateError
 
 
 def create_virtual_module(modulename, dbname):

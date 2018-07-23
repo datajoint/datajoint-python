@@ -115,8 +115,8 @@ class TestRelational:
 
         # test pairing
         # Approach 1: join then restrict
-        x = A().proj(a1='id_a', c1='cond_in_a')
-        y = A().proj(a2='id_a', c2='cond_in_a')
+        x = A.proj(a1='id_a', c1='cond_in_a')
+        y = A.proj(a2='id_a', c2='cond_in_a')
         rel = x * y & 'c1=0' & 'c2=1'
         lenx = len(x & 'c1=0')
         leny = len(y & 'c2=1')
@@ -125,9 +125,15 @@ class TestRelational:
         assert_equal(len(rel), len(x & 'c1=0') * len(y & 'c2=1'),
                      'incorrect pairing')
         # Approach 2: restrict then join
-        x = (A() & 'cond_in_a=0').proj(a1='id_a')
-        y = (A() & 'cond_in_a=1').proj(a2='id_a')
+        x = (A & 'cond_in_a=0').proj(a1='id_a')
+        y = (A & 'cond_in_a=1').proj(a2='id_a')
         assert_equal(len(rel), len(x * y))
+
+
+    @staticmethod
+    def test_issue_463():
+        assert_equal(((A & B) * B).fetch().size, len(A * B))
+
 
     @staticmethod
     def test_project():
@@ -147,10 +153,10 @@ class TestRelational:
 
     @staticmethod
     def test_union():
-        x = set(zip(*IJ().fetch('i','j')))
-        y = set(zip(*JI().fetch('i','j')))
+        x = set(zip(*IJ.fetch('i','j')))
+        y = set(zip(*JI.fetch('i','j')))
         assert_true(len(x) > 0 and len(y) > 0 and len(IJ() * JI()) < len(x))  # ensure the IJ and JI are non-trivial
-        z = set(zip(*(IJ() + JI()).fetch('i','j')))   # union
+        z = set(zip(*(IJ + JI).fetch('i','j')))   # union
         assert_set_equal(x.union(y), z)
 
     @staticmethod
@@ -162,7 +168,7 @@ class TestRelational:
 
     @staticmethod
     def test_heading_repr():
-        x = A() * D()
+        x = A * D
         s = repr(x.heading)
         assert_equal(len(list(1 for g in s.split('\n') if g.strip() and not g.strip().startswith(('-', '#')))),
                      len(x.heading.attributes))

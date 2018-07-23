@@ -6,7 +6,8 @@ import numpy as np
 import re
 import datetime
 import decimal
-from . import DataJointError, config
+from . import config
+from .errors import DataJointError
 from .fetch import Fetch, Fetch1
 
 logger = logging.getLogger(__name__)
@@ -126,7 +127,7 @@ class RelationalOperand:
 
         # restrict by AndList
         if isinstance(arg, AndList):
-            # discard all Trues
+            # omit all conditions that evaluate to True
             items = [item for item in (self._make_condition(i) for i in arg) if item is not True]
             if any(item is False for item in items):
                 return negate  # if any item is False, the whole thing is False
@@ -467,7 +468,12 @@ class RelationalOperand:
         """
         number of tuples in the relation.
         """
-        return U().aggr(self, n='count(*)').fetch1('n')
+        return self.connection.query(
+            'SELECT ' + (
+                'count(DISTINCT `{pk}`)'.format(pk='`,`'.join(self.primary_key)) if self.distinct else 'count(*)') +
+            ' FROM {from_}{where}'.format(
+                from_=self.from_clause,
+                where=self.where_clause)).fetchone()[0]
 
     def __bool__(self):
         """
@@ -569,7 +575,7 @@ class Join(RelationalOperand):
         """
         Decide when a Join argument needs to be wrapped in a subquery
         """
-        return Subquery.create(arg) if isinstance(arg, (GroupBy, Projection)) else arg
+        return Subquery.create(arg) if isinstance(arg, (GroupBy, Projection)) or arg.restriction else arg
 
     @property
     def from_clause(self):
@@ -599,7 +605,7 @@ class Union(RelationalOperand):
     def create(cls, arg1, arg2):
         obj = cls()
         if inspect.isclass(arg2) and issubclass(arg2, RelationalOperand):
-            obj = obj()  # instantiate if a class
+            arg2 = arg2()  # instantiate if a class
         if not isinstance(arg1, RelationalOperand) or not isinstance(arg2, RelationalOperand):
             raise DataJointError('a relation can only be unioned with another relation')
         if arg1.connection != arg2.connection:
@@ -653,7 +659,6 @@ class Projection(RelationalOperand):
         :param include_primary_key:  True if the primary key must be included even if it's not in attributes.
         :return: the resulting Projection object
         """
-        # TODO:  revisit the handling of the primary key when not include_primary_key
         obj = cls()
         obj._connection = arg.connection
         named_attributes = {k: v.strip() for k, v in named_attributes.items()}  # clean up values
@@ -717,9 +722,9 @@ class GroupBy(RelationalOperand):
         assert_join_compatibility(arg, group)
         obj = cls()
         obj._keep_all_rows = keep_all_rows
-        if not (set(group.primary_key) - set(arg.primary_key) or set(group.primary_key) == set(arg.primary_key)):
+        if not set(group.primary_key) - set(arg.primary_key):
             raise DataJointError(
-                'The aggregated relation should have additional fields in its primary key for aggregation to work')
+                'The primary key of the grouped relation must contain additional attributes.')
         obj._arg = (Join.make_argument_subquery(group) if isinstance(arg, U)
                     else Join.create(arg, group, keep_all_rows=keep_all_rows))
         obj._connection = obj._arg.connection

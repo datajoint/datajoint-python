@@ -2,7 +2,7 @@ import numpy as np
 from collections import namedtuple, OrderedDict
 import re
 import logging
-from . import DataJointError
+from .errors import DataJointError
 
 logger = logging.getLogger(__name__)
 
