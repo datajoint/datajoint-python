@@ -119,7 +119,7 @@ class Connection:
         :param args: additional arguments for the client.cursor
         :param as_dict: If as_dict is set to True, the returned cursor objects returns
                         query results as dictionary.
-        :param suppress_warning: If True, suppress all warnings arising from underlying query library
+        :param suppress_warnings: If True, suppress all warnings arising from underlying query library
         """
 
         cursor = client.cursors.DictCursor if as_dict else client.cursors.Cursor
