@@ -94,7 +94,7 @@ class Connection:
             warnings.filterwarnings('ignore', '.*deprecated.*')
             self._conn = client.connect(init_command=self.init_fun,
                                         sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
-                                                 "STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
+                                                 "STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION", charset="utf8",
                                         **self.conn_info)
 
     def register(self, schema):
