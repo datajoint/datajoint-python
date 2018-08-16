@@ -120,11 +120,14 @@ class Schema:
                 d, tab = s.group(1), s.group(2)
                 return ('' if d == db else (module_lookup[d]+'.')) + to_camel_case(tab)
 
-            return ('' if tier=='Part' else '@schema\n') + '{indent}class {class_name}(dj.{tier}):\n{indent}    definition = """\n{indent}    {defi}""""'.format(
-                class_name=class_name,
-                indent=indent,
-                tier=tier,
-                defi=re.sub(r'`([^`]+)`.`([^`]+)`', repl, FreeRelation(self.connection, table).describe(printout=False).replace('\n', '\n    '+indent)))
+            return ('' if tier == 'Part' else '@schema\n') + \
+                '{indent}class {class_name}(dj.{tier}):\n{indent}    definition = """\n{indent}    {defi}""""'.format(
+                    class_name=class_name,
+                    indent=indent,
+                    tier=tier,
+                    defi=re.sub(
+                        r'`([^`]+)`.`([^`]+)`', repl,
+                        FreeRelation(self.connection, table).describe(printout=False).replace('\n', '\n    ' + indent)))
 
         erd = ERD(self)
         body = '\n\n'.join(make_class_defi(table) for table in erd.topological_sort())
