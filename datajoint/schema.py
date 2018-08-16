@@ -123,7 +123,7 @@ class Schema:
                 return ('' if d == db else (module_lookup[d]+'.')) + to_camel_case(tab)
 
             return ('' if tier == 'Part' else '@schema\n') + \
-                '{indent}class {class_name}(dj.{tier}):\n{indent}    definition = """\n{indent}    {defi}""""'.format(
+                '{indent}class {class_name}(dj.{tier}):\n{indent}    definition = """\n{indent}    {defi}"""'.format(
                     class_name=class_name,
                     indent=indent,
                     tier=tier,
