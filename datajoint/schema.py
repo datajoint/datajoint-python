@@ -1,18 +1,20 @@
 import warnings
 import pymysql
-import inspect
 import logging
 import inspect
 import re
+import networkx as nx
+import itertools
+import collections
 from . import conn, config
 from .errors import DataJointError
-from .erd import ERD
 from .jobs import JobTable
 from .external import ExternalTable
 from .heading import Heading
+from .erd import ERD, _get_tier
 from .utils import user_choice, to_camel_case
 from .user_relations import Part, Computed, Imported, Manual, Lookup
-from .base_relation import lookup_class_name, Log
+from .base_relation import lookup_class_name, Log, FreeRelation
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +23,7 @@ def ordered_dir(klass):
     """
     List (most) attributes of the class including inherited ones, similar to `dir` build-in function,
     but respects order of attribute declaration as much as possible.
+    This becomes unnecessary in Python 3.7 and later since dicts became ordered.
     :param klass: class to list members for
     :return: a list of attributes declared in klass and its superclasses
     """
@@ -95,6 +98,39 @@ class Schema:
             SELECT SUM(data_length + index_length)
             FROM information_schema.tables WHERE table_schema='{db}'
             """.format(db=self.database)).fetchone()[0])
+
+    def _make_module_code(self):
+        """
+        - work in progress - part tables are not yet handled
+        :return: a string containing the body of a complete Python module defining this schema
+        """
+
+        module_count = itertools.count()
+        module_lookup = collections.defaultdict(lambda: 'module' + str(next(module_count)))
+        db = self.database
+
+        def make_class_defi(table):
+            class_name = to_camel_case(table.split('.')[1].strip('`'))
+
+            def repl(s):
+                d, tab = s.group(1), s.group(2)
+                return ('' if d == db else (module_lookup[d]+'.')) + to_camel_case(tab)
+
+            return '@schema\nclass {class_name}({tier}):\n    definition = """\n    {defi}""""'.format(
+                class_name=class_name,
+                tier='dj.' + _get_tier(table).__name__,
+                defi=re.sub(r'`([^`]+)`.`([^`]+)`', repl, FreeRelation(self.connection, table).describe(printout=False).replace('\n', '\n    ')))
+
+        erd = ERD(self)
+        body = '\n\n'.join(make_class_defi(table)
+                           for table in nx.algorithms.topological_sort(erd)
+                           if table in erd.nodes_to_show)
+        preamble = "import datajoint as dj\n\nschema=dj.schema('{db}')\n\n".format(db=db) + (
+            '\n'.join(
+                "{module} = dj.create_virtual_module('{module}', '{database}')".format(module=v, database=k)
+                for k, v in module_lookup.items()) + '\n\n')
+
+        return preamble + body
 
     def spawn_missing_classes(self):
         """
