@@ -3,7 +3,6 @@ import pymysql
 import logging
 import inspect
 import re
-import networkx as nx
 import itertools
 import collections
 from . import conn, config
@@ -99,32 +98,36 @@ class Schema:
             FROM information_schema.tables WHERE table_schema='{db}'
             """.format(db=self.database)).fetchone()[0])
 
-    def _make_module_code(self):
+    def make_module_code(self):
         """
-        - work in progress - part tables are not yet handled
         :return: a string containing the body of a complete Python module defining this schema
         """
 
         module_count = itertools.count()
-        module_lookup = collections.defaultdict(lambda: 'module' + str(next(module_count)))
+        module_lookup = collections.defaultdict(lambda: 'vmodule' + str(next(module_count)))
         db = self.database
 
         def make_class_defi(table):
-            class_name = to_camel_case(table.split('.')[1].strip('`'))
-
+            tier = _get_tier(table).__name__
+            class_name = table.split('.')[1].strip('`')
+            indent = ''
+            if tier == 'Part':
+                class_name = class_name.split('__')[1]
+                indent += '    '
+            class_name = to_camel_case(class_name)
+            
             def repl(s):
                 d, tab = s.group(1), s.group(2)
                 return ('' if d == db else (module_lookup[d]+'.')) + to_camel_case(tab)
 
-            return '@schema\nclass {class_name}({tier}):\n    definition = """\n    {defi}""""'.format(
+            return ('' if tier=='Part' else '@schema\n') + '{indent}class {class_name}(dj.{tier}):\n{indent}    definition = """\n{indent}    {defi}""""'.format(
                 class_name=class_name,
-                tier='dj.' + _get_tier(table).__name__,
-                defi=re.sub(r'`([^`]+)`.`([^`]+)`', repl, FreeRelation(self.connection, table).describe(printout=False).replace('\n', '\n    ')))
+                indent=indent,
+                tier=tier,
+                defi=re.sub(r'`([^`]+)`.`([^`]+)`', repl, FreeRelation(self.connection, table).describe(printout=False).replace('\n', '\n    '+indent)))
 
         erd = ERD(self)
-        body = '\n\n'.join(make_class_defi(table)
-                           for table in nx.algorithms.topological_sort(erd)
-                           if table in erd.nodes_to_show)
+        body = '\n\n'.join(make_class_defi(table) for table in erd.topological_sort())
         preamble = "import datajoint as dj\n\nschema=dj.schema('{db}')\n\n".format(db=db) + (
             '\n'.join(
                 "{module} = dj.create_virtual_module('{module}', '{database}')".format(module=v, database=k)

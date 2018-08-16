@@ -197,6 +197,31 @@ else:
             self.nodes_to_show.intersection_update(arg.nodes_to_show)
             return self
 
+        def topological_sort(self):
+            """
+            :return:  list of nodes in topological order
+            """
+
+            def _unite(lst):
+                """
+                reorder list so that parts always follow their masters
+                :example:
+                _unite(['a', 'a__q', 'b', 'c', 'c__q', 'b__q', 'd', 'a__r'])
+                -> ['a', 'a__q', 'a__r', 'b', 'b__q', 'c', 'c__q', 'd']
+                """
+                if len(lst) <= 2:
+                    return lst
+                el = lst.pop()
+                lst = _unite(lst)
+                if '__' in el:
+                    master = el.split('__')[0]
+                    if not lst[-1].startswith(master):
+                        return _unite(lst[:-1] + [el, lst[-1]])
+                return lst + [el]
+
+            return _unite(list(nx.algorithms.dag.topological_sort(self.subgraph(self.nodes_to_show))))
+
+
         def _make_graph(self):
             """
             Make the self.graph - a graph object ready for drawing
