@@ -140,18 +140,20 @@ class Schema:
                       for k, v in module_lookup.items()),
             body))
 
-    def spawn_missing_classes(self):
+    def spawn_missing_classes(self, context=None):
         """
         Creates the appropriate python user relation classes from tables in the database and places them
         in the context.
+        :param context: alternative context to place the missing classes into, e.g. locals()
         """
-        # if self.context is not set, use the calling namespace
-        if self.context is not None:
-            context = self.context
-        else:
-            frame = inspect.currentframe().f_back
-            context = frame.f_locals
-            del frame
+        if context is None:
+            if self.context is not None:
+                context = self.context
+            else:
+                # if context is missing, use the calling namespace
+                frame = inspect.currentframe().f_back
+                context = frame.f_locals
+                del frame
         tables = [
             row[0] for row in self.connection.query('SHOW TABLES in `%s`' % self.database)
             if lookup_class_name('`{db}`.`{tab}`'.format(db=self.database, tab=row[0]), context, 0) is None]

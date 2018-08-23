@@ -81,7 +81,7 @@ def create_virtual_module(modulename, dbname):
     :return: the python module
     """
     mod = ModuleType(modulename)
-    s = schema(dbname, mod.__dict__, create_tables=False)
-    s.spawn_missing_classes()
+    s = schema(dbname, create_tables=False)
+    s.spawn_missing_classes(context=mod.__dict__)
     mod.__dict__['schema'] = s
     return mod
