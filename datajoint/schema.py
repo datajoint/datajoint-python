@@ -140,7 +140,6 @@ class Schema:
                       for k, v in module_lookup.items()),
             body))
 
-
     def spawn_missing_classes(self):
         """
         Creates the appropriate python user relation classes from tables in the database and places them
