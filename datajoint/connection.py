@@ -1,5 +1,5 @@
 """
-This module hosts the Connection class that manages the connection to the mysql database,
+This module hosts the Connection class that manages the connection to the database,
  and the `conn` function that provides access to a persistent connection in datajoint.
 """
 import warnings
