@@ -33,7 +33,7 @@ default = OrderedDict({
     'database.user': None,
     'database.port': 3306,
     'connection.init_function': None,
-    'connection.charset': 'utf8',
+    'connection.charset': '',   # pymysql uses '' as default
     'database.reconnect': False,
     'loglevel': 'INFO',
     'safemode': True,

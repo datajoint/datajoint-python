@@ -19,8 +19,8 @@ def to_dicts(recarray):
 
 class Fetch:
     """
-    A fetch object that handles retrieving elements from the database table.
-    :param relation: relation the fetch object fetches data from
+    A fetch object that handles retrieving elements from the table expression.
+    :param relation: the table expression to fetch from
     """
 
     def __init__(self, relation):

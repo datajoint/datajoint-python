@@ -94,7 +94,9 @@ class RelationalOperand:
 
     @property
     def distinct(self):
-        """True if the DISTINCT modifier is required to turn the query into a relation"""
+        """
+        :return: True if the DISTINCT modifier is required to make valid result
+        """
         return self._distinct
 
     @property

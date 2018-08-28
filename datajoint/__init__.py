@@ -1,8 +1,10 @@
 """
-DataJoint for Python is a high-level programming interface for MySQL databases
-to support data processing chains in science labs. DataJoint is built on the
-foundation of the relational data model and prescribes a consistent method for
-organizing, populating, and querying data.
+DataJoint for Python is a framework for building data piplines using MySQL databases 
+to represent pipeline structure and bulk storage systems for large objects.
+DataJoint is built on the foundation of the relational data model and prescribes a 
+consistent method for organizing, populating, and querying data.
+
+The DataJoint data model is described in https://arxiv.org/abs/1807.11104
 
 DataJoint is free software under the LGPL License. In addition, we request
 that any use of DataJoint leading to a publication be acknowledged in the publication.
@@ -18,7 +20,7 @@ from types import ModuleType
 from .version import __version__
 
 __author__ = "Dimitri Yatsenko, Edgar Y. Walker, and Fabian Sinz at Baylor College of Medicine"
-__date__ = "July 26, 2017"
+__date__ = "August 24, 2018"
 __all__ = ['__author__', '__version__',
            'config', 'conn', 'kill', 'BaseRelation',
            'Connection', 'Heading', 'FreeRelation', 'Not', 'schema',
@@ -71,17 +73,19 @@ from .admin import set_password, kill
 from .errors import DataJointError, DuplicateError
 
 
-def create_virtual_module(modulename, dbname):
+def create_virtual_module(module_name, schema_name, create_schema=False, create_tables=False):
     """
-    Creates a python module with the given name from a database name in mysql with datajoint tables.
-    Automatically creates the classes of the appropriate tier in the module.
+    Creates a python module with the given name from the name of a schema on the server and
+    automatically adds classes to it corresponding to the tables in the schema.
 
-    :param modulename: desired name of the module
-    :param dbname:     name of the database in mysql
-    :return: the python module
+    :param module_name: displayed module name
+    :param schema_name: name of the database in mysql
+    :param create_schema: if True, create the schema on the database server
+    :param create_tables: if True, module.schema can be used as the decorator for declaring new 
+    :return: the python module containing classes from the schema object and the table classes
     """
-    mod = ModuleType(modulename)
-    s = schema(dbname, mod.__dict__)
-    s.spawn_missing_classes()
-    mod.__dict__['schema'] = s
-    return mod
+    module = ModuleType(module_name)
+    _schema = schema(schema_name, create_schema=create_schema, create_tables=create_tables)
+    _schema.spawn_missing_classes(context=module.__dict__)
+    module.__dict__['schema'] = _schema
+    return module

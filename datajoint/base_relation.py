@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 class BaseRelation(RelationalOperand):
     """
-    BaseRelation is an abstract class that represents a base relation, i.e. a table in the database.
+    BaseRelation is an abstract class that represents a base relation, i.e. a table in the schema.
     To make it a concrete class, override the abstract properties specifying the connection,
     table name, database, context, and definition.
     A Relation implements insert and delete methods in addition to inherited relational operators.
@@ -56,7 +56,7 @@ class BaseRelation(RelationalOperand):
 
     def declare(self):
         """
-        Use self.definition to declare the table in the database
+        Use self.definition to declare the table in the schema.
         """
         try:
             sql, uses_external = declare(self.full_table_name, self.definition, self._context)
@@ -108,7 +108,7 @@ class BaseRelation(RelationalOperand):
     @property
     def is_declared(self):
         """
-        :return: True is the table is declared in the database
+        :return: True is the table is declared in the schema.
         """
         return self.connection.query(
             'SHOW TABLES in `{database}` LIKE "{table_name}"'.format(
@@ -117,7 +117,7 @@ class BaseRelation(RelationalOperand):
     @property
     def full_table_name(self):
         """
-        :return: full table name in the database
+        :return: full table name in the schema
         """
         return r"`{0:s}`.`{1:s}`".format(self.database, self.table_name)
 
@@ -541,8 +541,8 @@ class BaseRelation(RelationalOperand):
 
 def lookup_class_name(name, context, depth=3):
     """
-    given a table name in the form `database`.`table_name`, find its class in the context.
-    :param name: `database`.`table_name`
+    given a table name in the form `schema_name`.`table_name`, find its class in the context.
+    :param name: `schema_name`.`table_name`
     :param context: dictionary representing the namespace
     :param depth: search depth into imported modules, helps avoid infinite recursion.
     :return: class name found in the context or None if not found
@@ -599,14 +599,14 @@ class FreeRelation(BaseRelation):
     @property
     def table_name(self):
         """
-        :return: the table name in the database
+        :return: the table name in the schema
         """
         return self._table_name
 
 
 class Log(BaseRelation):
     """
-    The log table for each database.
+    The log table for each schema.
     Instances are callable.  Calls log the time and identifying information along with the event.
     """
 
