@@ -119,7 +119,7 @@ class AutoPopulate:
         elif order == "random":
             random.shuffle(keys)
 
-        call_count = 0 
+        call_count = 0
         logger.info('Found %d keys to populate' % len(keys))
 
         make = self._make_tuples if hasattr(self, '_make_tuples') else self.make
@@ -143,17 +143,16 @@ class AutoPopulate:
                             self.connection.cancel_transaction()
                         except OperationalError:
                             pass
+                        error_message = ': '.join([error.__class__.__name__, str(error)]).strip(': ')
                         if reserve_jobs:
                             # show error name and error message (if any)
-                            error_message = ': '.join([error.__class__.__name__, str(error)]).strip(': ')
                             jobs.error(self.target.table_name, self._job_key(key),
                                        error_message=error_message, error_stack=traceback.format_exc())
-
                         if not suppress_errors or isinstance(error, SystemExit):
                             raise
                         else:
                             logger.error(error)
-                            error_list.append((key, error))
+                            error_list.append((key, error_message))
                     else:
                         self.connection.commit_transaction()
                         if reserve_jobs:
