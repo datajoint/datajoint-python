@@ -84,13 +84,15 @@ class AutoPopulate:
             pass
         return (todo & AndList(restrictions)).proj()
 
-    def populate(self, *restrictions, suppress_errors=False, reserve_jobs=False,
-                 order="original", limit=None, max_calls=None, display_progress=False):
+    def populate(self, *restrictions, suppress_errors=False, return_exception_objects=False,
+                 reserve_jobs=False, order="original", limit=None, max_calls=None,
+                 display_progress=False):
         """
         rel.populate() calls rel.make(key) for every primary key in self.key_source
         for which there is not already a tuple in rel.
         :param restrictions: a list of restrictions each restrict (rel.key_source - target.proj())
         :param suppress_errors: suppresses error if true
+        :param return_exception_objects: return error objects instead of just error messages
         :param reserve_jobs: if true, reserves job to populate in asynchronous fashion
         :param order: "original"|"reverse"|"random"  - the order of execution
         :param display_progress: if True, report progress_bar
@@ -119,7 +121,7 @@ class AutoPopulate:
         elif order == "random":
             random.shuffle(keys)
 
-        call_count = 0 
+        call_count = 0
         logger.info('Found %d keys to populate' % len(keys))
 
         make = self._make_tuples if hasattr(self, '_make_tuples') else self.make
@@ -143,17 +145,19 @@ class AutoPopulate:
                             self.connection.cancel_transaction()
                         except OperationalError:
                             pass
+                        error_message = ': '.join([error.__class__.__name__, str(error)]).strip(': ')
                         if reserve_jobs:
                             # show error name and error message (if any)
-                            error_message = ': '.join([error.__class__.__name__, str(error)]).strip(': ')
                             jobs.error(self.target.table_name, self._job_key(key),
                                        error_message=error_message, error_stack=traceback.format_exc())
-
                         if not suppress_errors or isinstance(error, SystemExit):
                             raise
                         else:
                             logger.error(error)
-                            error_list.append((key, error))
+                            if return_exception_objects:
+                                error_list.append((key, error))
+                            else:
+                                error_list.append((key, error_message))
                     else:
                         self.connection.commit_transaction()
                         if reserve_jobs:
