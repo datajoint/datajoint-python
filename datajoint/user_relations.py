@@ -15,7 +15,7 @@ supported_class_attrs = set((
     'key_source', 'describe', 'populate', 'progress', 'primary_key',
     'proj', 'aggr', 'heading', 'fetch', 'fetch1',
     'insert', 'insert1', 'drop', 'drop_quick',
-    'delete', 'delete_quick'))
+    'delete', 'delete_quick', '_html_repr_'))
 
 
 class OrderedClass(type):

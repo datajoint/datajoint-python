@@ -25,10 +25,11 @@ def build_foreign_key_parser():
     lbracket = pp.Literal('[').suppress()
     rbracket = pp.Literal(']').suppress()
     option = pp.Word(pp.srange('[a-zA-Z]'))
-    options = pp.Optional(lbracket + pp.delimitedList(option) + rbracket)
+    options = pp.Optional(lbracket + pp.delimitedList(option) + rbracket).setResultsName('options')
     ref_table = pp.Word(pp.alphas, pp.alphanums + '._').setResultsName('ref_table')
     ref_attrs = pp.Optional(left + pp.delimitedList(attribute_name) + right).setResultsName('ref_attrs')
     return new_attrs + arrow + options + ref_table + ref_attrs
+
 
 
 def build_attribute_parser():
@@ -76,9 +77,18 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
         raise DataJointError('Foreign key reference %s could not be resolved' % result.ref_table)
     if not issubclass(referenced_class, BaseRelation):
         raise DataJointError('Foreign key reference %s must be a subclass of UserRelation' % result.ref_table)
+
+    options = [opt.upper() for opt in result.options]
+    for opt in options:  # check for invalid options
+        if opt not in {'OPTIONAL', 'UNIQUE'}:
+            raise DataJointError('Invalid foreign key option "{opt}"'.format(opt=opt))
+    is_optional = 'OPTIONAL' in options
+    is_unique = 'UNIQUE' in options
+
     ref = referenced_class()
     if not all(r in ref.primary_key for r in result.ref_attrs):
         raise DataJointError('Invalid foreign key attributes in "%s"' % line)
+
     try:
         raise DataJointError('Duplicate attributes "{attr}" in "{line}"'.format(
             attr=next(attr for attr in result.new_attrs if attr in attributes),
@@ -120,7 +130,8 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
         attributes.append(new_attr)
         if primary_key is not None:
             primary_key.append(new_attr)
-        attr_sql.append(ref.heading[ref_attr].sql.replace(ref_attr, new_attr, 1))
+        attr_sql.append(
+            ref.heading[ref_attr].sql.replace(ref_attr, new_attr, 1).replace('NOT NULL', '', is_optional))
 
     # declare the foreign key
     foreign_key_sql.append(
