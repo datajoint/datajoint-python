@@ -162,6 +162,8 @@ class BaseRelation(RelationalOperand):
                           'to explicitly handle any errors', stacklevel=2)
 
         heading = self.heading
+        if inspect.isclass(rows) and issubclass(rows, RelationalOperand):   # instantiate if a class
+            rows = rows()
         if isinstance(rows, RelationalOperand):
             # insert from select
             if not ignore_extra_fields:

@@ -25,7 +25,7 @@ __all__ = ['__author__', '__version__',
            'config', 'conn', 'kill', 'BaseRelation',
            'Connection', 'Heading', 'FreeRelation', 'Not', 'schema',
            'Manual', 'Lookup', 'Imported', 'Computed', 'Part',
-           'AndList', 'OrList', 'ERD', 'U',
+           'AndList', 'ERD', 'U',
            'DataJointError', 'DuplicateError',
            'set_password']
 

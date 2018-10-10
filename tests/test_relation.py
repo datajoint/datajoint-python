@@ -96,6 +96,9 @@ class TestRelation:
         self.user.insert1(3)
 
     def test_insert_select(self):
+        schema.Test2.delete()
+        schema.Test2.insert(schema.Test)
+        assert_equal(len(schema.Test2()), len(schema.Test()))
         original_length = len(self.subject)
         self.subject.insert(self.subject.proj(
             'real_id', 'date_of_birth', 'subject_notes', subject_id='subject_id+1000', species='"human"'))
