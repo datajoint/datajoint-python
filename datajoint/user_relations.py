@@ -104,7 +104,6 @@ class Manual(UserRelation):
     """
     Inherit from this class if the table's values are entered manually.
     """
-
     _prefix = r''
     tier_regexp = r'(?P<manual>' + _prefix + _base_regexp + ')'
 
@@ -115,7 +114,6 @@ class Lookup(UserRelation):
     currently equivalent to defining the table as Manual and serves semantic
     purposes only.
     """
-
     _prefix = '#'
     tier_regexp = r'(?P<lookup>' + _prefix + _base_regexp.replace('TIER', 'lookup') + ')'
 
@@ -125,7 +123,6 @@ class Imported(UserRelation, AutoPopulate):
     Inherit from this class if the table's values are imported from external data sources.
     The inherited class must at least provide the function `_make_tuples`.
     """
-
     _prefix = '_'
     tier_regexp = r'(?P<imported>' + _prefix + _base_regexp + ')'
 
@@ -135,7 +132,6 @@ class Computed(UserRelation, AutoPopulate):
     Inherit from this class if the table's values are computed from other relations in the schema.
     The inherited class must at least provide the function `_make_tuples`.
     """
-
     _prefix = '__'
     tier_regexp = r'(?P<computed>' + _prefix + _base_regexp + ')'
 
