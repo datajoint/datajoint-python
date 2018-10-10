@@ -31,7 +31,6 @@ def build_foreign_key_parser():
     return new_attrs + arrow + options + ref_table + ref_attrs
 
 
-
 def build_attribute_parser():
     quoted = pp.Or(pp.QuotedString('"'), pp.QuotedString("'"))
     colon = pp.Literal(':').suppress()
@@ -42,8 +41,18 @@ def build_attribute_parser():
     return attribute_name + pp.Optional(default) + colon + data_type + comment
 
 
+def build_index_parser():
+    left = pp.Literal('(').suppress()
+    right = pp.Literal(')').suppress()
+    unique = pp.Optional(pp.CaselessKeyword('unique')).setResultsName('unique')
+    index = pp.CaselessKeyword('index').suppress()
+    attribute_name = pp.Word(pp.srange('[a-z]'), pp.srange('[a-z0-9_]'))
+    return unique + index + left + pp.delimitedList(attribute_name).setResultsName('attr_list') + right
+
+
 foreign_key_parser = build_foreign_key_parser()
 attribute_parser = build_attribute_parser()
+index_parser = build_index_parser()
 
 
 def is_foreign_key(line):
@@ -80,9 +89,9 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
 
     options = [opt.upper() for opt in result.options]
     for opt in options:  # check for invalid options
-        if opt not in {'OPTIONAL', 'UNIQUE'}:
+        if opt not in {'NULLABLE', 'UNIQUE'}:
             raise DataJointError('Invalid foreign key option "{opt}"'.format(opt=opt))
-    is_optional = 'OPTIONAL' in options
+    is_nullable = 'NULLABLE' in options
     is_unique = 'UNIQUE' in options
 
     ref = referenced_class()
@@ -131,7 +140,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
         if primary_key is not None:
             primary_key.append(new_attr)
         attr_sql.append(
-            ref.heading[ref_attr].sql.replace(ref_attr, new_attr, 1).replace('NOT NULL', '', is_optional))
+            ref.heading[ref_attr].sql.replace(ref_attr, new_attr, 1).replace('NOT NULL', '', is_nullable))
 
     # declare the foreign key
     foreign_key_sql.append(
@@ -171,7 +180,7 @@ def declare(full_table_name, definition, context):
                                 primary_key if in_key else None,
                                 attribute_sql, foreign_key_sql)
         elif re.match(r'^(unique\s+)?index[^:]*$', line, re.I):   # index
-            index_sql.append(line)  # the SQL syntax is identical to DataJoint's
+            compile_index(line, index_sql)
         else:
             name, sql, is_external = compile_attribute(line, in_key, foreign_key_sql)
             uses_external = uses_external or is_external
@@ -189,6 +198,13 @@ def declare(full_table_name, definition, context):
                        foreign_key_sql +
                        index_sql) +
             '\n) ENGINE=InnoDB, COMMENT "%s"' % table_comment), uses_external
+
+
+def compile_index(line, index_sql):
+    match = index_parser.parseString(line)
+    index_sql.append('{unique} index ({attrs})'.format(
+        unique=match.unique,
+        attrs=','.join('`%s`' % a for a in match.attr_list)))
 
 
 def compile_attribute(line, in_key, foreign_key_sql):

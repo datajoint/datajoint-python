@@ -63,7 +63,7 @@ class Subject(dj.Manual):
     definition = """
     subject : int
     ---
-    -> [unique, optional] Person
+    -> [unique, nullable] Person
     """
 
 
