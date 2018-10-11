@@ -259,6 +259,14 @@ class TestRelational:
     def test_restrictions_by_lists():
         x = D()
         y = L() & 'cond_in_l'
+
+        lenx = len(x)
+        assert_true(lenx > 0 and len(y) > 0 and len(x & y) < len(x), 'incorrect test setup')
+
+        assert_equal(len(D), len(D & dj.AndList([])))
+        assert_true(len(D & []) == 0)
+        assert_true(len(D & [[]]) == 0)  # an OR-list of OR-list
+
         lenx = len(x)
         assert_true(lenx > 0 and len(y) > 0 and len(x & y) < len(x), 'incorrect test setup')
         assert_equal(len(x & y), len(D * L & 'cond_in_l'),
