@@ -60,6 +60,12 @@ class OrderedClass(type):
     def __iter__(cls):
         return iter(cls())
 
+    def __len__(cls):
+        return len(cls())
+
+    def __bool__(cls):
+        return bool(cls())
+
 
 class UserRelation(BaseRelation, metaclass=OrderedClass):
     """
