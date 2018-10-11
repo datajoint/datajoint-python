@@ -5,6 +5,7 @@ import inspect
 import re
 import itertools
 import collections
+import types
 from . import conn, config
 from .errors import DataJointError
 from .jobs import JobTable
@@ -53,6 +54,20 @@ class Schema:
         if connection is None:
             connection = conn()
         self._log = None
+
+        rename_opt = 'database.rename_lambda'
+        # rename schema according to dj.config[rename_opt]
+        if config[rename_opt]:
+            try:
+                rename_function = eval(config[rename_opt])
+            except Exception:
+                raise DataJointError('Invalid configuration "%s": ' % rename_opt)
+            else:
+                if isinstance(rename_function, types.LambdaType):
+                    schema_name = str(rename_function(schema_name))
+                else:
+                    raise DataJointError('Invalid lambda function in configuration "%s"' % rename_opt) from None
+
         self.database = schema_name
         self.connection = connection
         self.context = context

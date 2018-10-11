@@ -32,9 +32,10 @@ default = OrderedDict({
     'database.password': None,
     'database.user': None,
     'database.port': 3306,
+    'database.reconnect': False,
+    'database.rename_lambda': None,   # string with lambda function that renames schema names, e.g "lambda x: 'test_'+x"
     'connection.init_function': None,
     'connection.charset': '',   # pymysql uses '' as default
-    'database.reconnect': False,
     'loglevel': 'INFO',
     'safemode': True,
     'display.limit': 7,
@@ -167,4 +168,4 @@ class Config(collections.MutableMapping):
             if validators[key](value):
                 self._conf[key] = value
             else:
-                raise DataJointError(u'Validator for {0:s} did not pass'.format(key, ))
+                raise DataJointError(u'Validator for {0:s} did not pass'.format(key))
