@@ -28,7 +28,7 @@ def test_schema_size_on_disk():
 def test_schema_rename():
     setting = 'lambda x: x + "_suffix"'
     f = eval(setting)
-    name = PREFIX + "xyz"
+    name = PREFIX + "_xyz"
     dj.config['database.rename_lambda'] = setting
     renamed_schema = dj.schema(name)
     assert_true(renamed_schema.database == f(name))
