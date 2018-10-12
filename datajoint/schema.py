@@ -13,7 +13,7 @@ from .external import ExternalTable
 from .heading import Heading
 from .erd import ERD, _get_tier
 from .utils import user_choice, to_camel_case
-from .user_relations import Part, Computed, Imported, Manual, Lookup
+from .user_tables import Part, Computed, Imported, Manual, Lookup
 from .base_relation import lookup_class_name, Log, FreeRelation
 
 logger = logging.getLogger(__name__)

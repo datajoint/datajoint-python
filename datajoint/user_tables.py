@@ -23,7 +23,7 @@ class OrderedClass(type):
     Class whose members are ordered
     See https://docs.python.org/3/reference/datamodel.html#metaclass-example
 
-    Note:  Since Python 3.6, this will no longer be necessary and should be removed (PEP 520)
+    Note:  Since Python 3.6, _ordered_class_members will no longer be necessary (PEP 520)
     https://www.python.org/dev/peps/pep-0520/
     """
     @classmethod

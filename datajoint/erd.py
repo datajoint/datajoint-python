@@ -18,7 +18,7 @@ from .errors import DataJointError
 from .base_relation import lookup_class_name
 
 
-user_relation_classes = (Manual, Lookup, Computed, Imported, Part)
+user_table_classes = (Manual, Lookup, Computed, Imported, Part)
 
 
 class _AliasNode:
@@ -33,7 +33,7 @@ def _get_tier(table_name):
         return _AliasNode
     else:
         try:
-            return next(tier for tier in user_relation_classes
+            return next(tier for tier in user_table_classes
                         if re.fullmatch(tier.tier_regexp, table_name.split('`')[-2]))
         except StopIteration:
             return None
