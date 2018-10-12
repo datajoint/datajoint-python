@@ -141,7 +141,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
         if primary_key is not None:
             primary_key.append(new_attr)
         attr_sql.append(
-            ref.heading[ref_attr].sql.replace(ref_attr, new_attr, 1).replace('NOT NULL', '', is_nullable))
+            ref.heading[ref_attr].sql.replace(ref_attr, new_attr, 1).replace('NOT NULL', '', int(is_nullable)))
 
     # declare the foreign key
     foreign_key_sql.append(
@@ -198,12 +198,11 @@ def declare(full_table_name, definition, context):
     # compile SQL
     if not primary_key:
         raise DataJointError('Table must have a primary key')
-    return ('CREATE TABLE IF NOT EXISTS %s (\n' % full_table_name +
-            ',\n'.join(attribute_sql +
-                       ['PRIMARY KEY (`' + '`,`'.join(primary_key) + '`)'] +
-                       foreign_key_sql +
-                       index_sql) +
-            '\n) ENGINE=InnoDB, COMMENT "%s"' % table_comment), uses_external
+
+    return (
+        'CREATE TABLE IF NOT EXISTS %s (\n' % full_table_name +
+        ',\n'.join(attribute_sql + ['PRIMARY KEY (`' + '`,`'.join(primary_key) + '`)'] + foreign_key_sql + index_sql) +
+         '\n) ENGINE=InnoDB, COMMENT "%s"' % table_comment), uses_external
 
 
 def compile_index(line, index_sql):
