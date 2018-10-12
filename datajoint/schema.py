@@ -14,7 +14,7 @@ from .heading import Heading
 from .erd import ERD, _get_tier
 from .utils import user_choice, to_camel_case
 from .user_tables import Part, Computed, Imported, Manual, Lookup
-from .base_relation import lookup_class_name, Log, FreeRelation
+from .table import lookup_class_name, Log, FreeTable
 
 logger = logging.getLogger(__name__)
 
@@ -37,8 +37,8 @@ def ordered_dir(klass):
 
 class Schema:
     """
-    A schema object is a decorator for UserRelation classes that binds them to their database.
-    It also specifies the namespace `context` in which other UserRelation classes are defined.
+    A schema object is a decorator for UserTable classes that binds them to their database.
+    It also specifies the namespace `context` in which other UserTable classes are defined.
     """
 
     def __init__(self, schema_name, context=None, connection=None, create_schema=True, create_tables=True):
@@ -146,7 +146,7 @@ class Schema:
                     tier=tier,
                     defi=re.sub(
                         r'`([^`]+)`.`([^`]+)`', repl,
-                        FreeRelation(self.connection, table).describe(printout=False).replace('\n', '\n    ' + indent)))
+                        FreeTable(self.connection, table).describe(printout=False).replace('\n', '\n    ' + indent)))
 
         erd = ERD(self)
         body = '\n\n\n'.join(make_class_definition(table) for table in erd.topological_sort())

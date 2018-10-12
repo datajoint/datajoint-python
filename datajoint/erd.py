@@ -4,7 +4,7 @@ import functools
 import io
 import warnings
 import inspect
-from .base_relation import BaseRelation
+from .table import Table
 
 try:
     from matplotlib import pyplot as plt
@@ -15,7 +15,7 @@ except:
 
 from . import Manual, Imported, Computed, Lookup, Part
 from .errors import DataJointError
-from .base_relation import lookup_class_name
+from .table import lookup_class_name
 
 
 user_table_classes = (Manual, Lookup, Computed, Imported, Part)
@@ -279,7 +279,7 @@ else:
                 node.set_height(props['size'])
                 if name.split('.')[0] in self.context:
                     cls = eval(name, self.context)
-                    assert(issubclass(cls, BaseRelation))
+                    assert(issubclass(cls, Table))
                     description = cls().describe(context=self.context, printout=False).split('\n')
                     description = (
                         '-'*30 if q.startswith('---') else q.replace('->', '&#8594;') if '->' in q else q.split(':')[0]

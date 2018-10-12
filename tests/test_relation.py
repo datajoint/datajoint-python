@@ -6,7 +6,7 @@ from nose.tools import assert_equal, assert_not_equal, assert_true, assert_list_
 from pymysql import InternalError
 import datajoint as dj
 from datajoint import utils, DataJointError
-from datajoint.base_relation import BaseRelation
+from datajoint.table import Table
 from unittest.mock import patch
 
 from . import schema
@@ -14,7 +14,7 @@ from . import schema
 
 def relation_selector(attr):
     try:
-        return issubclass(attr, BaseRelation)
+        return issubclass(attr, Table)
     except TypeError:
         return False
 

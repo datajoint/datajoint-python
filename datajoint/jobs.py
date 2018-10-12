@@ -3,14 +3,14 @@ from .hash import key_hash
 import os
 import platform
 import pymysql
-from .base_relation import BaseRelation
+from .table import Table
 from .errors import DuplicateError
 
 ERROR_MESSAGE_LENGTH = 2047
 TRUNCATION_APPENDIX = '...truncated'
 
 
-class JobTable(BaseRelation):
+class JobTable(Table):
     """
     A base relation with no definition. Allows reserving jobs
     """

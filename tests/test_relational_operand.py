@@ -37,8 +37,8 @@ class TestRelational:
     @staticmethod
     def test_free_relation():
         b = B()
-        free = dj.FreeRelation(b.connection, b.full_table_name)
-        assert_true(repr(free).startswith('FreeRelation') and b.full_table_name in repr(free))
+        free = dj.FreeTable(b.connection, b.full_table_name)
+        assert_true(repr(free).startswith('FreeTable') and b.full_table_name in repr(free))
         r = 'n>5'
         assert_equal((B() & r).make_sql(), (free & r).make_sql())
 

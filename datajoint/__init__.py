@@ -22,8 +22,8 @@ from .version import __version__
 __author__ = "Dimitri Yatsenko, Edgar Y. Walker, and Fabian Sinz at Baylor College of Medicine"
 __date__ = "August 24, 2018"
 __all__ = ['__author__', '__version__',
-           'config', 'conn', 'kill', 'BaseRelation',
-           'Connection', 'Heading', 'FreeRelation', 'Not', 'schema',
+           'config', 'conn', 'kill', 'Table',
+           'Connection', 'Heading', 'FreeTable', 'Not', 'schema',
            'Manual', 'Lookup', 'Imported', 'Computed', 'Part',
            'AndList', 'ERD', 'U',
            'DataJointError', 'DuplicateError',
@@ -63,9 +63,9 @@ logger.setLevel(log_levels[config['loglevel']])
 
 # ------------- flatten import hierarchy -------------------------
 from .connection import conn, Connection
-from .base_relation import FreeRelation, BaseRelation
+from .table import FreeTable, Table
 from .user_tables import Manual, Lookup, Imported, Computed, Part
-from .relational_operand import Not, AndList, U
+from .query import Not, AndList, U
 from .heading import Heading
 from .schema import Schema as schema
 from .erd import ERD

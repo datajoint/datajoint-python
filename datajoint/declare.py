@@ -75,8 +75,8 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
     :param foreign_key_sql: list of sql statements specifying foreign key constraints -- to be updated by this function.
     :param index_sql: list of INDEX declaration statements, duplicate or redundant indexes are ok.
     """
-    # Parse and validate 
-    from .base_relation import BaseRelation
+    # Parse and validate
+    from .table import Table
     try:
         result = foreign_key_parser.parseString(line)
     except pp.ParseException as err:
@@ -85,8 +85,8 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
         referenced_class = eval(result.ref_table, context)
     except NameError:
         raise DataJointError('Foreign key reference %s could not be resolved' % result.ref_table)
-    if not issubclass(referenced_class, BaseRelation):
-        raise DataJointError('Foreign key reference %s must be a subclass of UserRelation' % result.ref_table)
+    if not issubclass(referenced_class, Table):
+        raise DataJointError('Foreign key reference %s must be a subclass of UserTable' % result.ref_table)
 
     options = [opt.upper() for opt in result.options]
     for opt in options:  # check for invalid options

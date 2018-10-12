@@ -9,7 +9,7 @@ import warnings
 from pymysql import OperationalError, InternalError, IntegrityError
 from . import config
 from .declare import declare
-from .relational_operand import RelationalOperand
+from .query import Query
 from .blob import pack
 from .utils import user_choice
 from .heading import Heading
@@ -19,9 +19,9 @@ from . import __version__ as version
 logger = logging.getLogger(__name__)
 
 
-class BaseRelation(RelationalOperand):
+class Table(Query):
     """
-    BaseRelation is an abstract class that represents a base relation, i.e. a table in the schema.
+    Table is an abstract class that represents a base relation, i.e. a table in the schema.
     To make it a concrete class, override the abstract properties specifying the connection,
     table name, database, context, and definition.
     A Relation implements insert and delete methods in addition to inherited relational operators.
@@ -32,7 +32,7 @@ class BaseRelation(RelationalOperand):
     _log_ = None
     _external_table = None
 
-    # -------------- required by RelationalOperand ----------------- #
+    # -------------- required by Query ----------------- #
     @property
     def heading(self):
         """
@@ -162,9 +162,9 @@ class BaseRelation(RelationalOperand):
                           'to explicitly handle any errors', stacklevel=2)
 
         heading = self.heading
-        if inspect.isclass(rows) and issubclass(rows, RelationalOperand):   # instantiate if a class
+        if inspect.isclass(rows) and issubclass(rows, Query):   # instantiate if a class
             rows = rows()
-        if isinstance(rows, RelationalOperand):
+        if isinstance(rows, Query):
             # insert from select
             if not ignore_extra_fields:
                 try:
@@ -325,11 +325,11 @@ class BaseRelation(RelationalOperand):
         delete_list = collections.OrderedDict()
         for table in graph.descendants(self.full_table_name):
             if not table.isdigit():
-                delete_list[table] = FreeRelation(self.connection, table)
+                delete_list[table] = FreeTable(self.connection, table)
             else:
                 raise DataJointError('Cascading deletes across renamed foreign keys is not supported.  See issue #300.')
                 parent, edge = next(iter(graph.parents(table).items()))
-                delete_list[table] = FreeRelation(self.connection, parent).proj(
+                delete_list[table] = FreeTable(self.connection, parent).proj(
                     **{new_name: old_name
                        for new_name, old_name in edge['attr_map'].items() if new_name != old_name})
 
@@ -357,7 +357,7 @@ class BaseRelation(RelationalOperand):
         # apply restrictions
         for name, r in delete_list.items():
             if restrictions[name]:  # do not restrict by an empty list
-                r.restrict([r.proj() if isinstance(r, RelationalOperand) else r
+                r.restrict([r.proj() if isinstance(r, Query) else r
                             for r in restrictions[name]])
         if safe:
             print('About to delete:')
@@ -416,18 +416,18 @@ class BaseRelation(RelationalOperand):
         """
         if self.restriction:
             raise DataJointError('A relation with an applied restriction condition cannot be dropped.'
-                                 ' Call drop() on the unrestricted BaseRelation.')
+                                 ' Call drop() on the unrestricted Table.')
         self.connection.dependencies.load()
         do_drop = True
         tables = [table for table in self.connection.dependencies.descendants(self.full_table_name)
                   if not table.isdigit()]
         if config['safemode']:
             for table in tables:
-                print(table, '(%d tuples)' % len(FreeRelation(self.connection, table)))
+                print(table, '(%d tuples)' % len(FreeTable(self.connection, table)))
             do_drop = user_choice("Proceed?", default='no') == 'yes'
         if do_drop:
             for table in reversed(tables):
-                FreeRelation(self.connection, table).drop_quick()
+                FreeTable(self.connection, table).drop_quick()
             print('Tables dropped.  Restart kernel.')
 
     @property
@@ -555,16 +555,16 @@ def lookup_class_name(name, context, depth=3):
         node = nodes.pop(0)
         for member_name, member in node['context'].items():
             if not member_name.startswith('_'):  # skip IPython's implicit variables
-                if inspect.isclass(member) and issubclass(member, BaseRelation):
+                if inspect.isclass(member) and issubclass(member, Table):
                     if member.full_table_name == name:   # found it!
                         return '.'.join([node['context_name'],  member_name]).lstrip('.')
                     try:  # look for part tables
                         parts = member._ordered_class_members
                     except AttributeError:
-                        pass  # not a UserRelation -- cannot have part tables.
+                        pass  # not a UserTable -- cannot have part tables.
                     else:
                         for part in (getattr(member, p) for p in parts if p[0].isupper() and hasattr(member, p)):
-                            if inspect.isclass(part) and issubclass(part, BaseRelation) and part.full_table_name == name:
+                            if inspect.isclass(part) and issubclass(part, Table) and part.full_table_name == name:
                                 return '.'.join([node['context_name'], member_name, part.__name__]).lstrip('.')
                 elif node['depth'] > 0 and inspect.ismodule(member) and member.__name__ != 'datajoint':
                     try:
@@ -577,16 +577,16 @@ def lookup_class_name(name, context, depth=3):
     return None
 
 
-class FreeRelation(BaseRelation):
+class FreeTable(Table):
     """
     A base relation without a dedicated class. Each instance is associated with a table
     specified by full_table_name.
-    :param arg:  a dj.Connection or a dj.FreeRelation
+    :param arg:  a dj.Connection or a dj.FreeTable
     """
 
     def __init__(self, arg, full_table_name=None):
         super().__init__()
-        if isinstance(arg, FreeRelation):
+        if isinstance(arg, FreeTable):
             # copy constructor
             self.database = arg.database
             self._table_name = arg._table_name
@@ -596,7 +596,7 @@ class FreeRelation(BaseRelation):
             self._connection = arg
 
     def __repr__(self):
-        return "FreeRelation(`%s`.`%s`)" % (self.database, self._table_name)
+        return "FreeTable(`%s`.`%s`)" % (self.database, self._table_name)
 
     @property
     def table_name(self):
@@ -606,7 +606,7 @@ class FreeRelation(BaseRelation):
         return self._table_name
 
 
-class Log(BaseRelation):
+class Log(Table):
     """
     The log table for each schema.
     Instances are callable.  Calls log the time and identifying information along with the event.
