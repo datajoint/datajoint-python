@@ -25,6 +25,15 @@ def test_schema_size_on_disk():
     assert_true(isinstance(number_of_bytes, int))
 
 
+def test_schema_rename():
+    setting = 'lambda x: x + "_suffix"'
+    f = eval(setting)
+    name = PREFIX + "_xyz"
+    dj.config['database.rename_lambda'] = setting
+    renamed_schema = dj.schema(name)
+    assert_true(renamed_schema.database == f(name))
+
+
 def test_namespace_population():
     for name, rel in getmembers(schema, relation_selector):
         assert_true(hasattr(schema_empty, name), '{name} not found in schema_empty'.format(name=name))

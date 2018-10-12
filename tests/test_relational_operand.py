@@ -129,11 +129,9 @@ class TestRelational:
         y = (A & 'cond_in_a=1').proj(a2='id_a')
         assert_equal(len(rel), len(x * y))
 
-
     @staticmethod
     def test_issue_463():
         assert_equal(((A & B) * B).fetch().size, len(A * B))
-
 
     @staticmethod
     def test_project():
@@ -180,6 +178,12 @@ class TestRelational:
         rel = B().aggregate(A())
 
     @staticmethod
+    def test_len():
+        """test the len and bool work on class objects as well as instance objects"""
+        assert_equal(len(B), len(B()))
+        assert_equal(bool(B), bool(B()))
+
+    @staticmethod
     def test_aggregate():
         x = B().aggregate(B.C())
         assert_equal(len(x), len(B() & B.C()))
@@ -207,7 +211,7 @@ class TestRelational:
 
     @staticmethod
     def test_aggr():
-        x = B().aggr(B.C())
+        x = B.aggr(B.C)
         assert_equal(len(x), len(B() & B.C()))
 
         x = B().aggr(B.C(), keep_all_rows=True)
@@ -231,6 +235,8 @@ class TestRelational:
                 assert_true(np.isclose(max_, values.max(), rtol=1e-4, atol=1e-5),
                             "aggregation failed (max)")
 
+
+
     @staticmethod
     def test_semijoin():
         """
@@ -253,9 +259,17 @@ class TestRelational:
     def test_restrictions_by_lists():
         x = D()
         y = L() & 'cond_in_l'
+
         lenx = len(x)
         assert_true(lenx > 0 and len(y) > 0 and len(x & y) < len(x), 'incorrect test setup')
-        assert_equal(len(x & y), len(D() * L() & 'cond_in_l'),
+
+        assert_equal(len(D), len(D & dj.AndList([])))
+        assert_true(len(D & []) == 0)
+        assert_true(len(D & [[]]) == 0)  # an OR-list of OR-list
+
+        lenx = len(x)
+        assert_true(lenx > 0 and len(y) > 0 and len(x & y) < len(x), 'incorrect test setup')
+        assert_equal(len(x & y), len(D * L & 'cond_in_l'),
                      'incorrect semijoin')
         assert_equal(len(x - y), len(x) - len(x & y),
                      'incorrect antijoin')

@@ -22,6 +22,16 @@ class Test(dj.Lookup):
 
 
 @schema
+class Test2(dj.Manual):
+    definition = """
+    key   :   int     # key
+    ---
+    value   :   int     # value
+    """
+
+
+
+@schema
 class TestExtra(dj.Manual):
     """
     clone of Test but with an extra field

@@ -5,6 +5,7 @@ import inspect
 import re
 import itertools
 import collections
+import types
 from . import conn, config
 from .errors import DataJointError
 from .jobs import JobTable
@@ -40,39 +41,54 @@ class Schema:
     It also specifies the namespace `context` in which other UserRelation classes are defined.
     """
 
-    def __init__(self, database, context=None, connection=None, create_tables=True):
+    def __init__(self, schema_name, context=None, connection=None, create_schema=True, create_tables=True):
         """
-        Associates the specified database with this schema object. If the target database does not exist
-        already, will attempt on creating the database.
+        Associate database schema `schema_name`. If the schema does not exist, attempt to create it on the server.
 
-        :param database: name of the database to associate the decorated class with
-        :param context: dictionary for looking up foreign keys references, leave None to use local context
-        :param connection: Connection object. Defaults to datajoint.conn()
+        :param schema_name: the database schema to associate.
+        :param context: dictionary for looking up foreign key references, leave None to use local context.
+        :param connection: Connection object. Defaults to datajoint.conn().
+        :param create_schema: When False, do not create the schema and raise an error if missing.
+        :param create_tables: When False, do not create tables and raise errors when accessing missing tables.
         """
         if connection is None:
             connection = conn()
         self._log = None
-        self.database = database
+
+        rename_opt = 'database.rename_lambda'
+        # rename schema according to dj.config[rename_opt]
+        if config[rename_opt]:
+            try:
+                rename_function = eval(config[rename_opt])
+            except Exception:
+                raise DataJointError('Invalid configuration "%s": ' % rename_opt)
+            else:
+                if isinstance(rename_function, types.LambdaType):
+                    schema_name = str(rename_function(schema_name))
+                else:
+                    raise DataJointError('Invalid lambda function in configuration "%s"' % rename_opt) from None
+
+        self.database = schema_name
         self.connection = connection
         self.context = context
         self.create_tables = create_tables
         self._jobs = None
         self._external = None
         if not self.exists:
-            if not self.create_tables:
-                raise DataJointError("Database named `{database}` was not defined. "
-                                     "Set the create_tables flag to create it.".format(database=database))
+            if not create_schema:
+                raise DataJointError(
+                    "Database named `{name}` was not defined. "
+                    "Set argument create_schema=True to create it.".format(name=schema_name))
             else:
                 # create database
-                logger.info("Database `{database}` could not be found. "
-                            "Attempting to create the database.".format(database=database))
+                logger.info("Creating schema `{name}`.".format(name=schema_name))
                 try:
-                    connection.query("CREATE DATABASE `{database}`".format(database=database))
-                    logger.info('Created database `{database}`.'.format(database=database))
+                    connection.query("CREATE DATABASE `{name}`".format(name=schema_name))
+                    logger.info('Creating schema `{name}`.'.format(name=schema_name))
                 except pymysql.OperationalError:
-                    raise DataJointError("Database named `{database}` was not defined, and"
-                                         " an attempt to create has failed. Check"
-                                         " permissions.".format(database=database))
+                    raise DataJointError(
+                        "Schema `{name}` does not exist and could not be created. "
+                        "Check permissions.".format(name=schema_name))
                 else:
                     self.log('created')
         self.log('connect')
@@ -85,12 +101,12 @@ class Schema:
         return self._log
 
     def __repr__(self):
-        return 'Schema database: `{database}`\n'.format(database=self.database)
+        return 'Schema `{name}`\n'.format(name=self.database)
 
     @property
     def size_on_disk(self):
         """
-        :return: size of the database in bytes
+        :return: size of the entire schema in bytes
         """
         return int(self.connection.query(
             """
@@ -106,7 +122,8 @@ class Schema:
         """
 
         module_count = itertools.count()
-        module_lookup = collections.defaultdict(lambda: 'vmodule' + str(next(module_count)))
+        # add virtual modules for referenced modules with names vmod0, vmod1, ...
+        module_lookup = collections.defaultdict(lambda: 'vmod' + str(next(module_count)))
         db = self.database
 
         def make_class_definition(table):
@@ -136,22 +153,23 @@ class Schema:
         return '\n\n\n'.join((
             '"""This module was auto-generated by datajoint from an existing schema"""',
             "import datajoint as dj\n\nschema = dj.schema('{db}')".format(db=db),
-            '\n'.join("{module} = dj.create_virtual_module('{module}', '{database}')".format(module=v, database=k)
-                      for k, v in module_lookup.items()),
-            body))
+            '\n'.join("{module} = dj.create_virtual_module('{module}', '{schema_name}')".format(module=v, schema_name=k)
+                      for k, v in module_lookup.items()), body))
 
-    def spawn_missing_classes(self):
+    def spawn_missing_classes(self, context=None):
         """
-        Creates the appropriate python user relation classes from tables in the database and places them
+        Creates the appropriate python user relation classes from tables in the schema and places them
         in the context.
+        :param context: alternative context to place the missing classes into, e.g. locals()
         """
-        # if self.context is not set, use the calling namespace
-        if self.context is not None:
-            context = self.context
-        else:
-            frame = inspect.currentframe().f_back
-            context = frame.f_locals
-            del frame
+        if context is None:
+            if self.context is not None:
+                context = self.context
+            else:
+                # if context is missing, use the calling namespace
+                frame = inspect.currentframe().f_back
+                context = frame.f_locals
+                del frame
         tables = [
             row[0] for row in self.connection.query('SHOW TABLES in `%s`' % self.database)
             if lookup_class_name('`{db}`.`{tab}`'.format(db=self.database, tab=row[0]), context, 0) is None]
@@ -184,25 +202,25 @@ class Schema:
 
     def drop(self, force=False):
         """
-        Drop the associated database if it exists
+        Drop the associated schema if it exists
         """
         if not self.exists:
-            logger.info("Database named `{database}` does not exist. Doing nothing.".format(database=self.database))
+            logger.info("Schema named `{database}` does not exist. Doing nothing.".format(database=self.database))
         elif (not config['safemode'] or
               force or
               user_choice("Proceed to delete entire schema `%s`?" % self.database, default='no') == 'yes'):
             logger.info("Dropping `{database}`.".format(database=self.database))
             try:
                 self.connection.query("DROP DATABASE `{database}`".format(database=self.database))
-                logger.info("Database `{database}` was dropped successfully.".format(database=self.database))
+                logger.info("Schema `{database}` was dropped successfully.".format(database=self.database))
             except pymysql.OperationalError:
-                raise DataJointError("An attempt to drop database named `{database}` "
+                raise DataJointError("An attempt to drop schema `{database}` "
                                      "has failed. Check permissions.".format(database=self.database))
 
     @property
     def exists(self):
         """
-        :return: true if the associated database exists on the server
+        :return: true if the associated schema exists on the server
         """
         cur = self.connection.query("SHOW DATABASES LIKE '{database}'".format(database=self.database))
         return cur.rowcount > 0
@@ -236,8 +254,8 @@ class Schema:
 
     def __call__(self, cls):
         """
-        Binds the passed in class object to a database. This is intended to be used as a decorator.
-        :param cls: class to be decorated
+        Binds the supplied class to a schema. This is intended to be used as a decorator.
+        :param cls: class to decorate.
         """
         context = self.context if self.context is not None else inspect.currentframe().f_back.f_locals
         if issubclass(cls, Part):

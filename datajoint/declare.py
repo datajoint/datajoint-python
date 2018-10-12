@@ -25,7 +25,7 @@ def build_foreign_key_parser():
     lbracket = pp.Literal('[').suppress()
     rbracket = pp.Literal(']').suppress()
     option = pp.Word(pp.srange('[a-zA-Z]'))
-    options = pp.Optional(lbracket + pp.delimitedList(option) + rbracket)
+    options = pp.Optional(lbracket + pp.delimitedList(option) + rbracket).setResultsName('options')
     ref_table = pp.Word(pp.alphas, pp.alphanums + '._').setResultsName('ref_table')
     ref_attrs = pp.Optional(left + pp.delimitedList(attribute_name) + right).setResultsName('ref_attrs')
     return new_attrs + arrow + options + ref_table + ref_attrs
@@ -41,8 +41,18 @@ def build_attribute_parser():
     return attribute_name + pp.Optional(default) + colon + data_type + comment
 
 
+def build_index_parser():
+    left = pp.Literal('(').suppress()
+    right = pp.Literal(')').suppress()
+    unique = pp.Optional(pp.CaselessKeyword('unique')).setResultsName('unique')
+    index = pp.CaselessKeyword('index').suppress()
+    attribute_name = pp.Word(pp.srange('[a-z]'), pp.srange('[a-z0-9_]'))
+    return unique + index + left + pp.delimitedList(attribute_name).setResultsName('attr_list') + right
+
+
 foreign_key_parser = build_foreign_key_parser()
 attribute_parser = build_attribute_parser()
+index_parser = build_index_parser()
 
 
 def is_foreign_key(line):
@@ -54,15 +64,16 @@ def is_foreign_key(line):
     return arrow_position >= 0 and not any(c in line[0:arrow_position] for c in '"#\'')
 
 
-def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreign_key_sql):
+def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreign_key_sql, index_sql):
     """
     :param line: a line from a table definition
     :param context: namespace containing referenced objects
     :param attributes: list of attribute names already in the declaration -- to be updated by this function
     :param primary_key: None if the current foreign key is made from the dependent section. Otherwise it is the list
         of primary key attributes thus far -- to be updated by the function
-    :param attr_sql: a list of sql statements defining attributes -- to be updated by this function.
-    :param foreign_key_sql: a list of sql statements specifying foreign key constraints -- to be updated by this function.
+    :param attr_sql: list of sql statements defining attributes -- to be updated by this function.
+    :param foreign_key_sql: list of sql statements specifying foreign key constraints -- to be updated by this function.
+    :param index_sql: list of INDEX declaration statements, duplicate or redundant indexes are ok.
     """
     # Parse and validate 
     from .base_relation import BaseRelation
@@ -76,9 +87,18 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
         raise DataJointError('Foreign key reference %s could not be resolved' % result.ref_table)
     if not issubclass(referenced_class, BaseRelation):
         raise DataJointError('Foreign key reference %s must be a subclass of UserRelation' % result.ref_table)
+
+    options = [opt.upper() for opt in result.options]
+    for opt in options:  # check for invalid options
+        if opt not in {'NULLABLE', 'UNIQUE'}:
+            raise DataJointError('Invalid foreign key option "{opt}"'.format(opt=opt))
+    is_nullable = 'NULLABLE' in options
+    is_unique = 'UNIQUE' in options
+
     ref = referenced_class()
     if not all(r in ref.primary_key for r in result.ref_attrs):
         raise DataJointError('Invalid foreign key attributes in "%s"' % line)
+
     try:
         raise DataJointError('Duplicate attributes "{attr}" in "{line}"'.format(
             attr=next(attr for attr in result.new_attrs if attr in attributes),
@@ -120,7 +140,8 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
         attributes.append(new_attr)
         if primary_key is not None:
             primary_key.append(new_attr)
-        attr_sql.append(ref.heading[ref_attr].sql.replace(ref_attr, new_attr, 1))
+        attr_sql.append(
+            ref.heading[ref_attr].sql.replace(ref_attr, new_attr, 1).replace('NOT NULL', '', is_nullable))
 
     # declare the foreign key
     foreign_key_sql.append(
@@ -128,6 +149,11 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
             fk='`,`'.join(lookup(attr, attr) for attr in ref.primary_key),
             pk='`,`'.join(ref.primary_key),
             ref=ref.full_table_name))
+
+    # declare unique index
+    if is_unique:
+        index_sql.append('UNIQUE INDEX ({attrs})'.format(
+            attrs='`,`'.join(lookup(attr, attr) for attr in ref.primary_key)))
 
 
 def declare(full_table_name, definition, context):
@@ -158,9 +184,9 @@ def declare(full_table_name, definition, context):
         elif is_foreign_key(line):
             compile_foreign_key(line, context, attributes,
                                 primary_key if in_key else None,
-                                attribute_sql, foreign_key_sql)
+                                attribute_sql, foreign_key_sql, index_sql)
         elif re.match(r'^(unique\s+)?index[^:]*$', line, re.I):   # index
-            index_sql.append(line)  # the SQL syntax is identical to DataJoint's
+            compile_index(line, index_sql)
         else:
             name, sql, is_external = compile_attribute(line, in_key, foreign_key_sql)
             uses_external = uses_external or is_external
@@ -178,6 +204,13 @@ def declare(full_table_name, definition, context):
                        foreign_key_sql +
                        index_sql) +
             '\n) ENGINE=InnoDB, COMMENT "%s"' % table_comment), uses_external
+
+
+def compile_index(line, index_sql):
+    match = index_parser.parseString(line)
+    index_sql.append('{unique} index ({attrs})'.format(
+        unique=match.unique,
+        attrs=','.join('`%s`' % a for a in match.attr_list)))
 
 
 def compile_attribute(line, in_key, foreign_key_sql):

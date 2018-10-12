@@ -176,10 +176,11 @@ class RelationalOperand:
 
         # if iterable (but not a string, a relation, or an AndList), treat as an OrList
         try:
-            or_list = [self._make_condition(q) for q in arg if q is not False]
+            or_list = [self._make_condition(q) for q in arg]
         except TypeError:
             raise DataJointError('Invalid restriction type %r' % arg)
         else:
+            or_list = [item for item in or_list if item is not False]  # ignore all False conditions
             if any(item is True for item in or_list):  # if any item is True, the whole thing is True
                 return not negate
             return template % ('(%s)' % ' OR '.join(or_list)) if or_list else negate  # an empty or list is False
