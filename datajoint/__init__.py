@@ -14,13 +14,12 @@ Please cite:
     http://dx.doi.org/10.1101/031658
 """
 
-import logging
 import os
 from types import ModuleType
 from .version import __version__
 
 __author__ = "Dimitri Yatsenko, Edgar Y. Walker, and Fabian Sinz at Baylor College of Medicine"
-__date__ = "August 24, 2018"
+__date__ = "October 15, 2018"
 __all__ = ['__author__', '__version__',
            'config', 'conn', 'kill', 'Table',
            'Connection', 'Heading', 'FreeTable', 'Not', 'schema',

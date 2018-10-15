@@ -45,6 +45,7 @@ class Heading:
         :param arg: a list of dicts with the same keys as Attribute
         """
         assert not isinstance(arg, Heading), 'Headings cannot be copied'
+        self.indexes = None
         self.table_info = None
         self.attributes = None if arg is None else OrderedDict(
             (q['name'], Attribute(**q)) for q in arg)
@@ -224,6 +225,8 @@ class Heading:
                     assert (t, is_unsigned) in numeric_types, 'dtype not found for type %s' % t
                     attr['dtype'] = numeric_types[(t, is_unsigned)]
         self.attributes = OrderedDict([(q['name'], Attribute(**q)) for q in attributes])
+        self.indexes = conn.query(
+            'SHOW KEYS FROM `{db}`.`{tab}`'.format(db=database, tab=table_name), as_dict=True).fetchall()
 
     def project(self, attribute_list, named_attributes=None, force_primary_key=None):
         """
