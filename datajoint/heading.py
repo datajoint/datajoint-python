@@ -1,5 +1,5 @@
 import numpy as np
-from collections import namedtuple, OrderedDict
+from collections import namedtuple, OrderedDict, defaultdict
 import re
 import logging
 from .errors import DataJointError
@@ -225,8 +225,23 @@ class Heading:
                     assert (t, is_unsigned) in numeric_types, 'dtype not found for type %s' % t
                     attr['dtype'] = numeric_types[(t, is_unsigned)]
         self.attributes = OrderedDict([(q['name'], Attribute(**q)) for q in attributes])
-        self.indexes = conn.query(
+
+        # Read and tabulate secondary indexes
+        keys = defaultdict(dict)
+        ixes = conn.query(
             'SHOW KEYS FROM `{db}`.`{tab}`'.format(db=database, tab=table_name), as_dict=True).fetchall()
+        for item in ixes:
+            keys[item['Key_name']][item['Seq_in_index']] = dict(
+                column=item['Column_name'],
+                unique=(item['Non_unique'] == 0),
+                nullable=item['Null'].lower() == 'yes')
+        keys.pop('PRIMARY')   # exclude the primary key
+        keys = dict(keys)
+        self.indexes = {
+            tuple(item[k]['column'] for k in sorted(item.keys())):
+                dict(unique=item[1]['unique'],
+                     nullable=any(v['nullable'] for v in item.values()))
+            for item in keys.values()}
 
     def project(self, attribute_list, named_attributes=None, force_primary_key=None):
         """
