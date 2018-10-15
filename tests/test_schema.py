@@ -25,15 +25,6 @@ def test_schema_size_on_disk():
     assert_true(isinstance(number_of_bytes, int))
 
 
-def test_schema_rename():
-    setting = 'lambda x: x + "_suffix"'
-    f = eval(setting)
-    name = PREFIX + "_xyz"
-    dj.config['database.rename_lambda'] = setting
-    renamed_schema = dj.schema(name)
-    assert_true(renamed_schema.database == f(name))
-
-
 def test_namespace_population():
     for name, rel in getmembers(schema, relation_selector):
         assert_true(hasattr(schema_empty, name), '{name} not found in schema_empty'.format(name=name))
@@ -54,7 +45,7 @@ def test_undecorated_table():
         definition = ""
 
     a = UndecoratedClass()
-    a.full_table_name
+    print(a.full_table_name)
 
 
 @raises(dj.DataJointError)
@@ -77,20 +68,19 @@ def test_unauthorized_database():
     """
     an attempt to create a database to which user has no privileges should raise an informative exception.
     """
-    dj.schema('unauthorized_schema', locals(), connection=dj.conn(**CONN_INFO))
+    dj.schema('unauthorized_schema', connection=dj.conn(**CONN_INFO))
 
 
 def test_drop_database():
-    schema = dj.schema(PREFIX + '_drop_test', locals(), connection=dj.conn(reset=True, **CONN_INFO))
+    schema = dj.schema(PREFIX + '_drop_test', connection=dj.conn(reset=True, **CONN_INFO))
     assert_true(schema.exists)
     schema.drop()
     assert_false(schema.exists)
     schema.drop()  # should do nothing
 
 
-
 def test_overlapping_name():
-    test_schema = dj.schema(PREFIX + '_overlapping_schema', locals(), connection=dj.conn(**CONN_INFO))
+    test_schema = dj.schema(PREFIX + '_overlapping_schema', connection=dj.conn(**CONN_INFO))
 
     @test_schema
     class Unit(dj.Manual):
