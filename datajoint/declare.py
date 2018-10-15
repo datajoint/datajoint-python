@@ -61,7 +61,7 @@ def is_foreign_key(line):
     :return: true if the line appears to be a foreign key definition
     """
     arrow_position = line.find('->')
-    return arrow_position >= 0 and not any(c in line[0:arrow_position] for c in '"#\'')
+    return arrow_position >= 0 and not any(c in line[:arrow_position] for c in '"#\'')
 
 
 def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreign_key_sql, index_sql):
