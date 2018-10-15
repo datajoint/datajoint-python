@@ -33,7 +33,6 @@ default = OrderedDict({
     'database.user': None,
     'database.port': 3306,
     'database.reconnect': False,
-    'database.rename_lambda': None,   # string with lambda function that renames schema names, e.g "lambda x: 'test_'+x"
     'connection.init_function': None,
     'connection.charset': '',   # pymysql uses '' as default
     'loglevel': 'INFO',
