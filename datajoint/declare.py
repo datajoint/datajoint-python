@@ -202,7 +202,7 @@ def declare(full_table_name, definition, context):
     return (
         'CREATE TABLE IF NOT EXISTS %s (\n' % full_table_name +
         ',\n'.join(attribute_sql + ['PRIMARY KEY (`' + '`,`'.join(primary_key) + '`)'] + foreign_key_sql + index_sql) +
-         '\n) ENGINE=InnoDB, COMMENT "%s"' % table_comment), uses_external
+        '\n) ENGINE=InnoDB, COMMENT "%s"' % table_comment), uses_external
 
 
 def compile_index(line, index_sql):
