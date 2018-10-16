@@ -457,9 +457,11 @@ class Table(Query):
             self.connection.dependencies.load()
         parents = self.parents()
         in_key = True
-        definition = '# ' + self.heading.table_info['comment'] + '\n'
+        definition = ('# ' + self.heading.table_info['comment'] + '\n'
+                      if self.heading.table_info['comment'] else '')
         attributes_thus_far = set()
         attributes_declared = set()
+        indexes = self.heading.indexes.copy()
         for attr in self.heading.attributes.values():
             if in_key and not attr.in_key:
                 definition += '---\n'
@@ -470,17 +472,28 @@ class Table(Query):
                 if attr.name in fk_props['attr_map']:
                     do_include = False
                     if attributes_thus_far.issuperset(fk_props['attr_map']):
-                        # simple foreign key
                         parents.pop(parent_name)
+                        # foreign key properties
+                        try:
+                            index_props = indexes.pop(tuple(fk_props['attr_map']))
+                        except KeyError:
+                            index_props = ''
+                        else:
+                            index_props = [k for k, v in index_props.items() if v]
+                            index_props = ' [{}]'.format(', '.join(index_props)) if index_props else ''
+
                         if not parent_name.isdigit():
-                            definition += '-> {class_name}\n'.format(
+                            # simple foreign key
+                            definition += '->{props} {class_name}\n'.format(
+                                props=index_props,
                                 class_name=lookup_class_name(parent_name, context) or parent_name)
                         else:
-                            # aliased foreign key
+                            # expression foreign key
                             parent_name = list(self.connection.dependencies.in_edges(parent_name))[0][0]
                             lst = [(attr, ref) for attr, ref in fk_props['attr_map'].items() if ref != attr]
-                            definition += '({attr_list}) -> {class_name}{ref_list}\n'.format(
-                                attr_list=','.join(r[0] for r in lst),
+                            definition += '({attr_list}) ->{props} {class_name}{ref_list}\n'.format(
+                                attr_list=', '.join(r[0] for r in lst),
+                                props=index_props,
                                 class_name=lookup_class_name(parent_name, context) or parent_name,
                                 ref_list=('' if len(attributes_thus_far) - len(attributes_declared) == 1
                                           else '(%s)' % ','.join(r[1] for r in lst)))
@@ -488,9 +501,15 @@ class Table(Query):
             if do_include:
                 attributes_declared.add(attr.name)
                 name = attr.name.lstrip('_')  # for external
-                definition += '%-20s : %-28s # %s\n' % (
+                definition += '%-20s : %-28s %s\n' % (
                     name if attr.default is None else '%s=%s' % (name, attr.default),
-                    '%s%s' % (attr.type, ' auto_increment' if attr.autoincrement else ''), attr.comment)
+                    '%s%s' % (attr.type, ' auto_increment' if attr.autoincrement else ''),
+                    '# ' + attr.comment if attr.comment else '')
+        # add remaining indexes
+        for k, v in indexes.items():
+            definition += '{unique}INDEX ({attrs})\n'.format(
+                unique='UNIQUE ' if v['unique'] else '',
+                attrs=', '.join(k))
         if printout:
             print(definition)
         return definition
