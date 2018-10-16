@@ -110,7 +110,7 @@ class Experiment(dj.Imported):
     experiment_id  :smallint  # experiment number for this subject
     ---
     experiment_date  :date   # date when experiment was started
-    -> User
+    -> [nullable] User
     data_path=""     :varchar(255)  # file path to recorded data
     notes=""         :varchar(2048) # e.g. purpose of experiment
     entry_time=CURRENT_TIMESTAMP :timestamp   # automatic timestamp
@@ -264,3 +264,14 @@ class DecimalPrimaryKey(dj.Lookup):
     id  :  decimal(4,3)
     """
     contents = zip((0.1, 0.25, 3.99))
+
+@schema
+class IndexRich(dj.Manual):
+    definition = """
+    -> Experiment
+    ---
+    (first) ->[unique, nullable] User
+    first_date : date
+    value : int
+    index (first_date, value)
+    """
