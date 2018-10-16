@@ -45,7 +45,7 @@ def test_undecorated_table():
         definition = ""
 
     a = UndecoratedClass()
-    a.full_table_name
+    print(a.full_table_name)
 
 
 @raises(dj.DataJointError)
@@ -68,20 +68,19 @@ def test_unauthorized_database():
     """
     an attempt to create a database to which user has no privileges should raise an informative exception.
     """
-    dj.schema('unauthorized_schema', locals(), connection=dj.conn(**CONN_INFO))
+    dj.schema('unauthorized_schema', connection=dj.conn(**CONN_INFO))
 
 
 def test_drop_database():
-    schema = dj.schema(PREFIX + '_drop_test', locals(), connection=dj.conn(reset=True, **CONN_INFO))
+    schema = dj.schema(PREFIX + '_drop_test', connection=dj.conn(reset=True, **CONN_INFO))
     assert_true(schema.exists)
     schema.drop()
     assert_false(schema.exists)
     schema.drop()  # should do nothing
 
 
-
 def test_overlapping_name():
-    test_schema = dj.schema(PREFIX + '_overlapping_schema', locals(), connection=dj.conn(**CONN_INFO))
+    test_schema = dj.schema(PREFIX + '_overlapping_schema', connection=dj.conn(**CONN_INFO))
 
     @test_schema
     class Unit(dj.Manual):

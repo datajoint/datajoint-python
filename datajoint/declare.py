@@ -61,18 +61,19 @@ def is_foreign_key(line):
     :return: true if the line appears to be a foreign key definition
     """
     arrow_position = line.find('->')
-    return arrow_position >= 0 and not any(c in line[0:arrow_position] for c in '"#\'')
+    return arrow_position >= 0 and not any(c in line[:arrow_position] for c in '"#\'')
 
 
-def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreign_key_sql):
+def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreign_key_sql, index_sql):
     """
     :param line: a line from a table definition
     :param context: namespace containing referenced objects
     :param attributes: list of attribute names already in the declaration -- to be updated by this function
     :param primary_key: None if the current foreign key is made from the dependent section. Otherwise it is the list
         of primary key attributes thus far -- to be updated by the function
-    :param attr_sql: a list of sql statements defining attributes -- to be updated by this function.
-    :param foreign_key_sql: a list of sql statements specifying foreign key constraints -- to be updated by this function.
+    :param attr_sql: list of sql statements defining attributes -- to be updated by this function.
+    :param foreign_key_sql: list of sql statements specifying foreign key constraints -- to be updated by this function.
+    :param index_sql: list of INDEX declaration statements, duplicate or redundant indexes are ok.
     """
     # Parse and validate 
     from .base_relation import BaseRelation
@@ -149,6 +150,11 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
             pk='`,`'.join(ref.primary_key),
             ref=ref.full_table_name))
 
+    # declare unique index
+    if is_unique:
+        index_sql.append('UNIQUE INDEX ({attrs})'.format(
+            attrs='`,`'.join(lookup(attr, attr) for attr in ref.primary_key)))
+
 
 def declare(full_table_name, definition, context):
     """
@@ -178,7 +184,7 @@ def declare(full_table_name, definition, context):
         elif is_foreign_key(line):
             compile_foreign_key(line, context, attributes,
                                 primary_key if in_key else None,
-                                attribute_sql, foreign_key_sql)
+                                attribute_sql, foreign_key_sql, index_sql)
         elif re.match(r'^(unique\s+)?index[^:]*$', line, re.I):   # index
             compile_index(line, index_sql)
         else:
