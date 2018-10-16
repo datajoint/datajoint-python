@@ -15,7 +15,7 @@ supported_class_attrs = set((
     'key_source', 'describe', 'populate', 'progress', 'primary_key',
     'proj', 'aggr', 'heading', 'fetch', 'fetch1',
     'insert', 'insert1', 'drop', 'drop_quick',
-    'delete', 'delete_quick', '_html_repr_'))
+    'delete', 'delete_quick', '_repr_html_'))
 
 
 class OrderedClass(type):
@@ -60,12 +60,7 @@ class OrderedClass(type):
     def __iter__(cls):
         return iter(cls())
 
-    def __len__(cls):
-        return len(cls())
-
-    def __bool__(cls):
-        return bool(cls())
-
+    # WARNING: do not redefine class-level __bool__ and __len__  -- IPython uses them for internal purposes
 
 class UserTable(Table, metaclass=OrderedClass):
     """

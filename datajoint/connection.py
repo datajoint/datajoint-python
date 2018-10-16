@@ -133,8 +133,9 @@ class Connection:
                 if suppress_warnings:
                     # suppress all warnings arising from underlying SQL library
                     warnings.simplefilter("ignore")
+                if config['loglevel'].lower() == 'debug':
+                    print('Check 1:', query)
                 cur.execute(query, args)
-
         except err.OperationalError as e:
             if 'MySQL server has gone away' in str(e) and config['database.reconnect']:
                 warnings.warn('''Mysql server has gone away.
@@ -143,6 +144,8 @@ class Connection:
                     ''')
                 self.connect()
                 logger.debug("Re-executing SQL: " + query[0:300])
+                if config['loglevel'].lower() == 'debug':
+                    print('Check 2:', query)
                 cur.execute(query, args)
             else:
                 raise
