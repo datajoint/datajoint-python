@@ -94,6 +94,8 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
             raise DataJointError('Invalid foreign key option "{opt}"'.format(opt=opt))
     is_nullable = 'NULLABLE' in options
     is_unique = 'UNIQUE' in options
+    if is_nullable and primary_key is not None:
+        raise DataJointError('Primary dependencies cannot be nullable in line "{line}"'.format(line=line))
 
     ref = referenced_class()
     if not all(r in ref.primary_key for r in result.ref_attrs):
