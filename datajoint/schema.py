@@ -222,14 +222,16 @@ class Schema:
         relation_class._context = context
         # instantiate the class, declare the table if not already
         instance = relation_class()
-        if not instance.is_declared:
+        is_declared = instance.is_declared
+        if not is_declared:
             if not self.create_tables or assert_declared:
                 raise DataJointError('Table not declared %s' % instance.table_name)
             else:
                 instance.declare()
+        is_declared = is_declared or instance.is_declared
 
         # fill values in Lookup tables from their contents property
-        if instance.is_declared and hasattr(instance, 'contents') and isinstance(instance, Lookup):
+        if isinstance(instance, Lookup) and hasattr(instance, 'contents') and is_declared:
             contents = list(instance.contents)
             if len(contents) > len(instance):
                 if instance.heading.has_autoincrement:
