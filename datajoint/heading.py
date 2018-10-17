@@ -236,7 +236,6 @@ class Heading:
                 unique=(item['Non_unique'] == 0),
                 nullable=item['Null'].lower() == 'yes')
         keys.pop('PRIMARY')   # exclude the primary key
-        keys = dict(keys)
         self.indexes = {
             tuple(item[k]['column'] for k in sorted(item.keys())):
                 dict(unique=item[1]['unique'],
