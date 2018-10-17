@@ -27,9 +27,10 @@ def test_describe():
     """real_definition should match original definition"""
     for rel in (schema_advanced.LocalSynapse(), schema_advanced.GlobalSynapse()):
         describe = rel.describe()
-        s1 = declare(rel.full_table_name, rel.definition, schema_advanced.schema.context)
-        s2 = declare(rel.full_table_name, describe, globals())
-        assert_equal(s1, s2)
+        s1 = declare(rel.full_table_name, rel.definition, schema_advanced.schema.context)[0].split('\n')
+        s2 = declare(rel.full_table_name, describe, globals())[0].split('\n')
+        for c1, c2 in zip(s1, s2):
+            assert_equal(c1, c2)
 
 
 @raises(DataJointError)    # TODO: remove after fixing issue #300
