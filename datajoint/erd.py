@@ -251,8 +251,8 @@ else:
             label_props = {  # http://matplotlib.org/examples/color/named_colors.html
                 None: dict(shape='circle', color="#FFFF0040", fontcolor='yellow', fontsize=round(scale*8),
                            size=0.4*scale, fixed=False),
-                _AliasNode: dict(shape='circle', color="#FF880080", fontcolor='white', fontsize=round(scale*6),
-                                 size=0.15*scale, fixed=True),
+                _AliasNode: dict(shape='circle', color="#FF880080", fontcolor='#FF880080', fontsize=round(scale*0),
+                                 size=0.05*scale, fixed=True),
                 Manual: dict(shape='box', color="#00FF0030", fontcolor='darkgreen', fontsize=round(scale*10),
                              size=0.4*scale, fixed=False),
                 Lookup: dict(shape='plaintext', color='#00000020', fontcolor='black', fontsize=round(scale*8),
