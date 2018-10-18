@@ -228,9 +228,8 @@ class Heading:
 
         # Read and tabulate secondary indexes
         keys = defaultdict(dict)
-        ixes = conn.query(
-            'SHOW KEYS FROM `{db}`.`{tab}`'.format(db=database, tab=table_name), as_dict=True).fetchall()
-        for item in ixes:
+        for item in conn.query(
+                'SHOW KEYS FROM `{db}`.`{tab}`'.format(db=database, tab=table_name), as_dict=True).fetchall():
             keys[item['Key_name']][item['Seq_in_index']] = dict(
                 column=item['Column_name'],
                 unique=(item['Non_unique'] == 0),
