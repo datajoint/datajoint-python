@@ -30,7 +30,7 @@ def test_describe():
         s1 = declare(rel.full_table_name, rel.definition, schema_advanced.schema.context)[0].split('\n')
         s2 = declare(rel.full_table_name, describe, globals())[0].split('\n')
         for c1, c2 in zip(s1, s2):
-            assert_equal(c1.rstrip(','), c2.rstrip(','))
+            assert_equal(c1, c2)
 
 
 @raises(DataJointError)    # TODO: remove after fixing issue #300
