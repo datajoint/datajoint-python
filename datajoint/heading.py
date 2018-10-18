@@ -228,13 +228,12 @@ class Heading:
 
         # Read and tabulate secondary indexes
         keys = defaultdict(dict)
-        for item in conn.query(
-                'SHOW KEYS FROM `{db}`.`{tab}`'.format(db=database, tab=table_name), as_dict=True):
-            keys[item['Key_name']][item['Seq_in_index']] = dict(
-                column=item['Column_name'],
-                unique=(item['Non_unique'] == 0),
-                nullable=item['Null'].lower() == 'yes')
-        keys.pop('PRIMARY')   # exclude the primary key
+        for item in conn.query('SHOW KEYS FROM `{db}`.`{tab}`'.format(db=database, tab=table_name), as_dict=True):
+            if item['Key_name'] != 'PRIMARY':
+                keys[item['Key_name']][item['Seq_in_index']] = dict(
+                    column=item['Column_name'],
+                    unique=(item['Non_unique'] == 0),
+                    nullable=item['Null'].lower() == 'yes')
         self.indexes = {
             tuple(item[k]['column'] for k in sorted(item.keys())):
                 dict(unique=item[1]['unique'],
