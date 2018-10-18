@@ -75,8 +75,8 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
     :param foreign_key_sql: list of sql statements specifying foreign key constraints -- to be updated by this function.
     :param index_sql: list of INDEX declaration statements, duplicate or redundant indexes are ok.
     """
-    # Parse and validate 
-    from .base_relation import BaseRelation
+    # Parse and validate
+    from .table import Table
     try:
         result = foreign_key_parser.parseString(line)
     except pp.ParseException as err:
@@ -85,8 +85,8 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
         referenced_class = eval(result.ref_table, context)
     except NameError:
         raise DataJointError('Foreign key reference %s could not be resolved' % result.ref_table)
-    if not issubclass(referenced_class, BaseRelation):
-        raise DataJointError('Foreign key reference %s must be a subclass of UserRelation' % result.ref_table)
+    if not issubclass(referenced_class, Table):
+        raise DataJointError('Foreign key reference %s must be a subclass of UserTable' % result.ref_table)
 
     options = [opt.upper() for opt in result.options]
     for opt in options:  # check for invalid options
@@ -94,6 +94,8 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
             raise DataJointError('Invalid foreign key option "{opt}"'.format(opt=opt))
     is_nullable = 'NULLABLE' in options
     is_unique = 'UNIQUE' in options
+    if is_nullable and primary_key is not None:
+        raise DataJointError('Primary dependencies cannot be nullable in line "{line}"'.format(line=line))
 
     ref = referenced_class()
     if not all(r in ref.primary_key for r in result.ref_attrs):
@@ -141,7 +143,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
         if primary_key is not None:
             primary_key.append(new_attr)
         attr_sql.append(
-            ref.heading[ref_attr].sql.replace(ref_attr, new_attr, 1).replace('NOT NULL', '', is_nullable))
+            ref.heading[ref_attr].sql.replace(ref_attr, new_attr, 1).replace('NOT NULL', '', int(is_nullable)))
 
     # declare the foreign key
     foreign_key_sql.append(
@@ -198,12 +200,11 @@ def declare(full_table_name, definition, context):
     # compile SQL
     if not primary_key:
         raise DataJointError('Table must have a primary key')
-    return ('CREATE TABLE IF NOT EXISTS %s (\n' % full_table_name +
-            ',\n'.join(attribute_sql +
-                       ['PRIMARY KEY (`' + '`,`'.join(primary_key) + '`)'] +
-                       foreign_key_sql +
-                       index_sql) +
-            '\n) ENGINE=InnoDB, COMMENT "%s"' % table_comment), uses_external
+
+    return (
+        'CREATE TABLE IF NOT EXISTS %s (\n' % full_table_name +
+        ',\n'.join(attribute_sql + ['PRIMARY KEY (`' + '`,`'.join(primary_key) + '`)'] + foreign_key_sql + index_sql) +
+        '\n) ENGINE=InnoDB, COMMENT "%s"' % table_comment), uses_external
 
 
 def compile_index(line, index_sql):

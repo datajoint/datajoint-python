@@ -1,7 +1,7 @@
 """
-DataJoint for Python is a framework for building data piplines using MySQL databases 
+DataJoint for Python is a framework for building data piplines using MySQL databases
 to represent pipeline structure and bulk storage systems for large objects.
-DataJoint is built on the foundation of the relational data model and prescribes a 
+DataJoint is built on the foundation of the relational data model and prescribes a
 consistent method for organizing, populating, and querying data.
 
 The DataJoint data model is described in https://arxiv.org/abs/1807.11104
@@ -14,16 +14,15 @@ Please cite:
     http://dx.doi.org/10.1101/031658
 """
 
-import logging
 import os
 from types import ModuleType
 from .version import __version__
 
 __author__ = "Dimitri Yatsenko, Edgar Y. Walker, and Fabian Sinz at Baylor College of Medicine"
-__date__ = "August 24, 2018"
+__date__ = "October 15, 2018"
 __all__ = ['__author__', '__version__',
-           'config', 'conn', 'kill', 'BaseRelation',
-           'Connection', 'Heading', 'FreeRelation', 'Not', 'schema',
+           'config', 'conn', 'kill', 'Table',
+           'Connection', 'Heading', 'FreeTable', 'Not', 'schema',
            'Manual', 'Lookup', 'Imported', 'Computed', 'Part',
            'AndList', 'ERD', 'U',
            'DataJointError', 'DuplicateError',
@@ -63,9 +62,9 @@ logger.setLevel(log_levels[config['loglevel']])
 
 # ------------- flatten import hierarchy -------------------------
 from .connection import conn, Connection
-from .base_relation import FreeRelation, BaseRelation
-from .user_relations import Manual, Lookup, Imported, Computed, Part
-from .relational_operand import Not, AndList, U
+from .table import FreeTable, Table
+from .user_tables import Manual, Lookup, Imported, Computed, Part
+from .query import Not, AndList, U
 from .heading import Heading
 from .schema import Schema as schema
 from .erd import ERD
@@ -81,7 +80,7 @@ def create_virtual_module(module_name, schema_name, create_schema=False, create_
     :param module_name: displayed module name
     :param schema_name: name of the database in mysql
     :param create_schema: if True, create the schema on the database server
-    :param create_tables: if True, module.schema can be used as the decorator for declaring new 
+    :param create_tables: if True, module.schema can be used as the decorator for declaring new
     :return: the python module containing classes from the schema object and the table classes
     """
     module = ModuleType(module_name)

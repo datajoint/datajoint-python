@@ -37,8 +37,8 @@ class TestRelational:
     @staticmethod
     def test_free_relation():
         b = B()
-        free = dj.FreeRelation(b.connection, b.full_table_name)
-        assert_true(repr(free).startswith('FreeRelation') and b.full_table_name in repr(free))
+        free = dj.FreeTable(b.connection, b.full_table_name)
+        assert_true(repr(free).startswith('FreeTable') and b.full_table_name in repr(free))
         r = 'n>5'
         assert_equal((B() & r).make_sql(), (free & r).make_sql())
 
@@ -178,12 +178,6 @@ class TestRelational:
         rel = B().aggregate(A())
 
     @staticmethod
-    def test_len():
-        """test the len and bool work on class objects as well as instance objects"""
-        assert_equal(len(B), len(B()))
-        assert_equal(bool(B), bool(B()))
-
-    @staticmethod
     def test_aggregate():
         x = B().aggregate(B.C())
         assert_equal(len(x), len(B() & B.C()))
@@ -263,7 +257,7 @@ class TestRelational:
         lenx = len(x)
         assert_true(lenx > 0 and len(y) > 0 and len(x & y) < len(x), 'incorrect test setup')
 
-        assert_equal(len(D), len(D & dj.AndList([])))
+        assert_equal(len(D()), len(D & dj.AndList([])))
         assert_true(len(D & []) == 0)
         assert_true(len(D & [[]]) == 0)  # an OR-list of OR-list
 

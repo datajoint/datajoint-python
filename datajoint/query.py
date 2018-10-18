@@ -18,11 +18,11 @@ def assert_join_compatibility(rel1, rel2):
     Determine if relations rel1 and rel2 are join-compatible.  To be join-compatible, the matching attributes
     in the two relations must be in the primary key of one or the other relation.
     Raises an exception if not compatible.
-    :param rel1: A RelationalOperand object
-    :param rel2: A RelationalOperand object
+    :param rel1: A Query object
+    :param rel2: A Query object
     """
     for rel in (rel1, rel2):
-        if not isinstance(rel, (U, RelationalOperand)):
+        if not isinstance(rel, (U, Query)):
             raise DataJointError('Object %r is not a relation and cannot be joined.' % rel)
     if not isinstance(rel1, U) and not isinstance(rel2, U):  # dj.U is always compatible
         try:
@@ -52,13 +52,13 @@ class AndList(list):
             super().append(restriction)
 
 
-class RelationalOperand:
+class Query:
     """
-    RelationalOperand implements the relational algebra.
-    RelationalOperand objects link other relational operands with relational operators.
+    Query implements the relational algebra.
+    Query objects link other relational operands with relational operators.
     The leaves of this tree of objects are base relations.
     When fetching data from the database, this tree of objects is compiled into an SQL expression.
-    RelationalOperand operators are restrict, join, proj, and aggr.
+    Query operators are restrict, join, proj, and aggr.
     """
 
     def __init__(self, arg=None):
@@ -68,7 +68,7 @@ class RelationalOperand:
             self._distinct = False
             self._heading = None
         else:  # copy
-            assert isinstance(arg, RelationalOperand), 'Cannot make RelationalOperand from %s' % arg.__class__.__name__
+            assert isinstance(arg, Query), 'Cannot make Query from %s' % arg.__class__.__name__
             self._restriction = AndList(arg._restriction)
             self._distinct = arg.distinct
             self._heading = arg._heading
@@ -159,11 +159,11 @@ class RelationalOperand:
                         for k in arg.dtype.fields if k in self.heading))
 
         # restrict by a Relation class -- triggers instantiation
-        if inspect.isclass(arg) and issubclass(arg, RelationalOperand):
+        if inspect.isclass(arg) and issubclass(arg, Query):
             arg = arg()
 
         # restrict by another relation (aka semijoin and antijoin)
-        if isinstance(arg, RelationalOperand):
+        if isinstance(arg, Query):
             assert_join_compatibility(self, arg)
             common_attributes = [q for q in self.heading.names if q in arg.heading.names]
             return (
@@ -247,7 +247,7 @@ class RelationalOperand:
         in-place restriction.
         A subquery is created if the argument has renamed attributes.  Then the restriction is not in place.
 
-        See relational_operand.restrict for more detail.
+        See query.restrict for more detail.
         """
         return (Subquery.create(self) if self.heading.expressions else self).restrict(restriction)
 
@@ -255,7 +255,7 @@ class RelationalOperand:
         """
         relational restriction or semijoin
         :return: a restricted copy of the argument
-        See relational_operand.restrict for more detail.
+        See query.restrict for more detail.
         """
         return (Subquery.create(self)  # the HAVING clause in GroupBy can handle renamed attributes but WHERE cannot
                 if self.heading.expressions and not isinstance(self, GroupBy)
@@ -265,7 +265,7 @@ class RelationalOperand:
         """
         in-place inverted restriction aka antijoin
 
-        See relational_operand.restrict for more detail.
+        See query.restrict for more detail.
         """
         return self.restrict(Not(restriction))
 
@@ -274,7 +274,7 @@ class RelationalOperand:
         inverted restriction aka antijoin
         :return: a restricted copy of the argument
 
-        See relational_operand.restrict for more detail.
+        See query.restrict for more detail.
         """
         return self & Not(restriction)
 
@@ -318,7 +318,7 @@ class RelationalOperand:
         Two tuples match when their common attributes have equal values or when they have no common attributes.
         All shared attributes must be in the primary key of either rel or arg or both or an error will be raised.
 
-        relational_operand.restrict is the only access point that modifies restrictions. All other operators must
+        query.restrict is the only access point that modifies restrictions. All other operators must
         ultimately call restrict()
 
         :param restriction: a sequence or an array (treated as OR list), another relation, an SQL condition string, or
@@ -502,7 +502,7 @@ class RelationalOperand:
             key = self._iter_keys.pop(0)
         except AttributeError:
             # self._iter_keys is missing because __iter__ has not been called.
-            raise TypeError("'RelationalOperand' object is not an iterator. Use iter(obj) to create an iterator.")
+            raise TypeError("'Query' object is not an iterator. Use iter(obj) to create an iterator.")
         except IndexError:
             raise StopIteration
         else:
@@ -539,7 +539,7 @@ class Not:
         self.restriction = restriction
 
 
-class Join(RelationalOperand):
+class Join(Query):
     """
     Relational join.
     Join is a private DataJoint class not exposed to users.
@@ -558,7 +558,7 @@ class Join(RelationalOperand):
     @classmethod
     def create(cls, arg1, arg2, keep_all_rows=False):
         obj = cls()
-        if inspect.isclass(arg2) and issubclass(arg2, RelationalOperand):
+        if inspect.isclass(arg2) and issubclass(arg2, Query):
             arg2 = arg2()   # instantiate if joining with a class
         assert_join_compatibility(arg1, arg2)
         if arg1.connection != arg2.connection:
@@ -588,7 +588,7 @@ class Join(RelationalOperand):
             from2=self._arg2.from_clause)
 
 
-class Union(RelationalOperand):
+class Union(Query):
     """
     Union is a private DataJoint class that implements relational union.
     """
@@ -607,9 +607,9 @@ class Union(RelationalOperand):
     @classmethod
     def create(cls, arg1, arg2):
         obj = cls()
-        if inspect.isclass(arg2) and issubclass(arg2, RelationalOperand):
+        if inspect.isclass(arg2) and issubclass(arg2, Query):
             arg2 = arg2()  # instantiate if a class
-        if not isinstance(arg1, RelationalOperand) or not isinstance(arg2, RelationalOperand):
+        if not isinstance(arg1, Query) or not isinstance(arg2, Query):
             raise DataJointError('a relation can only be unioned with another relation')
         if arg1.connection != arg2.connection:
             raise DataJointError("Cannot operate on relations from different connections.")
@@ -639,10 +639,10 @@ class Union(RelationalOperand):
             where2=self._arg2.where_clause)) % next(self.__count)
 
 
-class Projection(RelationalOperand):
+class Projection(Query):
     """
     Projection is a private DataJoint class that implements relational projection.
-    See RelationalOperand.proj() for user interface.
+    See Query.proj() for user interface.
     """
 
     def __init__(self, arg=None):
@@ -700,11 +700,11 @@ class Projection(RelationalOperand):
         return self._arg.from_clause
 
 
-class GroupBy(RelationalOperand):
+class GroupBy(Query):
     """
     GroupBy(rel, comp1='expr1', ..., compn='exprn')  produces a relation with the primary key specified by rel.heading.
     The computed arguments comp1, ..., compn use aggregation operators on the attributes of rel.
-    GroupBy is used RelationalOperand.aggr and U.aggr.
+    GroupBy is used Query.aggr and U.aggr.
     GroupBy is a private class in DataJoint, not exposed to users.
     """
 
@@ -720,7 +720,7 @@ class GroupBy(RelationalOperand):
 
     @classmethod
     def create(cls, arg, group, attributes=None, named_attributes=None, keep_all_rows=False):
-        if inspect.isclass(group) and issubclass(group, RelationalOperand):
+        if inspect.isclass(group) and issubclass(group, Query):
             group = group()   # instantiate if a class
         assert_join_compatibility(arg, group)
         obj = cls()
@@ -750,7 +750,7 @@ class GroupBy(RelationalOperand):
         return len(Subquery.create(self))
 
 
-class Subquery(RelationalOperand):
+class Subquery(Query):
     """
     A Subquery encapsulates its argument in a SELECT statement, enabling its use as a subquery.
     The attribute list and the WHERE clause are resolved.  Thus, a subquery no longer has any renamed attributes.
@@ -852,23 +852,22 @@ class U:
         return self._primary_key
 
     def __and__(self, relation):
-        if inspect.isclass(relation) and issubclass(relation, RelationalOperand):
+        if inspect.isclass(relation) and issubclass(relation, Query):
             relation = relation()   # instantiate if a class
-        if not isinstance(relation, RelationalOperand):
+        if not isinstance(relation, Query):
             raise DataJointError('Relation U can only be restricted with another relation.')
         return Projection.create(relation, attributes=self.primary_key,
                                  named_attributes=dict(), include_primary_key=False)
 
     def __mul__(self, relation):
         """
-        Joining relation U * relation has the effect of adding the attributes of U to the primary key of
-        the other relation.
+        Joining U with another relation has the effect of promoting the attributes of U to the primary key of the other relation.
         :param relation: other relation
         :return: a copy of the other relation with the primary key extended.
         """
-        if inspect.isclass(relation) and issubclass(relation, RelationalOperand):
+        if inspect.isclass(relation) and issubclass(relation, Query):
             relation = relation()   # instantiate if a class
-        if not isinstance(relation, RelationalOperand):
+        if not isinstance(relation, Query):
             raise DataJointError('Relation U can only be joined with another relation.')
         copy = relation.__class__(relation)
         copy._heading = copy.heading.extend_primary_key(self.primary_key)

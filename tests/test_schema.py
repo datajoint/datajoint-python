@@ -8,7 +8,7 @@ from . import PREFIX, CONN_INFO
 
 def relation_selector(attr):
     try:
-        return issubclass(attr, dj.BaseRelation)
+        return issubclass(attr, dj.Table)
     except TypeError:
         return False
 

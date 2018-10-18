@@ -4,7 +4,7 @@ import functools
 import io
 import warnings
 import inspect
-from .base_relation import BaseRelation
+from .table import Table
 
 try:
     from matplotlib import pyplot as plt
@@ -15,10 +15,10 @@ except:
 
 from . import Manual, Imported, Computed, Lookup, Part
 from .errors import DataJointError
-from .base_relation import lookup_class_name
+from .table import lookup_class_name
 
 
-user_relation_classes = (Manual, Lookup, Computed, Imported, Part)
+user_table_classes = (Manual, Lookup, Computed, Imported, Part)
 
 
 class _AliasNode:
@@ -33,7 +33,7 @@ def _get_tier(table_name):
         return _AliasNode
     else:
         try:
-            return next(tier for tier in user_relation_classes
+            return next(tier for tier in user_table_classes
                         if re.fullmatch(tier.tier_regexp, table_name.split('`')[-2]))
         except StopIteration:
             return None
@@ -251,8 +251,8 @@ else:
             label_props = {  # http://matplotlib.org/examples/color/named_colors.html
                 None: dict(shape='circle', color="#FFFF0040", fontcolor='yellow', fontsize=round(scale*8),
                            size=0.4*scale, fixed=False),
-                _AliasNode: dict(shape='circle', color="#FF880080", fontcolor='white', fontsize=round(scale*6),
-                                 size=0.15*scale, fixed=True),
+                _AliasNode: dict(shape='circle', color="#FF880080", fontcolor='#FF880080', fontsize=round(scale*0),
+                                 size=0.05*scale, fixed=True),
                 Manual: dict(shape='box', color="#00FF0030", fontcolor='darkgreen', fontsize=round(scale*10),
                              size=0.4*scale, fixed=False),
                 Lookup: dict(shape='plaintext', color='#00000020', fontcolor='black', fontsize=round(scale*8),
@@ -279,7 +279,7 @@ else:
                 node.set_height(props['size'])
                 if name.split('.')[0] in self.context:
                     cls = eval(name, self.context)
-                    assert(issubclass(cls, BaseRelation))
+                    assert(issubclass(cls, Table))
                     description = cls().describe(context=self.context, printout=False).split('\n')
                     description = (
                         '-'*30 if q.startswith('---') else q.replace('->', '&#8594;') if '->' in q else q.split(':')[0]

@@ -4,13 +4,13 @@ from . import config
 from .errors import DataJointError
 from .hash import long_hash
 from .blob import pack, unpack
-from .base_relation import BaseRelation
+from .table import Table
 from .declare import STORE_HASH_LENGTH, HASH_DATA_TYPE
 from . import s3
 from .utils import safe_write
 
 
-class ExternalTable(BaseRelation):
+class ExternalTable(Table):
     """
     The table tracking externally stored objects.
     Declare as ExternalTable(connection, database)

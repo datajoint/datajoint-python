@@ -15,7 +15,6 @@ ephys = Ephys()
 channel = Ephys.Channel()
 
 
-
 class TestDeclare:
 
     @staticmethod
@@ -27,6 +26,15 @@ class TestDeclare:
     def test_describe():
         """real_definition should match original definition"""
         rel = Experiment()
+        context = inspect.currentframe().f_globals
+        s1 = declare(rel.full_table_name, rel.definition, context)
+        s2 = declare(rel.full_table_name, rel.describe(), context)
+        assert_equal(s1, s2)
+
+    @staticmethod
+    def test_describe_indexes():
+        """real_definition should match original definition"""
+        rel = IndexRich()
         context = inspect.currentframe().f_globals
         s1 = declare(rel.full_table_name, rel.definition, context)
         s2 = declare(rel.full_table_name, rel.describe(), context)
@@ -92,25 +100,27 @@ class TestDeclare:
                           ['subject_id', 'experiment_id', 'trial_id', 'channel'])
         assert_true(channel.heading.attributes['voltage'].is_blob)
 
-    def test_dependencies(self):
-        assert_equal(set(user.children(primary=False)), set([experiment.full_table_name]))
-        assert_equal(set(experiment.parents(primary=False)), set([user.full_table_name]))
+    @staticmethod
+    def test_dependencies():
+        assert_true(experiment.full_table_name in set(user.children(primary=False)))
+        assert_equal(set(experiment.parents(primary=False)), {user.full_table_name})
 
-        assert_equal(set(subject.children(primary=True)), set([experiment.full_table_name]))
-        assert_equal(set(experiment.parents(primary=True)), set([subject.full_table_name]))
+        assert_equal(set(subject.children(primary=True)), {experiment.full_table_name})
+        assert_equal(set(experiment.parents(primary=True)), {subject.full_table_name})
 
-        assert_equal(set(experiment.children(primary=True)), set([trial.full_table_name]))
-        assert_equal(set(trial.parents(primary=True)), set([experiment.full_table_name]))
+        assert_true(trial.full_table_name in set(experiment.children(primary=True)))
+        assert_equal(set(trial.parents(primary=True)), {experiment.full_table_name})
 
         assert_equal(set(trial.children(primary=True)),
-                     set((ephys.full_table_name, trial.Condition.full_table_name)))
-        assert_equal(set(ephys.parents(primary=True)), set([trial.full_table_name]))
+                     {ephys.full_table_name, trial.Condition.full_table_name})
+        assert_equal(set(ephys.parents(primary=True)), {trial.full_table_name})
 
-        assert_equal(set(ephys.children(primary=True)), set([channel.full_table_name]))
-        assert_equal(set(channel.parents(primary=True)), set([ephys.full_table_name]))
+        assert_equal(set(ephys.children(primary=True)), {channel.full_table_name})
+        assert_equal(set(channel.parents(primary=True)), {ephys.full_table_name})
 
+    @staticmethod
     @raises(dj.DataJointError)
-    def test_bad_attribute_name(self):
+    def test_bad_attribute_name():
 
         @schema
         class BadName(dj.Manual):
@@ -118,8 +128,9 @@ class TestDeclare:
             Bad_name : int
             """
 
+    @staticmethod
     @raises(dj.DataJointError)
-    def test_bad_fk_rename(self):
+    def test_bad_fk_rename():
         """issue #381"""
 
         @schema
@@ -132,4 +143,24 @@ class TestDeclare:
         class B(dj.Manual):
             definition = """
             b -> A    # invalid, the new syntax is (b) -> A
+            """
+
+    @staticmethod
+    @raises(dj.DataJointError)
+    def test_primary_nullable_foreign_key():
+        @schema
+        class Q(dj.Manual):
+            definition = """
+            -> [nullable] Experiment
+            """
+
+    @staticmethod
+    @raises(dj.DataJointError)
+    def test_invalid_foreign_key_option():
+        @schema
+        class R(dj.Manual):
+            definition = """
+            -> Experiment
+            ----
+            -> [optional] User
             """

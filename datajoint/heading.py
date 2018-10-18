@@ -1,5 +1,5 @@
 import numpy as np
-from collections import namedtuple, OrderedDict
+from collections import namedtuple, OrderedDict, defaultdict
 import re
 import logging
 from .errors import DataJointError
@@ -45,6 +45,7 @@ class Heading:
         :param arg: a list of dicts with the same keys as Attribute
         """
         assert not isinstance(arg, Heading), 'Headings cannot be copied'
+        self.indexes = None
         self.table_info = None
         self.attributes = None if arg is None else OrderedDict(
             (q['name'], Attribute(**q)) for q in arg)
@@ -224,6 +225,20 @@ class Heading:
                     assert (t, is_unsigned) in numeric_types, 'dtype not found for type %s' % t
                     attr['dtype'] = numeric_types[(t, is_unsigned)]
         self.attributes = OrderedDict([(q['name'], Attribute(**q)) for q in attributes])
+
+        # Read and tabulate secondary indexes
+        keys = defaultdict(dict)
+        for item in conn.query('SHOW KEYS FROM `{db}`.`{tab}`'.format(db=database, tab=table_name), as_dict=True):
+            if item['Key_name'] != 'PRIMARY':
+                keys[item['Key_name']][item['Seq_in_index']] = dict(
+                    column=item['Column_name'],
+                    unique=(item['Non_unique'] == 0),
+                    nullable=item['Null'].lower() == 'yes')
+        self.indexes = {
+            tuple(item[k]['column'] for k in sorted(item.keys())):
+                dict(unique=item[1]['unique'],
+                     nullable=any(v['nullable'] for v in item.values()))
+            for item in keys.values()}
 
     def project(self, attribute_list, named_attributes=None, force_primary_key=None):
         """
