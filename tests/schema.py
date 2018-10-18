@@ -118,7 +118,7 @@ class Experiment(dj.Imported):
 
     fake_experiments_per_subject = 5
 
-    def _make_tuples(self, key):
+    def make(self, key):
         """
         populate with random data
         """
@@ -150,7 +150,7 @@ class Trial(dj.Imported):
         orientation :  float   # degrees
         """
 
-    def _make_tuples(self, key):
+    def make(self, key):
         """
         populate with random data (pretend reading from raw files)
         """

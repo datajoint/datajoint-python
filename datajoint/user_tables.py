@@ -11,11 +11,9 @@ from .errors import DataJointError
 _base_regexp = r'[a-z][a-z0-9]*(_[a-z][a-z0-9]*)*'
 
 # attributes that trigger instantiation of user classes
-supported_class_attrs = set((
-    'key_source', 'describe', 'populate', 'progress', 'primary_key',
-    'proj', 'aggr', 'heading', 'fetch', 'fetch1',
-    'insert', 'insert1', 'drop', 'drop_quick',
-    'delete', 'delete_quick', '_repr_html_'))
+supported_class_attrs = {
+    'key_source', 'describe', 'populate', 'progress', 'primary_key', 'proj', 'aggr', 'heading', 'fetch', 'fetch1',
+    'insert', 'insert1', 'drop', 'drop_quick', 'delete', 'delete_quick'}
 
 
 class OrderedClass(type):
@@ -60,7 +58,6 @@ class OrderedClass(type):
     def __iter__(cls):
         return iter(cls())
 
-    # WARNING: do not redefine class-level __bool__ and __len__  -- IPython uses them for internal purposes
 
 class UserTable(Table, metaclass=OrderedClass):
     """
