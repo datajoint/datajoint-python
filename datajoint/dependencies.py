@@ -1,6 +1,6 @@
 import networkx as nx
 import itertools
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from .errors import DataJointError
 
 
@@ -52,7 +52,7 @@ class Dependencies(nx.DiGraph):
         WHERE referenced_table_name NOT LIKE "~%%" AND (referenced_table_schema in ('{schemas}') OR
             referenced_table_schema is not NULL AND table_schema in ('{schemas}'))
         """.format(schemas="','".join(self._conn.schemas)), as_dict=True)
-        fks = defaultdict(lambda: dict(attr_map=dict()))
+        fks = defaultdict(lambda: dict(attr_map=OrderedDict()))
         for key in keys:
             d = fks[(key['constraint_name'], key['referencing_table'], key['referenced_table'])]
             d['referencing_table'] = key['referencing_table']
