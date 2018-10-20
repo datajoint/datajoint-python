@@ -95,7 +95,7 @@ class Connection:
             self._conn = client.connect(
                 init_command=self.init_fun,
                 sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
-                         "STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
+                         "STRICT_ALL_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
                 charset=config['connection.charset'],
                 **self.conn_info)
 
