@@ -117,6 +117,9 @@ class Query:
         :param arg: any valid restriction object.
         :return: an SQL condition string.  It may also be a boolean that is intended to be treated as a string.
         """
+        def prep_value(v):
+            return str(v) if isinstance(v, (datetime.date, datetime.datetime, datetime.time, decimal.Decimal)) else v
+
         negate = False
         while isinstance(arg, Not):
             negate = not negate
@@ -125,7 +128,7 @@ class Query:
 
         # restrict by string
         if isinstance(arg, str):
-            return template % arg.strip()
+            return template % arg.strip().replace("%", "%%")  # escape % in strings, see issue #376
 
         # restrict by AndList
         if isinstance(arg, AndList):
@@ -148,15 +151,12 @@ class Query:
         # restrict by a mapping such as a dict -- convert to an AndList of string equality conditions
         if isinstance(arg, collections.abc.Mapping):
             return template % self._make_condition(
-                AndList('`%s`=%r' % (k, (v if not isinstance(v, (
-                    datetime.date, datetime.datetime, datetime.time, decimal.Decimal)) else str(v)))
-                        for k, v in arg.items() if k in self.heading))
+                AndList('`%s`=%r' % (k, prep_value(v)) for k, v in arg.items() if k in self.heading))
 
         # restrict by a numpy record -- convert to an AndList of string equality conditions
         if isinstance(arg, np.void):
             return template % self._make_condition(
-                AndList(('`%s`='+('%s' if self.heading[k].numeric else '"%s"')) % (k, arg[k])
-                        for k in arg.dtype.fields if k in self.heading))
+                AndList(('`%s`=%r' % (k, prep_value(arg[k])) for k in arg.dtype.fields if k in self.heading)))
 
         # restrict by a Relation class -- triggers instantiation
         if inspect.isclass(arg) and issubclass(arg, Query):

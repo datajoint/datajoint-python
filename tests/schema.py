@@ -29,7 +29,13 @@ class Test2(dj.Manual):
     value   :   int     # value
     """
 
-
+@schema
+class Test3(dj.Manual):
+    definition = """
+    key : int 
+    ---
+    value : varchar(300)
+    """
 
 @schema
 class TestExtra(dj.Manual):

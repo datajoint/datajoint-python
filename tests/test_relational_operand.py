@@ -6,7 +6,7 @@ from nose.tools import assert_equal, assert_false, assert_true, raises, assert_s
 
 import datajoint as dj
 from .schema_simple import A, B, D, E, L, DataA, DataB, TestUpdate, IJ, JI, ReservedWord
-from .schema import Experiment
+from .schema import Experiment, Test3
 
 
 def setup():
@@ -128,6 +128,21 @@ class TestRelational:
         x = (A & 'cond_in_a=0').proj(a1='id_a')
         y = (A & 'cond_in_a=1').proj(a2='id_a')
         assert_equal(len(rel), len(x * y))
+
+
+    @staticmethod
+    def test_issue_376():
+        tab = Test3()
+        tab.delete_quick()
+        tab.insert((
+            (1, '%%%'),
+            (2, 'one%'),
+            (3, 'one')
+        ))
+        assert_equal(len(tab & 'value="%%%"'), 1)
+        assert_equal(len(tab & {'value': "%%%"}), 1)
+        assert_equal(len(tab & 'value like "o%"'), 2)
+        assert_equal(len(tab & 'value like "o%%"'), 2)
 
     @staticmethod
     def test_issue_463():
