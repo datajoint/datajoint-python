@@ -260,7 +260,7 @@ class SigTermTable(dj.Computed):
     -> SimpleSource
     """
 
-    def _make_tuples(self, key):
+    def make(self, key):
         os.kill(os.getpid(), signal.SIGTERM)
 
 
@@ -271,12 +271,13 @@ class DecimalPrimaryKey(dj.Lookup):
     """
     contents = zip((0.1, 0.25, 3.99))
 
+
 @schema
 class IndexRich(dj.Manual):
     definition = """
     -> Experiment
     ---
-    (first) ->[unique, nullable] User
+    -> [unique, nullable] User.proj(first="username")
     first_date : date
     value : int
     index (first_date, value)

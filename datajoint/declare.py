@@ -34,17 +34,13 @@ def build_foreign_key_parser_old():
 
 
 def build_foreign_key_parser():
-    left = pp.Literal('(').suppress()
-    right = pp.Literal(')').suppress()
-    attribute_name = pp.Word(pp.srange('[a-z]'), pp.srange('[a-z0-9_]'))
-    new_attrs = pp.Optional(left + pp.delimitedList(attribute_name) + right).setResultsName('new_attrs')
     arrow = pp.Literal('->').suppress()
     lbracket = pp.Literal('[').suppress()
     rbracket = pp.Literal(']').suppress()
     option = pp.Word(pp.srange('[a-zA-Z]'))
     options = pp.Optional(lbracket + pp.delimitedList(option) + rbracket).setResultsName('options')
     ref_table = pp.restOfLine.setResultsName('ref_table')
-    return new_attrs + arrow + options + ref_table
+    return arrow + options + ref_table
 
 
 def build_attribute_parser():
@@ -96,16 +92,16 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
     from .table import Table
     from .query import Projection
 
-    new_style = False   # See issue #436.  Old style to be deprecated in a future release
+    new_style = True   # See issue #436.  Old style to be deprecated in a future release
     try:
-        result = foreign_key_parser_old.parseString(line)
-    except pp.ParseException as err:
+        result = foreign_key_parser.parseString(line)
+    except pp.ParseException:
         try:
-            result = foreign_key_parser.parseString(line)
+            result = foreign_key_parser_old.parseString(line)
         except pp.ParseBaseException as err:
-            raise DataJointError('Parsing error in line "%s". %s.' % (line, err))
+            raise DataJointError('Parsing error in line "%s". %s.' % (line, err)) from None
         else:
-            new_style = True
+            new_style = False
     try:
         ref = eval(result.ref_table, context)
     except Exception if new_style else NameError:
@@ -129,7 +125,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
 
     # check that dependency is of supported type
     if (not isinstance(ref, (Table, Projection)) or len(ref.restriction) or
-            (isinstance(ref, Projection) and (not isinstance(ref._arg, Table) or not len(ref._arg.restriction)))):
+            (isinstance(ref, Projection) and (not isinstance(ref._arg, Table) or len(ref._arg.restriction)))):
         raise DataJointError('Dependency "%s" is not supported (yet). Use a base table or its projection.' %
                              result.ref_table)
 

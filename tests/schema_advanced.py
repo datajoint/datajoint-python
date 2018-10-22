@@ -108,8 +108,9 @@ class LocalSynapse(dj.Manual):
 
 @schema
 class GlobalSynapse(dj.Manual):
+    # Mix old-style and new-style projected foreign keys
     definition = """
     # a synapse within the slice
-    (pre_slice, pre_cell) -> Cell(slice, cell)
+    -> Cell.proj(pre_slice="slice", pre_cell="cell")
     (post_slice, post_cell)-> Cell(slice, cell)
     """
