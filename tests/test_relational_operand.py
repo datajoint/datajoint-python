@@ -141,6 +141,7 @@ class TestRelational:
         assert_equal(len(Test3 & 'value="%%%"'), 1)
         assert_equal(len(Test3 & {'value': "%%%"}), 1)
         assert_equal(len(Test3 & 'value like "o%"'), 2)
+        assert_equal(len(Test3 & 'value like "o%%"'), 2)
 
     @staticmethod
     def test_issue_463():
