@@ -5,7 +5,6 @@ import inspect
 import re
 import itertools
 import collections
-import types
 from . import conn, config
 from .errors import DataJointError
 from .jobs import JobTable

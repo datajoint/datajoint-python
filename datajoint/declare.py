@@ -16,7 +16,9 @@ HASH_DATA_TYPE = 'char(51)'
 logger = logging.getLogger(__name__)
 
 
-def build_foreign_key_parser():
+def build_foreign_key_parser_old():
+    # old-style foreign key parser. Superceded by expression-based syntax. See issue #436
+    # This will be deprecated in a future release.
     left = pp.Literal('(').suppress()
     right = pp.Literal(')').suppress()
     attribute_name = pp.Word(pp.srange('[a-z]'), pp.srange('[a-z0-9_]'))
@@ -29,6 +31,20 @@ def build_foreign_key_parser():
     ref_table = pp.Word(pp.alphas, pp.alphanums + '._').setResultsName('ref_table')
     ref_attrs = pp.Optional(left + pp.delimitedList(attribute_name) + right).setResultsName('ref_attrs')
     return new_attrs + arrow + options + ref_table + ref_attrs
+
+
+def build_foreign_key_parser():
+    left = pp.Literal('(').suppress()
+    right = pp.Literal(')').suppress()
+    attribute_name = pp.Word(pp.srange('[a-z]'), pp.srange('[a-z0-9_]'))
+    new_attrs = pp.Optional(left + pp.delimitedList(attribute_name) + right).setResultsName('new_attrs')
+    arrow = pp.Literal('->').suppress()
+    lbracket = pp.Literal('[').suppress()
+    rbracket = pp.Literal(']').suppress()
+    option = pp.Word(pp.srange('[a-zA-Z]'))
+    options = pp.Optional(lbracket + pp.delimitedList(option) + rbracket).setResultsName('options')
+    ref_table = pp.restOfLine.setResultsName('ref_table')
+    return new_attrs + arrow + options + ref_table
 
 
 def build_attribute_parser():
@@ -50,6 +66,7 @@ def build_index_parser():
     return unique + index + left + pp.delimitedList(attribute_name).setResultsName('attr_list') + right
 
 
+foreign_key_parser_old = build_foreign_key_parser_old()
 foreign_key_parser = build_foreign_key_parser()
 attribute_parser = build_attribute_parser()
 index_parser = build_index_parser()
@@ -77,16 +94,22 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
     """
     # Parse and validate
     from .table import Table
+    from .query import Projection
+
+    new_style = False   # See issue #436.  Old style to be deprecated in a future release
     try:
-        result = foreign_key_parser.parseString(line)
+        result = foreign_key_parser_old.parseString(line)
     except pp.ParseException as err:
-        raise DataJointError('Parsing error in line "%s". %s.' % (line, err))
+        try:
+            result = foreign_key_parser.parseString(line)
+        except pp.ParseBaseException as err:
+            raise DataJointError('Parsing error in line "%s". %s.' % (line, err))
+        else:
+            new_style = True
     try:
-        referenced_class = eval(result.ref_table, context)
-    except NameError:
+        ref = eval(result.ref_table, context)
+    except Exception if new_style else NameError:
         raise DataJointError('Foreign key reference %s could not be resolved' % result.ref_table)
-    if not issubclass(referenced_class, Table):
-        raise DataJointError('Foreign key reference %s must be a subclass of UserTable' % result.ref_table)
 
     options = [opt.upper() for opt in result.options]
     for opt in options:  # check for invalid options
@@ -97,65 +120,75 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
     if is_nullable and primary_key is not None:
         raise DataJointError('Primary dependencies cannot be nullable in line "{line}"'.format(line=line))
 
-    ref = referenced_class()
-    if not all(r in ref.primary_key for r in result.ref_attrs):
-        raise DataJointError('Invalid foreign key attributes in "%s"' % line)
+    if not new_style:
+        if not isinstance(ref, type) or not issubclass(ref, Table):
+            raise DataJointError('Foreign key reference %r must be a valid query' % result.ref_table)
 
-    try:
-        raise DataJointError('Duplicate attributes "{attr}" in "{line}"'.format(
-            attr=next(attr for attr in result.new_attrs if attr in attributes),
-            line=line))
-    except StopIteration:
-        pass   # the normal outcome
+    if isinstance(ref, type) and issubclass(ref, Table):
+        ref = ref()
 
-    # Match the primary attributes of the referenced table to local attributes
-    new_attrs = list(result.new_attrs)
-    ref_attrs = list(result.ref_attrs)
+    # check that dependency is of supported type
+    if (not isinstance(ref, (Table, Projection)) or len(ref.restriction) or
+            (isinstance(ref, Projection) and (not isinstance(ref._arg, Table) or not len(ref._arg.restriction)))):
+        raise DataJointError('Dependency "%s" is not supported (yet). Use a base table or its projection.' %
+                             result.ref_table)
 
-    # special case, the renamed attribute is implicit
-    if new_attrs and not ref_attrs:
-        if len(new_attrs) != 1:
-            raise DataJointError('Renamed foreign key must be mapped to the primary key in "%s"' % line)
-        if len(ref.primary_key) == 1:
-            # if the primary key has one attribute, allow implicit renaming
-            ref_attrs = ref.primary_key
-        else:
-            # if only one primary key attribute remains, then allow implicit renaming
-            ref_attrs = [attr for attr in ref.primary_key if attr not in attributes]
-            if len(ref_attrs) != 1:
-                raise DataJointError('Could not resovle which primary key attribute should be referenced in "%s"' % line)
+    if not new_style:
+        # for backward compatibility with old-style dependency declarations.  See issue #436
+        if not isinstance(ref, Table):
+            DataJointError('Dependency "%s" is not supported. Check documentation.' % result.ref_table)
+        if not all(r in ref.primary_key for r in result.ref_attrs):
+            raise DataJointError('Invalid foreign key attributes in "%s"' % line)
+        try:
+            raise DataJointError('Duplicate attributes "{attr}" in "{line}"'.format(
+                attr=next(attr for attr in result.new_attrs if attr in attributes),
+                line=line))
+        except StopIteration:
+            pass   # the normal outcome
 
-    if len(new_attrs) != len(ref_attrs):
-        raise DataJointError('Mismatched attributes in foreign key "%s"' % line)
+        # Match the primary attributes of the referenced table to local attributes
+        new_attrs = list(result.new_attrs)
+        ref_attrs = list(result.ref_attrs)
 
-    # expand the primary key of the referenced table
-    lookup = dict(zip(ref_attrs, new_attrs)).get  # from foreign to local
-    ref_attrs = [attr for attr in ref.primary_key if lookup(attr, attr) not in attributes]
-    new_attrs = [lookup(attr, attr) for attr in ref_attrs]
+        # special case, the renamed attribute is implicit
+        if new_attrs and not ref_attrs:
+            if len(new_attrs) != 1:
+                raise DataJointError('Renamed foreign key must be mapped to the primary key in "%s"' % line)
+            if len(ref.primary_key) == 1:
+                # if the primary key has one attribute, allow implicit renaming
+                ref_attrs = ref.primary_key
+            else:
+                # if only one primary key attribute remains, then allow implicit renaming
+                ref_attrs = [attr for attr in ref.primary_key if attr not in attributes]
+                if len(ref_attrs) != 1:
+                    raise DataJointError('Could not resovle which primary key attribute should be referenced in "%s"' % line)
 
-    # sanity check
-    assert len(new_attrs) == len(ref_attrs) and not any(attr in attributes for attr in new_attrs)
+        if len(new_attrs) != len(ref_attrs):
+            raise DataJointError('Mismatched attributes in foreign key "%s"' % line)
+
+        if ref_attrs:
+            ref = ref.proj(**dict(zip(new_attrs, ref_attrs)))
 
     # declare new foreign key attributes
-    for ref_attr in ref_attrs:
-        new_attr = lookup(ref_attr, ref_attr)
-        attributes.append(new_attr)
-        if primary_key is not None:
-            primary_key.append(new_attr)
-        attr_sql.append(
-            ref.heading[ref_attr].sql.replace(ref_attr, new_attr, 1).replace('NOT NULL', '', int(is_nullable)))
+    base = ref._arg if isinstance(ref, Projection) else ref   # base reference table
+    for attr, ref_attr in zip(ref.primary_key, base.primary_key):
+        if attr not in attributes:
+            attributes.append(attr)
+            if primary_key is not None:
+                primary_key.append(attr)
+            attr_sql.append(
+                base.heading[ref_attr].sql.replace(ref_attr, attr, 1).replace('NOT NULL ', '', int(is_nullable)))
 
     # declare the foreign key
     foreign_key_sql.append(
         'FOREIGN KEY (`{fk}`) REFERENCES {ref} (`{pk}`) ON UPDATE CASCADE ON DELETE RESTRICT'.format(
-            fk='`,`'.join(lookup(attr, attr) for attr in ref.primary_key),
-            pk='`,`'.join(ref.primary_key),
-            ref=ref.full_table_name))
+            fk='`,`'.join(ref.primary_key),
+            pk='`,`'.join(base.primary_key),
+            ref=base.full_table_name))
 
     # declare unique index
     if is_unique:
-        index_sql.append('UNIQUE INDEX ({attrs})'.format(
-            attrs='`,`'.join(lookup(attr, attr) for attr in ref.primary_key)))
+        index_sql.append('UNIQUE INDEX ({attrs})'.format(attrs='`,`'.join(ref.primary_key)))
 
 
 def declare(full_table_name, definition, context):
@@ -223,7 +256,6 @@ def compile_attribute(line, in_key, foreign_key_sql):
     :param foreign_key_sql:
     :returns: (name, sql, is_external) -- attribute name and sql code for its declaration
     """
-
     try:
         match = attribute_parser.parseString(line+'#', parseAll=True)
     except pp.ParseException as err:
