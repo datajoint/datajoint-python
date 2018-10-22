@@ -94,7 +94,7 @@ class Cell(dj.Manual):
 class InputCell(dj.Manual):
     definition = """  # a synapse within the slice
     -> Cell
-    (input)-> Cell(cell)
+    -> Cell.proj(input="cell")
     """
 
 
