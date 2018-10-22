@@ -163,6 +163,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
             raise DataJointError('Mismatched attributes in foreign key "%s"' % line)
 
         if ref_attrs:
+            # convert to projected dependency
             ref = ref.proj(**dict(zip(new_attrs, ref_attrs)))
 
     # declare new foreign key attributes
