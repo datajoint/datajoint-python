@@ -132,16 +132,17 @@ class TestRelational:
 
     @staticmethod
     def test_issue_376():
-        Test3.delete_quick()
-        Test3.insert((
+        tab = Test3()
+        tab.delete_quick()
+        tab.insert((
             (1, '%%%'),
             (2, 'one%'),
             (3, 'one')
         ))
-        assert_equal(len(Test3 & 'value="%%%"'), 1)
-        assert_equal(len(Test3 & {'value': "%%%"}), 1)
-        assert_equal(len(Test3 & 'value like "o%"'), 2)
-        assert_equal(len(Test3 & 'value like "o%%"'), 2)
+        assert_equal(len(tab & 'value="%%%"'), 1)
+        assert_equal(len(tab & {'value': "%%%"}), 1)
+        assert_equal(len(tab & 'value like "o%"'), 2)
+        assert_equal(len(tab & 'value like "o%%"'), 2)
 
     @staticmethod
     def test_issue_463():
