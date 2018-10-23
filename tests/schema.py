@@ -142,7 +142,7 @@ class Experiment(dj.Imported):
 @schema
 class Trial(dj.Imported):
     definition = """   # a trial within an experiment
-    -> Experiment
+    -> Experiment.proj(exp='experiment_id')
     trial_id  :smallint   # trial number
     ---
     start_time                 :double      # (s)
@@ -182,7 +182,7 @@ class Ephys(dj.Imported):
 
     class Channel(dj.Part):
         definition = """     # subtable containing individual channels
-        -> Ephys
+        -> master
         channel    :tinyint unsigned   # channel number within Ephys
         ----
         voltage    : longblob

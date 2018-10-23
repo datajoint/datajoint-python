@@ -105,6 +105,9 @@ class Table(Query):
         """
         return self.connection.dependencies.children(self.full_table_name, primary)
 
+    def descendants(self):
+        return self. connection.dependencies.descendants(self.full_table_name)
+
     @property
     def is_declared(self):
         """
