@@ -5,7 +5,6 @@ from datajoint import DataJointError
 from . import schema_advanced
 
 
-@raises(DataJointError)     # TODO: remove after fixing issue #300
 def test_aliased_fk():
     person = schema_advanced.Person()
     parent = schema_advanced.Parent()
@@ -33,7 +32,6 @@ def test_describe():
             assert_equal(c1, c2)
 
 
-@raises(DataJointError)    # TODO: remove after fixing issue #300
 def test_delete():
     person = schema_advanced.Person()
     parent = schema_advanced.Parent()
