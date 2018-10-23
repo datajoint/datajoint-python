@@ -105,9 +105,19 @@ class Dependencies(nx.DiGraph):
         :param full_table_name:  In form `schema`.`table_name`
         :return: all dependent tables sorted in topological order.  Self is included.
         """
-
         nodes = self.subgraph(
             nx.algorithms.dag.descendants(self, full_table_name))
 
         return [full_table_name] + list(
             nx.algorithms.dag.topological_sort(nodes))
+
+    def ancestors(self, full_table_name):
+        """
+        :param full_table_name:  In form `schema`.`table_name`
+        :return: all dependent tables sorted in topological order.  Self is included.
+        """
+        nodes = self.subgraph(
+            nx.algorithms.dag.ancestors(self, full_table_name))
+        return [full_table_name] + list(
+            nx.algorithms.dag.topological_sort(nodes, reverse=True))
+

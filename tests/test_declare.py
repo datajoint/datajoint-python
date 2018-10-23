@@ -108,7 +108,8 @@ class TestDeclare:
         assert_equal(set(subject.children(primary=True)), {experiment.full_table_name})
         assert_equal(set(experiment.parents(primary=True)), {subject.full_table_name})
 
-        trial.full_table_name in experiment.descendants()
+        assert_true(trial.full_table_name in experiment.descendants())
+        assert_true(experiment.full_table_name in trial.ancestors())
 
         assert_equal(set(trial.children(primary=True)),
                      {ephys.full_table_name, trial.Condition.full_table_name})
