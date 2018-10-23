@@ -118,6 +118,6 @@ class Dependencies(nx.DiGraph):
         """
         nodes = self.subgraph(
             nx.algorithms.dag.ancestors(self, full_table_name))
-        return [full_table_name] + list(reversed(
-            nx.algorithms.dag.topological_sort(nodes)))
+        return [full_table_name] + list(reversed(list(
+            nx.algorithms.dag.topological_sort(nodes))))
 
