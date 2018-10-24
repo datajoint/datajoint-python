@@ -1,14 +1,13 @@
 ## Release notes
 
 ### 0.11.0 -- Oct 25, 2018
-* Speed up some queries (#482)
+* Full support of dependencies with renamed attributes using projection syntax (#300, #345, #436, #506, #507)
 * Rename internal class and module names to comply with terminology in documentation (#494, #500)
 * Full support of secondary indexes (#498, 500)
 * ERD no longer shows numbers in nodes corresponding to derived dependencies (#478, #500)
 * Full support of unique and nullable dependencies (#254, #301, #493, #495, #500)
 * Improve memory management in `populate` (#461, #486)
-* Fix query errors (#451, #456, #463)
-* Full support of dependencies with renamed attributes using projection syntax (#300, #345, #436, #506, #507)
+* Fix query errors and redundancies (#456, #463, #482)
 
 ### 0.10.1  -- Aug 28, 2018
 * Fix ERD Tooltip message (#431)
