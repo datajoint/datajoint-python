@@ -1,3 +1,4 @@
+import re
 import pymysql
 from . import conn
 from getpass import getpass
@@ -14,6 +15,10 @@ def set_password(new_password=None, connection=None):   # pragma: no cover
     connection.query("SET PASSWORD = PASSWORD('%s')" % new_password)
     print('Password updated.')
 
+    if re.match('([Yy]|[Yy][Ee][Ss])', input('update dj_local_conf.json? ')):
+        dj.config['database.password'] = new_password
+        dj.config.save_local()
+        print('dj_local_conf.json updated.')
 
 def kill(restriction=None, connection=None):  # pragma: no cover
     """
