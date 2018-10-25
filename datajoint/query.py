@@ -52,6 +52,10 @@ class AndList(list):
             super().append(restriction)
 
 
+def is_true(restriction):
+    return restriction is True or isinstance(restriction, AndList) and not len(restriction)
+
+
 class Query:
     """
     Query implements the relational algebra.
@@ -249,6 +253,8 @@ class Query:
 
         See query.restrict for more detail.
         """
+        if is_true(restriction):
+            return self
         return (Subquery.create(self) if self.heading.expressions else self).restrict(restriction)
 
     def __and__(self, restriction):
@@ -258,7 +264,7 @@ class Query:
         See query.restrict for more detail.
         """
         return (Subquery.create(self)  # the HAVING clause in GroupBy can handle renamed attributes but WHERE cannot
-                if self.heading.expressions and not isinstance(self, GroupBy)
+                if not(is_true(restriction)) and self.heading.expressions and not isinstance(self, GroupBy)
                 else self.__class__(self)).restrict(restriction)
 
     def __isub__(self, restriction):
@@ -324,8 +330,8 @@ class Query:
         :param restriction: a sequence or an array (treated as OR list), another relation, an SQL condition string, or
             an AndList.
         """
-        assert not self.heading.expressions or isinstance(self, GroupBy), "Cannot restrict a projection" \
-                                                                          " with renamed attributes in place."
+        assert is_true(restriction) or not self.heading.expressions or isinstance(self, GroupBy), \
+            "Cannot restrict a projection with renamed attributes in place."
         self.restriction.append(restriction)
         return self
 

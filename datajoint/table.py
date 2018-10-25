@@ -488,15 +488,14 @@ class Table(Query):
                                 props=index_props,
                                 class_name=lookup_class_name(parent_name, context) or parent_name)
                         else:
-                            # expression foreign key
+                            # projected foreign key
                             parent_name = list(self.connection.dependencies.in_edges(parent_name))[0][0]
                             lst = [(attr, ref) for attr, ref in fk_props['attr_map'].items() if ref != attr]
-                            definition += '({attr_list}) ->{props} {class_name}{ref_list}\n'.format(
+                            definition += '->{props} {class_name}.proj({proj_list})\n'.format(
                                 attr_list=', '.join(r[0] for r in lst),
                                 props=index_props,
                                 class_name=lookup_class_name(parent_name, context) or parent_name,
-                                ref_list=('' if len(attributes_thus_far) - len(attributes_declared) == 1
-                                          else '(%s)' % ','.join(r[1] for r in lst)))
+                                proj_list=','.join('{}="{}"'.format(a,b) for a, b in lst))
                             attributes_declared.update(fk_props['attr_map'])
             if do_include:
                 attributes_declared.add(attr.name)
