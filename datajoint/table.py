@@ -19,6 +19,11 @@ from . import __version__ as version
 logger = logging.getLogger(__name__)
 
 
+class _rename_map(tuple):
+    """ for internal use """
+    pass
+
+
 class Table(Query):
     """
     Table is an abstract class that represents a base relation, i.e. a table in the schema.
@@ -104,6 +109,12 @@ class Table(Query):
         :return: dict of tables with foreign keys referencing self
         """
         return self.connection.dependencies.children(self.full_table_name, primary)
+
+    def descendants(self):
+        return self. connection.dependencies.descendants(self.full_table_name)
+
+    def ancestors(self):
+        return self. connection.dependencies.ancestors(self.full_table_name)
 
     @property
     def is_declared(self):
@@ -315,26 +326,22 @@ class Table(Query):
         Deletes the contents of the table and its dependent tables, recursively.
         User is prompted for confirmation if config['safemode'] is set to True.
         """
-        already_in_transaction = self.connection.in_transaction
+        conn = self.connection
+        already_in_transaction = conn.in_transaction
         safe = config['safemode']
         if already_in_transaction and safe:
             raise DataJointError('Cannot delete within a transaction in safemode. '
                                  'Set dj.config["safemode"] = False or complete the ongoing transaction first.')
-        graph = self.connection.dependencies
+        graph = conn.dependencies
         graph.load()
-        delete_list = collections.OrderedDict()
-        for table in graph.descendants(self.full_table_name):
-            if not table.isdigit():
-                delete_list[table] = FreeTable(self.connection, table)
-            else:
-                raise DataJointError('Cascading deletes across renamed foreign keys is not supported.  See issue #300.')
-                parent, edge = next(iter(graph.parents(table).items()))
-                delete_list[table] = FreeTable(self.connection, parent).proj(
-                    **{new_name: old_name
-                       for new_name, old_name in edge['attr_map'].items() if new_name != old_name})
+        delete_list = collections.OrderedDict(
+            (name, _rename_map(next(iter(graph.parents(name).items()))) if name.isdigit() else FreeTable(conn, name))
+            for name in graph.descendants(self.full_table_name))
 
         # construct restrictions for each relation
         restrict_by_me = set()
+        # restrictions: Or-Lists of restriction conditions for each table.
+        # Uncharacteristically of Or-Lists, an empty entry denotes "delete everything".
         restrictions = collections.defaultdict(list)
         # restrict by self
         if self.restriction:
@@ -342,23 +349,24 @@ class Table(Query):
             restrictions[self.full_table_name].append(self.restriction)  # copy own restrictions
         # restrict by renamed nodes
         restrict_by_me.update(table for table in delete_list if table.isdigit())  # restrict by all renamed nodes
-        # restrict by tables restricted by a non-primary semijoin
+        # restrict by secondary dependencies
         for table in delete_list:
             restrict_by_me.update(graph.children(table, primary=False))   # restrict by any non-primary dependents
 
         # compile restriction lists
-        for table, rel in delete_list.items():
-            for dep in graph.children(table):
-                if table in restrict_by_me:
-                    restrictions[dep].append(rel)   # if restrict by me, then restrict by the entire relation
-                else:
-                    restrictions[dep].extend(restrictions[table])   # or re-apply the same restrictions
+        for name, table in delete_list.items():
+            for dep in graph.children(name):
+                # if restrict by me, then restrict by the entire relation otherwise copy restrictions
+                restrictions[dep].extend([table] if name in restrict_by_me else restrictions[name])
 
         # apply restrictions
-        for name, r in delete_list.items():
-            if restrictions[name]:  # do not restrict by an empty list
-                r.restrict([r.proj() if isinstance(r, Query) else r
-                            for r in restrictions[name]])
+        for name, table in delete_list.items():
+            if not name.isdigit() and restrictions[name]:  # do not restrict by an empty list
+                table.restrict([
+                    r.proj() if isinstance(r, FreeTable) else (
+                        delete_list[r[0]].proj(**{a: b for a, b in r[1]['attr_map'].items()})
+                        if isinstance(r, _rename_map) else r)
+                    for r in restrictions[name]])
         if safe:
             print('About to delete:')
 
@@ -366,11 +374,12 @@ class Table(Query):
             self.connection.start_transaction()
         total = 0
         try:
-            for r in reversed(list(delete_list.values())):
-                count = r.delete_quick(get_count=True)
-                total += count
-                if (verbose or safe) and count:
-                    print('{table}: {count} items'.format(table=r.full_table_name, count=count))
+            for name, table in reversed(list(delete_list.items())):
+                if not name.isdigit():
+                    count = table.delete_quick(get_count=True)
+                    total += count
+                    if (verbose or safe) and count:
+                        print('{table}: {count} items'.format(table=name, count=count))
         except:
             # Delete failed, perhaps due to insufficient privileges. Cancel transaction.
             if not already_in_transaction:

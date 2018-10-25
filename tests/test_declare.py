@@ -85,19 +85,19 @@ class TestDeclare:
                           ['subject_id', 'experiment_id'])
 
         assert_list_equal(trial.heading.names,
-                          ['subject_id', 'experiment_id', 'trial_id', 'start_time'])
+                          ['subject_id', 'exp', 'trial_id', 'start_time'])
         assert_list_equal(trial.primary_key,
-                          ['subject_id', 'experiment_id', 'trial_id'])
+                          ['subject_id', 'exp', 'trial_id'])
 
         assert_list_equal(ephys.heading.names,
-                          ['subject_id', 'experiment_id', 'trial_id', 'sampling_frequency', 'duration'])
+                          ['subject_id', 'exp', 'trial_id', 'sampling_frequency', 'duration'])
         assert_list_equal(ephys.primary_key,
-                          ['subject_id', 'experiment_id', 'trial_id'])
+                          ['subject_id', 'exp', 'trial_id'])
 
         assert_list_equal(channel.heading.names,
-                          ['subject_id', 'experiment_id', 'trial_id', 'channel', 'voltage', 'current'])
+                          ['subject_id', 'exp', 'trial_id', 'channel', 'voltage', 'current'])
         assert_list_equal(channel.primary_key,
-                          ['subject_id', 'experiment_id', 'trial_id', 'channel'])
+                          ['subject_id', 'exp', 'trial_id', 'channel'])
         assert_true(channel.heading.attributes['voltage'].is_blob)
 
     @staticmethod
@@ -108,8 +108,8 @@ class TestDeclare:
         assert_equal(set(subject.children(primary=True)), {experiment.full_table_name})
         assert_equal(set(experiment.parents(primary=True)), {subject.full_table_name})
 
-        assert_true(trial.full_table_name in set(experiment.children(primary=True)))
-        assert_equal(set(trial.parents(primary=True)), {experiment.full_table_name})
+        assert_true(trial.full_table_name in experiment.descendants())
+        assert_true(experiment.full_table_name in trial.ancestors())
 
         assert_equal(set(trial.children(primary=True)),
                      {ephys.full_table_name, trial.Condition.full_table_name})

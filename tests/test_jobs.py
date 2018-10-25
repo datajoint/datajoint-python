@@ -76,6 +76,7 @@ def test_sigint():
     assert_equals(error_message, 'KeyboardInterrupt')
     schema.schema.jobs.delete()
 
+
 def test_key_pack_testing():
     jobs = schema.schema.jobs
     key = dict(a='string', b=int, c=Decimal())

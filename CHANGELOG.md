@@ -1,5 +1,15 @@
 ## Release notes
-### 0.10.1 
+
+### 0.11.0 -- Oct 25, 2018
+* Full support of dependencies with renamed attributes using projection syntax (#300, #345, #436, #506, #507)
+* Rename internal class and module names to comply with terminology in documentation (#494, #500)
+* Full support of secondary indexes (#498, 500)
+* ERD no longer shows numbers in nodes corresponding to derived dependencies (#478, #500)
+* Full support of unique and nullable dependencies (#254, #301, #493, #495, #500)
+* Improve memory management in `populate` (#461, #486)
+* Fix query errors and redundancies (#456, #463, #482)
+
+### 0.10.1  -- Aug 28, 2018
 * Fix ERD Tooltip message (#431)
 * Networkx 2.0 support (#443)
 * Fix insert from query with skip_duplicates=True (#451)
@@ -7,7 +17,7 @@
 * Bugfix in restriction of the form (A & B) * B (#463)
 * Improved error messages (#466)
 
-### 0.10.0 -- January 10, 2018 
+### 0.10.0 -- Jan 10, 2018 
 * Deletes are more efficient (#424)
 * ERD shows table definition on tooltip hover in Jupyter (#422) 
 * S3 external storage
@@ -17,18 +27,13 @@
 * Compatibility with pymysql 0.8.0+
 * More efficient loading of dependencies (#403)
 
-### 0.9.0 -- November 17, 2017
+### 0.9.0 -- Nov 17, 2017
 * Made graphviz installation optional
 * Implement file-based external storage
 * Implement union operator +
-
-
-### 0.9.0 -- November 17, 2017
-* Bug fixes
-* Made graphviz installation optional 
 * Implement file-based external storage
 
-### 0.8.0 -- July 26, 2017 
+### 0.8.0 -- Jul 26, 2017 
 Documentation and tutorials available at https://docs.datajoint.io and https://tutorials.datajoint.io
 * improved the ERD graphics and features using the graphviz libraries (#207, #333)
 * improved password handling logic (#322, #321)
@@ -42,18 +47,18 @@ Documentation and tutorials available at https://docs.datajoint.io and https://t
 * simplified the `fetch` and `fetch1` syntax, deprecating the `fetch[...]` syntax (#319)
 * the jobs tables now store the connection ids to allow identifying abandoned jobs (#288, #317)
 
-### 0.5.0 (#298) -- March 8, 2017
+### 0.5.0 (#298) -- Mar 8, 2017
 * All fetched integers are now 64-bit long and all fetched floats are double precision.
 * Added `dj.create_virtual_module`
 
-### 0.4.10 (#286) -- February 6, 2017
+### 0.4.10 (#286) -- Feb 6, 2017
 * Removed Vagrant and Readthedocs support 
 * Explicit saving of configuration (issue #284)
 
-### 0.4.9 (#285) -- February 2, 2017
+### 0.4.9 (#285) -- Feb 2, 2017
 * Fixed setup.py for pip install 
 
-### 0.4.7 (#281) -- January 24, 2017
+### 0.4.7 (#281) -- Jan 24, 2017
 * Fixed issues related to order of attributes in projection.
 
 ### 0.4.6 (#277) -- Dec 22, 2016
@@ -62,32 +67,32 @@ Documentation and tutorials available at https://docs.datajoint.io and https://t
 ### 0.4.5 (#274) -- Dec 20, 2016
 * Populate reports how many keys remain to be populated at the start.
 
-### 0.4.3  (#271) -- December 6, 2016
+### 0.4.3  (#271) -- Dec 6, 2016
 * Fixed aggregation issues (#270)
 * datajoint no longer attempts to connect to server at import time
 * dropped support of view (reversed #257)
 * more elegant handling of insufficient privileges (#268)
 
-### 0.4.2 (#267)  -- December 6, 2016
+### 0.4.2 (#267)  -- Dec 6, 2016
 * improved table appearance in Jupyter
 
-### 0.4.1 (#266) -- October 28, 2016
+### 0.4.1 (#266) -- Oct 28, 2016
 * bugfix for very long error messages
 
-### 0.3.9 -- September 27, 2016
+### 0.3.9 -- Sep 27, 2016
 * Added support for datatype `YEAR`
 * Fixed issues with `dj.U` and the `aggr` operator (#246, #247)
 
-### 0.3.8  -- August 2, 2016
+### 0.3.8  -- Aug 2, 2016
 * added the `_update` method in `base_relation`. It allows updating values in existing tuples.
 * bugfix in reading values of type double.  Previously it was cast as float32. 
 
-### 0.3.7  -- July 31, 2016
+### 0.3.7  -- Jul 31, 2016
 * added parameter `ignore_extra_fields` in `insert` 
 * `insert(..., skip_duplicates=True)` now relies on `SELECT IGNORE`.  Previously it explicitly checked if tuple already exists.
 * table previews now include blob attributes displaying the string <BLOB>
 
-### 0.3.6  -- July 30, 2016
+### 0.3.6  -- Jul 30, 2016
 * bugfix in `schema.spawn_missing_classes`.  Previously, spawned part classes would not show in ERDs.
 * dj.key now causes fetch to return as a list of dicts.  Previously it was a recarray.
 
