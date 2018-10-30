@@ -152,7 +152,6 @@ class AutoPopulate:
                     try:
                         self._allow_insert = True
                         make(dict(key))
-                        self._allow_insert = False
                     except (KeyboardInterrupt, SystemExit, Exception) as error:
                         try:
                             self.connection.cancel_transaction()
@@ -175,6 +174,8 @@ class AutoPopulate:
                         self.connection.commit_transaction()
                         if reserve_jobs:
                             jobs.complete(self.target.table_name, self._job_key(key))
+                    finally:
+                        self._allow_insert = False
 
         # place back the original signal handler
         if reserve_jobs:
