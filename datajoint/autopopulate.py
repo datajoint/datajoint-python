@@ -149,8 +149,8 @@ class AutoPopulate:
                 else:
                     logger.info('Populating: ' + str(key))
                     call_count += 1
+                    self._allow_insert = True
                     try:
-                        self._allow_insert = True
                         make(dict(key))
                     except (KeyboardInterrupt, SystemExit, Exception) as error:
                         try:
