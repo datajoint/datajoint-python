@@ -15,7 +15,7 @@ def set_password(new_password=None, connection=None, update_config=None):   # pr
     connection.query("SET PASSWORD = PASSWORD('%s')" % new_password)
     print('Password updated.')
 
-    if update_config or user_choice('Update local setting?') == 'yes':
+    if update_config or (update_config is None and user_choice('Update local setting?') == 'yes'):
         config['database.password'] = new_password
         config.save_local(verbose=True)
 
