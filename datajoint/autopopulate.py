@@ -22,6 +22,7 @@ class AutoPopulate:
     must define the property `key_source`, and must define the callback method `make`.
     """
     _key_source = None
+    _allow_insert = False
 
     @property
     def key_source(self):
@@ -149,7 +150,9 @@ class AutoPopulate:
                     logger.info('Populating: ' + str(key))
                     call_count += 1
                     try:
+                        self._allow_insert = True
                         make(dict(key))
+                        self._allow_insert = False
                     except (KeyboardInterrupt, SystemExit, Exception) as error:
                         try:
                             self.connection.cancel_transaction()
