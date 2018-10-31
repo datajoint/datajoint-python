@@ -4,6 +4,7 @@ import re
 import os
 from .errors import DataJointError
 
+
 class ClassProperty:
     def __init__(self, f):
         self.f = f
@@ -21,7 +22,7 @@ def user_choice(prompt, choices=("yes", "no"), default=None):
     :param default: default choice
     :return: the user's choice
     """
-    assert default is None or  default in choices
+    assert default is None or default in choices
     choice_list = ', '.join((choice.title() if choice == default else choice for choice in choices))
     response = None
     while response not in choices:
@@ -38,9 +39,7 @@ def to_camel_case(s):
     :returns: string in CamelCase notation
 
     Example:
-
     >>> to_camel_case("table_name") # yields "TableName"
-
     """
 
     def to_upper(match):

@@ -275,7 +275,7 @@ class DecimalPrimaryKey(dj.Lookup):
 @schema
 class IndexRich(dj.Manual):
     definition = """
-    -> Experiment
+    -> Subject
     ---
     -> [unique, nullable] User.proj(first="username")
     first_date : date
