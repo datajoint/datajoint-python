@@ -152,7 +152,8 @@ class Table(Query):
         """
         self.insert((row,), **kwargs)
 
-    def insert(self, rows, replace=False, skip_duplicates=False, ignore_extra_fields=False, ignore_errors=False):
+    def insert(self, rows, replace=False, skip_duplicates=False, ignore_extra_fields=False, ignore_errors=False,
+               allow_direct_insert=None):
         """
         Insert a collection of rows.
 
@@ -161,6 +162,7 @@ class Table(Query):
         :param replace: If True, replaces the existing tuple.
         :param skip_duplicates: If True, silently skip duplicate inserts.
         :param ignore_extra_fields: If False, fields that are not in the heading raise error.
+        :param allow_direct_insert: applies only in auto-populated tables. Set True to insert outside populate calls.
 
         Example::
         >>> relation.insert([
@@ -171,6 +173,11 @@ class Table(Query):
         if ignore_errors:
             warnings.warn('Use of `ignore_errors` in `insert` and `insert1` is deprecated. Use try...except... '
                           'to explicitly handle any errors', stacklevel=2)
+
+        # prohibit direct inserts into auto-populated tables
+        if not (allow_direct_insert or getattr(self, '_allow_insert', True)):  # _allow_insert is only present in AutoPopulate
+            raise DataJointError(
+                'Auto-populate tables can only be inserted into from their make methods during populate calls.')
 
         heading = self.heading
         if inspect.isclass(rows) and issubclass(rows, Query):   # instantiate if a class

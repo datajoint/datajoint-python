@@ -22,6 +22,7 @@ class AutoPopulate:
     must define the property `key_source`, and must define the callback method `make`.
     """
     _key_source = None
+    _allow_insert = False
 
     @property
     def key_source(self):
@@ -148,6 +149,7 @@ class AutoPopulate:
                 else:
                     logger.info('Populating: ' + str(key))
                     call_count += 1
+                    self._allow_insert = True
                     try:
                         make(dict(key))
                     except (KeyboardInterrupt, SystemExit, Exception) as error:
@@ -172,6 +174,8 @@ class AutoPopulate:
                         self.connection.commit_transaction()
                         if reserve_jobs:
                             jobs.complete(self.target.table_name, self._job_key(key))
+                    finally:
+                        self._allow_insert = False
 
         # place back the original signal handler
         if reserve_jobs:
