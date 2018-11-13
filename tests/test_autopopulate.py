@@ -1,8 +1,6 @@
-from nose.tools import assert_raises, assert_equal, \
-    assert_false, assert_true, assert_list_equal, \
-    assert_tuple_equal, assert_dict_equal, raises
-
+from nose.tools import assert_equal, assert_false, assert_true, raises
 from . import schema
+from datajoint import DataJointError
 
 
 class TestPopulate:
@@ -10,7 +8,7 @@ class TestPopulate:
     Test base relations: insert, delete
     """
 
-    def __init__(self):
+    def setUp(self):
         self.user = schema.User()
         self.subject = schema.Subject()
         self.experiment = schema.Experiment()
@@ -18,9 +16,11 @@ class TestPopulate:
         self.ephys = schema.Ephys()
         self.channel = schema.Ephys.Channel()
 
+    def tearDown(self):
         # delete automatic tables just in case
         self.channel.delete_quick()
         self.ephys.delete_quick()
+        self.trial.Condition.delete_quick()
         self.trial.delete_quick()
         self.experiment.delete_quick()
 
@@ -49,3 +49,18 @@ class TestPopulate:
         self.ephys.populate()
         assert_true(self.ephys)
         assert_true(self.channel)
+
+    def test_allow_direct_insert(self):
+        assert_true(self.subject, 'root tables are empty')
+        key = self.subject.fetch('KEY')[0]
+        key['experiment_id'] = 1000
+        key['experiment_date'] = '2018-10-30'
+        self.experiment.insert1(key, allow_direct_insert=True)
+
+    @raises(DataJointError)
+    def test_allow_insert(self):
+        assert_true(self.subject, 'root tables are empty')
+        key = self.subject.fetch('KEY')[0]
+        key['experiment_id'] = 1001
+        key['experiment_date'] = '2018-10-30'
+        self.experiment.insert1(key)

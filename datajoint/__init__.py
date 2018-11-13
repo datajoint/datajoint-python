@@ -46,6 +46,8 @@ except StopIteration:
     config.add_history('No config file found, using default settings.')
 else:
     config.load(config_file)
+    del config_file
+
 del config_files
 
 # override login credentials with environment variables
@@ -58,6 +60,7 @@ mapping = {k: v for k, v in zip(
 for k in mapping:
     config.add_history('Updated login credentials from %s' % k)
 config.update(mapping)
+del mapping 
 
 logger.setLevel(log_levels[config['loglevel']])
 
@@ -65,7 +68,7 @@ logger.setLevel(log_levels[config['loglevel']])
 from .connection import conn, Connection
 from .table import FreeTable, Table
 from .user_tables import Manual, Lookup, Imported, Computed, Part
-from .query import Not, AndList, U
+from .expression import Not, AndList, U
 from .heading import Heading
 from .schema import Schema as schema
 from .erd import ERD

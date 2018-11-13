@@ -5,7 +5,7 @@ import traceback
 import random
 from tqdm import tqdm
 from pymysql import OperationalError
-from .query import Query, AndList, U
+from .expression import Expression, AndList, U
 from .errors import DataJointError
 from .table import FreeTable
 import signal
@@ -22,6 +22,7 @@ class AutoPopulate:
     must define the property `key_source`, and must define the callback method `make`.
     """
     _key_source = None
+    _allow_insert = False
 
     @property
     def key_source(self):
@@ -83,7 +84,7 @@ class AutoPopulate:
             raise DataJointError('Cannot call populate on a restricted table. '
                                  'Instead, pass conditions to populate() as arguments.')
         todo = self.key_source
-        if not isinstance(todo, Query):
+        if not isinstance(todo, Expression):
             raise DataJointError('Invalid key_source value')
         # check if target lacks any attributes from the primary key of key_source
         try:
@@ -148,6 +149,7 @@ class AutoPopulate:
                 else:
                     logger.info('Populating: ' + str(key))
                     call_count += 1
+                    self._allow_insert = True
                     try:
                         make(dict(key))
                     except (KeyboardInterrupt, SystemExit, Exception) as error:
@@ -172,6 +174,8 @@ class AutoPopulate:
                         self.connection.commit_transaction()
                         if reserve_jobs:
                             jobs.complete(self.target.table_name, self._job_key(key))
+                    finally:
+                        self._allow_insert = False
 
         # place back the original signal handler
         if reserve_jobs:

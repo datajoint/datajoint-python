@@ -90,7 +90,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
     """
     # Parse and validate
     from .table import Table
-    from .query import Projection
+    from .expression import Projection
 
     new_style = True   # See issue #436.  Old style to be deprecated in a future release
     try:
