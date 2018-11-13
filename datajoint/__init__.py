@@ -19,7 +19,7 @@ from types import ModuleType
 from .version import __version__
 
 __author__ = "Dimitri Yatsenko, Edgar Y. Walker, and Fabian Sinz at Baylor College of Medicine"
-__date__ = "Oct 25, 2018"
+__date__ = "Nov 15, 2018"
 __all__ = ['__author__', '__version__',
            'config', 'conn', 'kill', 'Table',
            'Connection', 'Heading', 'FreeTable', 'Not', 'schema',
