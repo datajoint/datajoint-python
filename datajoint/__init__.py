@@ -15,7 +15,6 @@ Please cite:
 """
 
 import os
-from types import ModuleType
 from .version import __version__
 
 __author__ = "Dimitri Yatsenko, Edgar Y. Walker, and Fabian Sinz at Baylor College of Medicine"
@@ -87,7 +86,8 @@ def create_virtual_module(module_name, schema_name, create_schema=False, create_
     :param create_tables: if True, module.schema can be used as the decorator for declaring new
     :return: the python module containing classes from the schema object and the table classes
     """
-    module = ModuleType(module_name)
+    import types
+    module = types.ModuleType(module_name)
     _schema = schema(schema_name, create_schema=create_schema, create_tables=create_tables, connection=connection)
     _schema.spawn_missing_classes(context=module.__dict__)
     module.__dict__['schema'] = _schema
