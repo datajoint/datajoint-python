@@ -24,7 +24,7 @@ class Fetch:
     """
 
     def __init__(self, expression):
-        self._query = expression
+        self._expression = expression
 
     def __call__(self, *attrs, offset=None, limit=None, order_by=None, as_dict=False, squeeze=False):
         """
@@ -52,12 +52,12 @@ class Fetch:
         if limit is None and offset is not None:
             warnings.warn('Offset set, but no limit. Setting limit to a large number. '
                           'Consider setting a limit explicitly.')
-            limit = 2 * len(self._query)
+            limit = 2 * len(self._expression)
 
         if not attrs:
             # fetch all attributes
-            cur = self._query.cursor(as_dict=as_dict, limit=limit, offset=offset, order_by=order_by)
-            heading = self._query.heading
+            cur = self._expression.cursor(as_dict=as_dict, limit=limit, offset=offset, order_by=order_by)
+            heading = self._expression.heading
             if as_dict:
                 ret = [OrderedDict((name, unpack(d[name], squeeze=squeeze) if heading[name].is_blob else d[name])
                                    for name in heading.names)
@@ -67,16 +67,16 @@ class Fetch:
                 ret = np.array(ret, dtype=heading.as_dtype)
                 for name in heading:
                     if heading[name].is_external:
-                        external_table = self._query.connection.schemas[heading[name].database].external_table
+                        external_table = self._expression.connection.schemas[heading[name].database].external_table
                         ret[name] = list(map(external_table.get, ret[name]))
                     elif heading[name].is_blob:
                         ret[name] = list(map(partial(unpack, squeeze=squeeze), ret[name]))
         else:  # if list of attributes provided
             attributes = [a for a in attrs if not is_key(a)]
-            result = self._query.proj(*attributes).fetch(
+            result = self._expression.proj(*attributes).fetch(
                 offset=offset, limit=limit, order_by=order_by, as_dict=False, squeeze=squeeze)
             return_values = [
-                list(to_dicts(result[self._query.primary_key]))
+                list(to_dicts(result[self._expression.primary_key]))
                 if is_key(attribute) else result[attribute]
                 for attribute in attrs]
             ret = return_values[0] if len(attrs) == 1 else return_values
@@ -90,7 +90,7 @@ class Fetch:
         """
         warnings.warn('Use of `rel.fetch.keys()` notation is deprecated. '
                       'Please use `rel.fetch("KEY")` or `rel.fetch(dj.key)` for equivalent result', stacklevel=2)
-        yield from self._query.proj().fetch(as_dict=True, **kwargs)
+        yield from self._expression.proj().fetch(as_dict=True, **kwargs)
 
 
 class Fetch1:

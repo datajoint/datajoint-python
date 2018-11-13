@@ -55,6 +55,9 @@ class TestFetch:
 
     @staticmethod
     def test_complex_matlab_blobs():
+        """
+        test correct de-serialization of various blob types
+        """
         blobs = Blob().fetch('blob', order_by='id')
         assert_equal(blobs[0][0], 'character string')
         assert_true(np.array_equal(blobs[1][0], np.r_[1:180:15]))
