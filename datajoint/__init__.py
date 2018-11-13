@@ -76,7 +76,7 @@ from .admin import set_password, kill
 from .errors import DataJointError, DuplicateError
 
 
-def create_virtual_module(module_name, schema_name, create_schema=False, create_tables=False):
+def create_virtual_module(module_name, schema_name, create_schema=False, create_tables=False, connection=None):
     """
     Creates a python module with the given name from the name of a schema on the server and
     automatically adds classes to it corresponding to the tables in the schema.
@@ -88,7 +88,7 @@ def create_virtual_module(module_name, schema_name, create_schema=False, create_
     :return: the python module containing classes from the schema object and the table classes
     """
     module = ModuleType(module_name)
-    _schema = schema(schema_name, create_schema=create_schema, create_tables=create_tables)
+    _schema = schema(schema_name, create_schema=create_schema, create_tables=create_tables, connection=connection)
     _schema.spawn_missing_classes(context=module.__dict__)
     module.__dict__['schema'] = _schema
     return module

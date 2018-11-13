@@ -29,6 +29,7 @@ class Test2(dj.Manual):
     value   :   int     # value
     """
 
+
 @schema
 class Test3(dj.Manual):
     definition = """
@@ -36,6 +37,7 @@ class Test3(dj.Manual):
     ---
     value : varchar(300)
     """
+
 
 @schema
 class TestExtra(dj.Manual):
@@ -47,7 +49,9 @@ class TestExtra(dj.Manual):
 
 @schema
 class TestNoExtra(dj.Manual):
-    ''' clone of Test but with no extra fields '''
+    """
+    clone of Test but with no extra fields
+    """
     definition = Test.definition
 
 
@@ -142,7 +146,7 @@ class Experiment(dj.Imported):
 @schema
 class Trial(dj.Imported):
     definition = """   # a trial within an experiment
-    -> Experiment.proj(exp='experiment_id')
+    -> Experiment.proj(animal='subject_id')
     trial_id  :smallint   # trial number
     ---
     start_time                 :double      # (s)

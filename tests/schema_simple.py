@@ -154,8 +154,7 @@ class TestUpdate(dj.Lookup):
 
     contents = [
         (0, 'my_string', 0.0, np.random.randn(10, 2)),
-        (1, 'my_other_string', 1.0, np.random.randn(20, 1)),
-    ]
+        (1, 'my_other_string', 1.0, np.random.randn(20, 1))]
 
 
 @schema
