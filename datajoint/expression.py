@@ -226,7 +226,7 @@ class QueryExpression:
         Primary key attributes are always cannot be excluded but may be renamed.
         Thus self.proj() produces the relation with only the primary key of self.
         self.proj(a='id') renames the attribute 'id' into 'a' and includes 'a' in the projection.
-        self.proj(a='expr') adds a new field a with the value computed with SQL expression.
+        self.proj(a='expr') adds a new field a with the value computed with an SQL expression.
         self.proj(a='(id)') adds a new computed field named 'a' that has the same value as id
         Each attribute can only be used once in attributes or named_attributes.
         """
@@ -251,7 +251,7 @@ class QueryExpression:
         in-place restriction.
         A subquery is created if the argument has renamed attributes.  Then the restriction is not in place.
 
-        See expression.restrict for more detail.
+        See QueryExpression.restrict for more detail.
         """
         if is_true(restriction):
             return self
@@ -261,7 +261,7 @@ class QueryExpression:
         """
         relational restriction or semijoin
         :return: a restricted copy of the argument
-        See expression.restrict for more detail.
+        See QueryExpression.restrict for more detail.
         """
         return (Subquery.create(self)  # the HAVING clause in GroupBy can handle renamed attributes but WHERE cannot
                 if not(is_true(restriction)) and self.heading.expressions and not isinstance(self, GroupBy)
@@ -271,7 +271,7 @@ class QueryExpression:
         """
         in-place inverted restriction aka antijoin
 
-        See expression.restrict for more detail.
+        See QueryExpression.restrict for more detail.
         """
         return self.restrict(Not(restriction))
 
@@ -280,7 +280,7 @@ class QueryExpression:
         inverted restriction aka antijoin
         :return: a restricted copy of the argument
 
-        See expression.restrict for more detail.
+        See QueryExpression.restrict for more detail.
         """
         return self & Not(restriction)
 
@@ -324,7 +324,7 @@ class QueryExpression:
         Two tuples match when their common attributes have equal values or when they have no common attributes.
         All shared attributes must be in the primary key of either rel or arg or both or an error will be raised.
 
-        expression.restrict is the only access point that modifies restrictions. All other operators must
+        QueryExpression.restrict is the only access point that modifies restrictions. All other operators must
         ultimately call restrict()
 
         :param restriction: a sequence or an array (treated as OR list), another relation, an SQL condition string, or
@@ -819,7 +819,7 @@ class U:
 
     In aggregation, dj.U is used to compute aggregate expressions on the entire relation.
 
-    The following expression produces a relation with one tuple and one attribute s containing the total number
+    The following expression yields a relation with one tuple and one attribute s containing the total number
     of tuples in relation:
 
     >>> dj.U().aggr(relation, n='count(*)')
@@ -881,11 +881,11 @@ class U:
 
     def aggr(self, group, **named_attributes):
         """
-        Aggregation of the type U('attr1','attr2').aggr(rel, computation="expression")
+        Aggregation of the type U('attr1','attr2').aggr(rel, computation="QueryExpression")
         has the primary key ('attr1','attr2') and performs aggregation computations for all matching tuples of relation.
         :param group:  The other relation which will be aggregated.
         :param named_attributes: computations of the form new_attribute="sql expression on attributes of group"
-        :return: The new relation
+        :return: The derived relation
         """
         return (
             GroupBy.create(self, group=group, keep_all_rows=False, attributes=(), named_attributes=named_attributes)
