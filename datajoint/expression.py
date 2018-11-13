@@ -18,11 +18,11 @@ def assert_join_compatibility(rel1, rel2):
     Determine if relations rel1 and rel2 are join-compatible.  To be join-compatible, the matching attributes
     in the two relations must be in the primary key of one or the other relation.
     Raises an exception if not compatible.
-    :param rel1: A Expression object
-    :param rel2: A Expression object
+    :param rel1: A QueryExpression object
+    :param rel2: A QueryExpression object
     """
     for rel in (rel1, rel2):
-        if not isinstance(rel, (U, Expression)):
+        if not isinstance(rel, (U, QueryExpression)):
             raise DataJointError('Object %r is not a relation and cannot be joined.' % rel)
     if not isinstance(rel1, U) and not isinstance(rel2, U):  # dj.U is always compatible
         try:
@@ -56,13 +56,13 @@ def is_true(restriction):
     return restriction is True or isinstance(restriction, AndList) and not len(restriction)
 
 
-class Expression:
+class QueryExpression:
     """
-    Expression implements the relational algebra.
-    Expression objects link other relational operands with relational operators.
+    QueryExpression implements the relational algebra.
+    QueryExpression objects link other relational operands with relational operators.
     The leaves of this tree of objects are base relations.
     When fetching data from the database, this tree of objects is compiled into an SQL expression.
-    Expression operators are restrict, join, proj, and aggr.
+    QueryExpression operators are restrict, join, proj, and aggr.
     """
 
     def __init__(self, arg=None):
@@ -72,7 +72,7 @@ class Expression:
             self._distinct = False
             self._heading = None
         else:  # copy
-            assert isinstance(arg, Expression), 'Cannot make Expression from %s' % arg.__class__.__name__
+            assert isinstance(arg, QueryExpression), 'Cannot make QueryExpression from %s' % arg.__class__.__name__
             self._restriction = AndList(arg._restriction)
             self._distinct = arg.distinct
             self._heading = arg._heading
@@ -163,11 +163,11 @@ class Expression:
                 AndList(('`%s`=%r' % (k, prep_value(arg[k])) for k in arg.dtype.fields if k in self.heading)))
 
         # restrict by a Relation class -- triggers instantiation
-        if inspect.isclass(arg) and issubclass(arg, Expression):
+        if inspect.isclass(arg) and issubclass(arg, QueryExpression):
             arg = arg()
 
         # restrict by another relation (aka semijoin and antijoin)
-        if isinstance(arg, Expression):
+        if isinstance(arg, QueryExpression):
             assert_join_compatibility(self, arg)
             common_attributes = [q for q in arg.heading.names if q in self.heading.names]
             return (
@@ -508,7 +508,7 @@ class Expression:
             key = self._iter_keys.pop(0)
         except AttributeError:
             # self._iter_keys is missing because __iter__ has not been called.
-            raise TypeError("'Expression' object is not an iterator. Use iter(obj) to create an iterator.")
+            raise TypeError("'QueryExpression' object is not an iterator. Use iter(obj) to create an iterator.")
         except IndexError:
             raise StopIteration
         else:
@@ -545,7 +545,7 @@ class Not:
         self.restriction = restriction
 
 
-class Join(Expression):
+class Join(QueryExpression):
     """
     Relational join.
     Join is a private DataJoint class not exposed to users.
@@ -564,7 +564,7 @@ class Join(Expression):
     @classmethod
     def create(cls, arg1, arg2, keep_all_rows=False):
         obj = cls()
-        if inspect.isclass(arg2) and issubclass(arg2, Expression):
+        if inspect.isclass(arg2) and issubclass(arg2, QueryExpression):
             arg2 = arg2()   # instantiate if joining with a class
         assert_join_compatibility(arg1, arg2)
         if arg1.connection != arg2.connection:
@@ -594,7 +594,7 @@ class Join(Expression):
             from2=self._arg2.from_clause)
 
 
-class Union(Expression):
+class Union(QueryExpression):
     """
     Union is a private DataJoint class that implements relational union.
     """
@@ -613,9 +613,9 @@ class Union(Expression):
     @classmethod
     def create(cls, arg1, arg2):
         obj = cls()
-        if inspect.isclass(arg2) and issubclass(arg2, Expression):
+        if inspect.isclass(arg2) and issubclass(arg2, QueryExpression):
             arg2 = arg2()  # instantiate if a class
-        if not isinstance(arg1, Expression) or not isinstance(arg2, Expression):
+        if not isinstance(arg1, QueryExpression) or not isinstance(arg2, QueryExpression):
             raise DataJointError('a relation can only be unioned with another relation')
         if arg1.connection != arg2.connection:
             raise DataJointError("Cannot operate on relations from different connections.")
@@ -645,10 +645,10 @@ class Union(Expression):
             where2=self._arg2.where_clause)) % next(self.__count)
 
 
-class Projection(Expression):
+class Projection(QueryExpression):
     """
     Projection is a private DataJoint class that implements relational projection.
-    See Expression.proj() for user interface.
+    See QueryExpression.proj() for user interface.
     """
 
     def __init__(self, arg=None):
@@ -706,11 +706,11 @@ class Projection(Expression):
         return self._arg.from_clause
 
 
-class GroupBy(Expression):
+class GroupBy(QueryExpression):
     """
     GroupBy(rel, comp1='expr1', ..., compn='exprn')  produces a relation with the primary key specified by rel.heading.
     The computed arguments comp1, ..., compn use aggregation operators on the attributes of rel.
-    GroupBy is used Expression.aggr and U.aggr.
+    GroupBy is used QueryExpression.aggr and U.aggr.
     GroupBy is a private class in DataJoint, not exposed to users.
     """
 
@@ -726,7 +726,7 @@ class GroupBy(Expression):
 
     @classmethod
     def create(cls, arg, group, attributes=None, named_attributes=None, keep_all_rows=False):
-        if inspect.isclass(group) and issubclass(group, Expression):
+        if inspect.isclass(group) and issubclass(group, QueryExpression):
             group = group()   # instantiate if a class
         assert_join_compatibility(arg, group)
         obj = cls()
@@ -756,7 +756,7 @@ class GroupBy(Expression):
         return len(Subquery.create(self))
 
 
-class Subquery(Expression):
+class Subquery(QueryExpression):
     """
     A Subquery encapsulates its argument in a SELECT statement, enabling its use as a subquery.
     The attribute list and the WHERE clause are resolved.  Thus, a subquery no longer has any renamed attributes.
@@ -858,9 +858,9 @@ class U:
         return self._primary_key
 
     def __and__(self, relation):
-        if inspect.isclass(relation) and issubclass(relation, Expression):
+        if inspect.isclass(relation) and issubclass(relation, QueryExpression):
             relation = relation()   # instantiate if a class
-        if not isinstance(relation, Expression):
+        if not isinstance(relation, QueryExpression):
             raise DataJointError('Relation U can only be restricted with another relation.')
         return Projection.create(relation, attributes=self.primary_key,
                                  named_attributes=dict(), include_primary_key=False)
@@ -871,9 +871,9 @@ class U:
         :param relation: other relation
         :return: a copy of the other relation with the primary key extended.
         """
-        if inspect.isclass(relation) and issubclass(relation, Expression):
+        if inspect.isclass(relation) and issubclass(relation, QueryExpression):
             relation = relation()   # instantiate if a class
-        if not isinstance(relation, Expression):
+        if not isinstance(relation, QueryExpression):
             raise DataJointError('Relation U can only be joined with another relation.')
         copy = relation.__class__(relation)
         copy._heading = copy.heading.extend_primary_key(self.primary_key)

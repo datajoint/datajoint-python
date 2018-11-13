@@ -9,7 +9,7 @@ import warnings
 from pymysql import OperationalError, InternalError, IntegrityError
 from . import config
 from .declare import declare
-from .expression import Expression
+from .expression import QueryExpression
 from .blob import pack
 from .utils import user_choice
 from .heading import Heading
@@ -24,7 +24,7 @@ class _rename_map(tuple):
     pass
 
 
-class Table(Expression):
+class Table(QueryExpression):
     """
     Table is an abstract class that represents a base relation, i.e. a table in the schema.
     To make it a concrete class, override the abstract properties specifying the connection,
@@ -37,7 +37,7 @@ class Table(Expression):
     _log_ = None
     _external_table = None
 
-    # -------------- required by Expression ----------------- #
+    # -------------- required by QueryExpression ----------------- #
     @property
     def heading(self):
         """
@@ -180,9 +180,9 @@ class Table(Expression):
                 'Auto-populate tables can only be inserted into from their make methods during populate calls.')
 
         heading = self.heading
-        if inspect.isclass(rows) and issubclass(rows, Expression):   # instantiate if a class
+        if inspect.isclass(rows) and issubclass(rows, QueryExpression):   # instantiate if a class
             rows = rows()
-        if isinstance(rows, Expression):
+        if isinstance(rows, QueryExpression):
             # insert from select
             if not ignore_extra_fields:
                 try:
