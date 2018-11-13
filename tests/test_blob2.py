@@ -53,7 +53,8 @@ class TestFetch:
         Blob().delete()
         insert_blobs()
 
-    def test_complex_matlab_blobs(self):
+    @staticmethod
+    def test_complex_matlab_blobs():
         blobs = Blob().fetch('blob', order_by='id')
         assert_equal(blobs[0][0], 'character string')
         assert_true(np.array_equal(blobs[1][0], np.r_[1:180:15]))
@@ -66,3 +67,13 @@ class TestFetch:
         assert_true(blobs[5].dtype == 'uint8')
         assert_tuple_equal(blobs[6].shape, (2, 3, 4))
         assert_true(blobs[6].dtype == 'complex128')
+
+    @staticmethod
+    def test_iter():
+        """
+        test iterator over the entity set
+        """
+        from_iter = {d['id']: d for d in Blob()}
+        assert_equal(len(from_iter), len(Blob()))
+        assert_equal(from_iter[1]['blob'], 'character string')
+
