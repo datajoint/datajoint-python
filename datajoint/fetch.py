@@ -23,12 +23,12 @@ class Fetch:
     :param relation: the table expression to fetch from
     """
 
-    def __init__(self, query):
-        self._query = query
+    def __init__(self, expression):
+        self._query = expression
 
     def __call__(self, *attrs, offset=None, limit=None, order_by=None, as_dict=False, squeeze=False):
         """
-        Fetches the query results from the database into an np.array or list of dictionaries and unpacks blob attributes.
+        Fetches the expression results from the database into an np.array or list of dictionaries and unpacks blob attributes.
 
         :param attrs: zero or more attributes to fetch. If not provided, the call will return
         all attributes of this relation. If provided, returns tuples with an entry for each attribute.
@@ -100,11 +100,11 @@ class Fetch1:
     """
 
     def __init__(self, relation):
-        self._query = relation
+        self._expression = relation
 
     def __call__(self, *attrs, squeeze=False):
         """
-        Fetches the query results from the database when the query is known to contain only one entry.
+        Fetches the expression results from the database when the expression is known to yield only one entry.
 
         If no attributes are specified, returns the result as a dict.
         If attributes are specified returns the corresponding results as a tuple.
@@ -118,27 +118,27 @@ class Fetch1:
         :return: the one tuple in the relation in the form of a dict
         """
 
-        heading = self._query.heading
+        heading = self._expression.heading
 
         if not attrs:  # fetch all attributes, return as ordered dict
-            cur = self._query.cursor(as_dict=True)
+            cur = self._expression.cursor(as_dict=True)
             ret = cur.fetchone()
             if not ret or cur.fetchone():
                 raise DataJointError('fetch1 should only be used for relations with exactly one tuple')
 
             def get_external(attr, _hash):
-                return self._query.connection.schemas[attr.database].external_table.get(_hash)
+                return self._expression.connection.schemas[attr.database].external_table.get(_hash)
 
             ret = OrderedDict((name, get_external(heading[name], ret[name])) if heading[name].is_external
                               else (name, unpack(ret[name], squeeze=squeeze) if heading[name].is_blob else ret[name])
                               for name in heading.names)
         else:  # fetch some attributes, return as tuple
             attributes = [a for a in attrs if not is_key(a)]
-            result = self._query.proj(*attributes).fetch(squeeze=squeeze)
+            result = self._expression.proj(*attributes).fetch(squeeze=squeeze)
             if len(result) != 1:
                 raise DataJointError('fetch1 should only return one tuple. %d tuples were found' % len(result))
             return_values = tuple(
-                next(to_dicts(result[self._query.primary_key]))
+                next(to_dicts(result[self._expression.primary_key]))
                 if is_key(attribute) else result[attribute][0]
                 for attribute in attrs)
             ret = return_values[0] if len(attrs) == 1 else return_values
