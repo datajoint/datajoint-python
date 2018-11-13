@@ -43,7 +43,8 @@ def kill(restriction=None, connection=None):  # pragma: no cover
     while True:
         print('  ID USER         STATE         TIME  INFO')
         print('+--+ +----------+ +-----------+ +--+')
-        for process in connection.query(query, as_dict=True).fetchall():
+        cur = connection.query(query, as_dict=True)
+        for process in cur:
             try:
                 print('{ID:>4d} {USER:<12s} {STATE:<12s} {TIME:>5d}  {INFO}'.format(**process))
             except TypeError:

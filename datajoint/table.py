@@ -9,7 +9,7 @@ import warnings
 from pymysql import OperationalError, InternalError, IntegrityError
 from . import config
 from .declare import declare
-from .query import Query
+from .expression import Expression
 from .blob import pack
 from .utils import user_choice
 from .heading import Heading
@@ -24,7 +24,7 @@ class _rename_map(tuple):
     pass
 
 
-class Table(Query):
+class Table(Expression):
     """
     Table is an abstract class that represents a base relation, i.e. a table in the schema.
     To make it a concrete class, override the abstract properties specifying the connection,
@@ -37,7 +37,7 @@ class Table(Query):
     _log_ = None
     _external_table = None
 
-    # -------------- required by Query ----------------- #
+    # -------------- required by Expression ----------------- #
     @property
     def heading(self):
         """
@@ -180,9 +180,9 @@ class Table(Query):
                 'Auto-populate tables can only be inserted into from their make methods during populate calls.')
 
         heading = self.heading
-        if inspect.isclass(rows) and issubclass(rows, Query):   # instantiate if a class
+        if inspect.isclass(rows) and issubclass(rows, Expression):   # instantiate if a class
             rows = rows()
-        if isinstance(rows, Query):
+        if isinstance(rows, Expression):
             # insert from select
             if not ignore_extra_fields:
                 try:
@@ -191,7 +191,7 @@ class Table(Query):
                         next(name for name in rows.heading if name not in heading))
                 except StopIteration:
                     pass
-            fields = list(name for name in heading if name in rows.heading)
+            fields = list(name for name in rows.heading if name in heading)
             query = '{command} INTO {table} ({fields}) {select}{duplicate}'.format(
                 command='REPLACE' if replace else 'INSERT',
                 fields='`' + '`,`'.join(fields) + '`',
