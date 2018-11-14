@@ -58,11 +58,9 @@ def is_true(restriction):
 
 class QueryExpression:
     """
-    QueryExpression implements the relational algebra.
-    QueryExpression objects link other relational operands with relational operators.
-    The leaves of this tree of objects are base relations.
-    When fetching data from the database, this tree of objects is compiled into an SQL expression.
-    QueryExpression operators are restrict, join, proj, and aggr.
+    QueryExpression implements query operators to derive new entity sets from its inputs.
+    When fetching data from the database, the expression is compiled into an SQL expression.
+    QueryExpression operators are restrict, join, proj, aggr, and union.
     """
 
     def __init__(self, arg=None):

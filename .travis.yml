@@ -24,7 +24,7 @@ install:
   - pip install nose nose-cov python-coveralls
 # command to run tests
 script:
-  - nosetests -vv --with-coverage --cover-package=datajoint
+  - travis_wait 30 nosetests -vv --with-coverage --cover-package=datajoint
 
 after_success:
   - coveralls
