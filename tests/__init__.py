@@ -46,4 +46,4 @@ def teardown_package():
     cur = conn.query('SHOW DATABASES LIKE "{}\_%%"'.format(PREFIX))
     for db in cur.fetchall():
         conn.query('DROP DATABASE `{}`'.format(db[0]))
-    conn.query('SET FOREIGN_KEY_CHECKS=1').close()
+    conn.query('SET FOREIGN_KEY_CHECKS=1')
