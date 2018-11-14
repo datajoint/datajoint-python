@@ -167,9 +167,8 @@ class Trial(dj.Imported):
         random.seed('Amazing Seed')
         trial = self.Condition()
         for trial_id in range(10):
-            key['trial_id']=trial_id
-            self.insert1(
-                dict(key, start_time=random.random() * 1e9))
+            key['trial_id'] = trial_id
+            self.insert1(dict(key, start_time=random.random() * 1e9))
             trial.insert(dict(key,
                               cond_idx=cond_idx,
                               orientation=random.random()*360) for cond_idx in range(30))
