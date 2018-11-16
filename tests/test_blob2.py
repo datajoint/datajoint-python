@@ -50,7 +50,7 @@ def insert_blobs():
 
 class TestFetch:
     def __init__(self):
-        Blob.delete_quick()
+        Blob().delete()
         insert_blobs()
 
     @staticmethod
