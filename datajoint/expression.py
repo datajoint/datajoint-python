@@ -15,18 +15,18 @@ logger = logging.getLogger(__name__)
 
 def assert_join_compatibility(rel1, rel2):
     """
-    Determine if relations rel1 and rel2 are join-compatible.  To be join-compatible, the matching attributes
-    in the two relations must be in the primary key of one or the other relation.
+    Determine if expressions rel1 and rel2 are join-compatible.  To be join-compatible, the matching attributes
+    in the two expressions must be in the primary key of one or the other expression.
     Raises an exception if not compatible.
-    :param rel1: A Query object
-    :param rel2: A Query object
+    :param rel1: A QueryExpression object
+    :param rel2: A QueryExpression object
     """
     for rel in (rel1, rel2):
-        if not isinstance(rel, (U, Query)):
-            raise DataJointError('Object %r is not a relation and cannot be joined.' % rel)
+        if not isinstance(rel, (U, QueryExpression)):
+            raise DataJointError('Object %r is not a QueryExpression and cannot be joined.' % rel)
     if not isinstance(rel1, U) and not isinstance(rel2, U):  # dj.U is always compatible
         try:
-            raise DataJointError("Cannot join relations on dependent attribute `%s`" % next(r for r in set(
+            raise DataJointError("Cannot join query expressions on dependent attribute `%s`" % next(r for r in set(
                 rel1.heading.dependent_attributes).intersection(rel2.heading.dependent_attributes)))
         except StopIteration:
             pass
@@ -34,8 +34,8 @@ def assert_join_compatibility(rel1, rel2):
 
 class AndList(list):
     """
-    A list of restrictions to by applied to a relation.  The restrictions are AND-ed.
-    Each restriction can be a list or set or a relation whose elements are OR-ed.
+    A list of restrictions to by applied to a query expression.  The restrictions are AND-ed.
+    Each restriction can be a list or set or a query expression whose elements are OR-ed.
     But the elements that are lists can contain other AndLists.
 
     Example:
@@ -56,13 +56,11 @@ def is_true(restriction):
     return restriction is True or isinstance(restriction, AndList) and not len(restriction)
 
 
-class Query:
+class QueryExpression:
     """
-    Query implements the relational algebra.
-    Query objects link other relational operands with relational operators.
-    The leaves of this tree of objects are base relations.
-    When fetching data from the database, this tree of objects is compiled into an SQL expression.
-    Query operators are restrict, join, proj, and aggr.
+    QueryExpression implements query operators to derive new entity sets from its inputs.
+    When fetching data from the database, the expression is compiled into an SQL expression.
+    QueryExpression operators are restrict, join, proj, aggr, and union.
     """
 
     def __init__(self, arg=None):
@@ -72,7 +70,7 @@ class Query:
             self._distinct = False
             self._heading = None
         else:  # copy
-            assert isinstance(arg, Query), 'Cannot make Query from %s' % arg.__class__.__name__
+            assert isinstance(arg, QueryExpression), 'Cannot make QueryExpression from %s' % arg.__class__.__name__
             self._restriction = AndList(arg._restriction)
             self._distinct = arg.distinct
             self._heading = arg._heading
@@ -92,7 +90,7 @@ class Query:
     @property
     def heading(self):
         """
-        :return: the dj.Heading object of the relation
+        :return: the dj.Heading object for the query expression
         """
         return self._heading
 
@@ -106,7 +104,7 @@ class Query:
     @property
     def restriction(self):
         """
-        :return:  The AndList of restrictions applied to the relation.
+        :return:  The AndList of restrictions applied to input to produce the result.
         """
         assert isinstance(self._restriction, AndList)
         return self._restriction
@@ -162,23 +160,23 @@ class Query:
             return template % self._make_condition(
                 AndList(('`%s`=%r' % (k, prep_value(arg[k])) for k in arg.dtype.fields if k in self.heading)))
 
-        # restrict by a Relation class -- triggers instantiation
-        if inspect.isclass(arg) and issubclass(arg, Query):
+        # restrict by a QueryExpression subclass -- triggers instantiation
+        if inspect.isclass(arg) and issubclass(arg, QueryExpression):
             arg = arg()
 
-        # restrict by another relation (aka semijoin and antijoin)
-        if isinstance(arg, Query):
+        # restrict by another expression (aka semijoin and antijoin)
+        if isinstance(arg, QueryExpression):
             assert_join_compatibility(self, arg)
-            common_attributes = [q for q in self.heading.names if q in arg.heading.names]
+            common_attributes = [q for q in arg.heading.names if q in self.heading.names]
             return (
-                # without common attributes, any non-empty relation matches everything
+                # without common attributes, any non-empty set matches everything
                 (not negate if arg else negate) if not common_attributes
                 else '({fields}) {not_}in ({subquery})'.format(
                     fields='`' + '`,`'.join(common_attributes) + '`',
                     not_="not " if negate else "",
                     subquery=arg.make_sql(common_attributes)))
 
-        # if iterable (but not a string, a relation, or an AndList), treat as an OrList
+        # if iterable (but not a string, a QueryExpression, or an AndList), treat as an OrList
         try:
             or_list = [self._make_condition(q) for q in arg]
         except TypeError:
@@ -203,30 +201,30 @@ class Query:
         """
         return self.heading.as_sql if select_fields is None else self.heading.project(select_fields).as_sql
 
-    # --------- relational operators -----------
+    # --------- query operators -----------
 
     def __mul__(self, other):
         """
-        natural join of relations self and other
+        natural join of query expressions `self` and `other`
         """
         return other * self if isinstance(other, U) else Join.create(self, other)
 
     def __add__(self, other):
         """
-        union of relations
+        union of two entity sets `self` and `other`
         """
         return Union.create(self, other)
 
     def proj(self, *attributes, **named_attributes):
         """
-        Relational projection operator.
+        Projection operator.
         :param attributes:  attributes to be included in the result. (The primary key is already included).
         :param named_attributes: new attributes computed or renamed from existing attributes.
-        :return: the projected relation.
+        :return: the projected expression.
         Primary key attributes are always cannot be excluded but may be renamed.
-        Thus self.proj() produces the relation with only the primary key of self.
+        Thus self.proj() leaves only the primary key attributes of self.
         self.proj(a='id') renames the attribute 'id' into 'a' and includes 'a' in the projection.
-        self.proj(a='expr') adds a new field a with the value computed with SQL expression.
+        self.proj(a='expr') adds a new field a with the value computed with an SQL expression.
         self.proj(a='(id)') adds a new computed field named 'a' that has the same value as id
         Each attribute can only be used once in attributes or named_attributes.
         """
@@ -234,12 +232,13 @@ class Query:
 
     def aggr(self, group, *attributes, keep_all_rows=False, **named_attributes):
         """
-        Relational aggregation/projection operator
-        :param group:  relation whose tuples can be used in aggregation operators
-        :param attributes: attributes of self to include in the resulting relation
-        :param keep_all_rows: True = preserve the number of tuples in the result (equivalent of LEFT JOIN in SQL)
+        Aggregation/projection operator
+        :param group:  an entity set whose entities will be grouped per entity of `self`
+        :param attributes: attributes of self to include in the result
+        :param keep_all_rows: True = preserve the number of elements in the result (equivalent of LEFT JOIN in SQL)
         :param named_attributes: renamings and computations on attributes of self and group
-        :return: a relation representing the result of the aggregation/projection operator
+        :return: an entity set representing the result of the aggregation/projection operator of entities from `group`
+        per entity of `self`
         """
         return GroupBy.create(self, group, keep_all_rows=keep_all_rows,
                               attributes=attributes, named_attributes=named_attributes)
@@ -251,7 +250,7 @@ class Query:
         in-place restriction.
         A subquery is created if the argument has renamed attributes.  Then the restriction is not in place.
 
-        See query.restrict for more detail.
+        See QueryExpression.restrict for more detail.
         """
         if is_true(restriction):
             return self
@@ -259,9 +258,9 @@ class Query:
 
     def __and__(self, restriction):
         """
-        relational restriction or semijoin
-        :return: a restricted copy of the argument
-        See query.restrict for more detail.
+        Restriction operator
+        :return: a restricted copy of the input argument
+        See QueryExpression.restrict for more detail.
         """
         return (Subquery.create(self)  # the HAVING clause in GroupBy can handle renamed attributes but WHERE cannot
                 if not(is_true(restriction)) and self.heading.expressions and not isinstance(self, GroupBy)
@@ -271,7 +270,7 @@ class Query:
         """
         in-place inverted restriction aka antijoin
 
-        See query.restrict for more detail.
+        See QueryExpression.restrict for more detail.
         """
         return self.restrict(Not(restriction))
 
@@ -280,27 +279,28 @@ class Query:
         inverted restriction aka antijoin
         :return: a restricted copy of the argument
 
-        See query.restrict for more detail.
+        See QueryExpression.restrict for more detail.
         """
         return self & Not(restriction)
 
     def restrict(self, restriction):
         """
-        In-place restriction.  Restricts the relation to a subset of its original tuples.
+        In-place restriction.  Restricts the result to a specified subset of the input.
         rel.restrict(restriction)  is equivalent to  rel = rel & restriction  or  rel &= restriction
         rel.restrict(Not(restriction))  is equivalent to  rel = rel - restriction  or  rel -= restriction
         The primary key of the result is unaffected.
         Successive restrictions are combined using the logical AND.
         The AndList class is provided to play the role of successive restrictions.
-        Any relation, collection, or sequence other than an AndList are treated as OrLists.
+        Any QueryExpression, collection, or sequence other than an AndList are treated as OrLists
+        (logical disjunction of conditions)
         Inverse restriction is accomplished by either using the subtraction operator or the Not class.
 
         The expressions in each row equivalent:
 
         rel & True                          rel
-        rel & False                         the empty relation
+        rel & False                         the empty entity set
         rel & 'TRUE'                        rel
-        rel & 'FALSE'                       the empty relation
+        rel & 'FALSE'                       the empty entity set
         rel - cond                          rel & Not(cond)
         rel - 'TRUE'                        rel & False
         rel - 'FALSE'                       rel
@@ -309,26 +309,25 @@ class Query:
         rel & [cond1, cond2]                rel & OrList((cond1, cond2))
         rel & []                            rel & False
         rel & None                          rel & False
-        rel & any_empty_relation            rel & False
+        rel & any_empty_entity_set          rel & False
         rel - AndList((cond1,cond2))        rel & [Not(cond1), Not(cond2)]
         rel - [cond1, cond2]                rel & Not(cond1) & Not(cond2)
         rel - AndList()                     rel & False
         rel - []                            rel
         rel - None                          rel
-        rel - any_empty_relation            rel
+        rel - any_empty_entity_set          rel
 
-        When arg is another relation, the restrictions  rel & arg  and  rel - arg  become the relational semijoin and
-        antijoin operators, respectively.
-        Then,  rel & arg  restricts rel to tuples that match at least one tuple in arg (hence arg is treated as an OrList).
-        Conversely,  rel - arg  restricts rel to tuples that do not match any tuples in arg.
-        Two tuples match when their common attributes have equal values or when they have no common attributes.
+        When arg is another QueryExpression, the restriction  rel & arg  restricts rel to elements that match at least
+        one element in arg (hence arg is treated as an OrList).
+        Conversely,  rel - arg  restricts rel to elements that do not match any elements in arg.
+        Two elements match when their common attributes have equal values or when they have no common attributes.
         All shared attributes must be in the primary key of either rel or arg or both or an error will be raised.
 
-        query.restrict is the only access point that modifies restrictions. All other operators must
+        QueryExpression.restrict is the only access point that modifies restrictions. All other operators must
         ultimately call restrict()
 
-        :param restriction: a sequence or an array (treated as OR list), another relation, an SQL condition string, or
-            an AndList.
+        :param restriction: a sequence or an array (treated as OR list), another QueryExpression, an SQL condition
+        string, or an AndList.
         """
         assert is_true(restriction) or not self.heading.expressions or isinstance(self, GroupBy), \
             "Cannot restrict a projection with renamed attributes in place."
@@ -358,7 +357,7 @@ class Query:
 
     def preview(self, limit=None, width=None):
         """
-        returns a preview of the contents of the relation.
+        returns a preview of the contents of the query.
         """
         heading = self.heading
         rel = self.proj(*heading.non_blobs)
@@ -475,7 +474,7 @@ class Query:
 
     def __len__(self):
         """
-        number of tuples in the relation.
+        number of elements in the result set.
         """
         return self.connection.query(
             'SELECT ' + (
@@ -486,15 +485,15 @@ class Query:
 
     def __bool__(self):
         """
-        :return:  True if the relation is not empty. Equivalent to len(rel)>0 but may be more efficient.
+        :return:  True if the result is not empty. Equivalent to len(rel)>0 but may be more efficient.
         """
         return len(self) > 0
 
     def __contains__(self, item):
         """
-        returns True if item is found in the relation.
+        returns True if item is found in the .
         :param item: any restriction
-        (item in relation) is equivalent to bool(self & item) but may be executed more efficiently.
+        (item in query_expression) is equivalent to bool(query_expression & item) but may be executed more efficiently.
         """
         return bool(self & item)  # May be optimized e.g. using an EXISTS query
 
@@ -508,7 +507,7 @@ class Query:
             key = self._iter_keys.pop(0)
         except AttributeError:
             # self._iter_keys is missing because __iter__ has not been called.
-            raise TypeError("'Query' object is not an iterator. Use iter(obj) to create an iterator.")
+            raise TypeError("'QueryExpression' object is not an iterator. Use iter(obj) to create an iterator.")
         except IndexError:
             raise StopIteration
         else:
@@ -523,7 +522,7 @@ class Query:
 
     def cursor(self, offset=0, limit=None, order_by=None, as_dict=False):
         """
-        See Relation.fetch() for input description.
+        See expression.fetch() for input description.
         :return: query cursor
         """
         if offset and limit is None:
@@ -545,10 +544,10 @@ class Not:
         self.restriction = restriction
 
 
-class Join(Query):
+class Join(QueryExpression):
     """
-    Relational join.
-    Join is a private DataJoint class not exposed to users.
+    Join operator.
+    Join is a private DataJoint class not exposed to users.  See QueryExpression.__mul__ for details.
     """
 
     def __init__(self, arg=None):
@@ -564,11 +563,11 @@ class Join(Query):
     @classmethod
     def create(cls, arg1, arg2, keep_all_rows=False):
         obj = cls()
-        if inspect.isclass(arg2) and issubclass(arg2, Query):
+        if inspect.isclass(arg2) and issubclass(arg2, QueryExpression):
             arg2 = arg2()   # instantiate if joining with a class
         assert_join_compatibility(arg1, arg2)
         if arg1.connection != arg2.connection:
-            raise DataJointError("Cannot join relations from different connections.")
+            raise DataJointError("Cannot join query expressions from different connections.")
         obj._connection = arg1.connection
         obj._arg1 = cls.make_argument_subquery(arg1)
         obj._arg2 = cls.make_argument_subquery(arg2)
@@ -594,9 +593,9 @@ class Join(Query):
             from2=self._arg2.from_clause)
 
 
-class Union(Query):
+class Union(QueryExpression):
     """
-    Union is a private DataJoint class that implements relational union.
+    Union is the private DataJoint class that implements the union operator.
     """
 
     __count = count()
@@ -613,12 +612,12 @@ class Union(Query):
     @classmethod
     def create(cls, arg1, arg2):
         obj = cls()
-        if inspect.isclass(arg2) and issubclass(arg2, Query):
+        if inspect.isclass(arg2) and issubclass(arg2, QueryExpression):
             arg2 = arg2()  # instantiate if a class
-        if not isinstance(arg1, Query) or not isinstance(arg2, Query):
-            raise DataJointError('a relation can only be unioned with another relation')
+        if not isinstance(arg1, QueryExpression) or not isinstance(arg2, QueryExpression):
+            raise DataJointError('an QueryExpression can only be unioned with another QueryExpression')
         if arg1.connection != arg2.connection:
-            raise DataJointError("Cannot operate on relations from different connections.")
+            raise DataJointError("Cannot operate on QueryExpressions originating from different connections.")
         if set(arg1.heading.names) != set(arg2.heading.names):
             raise DataJointError('Union requires the same attributes in both arguments')
         if any(not v.in_key for v in arg1.heading.attributes.values()) or \
@@ -645,10 +644,10 @@ class Union(Query):
             where2=self._arg2.where_clause)) % next(self.__count)
 
 
-class Projection(Query):
+class Projection(QueryExpression):
     """
-    Projection is a private DataJoint class that implements relational projection.
-    See Query.proj() for user interface.
+    Projection is a private DataJoint class that implements the projection operator.
+    See QueryExpression.proj() for user interface.
     """
 
     def __init__(self, arg=None):
@@ -662,7 +661,7 @@ class Projection(Query):
     @classmethod
     def create(cls, arg, attributes=None, named_attributes=None, include_primary_key=True):
         """
-        :param arg:  A relation to be be projected
+        :param arg: The QueryExression to be be projected
         :param attributes:  attributes to be selected from
         :param named_attributes:  new attributes to select or
         :param include_primary_key:  True if the primary key must be included even if it's not in attributes.
@@ -672,7 +671,7 @@ class Projection(Query):
         obj._connection = arg.connection
         named_attributes = {k: v.strip() for k, v in named_attributes.items()}  # clean up values
         obj._distinct = arg.distinct
-        if include_primary_key:  # include primary key of relation
+        if include_primary_key:  # include primary key of the QueryExpression
             attributes = (list(a for a in arg.primary_key if a not in named_attributes.values()) +
                           list(a for a in attributes if a not in arg.primary_key))
         else:
@@ -706,11 +705,11 @@ class Projection(Query):
         return self._arg.from_clause
 
 
-class GroupBy(Query):
+class GroupBy(QueryExpression):
     """
-    GroupBy(rel, comp1='expr1', ..., compn='exprn')  produces a relation with the primary key specified by rel.heading.
+    GroupBy(rel, comp1='expr1', ..., compn='exprn')  yileds an entity set with the primary key specified by rel.heading.
     The computed arguments comp1, ..., compn use aggregation operators on the attributes of rel.
-    GroupBy is used Query.aggr and U.aggr.
+    GroupBy is used QueryExpression.aggr and U.aggr.
     GroupBy is a private class in DataJoint, not exposed to users.
     """
 
@@ -726,14 +725,14 @@ class GroupBy(Query):
 
     @classmethod
     def create(cls, arg, group, attributes=None, named_attributes=None, keep_all_rows=False):
-        if inspect.isclass(group) and issubclass(group, Query):
+        if inspect.isclass(group) and issubclass(group, QueryExpression):
             group = group()   # instantiate if a class
         assert_join_compatibility(arg, group)
         obj = cls()
         obj._keep_all_rows = keep_all_rows
         if not set(group.primary_key) - set(arg.primary_key):
-            raise DataJointError(
-                'The primary key of the grouped relation must contain additional attributes.')
+            raise DataJointError('The primary key of the grouped set must contain '
+                                 'additional attributes besides those in the grouping set.')
         obj._arg = (Join.make_argument_subquery(group) if isinstance(arg, U)
                     else Join.create(arg, group, keep_all_rows=keep_all_rows))
         obj._connection = obj._arg.connection
@@ -756,7 +755,7 @@ class GroupBy(Query):
         return len(Subquery.create(self))
 
 
-class Subquery(Query):
+class Subquery(QueryExpression):
     """
     A Subquery encapsulates its argument in a SELECT statement, enabling its use as a subquery.
     The attribute list and the WHERE clause are resolved.  Thus, a subquery no longer has any renamed attributes.
@@ -794,60 +793,53 @@ class Subquery(Query):
 
 class U:
     """
-    dj.U objects are special relations representing all possible values their attributes.
-    dj.U objects cannot be queried on their own but are useful for forming some relational queries.
-    dj.U('attr1', ..., 'attrn') represents a relation with the primary key attributes attr1 ... attrn.
-    The body of the relation is filled with all possible combinations of values of the attributes.
-    Without any attributes, dj.U() represents the relation with one tuple and no attributes.
-    The Third Manifesto refers to dj.U() as TABLE_DEE.
+    dj.U objects are the universal sets representing all possible values of their attributes.
+    dj.U objects cannot be queried on their own but are useful for forming some queries.
+    dj.U('attr1', ..., 'attrn') represents the universal set with the primary key attributes attr1 ... attrn.
+    The universal set is the set of all possible combinations of values of the attributes.
+    Without any attributes, dj.U() represents the set with one element that has no attributes.
 
-    Relational restriction:
+    Restriction:
 
-    dj.U can be used to enumerate unique combinations of values of attributes from other relations.
+    dj.U can be used to enumerate unique combinations of values of attributes from other expressions.
 
-    The following expression produces a relation containing all unique combinations of contrast and brightness
-    found in relation stimulus:
+    The following expression yields all unique combinations of contrast and brightness found in the `stimulus` set:
 
     >>> dj.U('contrast', 'brightness') & stimulus
 
-    The following expression produces a relation containing all unique combinations of contrast and brightness that is
-    contained in relation1 but not contained in relation 2.
+    Aggregation:
 
-    >>> (dj.U('contrast', 'brightness') & relation1) - relation2
+    In aggregation, dj.U is used for summary calculation over an entire set:
 
-    Relational aggregation:
+    The following expression yields one element with one attribute `s` containing the total number of elements in
+    query expression `expr`:
 
-    In aggregation, dj.U is used to compute aggregate expressions on the entire relation.
+    >>> dj.U().aggr(expr, n='count(*)')
 
-    The following expression produces a relation with one tuple and one attribute s containing the total number
-    of tuples in relation:
+    The following expressions both yield one element containing the number `n` of distinct values of attribute `attr` in
+    query expressio `expr`.
 
-    >>> dj.U().aggr(relation, n='count(*)')
+    >>> dj.U().aggr(expr, n='count(distinct attr)')
+    >>> dj.U().aggr(dj.U('attr').aggr(expr), 'n=count(*)')
 
-    The following expression produces a relation with one tuple containing the number n of distinct values of attr
-    in relation.
+    The following expression yields one element and one attribute `s` containing the sum of values of attribute `attr`
+    over entire result set of expression `expr`:
 
-    >>> dj.U().aggr(relation, n='count(distinct attr)')
+    >>> dj.U().aggr(expr, s='sum(attr)')
 
-    The following expression produces a relation with one tuple and one attribute s containing the total sum of attr
-    from relation:
+    The following expression yields the set of all unique combinations of attributes `attr1`, `attr2` and the number of
+    their occurrences in the result set of query expression `expr`.
 
-    >>> dj.U().aggr(relation, s='sum(attr)')   # sum of attr from the entire relation
-
-    The following expression produces a relation with the count n of tuples in relation containing each unique
-    combination of values in attr1 and attr2.
-
-    >>> dj.U(attr1,attr2).aggr(relation, n='count(*)')
+    >>> dj.U(attr1,attr2).aggr(expr, n='count(*)')
 
     Joins:
 
-    If relation rel has attributes 'attr1' and 'attr2', then rel*dj.U('attr1','attr2') or produces a relation that is
-    identical to rel except attr1 and attr2 are included in the primary key.  This is useful for producing a join on
+    If expression `expr` has attributes 'attr1' and 'attr2', then expr * dj.U('attr1','attr2') yields the same result
+    as `expr` but `attr1` and `attr2` are promoted to the the primary key.  This is useful for producing a join on
     non-primary key attributes.
-    For example, if attr is in both rel1 and rel2 but not in their primary  keys, then rel1*rel2 will throw an error
-    because in most cases, it does not make sense to join on non-primary key attributes and users must first rename
-    attr in one of the operands.  The expression dj.U('attr')*rel1*rel2 overrides this constraint.
-    Join is commutative.
+    For example, if `attr` is in both expr1 and expr2 but not in their primary keys, then expr1 * expr2 will throw
+    an error because in most cases, it does not make sense to join on non-primary key attributes and users must first
+    rename `attr` in one of the operands.  The expression dj.U('attr') * rel1 * rel2 overrides this constraint.
     """
 
     def __init__(self, *primary_key):
@@ -857,35 +849,36 @@ class U:
     def primary_key(self):
         return self._primary_key
 
-    def __and__(self, relation):
-        if inspect.isclass(relation) and issubclass(relation, Query):
-            relation = relation()   # instantiate if a class
-        if not isinstance(relation, Query):
-            raise DataJointError('Relation U can only be restricted with another relation.')
-        return Projection.create(relation, attributes=self.primary_key,
+    def __and__(self, query_expression):
+        if inspect.isclass(query_expression) and issubclass(query_expression, QueryExpression):
+            query_expression = query_expression()   # instantiate if a class
+        if not isinstance(query_expression, QueryExpression):
+            raise DataJointError('Set U can only be restricted with a QueryExpression.')
+        return Projection.create(query_expression, attributes=self.primary_key,
                                  named_attributes=dict(), include_primary_key=False)
 
-    def __mul__(self, relation):
+    def __mul__(self, query_expression):
         """
-        Joining U with another relation has the effect of promoting the attributes of U to the primary key of the other relation.
-        :param relation: other relation
-        :return: a copy of the other relation with the primary key extended.
+        Joining U with a query expression has the effect of promoting the attributes of U to the primary key of
+        the other query expression.
+        :param query_expression: a query expression to join with.
+        :return: a copy of the other query expression with the primary key extended.
         """
-        if inspect.isclass(relation) and issubclass(relation, Query):
-            relation = relation()   # instantiate if a class
-        if not isinstance(relation, Query):
-            raise DataJointError('Relation U can only be joined with another relation.')
-        copy = relation.__class__(relation)
+        if inspect.isclass(query_expression) and issubclass(query_expression, QueryExpression):
+            query_expression = query_expression()   # instantiate if a class
+        if not isinstance(query_expression, QueryExpression):
+            raise DataJointError('Set U can only be joined with a QueryExpression.')
+        copy = query_expression.__class__(query_expression)  # invoke copy constructor
         copy._heading = copy.heading.extend_primary_key(self.primary_key)
         return copy
 
     def aggr(self, group, **named_attributes):
         """
-        Aggregation of the type U('attr1','attr2').aggr(rel, computation="expression")
-        has the primary key ('attr1','attr2') and performs aggregation computations for all matching tuples of relation.
-        :param group:  The other relation which will be aggregated.
+        Aggregation of the type U('attr1','attr2').aggr(group, computation="QueryExpression")
+        has the primary key ('attr1','attr2') and performs aggregation computations for all matching elements of `group`.
+        :param group:  The query expression to be aggregated.
         :param named_attributes: computations of the form new_attribute="sql expression on attributes of group"
-        :return: The new relation
+        :return: The derived query expression
         """
         return (
             GroupBy.create(self, group=group, keep_all_rows=False, attributes=(), named_attributes=named_attributes)

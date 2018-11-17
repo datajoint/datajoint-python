@@ -23,12 +23,12 @@ class Fetch:
     :param relation: the table expression to fetch from
     """
 
-    def __init__(self, relation):
-        self._relation = relation
+    def __init__(self, expression):
+        self._expression = expression
 
     def __call__(self, *attrs, offset=None, limit=None, order_by=None, as_dict=False, squeeze=False):
         """
-        Fetches the query results from the database into an np.array or list of dictionaries and unpacks blob attributes.
+        Fetches the expression results from the database into an np.array or list of dictionaries and unpacks blob attributes.
 
         :param attrs: zero or more attributes to fetch. If not provided, the call will return
         all attributes of this relation. If provided, returns tuples with an entry for each attribute.
@@ -52,31 +52,31 @@ class Fetch:
         if limit is None and offset is not None:
             warnings.warn('Offset set, but no limit. Setting limit to a large number. '
                           'Consider setting a limit explicitly.')
-            limit = 2 * len(self._relation)
+            limit = 2 * len(self._expression)
 
         if not attrs:
             # fetch all attributes
-            cur = self._relation.cursor(as_dict=as_dict, limit=limit, offset=offset, order_by=order_by)
-            heading = self._relation.heading
+            cur = self._expression.cursor(as_dict=as_dict, limit=limit, offset=offset, order_by=order_by)
+            heading = self._expression.heading
             if as_dict:
                 ret = [OrderedDict((name, unpack(d[name], squeeze=squeeze) if heading[name].is_blob else d[name])
                                    for name in heading.names)
-                       for d in cur.fetchall()]
+                       for d in cur]
             else:
                 ret = list(cur.fetchall())
                 ret = np.array(ret, dtype=heading.as_dtype)
                 for name in heading:
                     if heading[name].is_external:
-                        external_table = self._relation.connection.schemas[heading[name].database].external_table
+                        external_table = self._expression.connection.schemas[heading[name].database].external_table
                         ret[name] = list(map(external_table.get, ret[name]))
                     elif heading[name].is_blob:
                         ret[name] = list(map(partial(unpack, squeeze=squeeze), ret[name]))
         else:  # if list of attributes provided
             attributes = [a for a in attrs if not is_key(a)]
-            result = self._relation.proj(*attributes).fetch(
+            result = self._expression.proj(*attributes).fetch(
                 offset=offset, limit=limit, order_by=order_by, as_dict=False, squeeze=squeeze)
             return_values = [
-                list(to_dicts(result[self._relation.primary_key]))
+                list(to_dicts(result[self._expression.primary_key]))
                 if is_key(attribute) else result[attribute]
                 for attribute in attrs]
             ret = return_values[0] if len(attrs) == 1 else return_values
@@ -90,7 +90,7 @@ class Fetch:
         """
         warnings.warn('Use of `rel.fetch.keys()` notation is deprecated. '
                       'Please use `rel.fetch("KEY")` or `rel.fetch(dj.key)` for equivalent result', stacklevel=2)
-        yield from self._relation.proj().fetch(as_dict=True, **kwargs)
+        yield from self._expression.proj().fetch(as_dict=True, **kwargs)
 
 
 class Fetch1:
@@ -100,11 +100,11 @@ class Fetch1:
     """
 
     def __init__(self, relation):
-        self._relation = relation
+        self._expression = relation
 
     def __call__(self, *attrs, squeeze=False):
         """
-        Fetches the query results from the database when the query is known to contain only one entry.
+        Fetches the expression results from the database when the expression is known to yield only one entry.
 
         If no attributes are specified, returns the result as a dict.
         If attributes are specified returns the corresponding results as a tuple.
@@ -118,28 +118,27 @@ class Fetch1:
         :return: the one tuple in the relation in the form of a dict
         """
 
-        heading = self._relation.heading
+        heading = self._expression.heading
 
         if not attrs:  # fetch all attributes, return as ordered dict
-            cur = self._relation.cursor(as_dict=True)
+            cur = self._expression.cursor(as_dict=True)
             ret = cur.fetchone()
             if not ret or cur.fetchone():
                 raise DataJointError('fetch1 should only be used for relations with exactly one tuple')
 
             def get_external(attr, _hash):
-                return self._relation.connection.schemas[attr.database].external_table.get(_hash)
+                return self._expression.connection.schemas[attr.database].external_table.get(_hash)
 
             ret = OrderedDict((name, get_external(heading[name], ret[name])) if heading[name].is_external
                               else (name, unpack(ret[name], squeeze=squeeze) if heading[name].is_blob else ret[name])
                               for name in heading.names)
-
         else:  # fetch some attributes, return as tuple
             attributes = [a for a in attrs if not is_key(a)]
-            result = self._relation.proj(*attributes).fetch(squeeze=squeeze)
+            result = self._expression.proj(*attributes).fetch(squeeze=squeeze)
             if len(result) != 1:
                 raise DataJointError('fetch1 should only return one tuple. %d tuples were found' % len(result))
             return_values = tuple(
-                next(to_dicts(result[self._relation.primary_key]))
+                next(to_dicts(result[self._expression.primary_key]))
                 if is_key(attribute) else result[attribute][0]
                 for attribute in attrs)
             ret = return_values[0] if len(attrs) == 1 else return_values

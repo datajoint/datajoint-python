@@ -36,6 +36,7 @@ class Simple(dj.Manual):
     item  : external-raw
     """
 
+
 @schema
 class Seed(dj.Lookup):
     definition = """

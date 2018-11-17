@@ -5,7 +5,7 @@ import traceback
 import random
 from tqdm import tqdm
 from pymysql import OperationalError
-from .query import Query, AndList, U
+from .expression import QueryExpression, AndList, U
 from .errors import DataJointError
 from .table import FreeTable
 import signal
@@ -84,7 +84,7 @@ class AutoPopulate:
             raise DataJointError('Cannot call populate on a restricted table. '
                                  'Instead, pass conditions to populate() as arguments.')
         todo = self.key_source
-        if not isinstance(todo, Query):
+        if not isinstance(todo, QueryExpression):
             raise DataJointError('Invalid key_source value')
         # check if target lacks any attributes from the primary key of key_source
         try:

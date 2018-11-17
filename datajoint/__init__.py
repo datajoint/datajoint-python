@@ -15,11 +15,10 @@ Please cite:
 """
 
 import os
-from types import ModuleType
 from .version import __version__
 
 __author__ = "Dimitri Yatsenko, Edgar Y. Walker, and Fabian Sinz at Baylor College of Medicine"
-__date__ = "Oct 25, 2018"
+__date__ = "Nov 15, 2018"
 __all__ = ['__author__', '__version__',
            'config', 'conn', 'kill', 'Table',
            'Connection', 'Heading', 'FreeTable', 'Not', 'schema',
@@ -68,7 +67,7 @@ logger.setLevel(log_levels[config['loglevel']])
 from .connection import conn, Connection
 from .table import FreeTable, Table
 from .user_tables import Manual, Lookup, Imported, Computed, Part
-from .query import Not, AndList, U
+from .expression import Not, AndList, U
 from .heading import Heading
 from .schema import Schema as schema
 from .erd import ERD
@@ -76,7 +75,7 @@ from .admin import set_password, kill
 from .errors import DataJointError, DuplicateError
 
 
-def create_virtual_module(module_name, schema_name, create_schema=False, create_tables=False):
+def create_virtual_module(module_name, schema_name, create_schema=False, create_tables=False, connection=None):
     """
     Creates a python module with the given name from the name of a schema on the server and
     automatically adds classes to it corresponding to the tables in the schema.
@@ -87,8 +86,9 @@ def create_virtual_module(module_name, schema_name, create_schema=False, create_
     :param create_tables: if True, module.schema can be used as the decorator for declaring new
     :return: the python module containing classes from the schema object and the table classes
     """
-    module = ModuleType(module_name)
-    _schema = schema(schema_name, create_schema=create_schema, create_tables=create_tables)
+    import types
+    module = types.ModuleType(module_name)
+    _schema = schema(schema_name, create_schema=create_schema, create_tables=create_tables, connection=connection)
     _schema.spawn_missing_classes(context=module.__dict__)
     module.__dict__['schema'] = _schema
     return module

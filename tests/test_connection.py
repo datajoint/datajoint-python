@@ -55,9 +55,10 @@ class TestTransactions:
         species = "mouse"           : enum('mouse', 'monkey', 'human')   # species
         """
 
-    def __init__(self):
-        self.relation = self.Subjects()
-        self.conn = dj.conn(**CONN_INFO)
+    @classmethod
+    def setup_class(cls):
+        cls.relation = cls.Subjects()
+        cls.conn = dj.conn(**CONN_INFO)
 
     def teardown(self):
         self.relation.delete_quick()

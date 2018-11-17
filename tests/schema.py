@@ -12,7 +12,7 @@ schema = dj.schema(PREFIX + '_test1', connection=dj.conn(**CONN_INFO))
 
 
 @schema
-class Test(dj.Lookup):
+class TTest(dj.Lookup):
     definition = """
     key   :   int     # key
     ---
@@ -22,33 +22,37 @@ class Test(dj.Lookup):
 
 
 @schema
-class Test2(dj.Manual):
+class TTest2(dj.Manual):
     definition = """
     key   :   int     # key
     ---
     value   :   int     # value
     """
 
+
 @schema
-class Test3(dj.Manual):
+class TTest3(dj.Manual):
     definition = """
     key : int 
     ---
     value : varchar(300)
     """
 
+
 @schema
-class TestExtra(dj.Manual):
+class TTestExtra(dj.Manual):
     """
     clone of Test but with an extra field
     """
-    definition = Test.definition + "\nextra : int # extra int\n"
+    definition = TTest.definition + "\nextra : int # extra int\n"
 
 
 @schema
-class TestNoExtra(dj.Manual):
-    ''' clone of Test but with no extra fields '''
-    definition = Test.definition
+class TTestNoExtra(dj.Manual):
+    """
+    clone of Test but with no extra fields
+    """
+    definition = TTest.definition
 
 
 @schema
@@ -142,7 +146,7 @@ class Experiment(dj.Imported):
 @schema
 class Trial(dj.Imported):
     definition = """   # a trial within an experiment
-    -> Experiment.proj(exp='experiment_id')
+    -> Experiment.proj(animal='subject_id')
     trial_id  :smallint   # trial number
     ---
     start_time                 :double      # (s)
@@ -163,9 +167,8 @@ class Trial(dj.Imported):
         random.seed('Amazing Seed')
         trial = self.Condition()
         for trial_id in range(10):
-            key['trial_id']=trial_id
-            self.insert1(
-                dict(key, start_time=random.random() * 1e9))
+            key['trial_id'] = trial_id
+            self.insert1(dict(key, start_time=random.random() * 1e9))
             trial.insert(dict(key,
                               cond_idx=cond_idx,
                               orientation=random.random()*360) for cond_idx in range(30))

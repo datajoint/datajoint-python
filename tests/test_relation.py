@@ -24,24 +24,24 @@ class TestRelation:
     Test base relations: insert, delete
     """
 
-    def __init__(self):
-        self.test = schema.Test()
-        self.test_extra = schema.TestExtra()
-        self.test_no_extra = schema.TestNoExtra()
-        self.user = schema.User()
-        self.subject = schema.Subject()
-        self.experiment = schema.Experiment()
-        self.trial = schema.Trial()
-        self.ephys = schema.Ephys()
-        self.channel = schema.Ephys.Channel()
-        self.img = schema.Image()
-        self.trash = schema.UberTrash()
+    @classmethod
+    def setup_class(cls):
+        cls.test = schema.TTest()
+        cls.test_extra = schema.TTestExtra()
+        cls.test_no_extra = schema.TTestNoExtra()
+        cls.user = schema.User()
+        cls.subject = schema.Subject()
+        cls.experiment = schema.Experiment()
+        cls.trial = schema.Trial()
+        cls.ephys = schema.Ephys()
+        cls.channel = schema.Ephys.Channel()
+        cls.img = schema.Image()
+        cls.trash = schema.UberTrash()
 
     def test_contents(self):
         """
         test the ability of tables to self-populate using the contents property
         """
-
         # test contents
         assert_true(self.user)
         assert_true(len(self.user) == len(self.user.contents))
@@ -96,9 +96,9 @@ class TestRelation:
         self.user.insert1(3)
 
     def test_insert_select(self):
-        schema.Test2.delete()
-        schema.Test2.insert(schema.Test)
-        assert_equal(len(schema.Test2()), len(schema.Test()))
+        schema.TTest2.delete()
+        schema.TTest2.insert(schema.TTest)
+        assert_equal(len(schema.TTest2()), len(schema.TTest()))
         original_length = len(self.subject)
         self.subject.insert(self.subject.proj(
             'real_id', 'date_of_birth', 'subject_notes', subject_id='subject_id+1000', species='"human"'))
@@ -205,9 +205,13 @@ class TestRelation:
     def test_drop(self):
         """Tests dropping tables"""
         dj.config['safemode'] = True
-        with patch.object(utils, "input", create=True, return_value='yes'):
-            self.trash.drop()
-        dj.config['safemode'] = False
+        try:
+            with patch.object(utils, "input", create=True, return_value='yes'):
+                self.trash.drop()
+        except:
+            pass
+        finally:
+            dj.config['safemode'] = False
         self.trash.fetch()
 
     def test_table_regexp(self):

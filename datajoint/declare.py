@@ -90,7 +90,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
     """
     # Parse and validate
     from .table import Table
-    from .query import Projection
+    from .expression import Projection
 
     new_style = True   # See issue #436.  Old style to be deprecated in a future release
     try:
@@ -194,7 +194,7 @@ def declare(full_table_name, definition, context):
 
     :param full_table_name: full name of the table
     :param definition: DataJoint table definition
-    :param context: dictionary of objects that might be referred to in the table. Usually this will be locals()
+    :param context: dictionary of objects that might be referred to in the table.
     """
     # split definition into lines
     definition = re.split(r'\s*\n\s*', definition.strip())

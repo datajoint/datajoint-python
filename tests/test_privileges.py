@@ -8,9 +8,10 @@ namespace = locals()
 
 class TestUnprivileged:
 
-    def __init__(self):
+    @classmethod
+    def setup_class(cls):
         """A connection with only SELECT privilege to djtest schemas"""
-        self.connection = dj.Connection(host=environ.get('DJ_TEST_HOST', 'localhost'), user='djview', password='djview')
+        cls.connection = dj.Connection(host=environ.get('DJ_TEST_HOST', 'localhost'), user='djview', password='djview')
 
     @raises(dj.DataJointError)
     def test_fail_create_schema(self):
