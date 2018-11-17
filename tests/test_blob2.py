@@ -1,5 +1,4 @@
 import numpy as np
-import os
 import datajoint as dj
 from nose.tools import assert_equal, assert_true, assert_list_equal, assert_tuple_equal, assert_false
 
