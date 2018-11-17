@@ -1,6 +1,7 @@
 import numpy as np
+import os
 import datajoint as dj
-from nose.tools import assert_equal, assert_true, assert_list_equal, assert_tuple_equal
+from nose.tools import assert_equal, assert_true, assert_list_equal, assert_tuple_equal, assert_false
 
 from . import PREFIX, CONN_INFO
 
@@ -49,7 +50,10 @@ def insert_blobs():
 
 
 class TestFetch:
-    def __init__(self):
+
+    @classmethod
+    def setup_class(cls):
+        assert_false(dj.config['safemode'], 'safemode must be disabled')
         Blob().delete()
         insert_blobs()
 

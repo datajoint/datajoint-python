@@ -28,11 +28,10 @@ class Table(QueryExpression):
     """
     Table is an abstract class that represents a base relation, i.e. a table in the schema.
     To make it a concrete class, override the abstract properties specifying the connection,
-    table name, database, context, and definition.
+    table name, database, and definition.
     A Relation implements insert and delete methods in addition to inherited relational operators.
     """
     _heading = None
-    _context = None
     database = None
     _log_ = None
     _external_table = None
@@ -55,16 +54,12 @@ class Table(QueryExpression):
                 self._heading.init_from_database(self.connection, self.database, self.table_name)
         return self._heading
 
-    @property
-    def context(self):
-        return self._context
-
-    def declare(self):
+    def declare(self, context=None):
         """
         Use self.definition to declare the table in the schema.
         """
         try:
-            sql, uses_external = declare(self.full_table_name, self.definition, self._context)
+            sql, uses_external = declare(self.full_table_name, self.definition, context)
             if uses_external:
                 # trigger the creation of the external hash lookup for the current schema
                 external_table = self.connection.schemas[self.database].external_table

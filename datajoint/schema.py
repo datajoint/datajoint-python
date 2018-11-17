@@ -218,7 +218,6 @@ class Schema:
         relation_class.database = self.database
         relation_class._connection = self.connection
         relation_class._heading = Heading()
-        relation_class._context = context
         # instantiate the class, declare the table if not already
         instance = relation_class()
         is_declared = instance.is_declared
@@ -226,7 +225,7 @@ class Schema:
             if not self.create_tables or assert_declared:
                 raise DataJointError('Table not declared %s' % instance.table_name)
             else:
-                instance.declare()
+                instance.declare(context)
         is_declared = is_declared or instance.is_declared
 
         # fill values in Lookup tables from their contents property

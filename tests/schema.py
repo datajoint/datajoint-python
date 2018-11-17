@@ -12,7 +12,7 @@ schema = dj.schema(PREFIX + '_test1', connection=dj.conn(**CONN_INFO))
 
 
 @schema
-class Test(dj.Lookup):
+class TTest(dj.Lookup):
     definition = """
     key   :   int     # key
     ---
@@ -22,7 +22,7 @@ class Test(dj.Lookup):
 
 
 @schema
-class Test2(dj.Manual):
+class TTest2(dj.Manual):
     definition = """
     key   :   int     # key
     ---
@@ -31,7 +31,7 @@ class Test2(dj.Manual):
 
 
 @schema
-class Test3(dj.Manual):
+class TTest3(dj.Manual):
     definition = """
     key : int 
     ---
@@ -40,19 +40,19 @@ class Test3(dj.Manual):
 
 
 @schema
-class TestExtra(dj.Manual):
+class TTestExtra(dj.Manual):
     """
     clone of Test but with an extra field
     """
-    definition = Test.definition + "\nextra : int # extra int\n"
+    definition = TTest.definition + "\nextra : int # extra int\n"
 
 
 @schema
-class TestNoExtra(dj.Manual):
+class TTestNoExtra(dj.Manual):
     """
     clone of Test but with no extra fields
     """
-    definition = Test.definition
+    definition = TTest.definition
 
 
 @schema

@@ -143,7 +143,7 @@ class DataB(dj.Lookup):
 
 
 @schema
-class TestUpdate(dj.Lookup):
+class TTestUpdate(dj.Lookup):
     definition = """
     primary_key     : int
     ---

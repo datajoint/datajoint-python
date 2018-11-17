@@ -8,16 +8,17 @@ class TestU:
     Test base relations: insert, delete
     """
 
-    def __init__(self):
-        self.user = schema.User()
-        self.language = schema.Language()
-        self.subject = schema.Subject()
-        self.experiment = schema.Experiment()
-        self.trial = schema.Trial()
-        self.ephys = schema.Ephys()
-        self.channel = schema.Ephys.Channel()
-        self.img = schema.Image()
-        self.trash = schema.UberTrash()
+    @classmethod
+    def setup_class(cls):
+        cls.user = schema.User()
+        cls.language = schema.Language()
+        cls.subject = schema.Subject()
+        cls.experiment = schema.Experiment()
+        cls.trial = schema.Trial()
+        cls.ephys = schema.Ephys()
+        cls.channel = schema.Ephys.Channel()
+        cls.img = schema.Image()
+        cls.trash = schema.UberTrash()
 
     def test_restriction(self):
         language_set = {s[1] for s in self.language.contents}
@@ -60,7 +61,7 @@ class TestU:
         assert_equal((rel & 'language="English"').fetch1('number_of_speakers'), 3)
 
     def test_argmax(self):
-        rel = schema.Test()
+        rel = schema.TTest()
         # get the tuples corresponding to maximum value
         mx = (rel * dj.U().aggr(rel, mx='max(value)')) & 'mx=value'
         assert_equal(mx.fetch('value')[0], max(rel.fetch('value')))
