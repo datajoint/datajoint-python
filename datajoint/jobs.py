@@ -1,8 +1,7 @@
-from _decimal import Decimal
+from decimal import Decimal
 from .hash import key_hash
 import os
 import platform
-import pymysql
 from .table import Table
 from .errors import DuplicateError
 
