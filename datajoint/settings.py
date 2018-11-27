@@ -37,7 +37,7 @@ default = OrderedDict({
     'connection.charset': '',   # pymysql uses '' as default
     'loglevel': 'INFO',
     'safemode': True,
-    'display.limit': 7,
+    'display.limit': 12,
     'display.width': 14,
     'display.show_tuple_count': True
 })
