@@ -1,5 +1,5 @@
 
-A collection in Python can be a list or tuple.
+A collection can be a list or tuple.
 
 .. code-block:: python
 
@@ -8,4 +8,3 @@ A collection in Python can be a list or tuple.
 
     # a tuple:
     cond_tuple = ('first_name = "Aaron"', 'last_name = "Aaronson"')
-

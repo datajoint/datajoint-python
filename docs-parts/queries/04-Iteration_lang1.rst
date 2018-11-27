@@ -1,5 +1,5 @@
 
-In the simple Python example below, iteration is used to display the names and values of the attributes of each entity in the simple table or table expression ``tab``.
+In the simple example below, iteration is used to display the names and values of the attributes of each entity in the simple table or table expression ``tab``.
 
 .. code-block:: python
 
@@ -22,4 +22,3 @@ In the example below, DataJoint fetches all of the attributes of each entity in 
 
     for entity in tab.fetch(as_dict=True):
         print(entity)
-

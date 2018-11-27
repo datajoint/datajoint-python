@@ -1,7 +1,4 @@
 
-|python| Python
-----------------
-
 Create a new schema using the ``dj.schema`` function:
 
 .. code-block:: python
@@ -26,4 +23,3 @@ The ``dj.schema`` constructor can take a number of optional parameters after the
   Defaults to ``True``.
 - ``create_tables`` - When ``False``, the schema object will not create tables on the database and will raise errors when accessing missing tables.
   Defaults to ``True``.
-

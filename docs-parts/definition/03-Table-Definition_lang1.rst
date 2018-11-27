@@ -1,7 +1,5 @@
 
-|python| Python
-
-In Python, the table definition is contained in the ``definition`` property of the class.
+The table definition is contained in the ``definition`` property of the class.
 
 .. code-block:: python
 

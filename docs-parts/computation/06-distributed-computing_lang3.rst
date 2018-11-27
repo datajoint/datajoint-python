@@ -1,5 +1,5 @@
 
-For example, if a Python process is interrupted via the keyboard, a Python KeyboardError will be logged to the database as follows:
+For example, if a Python process is interrupted via the keyboard, a KeyboardError will be logged to the database as follows:
 
 .. code-block:: text
 
@@ -9,4 +9,3 @@ For example, if a Python process is interrupted via the keyboard, a Python Keybo
     +------------+ +------------+ +--------+ +------------+ +------------+ +------------+ +-------+ +------------+ +------------+ +--------+ +------------+
     __job_results  3416a75f4cea91 error      KeyboardInterr datajoint@localhos localhost     15571     59             2017-09-04 14: <BLOB>     <BLOB>
      (1 tuples)
-

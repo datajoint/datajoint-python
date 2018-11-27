@@ -1,7 +1,4 @@
 
-Python
-------
-
 DataJoint is implemented for Python 3.4+.
 You may install it from `PyPI <https://pypi.python.org/pypi/datajoint>`_:
 
@@ -34,8 +31,10 @@ You may now set the database credentials:
 Skip setting the password to make DataJoint prompt to enter the password every time.
 
 You may save the configuration in the local work directory with ``dj.config.save_local()`` or for all your projects in ``dj.config.save_global()``.
+Configuration changes should be made through the ``dj.config`` interface; the config file should not be modified directly by the user.
 
 You may leave the user or the password as ``None``, in which case you will be prompted to enter them manually for every session.
+Setting the password as an empty string allows access without a password.
 
 Note that the system environment variables ``DJ_HOST``, ``DJ_USER``, and ``DJ_PASS`` will overwrite the settings in the config file.
 You can use them to set the connection credentials instead of config files.
@@ -52,5 +51,3 @@ After that, update the password in the configuration and save it as described ab
 
     dj.config['database.password'] = 'my#cool!new*psswrd'
     dj.config.save_local()   # or dj.config.save_global()
-
-If ``dj.config['database.password']`` is set to ``NULL``, DataJoint will prompt to enter the password when connecting to the server.
