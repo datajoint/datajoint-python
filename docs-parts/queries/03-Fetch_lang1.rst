@@ -1,7 +1,4 @@
 
-Python
-------
-
 Entire table
 ~~~~~~~~~~~~
 
@@ -55,4 +52,3 @@ For example:
 
     import pandas as pd
     frame = pd.DataFrame(tab.fetch())
-
