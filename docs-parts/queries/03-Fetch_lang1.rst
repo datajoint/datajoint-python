@@ -14,14 +14,6 @@ To retrieve the data as a list of ``dict``:
 
     data = query.fetch(as_dict=True)
 
-Furthermore, the ``query`` object can be used as a generator for loops:
-
-.. code-block:: python
-
-    for row in query:
-       # row is a dict
-       print(row)
-
 In some cases, the amount of data returned by fetch can be quite large; in these cases it can be useful to use the ``size_on_disk`` attribute to determine if running a bare fetch would be wise.
 Please note that it is only currently possible to query the size of entire tables stored directly in the database at this time.
 
