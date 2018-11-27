@@ -4,6 +4,6 @@
 
     # or
 
-    Session.aggr(Scan, nex='max(scan_idx)+1') & key
+    Session.aggr(Scan, next='max(scan_idx)+1') & key
 
 Note that the first option uses a :ref:`universal set <universal-sets>`.
