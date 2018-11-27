@@ -6,7 +6,7 @@ after the test.
 """
 
 import logging
-from os import environ
+from os import environ, remove
 import datajoint as dj
 
 __author__ = 'Edgar Walker, Fabian Sinz, Dimitri Yatsenko'
@@ -47,3 +47,4 @@ def teardown_package():
     for db in cur.fetchall():
         conn.query('DROP DATABASE `{}`'.format(db[0]))
     conn.query('SET FOREIGN_KEY_CHECKS=1')
+    remove("dj_local_conf.json")

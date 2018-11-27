@@ -16,13 +16,14 @@ class NanTest(dj.Manual):
 
 
 class TestNaNInsert:
-    def __init__(self):
-        self.rel = NanTest()
+    @classmethod
+    def setup_class(cls):
+        cls.rel = NanTest()
         with dj.config(safemode=False):
-            self.rel.delete()
+            cls.rel.delete()
         a = np.array([0, 1/3, np.nan, np.pi, np.nan])
-        self.rel.insert(((i, value) for i, value in enumerate(a)))
-        self.a = a
+        cls.rel.insert(((i, value) for i, value in enumerate(a)))
+        cls.a = a
 
     def test_insert_nan(self):
         """Test fetching of null values"""

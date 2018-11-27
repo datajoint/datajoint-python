@@ -84,20 +84,20 @@ class TestDeclare:
         assert_list_equal(experiment.primary_key,
                           ['subject_id', 'experiment_id'])
 
-        assert_list_equal(trial.heading.names,
-                          ['subject_id', 'exp', 'trial_id', 'start_time'])
+        assert_list_equal(trial.heading.names,   # tests issue #516
+                          ['animal', 'experiment_id', 'trial_id', 'start_time'])
         assert_list_equal(trial.primary_key,
-                          ['subject_id', 'exp', 'trial_id'])
+                          ['animal', 'experiment_id', 'trial_id'])
 
         assert_list_equal(ephys.heading.names,
-                          ['subject_id', 'exp', 'trial_id', 'sampling_frequency', 'duration'])
+                          ['animal', 'experiment_id', 'trial_id', 'sampling_frequency', 'duration'])
         assert_list_equal(ephys.primary_key,
-                          ['subject_id', 'exp', 'trial_id'])
+                          ['animal', 'experiment_id', 'trial_id'])
 
         assert_list_equal(channel.heading.names,
-                          ['subject_id', 'exp', 'trial_id', 'channel', 'voltage', 'current'])
+                          ['animal', 'experiment_id', 'trial_id', 'channel', 'voltage', 'current'])
         assert_list_equal(channel.primary_key,
-                          ['subject_id', 'exp', 'trial_id', 'channel'])
+                          ['animal', 'experiment_id', 'trial_id', 'channel'])
         assert_true(channel.heading.attributes['voltage'].is_blob)
 
     @staticmethod
@@ -105,8 +105,8 @@ class TestDeclare:
         assert_true(experiment.full_table_name in set(user.children(primary=False)))
         assert_equal(set(experiment.parents(primary=False)), {user.full_table_name})
 
-        assert_equal(set(subject.children(primary=True)), {experiment.full_table_name})
-        assert_equal(set(experiment.parents(primary=True)), {subject.full_table_name})
+        assert_true(experiment.full_table_name in subject.descendants())
+        assert_true(subject.full_table_name in experiment.ancestors())
 
         assert_true(trial.full_table_name in experiment.descendants())
         assert_true(experiment.full_table_name in trial.ancestors())

@@ -10,9 +10,10 @@ import datajoint as dj
 
 class TestFetch:
 
-    def __init__(self):
-        self.subject = schema.Subject()
-        self.lang = schema.Language()
+    @classmethod
+    def setup_class(cls):
+        cls.subject = schema.Subject()
+        cls.lang = schema.Language()
 
     def test_getattribute(self):
         """Testing Fetch.__call__ with attributes"""

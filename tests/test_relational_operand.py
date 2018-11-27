@@ -2,23 +2,23 @@ import random
 import string
 
 import numpy as np
-from nose.tools import assert_equal, assert_false, assert_true, raises, assert_set_equal
+from nose.tools import assert_equal, assert_false, assert_true, raises, assert_set_equal, assert_list_equal
 
 import datajoint as dj
-from .schema_simple import A, B, D, E, L, DataA, DataB, TestUpdate, IJ, JI, ReservedWord
-from .schema import Experiment, Test3
+from .schema_simple import A, B, D, E, L, DataA, DataB, TTestUpdate, IJ, JI, ReservedWord
+from .schema import Experiment, TTest3
 
 
 def setup():
     """
     module-level test setup
     """
-    A().insert(A.contents, skip_duplicates=True)
-    L().insert(L.contents, skip_duplicates=True)
-    B().populate()
-    D().populate()
-    E().populate()
-    Experiment().populate()
+    A.insert(A.contents, skip_duplicates=True)
+    L.insert(L.contents, skip_duplicates=True)
+    B.populate()
+    D.populate()
+    E.populate()
+    Experiment.populate()
 
 
 class TestRelational:
@@ -57,6 +57,16 @@ class TestRelational:
                      'incorrect projection of restriction')
         assert_equal(len(y & 'j in (3,4,5,6)'), len(B() & 'id_a in (3,4)'),
                      'incorrect nested subqueries')
+
+    @staticmethod
+    def test_rename_order():
+        """
+        Renaming projection should not change the order of the primary key attributes.
+        See issues #483 and #516.
+        """
+        pk1 = D.primary_key
+        pk2 = D.proj(a='id_a').primary_key
+        assert_list_equal(['a' if i == 'id_a' else i for i in pk1], pk2)
 
     @staticmethod
     def test_join():
@@ -129,16 +139,14 @@ class TestRelational:
         y = (A & 'cond_in_a=1').proj(a2='id_a')
         assert_equal(len(rel), len(x * y))
 
-
     @staticmethod
     def test_issue_376():
-        tab = Test3()
+        tab = TTest3()
         tab.delete_quick()
         tab.insert((
             (1, '%%%'),
             (2, 'one%'),
-            (3, 'one')
-        ))
+            (3, 'one')))
         assert_equal(len(tab & 'value="%%%"'), 1)
         assert_equal(len(tab & {'value': "%%%"}), 1)
         assert_equal(len(tab & 'value like "o%"'), 2)
@@ -244,8 +252,6 @@ class TestRelational:
                 assert_true(np.isclose(max_, values.max(), rtol=1e-4, atol=1e-5),
                             "aggregation failed (max)")
 
-
-
     @staticmethod
     def test_semijoin():
         """
@@ -326,33 +332,33 @@ class TestRelational:
         assert_true(len(e1) == len(e2) > 0, 'Two date restriction do not yield the same result')
 
     @staticmethod
-    def test_join_project_optimization():
-        """Test optimization for join of projected relations with matching non-primary key"""
-        assert_true(len(DataA().proj() * DataB().proj()) == len(DataA()) == len(DataB()),
+    def test_join_project():
+        """Test join of projected relations with matching non-primary key"""
+        assert_true(len(DataA.proj() * DataB.proj()) == len(DataA()) == len(DataB()),
                     "Join of projected relations does not work")
 
     @staticmethod
     @raises(dj.DataJointError)
     def test_update_single_key():
         """Test that only one row can be updated"""
-        TestUpdate()._update('string_attr', 'my new string')
+        TTestUpdate()._update('string_attr', 'my new string')
 
     @staticmethod
     @raises(dj.DataJointError)
     def test_update_no_primary():
         """Test that no primary key can be updated"""
-        TestUpdate()._update('primary_key', 2)
+        TTestUpdate()._update('primary_key', 2)
 
     @staticmethod
     @raises(dj.DataJointError)
     def test_update_missing_attribute():
         """Test that attribute is in table"""
-        TestUpdate()._update('not_existing', 2)
+        TTestUpdate()._update('not_existing', 2)
 
     @staticmethod
     def test_update_string_attribute():
         """Test replacing a string value"""
-        rel = (TestUpdate() & dict(primary_key=0))
+        rel = (TTestUpdate() & dict(primary_key=0))
         s = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
         rel._update('string_attr', s)
         assert_equal(s, rel.fetch1('string_attr'), "Updated string does not match")
@@ -360,7 +366,7 @@ class TestRelational:
     @staticmethod
     def test_update_numeric_attribute():
         """Test replacing a string value"""
-        rel = (TestUpdate() & dict(primary_key=0))
+        rel = (TTestUpdate() & dict(primary_key=0))
         s = random.randint(0, 10)
         rel._update('num_attr', s)
         assert_equal(s, rel.fetch1('num_attr'), "Updated integer does not match")
@@ -370,7 +376,7 @@ class TestRelational:
     @staticmethod
     def test_update_blob_attribute():
         """Test replacing a string value"""
-        rel = (TestUpdate() & dict(primary_key=0))
+        rel = (TTestUpdate() & dict(primary_key=0))
         s = rel.fetch1('blob_attr')
         rel._update('blob_attr', s.T)
         assert_equal(s.T.shape, rel.fetch1('blob_attr').shape, "Array dimensions do not match")

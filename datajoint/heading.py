@@ -1,5 +1,6 @@
 import numpy as np
 from collections import namedtuple, OrderedDict, defaultdict
+from itertools import chain
 import re
 import logging
 from .errors import DataJointError
@@ -255,22 +256,17 @@ class Heading:
                 named_attributes = {}
             if force_primary_key is None:
                 force_primary_key = set()
-            return Heading(
-                [dict(   # copied attributes
-                    self.attributes[k].todict(),
-                    in_key=self.attributes[k].in_key or k in force_primary_key)
-                 for k in attribute_list] +
-                [dict(  # renamed attributes
-                    self.attributes[sql_expression].todict(),
-                    name=new_name,
-                    sql_expression='`%s`' % sql_expression,
-                    in_key=self.attributes[sql_expression].in_key or sql_expression in force_primary_key)
-                 if sql_expression in self.names else
-                 dict(  # computed attributes
-                     default_attribute_properties,
-                     name=new_name,
-                     sql_expression=sql_expression)
-                 for new_name, sql_expression in named_attributes.items()])
+            rename_map = {v: k for k, v in named_attributes.items() if v in self.attributes}
+
+            # copied and renamed attributes
+            copy_attrs = (dict(self.attributes[k].todict(),
+                               in_key=self.attributes[k].in_key or k in force_primary_key,
+                               **({'name': rename_map[k], 'sql_expression': '`%s`' % k} if k in rename_map else {}))
+                          for k in self.attributes if k in rename_map or k in attribute_list)
+            compute_attrs = (dict(default_attribute_properties, name=new_name, sql_expression=expr)
+                             for new_name, expr in named_attributes.items() if expr not in rename_map)
+
+            return Heading(chain(copy_attrs, compute_attrs))
 
     def join(self, other):
         """

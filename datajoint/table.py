@@ -9,7 +9,7 @@ import warnings
 from pymysql import OperationalError, InternalError, IntegrityError
 from . import config
 from .declare import declare
-from .query import Query
+from .expression import QueryExpression
 from .blob import pack
 from .utils import user_choice
 from .heading import Heading
@@ -24,20 +24,19 @@ class _rename_map(tuple):
     pass
 
 
-class Table(Query):
+class Table(QueryExpression):
     """
     Table is an abstract class that represents a base relation, i.e. a table in the schema.
     To make it a concrete class, override the abstract properties specifying the connection,
-    table name, database, context, and definition.
+    table name, database, and definition.
     A Relation implements insert and delete methods in addition to inherited relational operators.
     """
     _heading = None
-    _context = None
     database = None
     _log_ = None
     _external_table = None
 
-    # -------------- required by Query ----------------- #
+    # -------------- required by QueryExpression ----------------- #
     @property
     def heading(self):
         """
@@ -55,16 +54,12 @@ class Table(Query):
                 self._heading.init_from_database(self.connection, self.database, self.table_name)
         return self._heading
 
-    @property
-    def context(self):
-        return self._context
-
-    def declare(self):
+    def declare(self, context=None):
         """
         Use self.definition to declare the table in the schema.
         """
         try:
-            sql, uses_external = declare(self.full_table_name, self.definition, self._context)
+            sql, uses_external = declare(self.full_table_name, self.definition, context)
             if uses_external:
                 # trigger the creation of the external hash lookup for the current schema
                 external_table = self.connection.schemas[self.database].external_table
@@ -152,7 +147,8 @@ class Table(Query):
         """
         self.insert((row,), **kwargs)
 
-    def insert(self, rows, replace=False, skip_duplicates=False, ignore_extra_fields=False, ignore_errors=False):
+    def insert(self, rows, replace=False, skip_duplicates=False, ignore_extra_fields=False, ignore_errors=False,
+               allow_direct_insert=None):
         """
         Insert a collection of rows.
 
@@ -161,6 +157,7 @@ class Table(Query):
         :param replace: If True, replaces the existing tuple.
         :param skip_duplicates: If True, silently skip duplicate inserts.
         :param ignore_extra_fields: If False, fields that are not in the heading raise error.
+        :param allow_direct_insert: applies only in auto-populated tables. Set True to insert outside populate calls.
 
         Example::
         >>> relation.insert([
@@ -172,10 +169,15 @@ class Table(Query):
             warnings.warn('Use of `ignore_errors` in `insert` and `insert1` is deprecated. Use try...except... '
                           'to explicitly handle any errors', stacklevel=2)
 
+        # prohibit direct inserts into auto-populated tables
+        if not (allow_direct_insert or getattr(self, '_allow_insert', True)):  # _allow_insert is only present in AutoPopulate
+            raise DataJointError(
+                'Auto-populate tables can only be inserted into from their make methods during populate calls.')
+
         heading = self.heading
-        if inspect.isclass(rows) and issubclass(rows, Query):   # instantiate if a class
+        if inspect.isclass(rows) and issubclass(rows, QueryExpression):   # instantiate if a class
             rows = rows()
-        if isinstance(rows, Query):
+        if isinstance(rows, QueryExpression):
             # insert from select
             if not ignore_extra_fields:
                 try:
@@ -184,7 +186,7 @@ class Table(Query):
                         next(name for name in rows.heading if name not in heading))
                 except StopIteration:
                     pass
-            fields = list(name for name in heading if name in rows.heading)
+            fields = list(name for name in rows.heading if name in heading)
             query = '{command} INTO {table} ({fields}) {select}{duplicate}'.format(
                 command='REPLACE' if replace else 'INSERT',
                 fields='`' + '`,`'.join(fields) + '`',

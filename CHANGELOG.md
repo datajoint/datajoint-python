@@ -1,5 +1,9 @@
 ## Release notes
 
+### 0.11.1 -- Nov 15, 2018
+* Fix ordering of attributes in proj (#483 and #516)
+* Prohibit direct insert into auto-populated tables (#511)
+
 ### 0.11.0 -- Oct 25, 2018
 * Full support of dependencies with renamed attributes using projection syntax (#300, #345, #436, #506, #507)
 * Rename internal class and module names to comply with terminology in documentation (#494, #500)
