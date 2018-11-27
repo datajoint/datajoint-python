@@ -1,7 +1,4 @@
 
-|python| Python examples
-------------------------
-
 .. code-block:: python
 
     # delete all entries from tuning.VonMises

@@ -1,6 +1,4 @@
 
-|python| Python
----------------
 
 .. code-block:: python
 

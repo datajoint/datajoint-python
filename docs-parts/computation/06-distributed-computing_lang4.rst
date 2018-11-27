@@ -1,5 +1,5 @@
 
-For example, given the above table, errors can be inspected in Python as follows:
+For example, given the above table, errors can be inspected as follows:
 
 .. code-block:: text
 
@@ -21,4 +21,3 @@ For example, given the above table, errors can be inspected in Python as follows
 
 This particular error occurred when processing the record with ID ``2``, resulted from a `KeyboardInterrupt`, and has no additional
 error trace.
-
