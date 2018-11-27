@@ -1,6 +1,4 @@
 
-|python| Python
-
 .. code-block:: python
 
     # Plot all the tables directly downstream from ``seq.Genome``:

@@ -1,5 +1,3 @@
-.. figure:: ../_static/img/python-tiny.png
-   :alt:
 
 .. code-block:: python
 

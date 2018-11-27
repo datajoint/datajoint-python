@@ -1,7 +1,4 @@
 
-|python| Python
-+++++++++++++++
-
 To plot the ERD for an entire schema in Python, an ERD object can be initialized with the schema object (which is normally used to decorate table objects)
 
 .. code-block:: python
@@ -17,4 +14,3 @@ or, alternatively an object that has the schema object as an attribute, such as 
     import datajoint as dj
     import seq    # import the sequence module defining the seq database
     dj.ERD(seq).draw()   # draw the ERD
-
