@@ -59,13 +59,6 @@ class JobTable(Table):
         """bypass interactive prompts and dependencies"""
         self.drop_quick()
 
-    @staticmethod
-    def packable_or_none(key):
-        for v in key.values():
-            if isinstance(v, Decimal):
-                return None
-        return key
-
     def reserve(self, table_name, key):
         """
         Reserve a job for computation.  When a job is reserved, the job table contains an entry for the
@@ -81,7 +74,7 @@ class JobTable(Table):
             host=platform.node(),
             pid=os.getpid(),
             connection_id=self.connection.connection_id,
-            key=self.packable_or_none(key),
+            key=key,
             user=self._user)
         try:
             self.insert1(job, ignore_extra_fields=True)
@@ -117,7 +110,7 @@ class JobTable(Table):
                  pid=os.getpid(),
                  connection_id=self.connection.connection_id,
                  user=self._user,
-                 key=self.packable_or_none(key),
+                 key=key,
                  error_message=error_message,
                  error_stack=error_stack),
             replace=True, ignore_extra_fields=True)
