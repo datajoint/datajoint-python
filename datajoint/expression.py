@@ -661,9 +661,9 @@ class Projection(QueryExpression):
     @classmethod
     def create(cls, arg, attributes=None, named_attributes=None, include_primary_key=True):
         """
-        :param arg: The QueryExression to be be projected
-        :param attributes:  attributes to be selected from
-        :param named_attributes:  new attributes to select or
+        :param arg: The QueryExression to be projected
+        :param attributes:  attributes to select
+        :param named_attributes:  new attributes to create by renaming or computing
         :param include_primary_key:  True if the primary key must be included even if it's not in attributes.
         :return: the resulting Projection object
         """

@@ -1,7 +1,4 @@
 
-|python| Python
----------------
-
 In Python, the master-part relationship is expressed by making the part a nested class of the master.
 The part is subclassed from ``dj.Part`` and does not need the ``@schema`` decorator.
 

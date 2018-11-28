@@ -1,7 +1,4 @@
 
-|python| Python
----------------
-
 In Python there is a separate method ``insert1`` to insert one entity at a time.
 The entity may have the form of a Python dictionary with key names matching the attribute names in the table.
 
