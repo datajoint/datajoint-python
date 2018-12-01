@@ -176,3 +176,21 @@ class TestDeclare:
             ---
             description : text
             """
+
+    @staticmethod
+    @raises(dj.DataJointError)
+    def test_long_table_name():
+        """
+        test issue #205 -- reject table names over 64 characters in length
+        """
+
+        @schema
+        class WhyWouldAnyoneCreateATableNameThisLong(dj.Manual):
+            definition = """
+            master : int
+            """
+
+            class WithSuchALongPartNameThatItCrashesMySQL(dj.Part):
+                definition = """
+                -> (master)
+                """
