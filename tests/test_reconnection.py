@@ -15,9 +15,8 @@ class TestReconnect:
     test reconnection
     """
 
-    @classmethod
-    def setup_class(cls):
-        cls.conn = dj.conn(reset=True, **CONN_INFO)
+    def setup(self):
+        self.conn = dj.conn(reset=True, **CONN_INFO)
 
     def test_close(self):
         assert_true(self.conn.is_connected, "Connection should be alive")
