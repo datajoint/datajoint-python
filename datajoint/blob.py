@@ -235,7 +235,7 @@ def pack_obj(obj):
         blob += pack_array(np.array(obj))
     elif isinstance(obj, Decimal):
         blob += pack_array(np.array(np.float64(obj)))
-    elif isintance(obj, datetime):
+    elif isinstance(obj, datetime):
         blob += pack_obj(str(obj))
     else:
         raise DataJointError("Packing object of type %s currently not supported!" % type(obj))
