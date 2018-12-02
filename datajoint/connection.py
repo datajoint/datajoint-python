@@ -10,7 +10,7 @@ from getpass import getpass
 from pymysql import err
 
 from . import config
-from .errors import DataJointError, server_error_codes
+from .errors import DataJointError, server_error_codes, is_connection_error
 from .dependencies import Dependencies
 
 
@@ -99,6 +99,9 @@ class Connection:
                 charset=config['connection.charset'],
                 **self.conn_info)
 
+    def close(self):
+        self._conn.close()
+
     def register(self, schema):
         self.schemas[schema.database] = schema
 
@@ -108,12 +111,12 @@ class Connection:
         Returns true if the object is connected to the database server.
         """
         try:
-            self._conn.ping()
+            self._conn.ping(reconnect=False)
             return True
         except:
             return False
 
-    def query(self, query, args=(), as_dict=False, suppress_warnings=True):
+    def query(self, query, args=(), as_dict=False, suppress_warnings=True, reconnect=True):
         """
         Execute the specified query and return the tuple generator (cursor).
 
@@ -134,16 +137,18 @@ class Connection:
                     # suppress all warnings arising from underlying SQL library
                     warnings.simplefilter("ignore")
                 cur.execute(query, args)
-        except err.OperationalError as e:
-            if 'MySQL server has gone away' in str(e) and config['database.reconnect']:
-                warnings.warn('''Mysql server has gone away.
-                    Reconnected to the server. Data from transactions might be lost and referential constraints may
-                    be violated. You can switch off this behavior by setting the 'database.reconnect' to False.
-                    ''')
+        except (err.InterfaceError, err.OperationalError) as e:
+            if is_connection_error(e) and reconnect:
+                warnings.warn("Mysql server has gone away. Reconnectting to the server.")
                 self.connect()
-                logger.debug("Re-executing SQL: " + query[0:300])
-                cur.execute(query, args)
+                if self._in_transaction:
+                    self.cancel_transaction()
+                    raise DataJointError("Connection was lost during a transaction.")
+                else:
+                    logger.debug("Re-executing SQL")
+                    cur = self.query(query, args=args, as_dict=as_dict, suppress_warnings=suppress_warnings, reconnect=False)
             else:
+                logger.debug("Caught InterfaceError/OperationalError that are not related to connection issue")
                 raise
         except err.ProgrammingError as e:
             if e.args[0] == server_error_codes['parse error']:
