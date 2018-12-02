@@ -2,7 +2,7 @@
 Collection of test cases to test connection module.
 """
 
-from nose.tools import assert_true, assert_equal
+from nose.tools import assert_true, assert_false, assert_equal, raises
 import datajoint as dj
 import numpy as np
 from datajoint import DataJointError
@@ -31,6 +31,8 @@ def test_persistent_dj_conn():
     assert_true(c1 is c3)
     assert_true(c1 is not c4)
     assert_true(c4 is c5)
+
+
 
 
 def test_repr():
