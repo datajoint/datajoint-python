@@ -1,4 +1,6 @@
 import numpy as np
+from decimal import Decimal
+from datetime import datetime
 from datajoint.blob import pack, unpack
 from numpy.testing import assert_array_equal
 from nose.tools import assert_equal, assert_true
@@ -25,6 +27,13 @@ def test_pack():
 
     x = [1, 2, 3, 4]
     assert_array_equal(x, unpack(pack(x.__iter__())), "Iterator did not pack/unpack correctly")
+
+    x = Decimal('1.24')
+    assert_true(float(x) == unpack(pack(x)), "Decimal object did not pack/unpack correctly")
+
+    x = datetime.now()
+    assert_true(str(x) == unpack(pack(x)), "Datetime object did not pack/unpack correctly")
+
 
 
 def test_complex():

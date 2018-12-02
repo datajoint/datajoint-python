@@ -5,6 +5,7 @@ Provides serialization methods for numpy.ndarrays that ensure compatibility with
 import zlib
 from collections import OrderedDict, Mapping, Iterable
 from decimal import Decimal
+from datetime import datetime
 import numpy as np
 from .errors import DataJointError
 
@@ -234,6 +235,8 @@ def pack_obj(obj):
         blob += pack_array(np.array(obj))
     elif isinstance(obj, Decimal):
         blob += pack_array(np.array(np.float64(obj)))
+    elif isinstance(obj, datetime):
+        blob += pack_obj(str(obj))
     else:
         raise DataJointError("Packing object of type %s currently not supported!" % type(obj))
 
