@@ -200,7 +200,10 @@ def declare(full_table_name, definition, context):
 
     table_name = full_table_name.strip('`').split('.')[1]
     if len(table_name) > MAX_TABLE_NAME_LENGTH:
-        raise DataJointError('Table name `%s` is too long')
+        raise DataJointError(
+            'Table name `{name}` exceeds the max length of {max_length}'.format(
+                name=table_name,
+                max_length=MAX_TABLE_NAME_LENGTH))
     # split definition into lines
     definition = re.split(r'\s*\n\s*', definition.strip())
     # check for optional table comment
