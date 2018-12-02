@@ -116,7 +116,7 @@ class Connection:
         except:
             return False
 
-    def query(self, query, args=(), as_dict=False, suppress_warnings=True, reconnect=True):
+    def query(self, query, args=(), as_dict=False, suppress_warnings=True, reconnect=None):
         """
         Execute the specified query and return the tuple generator (cursor).
 
@@ -126,6 +126,8 @@ class Connection:
                         query results as dictionary.
         :param suppress_warnings: If True, suppress all warnings arising from underlying query library
         """
+        if reconnect is None:
+            reconnect = config['database.reconnect']
 
         cursor = client.cursors.DictCursor if as_dict else client.cursors.Cursor
         cur = self._conn.cursor(cursor=cursor)
