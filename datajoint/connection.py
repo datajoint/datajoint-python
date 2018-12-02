@@ -191,7 +191,6 @@ class Connection:
     def cancel_transaction(self):
         """
         Cancels the current transaction and rolls back all changes made during the transaction.
-
         """
         self.query('ROLLBACK')
         self._in_transaction = False

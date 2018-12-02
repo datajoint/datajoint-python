@@ -105,34 +105,3 @@ class TestTransactions:
                      "Length is not 1. Expected because rollback should have happened.")
         assert_equal(len(self.relation & 'subject_id = 2'), 0,
                      "Length is not 0. Expected because rollback should have happened.")
-
-
-
-class TestReconnect:
-    """
-    test reconnection
-    """
-
-    @classmethod
-    def setup(cls):
-        cls.conn = dj.conn(reset=True, **CONN_INFO)
-
-    def test_close(self):
-        assert_true(self.conn.is_connected, "Connection should be alive")
-        self.conn.close()
-        assert_false(self.conn.is_connected, "Connection should now be closed")
-
-
-    def test_reconnect(self):
-        assert_true(self.conn.is_connected, "Connection should be alive")
-        self.conn.close()
-        self.conn.query('SHOW DATABASES;', reconnect=True).fetchall()
-        assert_true(self.conn.is_connected, "Connection should be alive")
-
-
-    @raises(DataJointError)
-    def reconnect_throws_error_in_transaction(self):
-        assert_true(self.conn.is_connected, "Connection should be alive")
-        self.conn.close()
-        with self.conn.transaction:
-            self.conn.query('SHOW DATABASES;', reconnect=True).fetchall()
