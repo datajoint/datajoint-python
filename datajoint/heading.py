@@ -3,6 +3,7 @@ from collections import namedtuple, OrderedDict, defaultdict
 from itertools import chain
 import re
 import logging
+from .settings import config
 from .errors import DataJointError
 
 logger = logging.getLogger(__name__)
@@ -185,10 +186,11 @@ class Heading:
 
         # additional attribute properties
         for attr in attributes:
-            # process external attributes
+            # process configurable attributes
             split_comment = attr['comment'].split(':')
             attr['is_external'] = len(split_comment) >= 3 and split_comment[1].startswith('external')
-            if attr['is_external']:
+            attr['is_attachment'] = len(split_comment) >= 3 and split_comment[1].startswith('attach')
+            if attr['is_external'] or attr['is_attachment']:
                 attr['comment'] = ':'.join(split_comment[2:])
                 attr['type'] = split_comment[1]
 
@@ -208,9 +210,8 @@ class Heading:
                 attr['default'] = 'null'
 
             attr['sql_expression'] = None
-            if not (attr['numeric'] or attr['string'] or attr['is_blob']):
-                raise DataJointError('Unsupported field type {field} in `{database}`.`{table_name}`'.format(
-                    field=attr['type'], database=database, table_name=table_name))
+            attr['is_supported'] = attr['numeric'] or attr['string'] or attr['is_blob'] or attr['is_attachment']
+
             attr.pop('Extra')
 
             # fill out dtype. All floats and non-nullable integers are turned into specific dtypes
