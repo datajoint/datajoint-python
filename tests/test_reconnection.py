@@ -16,10 +16,10 @@ class TestReconnect:
     """
 
     def setup(self):
-        print("Setup was invoked")
+        self.conn = dj.conn(reset=True, **CONN_INFO)
+
 
     def test_close(self):
-        self.conn = dj.conn(reset=True, **CONN_INFO)
         assert_true(self.conn.is_connected, "Connection should be alive")
         self.conn.close()
         assert_false(self.conn.is_connected, "Connection should now be closed")
