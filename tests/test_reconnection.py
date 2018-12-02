@@ -32,7 +32,7 @@ class TestReconnect:
 
 
     @raises(DataJointError)
-    def reconnect_throws_error_in_transaction(self):
+    def test_reconnect_throws_error_in_transaction(self):
         assert_true(self.conn.is_connected, "Connection should be alive")
         self.conn.close()
         with self.conn.transaction:
