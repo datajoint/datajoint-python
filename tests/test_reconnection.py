@@ -15,11 +15,11 @@ class TestReconnect:
     test reconnection
     """
 
-    @classmethod
-    def setup_class(cls):
-        cls.conn = dj.conn(reset=True, **CONN_INFO)
+    def setup(self):
+        print("Setup was invoked")
 
     def test_close(self):
+        self.conn = dj.conn(reset=True, **CONN_INFO)
         assert_true(self.conn.is_connected, "Connection should be alive")
         self.conn.close()
         assert_false(self.conn.is_connected, "Connection should now be closed")
@@ -35,6 +35,6 @@ class TestReconnect:
     @raises(DataJointError)
     def test_reconnect_throws_error_in_transaction(self):
         assert_true(self.conn.is_connected, "Connection should be alive")
-        self.conn.close()
         with self.conn.transaction:
+            self.conn.close()
             self.conn.query('SHOW DATABASES;', reconnect=True).fetchall()
