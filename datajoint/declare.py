@@ -12,6 +12,7 @@ from .errors import DataJointError
 STORE_NAME_LENGTH = 8
 STORE_HASH_LENGTH = 43
 HASH_DATA_TYPE = 'char(51)'
+MAX_TABLE_NAME_LENGTH = 64
 
 logger = logging.getLogger(__name__)
 
@@ -196,6 +197,13 @@ def declare(full_table_name, definition, context):
     :param definition: DataJoint table definition
     :param context: dictionary of objects that might be referred to in the table.
     """
+
+    table_name = full_table_name.strip('`').split('.')[1]
+    if len(table_name) > MAX_TABLE_NAME_LENGTH:
+        raise DataJointError(
+            'Table name `{name}` exceeds the max length of {max_length}'.format(
+                name=table_name,
+                max_length=MAX_TABLE_NAME_LENGTH))
     # split definition into lines
     definition = re.split(r'\s*\n\s*', definition.strip())
     # check for optional table comment
@@ -264,8 +272,8 @@ def compile_attribute(line, in_key, foreign_key_sql):
     match = {k: v.strip() for k, v in match.items()}
     match['nullable'] = match['default'].lower() == 'null'
     acceptable_datatype_pattern = r'^(time|date|year|enum|(var)?char|float|double|decimal|' \
-                                  r'(tiny||small|medium|big)int|' \
-                                  r'(tiny||small|medium|long)blob|external)'
+                                  r'(tiny|small|medium|big)?int|' \
+                                  r'(tiny|small|medium|long)?blob|external|attach)'
     if re.match(acceptable_datatype_pattern, match['type']) is None:
         raise DataJointError('DataJoint does not support datatype "{type}"'.format(**match))
 
@@ -284,6 +292,7 @@ def compile_attribute(line, in_key, foreign_key_sql):
     match['comment'] = match['comment'].replace('"', '\\"')   # escape double quotes in comment
 
     is_external = match['type'].startswith('external')
+    is_attachment = match['type'].startswith('attachment')
     if not is_external:
         sql = ('`{name}` {type} {default}' + (' COMMENT "{comment}"' if match['comment'] else '')).format(**match)
     else:
@@ -297,7 +306,7 @@ def compile_attribute(line, in_key, foreign_key_sql):
         if store_name != '' and not store_name.isidentifier():
             raise DataJointError(
                 'The external store name `{type}` is invalid. Make like a python identifier.'.format(**match))
-        if len(store_name)>STORE_NAME_LENGTH:
+        if len(store_name) > STORE_NAME_LENGTH:
             raise DataJointError(
                 'The external store name `{type}` is too long. Must be <={max_len} characters.'.format(
                     max_len=STORE_NAME_LENGTH, **match))
