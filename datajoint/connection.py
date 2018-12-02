@@ -105,13 +105,19 @@ class Connection:
     def register(self, schema):
         self.schemas[schema.database] = schema
 
+    def ping(self):
+        """
+        Pings the connection. Raises an exception if the connection is closed.
+        """
+        self._conn.ping(reconnect=False)
+
     @property
     def is_connected(self):
         """
         Returns true if the object is connected to the database server.
         """
         try:
-            self._conn.ping(reconnect=False)
+            self.ping()
             return True
         except:
             return False
