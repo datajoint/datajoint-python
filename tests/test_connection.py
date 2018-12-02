@@ -120,13 +120,13 @@ class TestReconnect:
     def test_close(self):
         assert_true(self.conn.is_connected, "Connection should be alive")
         self.conn.close()
-        assert_false(self.conn_is_connected, "Connection should now be closed")
+        assert_false(self.conn.is_connected, "Connection should now be closed")
 
 
     def test_reconnect(self):
         assert_true(self.conn.is_connected, "Connection should be alive")
         self.conn.close()
-        self.conn.query('SHOW DATABASES;').fetchall()
+        self.conn.query('SHOW DATABASES;', reconnect=True).fetchall()
         assert_true(self.conn.is_connected, "Connection should be alive")
 
 
@@ -135,4 +135,4 @@ class TestReconnect:
         assert_true(self.conn.is_connected, "Connection should be alive")
         self.conn.close()
         with self.conn.transaction:
-            self.conn.query('SHOW DATABASES;').fetchall()
+            self.conn.query('SHOW DATABASES;', reconnect=True).fetchall()
