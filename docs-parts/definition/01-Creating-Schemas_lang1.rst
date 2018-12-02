@@ -1,4 +1,7 @@
 
+.. note:: By convention, the ``datajoint`` package is imported as ``dj``.
+  The documentation refers to the package as ``dj`` throughout.
+
 Create a new schema using the ``dj.schema`` function:
 
 .. code-block:: python
