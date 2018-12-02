@@ -164,3 +164,15 @@ class TestDeclare:
             ----
             -> [optional] User
             """
+
+    @staticmethod
+    @raises(dj.DataJointError)
+    def test_unsupported_datatype():
+
+        @schema
+        class Q(dj.Manual):
+            definition = """
+            experiment : int
+            ---
+            description : text
+            """
