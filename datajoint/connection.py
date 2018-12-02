@@ -156,7 +156,7 @@ class Connection:
                     logger.debug("Re-executing SQL")
                     cur = self.query(query, args=args, as_dict=as_dict, suppress_warnings=suppress_warnings, reconnect=False)
             else:
-                logger.debug("Caught InterfaceError/OperationalError that are not related to connection issue")
+                logger.debug("Caught InterfaceError/OperationalError.")
                 raise
         except err.ProgrammingError as e:
             if e.args[0] == server_error_codes['parse error']:
