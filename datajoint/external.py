@@ -6,7 +6,7 @@ from .hash import long_hash
 from .blob import pack, unpack
 from .table import Table
 from .declare import STORE_HASH_LENGTH, HASH_DATA_TYPE
-from .s3 import Folder as S3
+from .s3 import Folder as S3Folder
 from .utils import safe_write
 
 

@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 default_attribute_properties = dict(    # these default values are set in computed attributes
     name=None, type='expression', in_key=False, nullable=False, default=None, comment='calculated attribute',
     autoincrement=False, numeric=None, string=None, is_blob=False, is_attachment=False, is_external=False,
-    is_supported=False, sql_expression=None, database=None, dtype=object, config_name=None)
+    unsupported=False, sql_expression=None, database=None, dtype=object, config_name=None)
 
 
 class Attribute(namedtuple('_Attribute', default_attribute_properties)):
@@ -210,7 +210,7 @@ class Heading:
                 attr['default'] = 'null'
 
             attr['sql_expression'] = None
-            attr['is_supported'] = attr['numeric'] or attr['string'] or attr['is_blob'] or attr['is_attachment']
+            attr['unsupported'] = not(attr['numeric'] or attr['string'] or attr['is_blob'] or attr['is_attachment'])
 
             attr.pop('Extra')
 
