@@ -15,26 +15,26 @@ Please cite:
 """
 
 __author__ = "Dimitri Yatsenko, Edgar Y. Walker, and Fabian Sinz at Baylor College of Medicine"
-__date__ = "Nov 15, 2018"
+__date__ = "Dec 4, 2018"
 __all__ = ['__author__', '__version__',
-           'config', 'conn', 'kill', 'Table',
-           'Connection', 'Heading', 'FreeTable', 'Not', 'schema',
+           'config', 'conn', 'Connection',
+           'schema', 'create_virtual_module',
+           'Table', 'FreeTable',
            'Manual', 'Lookup', 'Imported', 'Computed', 'Part',
-           'AndList', 'ERD', 'U', 'key',
-           'DataJointError', 'DuplicateError',
-           'set_password', 'create_virtual_module']
+           'Not', 'AndList', 'U', 'ERD',
+           'set_password', 'kill',
+           'DataJointError', 'DuplicateError', 'key']
 
 
 # ------------- flatten import hierarchy -------------------------
 from .version import __version__
 from .settings import config
 from .connection import conn, Connection
-from .table import FreeTable, Table
-from .user_tables import Manual, Lookup, Imported, Computed, Part
-from .expression import Not, AndList, U
-from .heading import Heading
 from .schema import Schema as schema
 from .schema import create_virtual_module
+from .table import Table, FreeTable
+from .user_tables import Manual, Lookup, Imported, Computed, Part
+from .expression import Not, AndList, U
 from .erd import ERD
 from .admin import set_password, kill
 from .errors import DataJointError, DuplicateError
