@@ -10,7 +10,7 @@ from pymysql import OperationalError, InternalError, IntegrityError
 from .settings import config
 from .declare import declare
 from .expression import QueryExpression
-from .blob import pack
+from . import attach, blob
 from .utils import user_choice
 from .heading import Heading
 from .errors import server_error_codes, DataJointError, DuplicateError
@@ -219,14 +219,22 @@ class Table(QueryExpression):
                 """
                 if ignore_extra_fields and name not in heading:
                     return None
-                if heading[name].is_external:
-                    placeholder, value = '%s', self.external_table.put(heading[name].type, pack(value))
-                elif heading[name].is_blob:
+                attr = heading[name]
+                if attr.is_blob:
                     if value is None:
                         placeholder, value = 'NULL', None
                     else:
-                        placeholder, value = '%s', pack(value)
-                elif heading[name].numeric:
+                        placeholder = '%s'
+                        value = blob.pack(value)
+                        value = self.external_table.put(attr.type, value) if attr.is_external else value
+                elif attr.is_attachment:
+                    if value is None:
+                        placeholder, value = 'NULL', None
+                    else:
+                        placeholder = '%s'
+                        value = attach.load(value)
+                        value = self.external_table.put(attr.type, value) if attr.is_external else value
+                elif attr.numeric:
                     if value is None or value == '' or np.isnan(np.float(value)):  # nans are turned into NULLs
                         placeholder, value = 'NULL', None
                     else:
@@ -550,7 +558,7 @@ class Table(QueryExpression):
         attr = self.heading[attrname]
 
         if attr.is_blob:
-            value = pack(value)
+            value = blob.pack(value)
             placeholder = '%s'
         elif attr.numeric:
             if value is None or np.isnan(np.float(value)):  # nans are turned into NULLs
