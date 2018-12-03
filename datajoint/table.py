@@ -220,7 +220,7 @@ class Table(QueryExpression):
                 if ignore_extra_fields and name not in heading:
                     return None
                 attr = heading[name]
-                if value is None or (attr.is_numeric and value == '' or np.isnan(np.float(value))):
+                if value is None or (attr.numeric and (value == '' or np.isnan(np.float(value)))):
                     placeholder, value = 'DEFAULT', None
                 else:
                     placeholder = '%s'
