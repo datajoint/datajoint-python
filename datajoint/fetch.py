@@ -3,12 +3,19 @@ from functools import partial
 import numpy as np
 from .blob import unpack
 from .errors import DataJointError
-from . import key as PRIMARY_KEY
 import warnings
 
 
+class key:
+    """
+    object that allows requesting the primary key as an argument in expression.fetch()
+    The string "KEY" can be used instead of the class key
+    """
+    pass
+
+
 def is_key(attr):
-    return attr is PRIMARY_KEY or attr == 'KEY'
+    return attr is key or attr == 'KEY'
 
 
 def to_dicts(recarray):

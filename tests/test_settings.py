@@ -12,7 +12,7 @@ __author__ = 'Fabian Sinz'
 def test_load_save():
     """Testing load and save"""
     dj.config.save('tmp.json')
-    conf = dj.Config()
+    conf = settings.Config()
     conf.load('tmp.json')
     assert_true(conf == dj.config, 'Two config files do not match.')
     os.remove('tmp.json')
@@ -21,7 +21,7 @@ def test_load_save():
 def test_singleton():
     """Testing singleton property"""
     dj.config.save('tmp.json')
-    conf = dj.Config()
+    conf = settings.Config()
     conf.load('tmp.json')
     conf['dummy.val'] = 2
 
@@ -31,9 +31,9 @@ def test_singleton():
 
 def test_singleton2():
     """Testing singleton property"""
-    conf = dj.Config()
+    conf = settings.Config()
     conf['dummy.val'] = 2
-    _ = dj.Config() # a new instance should not delete dummy.val
+    _ = settings.Config() # a new instance should not delete dummy.val
     assert_true(conf['dummy.val'] == 2, 'Config does not behave like a singleton.')
 
 

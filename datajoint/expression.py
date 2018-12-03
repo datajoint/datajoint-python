@@ -6,7 +6,7 @@ import numpy as np
 import re
 import datetime
 import decimal
-from . import config
+from .settings import config
 from .errors import DataJointError
 from .fetch import Fetch, Fetch1
 

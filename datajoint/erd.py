@@ -13,7 +13,7 @@ try:
 except:
     erd_active = False
 
-from . import Manual, Imported, Computed, Lookup, Part
+from .user_tables import Manual, Imported, Computed, Lookup, Part
 from .errors import DataJointError
 from .table import lookup_class_name
 
