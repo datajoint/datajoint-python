@@ -3,8 +3,14 @@ from functools import partial
 import numpy as np
 from .blob import unpack
 from .errors import DataJointError
-from . import key as PRIMARY_KEY
 import warnings
+
+
+class PRIMARY_KEY:
+    """
+    object that allows requesting the primary key in Fetch.__getitem__
+    """
+    pass
 
 
 def is_key(attr):

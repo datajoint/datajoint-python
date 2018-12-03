@@ -170,3 +170,28 @@ class Config(collections.MutableMapping):
                 self._conf[key] = value
             else:
                 raise DataJointError(u'Validator for {0:s} did not pass'.format(key))
+
+
+# ----------- load configuration from file ----------------
+config = Config()
+config_files = (os.path.expanduser(n) for n in (LOCALCONFIG, os.path.join('~', GLOBALCONFIG)))
+try:
+    config_file = next(n for n in config_files if os.path.exists(n))
+except StopIteration:
+    config.add_history('No config file found, using default settings.')
+else:
+    config.load(config_file)
+    del config_file
+
+# override login credentials with environment variables
+mapping = {k: v for k, v in zip(
+    ('database.host', 'database.user', 'database.password',
+     'external.aws_access_key_id', 'external.aws_secret_access_key',),
+    map(os.getenv, ('DJ_HOST', 'DJ_USER', 'DJ_PASS',
+                    'DJ_AWS_ACCESS_KEY_ID', 'DJ_AWS_SECRET_ACCESS_KEY',)))
+           if v is not None}
+for k in mapping:
+    config.add_history('Updated login credentials from %s' % k)
+config.update(mapping)
+
+logger.setLevel(log_levels[config['loglevel']])

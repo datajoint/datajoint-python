@@ -9,7 +9,7 @@ import logging
 from getpass import getpass
 from pymysql import err
 
-from . import config
+from .settings import config
 from .errors import DataJointError, server_error_codes
 from .dependencies import Dependencies
 
