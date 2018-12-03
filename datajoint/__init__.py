@@ -38,4 +38,4 @@ from .schema import create_virtual_module
 from .erd import ERD
 from .admin import set_password, kill
 from .errors import DataJointError, DuplicateError
-from .fetch import PRIMARY_KEY as key
+from .fetch import key
