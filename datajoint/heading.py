@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 default_attribute_properties = dict(    # these default values are set in computed attributes
     name=None, type='expression', in_key=False, nullable=False, default=None, comment='calculated attribute',
-    autoincrement=False, numeric=None, string=None, is_blob=False, is_external=False, sql_expression=None,
+    autoincrement=False, numeric=None, string=None, is_blob=False, is_attachment=False, is_external=False, sql_expression=None,
     database=None, dtype=object)
 
 

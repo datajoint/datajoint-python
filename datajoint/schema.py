@@ -3,17 +3,15 @@ import pymysql
 import logging
 import inspect
 import re
-import itertools
-import collections
 from . import conn, config
 from .errors import DataJointError
 from .jobs import JobTable
 from .external import ExternalTable
 from .heading import Heading
-from .erd import ERD, _get_tier
 from .utils import user_choice, to_camel_case
 from .user_tables import Part, Computed, Imported, Manual, Lookup
-from .table import lookup_class_name, Log, FreeTable
+from .table import lookup_class_name, Log
+import types
 
 logger = logging.getLogger(__name__)
 
@@ -237,3 +235,21 @@ class Schema:
         if self._external is None:
             self._external = ExternalTable(self.connection, self.database)
         return self._external
+
+
+def create_virtual_module(module_name, schema_name, create_schema=False, create_tables=False, connection=None):
+    """
+    Creates a python module with the given name from the name of a schema on the server and
+    automatically adds classes to it corresponding to the tables in the schema.
+
+    :param module_name: displayed module name
+    :param schema_name: name of the database in mysql
+    :param create_schema: if True, create the schema on the database server
+    :param create_tables: if True, module.schema can be used as the decorator for declaring new
+    :return: the python module containing classes from the schema object and the table classes
+    """
+    module = types.ModuleType(module_name)
+    _schema = Schema(schema_name, create_schema=create_schema, create_tables=create_tables, connection=connection)
+    _schema.spawn_missing_classes(context=module.__dict__)
+    module.__dict__['schema'] = _schema
+    return module
