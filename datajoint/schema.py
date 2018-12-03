@@ -3,7 +3,8 @@ import pymysql
 import logging
 import inspect
 import re
-from . import conn, config
+from .connection import conn
+from .settings import config
 from .errors import DataJointError
 from .jobs import JobTable
 from .external import ExternalTable

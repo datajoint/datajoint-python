@@ -1,6 +1,7 @@
 import pymysql
-from . import conn, config
 from getpass import getpass
+from .connection import conn
+from .settings import config
 from .utils import user_choice
 
 
