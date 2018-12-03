@@ -1,7 +1,7 @@
 from collections import OrderedDict
 from functools import partial
 import numpy as np
-from .blob import unpack
+from . import blob, attach
 from .errors import DataJointError
 import warnings
 
@@ -22,6 +22,23 @@ def to_dicts(recarray):
     """convert record array to a dictionaries"""
     for rec in recarray:
         yield dict(zip(recarray.dtype.names, rec.tolist()))
+
+
+def _get(connection, attr, data, squeeze):
+    """
+    :param connection:
+    :param attr: an attribute from the heading
+    :param data: literal value fetched from the table
+    :param squeeze: if True squeeze blobs
+    :return: unpacked data
+    """
+    if attr.is_external:
+        data = connection.schemas[attr.database].external_table.get(data)
+    if attr.is_blob:
+        return blob.unpack(data, squeeze=squeeze)
+    if attr.is_attachment:
+        return attach.save(data)
+    return data
 
 
 class Fetch:
@@ -61,23 +78,18 @@ class Fetch:
                           'Consider setting a limit explicitly.')
             limit = 2 * len(self._expression)
 
+        get = partial(_get, self._expression.connection, squeeze=squeeze)
         if not attrs:
             # fetch all attributes
             cur = self._expression.cursor(as_dict=as_dict, limit=limit, offset=offset, order_by=order_by)
             heading = self._expression.heading
             if as_dict:
-                ret = [OrderedDict((name, unpack(d[name], squeeze=squeeze) if heading[name].is_blob else d[name])
-                                   for name in heading.names)
-                       for d in cur]
+                ret = [OrderedDict((name, get(heading[name], d[name])) for name in heading.names) for d in cur]
             else:
                 ret = list(cur.fetchall())
                 ret = np.array(ret, dtype=heading.as_dtype)
                 for name in heading:
-                    if heading[name].is_external:
-                        external_table = self._expression.connection.schemas[heading[name].database].external_table
-                        ret[name] = list(map(unpack, map(external_table.get, ret[name])))
-                    elif heading[name].is_blob:
-                        ret[name] = list(map(partial(unpack, squeeze=squeeze), ret[name]))
+                    ret[name] = list(map(partial(get, heading[name]), ret[name]))
         else:  # if list of attributes provided
             attributes = [a for a in attrs if not is_key(a)]
             result = self._expression.proj(*attributes).fetch(
@@ -109,6 +121,7 @@ class Fetch1:
     def __init__(self, relation):
         self._expression = relation
 
+
     def __call__(self, *attrs, squeeze=False):
         """
         Fetches the expression results from the database when the expression is known to yield only one entry.
@@ -132,12 +145,7 @@ class Fetch1:
             ret = cur.fetchone()
             if not ret or cur.fetchone():
                 raise DataJointError('fetch1 should only be used for relations with exactly one tuple')
-
-            def get_external(attr, _hash):
-                return unpack(self._expression.connection.schemas[attr.database].external_table.get(_hash))
-
-            ret = OrderedDict((name, get_external(heading[name], ret[name])) if heading[name].is_external
-                              else (name, unpack(ret[name], squeeze=squeeze) if heading[name].is_blob else ret[name])
+            ret = OrderedDict((name, _get(self._expression.connection, heading[name], ret[name], squeeze=squeeze))
                               for name in heading.names)
         else:  # fetch some attributes, return as tuple
             attributes = [a for a in attrs if not is_key(a)]
