@@ -214,33 +214,27 @@ class Table(QueryExpression):
                 For a given attribute `name` with `value`, return its processed value or value placeholder
                 as a string to be included in the query and the value, if any, to be submitted for
                 processing by mysql API.
-                :param name:
-                :param value:
+                :param name:  name of attribute to be inserted
+                :param value: value of attribute to be inserted
                 """
                 if ignore_extra_fields and name not in heading:
                     return None
                 attr = heading[name]
-                if attr.is_blob:
-                    if value is None:
-                        placeholder, value = 'NULL', None
-                    else:
-                        placeholder = '%s'
-                        value = blob.pack(value)
-                        value = self.external_table.put(attr.type, value) if attr.is_external else value
-                elif attr.is_attachment:
-                    if value is None:
-                        placeholder, value = 'NULL', None
-                    else:
-                        placeholder = '%s'
-                        value = attach.load(value)
-                        value = self.external_table.put(attr.type, value) if attr.is_external else value
-                elif attr.numeric:
-                    if value is None or value == '' or np.isnan(np.float(value)):  # nans are turned into NULLs
-                        placeholder, value = 'NULL', None
-                    else:
-                        placeholder, value = '%s', (str(int(value) if isinstance(value, bool) else value))
+                if value is None:
+                    placeholder, value = 'NULL', None
                 else:
                     placeholder = '%s'
+                    if attr.is_blob:
+                        value = blob.pack(value)
+                        value = self.external_table.put(attr.type, value) if attr.is_external else value
+                    elif attr.is_attachment:
+                        value = attach.load(value)
+                        value = self.external_table.put(attr.type, value) if attr.is_external else value
+                    elif attr.numeric:
+                        if value == '' or np.isnan(np.float(value)):  # nans are turned into NULLs
+                            placeholder, value = 'NULL', None
+                        else:
+                            value = str(int(value) if isinstance(value, bool) else value)
                 return name, placeholder, value
 
             def check_fields(fields):
