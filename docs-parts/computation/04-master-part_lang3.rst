@@ -10,7 +10,7 @@
     class ElectrodeResponse(dj.Part):
     definition = """
     -> master
-    electrode: int
+    electrode: int    # electrode number on the probe
     """
 
     class ChannelResponse(dj.Part):
