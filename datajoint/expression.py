@@ -9,6 +9,7 @@ import decimal
 from . import config
 from .errors import DataJointError
 from .fetch import Fetch, Fetch1
+from .pandas_mixin import PandasMixin
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +57,7 @@ def is_true(restriction):
     return restriction is True or isinstance(restriction, AndList) and not len(restriction)
 
 
-class QueryExpression:
+class QueryExpression(PandasMixin):
     """
     QueryExpression implements query operators to derive new entity sets from its inputs.
     When fetching data from the database, the expression is compiled into an SQL expression.
