@@ -6,15 +6,16 @@ from .errors import DataJointError
 import warnings
 
 
-class PRIMARY_KEY:
+class key:
     """
-    object that allows requesting the primary key in Fetch.__getitem__
+    object that allows requesting the primary key as an argument in expression.fetch()
+    The string "KEY" can be used instead of the class key
     """
     pass
 
 
 def is_key(attr):
-    return attr is PRIMARY_KEY or attr == 'KEY'
+    return attr is key or attr == 'KEY'
 
 
 def to_dicts(recarray):
