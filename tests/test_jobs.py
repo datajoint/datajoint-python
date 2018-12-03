@@ -77,14 +77,6 @@ def test_sigint():
     schema.schema.jobs.delete()
 
 
-def test_key_pack_testing():
-    jobs = schema.schema.jobs
-    key = dict(a='string', b=int, c=Decimal())
-    assert jobs.packable_or_none(key) is None
-    key.pop('c')
-    assert jobs.packable_or_none(key) is not None
-
-
 def test_sigterm():
     # clear out job table
     schema.schema.jobs.delete()
