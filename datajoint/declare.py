@@ -13,6 +13,7 @@ STORE_NAME_LENGTH = 8
 STORE_HASH_LENGTH = 43
 HASH_DATA_TYPE = 'char(51)'
 MAX_TABLE_NAME_LENGTH = 64
+DEFAULT_PROTOCOL = 'LONGBLOB'   # for a configurable field
 
 logger = logging.getLogger(__name__)
 
@@ -291,17 +292,14 @@ def compile_attribute(line, in_key, foreign_key_sql):
             match['default'] = 'NOT NULL'
     match['comment'] = match['comment'].replace('"', '\\"')   # escape double quotes in comment
 
-    is_external = match['type'].startswith('external')
-    is_attachment = match['type'].startswith('attachment')
-    if not is_external:
-        sql = ('`{name}` {type} {default}' + (' COMMENT "{comment}"' if match['comment'] else '')).format(**match)
-    else:
-        # process externally stored attribute
+    is_configurable = match['type'].startswith(('external', 'blob-', 'attach'))
+    is_external = False
+    if is_configurable:
         if in_key:
-            raise DataJointError('External attributes cannot be primary in:\n%s' % line)
+            raise DataJointError('Configurable attributes cannot be primary in:\n%s' % line)
         store_name = match['type'].split('-')
-        if store_name[0] != 'external':
-            raise DataJointError('External store types must be specified as "external" or "external-<name>"')
+        if store_name[0] not in ('external', 'blob', 'attach'):
+            raise DataJointError('Invalid configurable attribute name in:\n%s' % line)
         store_name = '-'.join(store_name[1:])
         if store_name != '' and not store_name.isidentifier():
             raise DataJointError(
@@ -311,10 +309,19 @@ def compile_attribute(line, in_key, foreign_key_sql):
                 'The external store name `{type}` is too long. Must be <={max_len} characters.'.format(
                     max_len=STORE_NAME_LENGTH, **match))
         if not match['default'] in ('DEFAULT NULL', 'NOT NULL'):
-            raise DataJointError('The only acceptable default value for an external field is null in:\n%s' % line)
+            raise DataJointError('The default value for a blob or attachment field, if any, can only be NULL in:\n%s' % line)
         if match['type'] not in config:
             raise DataJointError('The external store `{type}` is not configured.'.format(**match))
+        match['comment'] = ':'.join(('', match['type'], match['comment']))
+        protocol = config[match['type']].get('protocol', DEFAULT_PROTOCOL).lower()
+        is_external = protocol in {'s3', 'file'}
+        if not is_external:
+            if re.match(r'(long|medium|tiny)?blob', protocol):
+                match['type'] = protocol
 
+    if not is_external:
+        sql = ('`{name}` {type} {default}' + (' COMMENT "{comment}"' if match['comment'] else '')).format(**match)
+    else:
         # append external configuration name to the end of the comment
         sql = '`{name}` {hash_type} {default} COMMENT ":{type}:{comment}"'.format(
             hash_type=HASH_DATA_TYPE, **match)
