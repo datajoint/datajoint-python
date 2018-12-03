@@ -4,19 +4,19 @@
   @schema
   class ArrayResponse(dj.Computed):
   definition = """
-  array_id: int
+  array: int
   """
 
     class ElectrodeResponse(dj.Part):
     definition = """
     -> master
-    electrode_id: int
+    electrode: int
     """
 
     class ChannelResponse(dj.Part):
     definition = """
     -> ElectrodeResponse
-    channel_id: int
+    channel: int
     ---
     response: longblob  # response of a channel
     """
