@@ -7,14 +7,14 @@ import pymysql
 import logging
 import warnings
 from pymysql import OperationalError, InternalError, IntegrityError
-from . import config
+from .settings import config
 from .declare import declare
 from .expression import QueryExpression
 from .blob import pack
 from .utils import user_choice
 from .heading import Heading
 from .errors import server_error_codes, DataJointError, DuplicateError
-from . import __version__ as version
+from .version import __version__ as version
 
 logger = logging.getLogger(__name__)
 
@@ -61,9 +61,7 @@ class Table(QueryExpression):
         try:
             sql, uses_external = declare(self.full_table_name, self.definition, context)
             if uses_external:
-                # trigger the creation of the external hash lookup for the current schema
-                external_table = self.connection.schemas[self.database].external_table
-                sql = sql.format(external_table=external_table.full_table_name)
+                sql = sql.format(external_table=self.external_table.full_table_name)
             self.connection.query(sql)
         except pymysql.OperationalError as error:
             # skip if no create privilege
@@ -136,6 +134,7 @@ class Table(QueryExpression):
     @property
     def external_table(self):
         if self._external_table is None:
+            # trigger the creation of the external hash lookup for the current schema
             self._external_table = self.connection.schemas[self.database].external_table
         return self._external_table
 
