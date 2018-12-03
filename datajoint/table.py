@@ -220,7 +220,7 @@ class Table(QueryExpression):
                 if ignore_extra_fields and name not in heading:
                     return None
                 attr = heading[name]
-                if value is None:
+                if value is None or (attr.is_numeric and value == '' or np.isnan(np.float(value))):
                     placeholder, value = 'DEFAULT', None
                 else:
                     placeholder = '%s'
@@ -231,10 +231,7 @@ class Table(QueryExpression):
                         value = attach.load(value)
                         value = self.external_table.put(attr.type, value) if attr.is_external else value
                     elif attr.numeric:
-                        if value == '' or np.isnan(np.float(value)):  # nans are turned into NULLs
-                            placeholder, value = 'DEFAULT', None
-                        else:
-                            value = str(int(value) if isinstance(value, bool) else value)
+                        value = str(int(value) if isinstance(value, bool) else value)
                 return name, placeholder, value
 
             def check_fields(fields):
