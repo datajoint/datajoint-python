@@ -7,9 +7,9 @@ import warnings
 import itertools
 
 
-class S3Folder:
+class Folder:
     """
-    A S3Folder instance manipulates a flat folder of objects within an S3-compatible object store
+    A Folder instance manipulates a flat folder of objects within an S3-compatible object store
     """
     def __init__(self, endpoint, bucket, access_key, secret_key, location, database, **_):
         self.client = minio.Minio(endpoint, access_key=access_key, secret_key=secret_key, secure=False)
