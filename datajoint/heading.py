@@ -3,7 +3,6 @@ from collections import namedtuple, OrderedDict, defaultdict
 from itertools import chain
 import re
 import logging
-from .settings import config
 from .errors import DataJointError
 
 logger = logging.getLogger(__name__)
@@ -11,7 +10,7 @@ logger = logging.getLogger(__name__)
 default_attribute_properties = dict(    # these default values are set in computed attributes
     name=None, type='expression', in_key=False, nullable=False, default=None, comment='calculated attribute',
     autoincrement=False, numeric=None, string=None, is_blob=False, is_attachment=False, is_external=False,
-    unsupported=False, sql_expression=None, database=None, dtype=object, config_name=None)
+    unsupported=False, sql_expression=None, database=None, dtype=object)
 
 
 class Attribute(namedtuple('_Attribute', default_attribute_properties)):
@@ -187,21 +186,33 @@ class Heading:
         # additional attribute properties
         for attr in attributes:
             # process configurable attributes
-            split_comment = attr['comment'].split(':')
-            attr['is_external'] = len(split_comment) >= 3 and split_comment[1].startswith('external')
-            attr['is_attachment'] = len(split_comment) >= 3 and split_comment[1].startswith('attach')
-            if attr['is_external'] or attr['is_attachment']:
-                attr['comment'] = ':'.join(split_comment[2:])
-                attr['type'] = split_comment[1]
-
-            attr['nullable'] = (attr['nullable'] == 'YES')
             attr['in_key'] = (attr['in_key'] == 'PRI')
+            attr['database'] = database
+            attr['nullable'] = (attr['nullable'] == 'YES')
             attr['autoincrement'] = bool(re.search(r'auto_increment', attr['Extra'], flags=re.IGNORECASE))
-            attr['type'] = re.sub(r'int\(\d+\)', 'int', attr['type'], count=1)   # strip size off integers
+            attr['type'] = re.sub(r'int\(\d+\)', 'int', attr['type'], count=1)  # strip size off integers
             attr['numeric'] = bool(re.match(r'(tiny|small|medium|big)?int|decimal|double|float', attr['type']))
             attr['string'] = bool(re.match(r'(var)?char|enum|date|year|time|timestamp', attr['type']))
-            attr['is_blob'] = attr['is_external'] or bool(re.match(r'(tiny|medium|long)?blob', attr['type']))
-            attr['database'] = database
+            attr['is_blob'] = bool(re.match(r'(tiny|medium|long)?blob', attr['type']))
+
+            # recognize configurable fields
+            configurable_field = re.match(
+                r'^:(?P<type>(blob|external|attach)(-\w+)?):(?P<comment>.*)$', attr['comment'])
+            if configurable_field is None:
+                attr['is_external'] = False
+                attr['is_attachment'] = False
+            else:
+                # configurable fields: blob- and attach
+                if attr['in_key']:
+                    raise DataJointError('Configurable store attributes are not allowed in the primary key')
+                attr['comment'] = configurable_field.group('comment')
+                attr['is_external'] = not attr['is_blob']
+                attr['type'] = configurable_field.group('type')
+                attr['is_attachment'] = attr['type'].startswith('attach')
+                attr['is_blob'] = attr['type'].startswith(('blob', 'external'))
+                attr['string'] = False
+                if not attr['is_external']:
+                    print('aha!')
 
             if attr['string'] and attr['default'] is not None and attr['default'] not in sql_literals:
                 attr['default'] = '"%s"' % attr['default']
