@@ -3,7 +3,6 @@ from tqdm import tqdm
 from .settings import config
 from .errors import DataJointError
 from .hash import long_hash
-from .blob import pack, unpack
 from .table import Table
 from .declare import STORE_HASH_LENGTH, HASH_DATA_TYPE
 from .s3 import Folder as S3Folder
@@ -42,12 +41,11 @@ class ExternalTable(Table):
     def table_name(self):
         return '~external'
 
-    def put(self, store, obj):
+    def put(self, store, blob):
         """
         put an object in external store
         """
         spec = self._get_store_spec(store)
-        blob = pack(obj)
         blob_hash = long_hash(blob) + store[len('external-'):]
         if spec['protocol'] == 'file':
             folder = os.path.join(spec['location'], self.database)
@@ -115,7 +113,7 @@ class ExternalTable(Table):
                     os.makedirs(cache_folder)
                 safe_write(os.path.join(cache_folder, blob_hash), blob)
 
-        return unpack(blob)
+        return blob
 
     @property
     def references(self):

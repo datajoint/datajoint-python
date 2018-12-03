@@ -75,7 +75,7 @@ class Fetch:
                 for name in heading:
                     if heading[name].is_external:
                         external_table = self._expression.connection.schemas[heading[name].database].external_table
-                        ret[name] = list(map(external_table.get, ret[name]))
+                        ret[name] = list(map(unpack, map(external_table.get, ret[name])))
                     elif heading[name].is_blob:
                         ret[name] = list(map(partial(unpack, squeeze=squeeze), ret[name]))
         else:  # if list of attributes provided
@@ -134,7 +134,7 @@ class Fetch1:
                 raise DataJointError('fetch1 should only be used for relations with exactly one tuple')
 
             def get_external(attr, _hash):
-                return self._expression.connection.schemas[attr.database].external_table.get(_hash)
+                return unpack(self._expression.connection.schemas[attr.database].external_table.get(_hash))
 
             ret = OrderedDict((name, get_external(heading[name], ret[name])) if heading[name].is_external
                               else (name, unpack(ret[name], squeeze=squeeze) if heading[name].is_blob else ret[name])

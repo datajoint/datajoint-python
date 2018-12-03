@@ -220,7 +220,7 @@ class Table(QueryExpression):
                 if ignore_extra_fields and name not in heading:
                     return None
                 if heading[name].is_external:
-                    placeholder, value = '%s', self.external_table.put(heading[name].type, value)
+                    placeholder, value = '%s', self.external_table.put(heading[name].type, pack(value))
                 elif heading[name].is_blob:
                     if value is None:
                         placeholder, value = 'NULL', None
