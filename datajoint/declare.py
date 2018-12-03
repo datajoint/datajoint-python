@@ -6,7 +6,7 @@ import re
 import pyparsing as pp
 import logging
 
-from . import config
+from .settings import config
 from .errors import DataJointError
 
 STORE_NAME_LENGTH = 8

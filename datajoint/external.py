@@ -1,12 +1,12 @@
 import os
 from tqdm import tqdm
-from . import config
+from .settings import config
 from .errors import DataJointError
 from .hash import long_hash
 from .blob import pack, unpack
 from .table import Table
 from .declare import STORE_HASH_LENGTH, HASH_DATA_TYPE
-from . import s3
+from .s3 import S3Folder
 from .utils import safe_write
 
 
