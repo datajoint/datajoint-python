@@ -221,7 +221,7 @@ class Table(QueryExpression):
                     return None
                 attr = heading[name]
                 if value is None:
-                    placeholder, value = 'NULL', None
+                    placeholder, value = 'DEFAULT', None
                 else:
                     placeholder = '%s'
                     if attr.is_blob:
@@ -232,7 +232,7 @@ class Table(QueryExpression):
                         value = self.external_table.put(attr.type, value) if attr.is_external else value
                     elif attr.numeric:
                         if value == '' or np.isnan(np.float(value)):  # nans are turned into NULLs
-                            placeholder, value = 'NULL', None
+                            placeholder, value = 'DEFAULT', None
                         else:
                             value = str(int(value) if isinstance(value, bool) else value)
                 return name, placeholder, value

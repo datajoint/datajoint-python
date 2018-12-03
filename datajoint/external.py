@@ -5,7 +5,7 @@ from .errors import DataJointError
 from .hash import long_hash
 from .table import Table
 from .declare import STORE_HASH_LENGTH, HASH_DATA_TYPE
-from .s3 import Folder as S3Folder
+from . import s3 
 from .utils import safe_write
 
 
@@ -57,7 +57,7 @@ class ExternalTable(Table):
                     os.makedirs(folder)
                     safe_write(full_path, blob)
         elif spec['protocol'] == 's3':
-            S3Folder(database=self.database, **spec).put(blob_hash, blob)
+            s3.Folder(database=self.database, **spec).put(blob_hash, blob)
         else:
             raise DataJointError('Unknown external storage protocol {protocol} for {store}'.format(
                 store=store, protocol=spec['protocol']))
@@ -102,7 +102,7 @@ class ExternalTable(Table):
                     raise DataJointError('Lost access to external blob %s.' % full_path) from None
             elif spec['protocol'] == 's3':
                 try:
-                    blob = S3Folder(database=self.database, **spec).get(blob_hash)
+                    blob = s3.Folder(database=self.database, **spec).get(blob_hash)
                 except TypeError:
                     raise DataJointError('External store {store} configuration is incomplete.'.format(store=store))
             else:
@@ -169,7 +169,7 @@ class ExternalTable(Table):
                 os.remove(os.path.join(folder, f))
         elif spec['protocol'] == 's3':
             try:
-                S3Folder(database=self.database, **spec).clean(self.fetch('hash'))
+                s3.Folder(database=self.database, **spec).clean(self.fetch('hash'))
             except TypeError:
                 raise DataJointError('External store {store} configuration is incomplete.'.format(store=store))
 
