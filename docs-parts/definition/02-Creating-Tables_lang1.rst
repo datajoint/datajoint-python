@@ -28,7 +28,7 @@ The decorator attaches the information about the table to the class, and then re
 The class will become usable after you define the ``definition`` property as described in :ref:`definitions`.
 
 DataJoint classes in Python
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 DataJoint for Python is implemented through the use of classes.
 Working with classes usually implies that one might create different class instances with various internal states.
