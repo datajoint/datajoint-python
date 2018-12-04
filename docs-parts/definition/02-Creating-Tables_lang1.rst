@@ -1,7 +1,4 @@
 
-|python| Python
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 To define a DataJoint table in Python:
 
 1. Define a class inheriting from the appropriate DataJoint class: ``dj.Lookup``, ``dj.Manual``, ``dj.Imported`` or ``dj.Computed``.
