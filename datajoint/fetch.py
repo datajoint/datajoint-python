@@ -1,9 +1,12 @@
 from collections import OrderedDict
 from functools import partial
+import warnings
+import pandas
+import re
 import numpy as np
 from .blob import unpack
 from .errors import DataJointError
-import warnings
+from .settings import config
 
 
 class key:
@@ -24,6 +27,16 @@ def to_dicts(recarray):
         yield dict(zip(recarray.dtype.names, rec.tolist()))
 
 
+def _flatten_attribute_list(expression, attr):
+    for a in attr:
+        if re.match(r'^\s*KEY\s*(ASC\s*)?$', a):
+            yield from expression.primary_key
+        if re.match(r'^\s*KEY\s*DESC\s*$', a):
+            yield from (q + ' DESC' for q in expression.primary_key)
+        else:
+            yield a
+
+
 class Fetch:
     """
     A fetch object that handles retrieving elements from the table expression.
@@ -33,7 +46,7 @@ class Fetch:
     def __init__(self, expression):
         self._expression = expression
 
-    def __call__(self, *attrs, offset=None, limit=None, order_by=None, as_dict=False, squeeze=False):
+    def __call__(self, *attrs, offset=None, limit=None, order_by=None, format=None, as_dict=False, squeeze=False):
         """
         Fetches the expression results from the database into an np.array or list of dictionaries and unpacks blob attributes.
 
@@ -41,20 +54,43 @@ class Fetch:
         all attributes of this relation. If provided, returns tuples with an entry for each attribute.
         :param offset: the number of tuples to skip in the returned result
         :param limit: the maximum number of tuples to return
-        :param order_by: the list of attributes to order the results. No ordering should be assumed if order_by=None.
+        :param order_by: a single attribute or the list of attributes to order the results.
+                No ordering should be assumed if order_by=None.
+                To reverse the order, add DESC to the attribute name or names: e.g. ("age DESC", "frequency")
+                To order by primary key, use "KEY" or "KEY DESC"
+        :param format: Effective when as_dict=False and when attrs is empty
+                None: default from config['fetch_format'] or 'array' if not configured
+                "array": use numpy.key_array
+                "frame": output pandas.DataFrame. .
         :param as_dict: returns a list of dictionaries instead of a record array
         :param squeeze:  if True, remove extra dimensions from arrays
         :return: the contents of the relation in the form of a structured numpy.array or a dict list
         """
 
-        # if 'order_by' passed in a string, make into list
-        if isinstance(order_by, str):
-            order_by = [order_by]
+        if order_by is not None:
+            # if 'order_by' passed in a string, make into list
+            if isinstance(order_by, str):
+                order_by = [order_by]
+            # expand "KEY" or "KEY DESC"
+            order_by = list(_flatten_attribute_list(self._expression, order_by))
 
         # if attrs are specified then as_dict cannot be true
         if attrs and as_dict:
             raise DataJointError('Cannot specify attributes to return when as_dict=True. '
-                                 'Use proj() to select attributes or set as_dict=False')
+                                 'Use '
+                                 'proj() to select attributes or set as_dict=False')
+        # format should not be specified with attrs or is_dict=True
+        if format is not None and (as_dict or attrs):
+            raise DataJointError('Cannot specify output format when as_dict=True or '
+                                 'when attributes are selected to be fetched separately.')
+
+        if format not in {None, "array", "frame"}:
+            raise DataJointError('Fetch output format must be in {"array", "frame"}')
+
+        if not (attrs or as_dict) and format is None:
+            format = config.get('fetch_format', 'array')  # default to array
+            if format not in {"array", "frame"}:
+                raise DataJointError('Invalid entry in datajoint.config["fetch_format"]: use "array" or "frame"')
 
         if limit is None and offset is not None:
             warnings.warn('Offset set, but no limit. Setting limit to a large number. '
@@ -62,7 +98,7 @@ class Fetch:
             limit = 2 * len(self._expression)
 
         if not attrs:
-            # fetch all attributes
+            # fetch all attributes as a numpy.record_array or pandas.DataFrame
             cur = self._expression.cursor(as_dict=as_dict, limit=limit, offset=offset, order_by=order_by)
             heading = self._expression.heading
             if as_dict:
@@ -78,6 +114,8 @@ class Fetch:
                         ret[name] = list(map(external_table.get, ret[name]))
                     elif heading[name].is_blob:
                         ret[name] = list(map(partial(unpack, squeeze=squeeze), ret[name]))
+                if format == "frame":
+                    ret = pandas.DataFrame(ret).set_index(heading.primary_key)
         else:  # if list of attributes provided
             attributes = [a for a in attrs if not is_key(a)]
             result = self._expression.proj(*attributes).fetch(
@@ -89,6 +127,26 @@ class Fetch:
             ret = return_values[0] if len(attrs) == 1 else return_values
 
         return ret
+
+    def head(self, limit=25, **fetch_kwargs):
+        """
+        shortcut to fetch the first few entries from query expression.
+        Equivalent to fetch(order_by="KEY", limit=25)
+        :param limit:  number of entries
+        :param fetch_kwargs: kwargs for fetch
+        :return: query result
+        """
+        return self.fetch(order_by="KEY", limit=limit, **fetch_kwargs)
+
+    def tail(self, limit=25, **fetch_kwargs):
+        """
+        shortcut to fetch the last few entries from query expression.
+        Equivalent to fetch(order_by="KEY DESC", limit=25)
+        :param limit:  number of entries
+        :param fetch_kwargs: kwargs for fetch
+        :return: query result
+        """
+        return self.fetch(order_by="KEY DESC", limit=limit, **fetch_kwargs)
 
     def keys(self, **kwargs):
         """

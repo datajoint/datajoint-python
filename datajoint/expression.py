@@ -9,7 +9,6 @@ import decimal
 from .settings import config
 from .errors import DataJointError
 from .fetch import Fetch, Fetch1
-from .pandas_mixin import PandasMixin
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +56,7 @@ def is_true(restriction):
     return restriction is True or isinstance(restriction, AndList) and not len(restriction)
 
 
-class QueryExpression(PandasMixin):
+class QueryExpression:
     """
     QueryExpression implements query operators to derive new entity sets from its inputs.
     When fetching data from the database, the expression is compiled into an SQL expression.
@@ -379,7 +378,7 @@ class QueryExpression(PandasMixin):
             '\n'.join(' '.join(templates[f] % (tup[f] if f in tup.dtype.names else '=BLOB=')
                 for f in columns) for tup in tuples) +
             ('\n   ...\n' if has_more else '\n') +
-            (' (%d tuples)\n' % len(rel) if config['display.show_tuple_count'] else ''))
+            (' (Total: %d)\n' % len(rel) if config['display.show_tuple_count'] else ''))
 
     def _repr_html_(self):
         heading = self.heading
@@ -465,7 +464,7 @@ class QueryExpression(PandasMixin):
                 ['\n'.join(['<td>%s</td>' % (tup[name] if name in tup.dtype.names else '=BLOB=')
                     for name in heading.names])
                  for tup in tuples]),
-            count=('<p>%d tuples</p>' % len(rel)) if config['display.show_tuple_count'] else '')
+            count=('<p>Total: %d</p>' % len(rel)) if config['display.show_tuple_count'] else '')
 
     def make_sql(self, select_fields=None):
         return 'SELECT {fields} FROM {from_}{where}'.format(
