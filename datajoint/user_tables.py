@@ -12,9 +12,9 @@ _base_regexp = r'[a-z][a-z0-9]*(_[a-z][a-z0-9]*)*'
 
 # attributes that trigger instantiation of user classes
 supported_class_attrs = {
-    'key_source', 'describe', 'populate', 'progress', 'primary_key', 'proj', 'aggr', 'heading', 'fetch', 'fetch1',
-    'insert', 'insert1', 'drop', 'drop_quick', 'delete', 'delete_quick',
-    'get_df', 'df', 'get_head', 'head', 'get_tail', 'tail'}
+    'key_source', 'describe', 'heading', 'populate', 'progress', 'primary_key', 'proj', 'aggr',
+    'fetch', 'fetch1','head', 'tail',
+    'insert', 'insert1', 'drop', 'drop_quick', 'delete', 'delete_quick'}
 
 
 class OrderedClass(type):
