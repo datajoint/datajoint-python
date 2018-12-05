@@ -365,7 +365,7 @@ class QueryExpression:
         :param fetch_kwargs: kwargs for fetch
         :return: query result
         """
-        return self.fetch(order_by="KEY DESC", limit=limit, **fetch_kwargs)
+        return self.fetch(order_by="KEY DESC", limit=limit, **fetch_kwargs)[::-1]
 
     def attributes_in_restriction(self):
         """
