@@ -347,6 +347,26 @@ class QueryExpression:
     def fetch(self):
         return Fetch(self)
 
+    def head(self, limit=25, **fetch_kwargs):
+        """
+        shortcut to fetch the first few entries from query expression.
+        Equivalent to fetch(order_by="KEY", limit=25)
+        :param limit:  number of entries
+        :param fetch_kwargs: kwargs for fetch
+        :return: query result
+        """
+        return self.fetch(order_by="KEY", limit=limit, **fetch_kwargs)
+
+    def tail(self, limit=25, **fetch_kwargs):
+        """
+        shortcut to fetch the last few entries from query expression.
+        Equivalent to fetch(order_by="KEY DESC", limit=25)
+        :param limit:  number of entries
+        :param fetch_kwargs: kwargs for fetch
+        :return: query result
+        """
+        return self.fetch(order_by="KEY DESC", limit=limit, **fetch_kwargs)
+
     def attributes_in_restriction(self):
         """
         :return: list of attributes that are probably used in the restriction.

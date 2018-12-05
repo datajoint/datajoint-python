@@ -31,7 +31,7 @@ def _flatten_attribute_list(expression, attr):
     for a in attr:
         if re.match(r'^\s*KEY\s*(ASC\s*)?$', a):
             yield from expression.primary_key
-        if re.match(r'^\s*KEY\s*DESC\s*$', a):
+        elif re.match(r'^\s*KEY\s*DESC\s*$', a):
             yield from (q + ' DESC' for q in expression.primary_key)
         else:
             yield a
@@ -127,26 +127,6 @@ class Fetch:
             ret = return_values[0] if len(attrs) == 1 else return_values
 
         return ret
-
-    def head(self, limit=25, **fetch_kwargs):
-        """
-        shortcut to fetch the first few entries from query expression.
-        Equivalent to fetch(order_by="KEY", limit=25)
-        :param limit:  number of entries
-        :param fetch_kwargs: kwargs for fetch
-        :return: query result
-        """
-        return self.fetch(order_by="KEY", limit=limit, **fetch_kwargs)
-
-    def tail(self, limit=25, **fetch_kwargs):
-        """
-        shortcut to fetch the last few entries from query expression.
-        Equivalent to fetch(order_by="KEY DESC", limit=25)
-        :param limit:  number of entries
-        :param fetch_kwargs: kwargs for fetch
-        :return: query result
-        """
-        return self.fetch(order_by="KEY DESC", limit=limit, **fetch_kwargs)
 
     def keys(self, **kwargs):
         """
