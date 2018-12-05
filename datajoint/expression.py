@@ -390,7 +390,7 @@ class QueryExpression:
             limit = config['display.limit']
         if width is None:
             width = config['display.width']
-        tuples = rel.fetch(limit=limit+1)
+        tuples = rel.fetch(limit=limit+1, format="array")
         has_more = len(tuples) > limit
         tuples = tuples[:limit]
         columns = heading.names
@@ -409,7 +409,7 @@ class QueryExpression:
         heading = self.heading
         rel = self.proj(*heading.non_blobs)
         info = heading.table_info
-        tuples = rel.fetch(limit=config['display.limit']+1)
+        tuples = rel.fetch(limit=config['display.limit']+1, format='array')
         has_more = len(tuples) > config['display.limit']
         tuples = tuples[0:config['display.limit']]
 
