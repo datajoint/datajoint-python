@@ -6,6 +6,7 @@ import numpy as np
 import re
 import datetime
 import decimal
+import pandas
 from .settings import config
 from .errors import DataJointError
 from .fetch import Fetch, Fetch1
@@ -149,6 +150,10 @@ class QueryExpression:
         # restrict by boolean
         if isinstance(arg, bool):
             return negate != arg
+
+        # restrict by pandas.DataFrames
+        if isinstance(arg, pandas.DataFrame):
+            return self._make_condition(arg.to_records())
 
         # restrict by a mapping such as a dict -- convert to an AndList of string equality conditions
         if isinstance(arg, collections.abc.Mapping):

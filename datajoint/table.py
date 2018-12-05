@@ -3,6 +3,7 @@ import itertools
 import inspect
 import platform
 import numpy as np
+import pandas
 import pymysql
 import logging
 import warnings
@@ -167,6 +168,10 @@ class Table(QueryExpression):
         if ignore_errors:
             warnings.warn('Use of `ignore_errors` in `insert` and `insert1` is deprecated. Use try...except... '
                           'to explicitly handle any errors', stacklevel=2)
+
+        if isinstance(rows, pandas.DataFrame):
+            self.insert(rows.to_records(), replace=replace, skip_duplicates=skip_duplicates,
+                        ignore_extra_fields=ignore_extra_fields, allow_direct_insert=allow_direct_insert)
 
         # prohibit direct inserts into auto-populated tables
         if not (allow_direct_insert or getattr(self, '_allow_insert', True)):  # _allow_insert is only present in AutoPopulate
