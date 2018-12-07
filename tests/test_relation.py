@@ -110,8 +110,8 @@ class TestRelation:
         n = len(schema.TTest())
         assert_true(n > 0)
         df = schema.TTest.fetch(format='frame')
-        assert_equal(len(df), n)
         assert_true(isinstance(df, pandas.DataFrame))
+        assert_equal(len(df), n)
         schema.TTest2.insert(df)
         assert_equal(len(schema.TTest2()), n)
 

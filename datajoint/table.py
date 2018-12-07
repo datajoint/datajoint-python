@@ -172,6 +172,7 @@ class Table(QueryExpression):
         if isinstance(rows, pandas.DataFrame):
             self.insert(rows.to_records(), replace=replace, skip_duplicates=skip_duplicates,
                         ignore_extra_fields=ignore_extra_fields, allow_direct_insert=allow_direct_insert)
+            return
 
         # prohibit direct inserts into auto-populated tables
         if not (allow_direct_insert or getattr(self, '_allow_insert', True)):  # _allow_insert is only present in AutoPopulate
