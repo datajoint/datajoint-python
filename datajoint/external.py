@@ -8,6 +8,8 @@ from .declare import STORE_HASH_LENGTH, HASH_DATA_TYPE
 from . import s3 
 from .utils import safe_write
 
+DEFAULT_FOLDING = (2, 2)
+
 
 class ExternalTable(Table):
     """
@@ -46,7 +48,7 @@ class ExternalTable(Table):
         put an object in external store
         """
         spec = self._get_store_spec(store)
-        blob_hash = long_hash(blob) + store[len('external-'):]
+        blob_hash = long_hash(blob) + ''.join(store.split('-')[1:])
         if spec['protocol'] == 'file':
             folder = os.path.join(spec['location'], self.database)
             full_path = os.path.join(folder, blob_hash)
@@ -161,22 +163,24 @@ class ExternalTable(Table):
         """
         spec = self._get_store_spec(store)
         progress = tqdm if display_progress else lambda x: x
+        in_use = set(self.fetch('hash'))
         if spec['protocol'] == 'file':
-            folder = os.path.join(spec['location'], self.database)
-            delete_list = set(os.listdir(folder)).difference(self.fetch('hash'))
-            print('Deleting %d unused items from %s' % (len(delete_list), folder), flush=True)
-            for f in progress(delete_list):
-                os.remove(os.path.join(folder, f))
+            for folder, _, files in progress(os.walk(os.path.join(spec['location'], self.database))):
+                for f in files:
+                    if f not in in_use:
+                        filename = os.join(folder, f)
+                        os.remove(filename)
         elif spec['protocol'] == 's3':
             try:
-                s3.Folder(database=self.database, **spec).clean(self.fetch('hash'))
+                s3.Folder(database=self.database, **spec).clean(in_use)
             except TypeError:
                 raise DataJointError('External store {store} configuration is incomplete.'.format(store=store))
 
     @staticmethod
     def _get_store_spec(store):
+        store = '-' + store.lstrip('-')
         try:
-            spec = config[store]
+            spec = config['stores'][store]
         except KeyError:
             raise DataJointError('Storage {store} is requested but not configured'.format(store=store)) from None
         if 'protocol' not in spec:
@@ -184,4 +188,6 @@ class ExternalTable(Table):
         if spec['protocol'] not in {'file', 's3'}:
             raise DataJointError(
                 'Unknown external storage protocol "{protocol}" in "{store}"'.format(store=store, **spec))
+        if spec['protocol'] == 'file':
+            spec['folding'] = spec.get('folding', DEFAULT_FOLDING)
         return spec
