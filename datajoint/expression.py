@@ -151,10 +151,6 @@ class QueryExpression:
         if isinstance(arg, bool):
             return negate != arg
 
-        # restrict by pandas.DataFrames
-        if isinstance(arg, pandas.DataFrame):
-            return self._make_condition(arg.to_records())
-
         # restrict by a mapping such as a dict -- convert to an AndList of string equality conditions
         if isinstance(arg, collections.abc.Mapping):
             return template % self._make_condition(
@@ -180,6 +176,10 @@ class QueryExpression:
                     fields='`' + '`,`'.join(common_attributes) + '`',
                     not_="not " if negate else "",
                     subquery=arg.make_sql(common_attributes)))
+
+        # restrict by pandas.DataFrames
+        if isinstance(arg, pandas.DataFrame):
+            arg = arg.to_records()   # convert to np.recarray
 
         # if iterable (but not a string, a QueryExpression, or an AndList), treat as an OrList
         try:
