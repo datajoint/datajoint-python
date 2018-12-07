@@ -147,8 +147,7 @@ class Table(QueryExpression):
         """
         self.insert((row,), **kwargs)
 
-    def insert(self, rows, replace=False, skip_duplicates=False, ignore_extra_fields=False, ignore_errors=False,
-               allow_direct_insert=None):
+    def insert(self, rows, replace=False, skip_duplicates=False, ignore_extra_fields=False, allow_direct_insert=None):
         """
         Insert a collection of rows.
 
@@ -164,10 +163,6 @@ class Table(QueryExpression):
         >>>     dict(subject_id=7, species="mouse", date_of_birth="2014-09-01"),
         >>>     dict(subject_id=8, species="mouse", date_of_birth="2014-09-02")])
         """
-
-        if ignore_errors:
-            warnings.warn('Use of `ignore_errors` in `insert` and `insert1` is deprecated. Use try...except... '
-                          'to explicitly handle any errors', stacklevel=2)
 
         if isinstance(rows, pandas.DataFrame):
             self.insert(rows.to_records(), replace=replace, skip_duplicates=skip_duplicates,
