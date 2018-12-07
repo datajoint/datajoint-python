@@ -1,6 +1,6 @@
 from inspect import getmembers
 import re
-
+import pandas
 import numpy as np
 from nose.tools import assert_equal, assert_not_equal, assert_true, assert_list_equal, raises
 from pymysql import InternalError
@@ -99,19 +99,30 @@ class TestRelation:
         schema.TTest2.delete()
         schema.TTest2.insert(schema.TTest)
         assert_equal(len(schema.TTest2()), len(schema.TTest()))
+
         original_length = len(self.subject)
         self.subject.insert(self.subject.proj(
             'real_id', 'date_of_birth', 'subject_notes', subject_id='subject_id+1000', species='"human"'))
         assert_equal(len(self.subject), 2*original_length)
 
+    def test_insert_pandas(self):
+        schema.TTest2.delete()
+        n = len(schema.TTest())
+        assert_true(n > 0)
+        df = schema.TTest.fetch(format='frame')
+        assert_equal(len(df), n)
+        assert_true(isinstance(df, pandas.DataFrame))
+        schema.TTest2.insert(df)
+        assert_equal(len(schema.TTest2()), n)
+
     @raises(dj.DataJointError)
     def test_insert_select_ignore_extra_fields0(self):
-        ''' need ignore extra fields for insert select '''
+        """ need ignore extra fields for insert select """
         self.test_extra.insert1((self.test.fetch('key').max() + 1, 0, 0))
         self.test.insert(self.test_extra)
 
     def test_insert_select_ignore_extra_fields1(self):
-        ''' make sure extra fields works in insert select '''
+        """ make sure extra fields works in insert select """
         self.test_extra.delete()
         keyno = self.test.fetch('key').max() + 1
         self.test_extra.insert1((keyno, 0, 0))
@@ -119,19 +130,19 @@ class TestRelation:
         assert(keyno in self.test.fetch('key'))
 
     def test_insert_select_ignore_extra_fields2(self):
-        ''' make sure insert select still works when ignoring extra fields when there are none '''
+        """ make sure insert select still works when ignoring extra fields when there are none """
         self.test_no_extra.delete()
         self.test_no_extra.insert(self.test, ignore_extra_fields=True)
 
     def test_insert_select_ignore_extra_fields3(self):
-        ''' make sure insert select works for from query result '''
+        """ make sure insert select works for from query result """
         self.test_no_extra.delete()
         keystr = str(self.test_extra.fetch('key').max())
         self.test_no_extra.insert((self.test_extra & '`key`=' + keystr),
                                   ignore_extra_fields=True)
 
     def test_skip_duplicates(self):
-        ''' test that skip_dublicates works when inserting from another relation  '''
+        """ test that skip_dublicates works when inserting from another relation  """
         self.test_no_extra.delete()
         self.test_no_extra.insert(self.test, ignore_extra_fields=True, skip_duplicates=True)
         self.test_no_extra.insert(self.test, ignore_extra_fields=True, skip_duplicates=True)
