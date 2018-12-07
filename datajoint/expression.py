@@ -118,7 +118,7 @@ class QueryExpression:
         """
         Translate the input arg into the equivalent SQL condition (a string)
         :param arg: any valid restriction object.
-        :return: an SQL condition string.  It may also be a boolean that is intended to be treated as a string.
+        :return: an SQL condition string or a boolean value.
         """
         def prep_value(v):
             return str(v) if isinstance(v, (datetime.date, datetime.datetime, datetime.time, decimal.Decimal)) else v
@@ -294,8 +294,7 @@ class QueryExpression:
         rel.restrict(restriction)  is equivalent to  rel = rel & restriction  or  rel &= restriction
         rel.restrict(Not(restriction))  is equivalent to  rel = rel - restriction  or  rel -= restriction
         The primary key of the result is unaffected.
-        Successive restrictions are combined using the logical AND.
-        The AndList class is provided to play the role of successive restrictions.
+        Successive restrictions are combined as logical AND:   r & a & b  is equivalent to r & AndList((a, b))
         Any QueryExpression, collection, or sequence other than an AndList are treated as OrLists
         (logical disjunction of conditions)
         Inverse restriction is accomplished by either using the subtraction operator or the Not class.

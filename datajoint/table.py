@@ -151,8 +151,8 @@ class Table(QueryExpression):
         """
         Insert a collection of rows.
 
-        :param rows: An iterable where an element is a numpy record, a dict-like object, or an ordered sequence.
-            rows may also be another relation with the same heading.
+        :param rows: An iterable where an element is a numpy record, a dict-like object, a pandas.DataFrame, a sequence,
+            or a query expression with the same heading as table self.
         :param replace: If True, replaces the existing tuple.
         :param skip_duplicates: If True, silently skip duplicate inserts.
         :param ignore_extra_fields: If False, fields that are not in the heading raise error.
