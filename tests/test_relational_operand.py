@@ -1,5 +1,6 @@
 import random
 import string
+import pandas
 
 import numpy as np
 from nose.tools import assert_equal, assert_false, assert_true, raises, assert_set_equal, assert_list_equal
@@ -269,6 +270,13 @@ class TestRelational:
         anti = x - y
         assert_true(len(semi) == n)
         assert_true(len(anti) == m)
+
+    @staticmethod
+    def test_pandas_fetch_and_restriction():
+        q = (L & 'cond_in_l = 0')
+        df = q.fetch(format='frame')   # pandas dataframe
+        assert_true(isinstance(df, pandas.DataFrame))
+        assert_equal(len(E & q), len(E & df))
 
     @staticmethod
     def test_restrictions_by_lists():

@@ -1,4 +1,3 @@
-from decimal import Decimal
 from .hash import key_hash
 import os
 import platform

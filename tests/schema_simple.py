@@ -58,7 +58,7 @@ class B(dj.Computed):
         value :float  # normally distributed variables according to parameters in B
         """
 
-    def _make_tuples(self, key):
+    def make(self, key):
         random.seed(str(key))
         sub = B.C()
         for i in range(4):
@@ -113,7 +113,7 @@ class E(dj.Computed):
         -> B.C
         """
 
-    def _make_tuples(self, key):
+    def make(self, key):
         random.seed(str(key))
         self.insert1(dict(key, **random.choice(list(L().fetch('KEY')))))
         sub = E.F()

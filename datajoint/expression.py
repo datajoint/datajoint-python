@@ -6,6 +6,7 @@ import numpy as np
 import re
 import datetime
 import decimal
+import pandas
 from .settings import config
 from .errors import DataJointError
 from .fetch import Fetch, Fetch1
@@ -117,7 +118,7 @@ class QueryExpression:
         """
         Translate the input arg into the equivalent SQL condition (a string)
         :param arg: any valid restriction object.
-        :return: an SQL condition string.  It may also be a boolean that is intended to be treated as a string.
+        :return: an SQL condition string or a boolean value.
         """
         def prep_value(v):
             return str(v) if isinstance(v, (datetime.date, datetime.datetime, datetime.time, decimal.Decimal)) else v
@@ -175,6 +176,10 @@ class QueryExpression:
                     fields='`' + '`,`'.join(common_attributes) + '`',
                     not_="not " if negate else "",
                     subquery=arg.make_sql(common_attributes)))
+
+        # restrict by pandas.DataFrames
+        if isinstance(arg, pandas.DataFrame):
+            arg = arg.to_records()   # convert to np.recarray
 
         # if iterable (but not a string, a QueryExpression, or an AndList), treat as an OrList
         try:
@@ -289,8 +294,7 @@ class QueryExpression:
         rel.restrict(restriction)  is equivalent to  rel = rel & restriction  or  rel &= restriction
         rel.restrict(Not(restriction))  is equivalent to  rel = rel - restriction  or  rel -= restriction
         The primary key of the result is unaffected.
-        Successive restrictions are combined using the logical AND.
-        The AndList class is provided to play the role of successive restrictions.
+        Successive restrictions are combined as logical AND:   r & a & b  is equivalent to r & AndList((a, b))
         Any QueryExpression, collection, or sequence other than an AndList are treated as OrLists
         (logical disjunction of conditions)
         Inverse restriction is accomplished by either using the subtraction operator or the Not class.
@@ -342,6 +346,26 @@ class QueryExpression:
     def fetch(self):
         return Fetch(self)
 
+    def head(self, limit=25, **fetch_kwargs):
+        """
+        shortcut to fetch the first few entries from query expression.
+        Equivalent to fetch(order_by="KEY", limit=25)
+        :param limit:  number of entries
+        :param fetch_kwargs: kwargs for fetch
+        :return: query result
+        """
+        return self.fetch(order_by="KEY", limit=limit, **fetch_kwargs)
+
+    def tail(self, limit=25, **fetch_kwargs):
+        """
+        shortcut to fetch the last few entries from query expression.
+        Equivalent to fetch(order_by="KEY DESC", limit=25)[::-1]
+        :param limit:  number of entries
+        :param fetch_kwargs: kwargs for fetch
+        :return: query result
+        """
+        return self.fetch(order_by="KEY DESC", limit=limit, **fetch_kwargs)[::-1]
+
     def attributes_in_restriction(self):
         """
         :return: list of attributes that are probably used in the restriction.
@@ -365,7 +389,7 @@ class QueryExpression:
             limit = config['display.limit']
         if width is None:
             width = config['display.width']
-        tuples = rel.fetch(limit=limit+1)
+        tuples = rel.fetch(limit=limit+1, format="array")
         has_more = len(tuples) > limit
         tuples = tuples[:limit]
         columns = heading.names
@@ -378,13 +402,13 @@ class QueryExpression:
             '\n'.join(' '.join(templates[f] % (tup[f] if f in tup.dtype.names else '=BLOB=')
                 for f in columns) for tup in tuples) +
             ('\n   ...\n' if has_more else '\n') +
-            (' (%d tuples)\n' % len(rel) if config['display.show_tuple_count'] else ''))
+            (' (Total: %d)\n' % len(rel) if config['display.show_tuple_count'] else ''))
 
     def _repr_html_(self):
         heading = self.heading
         rel = self.proj(*heading.non_blobs)
         info = heading.table_info
-        tuples = rel.fetch(limit=config['display.limit']+1)
+        tuples = rel.fetch(limit=config['display.limit']+1, format='array')
         has_more = len(tuples) > config['display.limit']
         tuples = tuples[0:config['display.limit']]
 
@@ -464,7 +488,7 @@ class QueryExpression:
                 ['\n'.join(['<td>%s</td>' % (tup[name] if name in tup.dtype.names else '=BLOB=')
                     for name in heading.names])
                  for tup in tuples]),
-            count=('<p>%d tuples</p>' % len(rel)) if config['display.show_tuple_count'] else '')
+            count=('<p>Total: %d</p>' % len(rel)) if config['display.show_tuple_count'] else '')
 
     def make_sql(self, select_fields=None):
         return 'SELECT {fields} FROM {from_}{where}'.format(
