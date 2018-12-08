@@ -85,7 +85,7 @@ class Fetch:
                                  'when attributes are selected to be fetched separately.')
 
         if format not in {None, "array", "frame"}:
-            raise DataJointError('Fetch output format must be in {"array", "frame"}')
+            raise DataJointError('Fetch output format must be in {{"array", "frame"}} but "{}" was given'.format(format))
 
         if not (attrs or as_dict) and format is None:
             format = config.get('fetch_format', 'array')  # default to array
