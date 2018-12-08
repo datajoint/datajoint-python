@@ -27,12 +27,12 @@ def to_dicts(recarray):
         yield dict(zip(recarray.dtype.names, rec.tolist()))
 
 
-def _flatten_attribute_list(expression, attr):
+def _flatten_attribute_list(primary_key, attr):
     for a in attr:
         if re.match(r'^\s*KEY\s*(ASC\s*)?$', a):
-            yield from expression.primary_key
+            yield from primary_key
         elif re.match(r'^\s*KEY\s*DESC\s*$', a):
-            yield from (q + ' DESC' for q in expression.primary_key)
+            yield from (q + ' DESC' for q in primary_key)
         else:
             yield a
 
@@ -72,7 +72,7 @@ class Fetch:
             if isinstance(order_by, str):
                 order_by = [order_by]
             # expand "KEY" or "KEY DESC"
-            order_by = list(_flatten_attribute_list(self._expression, order_by))
+            order_by = list(_flatten_attribute_list(self._expression.primary_key, order_by))
 
         # if attrs are specified then as_dict cannot be true
         if attrs and as_dict:
@@ -88,7 +88,7 @@ class Fetch:
             raise DataJointError('Fetch output format must be in {"array", "frame"}')
 
         if not (attrs or as_dict) and format is None:
-            format = config.get('fetch_format', 'array')  # default to array
+            format = config['fetch_format']  # default to array
             if format not in {"array", "frame"}:
                 raise DataJointError('Invalid entry in datajoint.config["fetch_format"]: use "array" or "frame"')
 

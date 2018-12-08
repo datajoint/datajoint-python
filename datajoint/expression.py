@@ -359,7 +359,7 @@ class QueryExpression:
     def tail(self, limit=25, **fetch_kwargs):
         """
         shortcut to fetch the last few entries from query expression.
-        Equivalent to fetch(order_by="KEY DESC", limit=25)
+        Equivalent to fetch(order_by="KEY DESC", limit=25)[::-1]
         :param limit:  number of entries
         :param fetch_kwargs: kwargs for fetch
         :return: query result
