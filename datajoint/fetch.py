@@ -24,7 +24,7 @@ def is_key(attr):
 def to_dicts(recarray):
     """convert record array to a dictionaries"""
     for rec in recarray:
-        yield dict(zip(recarray.dtype.names, rec.tolist()))
+        yield OrderedDict(zip(recarray.dtype.names, rec.tolist()))
 
 
 def _get(connection, attr, data, squeeze):
@@ -46,7 +46,7 @@ def _get(connection, attr, data, squeeze):
 
 def _flatten_attribute_list(primary_key, attr):
     for a in attr:
-        if re.match(r'^\s*KEY\s+(ASC\s*)?$', a):
+        if re.match(r'^\s*KEY(\s+ASC)?\s*$', a):
             yield from primary_key
         elif re.match(r'^\s*KEY\s+DESC\s*$', a):
             yield from (q + ' DESC' for q in primary_key)
