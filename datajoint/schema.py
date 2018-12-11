@@ -254,3 +254,9 @@ def create_virtual_module(module_name, schema_name, create_schema=False, create_
     _schema.spawn_missing_classes(context=module.__dict__)
     module.__dict__['schema'] = _schema
     return module
+
+
+def get_schema_names(connection=None):
+    if connection is None:
+        connection = conn()
+    return [r[0] for r in connection.query('SHOW SCHEMAS').fetchall() if r[0] not in {'information_schema'}]

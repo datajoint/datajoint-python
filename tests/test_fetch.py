@@ -81,6 +81,7 @@ class TestFetch:
         query = schema.User * schema.Language
         n = 5
         frame = query.head(n, format='frame')
+        assert_true(isinstance(frame, pandas.DataFrame))
         array = query.head(n, format='array')
         assert_equal(array.size, n)
         assert_equal(len(frame), n)

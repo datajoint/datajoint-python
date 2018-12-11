@@ -18,7 +18,7 @@ __author__ = "Dimitri Yatsenko, Edgar Y. Walker, and Fabian Sinz at Baylor Colle
 __date__ = "Dec 4, 2018"
 __all__ = ['__author__', '__version__',
            'config', 'conn', 'Connection',
-           'schema', 'create_virtual_module',
+           'schema', 'create_virtual_module', 'get_schema_names',
            'Table', 'FreeTable',
            'Manual', 'Lookup', 'Imported', 'Computed', 'Part',
            'Not', 'AndList', 'U', 'ERD',
@@ -31,7 +31,7 @@ from .version import __version__
 from .settings import config
 from .connection import conn, Connection
 from .schema import Schema as schema
-from .schema import create_virtual_module
+from .schema import create_virtual_module, get_schema_names
 from .table import Table, FreeTable
 from .user_tables import Manual, Lookup, Imported, Computed, Part
 from .expression import Not, AndList, U
