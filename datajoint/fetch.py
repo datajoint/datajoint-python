@@ -1,9 +1,12 @@
 from collections import OrderedDict
 from functools import partial
+import warnings
+import pandas
+import re
 import numpy as np
 from . import blob, attach
 from .errors import DataJointError
-import warnings
+from .settings import config
 
 
 class key:
@@ -41,6 +44,16 @@ def _get(connection, attr, data, squeeze):
     return data
 
 
+def _flatten_attribute_list(primary_key, attr):
+    for a in attr:
+        if re.match(r'^\s*KEY\s+(ASC\s*)?$', a):
+            yield from primary_key
+        elif re.match(r'^\s*KEY\s+DESC\s*$', a):
+            yield from (q + ' DESC' for q in primary_key)
+        else:
+            yield a
+
+
 class Fetch:
     """
     A fetch object that handles retrieving elements from the table expression.
@@ -50,7 +63,7 @@ class Fetch:
     def __init__(self, expression):
         self._expression = expression
 
-    def __call__(self, *attrs, offset=None, limit=None, order_by=None, as_dict=False, squeeze=False):
+    def __call__(self, *attrs, offset=None, limit=None, order_by=None, format=None, as_dict=False, squeeze=False):
         """
         Fetches the expression results from the database into an np.array or list of dictionaries and unpacks blob attributes.
 
@@ -58,20 +71,43 @@ class Fetch:
         all attributes of this relation. If provided, returns tuples with an entry for each attribute.
         :param offset: the number of tuples to skip in the returned result
         :param limit: the maximum number of tuples to return
-        :param order_by: the list of attributes to order the results. No ordering should be assumed if order_by=None.
+        :param order_by: a single attribute or the list of attributes to order the results.
+                No ordering should be assumed if order_by=None.
+                To reverse the order, add DESC to the attribute name or names: e.g. ("age DESC", "frequency")
+                To order by primary key, use "KEY" or "KEY DESC"
+        :param format: Effective when as_dict=False and when attrs is empty
+                None: default from config['fetch_format'] or 'array' if not configured
+                "array": use numpy.key_array
+                "frame": output pandas.DataFrame. .
         :param as_dict: returns a list of dictionaries instead of a record array
         :param squeeze:  if True, remove extra dimensions from arrays
         :return: the contents of the relation in the form of a structured numpy.array or a dict list
         """
 
-        # if 'order_by' passed in a string, make into list
-        if isinstance(order_by, str):
-            order_by = [order_by]
+        if order_by is not None:
+            # if 'order_by' passed in a string, make into list
+            if isinstance(order_by, str):
+                order_by = [order_by]
+            # expand "KEY" or "KEY DESC"
+            order_by = list(_flatten_attribute_list(self._expression.primary_key, order_by))
 
         # if attrs are specified then as_dict cannot be true
         if attrs and as_dict:
             raise DataJointError('Cannot specify attributes to return when as_dict=True. '
-                                 'Use proj() to select attributes or set as_dict=False')
+                                 'Use '
+                                 'proj() to select attributes or set as_dict=False')
+        # format should not be specified with attrs or is_dict=True
+        if format is not None and (as_dict or attrs):
+            raise DataJointError('Cannot specify output format when as_dict=True or '
+                                 'when attributes are selected to be fetched separately.')
+
+        if format not in {None, "array", "frame"}:
+            raise DataJointError('Fetch output format must be in {{"array", "frame"}} but "{}" was given'.format(format))
+
+        if not (attrs or as_dict) and format is None:
+            format = config['fetch_format']  # default to array
+            if format not in {"array", "frame"}:
+                raise DataJointError('Invalid entry "{}" in datajoint.config["fetch_format"]: use "array" or "frame"'.format(format))
 
         if limit is None and offset is not None:
             warnings.warn('Offset set, but no limit. Setting limit to a large number. '
@@ -80,7 +116,7 @@ class Fetch:
 
         get = partial(_get, self._expression.connection, squeeze=squeeze)
         if not attrs:
-            # fetch all attributes
+            # fetch all attributes as a numpy.record_array or pandas.DataFrame
             cur = self._expression.cursor(as_dict=as_dict, limit=limit, offset=offset, order_by=order_by)
             heading = self._expression.heading
             if as_dict:
@@ -90,6 +126,8 @@ class Fetch:
                 ret = np.array(ret, dtype=heading.as_dtype)
                 for name in heading:
                     ret[name] = list(map(partial(get, heading[name]), ret[name]))
+                if format == "frame":
+                    ret = pandas.DataFrame(ret).set_index(heading.primary_key)
         else:  # if list of attributes provided
             attributes = [a for a in attrs if not is_key(a)]
             result = self._expression.proj(*attributes).fetch(
@@ -102,15 +140,6 @@ class Fetch:
 
         return ret
 
-    def keys(self, **kwargs):
-        """
-        DEPRECATED
-        Iterator that returns primary keys as a sequence of dicts.
-        """
-        warnings.warn('Use of `rel.fetch.keys()` notation is deprecated. '
-                      'Please use `rel.fetch("KEY")` or `rel.fetch(dj.key)` for equivalent result', stacklevel=2)
-        yield from self._expression.proj().fetch(as_dict=True, **kwargs)
-
 
 class Fetch1:
     """
@@ -120,7 +149,6 @@ class Fetch1:
 
     def __init__(self, relation):
         self._expression = relation
-
 
     def __call__(self, *attrs, squeeze=False):
         """

@@ -3,6 +3,7 @@ import itertools
 import inspect
 import platform
 import numpy as np
+import pandas
 import pymysql
 import logging
 import warnings
@@ -146,13 +147,12 @@ class Table(QueryExpression):
         """
         self.insert((row,), **kwargs)
 
-    def insert(self, rows, replace=False, skip_duplicates=False, ignore_extra_fields=False, ignore_errors=False,
-               allow_direct_insert=None):
+    def insert(self, rows, replace=False, skip_duplicates=False, ignore_extra_fields=False, allow_direct_insert=None):
         """
         Insert a collection of rows.
 
-        :param rows: An iterable where an element is a numpy record, a dict-like object, or an ordered sequence.
-            rows may also be another relation with the same heading.
+        :param rows: An iterable where an element is a numpy record, a dict-like object, a pandas.DataFrame, a sequence,
+            or a query expression with the same heading as table self.
         :param replace: If True, replaces the existing tuple.
         :param skip_duplicates: If True, silently skip duplicate inserts.
         :param ignore_extra_fields: If False, fields that are not in the heading raise error.
@@ -164,9 +164,8 @@ class Table(QueryExpression):
         >>>     dict(subject_id=8, species="mouse", date_of_birth="2014-09-02")])
         """
 
-        if ignore_errors:
-            warnings.warn('Use of `ignore_errors` in `insert` and `insert1` is deprecated. Use try...except... '
-                          'to explicitly handle any errors', stacklevel=2)
+        if isinstance(rows, pandas.DataFrame):
+            rows = rows.to_records()
 
         # prohibit direct inserts into auto-populated tables
         if not (allow_direct_insert or getattr(self, '_allow_insert', True)):  # _allow_insert is only present in AutoPopulate

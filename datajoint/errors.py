@@ -14,13 +14,13 @@ operation_error_codes = {
     'lost connection': 2013,
 }
 
+
 def is_connection_error(e):
     """
     Checks if error e pertains to a connection issue
     """
     return (isinstance(e, err.InterfaceError) and e.args[0] == "(0, '')") or\
         (isinstance(e, err.OperationalError) and e.args[0] in operation_error_codes.values())
-
 
 
 class DataJointError(Exception):
