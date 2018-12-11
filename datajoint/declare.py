@@ -271,8 +271,8 @@ def compile_attribute(line, in_key, foreign_key_sql):
         match['default'] = ''
     match = {k: v.strip() for k, v in match.items()}
     match['nullable'] = match['default'].lower() == 'null'
-    acceptable_datatype_pattern = r'^(time|date|year|enum|(var)?char|float|double|decimal|' \
-                                  r'(tiny|small|medium|big)?int|' \
+    acceptable_datatype_pattern = r'^(time|date|year|enum|(var)?char|float|real|double|decimal|numeric|' \
+                                  r'(tiny|small|medium|big)?int|bool|' \
                                   r'(tiny|small|medium|long)?blob|external|attach)'
     if re.match(acceptable_datatype_pattern, match['type']) is None:
         raise DataJointError('DataJoint does not support datatype "{type}"'.format(**match))

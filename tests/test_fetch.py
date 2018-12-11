@@ -1,8 +1,9 @@
-from nose.tools import assert_true, raises, assert_equal, assert_dict_equal
+from nose.tools import assert_true, raises, assert_equal, assert_dict_equal, assert_list_equal
 from operator import itemgetter
 import itertools
 import numpy as np
 import decimal
+import pandas
 import warnings
 from . import schema
 import datajoint as dj
@@ -74,6 +75,23 @@ class TestFetch:
         assert_equal(len(cur), 4, 'Length is not correct')
         for c, l in list(zip(cur, languages))[:4]:
             assert_true(np.all([cc == ll for cc, ll in zip(c, l)]), 'Sorting order is different')
+
+    @staticmethod
+    def test_head_tail():
+        query = schema.User * schema.Language
+        n = 5
+        frame = query.head(n, format='frame')
+        array = query.head(n, format='array')
+        assert_equal(array.size, n)
+        assert_equal(len(frame), n)
+        assert_list_equal(query.primary_key, frame.index.names)
+
+        n = 4
+        frame = query.tail(n, format='frame')
+        array = query.tail(n, format='array')
+        assert_equal(array.size, n)
+        assert_equal(len(frame), n)
+        assert_list_equal(query.primary_key, frame.index.names)
 
     def test_limit_offset(self):
         """Test the limit and offset kwargs together"""
