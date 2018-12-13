@@ -271,10 +271,10 @@ def compile_attribute(line, in_key, foreign_key_sql):
         match['default'] = ''
     match = {k: v.strip() for k, v in match.items()}
     match['nullable'] = match['default'].lower() == 'null'
-    accepted_datatype = r'^(time|date|year|enum|(var)?char|float|real|double|decimal|numeric|' \
+    accepted_datatype = r'time|date|year|enum|(var)?char|float|real|double|decimal|numeric|' \
                         r'(tiny|small|medium|big)?int|bool|' \
-                        r'(tiny|small|medium|long)?blob|external|attach)'
-    if re.match(accepted_datatype, match['type']) is None:
+                        r'(tiny|small|medium|long)?blob|external|attach'
+    if re.match(accepted_datatype, match['type'], re.I) is None:
         raise DataJointError('DataJoint does not support datatype "{type}"'.format(**match))
 
     literals = ['CURRENT_TIMESTAMP']   # not to be enclosed in quotes
