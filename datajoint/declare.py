@@ -198,7 +198,6 @@ def declare(full_table_name, definition, context):
     :param definition: DataJoint table definition
     :param context: dictionary of objects that might be referred to in the table.
     """
-
     table_name = full_table_name.strip('`').split('.')[1]
     if len(table_name) > MAX_TABLE_NAME_LENGTH:
         raise DataJointError(
@@ -272,10 +271,11 @@ def compile_attribute(line, in_key, foreign_key_sql):
         match['default'] = ''
     match = {k: v.strip() for k, v in match.items()}
     match['nullable'] = match['default'].lower() == 'null'
-    accepted_datatype = r'^(time|date|year|enum|(var)?char|float|real|double|decimal|numeric|' \
-                        r'(tiny|small|medium|big)?int|bool|' \
-                        r'(tiny|small|medium|long)?blob|external|attach)'
-    if re.match(accepted_datatype, match['type']) is None:
+    accepted_datatype = (
+        r'time|date|year|enum|(var)?char|float|real|double|decimal|numeric|'
+        r'(tiny|small|medium|big)?int|bool|'
+        r'(tiny|small|medium|long)?blob|external|attach')
+    if re.match(accepted_datatype, match['type'], re.I) is None:
         raise DataJointError('DataJoint does not support datatype "{type}"'.format(**match))
 
     literals = ['CURRENT_TIMESTAMP']   # not to be enclosed in quotes
