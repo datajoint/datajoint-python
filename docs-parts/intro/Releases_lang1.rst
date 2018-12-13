@@ -1,6 +1,3 @@
-Release notes
-=============
-
 0.11.1 -- Nov 15, 2018
 ----------------------
 * Fix ordering of attributes in proj (#483 and #516)
