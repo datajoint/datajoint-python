@@ -16,5 +16,5 @@ For example, the following code inserts mating entries for the master table `Ses
         Session.Experimenter.insert1({**key, 'experimenter': username})
 
 Here, to external observers, both inserts will take effect together upon exiting from the `with` block or will not have any effect at all.
-For exampl,e if the second insert fails due to an error, the first insert will be rolled back. 
+For example, if the second insert fails due to an error, the first insert will be rolled back. 
 
