@@ -1,10 +1,5 @@
 
-A collection can be a list or tuple.
-
 .. code-block:: python
 
-    # a list:
-    cond_list = ['first_name = "Aaron"', 'last_name = "Aaronson"']
+    Session & {'session_dat': "2018-01-01"}
 
-    # a tuple:
-    cond_tuple = ('first_name = "Aaron"', 'last_name = "Aaronson"')
