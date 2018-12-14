@@ -4,8 +4,11 @@ It creates a python module with the given name from the name of a schema on the 
 The function can take several parameters:
 
   ``module_name``: displayed module name.
+
   ``schema_name``: name of the database in MySQL.
+
   ``create_schema``: if ``True``, create the schema on the database server.
+
   ``create_tables``: if ``True``, ``module.schema`` can be used as the decorator for declaring new classes.
 
 The function returns the Python module containing classes from the schema object as well as the table classes.
