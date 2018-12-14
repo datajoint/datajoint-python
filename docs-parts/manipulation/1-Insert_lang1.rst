@@ -15,7 +15,7 @@ The entity also may take the form of a sequence of values in the same order as t
 
     lab.Person.insert1(['alice', 'Alice', 'Cooper'])
 
-Additionally, the entity may be inserted as a `numpy.record <https://docs.scipy.org/doc/numpy/reference/generated/numpy.record.html#numpy.record>`_.
+Additionally, the entity may be inserted as a `NumPy record array <https://docs.scipy.org/doc/numpy/reference/generated/numpy.record.html#numpy.record>`_ or `Pandas DataFrame <https://pandas.pydata.org/pandas-docs/stable/generated/pandas.DataFrame.html>`_.
 
 The ``insert`` method accepts a sequence or a generator of multiple entities and is used to insert multiple entities at once.
 

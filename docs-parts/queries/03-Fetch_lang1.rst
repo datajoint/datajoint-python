@@ -44,3 +44,11 @@ For example:
 
     import pandas as pd
     frame = pd.DataFrame(tab.fetch())
+
+Calling ``fetch()`` with the argument ``format="frame"`` returns results as ``pandas.DataFrame`` objects with no need for conversion.
+
+.. code-block:: python
+
+  frame = tab.fetch('format="frame"')
+
+Returning results as a ``DataFrame`` is not possible when fetching a particular subset of attributes or when ``as_dict`` is set to ``True``.
