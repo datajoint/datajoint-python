@@ -17,7 +17,10 @@ For example, the following code defines the table ``Person``:
 	@schema
 	class Person(dj.Manual):
 	    definition = '''
-	    # table definition goes here
+			username : varchar(20)   # unique user name
+	    ---
+	    first_name : varchar(30)
+	    last_name  : varchar(30)
 	    '''
 
 
