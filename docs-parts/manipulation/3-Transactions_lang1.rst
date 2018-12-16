@@ -1,5 +1,5 @@
-Transactions are formed using the `transaction` property of the connection object. 
-The connection object may obtained from any table object.
+Transactions are formed using the ``transaction`` property of the connection object. 
+The connection object may be obtained from any table object.
 The ``transaction`` property can then be used as a context manager in Python's ``with`` statement.
 
 For example, the following code inserts matching entries for the master table ``Session`` and its part table ``Session.Experimenter``.
