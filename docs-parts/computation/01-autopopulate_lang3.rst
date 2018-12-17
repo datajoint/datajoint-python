@@ -1,3 +1,5 @@
+The ``populate`` method accepts a number of optional arguments that provide more features and allow greater control over the method's behavior.
+
 - ``restrictions`` - A list of restrictions, restricting as ``(tab.key_source & AndList(restrictions)) - tab.proj()``.
   Here ``target`` is the table to be populated, usually ``tab`` itself.
 - ``suppress_errors`` - If ``True``, encountering an error will cancel the current ``make`` call, log the error, and continue to the next ``make`` call.
