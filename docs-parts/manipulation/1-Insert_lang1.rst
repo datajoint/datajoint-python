@@ -25,3 +25,18 @@ The ``insert`` method accepts a sequence or a generator of multiple entities and
            ['alice',   'Alice',   'Cooper'],
            ['bob',     'Bob',     'Dylan'],
            ['carol',   'Carol',   'Douglas']])
+
+Several optional parameters can be used with ``insert``:
+
+  ``replace`` If ``True``, replaces the existing entity.
+  (Default ``False``.)
+
+  ``skip_duplicates`` If ``True``, silently skip duplicate inserts.
+  (Default ``False``.)
+
+  ``ignore_extra_fields`` If ``False``, fields that are not in the heading raise an error.
+  (Default ``False``.)
+
+  ``allow_direct_insert`` If ``True``, allows inserts outside of populate calls.
+  Applies only in auto-populated tables.
+  (Default ``None``.)
