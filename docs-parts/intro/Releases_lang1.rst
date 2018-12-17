@@ -10,7 +10,7 @@
 * Full support of secondary indexes (#498, 500)
 * ERD no longer shows numbers in nodes corresponding to derived dependencies (#478, #500)
 * Full support of unique and nullable dependencies (#254, #301, #493, #495, #500)
-* Improve memory management in `populate` (#461, #486)
+* Improve memory management in ``populate`` (#461, #486)
 * Fix query errors and redundancies (#456, #463, #482)
 
 0.10.1  -- Aug 28, 2018
@@ -45,20 +45,20 @@
 Documentation and tutorials available at https://docs.datajoint.io and https://tutorials.datajoint.io
 * improved the ERD graphics and features using the graphviz libraries (#207, #333)
 * improved password handling logic (#322, #321)
-* the use of the `contents` property to populate tables now only works in `dj.Lookup` classes (#310).
-* allow suppressing the display of size of query results through the `show_tuple_count` configuration option (#309)
+* the use of the ``contents`` property to populate tables now only works in ``dj.Lookup`` classes (#310).
+* allow suppressing the display of size of query results through the ``show_tuple_count`` configuration option (#309)
 * implemented renamed foreign keys to spec (#333)
-* added the `limit` keyword argument to populate (#329)
+* added the ``limit`` keyword argument to populate (#329)
 * reduced the number of displayed messages (#308)
-* added `size_on_disk` property for dj.Schema() objects (#323)
+* added ``size_on_disk`` property for dj.Schema() objects (#323)
 * job keys are entered in the jobs table (#316, #243)
-* simplified the `fetch` and `fetch1` syntax, deprecating the `fetch[...]` syntax (#319)
+* simplified the ``fetch`` and ``fetch1`` syntax, deprecating the ``fetch[...]`` syntax (#319)
 * the jobs tables now store the connection ids to allow identifying abandoned jobs (#288, #317)
 
 0.5.0 (#298) -- Mar 8, 2017
 ---------------------------
 * All fetched integers are now 64-bit long and all fetched floats are double precision.
-* Added `dj.create_virtual_module`
+* Added ``dj.create_virtual_module``
 
 0.4.10 (#286) -- Feb 6, 2017
 ----------------------------
@@ -98,34 +98,34 @@ Documentation and tutorials available at https://docs.datajoint.io and https://t
 
 0.3.9 -- Sep 27, 2016
 ---------------------
-* Added support for datatype `YEAR`
-* Fixed issues with `dj.U` and the `aggr` operator (#246, #247)
+* Added support for datatype ``YEAR``
+* Fixed issues with ``dj.U`` and the ``aggr`` operator (#246, #247)
 
 0.3.8  -- Aug 2, 2016
 ---------------------
-* added the `_update` method in `base_relation`. It allows updating values in existing tuples.
+* added the ``_update`` method in ``base_relation``. It allows updating values in existing tuples.
 * bugfix in reading values of type double.  Previously it was cast as float32. 
 
 0.3.7  -- Jul 31, 2016
 ----------------------
-* added parameter `ignore_extra_fields` in `insert` 
-* `insert(..., skip_duplicates=True)` now relies on `SELECT IGNORE`.  Previously it explicitly checked if tuple already exists.
+* added parameter ``ignore_extra_fields`` in ``insert`` 
+* ``insert(..., skip_duplicates=True)`` now relies on ``SELECT IGNORE``.  Previously it explicitly checked if tuple already exists.
 * table previews now include blob attributes displaying the string <BLOB>
 
 0.3.6  -- Jul 30, 2016
 ----------------------
-* bugfix in `schema.spawn_missing_classes`.  Previously, spawned part classes would not show in ERDs.
+* bugfix in ``schema.spawn_missing_classes``.  Previously, spawned part classes would not show in ERDs.
 * dj.key now causes fetch to return as a list of dicts.  Previously it was a recarray.
 
 0.3.5
 -----
-* `dj.set_password()` now asks for user confirmation before changing the password.
+* ``dj.set_password()`` now asks for user confirmation before changing the password.
 * fixed issue #228
 
 0.3.4
 -----
-* Added method the `ERD.add_parts` method, which adds the part tables of all tables currently in the ERD.
-* `ERD() + arg` and `ERD() - arg` can now accept relation classes as arg.
+* Added method the ``ERD.add_parts`` method, which adds the part tables of all tables currently in the ERD.
+* ``ERD() + arg`` and ``ERD() - arg`` can now accept relation classes as arg.
 
 0.3.3
 -----
@@ -136,6 +136,6 @@ Documentation and tutorials available at https://docs.datajoint.io and https://t
 
 0.3.2   
 -----
-* Fixed issue #223:  `insert` can insert relations without fetching.
-* ERD() now takes the `context` argument, which specifies in which context to look for classes. The default is taken from the argument (schema or relation).
-* ERD.draw() no longer has the `prefix` argument: class names are shown as found in the context.
+* Fixed issue #223:  ``insert`` can insert relations without fetching.
+* ERD() now takes the ``context`` argument, which specifies in which context to look for classes. The default is taken from the argument (schema or relation).
+* ERD.draw() no longer has the ``prefix`` argument: class names are shown as found in the context.
