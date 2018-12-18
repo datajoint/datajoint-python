@@ -7,5 +7,5 @@
     :align: center
     :alt: restriction by collection
 
-    Restriction by a collection, returning any entities matching any condition in the collection.
+    Restriction by a collection, returning all entities matching any condition in the collection.
 
