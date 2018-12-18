@@ -1,1 +1,1 @@
-   This is performed using ``dj.config``.
+Use ``dj.config`` for configuration.
