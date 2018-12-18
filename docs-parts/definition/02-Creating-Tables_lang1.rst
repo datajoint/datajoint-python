@@ -33,9 +33,9 @@ The class will become usable after you define the ``definition`` property as des
 DataJoint classes in Python
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-DataJoint for Python is implemented through the use of classes.
-Working with classes usually implies that one might create different class instances with various internal states.
-However, DataJoint classes only serve as interfaces to data that actually reside within tables on the database server.
+DataJoint for Python is implemented through the use of classes providing access to the actual tables stored on the database.
+Since only a single table exists on the database for any class, interactions with all instances of the class are equivalent.
+As such, most methods can be called on the classes themselves rather than on an object, for convenience.
 Whether calling a DataJoint method on a class or on an instance, the result will only depend on or apply to the corresponding table.
 All of the basic functionality of DataJoint is built to operate on the classes themselves, even when called on an instance.
 For example, calling ``Person.insert(...)`` (on the class) and ``Person.insert(...)`` (on an instance) both have the identical effect of inserting data into the table on the database server.
