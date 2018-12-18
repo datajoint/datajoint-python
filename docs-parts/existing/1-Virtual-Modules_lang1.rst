@@ -11,4 +11,4 @@ The function can take several parameters:
 
   ``create_tables``: if ``True``, ``module.schema`` can be used as the decorator for declaring new classes; if ``False``, such use will raise an error stating that the module is intend only to work with existing tables.
 
-The function returns the Python module containing classes from the schema object as well as the table classes.
+The function returns the Python module containing classes from the schema object with all the table classes already declared inside it.
