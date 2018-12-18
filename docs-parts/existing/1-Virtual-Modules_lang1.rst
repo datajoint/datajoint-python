@@ -7,7 +7,7 @@ The function can take several parameters:
 
   ``schema_name``: name of the database in MySQL.
 
-  ``create_schema``: if ``True``, create the schema on the database server.
+  ``create_schema``: if ``True``, create the schema on the database server if it does not already exist; if ``False`` (default), raise an error when the schema is not found.
 
   ``create_tables``: if ``True``, ``module.schema`` can be used as the decorator for declaring new classes.
 
