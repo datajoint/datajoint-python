@@ -11,4 +11,5 @@ A collection can be a list, a tuple, or a Pandas ``DataFrame``.
 
     # a dataframe:
     import pandas as pd
-    cond_frame = pd.DataFrame(tab.fetch())
+    cond_frame = pd.DataFrame(
+                data={'first_name': ['Aaron'], 'last_name': ['Aaronson']})
