@@ -22,7 +22,7 @@ As separate variables
 
 .. code-block:: python
 
-    name, img = query.fetch1('name', 'image')  # when tab has exactly one entity
+    name, img = query.fetch1('name', 'image')  # when query has exactly one entity
     name, img = query.fetch('name', 'image')  # [name, ...] [image, ...]
 
 Primary key values
@@ -32,6 +32,8 @@ Primary key values
 
     keydict = tab.fetch1("KEY")  # single key dict when tab has exactly one entity
     keylist = tab.fetch("KEY")  # list of key dictionaries [{}, ...]
+
+``KEY`` can also used when returning attribute values as separate variables, such that one of the returned variables contains the entire primary keys.
 
 Usage with Pandas
 ~~~~~~~~~~~~~~~~~
@@ -44,3 +46,11 @@ For example:
 
     import pandas as pd
     frame = pd.DataFrame(tab.fetch())
+
+Calling ``fetch()`` with the argument ``format="frame"`` returns results as ``pandas.DataFrame`` objects with no need for conversion.
+
+.. code-block:: python
+
+  frame = tab.fetch('format="frame"')
+
+Returning results as a ``DataFrame`` is not possible when fetching a particular subset of attributes or when ``as_dict`` is set to ``True``.
