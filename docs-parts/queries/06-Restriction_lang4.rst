@@ -1,11 +1,15 @@
 
+A collection can be a list, a tuple, or a Pandas ``DataFrame``.
+
 .. code-block:: python
 
-    Student() & ['first_name = "Aaron"', 'last_name = "Aaronson"']
+    # a list:
+    cond_list = ['first_name = "Aaron"', 'last_name = "Aaronson"']
 
-.. figure:: ../_static/img/python_collection.png
-    :align: center
-    :alt: restriction by collection
+    # a tuple:
+    cond_tuple = ('first_name = "Aaron"', 'last_name = "Aaronson"')
 
-    Restriction by a collection, returning any entities matching any condition in the collection.
-
+    # a dataframe:
+    import pandas as pd
+    cond_frame = pd.DataFrame(
+                data={'first_name': ['Aaron'], 'last_name': ['Aaronson']})
