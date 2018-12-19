@@ -22,7 +22,7 @@ def to_ascii(byte_string):
 
 def long_hash(*buffers):
     """
-    :param buffer: a binary buffer (e.g. serialized blob)
+    :param buffers: any number of binary buffers (e.g. serialized blobs)
     :return: 43-character base64 ASCII rendition SHA-256
     """
     hashed = hashlib.sha256()
@@ -33,11 +33,10 @@ def long_hash(*buffers):
 
 def short_hash(*buffers):
     """
-    :param buffer: a binary buffer (e.g. serialized blob)
+    :param buffers: any number of binary buffers (e.g. serialized blobs)
     :return: the first 8 characters of base64 ASCII rendition SHA-1
     """
     hashed = hashlib.sha1()
     for buffer in buffers:
         hashed.update(buffer)
     return to_ascii(hashed.digest())[:8]
-
