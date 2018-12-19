@@ -1,1 +1,1 @@
-   This is done using the ``set_cache_folder`` method of the schema object.
+   This is done using ``dj.config`` to change the ``cache`` property.
