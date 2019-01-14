@@ -13,7 +13,6 @@ STORE_NAME_LENGTH = 8
 STORE_HASH_LENGTH = 43
 HASH_DATA_TYPE = 'char(51)'
 MAX_TABLE_NAME_LENGTH = 64
-DEFAULT_PROTOCOL = 'LONGBLOB'   # for a configurable field
 
 logger = logging.getLogger(__name__)
 
@@ -271,13 +270,13 @@ def compile_attribute(line, in_key, foreign_key_sql):
         match['default'] = ''
     match = {k: v.strip() for k, v in match.items()}
     match['nullable'] = match['default'].lower() == 'null'
+    blob_datatype = r'(tiny|small|medium|long)?blob'
     accepted_datatype = (
         r'time|date|year|enum|(var)?char|float|real|double|decimal|numeric|'
-        r'(tiny|small|medium|big)?int|bool|'
-        r'(tiny|small|medium|long)?blob|external|attach')
+        r'(tiny|small|medium|big)?int|bool|external|attach|' + blob_datatype)
     if re.match(accepted_datatype, match['type'], re.I) is None:
         raise DataJointError('DataJoint does not support datatype "{type}"'.format(**match))
-
+    is_blob = bool(re.match(blob_datatype, match['type'], re.I))
     literals = ['CURRENT_TIMESTAMP']   # not to be enclosed in quotes
     if match['nullable']:
         if in_key:
@@ -297,33 +296,36 @@ def compile_attribute(line, in_key, foreign_key_sql):
     if is_configurable:
         if in_key:
             raise DataJointError('Configurable attributes cannot be primary in:\n%s' % line)
+        match['comment'] = ':{type}:{comment}'.format(**match)  # insert configurable type into comment
         store_name = match['type'].split('-')
         if store_name[0] not in ('external', 'blob', 'attach'):
-            raise DataJointError('Invalid configurable attribute name in:\n%s' % line)
+            raise DataJointError('Invalid attribute type in:\n%s' % line)
         store_name = '-'.join(store_name[1:])
-        if store_name != '' and not store_name.isidentifier():
+        if store_name and not store_name.isidentifier():
             raise DataJointError(
                 'The external store name `{type}` is invalid. Make like a python identifier.'.format(**match))
         if len(store_name) > STORE_NAME_LENGTH:
             raise DataJointError(
                 'The external store name `{type}` is too long. Must be <={max_len} characters.'.format(
                     max_len=STORE_NAME_LENGTH, **match))
-        if not match['default'] in ('DEFAULT NULL', 'NOT NULL'):
-            raise DataJointError('The default value for a blob or attachment field, if any, can only be NULL in:\n%s' % line)
-        if match['type'] not in config:
-            raise DataJointError('The external store `{type}` is not configured.'.format(**match))
-        match['comment'] = ':'.join(('', match['type'], match['comment']))
-        protocol = config[match['type']].get('protocol', DEFAULT_PROTOCOL).lower()
-        is_external = protocol in {'s3', 'file'}
+        spec = config.get_store_spec(store_name)
+        is_external = spec['protocol'] in {'s3', 'file'}
         if not is_external:
-            if re.match(r'(long|medium|tiny)?blob', protocol):
-                match['type'] = protocol
+            is_blob = re.match(blob_datatype, spec['protocol'], re.I)
+            if not is_blob:
+                raise DataJointError('Invalid protocol {protocol} in external store in:\n{line}'.format(
+                    line=line, **spec))
+            match['type'] = spec['protocol']
+
+    if (is_external or is_blob) and match['default'] not in ('DEFAULT NULL', 'NOT NULL'):
+        raise DataJointError(
+            'The default value for a blob or attachment can only be NULL in:\n%s' % line)
 
     if not is_external:
         sql = ('`{name}` {type} {default}' + (' COMMENT "{comment}"' if match['comment'] else '')).format(**match)
     else:
-        # append external configuration name to the end of the comment
-        sql = '`{name}` {hash_type} {default} COMMENT ":{type}:{comment}"'.format(
+        # add hash field with a dependency on the ~external table
+        sql = '`{name}` {hash_type} {default} COMMENT "{comment}"'.format(
             hash_type=HASH_DATA_TYPE, **match)
         foreign_key_sql.append(
             "FOREIGN KEY (`{name}`) REFERENCES {{external_table}} (`hash`) "

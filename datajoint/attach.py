@@ -5,10 +5,10 @@ from os import path
 from itertools import count
 
 
-def load(file_path):
-    with open(file_path, mode='rb') as f:  # b is important -> binary
+def load(local_path):
+    with open(local_path, mode='rb') as f:  # b is important -> binary
         contents = f.read()
-    return str.encode(path.basename(file_path)) + b'\0' + contents
+    return str.encode(path.basename(local_path)) + b'\0' + contents
 
 
 def save(buffer, save_path='.'):

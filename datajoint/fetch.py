@@ -44,11 +44,16 @@ def _get(connection, attr, data, squeeze):
     return data
 
 
-def _flatten_attribute_list(primary_key, attr):
-    for a in attr:
-        if re.match(r'^\s*KEY(\s+ASC)?\s*$', a):
+def _flatten_attribute_list(primary_key, attrs):
+    """
+    :param primary_key: list of attributes in primary key
+    :param attrs: list of attribute names, which may include "KEY", "KEY DESC" or "KEY ASC"
+    :return: generator of attributes where "KEY" is replaces with its component attributes
+    """
+    for a in attrs:
+        if re.match(r'^\s*KEY(\s+[aA][Ss][Cc])?\s*$', a):
             yield from primary_key
-        elif re.match(r'^\s*KEY\s+DESC\s*$', a):
+        elif re.match(r'^\s*KEY\s+[Dd][Ee][Ss][Cc]\s*$', a):
             yield from (q + ' DESC' for q in primary_key)
         else:
             yield a
@@ -57,7 +62,7 @@ def _flatten_attribute_list(primary_key, attr):
 class Fetch:
     """
     A fetch object that handles retrieving elements from the table expression.
-    :param relation: the table expression to fetch from
+    :param expression: the table expression to fetch from.
     """
 
     def __init__(self, expression):

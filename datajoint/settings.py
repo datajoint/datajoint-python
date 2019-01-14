@@ -14,6 +14,9 @@ from .errors import DataJointError
 LOCALCONFIG = 'dj_local_conf.json'
 GLOBALCONFIG = '.datajoint_config.json'
 
+DEFAULT_SUBFOLDING = (2, 2)  # subfolding for external storage in filesystem.  2, 2 means that file abcdef is stored as /ab/cd/abcdef
+DEFAULT_STORE_PROTOCOL = 'LONGBLOB'
+
 validators = collections.defaultdict(lambda: lambda value: True)
 validators['database.port'] = lambda a: isinstance(a, int)
 
@@ -124,6 +127,26 @@ class Config(collections.MutableMapping):
         """
         self.save(os.path.expanduser(os.path.join('~', GLOBALCONFIG)), verbose)
 
+    def get_store_spec(self, store):
+        """
+        find configuration of blob and attachment stores
+        """
+        # check new style
+        try:
+            spec = self['stores']['-' + store]
+        except KeyError:
+            # check old style
+            try:
+                spec = self['external' + ('-' + store if store else '')]
+            except KeyError:
+                raise DataJointError('Storage {store} is requested but not configured'.format(store=store))
+            else:
+                spec['subfolding'] = spec.get('subfolding', ())   # old style external fields
+        else:
+            spec['subfolding'] = spec.get('subfolding', DEFAULT_SUBFOLDING)
+        spec['protocol'] = spec.get('protocol', DEFAULT_STORE_PROTOCOL)
+        return spec
+
     @contextmanager
     def __call__(self, **kwargs):
         """
@@ -174,7 +197,6 @@ class Config(collections.MutableMapping):
 
 
 # Load configuration from file
-
 config = Config()
 config_files = (os.path.expanduser(n) for n in (LOCALCONFIG, os.path.join('~', GLOBALCONFIG)))
 try:

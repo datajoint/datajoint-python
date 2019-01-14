@@ -211,8 +211,6 @@ class Heading:
                 attr['is_attachment'] = attr['type'].startswith('attach')
                 attr['is_blob'] = attr['type'].startswith(('blob', 'external'))
                 attr['string'] = False
-                if not attr['is_external']:
-                    print('aha!')
 
             if attr['string'] and attr['default'] is not None and attr['default'] not in sql_literals:
                 attr['default'] = '"%s"' % attr['default']
@@ -237,7 +235,7 @@ class Heading:
                     t = re.sub(r' unsigned$', '', t)   # remove unsigned
                     assert (t, is_unsigned) in numeric_types, 'dtype not found for type %s' % t
                     attr['dtype'] = numeric_types[(t, is_unsigned)]
-        self.attributes = OrderedDict([(q['name'], Attribute(**q)) for q in attributes])
+        self.attributes = OrderedDict(((q['name'], Attribute(**q)) for q in attributes))
 
         # Read and tabulate secondary indexes
         keys = defaultdict(dict)
