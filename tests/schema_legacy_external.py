@@ -1,5 +1,5 @@
 """
-a schema for testing external attributes
+a schema for testing external attributes using legacy syntax pre-version 0.12.0
 """
 
 import tempfile
@@ -8,27 +8,24 @@ import datajoint as dj
 from . import PREFIX, CONN_INFO
 import numpy as np
 
-schema = dj.schema(PREFIX + '_extern', connection=dj.conn(**CONN_INFO))
+schema = dj.schema(PREFIX + '_legacy_extern', connection=dj.conn(**CONN_INFO))
 
 
-dj.config['stores'] = {
-    '-': {
+dj.config['external'] = {
     'protocol': 'file',
-    'location': 'dj-store/external'
-    },
+    'location': 'dj-legacy/external'}
 
-    '-raw': {
+dj.config['external-raw'] = {
     'protocol': 'file',
-    'location': 'dj-store/raw'},
+    'location': 'dj-legacy/raw'}
 
-    '-compute': {
+dj.config['external-compute'] = {
     'protocol': 's3',
-    'location': '/datajoint-projects/test',
+    'location': '/datajoint-legacy/test',
     'user': 'djtest',
     'token': '2e05709792545ce'}
-}
 
-dj.config['cache'] = tempfile.mkdtemp('dj-cache')
+dj.config['cache'] = tempfile.mkdtemp('dj-legacy-cache')
 
 
 @schema
@@ -36,7 +33,7 @@ class Simple(dj.Manual):
     definition = """
     simple  : int
     ---
-    item  : blob-
+    item  : external-raw
     """
 
 
@@ -67,8 +64,8 @@ class Image(dj.Computed):
     -> Seed
     -> Dimension
     ----
-    img  : blob-raw    #  objects are stored as specified by dj.config['stores'][-raw']
-    neg : blob-    # objects are stored as specified by dj.config['stores']['-']
+    img  : external-raw    #  objects are stored as specified by dj.config['external-raw']
+    neg : external    # objects are stored as specified by dj.config['external']
     """
 
     def make(self, key):

@@ -197,7 +197,7 @@ class Heading:
 
             # recognize configurable fields
             configurable_field = re.match(
-                r'^:(?P<type>(blob|external|attach)(-\w+)?):(?P<comment>.*)$', attr['comment'])
+                r'^:(?P<type>(blob|external|attach)(-\w*)?):(?P<comment>.*)$', attr['comment'])
             if configurable_field is None:
                 attr['is_external'] = False
                 attr['is_attachment'] = False
