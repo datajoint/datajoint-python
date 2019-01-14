@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 default_attribute_properties = dict(    # these default values are set in computed attributes
     name=None, type='expression', in_key=False, nullable=False, default=None, comment='calculated attribute',
     autoincrement=False, numeric=None, string=None, is_blob=False, is_external=False, sql_expression=None,
-    database=None, dtype=object)
+    database=None, dtype=object, foreign_key=False, references=None )
 
 
 class Attribute(namedtuple('_Attribute', default_attribute_properties)):
@@ -65,6 +65,16 @@ class Heading:
     def primary_key(self):
         return [k for k, v in self.attributes.items() if v.in_key]
 
+    @property
+    def foreign_key(self):
+        return [k for k, v in self.attributes.items() if v.foreign_key]
+    
+    @property
+    def is_distinguished(self):
+        if any(ky not in self.foreign_key for ky in self.primary_key):
+            return True
+        return False
+              
     @property
     def dependent_attributes(self):
         return [k for k, v in self.attributes.items() if not v.in_key]
@@ -182,7 +192,7 @@ class Heading:
             ('bigint', True): np.uint64}
 
         sql_literals = ['CURRENT_TIMESTAMP']
-
+        
         # additional attribute properties
         for attr in attributes:
             # process external attributes
@@ -200,6 +210,8 @@ class Heading:
             attr['string'] = bool(re.match(r'(var)?char|enum|date|year|time|timestamp', attr['type']))
             attr['is_blob'] = attr['is_external'] or bool(re.match(r'(tiny|medium|long)?blob', attr['type']))
             attr['database'] = database
+            attr['foreign_key'] = False
+            attr['references'] = None
 
             if attr['string'] and attr['default'] is not None and attr['default'] not in sql_literals:
                 attr['default'] = '"%s"' % attr['default']
@@ -225,6 +237,36 @@ class Heading:
                     t = re.sub(r' unsigned$', '', t)   # remove unsigned
                     assert (t, is_unsigned) in numeric_types, 'dtype not found for type %s' % t
                     attr['dtype'] = numeric_types[(t, is_unsigned)]
+        
+        #Read and tabulate foreign keys
+        f_keys_query = "SHOW CREATE TABLE `{database}`.`{table_name}`;".format(database = database, table_name=table_name)
+        for item in conn.query(f_keys_query,as_dict=True):
+            ddl = item['Create Table']
+            
+            while(ddl.find('FOREIGN KEY') != -1):
+                f_keys = ddl[ddl.find('FOREIGN KEY (')+13:ddl.find(') REFERENCES')]
+                f_keys = f_keys.replace('`','')
+                f_keys = f_keys.replace(' ','')
+                f_keys = f_keys.split(',')
+                
+                ddl = ddl[ddl.find('REFERENCES')+11:]
+                referenced_table = ddl[:ddl.find('(')]
+                referenced_table = referenced_table.replace('`','')
+                referenced_table = referenced_table.replace(' ','')
+
+                ref_keys = ddl[ddl.find('(')+1:ddl.find(')')]
+                ref_keys = ref_keys.replace('`','')
+                ref_keys = ref_keys.replace(' ','')
+                ref_keys = ref_keys.split(',')
+
+                ddl = ddl[ddl.find(')')+1:]
+
+                for i in range(len(f_keys)):
+                    for attrr in range(len(attributes)):
+                        if attributes[attrr]['name'] == f_keys[i]:
+                            attributes[attrr]['foreign_key'] = True
+                            attributes[attrr]['references'] = referenced_table + '.' + ref_keys[i]
+
         self.attributes = OrderedDict([(q['name'], Attribute(**q)) for q in attributes])
 
         # Read and tabulate secondary indexes
