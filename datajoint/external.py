@@ -112,8 +112,8 @@ class ExternalTable(Table):
                     raise DataJointError('Lost access to external blob %s.' % full_path) from None
             elif spec['protocol'] == 's3':
                 try:
-                    blob = s3.Folder(database=self.database, **spec).get(
-                        '/'.join((*subfold(blob_hash, spec['subfolding']), blob_hash)))
+                    subfolder = '/'.join(subfold(blob_hash, spec['subfolding']))
+                    blob = s3.Folder(database=self.database, **spec).get('/'.join((subfolder, blob_hash)))
                 except TypeError:
                     raise DataJointError('External store {store} configuration is incomplete.'.format(store=store))
             else:
