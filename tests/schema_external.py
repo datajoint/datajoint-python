@@ -13,22 +13,22 @@ schema = dj.schema(PREFIX + '_extern', connection=dj.conn(**CONN_INFO))
 
 dj.config['stores'] = {
     '-': {
-    'protocol': 'file',
-    'location': 'dj-store/external'
+        'protocol': 'file',
+        'location': 'dj-store/external'
     },
 
     '-raw': {
-    'protocol': 'file',
-    'location': 'dj-store/raw'},
+        'protocol': 'file',
+        'location': 'dj-store/raw'},
 
     '-compute': {
-    'protocol': 's3',
-    'location': '/datajoint-projects/test',
-    'user': 'djtest',
-    'token': '2e05709792545ce'}
+        'protocol': 's3',
+        'location': '/datajoint-projects/test',
+        'user': 'djtest',
+        'token': '2e05709792545ce'}
 }
 
-dj.config['cache'] = tempfile.mkdtemp('dj-cache')
+dj.config['cache'] = tempfile.mkdtemp()
 
 
 @schema

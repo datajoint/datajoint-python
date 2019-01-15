@@ -3,6 +3,7 @@ language: python
 env:
   - DJ_TEST_HOST="127.0.0.1" DJ_TEST_USER="datajoint" DJ_TEST_PASSWORD="datajoint" DJ_HOST="127.0.0.1" DJ_USER="datajoint" DJ_PASS="datajoint" BOTO_CONFIG="/tmp/bogusvalue"
 python:
+  - "3.4"
   - "3.5"
   - "3.6"
 matrix:

@@ -15,7 +15,7 @@ Please cite:
 """
 
 __author__ = "Dimitri Yatsenko, Edgar Y. Walker, and Fabian Sinz at Baylor College of Medicine"
-__date__ = "Dec 4, 2018"
+__date__ = "January 14, 2018"
 __all__ = ['__author__', '__version__',
            'config', 'conn', 'Connection',
            'schema', 'create_virtual_module', 'get_schema_names',
