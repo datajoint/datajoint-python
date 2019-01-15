@@ -170,7 +170,8 @@ class Table(QueryExpression):
         # prohibit direct inserts into auto-populated tables
         if not (allow_direct_insert or getattr(self, '_allow_insert', True)):  # _allow_insert is only present in AutoPopulate
             raise DataJointError(
-                'Auto-populate tables can only be inserted into from their make methods during populate calls. (see allow_direct_insert)')
+                'Auto-populate tables can only be inserted into from their make methods during populate calls.' \
+                ' To override, use the the allow_direct_insert argument.')
 
         heading = self.heading
         if inspect.isclass(rows) and issubclass(rows, QueryExpression):   # instantiate if a class
