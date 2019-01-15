@@ -27,12 +27,13 @@ def to_dicts(recarray):
         yield OrderedDict(zip(recarray.dtype.names, rec.tolist()))
 
 
-def _get(connection, attr, data, squeeze):
+def _get(connection, attr, data, squeeze, download_path):
     """
     :param connection:
     :param attr: an attribute from the heading
     :param data: literal value fetched from the table
     :param squeeze: if True squeeze blobs
+    :param download_path: for fetches that download data, e.g. attachments
     :return: unpacked data
     """
     if attr.is_external:
@@ -40,7 +41,7 @@ def _get(connection, attr, data, squeeze):
     if attr.is_blob:
         return blob.unpack(data, squeeze=squeeze)
     if attr.is_attachment:
-        return attach.save(data)
+        return attach.save(data, download_path)
     return data
 
 
@@ -68,7 +69,8 @@ class Fetch:
     def __init__(self, expression):
         self._expression = expression
 
-    def __call__(self, *attrs, offset=None, limit=None, order_by=None, format=None, as_dict=False, squeeze=False):
+    def __call__(self, *attrs, offset=None, limit=None, order_by=None, format=None, as_dict=False,
+                 squeeze=False, download_path='.'):
         """
         Fetches the expression results from the database into an np.array or list of dictionaries and unpacks blob attributes.
 
@@ -86,6 +88,7 @@ class Fetch:
                 "frame": output pandas.DataFrame. .
         :param as_dict: returns a list of dictionaries instead of a record array
         :param squeeze:  if True, remove extra dimensions from arrays
+        :param download_path: for fetches that download data, e.g. attachments
         :return: the contents of the relation in the form of a structured numpy.array or a dict list
         """
 
@@ -119,7 +122,7 @@ class Fetch:
                           'Consider setting a limit explicitly.')
             limit = 2 * len(self._expression)
 
-        get = partial(_get, self._expression.connection, squeeze=squeeze)
+        get = partial(_get, self._expression.connection, squeeze=squeeze, download_path=download_path)
         if not attrs:
             # fetch all attributes as a numpy.record_array or pandas.DataFrame
             cur = self._expression.cursor(as_dict=as_dict, limit=limit, offset=offset, order_by=order_by)
@@ -136,7 +139,8 @@ class Fetch:
         else:  # if list of attributes provided
             attributes = [a for a in attrs if not is_key(a)]
             result = self._expression.proj(*attributes).fetch(
-                offset=offset, limit=limit, order_by=order_by, as_dict=False, squeeze=squeeze)
+                offset=offset, limit=limit, order_by=order_by,
+                as_dict=False, squeeze=squeeze, download_path=download_path)
             return_values = [
                 list(to_dicts(result[self._expression.primary_key]))
                 if is_key(attribute) else result[attribute]
@@ -155,7 +159,7 @@ class Fetch1:
     def __init__(self, relation):
         self._expression = relation
 
-    def __call__(self, *attrs, squeeze=False):
+    def __call__(self, *attrs, squeeze=False, download_path='.'):
         """
         Fetches the expression results from the database when the expression is known to yield only one entry.
 
@@ -168,6 +172,7 @@ class Fetch1:
 
         :params *attrs: attributes to return when expanding into a tuple. If empty, the return result is a dict
         :param squeeze:  When true, remove extra dimensions from arrays in attributes
+        :param download_path: for fetches that download data, e.g. attachments
         :return: the one tuple in the relation in the form of a dict
         """
 
@@ -178,11 +183,12 @@ class Fetch1:
             ret = cur.fetchone()
             if not ret or cur.fetchone():
                 raise DataJointError('fetch1 should only be used for relations with exactly one tuple')
-            ret = OrderedDict((name, _get(self._expression.connection, heading[name], ret[name], squeeze=squeeze))
+            ret = OrderedDict((name, _get(self._expression.connection, heading[name], ret[name],
+                                          squeeze=squeeze, download_path=download_path))
                               for name in heading.names)
         else:  # fetch some attributes, return as tuple
             attributes = [a for a in attrs if not is_key(a)]
-            result = self._expression.proj(*attributes).fetch(squeeze=squeeze)
+            result = self._expression.proj(*attributes).fetch(squeeze=squeeze, download_path=download_path)
             if len(result) != 1:
                 raise DataJointError('fetch1 should only return one tuple. %d tuples were found' % len(result))
             return_values = tuple(

@@ -14,7 +14,12 @@ schema = dj.schema(PREFIX + '_extern', connection=dj.conn(**CONN_INFO))
 dj.config['stores'] = {
     '-': {
         'protocol': 'file',
-        'location': 'dj-store/external'
+        'location': 'dj-store/external',
+        'folding': (1, 1)
+    },
+
+    '-b': {
+        'protocol': 'longblob'
     },
 
     '-raw': {
@@ -26,6 +31,8 @@ dj.config['stores'] = {
         'location': '/datajoint-projects/test',
         'user': 'djtest',
         'token': '2e05709792545ce'}
+
+
 }
 
 dj.config['cache'] = tempfile.mkdtemp()
@@ -75,3 +82,14 @@ class Image(dj.Computed):
         np.random.seed(key['seed'])
         img = np.random.rand(*(Dimension() & key).fetch1('dimensions'))
         self.insert1(dict(key, img=img, neg=-img.astype(np.float32)))
+
+
+@schema
+class Attach(dj.Manual):
+    definition = """
+    # table for storing attachments
+    attach : int
+    ----
+    img : attach-raw    #  attachments are stored as specified by dj.config['stores']['-file']
+    txt : attach-b      #  attachments are stored as specified by dj.config['stores']['-b']
+    """

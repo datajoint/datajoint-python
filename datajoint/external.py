@@ -184,4 +184,3 @@ class ExternalTable(Table):
                 s3.Folder(database=self.database, **spec).clean(in_use)
             except TypeError:
                 raise DataJointError('External store {store} configuration is incomplete.'.format(store=store))
-

@@ -17,11 +17,8 @@ def save(buffer, save_path='.'):
 
     if path.isfile(file_path):
         # generate a new filename
-        split_name = path.splitext(file_path)
-        for n in count():
-            file_path = '%s_%04u%s' % (split_name[0], n, split_name[1])
-            if not path.isfile(file_path):
-                break
+        file, ext = path.splitext(file_path)
+        file_path = next(f for f in ('%s_%04x%s' % (file, n, ext) for n in count()) if not path.isfile(f))
 
     with open(file_path, mode='wb') as f:
         f.write(buffer[p+1:])
