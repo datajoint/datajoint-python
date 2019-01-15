@@ -13,7 +13,7 @@ def subfold(name, folds):
     """
     subfolding for external storage:   e.g.  subfold('abcdefg', (2, 3))  -->  ['ab','cde']
     """
-    return (name[:folds[0]], *subfold(name[folds[0]:], folds[1:])) if folds else ()
+    return (name[:folds[0]],) + subfold(name[folds[0]:], folds[1:]) if folds else ()
 
 
 class ExternalTable(Table):
