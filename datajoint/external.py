@@ -103,8 +103,8 @@ class ExternalTable(Table):
             store = blob_hash[STORE_HASH_LENGTH:]
             spec = config.get_store_spec(store)
             if spec['protocol'] == 'file':
-                subfolders = subfold(blob_hash, spec['subfolding'])
-                full_path = os.path.join(spec['location'], self.database, *subfolders, blob_hash)
+                subfolders = os.path.join(*subfold(blob_hash, spec['subfolding']))
+                full_path = os.path.join(spec['location'], self.database, subfolders, blob_hash)
                 try:
                     with open(full_path, 'rb') as f:
                         blob = f.read()
