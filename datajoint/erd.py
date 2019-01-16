@@ -121,6 +121,18 @@ else:
                     if node.startswith('`%s`' % database):
                         self.nodes_to_show.add(node)
 
+            for full_table_name in self.nodes._nodes.keys():
+                #one entry per parent
+                parents = connection.dependencies.parents(full_table_name,True)
+                
+                #total count of all the foreign primary keys
+                foreign_primary_keys = sum(len(parent['attr_map']) for parent in parents.values())
+
+                #distinguished table if table introduces atleast on primary key in the schema
+                self.nodes._nodes[full_table_name]['distinguished'] = (True 
+                    if foreign_primary_keys < len(self.nodes._nodes[full_table_name]['primary_key'])
+                        else False)
+
         @classmethod
         def from_sequence(cls, sequence):
             """
@@ -260,7 +272,7 @@ else:
                         '-'*30 if q.startswith('---') else q.replace('->', '&#8594;') if '->' in q else q.split(':')[0]
                         for q in description if not q.startswith('#'))
                     node.set_tooltip('&#13;'.join(description))
-                node.set_label("<<u>"+name+"</u>>" if self.context[name].heading.is_distinguished else name)
+                node.set_label("<<u>"+name+"</u>>" if node.get('distinguished') else name)
                 node.set_color(props['color'])
                 node.set_style('filled')
 
