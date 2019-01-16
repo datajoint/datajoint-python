@@ -272,7 +272,7 @@ else:
                         '-'*30 if q.startswith('---') else q.replace('->', '&#8594;') if '->' in q else q.split(':')[0]
                         for q in description if not q.startswith('#'))
                     node.set_tooltip('&#13;'.join(description))
-                node.set_label("<<u>"+name+"</u>>" if node.get('distinguished') else name)
+                node.set_label("<<u>"+name+"</u>>" if node.get('distinguished') == 'True' else name)
                 node.set_color(props['color'])
                 node.set_style('filled')
 
