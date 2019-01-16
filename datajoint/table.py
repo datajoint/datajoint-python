@@ -450,8 +450,7 @@ class Table(QueryExpression):
         return ret['Data_length'] + ret['Index_length']
 
     def show_definition(self):
-        logger.warning('show_definition is deprecated.  Use describe instead.')
-        return self.describe()
+        raise AttributeError('show_definition is deprecated. Use the describe method instead.')
 
     def describe(self, context=None, printout=True):
         """

@@ -38,11 +38,8 @@ def _get(connection, attr, data, squeeze, download_path):
     """
     if attr.is_external:
         data = connection.schemas[attr.database].external_table.get(data)
-    if attr.is_blob:
-        return blob.unpack(data, squeeze=squeeze)
-    if attr.is_attachment:
-        return attach.save(data, download_path)
-    return data
+    return (blob.unpack(data, squeeze=squeeze) if attr.is_blob else
+            attach.save(data, download_path) if attr.is_attachment else data)
 
 
 def _flatten_attribute_list(primary_key, attrs):

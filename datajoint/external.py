@@ -65,8 +65,8 @@ class ExternalTable(Table):
                     os.makedirs(folder)
                     safe_write(full_path, blob)
         elif spec['protocol'] == 's3':
-            subfolder = '/'.join(subfold(blob_hash, spec['subfolding']))
-            s3.Folder(database=self.database, **spec).put('/'.join(subfolder, blob))
+            folder = '/'.join(subfold(blob_hash, spec['subfolding']))
+            s3.Folder(database=self.database, **spec).put('/'.join((folder, blob_hash)), blob)
         else:
             raise DataJointError('Unknown external storage protocol {protocol} in store "-{store}"'.format(
                 store=store, protocol=spec['protocol']))
