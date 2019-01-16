@@ -2,7 +2,7 @@
 functionality for attaching files
 """
 from os import path
-from itertools import count
+from itertools import count, chain
 
 
 def load(local_path):
