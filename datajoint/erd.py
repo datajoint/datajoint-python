@@ -127,10 +127,10 @@ else:
                 
                 # all the foreign primary keys
                 # set because multiple foreign constraints can be applied on the same local attribute
-                foreign_primary_keys = set(attr for parent in parents.values() for attr in parent['attr_map'].keys())
+                foreign_primary_attributes = set(attr for parent in parents.values() for attr in parent['attr_map'].keys())
                 
                 #distinguished table if table introduces atleast one primary key in the schema
-                self.nodes._nodes[full_table_name]['distinguished'] = foreign_primary_keys < (self.nodes._nodes[full_table_name]['primary_key'])
+                self.nodes._nodes[full_table_name]['distinguished'] = foreign_primary_attributes < self.nodes._nodes[full_table_name]['primary_key']
                 
         @classmethod
         def from_sequence(cls, sequence):
