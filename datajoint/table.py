@@ -75,7 +75,7 @@ class Table(QueryExpression):
         else:
             self._log('Declared ' + self.full_table_name)
     
-    def preview_alter(self,new_definition):
+    def preview_alter(self,new_definition=None):
         """
         Returns changes required to go from current defition to new defition.
         Does not execute any changes. Use alter() method to finalize any changes.
@@ -94,7 +94,7 @@ class Table(QueryExpression):
         new_table_comment = new_definition.pop(0)[1:].strip() if new_definition[0].startswith('#') else ''
         
         if (self.heading.table_info['comment'] != new_table_comment):    
-            alter_sql += ('COMMENT = "' + new_table_comment + '", ')
+            alter_sql += ('COMMENT = "{new_table_comment}", '.format(new_table_comment = new_table_comment))
         
         new_attributes = []
         in_key = True
@@ -152,23 +152,26 @@ class Table(QueryExpression):
 
                     #add attribute
                     if attr['name'] not in self.heading.attributes and not rename:
-                        alter_sql += ("ADD COLUMN" 
-                                    + (' ' + attr['name'])
-                                    + (' ' + attr['type']) 
-                                    + (' ' + 'DEFAULT ' + attr['default'] if attr['default'] else '') 
-                                    + (' ' + 'COMMENT "' + attr['comment'] + '"' if attr['comment'] else '') + ', ')
+                        alter_sql += ('ADD COLUMN {name} {type}{default}{comment}, '.format(
+                                        name=attr['name'], 
+                                        type=attr['type'], 
+                                        null=' NOT NULL' if not attr['nullable'] else '',
+                                        default=' DEFAULT {default}'.format(default=attr['default']) if attr['default'] else '',
+                                        comment=' COMMENT "{comment}"'.format(comment=attr['comment']) if attr['comment'] else ''))
                         new_attributes.append(attr)
                         continue
 
                     #change attribute
-                    column_definition = (attr['type']
-                                        + (' NOT NULL' if not attr['nullable'] else '')
-                                        + (' DEFAULT ' + attr['default'] if attr['default'] else '') 
-                                        + (' COMMENT "' + attr['comment'] + '"' if attr['comment'] else ''))
+                    column_definition = ('{type}{null}{default}{comment}'.format(
+                                            type=attr['type'],
+                                            null=' NOT NULL' if not attr['nullable'] else '',
+                                            default=' DEFAULT {default}'.format(default=attr['default']) if attr['default'] else '',
+                                            comment=' COMMENT "{comment}"'.format(comment=attr['comment']) if attr['comment'] else ''))
                     if (rename
                         or any(getattr(self.heading.attributes[attr['old_name']],attr_def) != attr[attr_def] 
-                            for attr_def in ('type','nullalble','default','comment'))):
-                        alter_sql += ('CHANGE COLUMN ' + attr['old_name'] + ' ' + attr['name'] + ' ' + column_definition + ', ')
+                            for attr_def in ('type','nullable','default','comment'))):
+                        alter_sql += ('CHANGE COLUMN {old_name} {name} {column_definition}, '.format(
+                                        old_name=attr['old_name'], name=attr['name'], column_definition=column_definition))
                         
                     new_attributes.append(attr)
 
@@ -177,7 +180,7 @@ class Table(QueryExpression):
             if (all(old_attribute != new_attribute['old_name'] for new_attribute in new_attributes) 
                 and not self.heading.attributes[old_attribute].type.startswith('external') 
                 and not any(old_attribute in tup for tup in self.heading.indexes.keys())):
-                alter_sql += ('DROP COLUMN ' + old_attribute + ', ')
+                alter_sql += ('DROP COLUMN {old_name}, '.format(old_name=old_attribute))
 
         if alter_sql:
             alter_sql = 'ALTER TABLE %s %s;' % (self.full_table_name, alter_sql[:-2])
