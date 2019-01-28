@@ -2,7 +2,7 @@ from inspect import getmembers
 import re
 import pandas
 import numpy as np
-from nose.tools import assert_equal, assert_not_equal, assert_true, assert_list_equal, raises
+from nose.tools import assert_equal, assert_not_equal, assert_true, assert_false, assert_list_equal, raises
 from pymysql import InternalError
 import datajoint as dj
 from datajoint import utils, DataJointError
@@ -242,3 +242,58 @@ class TestRelation:
 
     def test_repr_html(self):
         assert_true(self.ephys._repr_html_().strip().startswith("<style"))
+
+    def test_alter_unsupported(self):
+        """alter unsupported(primary, foreign key, index) test on dj.lookup with data"""
+
+        definition = """  
+        # Basic information about animal subjects used in experiments
+        # removed 'unique index (real_id, species)' from secondary
+        subject_id   :int  #  {op} no change. unique subject id
+        new_pri: int # shouldn't exist
+        ---
+        -> dep: voila   # shouldn't matter
+        real_id            :varchar(40)  # real-world name. Omit if the same as subject_id
+        species = "mouse"  :enum('mouse', 'monkey', 'human')
+        date_of_birth      :date
+        subject_notes      :varchar(4000)
+        """ 
+        assert_false(self.subject.preview_alter(definition))
+    
+    def test_alter_supported(self):
+        """alter supported test on dj.lookup with data"""
+        #asser (TABLE COMMENT,CHANGE, CHANGE(rename), ADD, DROP) in that order
+        new_definition = """
+        subject_id   :int  #  unique subject id
+        ---
+        real_id            :varchar(40)  # real-world name. Omit if the same as subject_id
+        species = 'monkey' :enum('mouse', 'monkey', 'human', 'fish')
+        dob                :date #{date_of_birth}
+        salary             :int # minimum wage for monkeys
+        unique index (real_id, species)
+        """
+        old_definition = """
+        # Basic information about animal subjects used in experiments
+        subject_id   :int  #  unique subject id
+        ---
+        real_id            :varchar(40)  # real-world name. Omit if the same as subject_id
+        species = "mouse"  :enum("mouse", "monkey", "human")
+        date_of_birth      :date #{dob}
+        subject_notes      :varchar(4000)
+        unique index (real_id, species)
+        """
+        self.subject.alter(new_definition)
+        assert_false(self.subject.heading.table_info['comment'])
+        assert_true('fish' in self.subject.heading.attributes['species'].type
+                and 'monkey' == self.subject.heading.attributes['species'].default.strip('"'))
+        assert_true('date_of_birth' not in self.subject.heading.attributes
+                    and 'dob' in self.subject.heading.attributes)
+        assert_true('salary' in self.subject.heading.attributes
+                    and self.subject.heading.attributes['salary'].type.strip('"') == 'int'
+                    and not self.subject.heading.attributes['salary'].nullable
+                    and not self.subject.heading.attributes['salary'].default)
+        assert_true('subject_notes' not in self.subject.heading.attributes)
+
+        #revert
+        self.subject.alter(old_definition)
+        self.subject.insert(self.subject.contents,replace=True)

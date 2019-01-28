@@ -152,7 +152,7 @@ class Table(QueryExpression):
 
                     #add attribute
                     if attr['name'] not in self.heading.attributes and not rename:
-                        alter_sql += ('ADD COLUMN {name} {type}{default}{comment}, '.format(
+                        alter_sql += ('ADD COLUMN {name} {type}{null}{default}{comment}, '.format(
                                         name=attr['name'], 
                                         type=attr['type'], 
                                         null=' NOT NULL' if not attr['nullable'] else '',
@@ -162,14 +162,23 @@ class Table(QueryExpression):
                         continue
 
                     #change attribute
-                    column_definition = ('{type}{null}{default}{comment}'.format(
+                    if (rename
+                        or any(getattr(self.heading.attributes[attr['old_name']],attr_def) != attr[attr_def] 
+                            for attr_def in ('type','nullable','default','comment'))):
+                        #both enums?
+                        if (re.match('\s*enum',self.heading.attributes[attr['old_name']].type)
+                            and re.match('\s*enum',attr['type'])):
+                            #outer ' -> " (per enum) 
+                            old_enum = re.sub(r'(?<!\w)[\']|[\'](?!\w)','"',self.heading.attributes[attr['old_name']].type)
+                            attr['type'] = re.sub(r'(?<!\w)[\']|[\'](?!\w)','"',attr['type'])
+                            #no difference
+                            if set(re.findall(r'(?<!\w)"(.+?)"(?!\w)',old_enum)) == set(re.findall(r'(?<!\w)"(.+?)"(?!\w)',attr['type'])):
+                                continue
+                        column_definition = ('{type}{null}{default}{comment}'.format(
                                             type=attr['type'],
                                             null=' NOT NULL' if not attr['nullable'] else '',
                                             default=' DEFAULT {default}'.format(default=attr['default']) if attr['default'] else '',
                                             comment=' COMMENT "{comment}"'.format(comment=attr['comment']) if attr['comment'] else ''))
-                    if (rename
-                        or any(getattr(self.heading.attributes[attr['old_name']],attr_def) != attr[attr_def] 
-                            for attr_def in ('type','nullable','default','comment'))):
                         alter_sql += ('CHANGE COLUMN {old_name} {name} {column_definition}, '.format(
                                         old_name=attr['old_name'], name=attr['name'], column_definition=column_definition))
                         
