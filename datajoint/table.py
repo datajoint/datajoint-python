@@ -14,7 +14,7 @@ from .settings import config
 from .declare import declare, is_foreign_key, attribute_parser
 from .expression import QueryExpression
 from .blob import pack
-from .utils import user_choice
+from .utils import user_choice, to_camel_case
 from .heading import Heading
 from .errors import server_error_codes, DataJointError, DuplicateError
 from .version import __version__ as version
@@ -96,9 +96,31 @@ class Table(QueryExpression):
         if (self.heading.table_info['comment'] != new_table_comment):    
             alter_sql += ('COMMENT = "{new_table_comment}", '.format(new_table_comment = new_table_comment))
         
-        new_attributes = []
+        old_attributes = self.heading.as_sql.replace('`','').split(',') #used only for reordering
+        new_attributes = [] #non foreign, non index dependent attributes
         in_key = True
         
+        #check for unsupported modifications
+        old_unsupported = []
+        for line in re.split(r'\s*\n\s*', self.definition.strip()):
+            if line.startswith('---') or line.startswith('___'):
+                in_key = False 
+            if is_foreign_key(line) or re.match(r'^(unique\s+)?index[^:]*$', line, re.I) or (in_key and not line.startswith('#')):
+                line = line.replace(' ','')
+                old_unsupported.append(line.replace('"','\''))
+        in_key = True
+        new_unsupported = []
+        for line in new_definition:
+            if line.startswith('---') or line.startswith('___'):
+                in_key = False 
+            if is_foreign_key(line) or re.match(r'^(unique\s+)?index[^:]*$', line, re.I) or (in_key and not line.startswith('#')):
+                line = line.replace(' ','')
+                new_unsupported.append(line.replace('"','\''))
+        if new_unsupported != old_unsupported:
+            raise DataJointError('Unsupported changes(PK,FK,Index) detected.')
+
+        after = self.heading.primary_key[-1] if self.heading.primary_key else 'FIRST'
+        in_key = True
         for line in new_definition:
             if line.startswith('#'):
                 continue
@@ -107,7 +129,14 @@ class Table(QueryExpression):
             elif is_foreign_key(line):
                 continue
             elif re.match(r'^(unique\s+)?index[^:]*$', line, re.I): # index
-                continue
+                atts = []
+                not_needed = []
+                compile_foreign_key(line,self.connection.schemas[self.database].context,atts,not_needed,not_needed,not_needed,not_needed)
+                for att in atts[::-1]:
+                    if att not in new_attributes:
+                        new_attributes.append({'old_name':att,'name':att})
+                        after = atts[-1] if atts else after
+                        continue
             else:
                 if not in_key:
                     # change in secondary attributes
@@ -149,20 +178,27 @@ class Table(QueryExpression):
                             attr['default'] = ('"'+attr['default'][1:len(attr['default'])-1]+'"' if quote else attr['default'])
                         else:
                             attr['default'] = None
+                    
+                    after = new_attributes[-1]['name'] if new_attributes else after
+                    new_attributes.append(attr)
 
                     #add attribute
                     if attr['name'] not in self.heading.attributes and not rename:
-                        alter_sql += ('ADD COLUMN {name} {type}{null}{default}{comment}, '.format(
+                        column_definition = ('{type}{null}{default}{comment}'.format(
+                                            type=attr['type'],
+                                            null=' NOT NULL' if not attr['nullable'] else '',
+                                            default=' DEFAULT {default}'.format(default=attr['default']) if attr['default'] else '',
+                                            comment=' COMMENT "{comment}"'.format(comment=attr['comment']) if attr['comment'] else ''))
+                        alter_sql += ('ADD COLUMN {name} {col_def} {aftercol}, '.format(
                                         name=attr['name'], 
-                                        type=attr['type'], 
-                                        null=' NOT NULL' if not attr['nullable'] else '',
-                                        default=' DEFAULT {default}'.format(default=attr['default']) if attr['default'] else '',
-                                        comment=' COMMENT "{comment}"'.format(comment=attr['comment']) if attr['comment'] else ''))
-                        new_attributes.append(attr)
+                                        col_def=column_definition,
+                                        aftercol='AFTER {after}'.format(after=after)))
+                        old_attributes[old_attributes.index(after):old_attributes.index(after)] = [attr['name']]
                         continue
 
                     #change attribute
                     if (rename
+                        or after != old_attributes[max(0, old_attributes.index(attr['old_name']) - 1)]
                         or any(getattr(self.heading.attributes[attr['old_name']],attr_def) != attr[attr_def] 
                             for attr_def in ('type','nullable','default','comment'))):
                         #both enums?
@@ -179,10 +215,14 @@ class Table(QueryExpression):
                                             null=' NOT NULL' if not attr['nullable'] else '',
                                             default=' DEFAULT {default}'.format(default=attr['default']) if attr['default'] else '',
                                             comment=' COMMENT "{comment}"'.format(comment=attr['comment']) if attr['comment'] else ''))
-                        alter_sql += ('CHANGE COLUMN {old_name} {name} {column_definition}, '.format(
-                                        old_name=attr['old_name'], name=attr['name'], column_definition=column_definition))
-                        
-                    new_attributes.append(attr)
+                        alter_sql += ('CHANGE COLUMN {old_name} {name} {column_definition} {aftercol}, '.format(
+                                        old_name=attr['old_name'],
+                                        name=attr['name'],
+                                        column_definition=column_definition,
+                                        aftercol='AFTER {after}'.format(after=after)))
+                        old_attributes.pop(old_attributes.index(attr['old_name']))
+                        old_attributes[old_attributes.index(after)+1:old_attributes.index(after)+1] = [attr['name']]
+
 
         #Drop attribute
         for old_attribute in self.heading.dependent_attributes:
@@ -216,10 +256,8 @@ class Table(QueryExpression):
         if alter_statement:        
             self.connection.query(alter_statement)
             self.heading.init_from_database(self.connection, self.database, self.table_name)
-
-        ##need to add make calls for auto-populate tables, since the new columns are set to null.
-        ##...
-        
+            self.heading.init_from_database(self.connection, self.database, self.table_name)
+            
     @property
     def from_clause(self):
         """
