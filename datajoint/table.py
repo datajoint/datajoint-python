@@ -127,8 +127,6 @@ class Table(QueryExpression):
             elif line.startswith('---') or line.startswith('___'):
                 in_key = False
             elif is_foreign_key(line):
-                continue
-            elif re.match(r'^(unique\s+)?index[^:]*$', line, re.I): # index
                 atts = []
                 not_needed = []
                 compile_foreign_key(line,self.connection.schemas[self.database].context,atts,not_needed,not_needed,not_needed,not_needed)
@@ -137,6 +135,8 @@ class Table(QueryExpression):
                         new_attributes.append({'old_name':att,'name':att})
                         after = atts[-1] if atts else after
                         continue
+            elif re.match(r'^(unique\s+)?index[^:]*$', line, re.I): # index
+                continue
             else:
                 if not in_key:
                     # change in secondary attributes
