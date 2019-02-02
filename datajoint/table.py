@@ -75,7 +75,7 @@ class Table(QueryExpression):
         else:
             self._log('Declared ' + self.full_table_name)
     
-    def preview_alter(self,new_definition=None):
+    def make_alter(self,new_definition=None):
         """
         Returns changes required to go from current defition to new defition.
         Does not execute any changes. Use alter() method to finalize any changes.
