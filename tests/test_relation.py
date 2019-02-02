@@ -242,7 +242,7 @@ class TestRelation:
 
     def test_repr_html(self):
         assert_true(self.ephys._repr_html_().strip().startswith("<style"))
-
+    @raises(DataJointError)
     def test_alter_unsupported(self):
         """alter unsupported(primary, foreign key, index) test on dj.lookup with data"""
 
@@ -258,7 +258,7 @@ class TestRelation:
         date_of_birth      :date
         subject_notes      :varchar(4000)
         """ 
-        assert_false(self.subject.preview_alter(definition))
+        self.subject.make_alter(definition)
     
     def test_alter_supported(self):
         """alter supported test on dj.lookup with data"""
