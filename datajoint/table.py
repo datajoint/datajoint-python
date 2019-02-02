@@ -251,7 +251,7 @@ class Table(QueryExpression):
             raise DataJointError("Table definition cannot be altered during a transaction.")
         
         if alter_statement is None:
-            alter_statement = self.preview_alter(new_definition)
+            alter_statement = self.make_alter(new_definition)
 
         if alter_statement:        
             self.connection.query(alter_statement)
