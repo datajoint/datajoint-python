@@ -11,7 +11,7 @@ import logging
 import warnings
 from pymysql import OperationalError, InternalError, IntegrityError
 from .settings import config
-from .declare import declare, is_foreign_key, attribute_parser
+from .declare import declare, is_foreign_key, attribute_parser, compile_foreign_key
 from .expression import QueryExpression
 from .blob import pack
 from .utils import user_choice, to_camel_case
