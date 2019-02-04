@@ -147,7 +147,7 @@ class Connection:
                 cur.execute(query, args)
         except (err.InterfaceError, err.OperationalError) as e:
             if is_connection_error(e) and reconnect:
-                warnings.warn("Mysql server has gone away. Reconnectting to the server.")
+                warnings.warn("Mysql server has gone away. Reconnecting to the server.")
                 self.connect()
                 if self._in_transaction:
                     self.cancel_transaction()

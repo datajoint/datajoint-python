@@ -121,6 +121,17 @@ else:
                     if node.startswith('`%s`' % database):
                         self.nodes_to_show.add(node)
 
+            for full_table_name in self.nodes_to_show:
+                #one entry per parent
+                parents = connection.dependencies.parents(full_table_name,True)
+                
+                # all the foreign primary keys
+                # set because multiple foreign constraints can be applied on the same local attribute
+                foreign_primary_attributes = set(attr for parent in parents.values() for attr in parent['attr_map'].keys())
+                
+                #distinguished table if table introduces atleast one primary key in the schema
+                self.nodes._nodes[full_table_name]['distinguished'] = foreign_primary_attributes < self.nodes._nodes[full_table_name]['primary_key']
+                
         @classmethod
         def from_sequence(cls, sequence):
             """
@@ -260,7 +271,7 @@ else:
                         '-'*30 if q.startswith('---') else q.replace('->', '&#8594;') if '->' in q else q.split(':')[0]
                         for q in description if not q.startswith('#'))
                     node.set_tooltip('&#13;'.join(description))
-                node.set_label(name)
+                node.set_label("<<u>"+name+"</u>>" if node.get('distinguished') == 'True' else name)
                 node.set_color(props['color'])
                 node.set_style('filled')
 
