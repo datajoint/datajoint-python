@@ -228,7 +228,7 @@ class Schema:
         return self._jobs
 
     @property
-    def external_table(self):
+    def external(self):
         """
         schema.external provides a view of the external hash table for the schema
         :return: external table
@@ -236,6 +236,8 @@ class Schema:
         if self._external is None:
             self._external = ExternalTable(self.connection, self.database)
         return self._external
+
+    external_table = external  # for backward compatibility to pre-0.12.0
 
 
 def create_virtual_module(module_name, schema_name, create_schema=False, create_tables=False, connection=None):

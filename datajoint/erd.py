@@ -50,8 +50,8 @@ if not erd_active:
         """
 
         def __init__(self, *args, **kwargs):
-            warnings.warn('ERD functionality depends on matplotlib and pygraphviz. Please install both of these '
-                          'libraries to enable the ERD feature.')
+            warnings.warn('ERD functionality depends on matplotlib, networkx, and pygraphviz. '
+                          'Please install both of these libraries to enable the ERD feature.')
 else:
     class ERD(nx.DiGraph):
         """

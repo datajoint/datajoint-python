@@ -1,5 +1,5 @@
 import os
-from tqdm import tqdm
+import itertools
 from .settings import config
 from .errors import DataJointError
 from .hash import long_hash
@@ -165,22 +165,35 @@ class ExternalTable(Table):
                 for ref in self.references) or "TRUE")
         print('Deleted %d items' % self.connection.query("SELECT ROW_COUNT()").fetchone()[0])
 
-    def clean_store(self, store, display_progress=True):
+    def clean_store(self, store, verbose=True):
         """
         Clean unused data in an external storage repository from unused blobs.
         This must be performed after delete_garbage during low-usage periods to reduce risks of data loss.
         """
         spec = config.get_store_spec(store)
-        progress = tqdm if display_progress else lambda x: x
-        in_use = set(self.fetch('hash'))
+        in_use = set(x for x in (self & '`hash` LIKE "%%{store}"'.format(store=store)).fetch('hash'))
         if spec['protocol'] == 'file':
-            for folder, _, files in progress(os.walk(os.path.join(spec['location'], self.database))):
-                for f in files:
-                    if f not in in_use:
+            count = itertools.count()
+            print('Deleting...')
+            deleted_folders = set()
+            for folder, dirs, files in os.walk(os.path.join(spec['location'], self.database), topdown=False):
+                if dirs and files:
+                    raise DataJointError('Invalid repository with files in non-terminal folder %s' % folder)
+                dirs = set(d for d in dirs if os.path.join(folder, d) not in deleted_folders)
+                if not dirs:
+                    files_not_in_use = [f for f in files if f not in in_use]
+                    for f in files_not_in_use:
                         filename = os.path.join(folder, f)
+                        next(count)
+                        if verbose:
+                            print(filename)
                         os.remove(filename)
+                    if len(files_not_in_use) == len(files):
+                        os.rmdir(folder)
+                        deleted_folders.add(folder)
+            print('Deleted %d objects' % next(count))
         elif spec['protocol'] == 's3':
             try:
-                s3.Folder(database=self.database, **spec).clean(in_use)
+                failed_deletes = s3.Folder(database=self.database, **spec).clean(in_use, verbose=verbose)
             except TypeError:
                 raise DataJointError('External store {store} configuration is incomplete.'.format(store=store))
