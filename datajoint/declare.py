@@ -285,12 +285,10 @@ def compile_attribute(line, in_key, foreign_key_sql):
     else:
         if match['default']:
             quote = match['default'].upper() not in literals and match['default'][0] not in '"\''
-            match['default'] = ('NOT NULL DEFAULT ' +
-                                ('"%s"' if quote else "%s") % match['default'])
+            match['default'] = 'NOT NULL DEFAULT ' + ('"%s"' if quote else "%s") % match['default']
         else:
             match['default'] = 'NOT NULL'
     match['comment'] = match['comment'].replace('"', '\\"')   # escape double quotes in comment
-
     is_configurable = match['type'].startswith(('external', 'blob-', 'attach'))
     is_external = False
     if is_configurable:
@@ -299,7 +297,7 @@ def compile_attribute(line, in_key, foreign_key_sql):
         match['comment'] = ':{type}:{comment}'.format(**match)  # insert configurable type into comment
         store_name = match['type'].split('-')
         if store_name[0] not in ('external', 'blob', 'attach'):
-            raise DataJointError('Invalid attribute type in:\n%s' % line)
+            raise DataJointError('Configurable types must be in the form blob-<store> or attach-<store> in:\n%s' % line)
         store_name = '-'.join(store_name[1:])
         if store_name and not store_name.isidentifier():
             raise DataJointError(

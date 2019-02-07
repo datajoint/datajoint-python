@@ -14,8 +14,8 @@ Please cite:
     http://dx.doi.org/10.1101/031658
 """
 
-__author__ = "Dimitri Yatsenko, Edgar Y. Walker, and Fabian Sinz at Baylor College of Medicine"
-__date__ = "January 14, 2018"
+__author__ = "DataJoint Contributors"
+__date__ = "February 7, 2019"
 __all__ = ['__author__', '__version__',
            'config', 'conn', 'Connection',
            'schema', 'create_virtual_module', 'get_schema_names',
@@ -26,7 +26,6 @@ __all__ = ['__author__', '__version__',
            'DataJointError', 'DuplicateError', 'key']
 
 
-# ------------- flatten import hierarchy -------------------------
 from .version import __version__
 from .settings import config
 from .connection import conn, Connection
