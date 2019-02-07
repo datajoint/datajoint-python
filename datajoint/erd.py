@@ -44,14 +44,15 @@ if not erd_active:
         """
         Entity relationship diagram, currently disabled due to the lack of required packages: matplotlib and pygraphviz.
 
-        To enable ERD feature, please install both matplotlib and pygraphviz. For instructions on how to install
+        To enable ERD feature, please install matplotlib and pygraphviz. For instructions on how to install
         these two packages, refer to http://docs.datajoint.io/setup/Install-and-connect.html#python and
         http://tutorials.datajoint.io/setting-up/datajoint-python.html
         """
 
         def __init__(self, *args, **kwargs):
-            warnings.warn('ERD functionality depends on matplotlib and pygraphviz. Please install both of these '
-                          'libraries to enable the ERD feature.')
+            warnings.warn(
+                    'ERD functionality depends on matplotlib and pygraphviz. '
+                    'Please install these libraries to enable the ERD feature.')
 else:
     class ERD(nx.DiGraph):
         """
@@ -228,7 +229,6 @@ else:
             return graph
 
         def make_dot(self):
-            import networkx as nx
 
             graph = self._make_graph()
             graph.nodes()
