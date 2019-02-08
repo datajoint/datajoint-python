@@ -50,7 +50,7 @@ if not erd_active:
         """
 
         def __init__(self, *args, **kwargs):
-            warnings.warn('ERD functionality depends on matplotlib, networkx, and pygraphviz. '
+            warnings.warn('ERD functionality depends on matplotlib and pygraphviz. '
                           'Please install both of these libraries to enable the ERD feature.')
 else:
     class ERD(nx.DiGraph):
@@ -228,7 +228,6 @@ else:
             return graph
 
         def make_dot(self):
-            import networkx as nx
 
             graph = self._make_graph()
             graph.nodes()
