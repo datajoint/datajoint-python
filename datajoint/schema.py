@@ -228,7 +228,7 @@ class Schema:
         return self._jobs
 
     @property
-    def external_table(self):
+    def external(self):
         """
         schema.external provides a view of the external hash table for the schema
         :return: external table
@@ -236,6 +236,8 @@ class Schema:
         if self._external is None:
             self._external = ExternalTable(self.connection, self.database)
         return self._external
+
+    external_table = external  # for backward compatibility to pre-0.12.0
 
 
 def create_virtual_module(module_name, schema_name, create_schema=False, create_tables=False, connection=None):
@@ -254,3 +256,15 @@ def create_virtual_module(module_name, schema_name, create_schema=False, create_
     _schema.spawn_missing_classes(context=module.__dict__)
     module.__dict__['schema'] = _schema
     return module
+
+
+def get_schema_names(connection=None):
+    """
+    :param connection: a dj.Connection object
+    :return:  a generator of all accessible schemas on the server
+    """
+    if connection is None:
+        connection = conn()
+    for r in connection.query('SHOW SCHEMAS'):
+        if r[0] not in {'information_schema'}:
+            yield r[0]

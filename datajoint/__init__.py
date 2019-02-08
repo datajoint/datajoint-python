@@ -14,30 +14,27 @@ Please cite:
     http://dx.doi.org/10.1101/031658
 """
 
-__author__ = "Dimitri Yatsenko, Edgar Y. Walker, and Fabian Sinz at Baylor College of Medicine"
-__date__ = "Nov 15, 2018"
+__author__ = "DataJoint Contributors"
+__date__ = "February 7, 2019"
 __all__ = ['__author__', '__version__',
-           'config', 'conn', 'kill', 'Table',
-           'Connection', 'Heading', 'FreeTable', 'Not', 'schema',
+           'config', 'conn', 'Connection',
+           'schema', 'create_virtual_module', 'get_schema_names',
+           'Table', 'FreeTable',
            'Manual', 'Lookup', 'Imported', 'Computed', 'Part',
-           'AndList', 'ERD', 'U', 'key',
-           'DataJointError', 'DuplicateError',
-           'set_password', 'create_virtual_module']
+           'Not', 'AndList', 'U', 'ERD',
+           'set_password', 'kill',
+           'DataJointError', 'DuplicateError', 'key']
 
 
-# ------------- flatten import hierarchy -------------------------
 from .version import __version__
 from .settings import config
 from .connection import conn, Connection
-from .table import FreeTable, Table
+from .schema import Schema as schema
+from .schema import create_virtual_module, get_schema_names
+from .table import Table, FreeTable
 from .user_tables import Manual, Lookup, Imported, Computed, Part
 from .expression import Not, AndList, U
-from .heading import Heading
-from .schema import Schema as schema
-from .schema import create_virtual_module
 from .erd import ERD
 from .admin import set_password, kill
 from .errors import DataJointError, DuplicateError
 from .fetch import key
-
-

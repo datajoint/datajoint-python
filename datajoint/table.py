@@ -11,7 +11,7 @@ from pymysql import OperationalError, InternalError, IntegrityError
 from .settings import config
 from .declare import declare
 from .expression import QueryExpression
-from .blob import pack
+from . import attach, blob
 from .utils import user_choice
 from .heading import Heading
 from .errors import server_error_codes, DataJointError, DuplicateError
@@ -170,7 +170,8 @@ class Table(QueryExpression):
         # prohibit direct inserts into auto-populated tables
         if not (allow_direct_insert or getattr(self, '_allow_insert', True)):  # _allow_insert is only present in AutoPopulate
             raise DataJointError(
-                'Auto-populate tables can only be inserted into from their make methods during populate calls. (see allow_direct_insert)')
+                'Auto-populate tables can only be inserted into from their make methods during populate calls.' \
+                ' To override, use the the allow_direct_insert argument.')
 
         heading = self.heading
         if inspect.isclass(rows) and issubclass(rows, QueryExpression):   # instantiate if a class
@@ -213,25 +214,24 @@ class Table(QueryExpression):
                 For a given attribute `name` with `value`, return its processed value or value placeholder
                 as a string to be included in the query and the value, if any, to be submitted for
                 processing by mysql API.
-                :param name:
-                :param value:
+                :param name:  name of attribute to be inserted
+                :param value: value of attribute to be inserted
                 """
                 if ignore_extra_fields and name not in heading:
                     return None
-                if heading[name].is_external:
-                    placeholder, value = '%s', self.external_table.put(heading[name].type, value)
-                elif heading[name].is_blob:
-                    if value is None:
-                        placeholder, value = 'NULL', None
-                    else:
-                        placeholder, value = '%s', pack(value)
-                elif heading[name].numeric:
-                    if value is None or value == '' or np.isnan(np.float(value)):  # nans are turned into NULLs
-                        placeholder, value = 'NULL', None
-                    else:
-                        placeholder, value = '%s', (str(int(value) if isinstance(value, bool) else value))
+                attr = heading[name]
+                if value is None or (attr.numeric and (value == '' or np.isnan(np.float(value)))):
+                    placeholder, value = 'DEFAULT', None
                 else:
                     placeholder = '%s'
+                    if attr.is_blob:
+                        value = blob.pack(value)
+                        value = self.external_table.put(attr.type, value) if attr.is_external else value
+                    elif attr.is_attachment:
+                        value = attach.load(value)
+                        value = self.external_table.put(attr.type, value) if attr.is_external else value
+                    elif attr.numeric:
+                        value = str(int(value) if isinstance(value, bool) else value)
                 return name, placeholder, value
 
             def check_fields(fields):
@@ -450,8 +450,7 @@ class Table(QueryExpression):
         return ret['Data_length'] + ret['Index_length']
 
     def show_definition(self):
-        logger.warning('show_definition is deprecated.  Use describe instead.')
-        return self.describe()
+        raise AttributeError('show_definition is deprecated. Use the describe method instead.')
 
     def describe(self, context=None, printout=True):
         """
@@ -549,7 +548,7 @@ class Table(QueryExpression):
         attr = self.heading[attrname]
 
         if attr.is_blob:
-            value = pack(value)
+            value = blob.pack(value)
             placeholder = '%s'
         elif attr.numeric:
             if value is None or np.isnan(np.float(value)):  # nans are turned into NULLs

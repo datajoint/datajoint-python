@@ -197,7 +197,6 @@ def declare(full_table_name, definition, context):
     :param definition: DataJoint table definition
     :param context: dictionary of objects that might be referred to in the table.
     """
-
     table_name = full_table_name.strip('`').split('.')[1]
     if len(table_name) > MAX_TABLE_NAME_LENGTH:
         raise DataJointError(
@@ -271,12 +270,13 @@ def compile_attribute(line, in_key, foreign_key_sql):
         match['default'] = ''
     match = {k: v.strip() for k, v in match.items()}
     match['nullable'] = match['default'].lower() == 'null'
-    accepted_datatype = r'time|date|year|enum|(var)?char|float|real|double|decimal|numeric|' \
-                        r'(tiny|small|medium|big)?int|bool|' \
-                        r'(tiny|small|medium|long)?blob|external|attach'
+    blob_datatype = r'(tiny|small|medium|long)?blob'
+    accepted_datatype = (
+        r'time|date|year|enum|(var)?char|float|real|double|decimal|numeric|'
+        r'(tiny|small|medium|big)?int|bool|external|attach|' + blob_datatype)
     if re.match(accepted_datatype, match['type'], re.I) is None:
         raise DataJointError('DataJoint does not support datatype "{type}"'.format(**match))
-
+    is_blob = bool(re.match(blob_datatype, match['type'], re.I))
     literals = ['CURRENT_TIMESTAMP']   # not to be enclosed in quotes
     if match['nullable']:
         if in_key:
@@ -285,38 +285,45 @@ def compile_attribute(line, in_key, foreign_key_sql):
     else:
         if match['default']:
             quote = match['default'].upper() not in literals and match['default'][0] not in '"\''
-            match['default'] = ('NOT NULL DEFAULT ' +
-                                ('"%s"' if quote else "%s") % match['default'])
+            match['default'] = 'NOT NULL DEFAULT ' + ('"%s"' if quote else "%s") % match['default']
         else:
             match['default'] = 'NOT NULL'
     match['comment'] = match['comment'].replace('"', '\\"')   # escape double quotes in comment
-
-    is_external = match['type'].startswith('external')
-    is_attachment = match['type'].startswith('attachment')
-    if not is_external:
-        sql = ('`{name}` {type} {default}' + (' COMMENT "{comment}"' if match['comment'] else '')).format(**match)
-    else:
-        # process externally stored attribute
+    is_configurable = match['type'].startswith(('external', 'blob-', 'attach'))
+    is_external = False
+    if is_configurable:
         if in_key:
-            raise DataJointError('External attributes cannot be primary in:\n%s' % line)
+            raise DataJointError('Configurable attributes cannot be primary in:\n%s' % line)
+        match['comment'] = ':{type}:{comment}'.format(**match)  # insert configurable type into comment
         store_name = match['type'].split('-')
-        if store_name[0] != 'external':
-            raise DataJointError('External store types must be specified as "external" or "external-<name>"')
+        if store_name[0] not in ('external', 'blob', 'attach'):
+            raise DataJointError('Configurable types must be in the form blob-<store> or attach-<store> in:\n%s' % line)
         store_name = '-'.join(store_name[1:])
-        if store_name != '' and not store_name.isidentifier():
+        if store_name and not store_name.isidentifier():
             raise DataJointError(
                 'The external store name `{type}` is invalid. Make like a python identifier.'.format(**match))
         if len(store_name) > STORE_NAME_LENGTH:
             raise DataJointError(
                 'The external store name `{type}` is too long. Must be <={max_len} characters.'.format(
                     max_len=STORE_NAME_LENGTH, **match))
-        if not match['default'] in ('DEFAULT NULL', 'NOT NULL'):
-            raise DataJointError('The only acceptable default value for an external field is null in:\n%s' % line)
-        if match['type'] not in config:
-            raise DataJointError('The external store `{type}` is not configured.'.format(**match))
+        spec = config.get_store_spec(store_name)
+        is_external = spec['protocol'] in {'s3', 'file'}
+        if not is_external:
+            is_blob = re.match(blob_datatype, spec['protocol'], re.I)
+            if not is_blob:
+                raise DataJointError('Invalid protocol {protocol} in external store in:\n{line}'.format(
+                    line=line, **spec))
+            match['type'] = spec['protocol']
 
-        # append external configuration name to the end of the comment
-        sql = '`{name}` {hash_type} {default} COMMENT ":{type}:{comment}"'.format(
+    if (is_external or is_blob) and match['default'] not in ('DEFAULT NULL', 'NOT NULL'):
+        raise DataJointError(
+            'The default value for a blob or attachment can only be NULL in:\n%s' % line)
+
+    if not is_external:
+        sql = ('`{name}` {type} {default}' + (' COMMENT "{comment}"' if match['comment'] else '')).format(**match)
+    else:
+        # add hash field with a dependency on the ~external table
+        sql = '`{name}` {hash_type} {default} COMMENT "{comment}"'.format(
             hash_type=HASH_DATA_TYPE, **match)
         foreign_key_sql.append(
             "FOREIGN KEY (`{name}`) REFERENCES {{external_table}} (`hash`) "

@@ -1,11 +1,11 @@
 from nose.tools import assert_true, assert_list_equal, raises
 from numpy.testing import assert_almost_equal
 import datajoint as dj
-from . import schema_external as modu
+from . import schema_legacy_external as modu
 
 
 def test_heading():
-    heading = modu.Simple.heading
+    heading = modu.Simple().heading
     assert_true('item' in heading)
     assert_true(heading['item'].is_external)
 

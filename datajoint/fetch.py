@@ -4,7 +4,7 @@ import warnings
 import pandas
 import re
 import numpy as np
-from .blob import unpack
+from . import blob, attach
 from .errors import DataJointError
 from .settings import config
 
@@ -24,14 +24,34 @@ def is_key(attr):
 def to_dicts(recarray):
     """convert record array to a dictionaries"""
     for rec in recarray:
-        yield dict(zip(recarray.dtype.names, rec.tolist()))
+        yield OrderedDict(zip(recarray.dtype.names, rec.tolist()))
 
 
-def _flatten_attribute_list(primary_key, attr):
-    for a in attr:
-        if re.match(r'^\s*KEY\s*(ASC\s*)?$', a):
+def _get(connection, attr, data, squeeze, download_path):
+    """
+    :param connection:
+    :param attr: an attribute from the heading
+    :param data: literal value fetched from the table
+    :param squeeze: if True squeeze blobs
+    :param download_path: for fetches that download data, e.g. attachments
+    :return: unpacked data
+    """
+    if attr.is_external:
+        data = connection.schemas[attr.database].external_table.get(data)
+    return (blob.unpack(data, squeeze=squeeze) if attr.is_blob else
+            attach.save(data, download_path) if attr.is_attachment else data)
+
+
+def _flatten_attribute_list(primary_key, attrs):
+    """
+    :param primary_key: list of attributes in primary key
+    :param attrs: list of attribute names, which may include "KEY", "KEY DESC" or "KEY ASC"
+    :return: generator of attributes where "KEY" is replaces with its component attributes
+    """
+    for a in attrs:
+        if re.match(r'^\s*KEY(\s+[aA][Ss][Cc])?\s*$', a):
             yield from primary_key
-        elif re.match(r'^\s*KEY\s*DESC\s*$', a):
+        elif re.match(r'^\s*KEY\s+[Dd][Ee][Ss][Cc]\s*$', a):
             yield from (q + ' DESC' for q in primary_key)
         else:
             yield a
@@ -40,13 +60,14 @@ def _flatten_attribute_list(primary_key, attr):
 class Fetch:
     """
     A fetch object that handles retrieving elements from the table expression.
-    :param relation: the table expression to fetch from
+    :param expression: the table expression to fetch from.
     """
 
     def __init__(self, expression):
         self._expression = expression
 
-    def __call__(self, *attrs, offset=None, limit=None, order_by=None, format=None, as_dict=False, squeeze=False):
+    def __call__(self, *attrs, offset=None, limit=None, order_by=None, format=None, as_dict=False,
+                 squeeze=False, download_path='.'):
         """
         Fetches the expression results from the database into an np.array or list of dictionaries and unpacks blob attributes.
 
@@ -64,6 +85,7 @@ class Fetch:
                 "frame": output pandas.DataFrame. .
         :param as_dict: returns a list of dictionaries instead of a record array
         :param squeeze:  if True, remove extra dimensions from arrays
+        :param download_path: for fetches that download data, e.g. attachments
         :return: the contents of the relation in the form of a structured numpy.array or a dict list
         """
 
@@ -97,29 +119,25 @@ class Fetch:
                           'Consider setting a limit explicitly.')
             limit = 2 * len(self._expression)
 
+        get = partial(_get, self._expression.connection, squeeze=squeeze, download_path=download_path)
         if not attrs:
             # fetch all attributes as a numpy.record_array or pandas.DataFrame
             cur = self._expression.cursor(as_dict=as_dict, limit=limit, offset=offset, order_by=order_by)
             heading = self._expression.heading
             if as_dict:
-                ret = [OrderedDict((name, unpack(d[name], squeeze=squeeze) if heading[name].is_blob else d[name])
-                                   for name in heading.names)
-                       for d in cur]
+                ret = [OrderedDict((name, get(heading[name], d[name])) for name in heading.names) for d in cur]
             else:
                 ret = list(cur.fetchall())
                 ret = np.array(ret, dtype=heading.as_dtype)
                 for name in heading:
-                    if heading[name].is_external:
-                        external_table = self._expression.connection.schemas[heading[name].database].external_table
-                        ret[name] = list(map(external_table.get, ret[name]))
-                    elif heading[name].is_blob:
-                        ret[name] = list(map(partial(unpack, squeeze=squeeze), ret[name]))
+                    ret[name] = list(map(partial(get, heading[name]), ret[name]))
                 if format == "frame":
                     ret = pandas.DataFrame(ret).set_index(heading.primary_key)
         else:  # if list of attributes provided
             attributes = [a for a in attrs if not is_key(a)]
             result = self._expression.proj(*attributes).fetch(
-                offset=offset, limit=limit, order_by=order_by, as_dict=False, squeeze=squeeze)
+                offset=offset, limit=limit, order_by=order_by,
+                as_dict=False, squeeze=squeeze, download_path=download_path)
             return_values = [
                 list(to_dicts(result[self._expression.primary_key]))
                 if is_key(attribute) else result[attribute]
@@ -127,15 +145,6 @@ class Fetch:
             ret = return_values[0] if len(attrs) == 1 else return_values
 
         return ret
-
-    def keys(self, **kwargs):
-        """
-        DEPRECATED
-        Iterator that returns primary keys as a sequence of dicts.
-        """
-        warnings.warn('Use of `rel.fetch.keys()` notation is deprecated. '
-                      'Please use `rel.fetch("KEY")` or `rel.fetch(dj.key)` for equivalent result', stacklevel=2)
-        yield from self._expression.proj().fetch(as_dict=True, **kwargs)
 
 
 class Fetch1:
@@ -147,7 +156,7 @@ class Fetch1:
     def __init__(self, relation):
         self._expression = relation
 
-    def __call__(self, *attrs, squeeze=False):
+    def __call__(self, *attrs, squeeze=False, download_path='.'):
         """
         Fetches the expression results from the database when the expression is known to yield only one entry.
 
@@ -160,6 +169,7 @@ class Fetch1:
 
         :params *attrs: attributes to return when expanding into a tuple. If empty, the return result is a dict
         :param squeeze:  When true, remove extra dimensions from arrays in attributes
+        :param download_path: for fetches that download data, e.g. attachments
         :return: the one tuple in the relation in the form of a dict
         """
 
@@ -170,16 +180,12 @@ class Fetch1:
             ret = cur.fetchone()
             if not ret or cur.fetchone():
                 raise DataJointError('fetch1 should only be used for relations with exactly one tuple')
-
-            def get_external(attr, _hash):
-                return self._expression.connection.schemas[attr.database].external_table.get(_hash)
-
-            ret = OrderedDict((name, get_external(heading[name], ret[name])) if heading[name].is_external
-                              else (name, unpack(ret[name], squeeze=squeeze) if heading[name].is_blob else ret[name])
+            ret = OrderedDict((name, _get(self._expression.connection, heading[name], ret[name],
+                                          squeeze=squeeze, download_path=download_path))
                               for name in heading.names)
         else:  # fetch some attributes, return as tuple
             attributes = [a for a in attrs if not is_key(a)]
-            result = self._expression.proj(*attributes).fetch(squeeze=squeeze)
+            result = self._expression.proj(*attributes).fetch(squeeze=squeeze, download_path=download_path)
             if len(result) != 1:
                 raise DataJointError('fetch1 should only return one tuple. %d tuples were found' % len(result))
             return_values = tuple(
