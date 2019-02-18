@@ -221,11 +221,9 @@ class Connection:
         All errors are raised again.
 
         Example:
-
         >>> import datajoint as dj
         >>> with dj.conn().transaction as conn:
         >>>     # transaction is open here
-
         """
         try:
             self.start_transaction()
