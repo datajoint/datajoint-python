@@ -26,8 +26,9 @@ class key:
 def is_key(attr):
     return attr is key or attr == 'KEY'
 
+
 def is_key_array(attr):
-    return isinstance(attr, str) and attr == "KEY"
+    return isinstance(attr, str) and attr == "KEY_ARRAY"
 
 
 def to_dicts(recarray):
@@ -144,7 +145,7 @@ class Fetch:
                 if format == "frame":
                     ret = pandas.DataFrame(ret).set_index(heading.primary_key)
         else:  # if list of attributes provided
-            attributes = [a for a in attrs if not is_key(a)]
+            attributes = [a for a in attrs if not is_key(a) and not is_key_array(a)]
             result = self._expression.proj(*attributes).fetch(
                 offset=offset, limit=limit, order_by=order_by,
                 as_dict=False, squeeze=squeeze, download_path=download_path)
@@ -193,7 +194,7 @@ class Fetch1:
                                           squeeze=squeeze, download_path=download_path))
                               for name in heading.names)
         else:  # fetch some attributes, return as tuple
-            attributes = [a for a in attrs if not is_key(a)]
+            attributes = [a for a in attrs if not is_key(a) and not is_key_array(a)]
             result = self._expression.proj(*attributes).fetch(squeeze=squeeze, download_path=download_path)
             if len(result) != 1:
                 raise DataJointError('fetch1 should only return one tuple. %d tuples were found' % len(result))
