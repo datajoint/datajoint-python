@@ -511,9 +511,8 @@ class Table(QueryExpression):
                             attributes_declared.update(fk_props['attr_map'])
             if do_include:
                 attributes_declared.add(attr.name)
-                name = attr.name.lstrip('_')  # for external
                 definition += '%-20s : %-28s %s\n' % (
-                    name if attr.default is None else '%s=%s' % (name, attr.default),
+                    attr.name if attr.default is None else '%s=%s' % (attr.name, attr.default),
                     '%s%s' % (attr.type, ' auto_increment' if attr.autoincrement else ''),
                     '# ' + attr.comment if attr.comment else '')
         # add remaining indexes

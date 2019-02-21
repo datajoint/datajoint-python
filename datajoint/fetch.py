@@ -1,4 +1,4 @@
-from collections import OrderedDict
+import sys
 from functools import partial
 import warnings
 import pandas
@@ -8,6 +8,11 @@ import uuid
 from . import blob, attach
 from .errors import DataJointError
 from .settings import config
+if sys.version_info[1] < 6:
+    from collections import OrderedDict
+else:
+    # use dict in Python 3.6+ -- They are already ordered and look nicer
+    OrderedDict = dict
 
 
 class key:
