@@ -12,6 +12,7 @@ from .errors import DataJointError
 STORE_NAME_LENGTH = 8
 STORE_HASH_LENGTH = 43
 HASH_DATA_TYPE = 'char(51)'
+UUID_DATA_TYPE = 'binary(16)'
 MAX_TABLE_NAME_LENGTH = 64
 
 logger = logging.getLogger(__name__)
@@ -272,7 +273,7 @@ def compile_attribute(line, in_key, foreign_key_sql):
     match['nullable'] = match['default'].lower() == 'null'
     blob_datatype = r'(tiny|small|medium|long)?blob'
     accepted_datatype = (
-        r'time|date|year|enum|(var)?char|float|real|double|decimal|numeric|'
+        r'time|date|year|enum|(var)?char|float|real|double|decimal|numeric|uuid|'
         r'(tiny|small|medium|big)?int|bool|external|attach|' + blob_datatype)
     if re.match(accepted_datatype, match['type'], re.I) is None:
         raise DataJointError('DataJoint does not support datatype "{type}"'.format(**match))
@@ -289,6 +290,9 @@ def compile_attribute(line, in_key, foreign_key_sql):
         else:
             match['default'] = 'NOT NULL'
     match['comment'] = match['comment'].replace('"', '\\"')   # escape double quotes in comment
+    if match['type'] == 'uuid':
+        match['comment'] = ':{type}:{comment}'.format(**match)
+        match['type'] = UUID_DATA_TYPE
     is_configurable = match['type'].startswith(('external', 'blob-', 'attach'))
     is_external = False
     if is_configurable:

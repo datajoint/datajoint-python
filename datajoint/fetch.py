@@ -4,6 +4,7 @@ import warnings
 import pandas
 import re
 import numpy as np
+import uuid
 from . import blob, attach
 from .errors import DataJointError
 from .settings import config
@@ -38,7 +39,8 @@ def _get(connection, attr, data, squeeze, download_path):
     """
     if attr.is_external:
         data = connection.schemas[attr.database].external_table.get(data)
-    return (blob.unpack(data, squeeze=squeeze) if attr.is_blob else
+    return (uuid.UUID(bytes=data) if attr.uuid else
+            blob.unpack(data, squeeze=squeeze) if attr.is_blob else
             attach.save(data, download_path) if attr.is_attachment else data)
 
 
@@ -172,7 +174,6 @@ class Fetch1:
         :param download_path: for fetches that download data, e.g. attachments
         :return: the one tuple in the relation in the form of a dict
         """
-
         heading = self._expression.heading
 
         if not attrs:  # fetch all attributes, return as ordered dict

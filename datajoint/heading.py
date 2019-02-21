@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 default_attribute_properties = dict(    # these default values are set in computed attributes
     name=None, type='expression', in_key=False, nullable=False, default=None, comment='calculated attribute',
-    autoincrement=False, numeric=None, string=None, is_blob=False, is_attachment=False, is_external=False,
+    autoincrement=False, numeric=None, string=None, uuid=False, is_blob=False, is_attachment=False, is_external=False,
     unsupported=False, sql_expression=None, database=None, dtype=object)
 
 
@@ -197,8 +197,9 @@ class Heading:
 
             # recognize configurable fields
             configurable_field = re.match(
-                r'^:(?P<type>(blob|external|attach)(-\w*)?):(?P<comment>.*)$', attr['comment'])
-            if configurable_field is None:
+                r'^:(?P<type>(blob|external|attach|uuid)(-\w*)?):(?P<comment>.*)$', attr['comment'])
+            attr['uuid'] = configurable_field and configurable_field.group('type') == 'uuid'
+            if attr['uuid'] or configurable_field is None:
                 attr['is_external'] = False
                 attr['is_attachment'] = False
             else:

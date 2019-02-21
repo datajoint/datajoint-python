@@ -7,6 +7,7 @@ import re
 import datetime
 import decimal
 import pandas
+import uuid
 from .settings import config
 from .errors import DataJointError
 from .fetch import Fetch, Fetch1
@@ -121,7 +122,9 @@ class QueryExpression:
         :return: an SQL condition string or a boolean value.
         """
         def prep_value(v):
-            return str(v) if isinstance(v, (datetime.date, datetime.datetime, datetime.time, decimal.Decimal)) else v
+            """prepare value v for inclusion as a string in an SQL condition"""
+            return "X'%s'" % v.bytes.hex() if isinstance(v, uuid.UUID) else '%r' % (
+                    str(v) if isinstance(v, (datetime.date, datetime.datetime, datetime.time, decimal.Decimal)) else v)
 
         negate = False
         while isinstance(arg, Not):
@@ -154,12 +157,12 @@ class QueryExpression:
         # restrict by a mapping such as a dict -- convert to an AndList of string equality conditions
         if isinstance(arg, collections.abc.Mapping):
             return template % self._make_condition(
-                AndList('`%s`=%r' % (k, prep_value(v)) for k, v in arg.items() if k in self.heading))
+                AndList('`%s`=%s' % (k, prep_value(v)) for k, v in arg.items() if k in self.heading))
 
         # restrict by a numpy record -- convert to an AndList of string equality conditions
         if isinstance(arg, np.void):
             return template % self._make_condition(
-                AndList(('`%s`=%r' % (k, prep_value(arg[k])) for k in arg.dtype.fields if k in self.heading)))
+                AndList(('`%s`=%s' % (k, prep_value(arg[k])) for k in arg.dtype.fields if k in self.heading)))
 
         # restrict by a QueryExpression subclass -- triggers instantiation
         if inspect.isclass(arg) and issubclass(arg, QueryExpression):
