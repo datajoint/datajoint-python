@@ -26,6 +26,9 @@ class key:
 def is_key(attr):
     return attr is key or attr == 'KEY'
 
+def is_key_array(attr):
+    return isinstance(attr, str) and attr == "KEY"
+
 
 def to_dicts(recarray):
     """convert record array to a dictionaries"""
@@ -146,8 +149,8 @@ class Fetch:
                 offset=offset, limit=limit, order_by=order_by,
                 as_dict=False, squeeze=squeeze, download_path=download_path)
             return_values = [
-                list(to_dicts(result[self._expression.primary_key]))
-                if is_key(attribute) else result[attribute]
+                list(to_dicts(result[self._expression.primary_key])) if is_key(attribute) else (
+                    result[self._expression.primary_key] if is_key_array(attribute) else result[attribute])
                 for attribute in attrs]
             ret = return_values[0] if len(attrs) == 1 else return_values
 
@@ -195,8 +198,8 @@ class Fetch1:
             if len(result) != 1:
                 raise DataJointError('fetch1 should only return one tuple. %d tuples were found' % len(result))
             return_values = tuple(
-                next(to_dicts(result[self._expression.primary_key]))
-                if is_key(attribute) else result[attribute][0]
+                next(to_dicts(result[self._expression.primary_key])) if is_key(attribute) else (
+                    result[self._expression.primary_key][0] if is_key_array(attribute) else result[attribute][0])
                 for attribute in attrs)
             ret = return_values[0] if len(attrs) == 1 else return_values
 

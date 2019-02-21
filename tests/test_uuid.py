@@ -9,5 +9,6 @@ def test_uuid():
     Item().insert1(dict(item=u, number=n))
     Item().insert(zip(map(uuid.uuid1, range(20)), count()))
     keys = Item().fetch('KEY')
+    keys_array = Item().fetch('KEY_ARRAY')
     number = (Item() & {'item': u}).fetch1('number')
     assert_equal(number, n)
