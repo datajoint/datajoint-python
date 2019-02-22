@@ -34,6 +34,7 @@ class TestERD:
 
     @staticmethod
     def test_erd():
+        assert_true(dj.erd.erd_active, 'Failed to import networkx and pydot')
         erd = dj.ERD(schema, context=namespace)
         graph = erd._make_graph()
         assert_true(set(cls.__name__ for cls in (A, B, D, E, L)).issubset(graph.nodes()))

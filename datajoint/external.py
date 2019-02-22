@@ -1,13 +1,19 @@
 import os
-from tqdm import tqdm
+import itertools
 from .settings import config
 from .errors import DataJointError
 from .hash import long_hash
-from .blob import pack, unpack
 from .table import Table
 from .declare import STORE_HASH_LENGTH, HASH_DATA_TYPE
-from .s3 import Folder as S3Folder
+from . import s3 
 from .utils import safe_write
+
+
+def subfold(name, folds):
+    """
+    subfolding for external storage:   e.g.  subfold('abcdefg', (2, 3))  -->  ['ab','cde']
+    """
+    return (name[:folds[0]].lower(),) + subfold(name[folds[0]:], folds[1:]) if folds else ()
 
 
 class ExternalTable(Table):
@@ -42,15 +48,15 @@ class ExternalTable(Table):
     def table_name(self):
         return '~external'
 
-    def put(self, store, obj):
+    def put(self, store, blob):
         """
         put an object in external store
         """
-        spec = self._get_store_spec(store)
-        blob = pack(obj)
-        blob_hash = long_hash(blob) + store[len('external-'):]
+        store = ''.join(store.split('-')[1:])
+        spec = config.get_store_spec(store)
+        blob_hash = long_hash(blob) + store
         if spec['protocol'] == 'file':
-            folder = os.path.join(spec['location'], self.database)
+            folder = os.path.join(spec['location'], self.database, *subfold(blob_hash, spec['subfolding']))
             full_path = os.path.join(folder, blob_hash)
             if not os.path.isfile(full_path):
                 try:
@@ -59,9 +65,10 @@ class ExternalTable(Table):
                     os.makedirs(folder)
                     safe_write(full_path, blob)
         elif spec['protocol'] == 's3':
-            S3Folder(database=self.database, **spec).put(blob_hash, blob)
+            folder = '/'.join(subfold(blob_hash, spec['subfolding']))
+            s3.Folder(database=self.database, **spec).put('/'.join((folder, blob_hash)), blob)
         else:
-            raise DataJointError('Unknown external storage protocol {protocol} for {store}'.format(
+            raise DataJointError('Unknown external storage protocol {protocol} in store "-{store}"'.format(
                 store=store, protocol=spec['protocol']))
 
         # insert tracking info
@@ -80,12 +87,10 @@ class ExternalTable(Table):
         """
         if blob_hash is None:
             return None
-        store = blob_hash[STORE_HASH_LENGTH:]
-        store = 'external' + ('-' if store else '') + store
 
-        cache_folder = config.get('cache', None)
-
+        # attempt to get object from cache
         blob = None
+        cache_folder = config.get('cache', None)
         if cache_folder:
             try:
                 with open(os.path.join(cache_folder, blob_hash), 'rb') as f:
@@ -93,10 +98,13 @@ class ExternalTable(Table):
             except FileNotFoundError:
                 pass
 
+        # attempt to get object from store
         if blob is None:
-            spec = self._get_store_spec(store)
+            store = blob_hash[STORE_HASH_LENGTH:]
+            spec = config.get_store_spec(store)
             if spec['protocol'] == 'file':
-                full_path = os.path.join(spec['location'], self.database, blob_hash)
+                subfolders = os.path.join(*subfold(blob_hash, spec['subfolding']))
+                full_path = os.path.join(spec['location'], self.database, subfolders, blob_hash)
                 try:
                     with open(full_path, 'rb') as f:
                         blob = f.read()
@@ -104,7 +112,8 @@ class ExternalTable(Table):
                     raise DataJointError('Lost access to external blob %s.' % full_path) from None
             elif spec['protocol'] == 's3':
                 try:
-                    blob = S3Folder(database=self.database, **spec).get(blob_hash)
+                    subfolder = '/'.join(subfold(blob_hash, spec['subfolding']))
+                    blob = s3.Folder(database=self.database, **spec).get('/'.join((subfolder, blob_hash)))
                 except TypeError:
                     raise DataJointError('External store {store} configuration is incomplete.'.format(store=store))
             else:
@@ -115,7 +124,7 @@ class ExternalTable(Table):
                     os.makedirs(cache_folder)
                 safe_write(os.path.join(cache_folder, blob_hash), blob)
 
-        return unpack(blob)
+        return blob
 
     @property
     def references(self):
@@ -156,34 +165,35 @@ class ExternalTable(Table):
                 for ref in self.references) or "TRUE")
         print('Deleted %d items' % self.connection.query("SELECT ROW_COUNT()").fetchone()[0])
 
-    def clean_store(self, store, display_progress=True):
+    def clean_store(self, store, verbose=True):
         """
         Clean unused data in an external storage repository from unused blobs.
         This must be performed after delete_garbage during low-usage periods to reduce risks of data loss.
         """
-        spec = self._get_store_spec(store)
-        progress = tqdm if display_progress else lambda x: x
+        spec = config.get_store_spec(store)
+        in_use = set(x for x in (self & '`hash` LIKE "%%{store}"'.format(store=store)).fetch('hash'))
         if spec['protocol'] == 'file':
-            folder = os.path.join(spec['location'], self.database)
-            delete_list = set(os.listdir(folder)).difference(self.fetch('hash'))
-            print('Deleting %d unused items from %s' % (len(delete_list), folder), flush=True)
-            for f in progress(delete_list):
-                os.remove(os.path.join(folder, f))
+            count = itertools.count()
+            print('Deleting...')
+            deleted_folders = set()
+            for folder, dirs, files in os.walk(os.path.join(spec['location'], self.database), topdown=False):
+                if dirs and files:
+                    raise DataJointError('Invalid repository with files in non-terminal folder %s' % folder)
+                dirs = set(d for d in dirs if os.path.join(folder, d) not in deleted_folders)
+                if not dirs:
+                    files_not_in_use = [f for f in files if f not in in_use]
+                    for f in files_not_in_use:
+                        filename = os.path.join(folder, f)
+                        next(count)
+                        if verbose:
+                            print(filename)
+                        os.remove(filename)
+                    if len(files_not_in_use) == len(files):
+                        os.rmdir(folder)
+                        deleted_folders.add(folder)
+            print('Deleted %d objects' % next(count))
         elif spec['protocol'] == 's3':
             try:
-                S3Folder(database=self.database, **spec).clean(self.fetch('hash'))
+                failed_deletes = s3.Folder(database=self.database, **spec).clean(in_use, verbose=verbose)
             except TypeError:
                 raise DataJointError('External store {store} configuration is incomplete.'.format(store=store))
-
-    @staticmethod
-    def _get_store_spec(store):
-        try:
-            spec = config[store]
-        except KeyError:
-            raise DataJointError('Storage {store} is requested but not configured'.format(store=store)) from None
-        if 'protocol' not in spec:
-            raise DataJointError('Storage {store} config is missing the protocol field'.format(store=store))
-        if spec['protocol'] not in {'file', 's3'}:
-            raise DataJointError(
-                'Unknown external storage protocol "{protocol}" in "{store}"'.format(store=store, **spec))
-        return spec

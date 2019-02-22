@@ -30,13 +30,34 @@ class Folder:
         except minio.error.NoSuchKey:
             return None
 
-    def clean(self, exclude, max_count=None):
+    def clean(self, exclude, max_count=None, verbose=False):
         """
         Delete all objects except for those in the exclude
         :param exclude: a list of blob_hashes to skip.
         :param max_count: maximum number of object to delete
-        :return: generator of objects that failed to delete
+        :param verbose: If True, print deleted objects
+        :return: list of objects that failed to delete
         """
-        return self.client.remove_objects(self.bucket, itertools.islice(
-            (x.object_name for x in self.client.list_objects(self.bucket, self.remote_path + '/')
-             if x not in exclude), max_count))
+        count = itertools.count()
+        if verbose:
+            def out(name):
+                next(count)
+                print(name)
+                return name
+        else:
+            def out(name):
+                next(count)
+                return name
+
+        if verbose:
+            print('Deleting...')
+
+        names = (out(x.object_name)
+                 for x in self.client.list_objects(self.bucket, self.remote_path + '/', recursive=True)
+                 if x.object_name.split('/')[-1] not in exclude)
+
+        failed_deletes = list(
+            self.client.remove_objects(self.bucket, itertools.islice(names, max_count)))
+
+        print('Deleted: %i S3 objects' % next(count))
+        return failed_deletes

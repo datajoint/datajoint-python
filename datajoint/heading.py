@@ -1,16 +1,23 @@
 import numpy as np
-from collections import namedtuple, OrderedDict, defaultdict
+from collections import namedtuple, defaultdict
 from itertools import chain
 import re
 import logging
 from .errors import DataJointError
+import sys
+if sys.version_info[1] < 6:
+    from collections import OrderedDict
+else:
+    # use dict in Python 3.6+ -- They are already ordered and look nicer
+    OrderedDict = dict
+
 
 logger = logging.getLogger(__name__)
 
 default_attribute_properties = dict(    # these default values are set in computed attributes
     name=None, type='expression', in_key=False, nullable=False, default=None, comment='calculated attribute',
-    autoincrement=False, numeric=None, string=None, is_blob=False, is_external=False, sql_expression=None,
-    database=None, dtype=object)
+    autoincrement=False, numeric=None, string=None, uuid=False, is_blob=False, is_attachment=False, is_external=False,
+    unsupported=False, sql_expression=None, database=None, dtype=object)
 
 
 class Attribute(namedtuple('_Attribute', default_attribute_properties)):
@@ -75,7 +82,7 @@ class Heading:
 
     @property
     def non_blobs(self):
-        return [k for k, v in self.attributes.items() if not v.is_blob]
+        return [k for k, v in self.attributes.items() if not v.is_blob and not v.is_attachment]
 
     @property
     def expressions(self):
@@ -185,21 +192,34 @@ class Heading:
 
         # additional attribute properties
         for attr in attributes:
-            # process external attributes
-            split_comment = attr['comment'].split(':')
-            attr['is_external'] = len(split_comment) >= 3 and split_comment[1].startswith('external')
-            if attr['is_external']:
-                attr['comment'] = ':'.join(split_comment[2:])
-                attr['type'] = split_comment[1]
-
-            attr['nullable'] = (attr['nullable'] == 'YES')
+            # process configurable attributes
             attr['in_key'] = (attr['in_key'] == 'PRI')
+            attr['database'] = database
+            attr['nullable'] = (attr['nullable'] == 'YES')
             attr['autoincrement'] = bool(re.search(r'auto_increment', attr['Extra'], flags=re.IGNORECASE))
-            attr['type'] = re.sub(r'int\(\d+\)', 'int', attr['type'], count=1)   # strip size off integers
+            attr['type'] = re.sub(r'int\(\d+\)', 'int', attr['type'], count=1)  # strip size off integers
             attr['numeric'] = bool(re.match(r'(tiny|small|medium|big)?int|decimal|double|float', attr['type']))
             attr['string'] = bool(re.match(r'(var)?char|enum|date|year|time|timestamp', attr['type']))
-            attr['is_blob'] = attr['is_external'] or bool(re.match(r'(tiny|medium|long)?blob', attr['type']))
-            attr['database'] = database
+            attr['is_blob'] = bool(re.match(r'(tiny|medium|long)?blob', attr['type']))
+
+            # recognize configurable fields
+            configurable_field = re.match(
+                r'^:(?P<type>(blob|external|attach|uuid)(-\w*)?):(?P<comment>.*)$', attr['comment'])
+            if configurable_field:
+                attr['type'] = configurable_field.group('type')
+                attr['comment'] = configurable_field.group('comment')
+            attr['uuid'] = attr['type'] == 'uuid'
+            if attr['uuid'] or configurable_field is None:
+                attr['is_external'] = False
+                attr['is_attachment'] = False
+            else:
+                # configurable fields: blob- and attach
+                if attr['in_key']:
+                    raise DataJointError('Configurable store attributes are not allowed in the primary key')
+                attr['is_external'] = not attr['is_blob']
+                attr['is_attachment'] = attr['type'].startswith('attach')
+                attr['is_blob'] = attr['type'].startswith(('blob', 'external'))
+                attr['string'] = False
 
             if attr['string'] and attr['default'] is not None and attr['default'] not in sql_literals:
                 attr['default'] = '"%s"' % attr['default']
@@ -208,9 +228,8 @@ class Heading:
                 attr['default'] = 'null'
 
             attr['sql_expression'] = None
-            if not (attr['numeric'] or attr['string'] or attr['is_blob']):
-                raise DataJointError('Unsupported field type {field} in `{database}`.`{table_name}`'.format(
-                    field=attr['type'], database=database, table_name=table_name))
+            attr['unsupported'] = not(attr['numeric'] or attr['string'] or attr['is_blob'] or attr['is_attachment'])
+
             attr.pop('Extra')
 
             # fill out dtype. All floats and non-nullable integers are turned into specific dtypes
@@ -225,7 +244,7 @@ class Heading:
                     t = re.sub(r' unsigned$', '', t)   # remove unsigned
                     assert (t, is_unsigned) in numeric_types, 'dtype not found for type %s' % t
                     attr['dtype'] = numeric_types[(t, is_unsigned)]
-        self.attributes = OrderedDict([(q['name'], Attribute(**q)) for q in attributes])
+        self.attributes = OrderedDict(((q['name'], Attribute(**q)) for q in attributes))
 
         # Read and tabulate secondary indexes
         keys = defaultdict(dict)

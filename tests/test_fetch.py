@@ -81,6 +81,7 @@ class TestFetch:
         query = schema.User * schema.Language
         n = 5
         frame = query.head(n, format='frame')
+        assert_true(isinstance(frame, pandas.DataFrame))
         array = query.head(n, format='array')
         assert_equal(array.size, n)
         assert_equal(len(frame), n)
@@ -118,13 +119,13 @@ class TestFetch:
             assert_true(row['name'] == tname and row['language'] == tlang, 'Values are not the same')
 
     def test_keys(self):
-        """test key iterator"""
+        """test key fetch"""
         languages = schema.Language.contents
         languages.sort(key=itemgetter(0), reverse=True)
         languages.sort(key=itemgetter(1), reverse=False)
 
         cur = self.lang.fetch('name', 'language', order_by=('language', 'name DESC'))
-        cur2 = list(self.lang.fetch.keys(order_by=['language', 'name DESC']))
+        cur2 = list(self.lang.fetch("KEY", order_by=['language', 'name DESC']))
 
         for c, c2 in zip(zip(*cur), cur2):
             assert_true(c == tuple(c2.values()), 'Values are not the same')

@@ -21,7 +21,7 @@ def insert_blobs():
     """
     This function inserts blobs resulting from the following datajoint-matlab code:
 
-            self.insert({
+        self.insert({
              1  'simple string'    'character string'
              2  '1D vector'        1:15:180
              3  'string array'     {'string1'  'string2'}

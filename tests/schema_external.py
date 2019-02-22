@@ -11,21 +11,31 @@ import numpy as np
 schema = dj.schema(PREFIX + '_extern', connection=dj.conn(**CONN_INFO))
 
 
-dj.config['external'] = {
-    'protocol': 'file',
-    'location': 'dj-store/external'}
+dj.config['stores'] = {
+    '-': {
+        'protocol': 'file',
+        'location': 'dj-store/external',
+        'folding': (1, 1)
+    },
 
-dj.config['external-raw'] = {
-    'protocol': 'file',
-    'location': 'dj-store/raw'}
+    '-b': {
+        'protocol': 'longblob'
+    },
 
-dj.config['external-compute'] = {
-    'protocol': 's3',
-    'location': '/datajoint-projects/test',
-    'user': 'djtest',
-    'token': '2e05709792545ce'}
+    '-raw': {
+        'protocol': 'file',
+        'location': 'dj-store/raw'},
 
-dj.config['cache'] = tempfile.mkdtemp('dj-cache')
+    '-compute': {
+        'protocol': 's3',
+        'location': '/datajoint-projects/test',
+        'user': 'djtest',
+        'token': '2e05709792545ce'}
+
+
+}
+
+dj.config['cache'] = tempfile.mkdtemp()
 
 
 @schema
@@ -33,7 +43,7 @@ class Simple(dj.Manual):
     definition = """
     simple  : int
     ---
-    item  : external-raw
+    item  : blob-
     """
 
 
@@ -64,11 +74,22 @@ class Image(dj.Computed):
     -> Seed
     -> Dimension
     ----
-    img  : external-raw    #  objects are stored as specified by dj.config['external-raw']
-    neg : external    # objects are stored as specified by dj.config['external']
+    img  : blob-raw    #  objects are stored as specified by dj.config['stores'][-raw']
+    neg : blob-    # objects are stored as specified by dj.config['stores']['-']
     """
 
     def make(self, key):
         np.random.seed(key['seed'])
         img = np.random.rand(*(Dimension() & key).fetch1('dimensions'))
         self.insert1(dict(key, img=img, neg=-img.astype(np.float32)))
+
+
+@schema
+class Attach(dj.Manual):
+    definition = """
+    # table for storing attachments
+    attach : int
+    ----
+    img : attach-raw    #  attachments are stored as specified by dj.config['stores']['-file']
+    txt : attach-b      #  attachments are stored as specified by dj.config['stores']['-b']
+    """

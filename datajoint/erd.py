@@ -53,6 +53,7 @@ if not erd_active:
             warnings.warn(
                     'ERD functionality depends on matplotlib and pygraphviz. '
                     'Please install these libraries to enable the ERD feature.')
+
 else:
     class ERD(nx.DiGraph):
         """
