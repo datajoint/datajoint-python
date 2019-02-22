@@ -9,9 +9,9 @@ from .table import Table
 try:
     from matplotlib import pyplot as plt
     from networkx.drawing.nx_pydot import pydot_layout
-    erd_active = True
+    diagram_active = True
 except:
-    erd_active = False
+    diagram_active = False
 
 from .user_tables import Manual, Imported, Computed, Lookup, Part
 from .errors import DataJointError
@@ -39,47 +39,45 @@ def _get_tier(table_name):
             return None
 
 
-if not erd_active:
-    class ERD:
+if not diagram_active:
+    class Diagram:
         """
         Entity relationship diagram, currently disabled due to the lack of required packages: matplotlib and pygraphviz.
 
-        To enable ERD feature, please install matplotlib and pygraphviz. For instructions on how to install
+        To enable Diagram feature, please install both matplotlib and pygraphviz. For instructions on how to install
         these two packages, refer to http://docs.datajoint.io/setup/Install-and-connect.html#python and
         http://tutorials.datajoint.io/setting-up/datajoint-python.html
         """
 
         def __init__(self, *args, **kwargs):
-            warnings.warn(
-                    'ERD functionality depends on matplotlib and pygraphviz. '
-                    'Please install these libraries to enable the ERD feature.')
+            warnings.warn('Please install matplotlib and pygraphviz libraries to enable the Diagram feature.')
 
 else:
-    class ERD(nx.DiGraph):
+    class Diagram(nx.DiGraph):
         """
         Entity relationship diagram.
 
         Usage:
 
-        >>>  erd = Erd(source)
+        >>>  diag = Diagram(source)
 
         source can be a base relation object, a base relation class, a schema, or a module that has a schema.
 
-        >>> erd.draw()
+        >>> diag.draw()
 
         draws the diagram using pyplot
 
-        erd1 + erd2  - combines the two ERDs.
-        erd + n   - adds n levels of successors
-        erd - n   - adds n levels of predecessors
-        Thus dj.ERD(schema.Table)+1-1 defines the diagram of immediate ancestors and descendants of schema.Table
+        diag1 + diag2  - combines the two diagrams.
+        diag + n   - expands n levels of successors
+        diag - n   - expands n levels of predecessors
+        Thus dj.Diagram(schema.Table)+1-1 defines the diagram of immediate ancestors and descendants of schema.Table
 
-        Note that erd + 1 - 1  may differ from erd - 1 + 1 and so forth.
+        Note that diagram + 1 - 1  may differ from diagram - 1 + 1 and so forth.
         Only those tables that are loaded in the connection object are displayed
         """
         def __init__(self, source, context=None):
 
-            if isinstance(source, ERD):
+            if isinstance(source, Diagram):
                 # copy constructor
                 self.nodes_to_show = set(source.nodes_to_show)
                 self.context = source.context
@@ -118,7 +116,7 @@ else:
                     try:
                         database = source.schema.database
                     except AttributeError:
-                        raise DataJointError('Cannot plot ERD for %s' % repr(source))
+                        raise DataJointError('Cannot plot Diagram for %s' % repr(source))
                 for node in self:
                     if node.startswith('`%s`' % database):
                         self.nodes_to_show.add(node)
@@ -137,11 +135,11 @@ else:
         @classmethod
         def from_sequence(cls, sequence):
             """
-            The join ERD for all objects in sequence
+            The join Diagram for all objects in sequence
             :param sequence: a sequence (e.g. list, tuple)
-            :return: ERD(arg1) + ... + ERD(argn)
+            :return: Diagram(arg1) + ... + Diagram(argn)
             """
-            return functools.reduce(lambda x, y: x+y, map(ERD, sequence))
+            return functools.reduce(lambda x, y: x+y, map(Diagram, sequence))
 
         def add_parts(self):
             """
@@ -158,16 +156,16 @@ else:
                 master = [s.strip('`') for s in master.split('.')]
                 return master[0] == part[0] and master[1] + '__' == part[1][:len(master[1])+2]
 
-            self = ERD(self)  # copy
+            self = Diagram(self)  # copy
             self.nodes_to_show.update(n for n in self.nodes() if any(is_part(n, m) for m in self.nodes_to_show))
             return self
 
         def __add__(self, arg):
             """
-            :param arg: either another ERD or a positive integer.
-            :return: Union of the ERDs when arg is another ERD or an expansion downstream when arg is a positive integer.
+            :param arg: either another Diagram or a positive integer.
+            :return: Union of the diagrams when arg is another Diagram or an expansion downstream when arg is a positive integer.
             """
-            self = ERD(self)   # copy
+            self = Diagram(self)   # copy
             try:
                 self.nodes_to_show.update(arg.nodes_to_show)
             except AttributeError:
@@ -183,10 +181,10 @@ else:
 
         def __sub__(self, arg):
             """
-            :param arg: either another ERD or a positive integer.
-            :return: Difference of the ERDs when arg is another ERD or an expansion upstream when arg is a positive integer.
+            :param arg: either another Diagram or a positive integer.
+            :return: Difference of the diagrams when arg is another Diagram or an expansion upstream when arg is a positive integer.
             """
-            self = ERD(self)   # copy
+            self = Diagram(self)   # copy
             try:
                 self.nodes_to_show.difference_update(arg.nodes_to_show)
             except AttributeError:
@@ -202,11 +200,11 @@ else:
 
         def __mul__(self, arg):
             """
-            Intersection of two ERDs
-            :param arg: another ERD
-            :return: a new ERD comprising nodes that are present in both operands.
+            Intersection of two diagrams
+            :param arg: another Diagram
+            :return: a new Diagram comprising nodes that are present in both operands.
             """
-            self = ERD(self)   # copy
+            self = Diagram(self)   # copy
             self.nodes_to_show.intersection_update(arg.nodes_to_show)
             return self
 
@@ -225,7 +223,7 @@ else:
             mapping = {node: lookup_class_name(node, self.context) or node for node in graph.nodes()}
             new_names = [mapping.values()]
             if len(new_names) > len(set(new_names)):
-                raise DataJointError('Some classes have identical names. The ERD cannot be plotted.')
+                raise DataJointError('Some classes have identical names. The Diagram cannot be plotted.')
             nx.relabel_nodes(graph, mapping, copy=False)
             return graph
 

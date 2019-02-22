@@ -21,7 +21,7 @@ __all__ = ['__author__', '__version__',
            'schema', 'create_virtual_module', 'get_schema_names',
            'Table', 'FreeTable',
            'Manual', 'Lookup', 'Imported', 'Computed', 'Part',
-           'Not', 'AndList', 'U', 'ERD',
+           'Not', 'AndList', 'U', 'Diagram', 'Di', 'ERD',
            'set_password', 'kill',
            'DataJointError', 'DuplicateError', 'key']
 
@@ -34,7 +34,9 @@ from .schema import create_virtual_module, get_schema_names
 from .table import Table, FreeTable
 from .user_tables import Manual, Lookup, Imported, Computed, Part
 from .expression import Not, AndList, U
-from .erd import ERD
+from .diagram import Diagram
 from .admin import set_password, kill
 from .errors import DataJointError, DuplicateError
 from .fetch import key
+
+ERD = Di = Diagram   # Aliases for Diagram
