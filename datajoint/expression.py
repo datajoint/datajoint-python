@@ -123,7 +123,7 @@ class QueryExpression:
         """
         def prep_value(v):
             """prepare value v for inclusion as a string in an SQL condition"""
-            return "X'%s'" % v.bytes.hex() if isinstance(v, uuid.UUID) else '%r' % (
+            return "X'%s'" % bytes.hex(v.bytes) if isinstance(v, uuid.UUID) else '%r' % (
                     str(v) if isinstance(v, (datetime.date, datetime.datetime, datetime.time, decimal.Decimal)) else v)
 
         negate = False
