@@ -203,13 +203,13 @@ class Heading:
             attr['is_blob'] = bool(re.match(r'(tiny|medium|long)?blob', attr['type']))
 
             # recognize configurable fields
-            configurable_field = re.match(
-                r'^:(?P<type>(blob|external|attach|uuid)(-\w*)?):(?P<comment>.*)$', attr['comment'])
-            if configurable_field:
-                attr['type'] = configurable_field.group('type')
-                attr['comment'] = configurable_field.group('comment')
+            custom_datatype = re.match(
+                r'^:(?P<type>(uuid|(blob|attach|filepath)(@\w+)?):(?P<comment>.*)$', attr['comment'])
+            if custom_datatype:
+                attr['type'] = custom_datatype.group('type')
+                attr['comment'] = custom_datatype.group('comment')
             attr['uuid'] = attr['type'] == 'uuid'
-            if attr['uuid'] or configurable_field is None:
+            if attr['uuid'] or custom_datatype is None:
                 attr['is_external'] = False
                 attr['is_attachment'] = False
             else:

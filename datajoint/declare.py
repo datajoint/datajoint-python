@@ -9,11 +9,35 @@ import logging
 from .settings import config
 from .errors import DataJointError
 
-STORE_NAME_LENGTH = 8
-STORE_HASH_LENGTH = 43
-HASH_DATA_TYPE = 'char(51)'
+HASH_DATA_TYPE = 'binary(32)'
 UUID_DATA_TYPE = 'binary(16)'
 MAX_TABLE_NAME_LENGTH = 64
+CONSTANT_LITERALS = {'CURRENT_TIMESTAMP'}  # SQL literals to be used without quotes (case insensitive)
+
+TYPE_PATTERN = dict(
+    NUMERIC=re.compile(
+        r'(((tiny|small|medium|big|)int)|double|float|real|decimal|numeric)(\s*\(.+\))?(\s+UNSIGNED)?$', re.I),
+    ENUM=re.compile(r'(?P<type>enum\s*\(.+\))$', re.I),
+    BOOL=re.compile(r'bool(ean)?$'),   # aliased to tinyint(1)
+    TEMPORAL=re.compile(r'(date|datetime|time|timestamp|year)(\s*\(.+\))?$', re.I),
+    INTERNAL_BLOB=re.compile(r'(tiny|small|medium|long)blob$', re.I),
+    EXTERNAL_ATTACH=re.compile(r'blob@(?P<store>[a-z]\w*)$', re.I),
+    EXTERNAL_BLOB=re.compile(r'blob@(?P<store>[a-z]\w*)$', re.I),
+    UUID=re.compile(r'uuid$', re.I))
+
+# categories for which the type must be stored in the comment
+CUSTOM_TYPES = {'UUID', 'INTERNAL_ATTACH', 'EXTERNAL_ATTACH', 'EXTERNAL_BLOB'}
+
+# categories for which the data are stored with an external reference, uses HASH_DATA_TYPE
+EXTERNAL_TYPES = {'EXTERNAL_ATTACH', 'EXTERNAL_BLOB'}
+
+def match_type(datatype):
+    for category, pattern in TYPE_PATTERN.items():
+        match = pattern.match(datatype)
+        if match:
+            return category, match
+    raise DataJointError('Unsupported data types "%s"' % datatype)
+
 
 logger = logging.getLogger(__name__)
 
@@ -262,7 +286,7 @@ def compile_attribute(line, in_key, foreign_key_sql):
     :returns: (name, sql, is_external) -- attribute name and sql code for its declaration
     """
     try:
-        match = attribute_parser.parseString(line+'#', parseAll=True)
+        match = attribute_parser.parseString(line + '#', parseAll=True)
     except pp.ParseException as err:
         raise DataJointError('Declaration error in position {pos} in line:\n  {line}\n{msg}'.format(
             line=err.args[0], pos=err.args[1], msg=err.args[2]))
@@ -271,45 +295,37 @@ def compile_attribute(line, in_key, foreign_key_sql):
         match['default'] = ''
     match = {k: v.strip() for k, v in match.items()}
     match['nullable'] = match['default'].lower() == 'null'
-    blob_datatype = r'(tiny|small|medium|long)?blob'
-    accepted_datatype = (
-        r'time|date|year|enum|(var)?char|float|real|double|decimal|numeric|uuid|'
-        r'(tiny|small|medium|big)?int|bool|external|attach|' + blob_datatype)
-    if re.match(accepted_datatype, match['type'], re.I) is None:
-        raise DataJointError('DataJoint does not support datatype "{type}"'.format(**match))
-    is_blob = bool(re.match(blob_datatype, match['type'], re.I))
-    literals = ['CURRENT_TIMESTAMP']   # not to be enclosed in quotes
+
     if match['nullable']:
         if in_key:
-            raise DataJointError('Primary key attributes cannot be nullable in line %s' % line)
+            raise DataJointError('Primary key attributes cannot be nullable in line "%s"' % line)
         match['default'] = 'DEFAULT NULL'  # nullable attributes default to null
     else:
         if match['default']:
-            quote = match['default'].upper() not in literals and match['default'][0] not in '"\''
+            quote = match['default'].upper() not in CONSTANT_LITERALS and match['default'][0] not in '"\''
             match['default'] = 'NOT NULL DEFAULT ' + ('"%s"' if quote else "%s") % match['default']
         else:
             match['default'] = 'NOT NULL'
     match['comment'] = match['comment'].replace('"', '\\"')   # escape double quotes in comment
-    if match['type'] == 'uuid':
+
+    category, typematch = match_type(match['type'])
+
+    if category in CUSTOM_TYPES:
+        match['comment'] = ':{type}:{comment}'.format(**match)  # insert custom type into comment
+
+        if category == 'uuid':
+            match['type'] = UUID_DATA_TYPE
+        elif category in EXTERNAL_TYPES:
+            match['type'] = HASH_DATA_TYPE
+
         match['comment'] = ':{type}:{comment}'.format(**match)
-        match['type'] = UUID_DATA_TYPE
-    is_configurable = match['type'].startswith(('external', 'blob-', 'attach'))
-    is_external = False
-    if is_configurable:
-        if in_key:
-            raise DataJointError('Configurable attributes cannot be primary in:\n%s' % line)
-        match['comment'] = ':{type}:{comment}'.format(**match)  # insert configurable type into comment
-        store_name = match['type'].split('-')
-        if store_name[0] not in ('external', 'blob', 'attach'):
+        store_name = match['type'].split('@')
+        if store_name[0] not in ('blob', 'attach'):
             raise DataJointError('Configurable types must be in the form blob-<store> or attach-<store> in:\n%s' % line)
         store_name = '-'.join(store_name[1:])
-        if store_name and not store_name.isidentifier():
+        if store_name and not re.match(r'[a-z]\w*$'):
             raise DataJointError(
                 'The external store name `{type}` is invalid. Make like a python identifier.'.format(**match))
-        if len(store_name) > STORE_NAME_LENGTH:
-            raise DataJointError(
-                'The external store name `{type}` is too long. Must be <={max_len} characters.'.format(
-                    max_len=STORE_NAME_LENGTH, **match))
         spec = config.get_store_spec(store_name)
         is_external = spec['protocol'] in {'s3', 'file'}
         if not is_external:

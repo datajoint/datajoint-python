@@ -229,7 +229,7 @@ class Table(QueryExpression):
                     placeholder = '%s'
                     if attr.uuid:
                         if not isinstance(value, uuid.UUID):
-                            raise DataJointError('The value of atttribute %s must be of type UUID' % attr)
+                            raise DataJointError('The value of attribute `%s` must be of type UUID' % attr)
                         value = value.bytes
                     elif attr.is_blob:
                         value = blob.pack(value)
