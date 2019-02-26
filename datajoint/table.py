@@ -59,6 +59,9 @@ class Table(QueryExpression):
         """
         Use self.definition to declare the table in the schema.
         """
+        if self.connection.in_transaction:
+            raise DataJointError('Cannot declare new tables inside a transaction, '
+                                 'e.g. from inside a populate/make call')
         try:
             sql, uses_external = declare(self.full_table_name, self.definition, context)
             if uses_external:
