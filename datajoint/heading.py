@@ -1,15 +1,22 @@
 import numpy as np
-from collections import namedtuple, OrderedDict, defaultdict
+from collections import namedtuple, defaultdict
 from itertools import chain
 import re
 import logging
 from .errors import DataJointError
+import sys
+if sys.version_info[1] < 6:
+    from collections import OrderedDict
+else:
+    # use dict in Python 3.6+ -- They are already ordered and look nicer
+    OrderedDict = dict
+
 
 logger = logging.getLogger(__name__)
 
 default_attribute_properties = dict(    # these default values are set in computed attributes
     name=None, type='expression', in_key=False, nullable=False, default=None, comment='calculated attribute',
-    autoincrement=False, numeric=None, string=None, is_blob=False, is_attachment=False, is_external=False,
+    autoincrement=False, numeric=None, string=None, uuid=False, is_blob=False, is_attachment=False, is_external=False,
     unsupported=False, sql_expression=None, database=None, dtype=object)
 
 
@@ -197,17 +204,19 @@ class Heading:
 
             # recognize configurable fields
             configurable_field = re.match(
-                r'^:(?P<type>(blob|external|attach)(-\w*)?):(?P<comment>.*)$', attr['comment'])
-            if configurable_field is None:
+                r'^:(?P<type>(blob|external|attach|uuid)(-\w*)?):(?P<comment>.*)$', attr['comment'])
+            if configurable_field:
+                attr['type'] = configurable_field.group('type')
+                attr['comment'] = configurable_field.group('comment')
+            attr['uuid'] = attr['type'] == 'uuid'
+            if attr['uuid'] or configurable_field is None:
                 attr['is_external'] = False
                 attr['is_attachment'] = False
             else:
                 # configurable fields: blob- and attach
                 if attr['in_key']:
                     raise DataJointError('Configurable store attributes are not allowed in the primary key')
-                attr['comment'] = configurable_field.group('comment')
                 attr['is_external'] = not attr['is_blob']
-                attr['type'] = configurable_field.group('type')
                 attr['is_attachment'] = attr['type'].startswith('attach')
                 attr['is_blob'] = attr['type'].startswith(('blob', 'external'))
                 attr['string'] = False

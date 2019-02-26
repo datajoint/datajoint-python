@@ -1,12 +1,18 @@
-from collections import OrderedDict
+import sys
 from functools import partial
 import warnings
 import pandas
 import re
 import numpy as np
+import uuid
 from . import blob, attach
 from .errors import DataJointError
 from .settings import config
+if sys.version_info[1] < 6:
+    from collections import OrderedDict
+else:
+    # use dict in Python 3.6+ -- They are already ordered and look nicer
+    OrderedDict = dict
 
 
 class key:
@@ -19,6 +25,10 @@ class key:
 
 def is_key(attr):
     return attr is key or attr == 'KEY'
+
+
+def is_key_array(attr):
+    return isinstance(attr, str) and attr == "KEY_ARRAY"
 
 
 def to_dicts(recarray):
@@ -38,7 +48,8 @@ def _get(connection, attr, data, squeeze, download_path):
     """
     if attr.is_external:
         data = connection.schemas[attr.database].external_table.get(data)
-    return (blob.unpack(data, squeeze=squeeze) if attr.is_blob else
+    return (uuid.UUID(bytes=data) if attr.uuid else
+            blob.unpack(data, squeeze=squeeze) if attr.is_blob else
             attach.save(data, download_path) if attr.is_attachment else data)
 
 
@@ -134,13 +145,13 @@ class Fetch:
                 if format == "frame":
                     ret = pandas.DataFrame(ret).set_index(heading.primary_key)
         else:  # if list of attributes provided
-            attributes = [a for a in attrs if not is_key(a)]
+            attributes = [a for a in attrs if not is_key(a) and not is_key_array(a)]
             result = self._expression.proj(*attributes).fetch(
                 offset=offset, limit=limit, order_by=order_by,
                 as_dict=False, squeeze=squeeze, download_path=download_path)
             return_values = [
-                list(to_dicts(result[self._expression.primary_key]))
-                if is_key(attribute) else result[attribute]
+                list(to_dicts(result[self._expression.primary_key])) if is_key(attribute) else (
+                    result[self._expression.primary_key] if is_key_array(attribute) else result[attribute])
                 for attribute in attrs]
             ret = return_values[0] if len(attrs) == 1 else return_values
 
@@ -172,7 +183,6 @@ class Fetch1:
         :param download_path: for fetches that download data, e.g. attachments
         :return: the one tuple in the relation in the form of a dict
         """
-
         heading = self._expression.heading
 
         if not attrs:  # fetch all attributes, return as ordered dict
@@ -184,13 +194,13 @@ class Fetch1:
                                           squeeze=squeeze, download_path=download_path))
                               for name in heading.names)
         else:  # fetch some attributes, return as tuple
-            attributes = [a for a in attrs if not is_key(a)]
+            attributes = [a for a in attrs if not is_key(a) and not is_key_array(a)]
             result = self._expression.proj(*attributes).fetch(squeeze=squeeze, download_path=download_path)
             if len(result) != 1:
                 raise DataJointError('fetch1 should only return one tuple. %d tuples were found' % len(result))
             return_values = tuple(
-                next(to_dicts(result[self._expression.primary_key]))
-                if is_key(attribute) else result[attribute][0]
+                next(to_dicts(result[self._expression.primary_key])) if is_key(attribute) else (
+                    result[self._expression.primary_key][0] if is_key_array(attribute) else result[attribute][0])
                 for attribute in attrs)
             ret = return_values[0] if len(attrs) == 1 else return_values
 

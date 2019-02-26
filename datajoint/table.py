@@ -6,7 +6,7 @@ import numpy as np
 import pandas
 import pymysql
 import logging
-import warnings
+import uuid
 from pymysql import OperationalError, InternalError, IntegrityError
 from .settings import config
 from .declare import declare
@@ -173,7 +173,7 @@ class Table(QueryExpression):
         # prohibit direct inserts into auto-populated tables
         if not (allow_direct_insert or getattr(self, '_allow_insert', True)):  # _allow_insert is only present in AutoPopulate
             raise DataJointError(
-                'Auto-populate tables can only be inserted into from their make methods during populate calls.' \
+                'Auto-populate tables can only be inserted into from their make methods during populate calls.'
                 ' To override, use the the allow_direct_insert argument.')
 
         heading = self.heading
@@ -184,7 +184,7 @@ class Table(QueryExpression):
             if not ignore_extra_fields:
                 try:
                     raise DataJointError(
-                        "Attribute %s not found.  To ignore extra attributes in insert, set ignore_extra_fields=True." %
+                        "Attribute %s not found. To ignore extra attributes in insert, set ignore_extra_fields=True." %
                         next(name for name in rows.heading if name not in heading))
                 except StopIteration:
                     pass
@@ -227,7 +227,11 @@ class Table(QueryExpression):
                     placeholder, value = 'DEFAULT', None
                 else:
                     placeholder = '%s'
-                    if attr.is_blob:
+                    if attr.uuid:
+                        if not isinstance(value, uuid.UUID):
+                            raise DataJointError('The value of atttribute %s must be of type UUID' % attr)
+                        value = value.bytes
+                    elif attr.is_blob:
                         value = blob.pack(value)
                         value = self.external_table.put(attr.type, value) if attr.is_external else value
                     elif attr.is_attachment:
@@ -510,9 +514,8 @@ class Table(QueryExpression):
                             attributes_declared.update(fk_props['attr_map'])
             if do_include:
                 attributes_declared.add(attr.name)
-                name = attr.name.lstrip('_')  # for external
                 definition += '%-20s : %-28s %s\n' % (
-                    name if attr.default is None else '%s=%s' % (name, attr.default),
+                    attr.name if attr.default is None else '%s=%s' % (attr.name, attr.default),
                     '%s%s' % (attr.type, ' auto_increment' if attr.autoincrement else ''),
                     '# ' + attr.comment if attr.comment else '')
         # add remaining indexes

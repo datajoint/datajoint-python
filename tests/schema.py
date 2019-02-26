@@ -285,3 +285,12 @@ class IndexRich(dj.Manual):
     value : int
     index (first_date, value)
     """
+
+
+@schema
+class Item(dj.Manual):
+    definition = """
+    item : uuid
+    ---
+    number : int
+    """
