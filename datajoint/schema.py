@@ -7,7 +7,7 @@ from .connection import conn
 from .settings import config
 from .errors import DataJointError
 from .jobs import JobTable
-from .external import ExternalTable
+from .external import ExternalManager
 from .heading import Heading
 from .utils import user_choice, to_camel_case
 from .user_tables import Part, Computed, Imported, Manual, Lookup
@@ -227,17 +227,15 @@ class Schema:
             self._jobs = JobTable(self.connection, self.database)
         return self._jobs
 
+    external = default
     @property
     def external(self):
         """
-        schema.external provides a view of the external hash table for the schema
-        :return: external table
+        schema.external provides a view of the external hash tables for the schema
         """
         if self._external is None:
-            self._external = ExternalTable(self.connection, self.database)
-        return self._external
-
-    external_table = external  # for backward compatibility to pre-0.12.0
+            self._external = ExternalManager(self)
+        return ExternalManager(self.conection)
 
 
 def create_virtual_module(module_name, schema_name, create_schema=False, create_tables=False, connection=None):

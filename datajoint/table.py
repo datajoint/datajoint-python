@@ -35,7 +35,6 @@ class Table(QueryExpression):
     _heading = None
     database = None
     _log_ = None
-    _external_table = None
 
     # -------------- required by QueryExpression ----------------- #
     @property
@@ -63,9 +62,11 @@ class Table(QueryExpression):
             raise DataJointError('Cannot declare new tables inside a transaction, '
                                  'e.g. from inside a populate/make call')
         try:
-            sql, uses_external = declare(self.full_table_name, self.definition, context)
-            if uses_external:
-                sql = sql.format(external_table=self.external_table.full_table_name)
+            sql, external_stores = declare(self.full_table_name, self.definition, context)
+            sql = sql.format(database=self.database)
+            # declare all external tables before declaring main table
+            for store in external_stores:
+                self.external_table(store)
             self.connection.query(sql)
         except pymysql.OperationalError as error:
             # skip if no create privilege
@@ -135,12 +136,8 @@ class Table(QueryExpression):
             self._log_ = Log(self.connection, database=self.database)
         return self._log_
 
-    @property
-    def external_table(self):
-        if self._external_table is None:
-            # trigger the creation of the external hash lookup for the current schema
-            self._external_table = self.connection.schemas[self.database].external_table
-        return self._external_table
+    def external_table(self, store):
+        return self.connection.schemas[self.database].external_tables(store)
 
     def insert1(self, row, **kwargs):
         """

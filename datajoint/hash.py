@@ -16,19 +16,20 @@ def to_ascii(byte_string):
     """
     :param byte_string: a binary string
     :return:   web-safe 64-bit ASCII encoding of binary strings
+    The function strips the trailing padding, making uncertain the length of the original string.
     """
-    return base64.b64encode(byte_string, b'-_').decode()
+    return base64.b64encode(byte_string, b'-_').decode().rstrip('=')
 
 
-def long_hash(*buffers):
+def long_bin_hash(*buffers):
     """
     :param buffers: any number of binary buffers (e.g. serialized blobs)
-    :return: 43-character base64 ASCII rendition SHA-256
+    :return: 32-byte digest SHA-256
     """
     hashed = hashlib.sha256()
     for buffer in buffers:
         hashed.update(buffer)
-    return to_ascii(hashed.digest())[0:43]
+    return hashed.digest()
 
 
 def short_hash(*buffers):
