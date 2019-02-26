@@ -67,9 +67,6 @@ class Config(collections.MutableMapping):
             else:
                 Config.instance._conf.update(dict(*args, **kwargs))
 
-    def add_history(self, item):
-        self.update({'history': self.get('history', []) + [item]})
-
     def __getattr__(self, name):
         return getattr(self.instance, name)
 
@@ -113,7 +110,6 @@ class Config(collections.MutableMapping):
             filename = LOCALCONFIG
         with open(filename, 'r') as fid:
             self._conf.update(json.load(fid))
-        self.add_history('Updated from config file: %s' % filename)
 
     def save_local(self, verbose=False):
         """
@@ -202,7 +198,7 @@ config_files = (os.path.expanduser(n) for n in (LOCALCONFIG, os.path.join('~', G
 try:
     config_file = next(n for n in config_files if os.path.exists(n))
 except StopIteration:
-    config.add_history('No config file found, using default settings.')
+    pass
 else:
     config.load(config_file)
 
@@ -213,8 +209,6 @@ mapping = {k: v for k, v in zip(
     map(os.getenv, ('DJ_HOST', 'DJ_USER', 'DJ_PASS',
                     'DJ_AWS_ACCESS_KEY_ID', 'DJ_AWS_SECRET_ACCESS_KEY',)))
            if v is not None}
-for k in mapping:
-    config.add_history('Updated login credentials from %s' % k)
 config.update(mapping)
 
 logger.setLevel(log_levels[config['loglevel']])
