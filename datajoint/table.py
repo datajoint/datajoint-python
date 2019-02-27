@@ -224,12 +224,13 @@ class Table(QueryExpression):
                     return None
                 attr = heading[name]
                 if value is None or (attr.numeric and (value == '' or np.isnan(np.float(value)))):
+                    # set default value
                     placeholder, value = 'DEFAULT', None
-                else:
+                else:  # not NULL
                     placeholder = '%s'
                     if attr.uuid:
                         if not isinstance(value, uuid.UUID):
-                            raise DataJointError('The value of atttribute %s must be of type UUID' % attr)
+                            raise DataJointError('The value of attribute `%s` must be of type UUID' % attr.name)
                         value = value.bytes
                     elif attr.is_blob:
                         value = blob.pack(value)

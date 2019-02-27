@@ -94,7 +94,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
     from .table import Table
     from .expression import Projection
 
-    new_style = True   # See issue #436.  Old style to be deprecated in a future release
+    obsolete = False   # See issue #436.  Old style to be deprecated in a future release
     try:
         result = foreign_key_parser.parseString(line)
     except pp.ParseException:
@@ -103,10 +103,10 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
         except pp.ParseBaseException as err:
             raise DataJointError('Parsing error in line "%s". %s.' % (line, err)) from None
         else:
-            new_style = False
+            obsolete = True
     try:
         ref = eval(result.ref_table, context)
-    except Exception if new_style else NameError:
+    except NameError if obsolete else Exception:
         raise DataJointError('Foreign key reference %s could not be resolved' % result.ref_table)
 
     options = [opt.upper() for opt in result.options]
@@ -118,7 +118,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
     if is_nullable and primary_key is not None:
         raise DataJointError('Primary dependencies cannot be nullable in line "{line}"'.format(line=line))
 
-    if not new_style:
+    if obsolete:
         if not isinstance(ref, type) or not issubclass(ref, Table):
             raise DataJointError('Foreign key reference %r must be a valid query' % result.ref_table)
 
@@ -131,7 +131,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
         raise DataJointError('Dependency "%s" is not supported (yet). Use a base table or its projection.' %
                              result.ref_table)
 
-    if not new_style:
+    if obsolete:
         # for backward compatibility with old-style dependency declarations.  See issue #436
         if not isinstance(ref, Table):
             DataJointError('Dependency "%s" is not supported. Check documentation.' % result.ref_table)
@@ -159,7 +159,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
                 # if only one primary key attribute remains, then allow implicit renaming
                 ref_attrs = [attr for attr in ref.primary_key if attr not in attributes]
                 if len(ref_attrs) != 1:
-                    raise DataJointError('Could not resovle which primary key attribute should be referenced in "%s"' % line)
+                    raise DataJointError('Could not resolve which primary key attribute should be referenced in "%s"' % line)
 
         if len(new_attrs) != len(ref_attrs):
             raise DataJointError('Mismatched attributes in foreign key "%s"' % line)
