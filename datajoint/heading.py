@@ -4,6 +4,7 @@ from itertools import chain
 import re
 import logging
 from .errors import DataJointError
+from .declare import UUID_DATA_TYPE
 import sys
 if sys.version_info[1] < 6:
     from collections import OrderedDict
@@ -29,16 +30,29 @@ class Attribute(namedtuple('_Attribute', default_attribute_properties)):
         return OrderedDict((name, self[i]) for i, name in enumerate(self._fields))
 
     @property
+    def sql_type(self):
+        """
+        :return: datatype (as string) in database. In most cases, it is the same as self.type
+        """
+        return UUID_DATA_TYPE if self.uuid else self.type
+
+    @property
+    def sql_comment(self):
+        """
+        :return: full comment for the SQL declaration. Includes custom type specification
+        """
+        return (':uuid:' if self.uuid else '') + self.comment
+
+    @property
     def sql(self):
         """
         Convert primary key attribute tuple into its SQL CREATE TABLE clause.
         Default values are not reflected.
         This is used for declaring foreign keys in referencing tables
-        :return: SQL code
+        :return: SQL code for attribute declaration
         """
-        assert self.in_key and not self.nullable   # primary key attributes are never nullable
         return '`{name}` {type} NOT NULL COMMENT "{comment}"'.format(
-            name=self.name, type=self.type, comment=self.comment)
+            name=self.name, type=self.sql_type, comment=self.sql_comment)
 
 
 class Heading:

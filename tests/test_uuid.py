@@ -1,16 +1,34 @@
-from nose.tools import assert_equal
+from nose.tools import assert_true, assert_equal, raises
 import uuid
-from .schema import Item
+from .schema_uuid import Basic, Item, Topic
+from datajoint import DataJointError
 from itertools import count
 
 
 def test_uuid():
+    """test inserting and fetching of UUID attributes and restricting by UUID attributes"""
     u, n = uuid.uuid4(), -1
-    Item().insert1(dict(item=u, number=n))
-    Item().insert(zip(map(uuid.uuid1, range(20)), count()))
-    keys, key_array = Item().fetch('KEY', 'KEY_ARRAY')
+    Basic().insert1(dict(item=u, number=n))
+    Basic().insert(zip(map(uuid.uuid1, range(20)), count()))
+    keys, key_array = Basic().fetch('KEY', 'KEY_ARRAY')
     assert_equal(keys[0]['item'], key_array['item'][0])
-    number = (Item() & {'item': u}).fetch1('number')
+    number = (Basic() & {'item': u}).fetch1('number')
     assert_equal(number, n)
-    item = (Item & {'number': n}).fetch1('item')
+    item = (Basic & {'number': n}).fetch1('item')
     assert_equal(u, item)
+
+
+@raises(DataJointError)
+def test_invalid_uuid_type():
+    """test that only UUID objects are accepted when inserting UUID fields"""
+    Basic().insert(dict(item='00000000-0000-0000-0000-000000000000', number=0))
+
+
+def test_uuid_dependencies():
+    """
+    :return:
+    """
+    for word in ('Neuroscience', 'Knowledge', 'Curiosity', 'Inspiration', 'Science', 'Philosophy', 'Conscience'):
+        Topic().add(word)
+    Item.populate()
+    assert_equal(Item().progress(), (0, len(Topic())))

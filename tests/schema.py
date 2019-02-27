@@ -287,10 +287,3 @@ class IndexRich(dj.Manual):
     """
 
 
-@schema
-class Item(dj.Manual):
-    definition = """
-    item : uuid
-    ---
-    number : int
-    """
