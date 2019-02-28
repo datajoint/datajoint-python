@@ -208,6 +208,8 @@ def declare(full_table_name, definition, context):
     definition = re.split(r'\s*\n\s*', definition.strip())
     # check for optional table comment
     table_comment = definition.pop(0)[1:].strip() if definition[0].startswith('#') else ''
+    if table_comment.startswith(':'):
+        raise DataJointError('Table comment must not start with a colon ":"')
     in_key = True  # parse primary keys
     primary_key = []
     attributes = []
