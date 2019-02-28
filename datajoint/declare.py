@@ -8,27 +8,29 @@ import logging
 
 from .errors import DataJointError
 
-HASH_DATA_TYPE = 'binary(32)'
+EXTERNAL_HASH_TYPE = 'binary(32)'
 UUID_DATA_TYPE = 'binary(16)'
 MAX_TABLE_NAME_LENGTH = 64
 CONSTANT_LITERALS = {'CURRENT_TIMESTAMP'}  # SQL literals to be used without quotes (case insensitive)
 EXTERNAL_TABLE_ROOT = '~external'
 
-TYPE_PATTERN = dict(
-    INTEGER=re.compile(r'(tiny|small|medium|big|)int(\s*\(.+\))?(\s+unsigned)?(\s+auto_increment)?$', re.I),
-    NUMERIC=re.compile(r'(double|float|real|decimal|numeric)(\s*\(.+\))?(\s+unsigned)?$', re.I),
-    STRING=re.compile(r'(var)?char\s*\(.+\)$', re.I),
-    ENUM=re.compile(r'enum\s*\(.+\)$', re.I),
-    BOOL=re.compile(r'bool(ean)?$'),   # aliased to tinyint(1)
-    TEMPORAL=re.compile(r'(date|datetime|time|timestamp|year)(\s*\(.+\))?$', re.I),
-    INTERNAL_BLOB=re.compile(r'(tiny|small|medium|long|)blob$', re.I),
-    EXTERNAL_ATTACH=re.compile(r'attach@(?P<store>[a-z]\w*)$', re.I),
-    EXTERNAL_BLOB=re.compile(r'blob@(?P<store>[a-z]\w*)$', re.I),
-    UUID=re.compile(r'uuid$', re.I))
+TYPE_PATTERN = {k: re.compile(v, re.I) for k, v in dict(
+    INTEGER=r'(tiny|small|medium|big|)int(\s*\(.+\))?(\s+unsigned)?(\s+auto_increment)?$',
+    NUMERIC=r'(double|float|real|decimal|numeric)(\s*\(.+\))?(\s+unsigned)?$',
+    STRING=r'(var)?char\s*\(.+\)$',
+    ENUM=r'enum\s*\(.+\)$',
+    BOOL=r'bool(ean)?$',   # aliased to tinyint(1)
+    TEMPORAL=r'(date|datetime|time|timestamp|year)(\s*\(.+\))?$',
+    INTERNAL_BLOB=r'(tiny|small|medium|long|)blob$',
+    INTERNAL_ATTACH=r'attach$',
+    EXTERNAL_ATTACH=r'attach@(?P<store>[a-z]\w*)$',
+    EXTERNAL_BLOB=r'blob@(?P<store>[a-z]\w*)$',
+    EXTERNAL_HASH=r'external_hash$',
+    UUID=r'uuid$').items()}
 
-CUSTOM_TYPES = {'UUID', 'INTERNAL_ATTACH', 'EXTERNAL_ATTACH', 'EXTERNAL_BLOB'} # type is stored in attribute comment
-EXTERNAL_TYPES = {'EXTERNAL_ATTACH', 'EXTERNAL_BLOB'}  # data are referenced by a HASH_DATA_TYPE in external tables
-SERIALIZED_TYPES = {'EXTERNAL_ATTACH', 'INTERNAL_ATTACH', 'EXTERNAL_BLOB', 'INTERNAL_BLOB'} # requires packing data
+CUSTOM_TYPES = {'UUID', 'INTERNAL_ATTACH', 'EXTERNAL_ATTACH', 'EXTERNAL_BLOB', 'EXTERNAL_HASH'}  # type is stored in attribute comment
+EXTERNAL_TYPES = {'EXTERNAL_ATTACH', 'EXTERNAL_BLOB'}  # data are referenced by a EXTERNAL_HASH_TYPE in external tables
+SERIALIZED_TYPES = {'EXTERNAL_ATTACH', 'INTERNAL_ATTACH', 'EXTERNAL_BLOB', 'INTERNAL_BLOB'}  # requires packing data
 
 assert set().union(CUSTOM_TYPES, EXTERNAL_TYPES, SERIALIZED_TYPES) <= set(TYPE_PATTERN)  # for development only
 
@@ -317,12 +319,15 @@ def compile_attribute(line, in_key, foreign_key_sql):
 
     if category in CUSTOM_TYPES:
         match['comment'] = ':{type}:{comment}'.format(**match)  # insert custom type into comment
-
-        if category == 'uuid':
+        if category == 'UUID':
             match['type'] = UUID_DATA_TYPE
+        elif category == 'INTERNAL_ATTACH':
+            match['type'] = 'LONGBLOB'
+        elif category == 'EXTERNAL_HASH':
+            match['type'] = EXTERNAL_HASH_TYPE
         elif category in EXTERNAL_TYPES:
             match['store'] = match['type'].split('@', 1)[1]
-            match['type'] = HASH_DATA_TYPE
+            match['type'] = EXTERNAL_HASH_TYPE
             foreign_key_sql.append(
                 "FOREIGN KEY (`{name}`) REFERENCES `{{database}}`.`{external_table_root}_{store}` (`hash`) "
                 "ON UPDATE RESTRICT ON DELETE RESTRICT".format(external_table_root=EXTERNAL_TABLE_ROOT, **match))

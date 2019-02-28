@@ -4,7 +4,7 @@ from .settings import config
 from .errors import DataJointError
 from .hash import long_bin_hash
 from .table import Table
-from .declare import EXTERNAL_TABLE_ROOT, HASH_DATA_TYPE
+from .declare import EXTERNAL_TABLE_ROOT
 from . import s3 
 from .utils import safe_write
 
@@ -46,17 +46,17 @@ class ExternalTable(Table):
     def definition(self):
         return """
         # external storage tracking
-        hash  : {hash_data_type}  # the hash of stored object + store name
+        hash  : external_hash
         ---
         size      :bigint unsigned   # size of object in bytes
         timestamp=CURRENT_TIMESTAMP  :timestamp   # automatic timestamp
-        """.format(hash_data_type=HASH_DATA_TYPE)
+        """
 
     @property
     def table_name(self):
         return '{external_table_root}_{store}'.format(external_table_root=EXTERNAL_TABLE_ROOT, store=self.store)
 
-    def put(self, store, blob):
+    def put(self, blob):
         """
         put an object in external store
         """
@@ -74,8 +74,7 @@ class ExternalTable(Table):
             folder = '/'.join(subfold(blob_hash, self.spec['subfolding']))
             s3.Folder(database=self.database, **self.spec).put('/'.join((folder, blob_hash)), blob)
         else:
-            raise DataJointError('Unknown external storage protocol {protocol} in store "-{store}"'.format(
-                store=store, protocol=self.spec['protocol']))
+            assert False  # This won't happen
         # insert tracking info
         self.connection.query(
             "INSERT INTO {tab} (hash, size) VALUES ('{hash}', {size}) "
@@ -116,7 +115,7 @@ class ExternalTable(Table):
                     subfolder = '/'.join(subfold(blob_hash, self.spec['subfolding']))
                     blob = s3.Folder(database=self.database, **self.spec).get('/'.join((subfolder, blob_hash)))
                 except TypeError:
-                    raise DataJointError('External store {store} configuration is incomplete.'.format(store=store))
+                    raise DataJointError('External store {store} configuration is incomplete.'.format(store=self.store))
             else:
                 raise DataJointError('Unknown external storage protocol "%s"' % self.spec['protocol'])
 
@@ -199,20 +198,19 @@ class ExternalTable(Table):
                 raise DataJointError('External store {store} configuration is incomplete.'.format(store=store))
 
 
-class ExternalManager:
+class ExternalMapping:
     """
     The external manager contains all the tables for all external stores for a given schema
     :Example:
-        e = ExternalManager(schema)
+        e = ExternalMapping(schema)
         external_table = e[store]
     """
-
     def __init__(self, schema):
         self.schema = schema
         self.external_tables = {}
 
     def __getitem__(self, store):
         if store not in self.external_tables:
-            self.external_tables[store] = self.ExternalTable(
+            self.external_tables[store] = ExternalTable(
                 connection=self.schema.connection, store=store, database=self.schema.database)
         return self.external_tables[store]

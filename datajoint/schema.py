@@ -7,7 +7,7 @@ from .connection import conn
 from .settings import config
 from .errors import DataJointError
 from .jobs import JobTable
-from .external import ExternalManager
+from .external import ExternalMapping
 from .heading import Heading
 from .utils import user_choice, to_camel_case
 from .user_tables import Part, Computed, Imported, Manual, Lookup
@@ -58,7 +58,7 @@ class Schema:
         self.context = context
         self.create_tables = create_tables
         self._jobs = None
-        self.external = ExternalManager(self)
+        self.external = ExternalMapping(self)
 
         if not self.exists:
             if not create_schema:
