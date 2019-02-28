@@ -57,5 +57,3 @@ def test_attach_attributes():
     assert_equal(data1, check1)
     assert_equal(data2, check2)
 
-
-

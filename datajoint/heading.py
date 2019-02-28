@@ -218,7 +218,7 @@ class Heading:
 
             # recognize configurable fields
             custom_datatype = re.match(
-                r'^:(?P<type>(uuid|(blob|attach|filepath)(@\w+)?):(?P<comment>.*)$', attr['comment'])
+                r'^:(?P<type>(uuid|(blob@\w+)|(attach|filepath)(@\w+)?)):(?P<comment>.*)$', attr['comment'])
             if custom_datatype:
                 attr['type'] = custom_datatype.group('type')
                 attr['comment'] = custom_datatype.group('comment')

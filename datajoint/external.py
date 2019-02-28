@@ -21,20 +21,24 @@ class ExternalTable(Table):
     The table tracking externally stored objects.
     Declare as ExternalTable(connection, database)
     """
-    def __init__(self, arg, store, database=None):
-        if isinstance(arg, ExternalTable):
-            super().__init__(arg)
-            # copy constructor
-            self.store = arg.store
-            self.spec = arg.spec
-            self.database = arg.database
-            self._connection = arg._connection
+    def __init__(self, connection, store=None, database=None):
+
+        # copy constructor -- all QueryExpressions must provide
+        if isinstance(connection, ExternalTable):
+            other = connection   # the first argument is interpreted as the other object
+            super().__init__(other)
+            self.store = other.store
+            self.spec = other.spec
+            self.database = other.database
+            self._connection = other._connection
             return
+
+        # nominal constructor
         super().__init__()
         self.store = store
         self.spec = config.get_store_spec(store)
         self.database = database
-        self._connection = arg
+        self._connection = connection
         if not self.is_declared:
             self.declare()
 
@@ -196,5 +200,19 @@ class ExternalTable(Table):
 
 
 class ExternalManager:
+    """
+    The external manager contains all the tables for all external stores for a given schema
+    :Example:
+        e = ExternalManager(schema)
+        external_table = e[store]
+    """
 
-    def __initi__(self):
+    def __init__(self, schema):
+        self.schema = schema
+        self.external_tables = {}
+
+    def __getitem__(self, store):
+        if store not in self.external_tables:
+            self.external_tables[store] = self.ExternalTable(
+                connection=self.schema.connection, store=store, database=self.schema.database)
+        return self.external_tables[store]

@@ -66,7 +66,7 @@ class Table(QueryExpression):
             sql = sql.format(database=self.database)
             # declare all external tables before declaring main table
             for store in external_stores:
-                self.external_table(store)
+                self.connections.schemas[self.database].external.get_external_table(store)
             self.connection.query(sql)
         except pymysql.OperationalError as error:
             # skip if no create privilege
@@ -137,7 +137,7 @@ class Table(QueryExpression):
         return self._log_
 
     def external_table(self, store):
-        return self.connection.schemas[self.database].external_tables(store)
+        return self.connection.schemas[self.database].external(store)
 
     def insert1(self, row, **kwargs):
         """
@@ -231,10 +231,10 @@ class Table(QueryExpression):
                         value = value.bytes
                     elif attr.is_blob:
                         value = blob.pack(value)
-                        value = self.external_table.put(attr.type, value) if attr.is_external else value
+                        value = self.external_table(store).put(attr.type, value) if attr.is_external else value
                     elif attr.is_attachment:
                         value = attach.load(value)
-                        value = self.external_table.put(attr.type, value) if attr.is_external else value
+                        value = self.external_table(store).put(attr.type, value) if attr.is_external else value
                     elif attr.numeric:
                         value = str(int(value) if isinstance(value, bool) else value)
                 return name, placeholder, value

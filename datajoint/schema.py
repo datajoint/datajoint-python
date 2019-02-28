@@ -58,7 +58,8 @@ class Schema:
         self.context = context
         self.create_tables = create_tables
         self._jobs = None
-        self._external = None
+        self.external = ExternalManager(self)
+
         if not self.exists:
             if not create_schema:
                 raise DataJointError(
@@ -226,16 +227,6 @@ class Schema:
         if self._jobs is None:
             self._jobs = JobTable(self.connection, self.database)
         return self._jobs
-
-    external = default
-    @property
-    def external(self):
-        """
-        schema.external provides a view of the external hash tables for the schema
-        """
-        if self._external is None:
-            self._external = ExternalManager(self)
-        return ExternalManager(self.conection)
 
 
 def create_virtual_module(module_name, schema_name, create_schema=False, create_tables=False, connection=None):

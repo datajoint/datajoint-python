@@ -15,22 +15,23 @@ CONSTANT_LITERALS = {'CURRENT_TIMESTAMP'}  # SQL literals to be used without quo
 EXTERNAL_TABLE_ROOT = '~external'
 
 TYPE_PATTERN = dict(
-    NUMERIC=re.compile(
-        r'(((tiny|small|medium|big|)int)|double|float|real|decimal|numeric)(\s*\(.+\))?(\s+UNSIGNED)?$', re.I),
-    ENUM=re.compile(r'(?P<type>enum\s*\(.+\))$', re.I),
+    INTEGER=re.compile(r'(tiny|small|medium|big|)int(\s*\(.+\))?(\s+unsigned)?(\s+auto_increment)?$', re.I),
+    NUMERIC=re.compile(r'(double|float|real|decimal|numeric)(\s*\(.+\))?(\s+unsigned)?$', re.I),
+    STRING=re.compile(r'(var)?char\s*\(.+\)$', re.I),
+    ENUM=re.compile(r'enum\s*\(.+\)$', re.I),
     BOOL=re.compile(r'bool(ean)?$'),   # aliased to tinyint(1)
     TEMPORAL=re.compile(r'(date|datetime|time|timestamp|year)(\s*\(.+\))?$', re.I),
-    INTERNAL_BLOB=re.compile(r'(tiny|small|medium|long)blob$', re.I),
-    EXTERNAL_ATTACH=re.compile(r'blob@(?P<store>[a-z]\w*)$', re.I),
+    INTERNAL_BLOB=re.compile(r'(tiny|small|medium|long|)blob$', re.I),
+    EXTERNAL_ATTACH=re.compile(r'attach@(?P<store>[a-z]\w*)$', re.I),
     EXTERNAL_BLOB=re.compile(r'blob@(?P<store>[a-z]\w*)$', re.I),
     UUID=re.compile(r'uuid$', re.I))
 
-# categories for which the type must be stored in the comment
-CUSTOM_TYPES = {'UUID', 'INTERNAL_ATTACH', 'EXTERNAL_ATTACH', 'EXTERNAL_BLOB'}
+CUSTOM_TYPES = {'UUID', 'INTERNAL_ATTACH', 'EXTERNAL_ATTACH', 'EXTERNAL_BLOB'} # type is stored in attribute comment
+EXTERNAL_TYPES = {'EXTERNAL_ATTACH', 'EXTERNAL_BLOB'}  # data are referenced by a HASH_DATA_TYPE in external tables
+SERIALIZED_TYPES = {'EXTERNAL_ATTACH', 'INTERNAL_ATTACH', 'EXTERNAL_BLOB', 'INTERNAL_BLOB'} # requires packing data
 
-# categories for which the data are stored with an external reference, uses HASH_DATA_TYPE
-EXTERNAL_TYPES = {'EXTERNAL_ATTACH', 'EXTERNAL_BLOB'}
-SERIALIZED_TYPES = {'EXTERNAL_ATTACH', 'INTERNAL_ATTACH', 'EXTERNAL_BLOB', 'INTERNAL_BLOB'}
+assert set().union(CUSTOM_TYPES, EXTERNAL_TYPES, SERIALIZED_TYPES) <= set(TYPE_PATTERN)  # for development only
+
 
 def match_type(datatype):
     for category, pattern in TYPE_PATTERN.items():
@@ -242,7 +243,7 @@ def declare(full_table_name, definition, context):
     external_stores = []
 
     for line in definition:
-        if not line.startswith('#'):  # ignore additional comments
+        if line.startswith('#'):  # ignore additional comments
             pass
         elif line.startswith('---') or line.startswith('___'):
             in_key = False  # start parsing dependent attributes
@@ -318,16 +319,15 @@ def compile_attribute(line, in_key, foreign_key_sql):
         if category == 'uuid':
             match['type'] = UUID_DATA_TYPE
         elif category in EXTERNAL_TYPES:
+            match['store'] = match['type'].split('@', 1)[1]
             match['type'] = HASH_DATA_TYPE
-
-        if category in SERIALIZED_TYPES and match['default'] not in {'DEFAULT NULL', 'NOT NULL'}:
-            raise DataJointError(
-                'The default value for a blob or attachment attributes can only be NULL in:\n%s' % line)
-
-        if category in EXTERNAL_TYPES:
             foreign_key_sql.append(
                 "FOREIGN KEY (`{name}`) REFERENCES `{{database}}`.`{external_table_root}_{store}` (`hash`) "
                 "ON UPDATE RESTRICT ON DELETE RESTRICT".format(external_table_root=EXTERNAL_TABLE_ROOT, **match))
 
+    if category in SERIALIZED_TYPES and match['default'] not in {'DEFAULT NULL', 'NOT NULL'}:
+        raise DataJointError(
+            'The default value for a blob or attachment attributes can only be NULL in:\n%s' % line)
+
     sql = ('`{name}` {type} {default}' + (' COMMENT "{comment}"' if match['comment'] else '')).format(**match)
-    return match['name'], sql, category in EXTERNAL_TYPES
+    return match['name'], sql, match.get('store')
