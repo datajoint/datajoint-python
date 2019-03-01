@@ -2,7 +2,7 @@ import os
 import itertools
 from .settings import config
 from .errors import DataJointError
-from .hash import long_bin_hash
+from .hash import long_bin_hash, to_ascii
 from .table import Table
 from .declare import EXTERNAL_TABLE_ROOT
 from . import s3 
@@ -61,9 +61,10 @@ class ExternalTable(Table):
         put an object in external store
         """
         blob_hash = long_bin_hash(blob)
+        ascii_hash = to_ascii(blob_hash)
         if self.spec['protocol'] == 'file':
-            folder = os.path.join(self.spec['location'], self.database, *subfold(blob_hash, self.spec['subfolding']))
-            full_path = os.path.join(folder, blob_hash)
+            folder = os.path.join(self.spec['location'], self.database, *subfold(ascii_hash, self.spec['subfolding']))
+            full_path = os.path.join(folder, ascii_hash)
             if not os.path.isfile(full_path):
                 try:
                     safe_write(full_path, blob)
@@ -71,15 +72,15 @@ class ExternalTable(Table):
                     os.makedirs(folder)
                     safe_write(full_path, blob)
         elif self.spec['protocol'] == 's3':
-            folder = '/'.join(subfold(blob_hash, self.spec['subfolding']))
-            s3.Folder(database=self.database, **self.spec).put('/'.join((folder, blob_hash)), blob)
+            folder = '/'.join(subfold(ascii_hash, self.spec['subfolding']))
+            s3.Folder(database=self.database, **self.spec).put('/'.join((folder, ascii_hash)), blob)
         else:
             assert False  # This won't happen
         # insert tracking info
         self.connection.query(
-            "INSERT INTO {tab} (hash, size) VALUES ('{hash}', {size}) "
+            "INSERT INTO {tab} (hash, size) VALUES (%s, {size}) "
             "ON DUPLICATE KEY UPDATE timestamp=CURRENT_TIMESTAMP".format(
-                tab=self.full_table_name, hash=blob_hash, size=len(blob)))
+                tab=self.full_table_name, size=len(blob)), args=(blob_hash,))
         return blob_hash
 
     def get(self, blob_hash):
@@ -89,13 +90,14 @@ class ExternalTable(Table):
         """
         if blob_hash is None:
             return None
+        ascii_hash = to_ascii(blob_hash)
 
         # attempt to get object from cache
         blob = None
         cache_folder = config.get('cache', None)
         if cache_folder:
             try:
-                with open(os.path.join(cache_folder, blob_hash), 'rb') as f:
+                with open(os.path.join(cache_folder, ascii_hash), 'rb') as f:
                     blob = f.read()
             except FileNotFoundError:
                 pass
@@ -103,8 +105,8 @@ class ExternalTable(Table):
         # attempt to get object from store
         if blob is None:
             if self.spec['protocol'] == 'file':
-                subfolders = os.path.join(*subfold(blob_hash, self.spec['subfolding']))
-                full_path = os.path.join(self.spec['location'], self.database, subfolders, blob_hash)
+                subfolders = os.path.join(*subfold(ascii_hash, self.spec['subfolding']))
+                full_path = os.path.join(self.spec['location'], self.database, subfolders, ascii_hash)
                 try:
                     with open(full_path, 'rb') as f:
                         blob = f.read()
@@ -112,8 +114,8 @@ class ExternalTable(Table):
                     raise DataJointError('Lost access to external blob %s.' % full_path) from None
             elif self.spec['protocol'] == 's3':
                 try:
-                    subfolder = '/'.join(subfold(blob_hash, self.spec['subfolding']))
-                    blob = s3.Folder(database=self.database, **self.spec).get('/'.join((subfolder, blob_hash)))
+                    subfolder = '/'.join(subfold(ascii_hash, self.spec['subfolding']))
+                    blob = s3.Folder(database=self.database, **self.spec).get('/'.join((subfolder, ascii_hash)))
                 except TypeError:
                     raise DataJointError('External store {store} configuration is incomplete.'.format(store=self.store))
             else:
@@ -122,7 +124,7 @@ class ExternalTable(Table):
             if cache_folder:
                 if not os.path.exists(cache_folder):
                     os.makedirs(cache_folder)
-                safe_write(os.path.join(cache_folder, blob_hash), blob)
+                safe_write(os.path.join(cache_folder, ascii_hash), blob)
 
         return blob
 

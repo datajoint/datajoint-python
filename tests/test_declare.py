@@ -174,7 +174,7 @@ class TestDeclare:
             definition = """
             experiment : int
             ---
-            description : varchar(1000)
+            description : text
             """
 
     @staticmethod

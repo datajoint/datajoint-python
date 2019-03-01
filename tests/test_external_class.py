@@ -51,7 +51,7 @@ def test_populate():
 def test_drop():
     image = modu.Image()
     image.populate()
-    image.external_table.drop()
+    image.external.drop()
 
 
 @raises(dj.DataJointError)

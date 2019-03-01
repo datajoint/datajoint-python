@@ -32,7 +32,7 @@ class Simple(dj.Manual):
     definition = """
     simple  : int
     ---
-    item  : longblob
+    item  : blob@local
     """
 
 

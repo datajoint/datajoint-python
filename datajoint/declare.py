@@ -16,7 +16,8 @@ EXTERNAL_TABLE_ROOT = '~external'
 
 TYPE_PATTERN = {k: re.compile(v, re.I) for k, v in dict(
     INTEGER=r'(tiny|small|medium|big|)int(\s*\(.+\))?(\s+unsigned)?(\s+auto_increment)?$',
-    NUMERIC=r'(double|float|real|decimal|numeric)(\s*\(.+\))?(\s+unsigned)?$',
+    DECIMAL=r'(decimal|numeric)(\s*\(.+\))?(\s+unsigned)?$',
+    FLOAT=r'(double|float|real)(\s*\(.+\))?(\s+unsigned)?$',
     STRING=r'(var)?char\s*\(.+\)$',
     ENUM=r'enum\s*\(.+\)$',
     BOOL=r'bool(ean)?$',   # aliased to tinyint(1)
