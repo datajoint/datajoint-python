@@ -206,3 +206,6 @@ class ExternalMapping:
 
     def __iter__(self):
         return iter(self.external_tables.values())
+
+    def __repr__(self):
+        return 'Accessed external stores:\n' + '\n'.join(self.external_tables)
