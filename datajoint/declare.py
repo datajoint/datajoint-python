@@ -8,7 +8,6 @@ import logging
 
 from .errors import DataJointError
 
-EXTERNAL_HASH_TYPE = 'binary(32)'
 UUID_DATA_TYPE = 'binary(16)'
 MAX_TABLE_NAME_LENGTH = 64
 CONSTANT_LITERALS = {'CURRENT_TIMESTAMP'}  # SQL literals to be used without quotes (case insensitive)
@@ -26,11 +25,10 @@ TYPE_PATTERN = {k: re.compile(v, re.I) for k, v in dict(
     INTERNAL_ATTACH=r'attach$',
     EXTERNAL_ATTACH=r'attach@(?P<store>[a-z]\w*)$',
     EXTERNAL_BLOB=r'blob@(?P<store>[a-z]\w*)$',
-    EXTERNAL_HASH=r'external_hash$',
     UUID=r'uuid$').items()}
 
-CUSTOM_TYPES = {'UUID', 'INTERNAL_ATTACH', 'EXTERNAL_ATTACH', 'EXTERNAL_BLOB', 'EXTERNAL_HASH'}  # types stored in attribute comment
-EXTERNAL_TYPES = {'EXTERNAL_ATTACH', 'EXTERNAL_BLOB'}  # data referenced by a EXTERNAL_HASH_TYPE in external tables
+CUSTOM_TYPES = {'UUID', 'INTERNAL_ATTACH', 'EXTERNAL_ATTACH', 'EXTERNAL_BLOB'}  # types stored in attribute comment
+EXTERNAL_TYPES = {'EXTERNAL_ATTACH', 'EXTERNAL_BLOB'}  # data referenced by a UUID in external tables
 SERIALIZED_TYPES = {'EXTERNAL_ATTACH', 'INTERNAL_ATTACH', 'EXTERNAL_BLOB', 'INTERNAL_BLOB'}  # requires packing data
 
 assert set().union(CUSTOM_TYPES, EXTERNAL_TYPES, SERIALIZED_TYPES) <= set(TYPE_PATTERN)  # for development only
@@ -324,11 +322,9 @@ def compile_attribute(line, in_key, foreign_key_sql):
             match['type'] = UUID_DATA_TYPE
         elif category == 'INTERNAL_ATTACH':
             match['type'] = 'LONGBLOB'
-        elif category == 'EXTERNAL_HASH':
-            match['type'] = EXTERNAL_HASH_TYPE
         elif category in EXTERNAL_TYPES:
             match['store'] = match['type'].split('@', 1)[1]
-            match['type'] = EXTERNAL_HASH_TYPE
+            match['type'] = UUID_DATA_TYPE
             foreign_key_sql.append(
                 "FOREIGN KEY (`{name}`) REFERENCES `{{database}}`.`{external_table_root}_{store}` (`hash`) "
                 "ON UPDATE RESTRICT ON DELETE RESTRICT".format(external_table_root=EXTERNAL_TABLE_ROOT, **match))

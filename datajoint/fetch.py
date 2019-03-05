@@ -47,7 +47,7 @@ def _get(connection, attr, data, squeeze, download_path):
     :return: unpacked data
     """
     if attr.is_external:
-        data = connection.schemas[attr.database].external[attr.store].get(data)
+        data = connection.schemas[attr.database].external[attr.store].get(uuid.UUID(bytes=data))
     return (uuid.UUID(bytes=data) if attr.uuid else
             blob.unpack(data, squeeze=squeeze) if attr.is_blob else
             attach.save(data, download_path) if attr.is_attachment else data)

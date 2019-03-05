@@ -232,10 +232,10 @@ class Table(QueryExpression):
                         value = value.bytes
                     elif attr.is_blob:
                         value = blob.pack(value)
-                        value = self.external[attr.store].put(value) if attr.is_external else value
+                        value = self.external[attr.store].put(value).bytes if attr.is_external else value
                     elif attr.is_attachment:
                         value = attach.load(value)
-                        value = self.external[attr.store].put(value) if attr.is_external else value
+                        value = self.external[attr.store].put(value).bytes if attr.is_external else value
                     elif attr.numeric:
                         value = str(int(value) if isinstance(value, bool) else value)
                 return name, placeholder, value
