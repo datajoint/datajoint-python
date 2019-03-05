@@ -139,26 +139,13 @@ class ExternalTable(Table):
         WHERE referenced_table_name="{tab}" and referenced_table_schema="{db}"
         """.format(tab=self.table_name, db=self.database), as_dict=True)
 
-    def delete(self):
-        return self.delete_quick()
-
     def delete_quick(self):
-        raise DataJointError('The external table does not support delete. Please use delete_garbage instead.')
+        raise DataJointError('The external table does not support delete. Please use delete instead.')
 
-    def drop(self):
-        """drop the table"""
-        self.drop_quick()
-
-    def drop_quick(self):
-        """drop the external table -- works only when it's empty"""
-        if self:
-            raise DataJointError('Cannot drop a non-empty external table. Please use delete_garabge to clear it.')
-        self.drop_quick()
-
-    def delete_garbage(self):
+    def delete(self):
         """
         Delete items that are no longer referenced.
-        This operation is safe to perform at any time.
+        This operation is safe to perform at any time but may reduce performance of queries while in progress.
         """
         self.connection.query(
             "DELETE FROM `{db}`.`{tab}` WHERE ".format(tab=self.table_name, db=self.database) +
@@ -167,12 +154,12 @@ class ExternalTable(Table):
                 for ref in self.references) or "TRUE")
         print('Deleted %d items' % self.connection.query("SELECT ROW_COUNT()").fetchone()[0])
 
-    def clean_store(self, store, verbose=True):
+    def clean(self, verbose=True):
         """
         Clean unused data in an external storage repository from unused blobs.
-        This must be performed after delete_garbage during low-usage periods to reduce risks of data loss.
+        This must be performed after external_table.delete() during low-usage periods to reduce risks of data loss.
         """
-        in_use = set(x for x in (self & '`hash` LIKE "%%{store}"'.format(store=store)).fetch('hash'))
+        in_use = set(map(to_ascii, self.fetch('hash')))
         if self.spec['protocol'] == 'file':
             count = itertools.count()
             print('Deleting...')
@@ -216,3 +203,6 @@ class ExternalMapping:
             self.external_tables[store] = ExternalTable(
                 connection=self.schema.connection, store=store, database=self.schema.database)
         return self.external_tables[store]
+
+    def __iter__(self):
+        return iter(self.external_tables.values())

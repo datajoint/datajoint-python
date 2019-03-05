@@ -37,31 +37,15 @@ def test_populate():
     image = modu.Image()
     image.populate()
     remaining, total = image.progress()
-    image.external['raw'].clean_store()
+    image.external['raw'].clean()
     assert_true(total == len(modu.Dimension() * modu.Seed()) and remaining == 0)
     for img, neg, dimensions in zip(*(image * modu.Dimension()).fetch('img', 'neg', 'dimensions')):
         assert_list_equal(list(img.shape), list(dimensions))
         assert_almost_equal(img, -neg)
     image.delete()
-    for v in image.external.values():
-        v.delete_garbage()
-        v.clean_store()
-
-
-@raises(dj.DataJointError)
-def test_drop():
-    """prohibit dropping a populated external table"""
-    image = modu.Image()
-    image.populate()
-    image.external.drop()
-
-
-@raises(dj.DataJointError)
-def test_delete():
-    """prohibit deleting from an external table"""
-    image = modu.Image()
-    image.populate()
-    image.external.delete()
+    for external_table in image.external:
+        external_table.delete()
+        external_table.clean()
 
 
 

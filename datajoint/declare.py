@@ -29,8 +29,8 @@ TYPE_PATTERN = {k: re.compile(v, re.I) for k, v in dict(
     EXTERNAL_HASH=r'external_hash$',
     UUID=r'uuid$').items()}
 
-CUSTOM_TYPES = {'UUID', 'INTERNAL_ATTACH', 'EXTERNAL_ATTACH', 'EXTERNAL_BLOB', 'EXTERNAL_HASH'}  # type is stored in attribute comment
-EXTERNAL_TYPES = {'EXTERNAL_ATTACH', 'EXTERNAL_BLOB'}  # data are referenced by a EXTERNAL_HASH_TYPE in external tables
+CUSTOM_TYPES = {'UUID', 'INTERNAL_ATTACH', 'EXTERNAL_ATTACH', 'EXTERNAL_BLOB', 'EXTERNAL_HASH'}  # types stored in attribute comment
+EXTERNAL_TYPES = {'EXTERNAL_ATTACH', 'EXTERNAL_BLOB'}  # data referenced by a EXTERNAL_HASH_TYPE in external tables
 SERIALIZED_TYPES = {'EXTERNAL_ATTACH', 'INTERNAL_ATTACH', 'EXTERNAL_BLOB', 'INTERNAL_BLOB'}  # requires packing data
 
 assert set().union(CUSTOM_TYPES, EXTERNAL_TYPES, SERIALIZED_TYPES) <= set(TYPE_PATTERN)  # for development only
