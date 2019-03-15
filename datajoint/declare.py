@@ -217,20 +217,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
         index_sql.append('UNIQUE INDEX ({attrs})'.format(attrs='`,`'.join(ref.primary_key)))
 
 
-def declare(full_table_name, definition, context):
-    """
-    Parse declaration and create new SQL table accordingly.
-
-    :param full_table_name: full name of the table
-    :param definition: DataJoint table definition
-    :param context: dictionary of objects that might be referred to in the table.
-    """
-    table_name = full_table_name.strip('`').split('.')[1]
-    if len(table_name) > MAX_TABLE_NAME_LENGTH:
-        raise DataJointError(
-            'Table name `{name}` exceeds the max length of {max_length}'.format(
-                name=table_name,
-                max_length=MAX_TABLE_NAME_LENGTH))
+def prepare_declare(definition, context):
     # split definition into lines
     definition = re.split(r'\s*\n\s*', definition.strip())
     # check for optional table comment
@@ -265,7 +252,27 @@ def declare(full_table_name, definition, context):
             if name not in attributes:
                 attributes.append(name)
                 attribute_sql.append(sql)
-    # compile SQL
+                
+    return table_comment, primary_key, attribute_sql, foreign_key_sql, index_sql, external_stores
+
+
+def declare(full_table_name, definition, context):
+    """
+    Parse declaration and create new SQL table accordingly.
+    :param full_table_name: full name of the table
+    :param definition: DataJoint table definition
+    :param context: dictionary of objects that might be referred to in the table.
+    """
+    table_name = full_table_name.strip('`').split('.')[1]
+    if len(table_name) > MAX_TABLE_NAME_LENGTH:
+        raise DataJointError(
+            'Table name `{name}` exceeds the max length of {max_length}'.format(
+                name=table_name,
+                max_length=MAX_TABLE_NAME_LENGTH))
+
+    table_comment, primary_key, attribute_sql, foreign_key_sql, index_sql, external_stores = prepare_declare(
+        definition, context)
+
     if not primary_key:
         raise DataJointError('Table must have a primary key')
 
