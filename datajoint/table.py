@@ -461,7 +461,6 @@ class Table(QueryExpression):
     def describe(self, context=None, printout=True):
         """
         :return:  the definition string for the relation using DataJoint DDL.
-            This does not yet work for aliased foreign keys.
         """
         if context is None:
             frame = inspect.currentframe().f_back
