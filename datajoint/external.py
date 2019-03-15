@@ -1,5 +1,6 @@
 import os
 import itertools
+from collections import Mapping
 from .settings import config
 from .errors import DataJointError
 from .hash import uuid_from_buffer
@@ -185,7 +186,7 @@ class ExternalTable(Table):
                 raise DataJointError('External store {store} configuration is incomplete.'.format(store=self.store))
 
 
-class ExternalMapping:
+class ExternalMapping(Mapping):
     """
     The external manager contains all the tables for all external stores for a given schema
     :Example:
@@ -194,16 +195,19 @@ class ExternalMapping:
     """
     def __init__(self, schema):
         self.schema = schema
-        self.external_tables = {}
+        self._tables = {}
 
     def __getitem__(self, store):
-        if store not in self.external_tables:
-            self.external_tables[store] = ExternalTable(
+        if store not in self._tables:
+            self._tables[store] = ExternalTable(
                 connection=self.schema.connection, store=store, database=self.schema.database)
-        return self.external_tables[store]
+        return self._tables[store]
 
+    def __len__(self):
+        return len(self._tables)
+    
     def __iter__(self):
-        return iter(self.external_tables.values())
+        return iter(self._tables)
 
     def __repr__(self):
-        return 'Accessed external stores:\n' + '\n'.join(self.external_tables)
+        return 'Accessed external stores:\n' + '\n'.join(self._tables)

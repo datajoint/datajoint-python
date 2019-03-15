@@ -43,7 +43,7 @@ def test_populate():
         assert_list_equal(list(img.shape), list(dimensions))
         assert_almost_equal(img, -neg)
     image.delete()
-    for external_table in image.external:
+    for external_table in image.external.values():
         external_table.delete()
         external_table.clean()
 
