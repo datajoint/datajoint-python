@@ -198,6 +198,12 @@ class ExternalMapping(Mapping):
         self._tables = {}
 
     def __getitem__(self, store):
+        """
+        Triggers the creation of an external table.
+        Should only be used when ready to save or read from external storage.
+        :param store: the name of the store
+        :raturn: the ExternalTable object for the store
+        """
         if store not in self._tables:
             self._tables[store] = ExternalTable(
                 connection=self.schema.connection, store=store, database=self.schema.database)
@@ -208,6 +214,3 @@ class ExternalMapping(Mapping):
     
     def __iter__(self):
         return iter(self._tables)
-
-    def __repr__(self):
-        return 'Accessed external stores:\n' + '\n'.join(self._tables)
