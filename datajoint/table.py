@@ -78,7 +78,7 @@ class Table(QueryExpression):
         else:
             self._log('Declared ' + self.full_table_name)
 
-    def alter(self, context=None):
+    def alter(self, prompt=True, context=None):
         """
         Alter the table definition from self.definition
         """
@@ -93,20 +93,21 @@ class Table(QueryExpression):
         sql, external_stores = alter(self.definition, old_definition, context)
 
         if sql:
-            # declare all external tables before declaring main table
             sql = "\n\t".join(["ALTER TABLE {tab}"] + sql).format(tab=self.full_table_name)
-            try:
-                for store in external_stores:
-                    self.connection.schemas[self.database].external[store]
-                self.connection.query(sql)
-            except pymysql.OperationalError as error:
-                # skip if no create privilege
-                if error.args[0] == server_error_codes['command denied']:
-                    logger.warning(error.args[1])
+            if not prompt or user_choice(sql + '\n\nExecute?') == 'yes':
+                try:
+                    # declare all external tables before declaring main table
+                    for store in external_stores:
+                        self.connection.schemas[self.database].external[store]
+                    self.connection.query(sql)
+                except pymysql.OperationalError as error:
+                    # skip if no create privilege
+                    if error.args[0] == server_error_codes['command denied']:
+                        logger.warning(error.args[1])
+                    else:
+                        raise
                 else:
-                    raise
-            else:
-                self._log('Altered ' + self.full_table_name)
+                    self._log('Altered ' + self.full_table_name)
 
     @property
     def from_clause(self):

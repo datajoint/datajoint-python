@@ -29,6 +29,6 @@ class Experiment(dj.Imported):
 
 def test_alter():
     Experiment.definition = Experiment.definition1
-    Experiment().alter()
+    Experiment.alter(prompt=False)
     Experiment.definition = Experiment.original_definition
-    Experiment().alter()
+    Experiment().alter(prompt=False)
