@@ -252,16 +252,17 @@ def prepare_declare(definition, context):
             if name not in attributes:
                 attributes.append(name)
                 attribute_sql.append(sql)
-                
+
     return table_comment, primary_key, attribute_sql, foreign_key_sql, index_sql, external_stores
 
 
 def declare(full_table_name, definition, context):
     """
-    Parse declaration and create new SQL table accordingly.
+    Parse declaration and generate the SQL CREATE TABLE code
     :param full_table_name: full name of the table
     :param definition: DataJoint table definition
-    :param context: dictionary of objects that might be referred to in the table.
+    :param context: dictionary of objects that might be referred to in the table
+    :return: SQL CREATE TABLE statement, list of external stores used
     """
     table_name = full_table_name.strip('`').split('.')[1]
     if len(table_name) > MAX_TABLE_NAME_LENGTH:
@@ -280,6 +281,33 @@ def declare(full_table_name, definition, context):
         'CREATE TABLE IF NOT EXISTS %s (\n' % full_table_name +
         ',\n'.join(attribute_sql + ['PRIMARY KEY (`' + '`,`'.join(primary_key) + '`)'] + foreign_key_sql + index_sql) +
         '\n) ENGINE=InnoDB, COMMENT "%s"' % table_comment), external_stores
+
+
+def alter(definition, old_definition, context):
+    """
+    :param definition: new table definition
+    :param old_definition: current table definition
+    :param context: the context in which to evaluate foreign key definitions
+    :return: string SQL ALTER command, list of new stores used for external storage
+    """
+    table_comment, primary_key, attribute_sql, foreign_key_sql, index_sql, external_stores = prepare_declare(
+        definition, context)
+    table_comment_, primary_key_, attribute_sql_, foreign_key_sql_, index_sql_, external_stores_ = prepare_declare(
+        old_definition, context)
+
+    # analyze differences between declarations
+    sql = list()
+    if primary_key != primary_key_:
+        raise NotImplementedError('table.alter cannot change the primary key yet.')
+    if foreign_key_sql != foreign_key_sql_:
+        raise NotImplementedError('table.alter cannot alter foreign keys yet.')
+    if index_sql != index_sql_:
+        raise NotImplementedError('table.alter cannot alter indexes yet')
+    if index_sql != index_sql_:
+        raise NotImplementedError('table.alter cannot alter indexes yet')
+    if table_comment != table_comment_:
+        sql.append('COMMENT "%s"' % table_comment)
+    return sql, [e for e in external_stores if e not in external_stores_]
 
 
 def compile_index(line, index_sql):
