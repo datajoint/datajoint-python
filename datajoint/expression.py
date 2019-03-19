@@ -504,9 +504,9 @@ class QueryExpression:
         """
         number of elements in the result set.
         """
+        f = 'count(DISTINCT `{pk}`)' if self.primary_key else 'count(*)'
         return self.connection.query(
-            'SELECT ' + (
-                'count(DISTINCT `{pk}`)'.format(pk='`,`'.join(self.primary_key)) if self.distinct else 'count(*)') +
+            'SELECT ' + (f.format(pk='`,`'.join(self.primary_key)) if self.distinct else 'count(*)') +
             ' FROM {from_}{where}'.format(
                 from_=self.from_clause,
                 where=self.where_clause)).fetchone()[0]
@@ -695,10 +695,16 @@ class Projection(QueryExpression):
         :param include_primary_key:  True if the primary key must be included even if it's not in attributes.
         :return: the resulting Projection object
         """
+
         obj = cls()
         obj._connection = arg.connection
+
+        if inspect.isclass(arg) and issubclass(arg, QueryExpression):
+            arg = arg()  # instantiate if a class
+
         named_attributes = {k: v.strip() for k, v in named_attributes.items()}  # clean up values
         obj._distinct = arg.distinct
+
         if include_primary_key:  # include primary key of the QueryExpression
             attributes = (list(a for a in arg.primary_key if a not in named_attributes.values()) +
                           list(a for a in attributes if a not in arg.primary_key))
