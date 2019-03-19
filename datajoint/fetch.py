@@ -27,10 +27,6 @@ def is_key(attr):
     return attr is key or attr == 'KEY'
 
 
-def is_key_array(attr):
-    return isinstance(attr, str) and attr == "KEY_ARRAY"
-
-
 def to_dicts(recarray):
     """convert record array to a dictionaries"""
     for rec in recarray:
@@ -77,7 +73,7 @@ class Fetch:
     def __init__(self, expression):
         self._expression = expression
 
-    def __call__(self, *attrs, offset=None, limit=None, order_by=None, format=None, as_dict=False,
+    def __call__(self, *attrs, offset=None, limit=None, order_by=None, format=None, as_dict=None,
                  squeeze=False, download_path='.'):
         """
         Fetches the expression results from the database into an np.array or list of dictionaries and unpacks blob attributes.
@@ -90,11 +86,12 @@ class Fetch:
                 No ordering should be assumed if order_by=None.
                 To reverse the order, add DESC to the attribute name or names: e.g. ("age DESC", "frequency")
                 To order by primary key, use "KEY" or "KEY DESC"
-        :param format: Effective when as_dict=False and when attrs is empty
+        :param format: Effective when as_dict=None and when attrs is empty
                 None: default from config['fetch_format'] or 'array' if not configured
                 "array": use numpy.key_array
                 "frame": output pandas.DataFrame. .
-        :param as_dict: returns a list of dictionaries instead of a record array
+        :param as_dict: returns a list of dictionaries instead of a record array.
+                Defaults to False for .fetch() and to True for .fetch('KEY')
         :param squeeze:  if True, remove extra dimensions from arrays
         :param download_path: for fetches that download data, e.g. attachments
         :return: the contents of the relation in the form of a structured numpy.array or a dict list
@@ -107,11 +104,12 @@ class Fetch:
             # expand "KEY" or "KEY DESC"
             order_by = list(_flatten_attribute_list(self._expression.primary_key, order_by))
 
-        # if attrs are specified then as_dict cannot be true
-        if attrs and as_dict:
+        # as_dict defaults to False for fetch() and to True for fetch('KEY', ...)
+        if as_dict is None:
+            as_dict = not bool(attrs)
+        if attrs:
             raise DataJointError('Cannot specify attributes to return when as_dict=True. '
-                                 'Use '
-                                 'proj() to select attributes or set as_dict=False')
+                                 'Use proj() to select attributes or set as_dict=False')
         # format should not be specified with attrs or is_dict=True
         if format is not None and (as_dict or attrs):
             raise DataJointError('Cannot specify output format when as_dict=True or '
@@ -145,14 +143,13 @@ class Fetch:
                 if format == "frame":
                     ret = pandas.DataFrame(ret).set_index(heading.primary_key)
         else:  # if list of attributes provided
-            attributes = [a for a in attrs if not is_key(a) and not is_key_array(a)]
+            attributes = [a for a in attrs if not is_key(a)]
             result = self._expression.proj(*attributes).fetch(
                 offset=offset, limit=limit, order_by=order_by,
                 as_dict=False, squeeze=squeeze, download_path=download_path)
             return_values = [
-                list(to_dicts(result[self._expression.primary_key])) if is_key(attribute) else (
-                    result[self._expression.primary_key] if is_key_array(attribute) else result[attribute])
-                for attribute in attrs]
+                list((to_dicts if as_dict else lambda x: x)(result[self._expression.primary_key])) if is_key(attribute)
+                else result[attribute] for attribute in attrs]
             ret = return_values[0] if len(attrs) == 1 else return_values
 
         return ret
@@ -194,13 +191,12 @@ class Fetch1:
                                           squeeze=squeeze, download_path=download_path))
                               for name in heading.names)
         else:  # fetch some attributes, return as tuple
-            attributes = [a for a in attrs if not is_key(a) and not is_key_array(a)]
+            attributes = [a for a in attrs if not is_key(a)]
             result = self._expression.proj(*attributes).fetch(squeeze=squeeze, download_path=download_path)
             if len(result) != 1:
                 raise DataJointError('fetch1 should only return one tuple. %d tuples were found' % len(result))
             return_values = tuple(
-                next(to_dicts(result[self._expression.primary_key])) if is_key(attribute) else (
-                    result[self._expression.primary_key][0] if is_key_array(attribute) else result[attribute][0])
+                next(to_dicts(result[self._expression.primary_key])) if is_key(attribute) else result[attribute][0]
                 for attribute in attrs)
             ret = return_values[0] if len(attrs) == 1 else return_values
 
