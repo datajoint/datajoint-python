@@ -10,8 +10,6 @@ def test_uuid():
     u, n = uuid.uuid4(), -1
     Basic().insert1(dict(item=u, number=n))
     Basic().insert(zip(map(uuid.uuid1, range(20)), count()))
-    keys, key_array = Basic().fetch('KEY', 'KEY_ARRAY')
-    assert_equal(keys[0]['item'], key_array['item'][0])
     number = (Basic() & {'item': u}).fetch1('number')
     assert_equal(number, n)
     item = (Basic & {'number': n}).fetch1('item')

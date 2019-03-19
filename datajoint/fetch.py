@@ -106,15 +106,11 @@ class Fetch:
 
         # as_dict defaults to False for fetch() and to True for fetch('KEY', ...)
         if as_dict is None:
-            as_dict = not bool(attrs)
-        if attrs:
-            raise DataJointError('Cannot specify attributes to return when as_dict=True. '
-                                 'Use proj() to select attributes or set as_dict=False')
+            as_dict = bool(attrs)
         # format should not be specified with attrs or is_dict=True
         if format is not None and (as_dict or attrs):
             raise DataJointError('Cannot specify output format when as_dict=True or '
                                  'when attributes are selected to be fetched separately.')
-
         if format not in {None, "array", "frame"}:
             raise DataJointError('Fetch output format must be in {{"array", "frame"}} but "{}" was given'.format(format))
 
