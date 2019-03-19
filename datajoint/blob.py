@@ -3,6 +3,7 @@ Provides serialization methods for numpy.ndarrays that ensure compatibility with
 """
 
 import zlib
+from functools import reduce
 from collections import OrderedDict, Mapping, Iterable
 from decimal import Decimal
 from datetime import datetime
@@ -124,27 +125,21 @@ class BlobReader:
         shape = self.read_value('uint64', count=n_dims)
         n_elem = int(np.prod(shape))
         n_field = int(self.read_value('uint32'))
-        field_names = []
-        for i in range(n_field):
-            field_names.append(self.read_string())
-        if not field_names:
-            # return an empty array
-            return np.array(None)
+        if not n_field:
+            return np.array(None)  # empty array
+        field_names = [self.read_string() for _ in range(n_field)]
         dt = [(f, np.object) for f in field_names]
-        raw_data = []
-        for k in range(n_elem):
-            values = []
-            for i in range(n_field):
-                nb = int(self.read_value('uint64')) # dealing with a weird bug of numpy
-                values.append(self.read_mym_data(n_bytes=nb))
-            raw_data.append(tuple(values))
+        raw_data = [
+            tuple(self.read_mym_data(n_bytes=int(self.read_value('uint64'))) for _ in range(n_field))
+            for __ in range(n_elem)]
+
         if n_bytes is not None:
             assert self.pos - start == n_bytes
         if not advance:
             self.pos = start
 
         if self._as_dict and n_elem == 1:
-            data = dict(zip(field_names, values))
+            data = dict(zip(field_names, raw_data[0]))
             return data
         else:
             data = np.rec.array(raw_data, dtype=dt)
@@ -281,21 +276,18 @@ def pack_string(value):
 def pack_dict(obj):
     """
     Write dictionary object as a singular structure array
-    :param obj: dictionary object to serialize. The fields must be simple scalar or an array.
+    :param obj: a dict-like object to serialize.
     """
-    obj = OrderedDict(obj)
-    blob = b'S'
-    blob += np.array((1, 1), dtype=np.uint64).tostring()
-    blob += np.array(len(obj), dtype=np.uint32).tostring()
+    blob = (
+        b'S' +
+        np.array((1, 1), dtype=np.uint64).tostring() + # dimensionality and dimensions
+        np.array(len(obj), dtype=np.uint32).tostring() +  # number of fields
+        reduce(lambda x, y: x + y, (map(pack_string, obj)))  )  # write field names
 
-    # write out field names
-    for k in obj:
-        blob += pack_string(k)
-
+    # write out values
     for k, v in obj.items():
         blob_part = pack_obj(v)
-        blob += np.array(len(blob_part), dtype=np.uint64).tostring()
-        blob += blob_part
+        blob += np.array(len(blob_part), dtype=np.uint64).tostring() + blob_part
 
     return blob
 
