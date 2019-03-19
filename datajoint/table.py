@@ -91,23 +91,27 @@ class Table(QueryExpression):
             del frame
         old_definition = self.describe(context=context, printout=False)
         sql, external_stores = alter(self.definition, old_definition, context)
-
-        if sql:
-            sql = "\n\t".join(["ALTER TABLE {tab}"] + sql).format(tab=self.full_table_name)
-            if not prompt or user_choice(sql + '\n\nExecute?') == 'yes':
-                try:
-                    # declare all external tables before declaring main table
-                    for store in external_stores:
-                        self.connection.schemas[self.database].external[store]
-                    self.connection.query(sql)
-                except pymysql.OperationalError as error:
-                    # skip if no create privilege
-                    if error.args[0] == server_error_codes['command denied']:
-                        logger.warning(error.args[1])
+        if not sql:
+            if prompt:
+                print('Nothing to alter.')
+            else:
+                sql = "\n\t".join(["ALTER TABLE {tab}"] + sql).format(tab=self.full_table_name)
+                if not prompt or user_choice(sql + '\n\nExecute?') == 'yes':
+                    try:
+                        # declare all external tables before declaring main table
+                        for store in external_stores:
+                            self.connection.schemas[self.database].external[store]
+                        self.connection.query(sql)
+                    except pymysql.OperationalError as error:
+                        # skip if no create privilege
+                        if error.args[0] == server_error_codes['command denied']:
+                            logger.warning(error.args[1])
+                        else:
+                            raise
                     else:
-                        raise
-                else:
-                    self._log('Altered ' + self.full_table_name)
+                        if prompt:
+                            print('Table altered')
+                        self._log('Altered ' + self.full_table_name)
 
     @property
     def from_clause(self):

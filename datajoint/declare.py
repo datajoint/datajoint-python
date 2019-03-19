@@ -5,8 +5,14 @@ declare the corresponding mysql tables.
 import re
 import pyparsing as pp
 import logging
-
 from .errors import DataJointError
+
+import sys
+if sys.version_info[1] < 6:
+    from collections import OrderedDict
+else:
+    # use dict in Python 3.6+ -- They are already ordered and look nicer
+    OrderedDict = dict
 
 UUID_DATA_TYPE = 'binary(16)'
 MAX_TABLE_NAME_LENGTH = 64
@@ -283,6 +289,69 @@ def declare(full_table_name, definition, context):
         '\n) ENGINE=InnoDB, COMMENT "%s"' % table_comment), external_stores
 
 
+def _make_attribute_alter(new, old, primary_key):
+    """
+    :param new: new attribute declarations
+    :param old: old attribute declarations
+    :param primary_key: primary key attributes
+    :return: list of SQL ALTER commands
+    """
+
+    # parse attribute names
+    name_regexp = re.compile(r"^`(?P<name>\w+)`")
+    original_regexp = re.compile(r'COMMENT "\{\s*(?P<name>\w+)\s*\}')
+    new_names = OrderedDict((d.group('name'), n.group('name') if n else None)
+                            for d, n in (name_regexp.match(d), original_regexp.search(d) for d in new))
+    old_names = [name_regexp.search(d).group('name') for d in old]
+
+    # verify that original names are only used once
+    renamed = set()
+    for v in new_names.values():
+        if v:
+            if v in renamed:
+                raise DataJointError('Alter attempted to rename attribute {%s} twice.' % v)
+            renamed.add(v)
+
+    # verify that all renamed attributes existed in the old definition
+    try:
+        raise DataJointError("Attribute {%s} does not exist in the original definition"
+                             % renamed.difference(old_names).pop())
+    except KeyError:
+        pass  # all renamed attributes existed in the original definition
+
+    # dropping attributes
+    to_drop = [n for n in old_names if n not in renamed and n not in new_names]
+    sql = ['DROP COLUMN `%s`' % n for n in to_drop]
+
+
+    # change attributes in order
+    prev_ = prev = primary_key[-1]
+    for o, n, (k, v) in zip(old, new, )
+
+
+
+
+    # verify that original names are unique
+    name_count = defaultdict(int)
+    for v in new_names.values():
+        if v:
+            name_count[v] += 1
+
+
+    flip_names = {v: k for k, v in new_names.items() if v}
+    for n in new_names.values():
+        if n is not None:
+            if list(new_names.values()).count(n) > 1:
+                raise DataJointError('THe ')
+
+    # remove attributes
+    original_names = {v or k for k, v in new_names.items()}
+    sql = ["DROP COLUMN `%s`" % n for n in old_names if n not in original_names]
+    # add attributes
+    sql = ['ADD COLUMN %s' % d for ]
+
+    # add attributes =
+
 def alter(definition, old_definition, context):
     """
     :param definition: new table definition
@@ -298,13 +367,14 @@ def alter(definition, old_definition, context):
     # analyze differences between declarations
     sql = list()
     if primary_key != primary_key_:
-        raise NotImplementedError('table.alter cannot change the primary key yet.')
+        raise NotImplementedError('table.alter cannot alter the primary key (yet).')
     if foreign_key_sql != foreign_key_sql_:
-        raise NotImplementedError('table.alter cannot alter foreign keys yet.')
+        raise NotImplementedError('table.alter cannot alter foreign keys (yet).')
     if index_sql != index_sql_:
-        raise NotImplementedError('table.alter cannot alter indexes yet')
-    if index_sql != index_sql_:
-        raise NotImplementedError('table.alter cannot alter indexes yet')
+        raise NotImplementedError('table.alter cannot alter indexes (yet)')
+    if attribute_sql != attribute_sql_:
+        sql.extend(_make_attribute_alter(attribute_sql, attribute_sql_))
+        raise NotImplementedError('table.alter cannot alter secondary attributes (yet)')
     if table_comment != table_comment_:
         sql.append('COMMENT "%s"' % table_comment)
     return sql, [e for e in external_stores if e not in external_stores_]
