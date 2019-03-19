@@ -14,13 +14,13 @@ schema = dj.schema(PREFIX + '_extern', connection=dj.conn(**CONN_INFO))
 dj.config['stores'] = {
     'local': {
         'protocol': 'file',
-        'location': 'dj-store/external',
-        'folding': (1, 1)
+        'location': tempfile.mkdtemp(),
+        'subfolding': (1, 1)
     },
 
     'raw': {
         'protocol': 'file',
-        'location': 'dj-store/raw'},
+        'location': tempfile.mkdtemp()},
 
 }
 
