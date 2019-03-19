@@ -9,6 +9,8 @@ from .declare import EXTERNAL_TABLE_ROOT
 from . import s3 
 from .utils import safe_write
 
+CACHE_SUBFOLDING = (2, 2)   # path subfolding. (2, 2) means  "0123456789abcd" will be saved as "01/23/0123456789abcd"
+
 
 def subfold(name, folds):
     """
@@ -96,7 +98,8 @@ class ExternalTable(Table):
         cache_folder = config.get('cache', None)
         if cache_folder:
             try:
-                with open(os.path.join(cache_folder, blob_hash.hex), 'rb') as f:
+                cache_path = os.path.join(cache_folder, *subfold(blob_hash.hex, CACHE_SUBFOLDING))
+                with open(os.path.join(cache_path, blob_hash.hex), 'rb') as f:
                     blob = f.read()
             except FileNotFoundError:
                 pass
@@ -121,9 +124,9 @@ class ExternalTable(Table):
                 raise DataJointError('Unknown external storage protocol "%s"' % self.spec['protocol'])
 
             if cache_folder:
-                if not os.path.exists(cache_folder):
-                    os.makedirs(cache_folder)
-                safe_write(os.path.join(cache_folder, blob_hash.hex), blob)
+                if not os.path.exists(cache_path):
+                    os.makedirs(cache_path)
+                safe_write(os.path.join(cache_path, blob_hash.hex), blob)
 
         return blob
 
