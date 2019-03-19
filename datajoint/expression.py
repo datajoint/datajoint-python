@@ -504,10 +504,9 @@ class QueryExpression:
         """
         number of elements in the result set.
         """
-        f = 'count(DISTINCT `{pk}`)' if self.primary_key else 'count(*)'
         return self.connection.query(
-            'SELECT ' + (f.format(pk='`,`'.join(self.primary_key)) if self.distinct else 'count(*)') +
-            ' FROM {from_}{where}'.format(
+            'SELECT count({count}) FROM {from_}{where}'.format(
+                count='DISTINCT `{pk}`'.format(pk='`,`'.join(self.primary_key)) if self.distinct and self.primary_key else '*',
                 from_=self.from_clause,
                 where=self.where_clause)).fetchone()[0]
 
@@ -914,9 +913,9 @@ class U:
         :param named_attributes: computations of the form new_attribute="sql expression on attributes of group"
         :return: The derived query expression
         """
-        return (
-            GroupBy.create(self, group=group, keep_all_rows=False, attributes=(), named_attributes=named_attributes)
-            if self.primary_key else
-            Projection.create(group, attributes=(), named_attributes=named_attributes, include_primary_key=False))
+        if self.primary_key:
+            return GroupBy.create(
+                self, group=group, keep_all_rows=False, attributes=(), named_attributes=named_attributes)
+        return Projection.create(group, attributes=(), named_attributes=named_attributes, include_primary_key=False)
 
     aggregate = aggr  # alias for aggr
