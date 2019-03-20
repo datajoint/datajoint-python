@@ -155,7 +155,7 @@ class AutoPopulate:
                 else:
                     logger.info('Populating: ' + str(key))
                     call_count += 1
-                    self._allow_insert = True
+                    self.__class__._allow_insert = True
                     try:
                         make(dict(key))
                     except (KeyboardInterrupt, SystemExit, Exception) as error:
@@ -181,7 +181,7 @@ class AutoPopulate:
                         if reserve_jobs:
                             jobs.complete(self.target.table_name, self._job_key(key))
                     finally:
-                        self._allow_insert = False
+                        self.__class__._allow_insert = False
 
         # place back the original signal handler
         if reserve_jobs:
