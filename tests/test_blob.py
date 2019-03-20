@@ -8,38 +8,12 @@ from nose.tools import assert_equal, assert_true
 
 def test_pack():
 
-    x = np.float32(32.3)
-    assert_equal(x, unpack(pack(x)), "Scalars do not match!")
+    for x in (32, -3.7e-2, np.float64(3e31), -np.inf, np.int8(-3), np.uint8(-1),
+              np.int16(-33), np.uint16(-33), np.int32(-3), np.uint32(-1), np.int64(373), np.uint64(-3)):
+        assert_equal(x, unpack(pack(x)), "Scalars don't match!")
 
-    x = np.int32(-32)
-    assert_equal(x, unpack(pack(x)), "Scalars do not match!")
-
-    x = np.uint32(32)
-    assert_equal(x, unpack(pack(x)), "Scalars do not match!")
-
-    x = np.int16(-321)
-    assert_equal(x, unpack(pack(x)), "Scalars do not match!")
-
-    x = np.uint16(323)
-    assert_equal(x, unpack(pack(x)), "Scalars do not match!")
-
-    x = np.int8(-32)
-    assert_equal(x, unpack(pack(x)), "Scalars do not match!")
-
-    x = np.uint8(12)
-    assert_equal(x, unpack(pack(x)), "Scalars do not match!")
-
-    x = np.int64(-132)
-    assert_equal(x, unpack(pack(x)), "Scalars do not match!")
-
-    x = np.uint64(32)
-    assert_equal(x, unpack(pack(x)), "Scalars do not match!")
-
-    x = 10.0
-    assert_equal(x, unpack(pack(x)), "Scalars do not match!")
-
-    x = 10
-    assert_equal(x, unpack(pack(x)), "Scalars do not match!")
+    x = np.nan
+    assert_true(np.isnan(unpack(pack(x))), "nan scalar did not match!")
 
     x = np.random.randn(8, 10)
     assert_array_equal(x, unpack(pack(x)), "Arrays do not match!")
