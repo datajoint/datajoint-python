@@ -7,6 +7,16 @@ from nose.tools import assert_equal, assert_true
 
 
 def test_pack():
+
+    x = np.float32(32.3)
+    assert_equal(x, unpack(pack(x)), "Scalars do not match!")
+
+    x = 10.0
+    assert_equal(x, unpack(pack(x)), "Scalars do not match!")
+
+    x = 10
+    assert_equal(x, unpack(pack(x)), "Scalars do not match!")
+
     x = np.random.randn(8, 10)
     assert_array_equal(x, unpack(pack(x)), "Arrays do not match!")
 
