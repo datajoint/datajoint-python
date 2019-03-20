@@ -11,6 +11,30 @@ def test_pack():
     x = np.float32(32.3)
     assert_equal(x, unpack(pack(x)), "Scalars do not match!")
 
+    x = np.int32(-32)
+    assert_equal(x, unpack(pack(x)), "Scalars do not match!")
+
+    x = np.uint32(32)
+    assert_equal(x, unpack(pack(x)), "Scalars do not match!")
+
+    x = np.int16(-321)
+    assert_equal(x, unpack(pack(x)), "Scalars do not match!")
+
+    x = np.uint16(323)
+    assert_equal(x, unpack(pack(x)), "Scalars do not match!")
+
+    x = np.int8(-32)
+    assert_equal(x, unpack(pack(x)), "Scalars do not match!")
+
+    x = np.uint8(12)
+    assert_equal(x, unpack(pack(x)), "Scalars do not match!")
+
+    x = np.int64(-132)
+    assert_equal(x, unpack(pack(x)), "Scalars do not match!")
+
+    x = np.uint64(32)
+    assert_equal(x, unpack(pack(x)), "Scalars do not match!")
+
     x = 10.0
     assert_equal(x, unpack(pack(x)), "Scalars do not match!")
 
