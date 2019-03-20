@@ -4,6 +4,7 @@ Provides serialization methods for numpy.ndarrays that ensure compatibility with
 
 import zlib
 from functools import reduce
+from itertools import repeat
 from collections import OrderedDict, Mapping, Iterable
 from decimal import Decimal
 from datetime import datetime
@@ -128,32 +129,28 @@ class BlobReader:
         if not n_field:
             return np.array(None)  # empty array
         field_names = [self.read_string() for _ in range(n_field)]
-        dt = [(f, np.object) for f in field_names]
         raw_data = [
             tuple(self.read_mym_data(n_bytes=int(self.read_value('uint64'))) for _ in range(n_field))
             for __ in range(n_elem)]
 
-        if n_bytes is not None:
-            assert self.pos - start == n_bytes
+        assert n_bytes is None or self.pos - start == n_bytes
+
         if not advance:
             self.pos = start
-
         if self._as_dict and n_elem == 1:
-            data = dict(zip(field_names, raw_data[0]))
-            return data
+            return dict(zip(field_names, raw_data[0]))
         else:
-            data = np.rec.array(raw_data, dtype=dt)
+            data = np.rec.array(raw_data, dtype=list(zip(field_names, repeat(np.object))))
             return self.squeeze(data.reshape(shape, order='F'))
 
     def squeeze(self, array):
         """
-        Simplify the given array as much as possible - squeeze out all singleton
+        Simplify the input array - squeeze out all singleton
         dimensions and also convert a zero dimensional array into array scalar
         """
         if not self._squeeze:
             return array
-        array = array.copy()
-        array = array.squeeze()
+        array = array.copy().squeeze()
         if array.ndim == 0:
             array = array[()]
         return array
@@ -227,7 +224,7 @@ def pack_obj(obj):
         blob += pack_array(np.array(obj, dtype=np.dtype('c')))
     elif isinstance(obj, Iterable):
         blob += pack_array(np.array(list(obj)))
-    elif isinstance(obj, int) or isinstance(obj, float):
+    elif isinstance(obj, (int, float, np.float32, np.float64)):
         blob += pack_array(np.array(obj))
     elif isinstance(obj, Decimal):
         blob += pack_array(np.array(np.float64(obj)))
@@ -280,12 +277,11 @@ def pack_dict(obj):
     """
     blob = (
         b'S' +
-        np.array((1, 1), dtype=np.uint64).tostring() + # dimensionality and dimensions
+        np.array((1, 1), dtype=np.uint64).tostring() +  # dimensionality and dimensions
         np.array(len(obj), dtype=np.uint32).tostring() +  # number of fields
-        reduce(lambda x, y: x + y, (map(pack_string, obj)))  )  # write field names
+        reduce(lambda x, y: x + y, map(pack_string, obj)))  # write field names
 
-    # write out values
-    for k, v in obj.items():
+    for v in obj.values():
         blob_part = pack_obj(v)
         blob += np.array(len(blob_part), dtype=np.uint64).tostring() + blob_part
 
@@ -295,6 +291,5 @@ def pack_dict(obj):
 def unpack(blob, **kwargs):
     if blob is None:
         return None
-
     return BlobReader(blob, **kwargs).unpack()
 
