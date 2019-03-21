@@ -254,6 +254,4 @@ def get_schema_names(connection=None):
     """
     if connection is None:
         connection = conn()
-    for r in connection.query('SHOW SCHEMAS'):
-        if r[0] not in {'information_schema'}:
-            yield r[0]
+    return [r[0] for r in connection.query('SHOW SCHEMAS') if r[0] not in {'information_schema'}]
