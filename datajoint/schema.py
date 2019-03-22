@@ -17,20 +17,16 @@ import types
 logger = logging.getLogger(__name__)
 
 
-def ordered_dir(klass):
+def ordered_dir(class_):
     """
     List (most) attributes of the class including inherited ones, similar to `dir` build-in function,
     but respects order of attribute declaration as much as possible.
     This becomes unnecessary in Python 3.6+ as dicts became ordered.
-    :param klass: class to list members for
-    :return: a list of attributes declared in klass and its superclasses
+    :param class_: class to list members for
+    :return: a list of attributes declared in class_ and its superclasses
     """
-    attr_list = list()
-    for c in reversed(klass.mro()):
-        attr_list.extend(e for e in (
-            c._ordered_class_members if hasattr(c, '_ordered_class_members') else c.__dict__)
-            if e not in attr_list)
-    return attr_list
+    return [e for c in reversed(class_.mro())
+            for e in (c._ordered_class_members if hasattr(c, '_ordered_class_memebers') else c.__dict__)]
 
 
 class Schema:
