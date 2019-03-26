@@ -348,8 +348,7 @@ class TestRelational:
     @staticmethod
     def test_ellipsis():
         r = Experiment.proj(..., '-data_path').head(1, as_dict=True)
-        assert_set_equal(set.difference(Experiment.heading.names, r), {'data_path'})
-
+        assert_set_equal(set(Experiment.heading).difference(r[0]), {'data_path'})
 
     @staticmethod
     @raises(dj.DataJointError)

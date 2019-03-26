@@ -691,28 +691,28 @@ class Projection(QueryExpression):
     @staticmethod
     def prepare_attribute_lists(arg, attributes, named_attributes):
         # check that all attributes are strings
+        has_ellipsis = Ellipsis in attributes
+        attributes = [a for a in attributes if a is not Ellipsis]
         try:
             raise DataJointError("Attribute names must be strings or ..., got %s" % next(
-                type(a) for a in attributes if a is not Ellipsis and not isinstance(a, str)))
+                type(a) for a in attributes if not isinstance(a, str)))
         except StopIteration:
             pass
         # clean up renamed attributes
         named_attributes = {k: v.strip() for k, v in named_attributes.items()}
         # process Ellipsis
-        if Ellipsis in attributes:
-            included_already = set(attributes).union(named_attributes.values())
-            attributes = list(attributes) + [
-                a for a in arg.heading.secondary_attributes
-                if a not in included_already and a is not Ellipsis]
-        # process excluded attributes
         excluded_attributes = set(a.lstrip('-') for a in attributes if a.startswith('-'))
+        if has_ellipsis:
+            included_already = set(named_attributes.values())
+            attributes = [a for a in arg.heading.secondary_attributes if a not in included_already]
+        # process excluded attributes
         attributes = [a for a in attributes if a not in excluded_attributes]
         return attributes, named_attributes
 
     @classmethod
     def create(cls, arg, attributes, named_attributes, include_primary_key=True):
         """
-        :param arg: The QueryExression to be projected
+        :param arg: The QueryExpression to be projected
         :param attributes:  attributes to select
         :param named_attributes:  new attributes to create by renaming or computing
         :param include_primary_key:  True if the primary key must be included even if it's not in attributes.
