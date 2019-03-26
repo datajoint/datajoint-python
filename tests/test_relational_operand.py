@@ -346,6 +346,12 @@ class TestRelational:
                     "Join of projected relations does not work")
 
     @staticmethod
+    def test_ellipsis():
+        r = Experiment.proj(..., '-data_path').head(1, as_dict=True)
+        assert_set_equal(set.difference(Experiment.heading.names, r), {'data_path'})
+
+
+    @staticmethod
     @raises(dj.DataJointError)
     def test_update_single_key():
         """Test that only one row can be updated"""

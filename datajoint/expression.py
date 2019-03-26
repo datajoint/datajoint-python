@@ -688,6 +688,27 @@ class Projection(QueryExpression):
             self._heading = arg.heading
             self._arg = arg._arg
 
+    @staticmethod
+    def prepare_attribute_lists(arg, attributes, named_attributes):
+        # check that all attributes are strings
+        try:
+            raise DataJointError("Attribute names must be strings or ..., got %s" % next(
+                type(a) for a in attributes if a is not Ellipsis and not isinstance(a, str)))
+        except StopIteration:
+            pass
+        # clean up renamed attributes
+        named_attributes = {k: v.strip() for k, v in named_attributes.items()}
+        # process Ellipsis
+        if Ellipsis in attributes:
+            included_already = set(attributes).union(named_attributes.values())
+            attributes = list(attributes) + [
+                a for a in arg.heading.secondary_attributes
+                if a not in included_already and a is not Ellipsis]
+        # process excluded attributes
+        excluded_attributes = set(a.lstrip('-') for a in attributes if a.startswith('-'))
+        attributes = [a for a in attributes if a not in excluded_attributes]
+        return attributes, named_attributes
+
     @classmethod
     def create(cls, arg, attributes, named_attributes, include_primary_key=True):
         """
@@ -704,22 +725,8 @@ class Projection(QueryExpression):
         if inspect.isclass(arg) and issubclass(arg, QueryExpression):
             arg = arg()  # instantiate if a class
 
-        # check that all attributes are strings
-        try:
-            raise DataJointError("Attribute names must be strings, got %s" % next(
-                type(a) for a in attributes if not isinstance(a, str)))
-        except StopIteration:
-            pass
-
-        named_attributes = {k: v.strip() for k, v in named_attributes.items()}  # clean up values
+        attributes, named_attributes = Projection.prepare_attribute_lists(arg, attributes, named_attributes)
         obj._distinct = arg.distinct
-
-        if Ellipsis in attributes:
-            included_already = set(attributes).union(named_attributes.values())
-            attributes.extend(a for a in arg.heading.secondary_attributes if a not in included_already)
-
-        excluded_attributes = set(a.lstrip('-') for a in attributes if a.startswith('-'))
-        attributes = [a for a in attributes if a not in excluded_attributes]
 
         if include_primary_key:  # include primary key of the QueryExpression
             attributes = (list(a for a in arg.primary_key if a not in named_attributes.values()) +
@@ -774,9 +781,10 @@ class GroupBy(QueryExpression):
             self._keep_all_rows = arg._keep_all_rows
 
     @classmethod
-    def create(cls, arg, group, attributes=None, named_attributes=None, keep_all_rows=False):
+    def create(cls, arg, group, attributes, named_attributes, keep_all_rows=False):
         if inspect.isclass(group) and issubclass(group, QueryExpression):
             group = group()   # instantiate if a class
+        attributes, named_attributes = Projection.prepare_attribute_lists(arg, attributes, named_attributes)
         assert_join_compatibility(arg, group)
         obj = cls()
         obj._keep_all_rows = keep_all_rows
