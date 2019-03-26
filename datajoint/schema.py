@@ -25,8 +25,12 @@ def ordered_dir(class_):
     :param class_: class to list members for
     :return: a list of attributes declared in class_ and its superclasses
     """
-    return [e for c in reversed(class_.mro())
-            for e in (c._ordered_class_members if hasattr(c, '_ordered_class_memebers') else c.__dict__)]
+    attr_list = list()
+    for c in reversed(class_.mro()):
+        attr_list.extend(e for e in (
+            c._ordered_class_members if hasattr(c, '_ordered_class_members') else c.__dict__)
+            if e not in attr_list)
+    return attr_list
 
 
 class Schema:
