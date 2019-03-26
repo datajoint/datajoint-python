@@ -701,7 +701,7 @@ class Projection(QueryExpression):
         # clean up renamed attributes
         named_attributes = {k: v.strip() for k, v in named_attributes.items()}
         # process Ellipsis
-        excluded_attributes = set(a.lstrip('-') for a in attributes if a.startswith('-'))
+        excluded_attributes = set(a.lstrip('-').strip() for a in attributes if a.startswith('-'))
         if has_ellipsis:
             included_already = set(named_attributes.values())
             attributes = [a for a in arg.heading.secondary_attributes if a not in included_already]
@@ -718,7 +718,6 @@ class Projection(QueryExpression):
         :param include_primary_key:  True if the primary key must be included even if it's not in attributes.
         :return: the resulting Projection object
         """
-
         obj = cls()
         obj._connection = arg.connection
 
