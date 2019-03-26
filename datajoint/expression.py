@@ -30,7 +30,7 @@ def assert_join_compatibility(rel1, rel2):
     if not isinstance(rel1, U) and not isinstance(rel2, U):  # dj.U is always compatible
         try:
             raise DataJointError("Cannot join query expressions on dependent attribute `%s`" % next(r for r in set(
-                rel1.heading.dependent_attributes).intersection(rel2.heading.dependent_attributes)))
+                rel1.heading.secondary_attributes).intersection(rel2.heading.secondary_attributes)))
         except StopIteration:
             pass
 
@@ -230,12 +230,15 @@ class QueryExpression:
         :param attributes:  attributes to be included in the result. (The primary key is already included).
         :param named_attributes: new attributes computed or renamed from existing attributes.
         :return: the projected expression.
-        Primary key attributes are always cannot be excluded but may be renamed.
+        Primary key attributes cannot be excluded but may be renamed.
         Thus self.proj() leaves only the primary key attributes of self.
         self.proj(a='id') renames the attribute 'id' into 'a' and includes 'a' in the projection.
         self.proj(a='expr') adds a new field a with the value computed with an SQL expression.
         self.proj(a='(id)') adds a new computed field named 'a' that has the same value as id
         Each attribute can only be used once in attributes or named_attributes.
+        If the attribute list contains an Ellipsis ..., then all secondary attributes are included
+        If an entry of the attribute list starts with a dash, e.g. '-attr', then the secondary attribute
+        attr will be excluded, if already present but ignored if not found.
         """
         return Projection.create(self, attributes, named_attributes)
 
@@ -701,8 +704,22 @@ class Projection(QueryExpression):
         if inspect.isclass(arg) and issubclass(arg, QueryExpression):
             arg = arg()  # instantiate if a class
 
+        # check that all attributes are strings
+        try:
+            raise DataJointError("Attribute names must be strings, got %s" % next(
+                type(a) for a in attributes if not isinstance(a, str)))
+        except StopIteration:
+            pass
+
         named_attributes = {k: v.strip() for k, v in named_attributes.items()}  # clean up values
         obj._distinct = arg.distinct
+
+        if Ellipsis in attributes:
+            included_already = set(attributes).union(named_attributes.values())
+            attributes.extend(a for a in arg.heading.secondary_attributes if a not in included_already)
+
+        excluded_attributes = set(a.lstrip('-') for a in attributes if a.startswith('-'))
+        attributes = [a for a in attributes if a not in excluded_attributes]
 
         if include_primary_key:  # include primary key of the QueryExpression
             attributes = (list(a for a in arg.primary_key if a not in named_attributes.values()) +
