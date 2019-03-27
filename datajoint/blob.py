@@ -8,6 +8,8 @@ from decimal import Decimal
 from datetime import datetime
 import numpy as np
 from .errors import DataJointError
+from .settings import config
+
 
 mxClassID = OrderedDict((
     # see http://www.mathworks.com/help/techdoc/apiref/mxclassid.html
@@ -210,6 +212,9 @@ class BlobReader:
 
 
 def pack(obj, compress=True):
+    if config['blob.encode_bypass'] is True:
+        return obj
+
     blob = b"mYm\0"
     blob += pack_obj(obj)
 
@@ -300,8 +305,11 @@ def pack_dict(obj):
 
 
 def unpack(blob, **kwargs):
+
+    if config['blob.encode_bypass'] is True:
+        return blob
+
     if blob is None:
         return None
 
     return BlobReader(blob, **kwargs).unpack()
-
