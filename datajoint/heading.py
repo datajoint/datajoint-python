@@ -87,7 +87,7 @@ class Heading:
         return [k for k, v in self.attributes.items() if v.in_key]
 
     @property
-    def dependent_attributes(self):
+    def secondary_attributes(self):
         return [k for k, v in self.attributes.items() if not v.in_key]
 
     @property
@@ -308,8 +308,8 @@ class Heading:
         return Heading(
             [self.attributes[name].todict() for name in self.primary_key] +
             [other.attributes[name].todict() for name in other.primary_key if name not in self.primary_key] +
-            [self.attributes[name].todict() for name in self.dependent_attributes if name not in other.primary_key] +
-            [other.attributes[name].todict() for name in other.dependent_attributes if name not in self.primary_key])
+            [self.attributes[name].todict() for name in self.secondary_attributes if name not in other.primary_key] +
+            [other.attributes[name].todict() for name in other.secondary_attributes if name not in self.primary_key])
 
     def make_subquery_heading(self):
         """
