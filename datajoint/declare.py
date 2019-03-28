@@ -22,9 +22,9 @@ TYPE_PATTERN = {k: re.compile(v, re.I) for k, v in dict(
     BOOL=r'bool(ean)?$',   # aliased to tinyint(1)
     TEMPORAL=r'(date|datetime|time|timestamp|year)(\s*\(.+\))?$',
     INTERNAL_BLOB=r'(tiny|small|medium|long|)blob$',
+    EXTERNAL_BLOB=r'blob@(?P<store>[a-z]\w*)$',
     INTERNAL_ATTACH=r'attach$',
     EXTERNAL_ATTACH=r'attach@(?P<store>[a-z]\w*)$',
-    EXTERNAL_BLOB=r'blob@(?P<store>[a-z]\w*)$',
     UUID=r'uuid$').items()}
 
 CUSTOM_TYPES = {'UUID', 'INTERNAL_ATTACH', 'EXTERNAL_ATTACH', 'EXTERNAL_BLOB'}  # types stored in attribute comment

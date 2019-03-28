@@ -63,8 +63,8 @@ class Image(dj.Computed):
     -> Seed
     -> Dimension
     ----
-    img : blob@raw     #  objects are stored as specified by dj.config['stores'][-raw']
-    neg : blob@local   # objects are stored as specified by dj.config['stores']['-']
+    img : blob@raw     #  objects are stored as specified by dj.config['stores'][raw']
+    neg : blob@local   # objects are stored as specified by dj.config['stores']['local']
     """
 
     def make(self, key):

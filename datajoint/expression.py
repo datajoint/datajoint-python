@@ -490,7 +490,7 @@ class QueryExpression:
             ellipsis='<p>...</p>' if has_more else '',
             body='</tr><tr>'.join(
                 ['\n'.join(['<td>%s</td>' % (tup[name] if name in tup.dtype.names else '=BLOB=')
-                    for name in heading.names])
+                            for name in heading.names])
                  for tup in tuples]),
             count=('<p>Total: %d</p>' % len(rel)) if config['display.show_tuple_count'] else '')
 
@@ -686,7 +686,7 @@ class Projection(QueryExpression):
             self._arg = arg._arg
 
     @classmethod
-    def create(cls, arg, attributes=None, named_attributes=None, include_primary_key=True):
+    def create(cls, arg, attributes, named_attributes, include_primary_key=True):
         """
         :param arg: The QueryExression to be projected
         :param attributes:  attributes to select
@@ -740,7 +740,7 @@ class Projection(QueryExpression):
 
 class GroupBy(QueryExpression):
     """
-    GroupBy(rel, comp1='expr1', ..., compn='exprn')  yileds an entity set with the primary key specified by rel.heading.
+    GroupBy(rel, comp1='expr1', ..., compn='exprn')  yields an entity set with the primary key specified by rel.heading.
     The computed arguments comp1, ..., compn use aggregation operators on the attributes of rel.
     GroupBy is used QueryExpression.aggr and U.aggr.
     GroupBy is a private class in DataJoint, not exposed to users.

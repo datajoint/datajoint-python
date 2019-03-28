@@ -43,7 +43,6 @@ def test_pack():
     assert_true(str(x) == unpack(pack(x)), "Datetime object did not pack/unpack correctly")
 
 
-
 def test_complex():
     z = np.random.randn(8, 10) + 1j*np.random.randn(8,10)
     assert_array_equal(z, unpack(pack(z)), "Arrays do not match!")
