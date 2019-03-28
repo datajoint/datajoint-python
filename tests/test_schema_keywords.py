@@ -44,6 +44,3 @@ def test_inherited_part_table():
     assert_true('a_id' in D.C().heading.attributes)
     assert_true('b_id' in D.C().heading.attributes)
     assert_true('name' in D.C().heading.attributes)
-
-
-
