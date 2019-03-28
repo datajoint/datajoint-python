@@ -30,7 +30,7 @@ def assert_join_compatibility(rel1, rel2):
     if not isinstance(rel1, U) and not isinstance(rel2, U):  # dj.U is always compatible
         try:
             raise DataJointError("Cannot join query expressions on dependent attribute `%s`" % next(r for r in set(
-                rel1.heading.dependent_attributes).intersection(rel2.heading.dependent_attributes)))
+                rel1.heading.secondary_attributes).intersection(rel2.heading.secondary_attributes)))
         except StopIteration:
             pass
 
@@ -230,12 +230,15 @@ class QueryExpression:
         :param attributes:  attributes to be included in the result. (The primary key is already included).
         :param named_attributes: new attributes computed or renamed from existing attributes.
         :return: the projected expression.
-        Primary key attributes are always cannot be excluded but may be renamed.
+        Primary key attributes cannot be excluded but may be renamed.
         Thus self.proj() leaves only the primary key attributes of self.
         self.proj(a='id') renames the attribute 'id' into 'a' and includes 'a' in the projection.
         self.proj(a='expr') adds a new field a with the value computed with an SQL expression.
         self.proj(a='(id)') adds a new computed field named 'a' that has the same value as id
         Each attribute can only be used once in attributes or named_attributes.
+        If the attribute list contains an Ellipsis ..., then all secondary attributes are included
+        If an entry of the attribute list starts with a dash, e.g. '-attr', then the secondary attribute
+        attr will be excluded, if already present but ignored if not found.
         """
         return Projection.create(self, attributes, named_attributes)
 
@@ -685,23 +688,41 @@ class Projection(QueryExpression):
             self._heading = arg.heading
             self._arg = arg._arg
 
+    @staticmethod
+    def prepare_attribute_lists(arg, attributes, named_attributes):
+        # check that all attributes are strings
+        has_ellipsis = Ellipsis in attributes
+        attributes = [a for a in attributes if a is not Ellipsis]
+        try:
+            raise DataJointError("Attribute names must be strings or ..., got %s" % next(
+                type(a) for a in attributes if not isinstance(a, str)))
+        except StopIteration:
+            pass
+        named_attributes = {k: v.strip() for k, v in named_attributes.items()}  # clean up
+        excluded_attributes = set(a.lstrip('-').strip() for a in attributes if a.startswith('-'))
+        if has_ellipsis:
+            included_already = set(named_attributes.values())
+            attributes = [a for a in arg.heading.secondary_attributes if a not in included_already]
+        # process excluded attributes
+        attributes = [a for a in attributes if a not in excluded_attributes]
+        return attributes, named_attributes
+
     @classmethod
     def create(cls, arg, attributes, named_attributes, include_primary_key=True):
         """
-        :param arg: The QueryExression to be projected
+        :param arg: The QueryExpression to be projected
         :param attributes:  attributes to select
         :param named_attributes:  new attributes to create by renaming or computing
         :param include_primary_key:  True if the primary key must be included even if it's not in attributes.
         :return: the resulting Projection object
         """
-
         obj = cls()
         obj._connection = arg.connection
 
         if inspect.isclass(arg) and issubclass(arg, QueryExpression):
             arg = arg()  # instantiate if a class
 
-        named_attributes = {k: v.strip() for k, v in named_attributes.items()}  # clean up values
+        attributes, named_attributes = Projection.prepare_attribute_lists(arg, attributes, named_attributes)
         obj._distinct = arg.distinct
 
         if include_primary_key:  # include primary key of the QueryExpression
@@ -757,9 +778,10 @@ class GroupBy(QueryExpression):
             self._keep_all_rows = arg._keep_all_rows
 
     @classmethod
-    def create(cls, arg, group, attributes=None, named_attributes=None, keep_all_rows=False):
+    def create(cls, arg, group, attributes, named_attributes, keep_all_rows=False):
         if inspect.isclass(group) and issubclass(group, QueryExpression):
             group = group()   # instantiate if a class
+        attributes, named_attributes = Projection.prepare_attribute_lists(arg, attributes, named_attributes)
         assert_join_compatibility(arg, group)
         obj = cls()
         obj._keep_all_rows = keep_all_rows
