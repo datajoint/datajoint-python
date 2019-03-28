@@ -11,15 +11,15 @@ def test_external_put():
     """
     external storage put and get and remove
     """
-    ext = ExternalTable(schema.connection, schema.database)
+    ext = ExternalTable(schema.connection, store='raw', database=schema.database)
     initial_length = len(ext)
     input_ = np.random.randn(3, 7, 8)
     count = 7
     extra = 3
     for i in range(count):
-        hash1 = ext.put('external-raw', pack(input_))
+        hash1 = ext.put(pack(input_))
     for i in range(extra):
-        hash2 = ext.put('external-raw', pack(np.random.randn(4, 3, 2)))
+        hash2 = ext.put(pack(np.random.randn(4, 3, 2)))
 
     fetched_hashes = ext.fetch('hash')
     assert_true(all(hash in fetched_hashes for hash in (hash1, hash2)))

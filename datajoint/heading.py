@@ -4,7 +4,7 @@ from itertools import chain
 import re
 import logging
 from .errors import DataJointError
-from .declare import UUID_DATA_TYPE
+from .declare import UUID_DATA_TYPE, CUSTOM_TYPES, TYPE_PATTERN, EXTERNAL_TYPES, SERIALIZED_TYPES
 import sys
 if sys.version_info[1] < 6:
     from collections import OrderedDict
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 default_attribute_properties = dict(    # these default values are set in computed attributes
     name=None, type='expression', in_key=False, nullable=False, default=None, comment='calculated attribute',
     autoincrement=False, numeric=None, string=None, uuid=False, is_blob=False, is_attachment=False, is_external=False,
-    unsupported=False, sql_expression=None, database=None, dtype=object)
+    store=None, unsupported=False, sql_expression=None, database=None, dtype=object)
 
 
 class Attribute(namedtuple('_Attribute', default_attribute_properties)):
@@ -206,34 +206,39 @@ class Heading:
 
         # additional attribute properties
         for attr in attributes:
-            # process configurable attributes
-            attr['in_key'] = (attr['in_key'] == 'PRI')
-            attr['database'] = database
-            attr['nullable'] = (attr['nullable'] == 'YES')
-            attr['autoincrement'] = bool(re.search(r'auto_increment', attr['Extra'], flags=re.IGNORECASE))
-            attr['type'] = re.sub(r'int\(\d+\)', 'int', attr['type'], count=1)  # strip size off integers
-            attr['numeric'] = bool(re.match(r'(tiny|small|medium|big)?int|decimal|double|float', attr['type']))
-            attr['string'] = bool(re.match(r'(var)?char|enum|date|year|time|timestamp', attr['type']))
-            attr['is_blob'] = bool(re.match(r'(tiny|medium|long)?blob', attr['type']))
 
-            # recognize configurable fields
-            configurable_field = re.match(
-                r'^:(?P<type>(blob|external|attach|uuid)(-\w*)?):(?P<comment>.*)$', attr['comment'])
-            if configurable_field:
-                attr['type'] = configurable_field.group('type')
-                attr['comment'] = configurable_field.group('comment')
-            attr['uuid'] = attr['type'] == 'uuid'
-            if attr['uuid'] or configurable_field is None:
-                attr['is_external'] = False
-                attr['is_attachment'] = False
-            else:
-                # configurable fields: blob- and attach
-                if attr['in_key']:
-                    raise DataJointError('Configurable store attributes are not allowed in the primary key')
-                attr['is_external'] = not attr['is_blob']
-                attr['is_attachment'] = attr['type'].startswith('attach')
-                attr['is_blob'] = attr['type'].startswith(('blob', 'external'))
-                attr['string'] = False
+            attr.update(
+                in_key=(attr['in_key'] == 'PRI'),
+                database=database,
+                nullable=attr['nullable'] == 'YES',
+                autoincrement=bool(re.search(r'auto_increment', attr['Extra'], flags=re.I)),
+                numeric=any(TYPE_PATTERN[t].match(attr['type']) for t in ('DECIMAL', 'INTEGER', 'FLOAT')),
+                string=any(TYPE_PATTERN[t].match(attr['type']) for t in ('ENUM', 'TEMPORAL', 'STRING')),
+                is_blob=bool(TYPE_PATTERN['INTERNAL_BLOB'].match(attr['type'])),
+                uuid=False, is_attachment=False, store=None, is_external=False, sql_expression=None)
+
+            if any(TYPE_PATTERN[t].match(attr['type']) for t in ('INTEGER', 'FLOAT')):
+                attr['type'] = re.sub(r'\(\d+\)', '', attr['type'], count=1)  # strip size off integers and floats
+            attr['unsupported'] = not any((attr['is_blob'], attr['numeric'], attr['numeric']))
+            attr.pop('Extra')
+
+            # process custom DataJoint types
+            custom_type = re.match(r':(?P<type>.+):(?P<comment>.*)', attr['comment'])
+            if custom_type:
+                attr.update(custom_type.groupdict(), unsupported=False)
+                try:
+                    category = next(c for c in CUSTOM_TYPES if TYPE_PATTERN[c].match(attr['type']))
+                except StopIteration:
+                    raise DataJointError('Unknown attribute type `{type}`'.format(**attr)) from None
+                attr.update(
+                    is_attachment=category in ('INTERNAL_ATTACH', 'EXTERNAL_ATTACH'),
+                    is_blob=category in ('INTERNAL_BLOB', 'EXTERNAL_BLOB'),  # INTERNAL BLOB won't show here but we include for completeness
+                    uuid=category == 'UUID',
+                    is_external=category in EXTERNAL_TYPES,
+                    store=attr['type'].split('@')[1] if category in EXTERNAL_TYPES else None)
+
+            if attr['in_key'] and (attr['is_blob'] or attr['is_attachment']):
+                raise DataJointError('Blob and attachment attributes are not allowed in the primary key')
 
             if attr['string'] and attr['default'] is not None and attr['default'] not in sql_literals:
                 attr['default'] = '"%s"' % attr['default']
@@ -241,20 +246,14 @@ class Heading:
             if attr['nullable']:   # nullable fields always default to null
                 attr['default'] = 'null'
 
-            attr['sql_expression'] = None
-            attr['unsupported'] = not(attr['numeric'] or attr['string'] or attr['is_blob'] or attr['is_attachment'])
-
-            attr.pop('Extra')
-
             # fill out dtype. All floats and non-nullable integers are turned into specific dtypes
             attr['dtype'] = object
             if attr['numeric']:
-                is_integer = bool(re.match(r'(tiny|small|medium|big)?int', attr['type']))
-                is_float = bool(re.match(r'(double|float)', attr['type']))
+                is_integer = TYPE_PATTERN['INTEGER'].match(attr['type'])
+                is_float = TYPE_PATTERN['FLOAT'].match(attr['type'])
                 if is_integer and not attr['nullable'] or is_float:
-                    is_unsigned = bool(re.match('\sunsigned', attr['type'], flags=re.IGNORECASE))
-                    t = attr['type']
-                    t = re.sub(r'\(.*\)', '', t)    # remove parentheses
+                    is_unsigned = bool(re.match('\sunsigned', attr['type'], flags=re.I))
+                    t = re.sub(r'\(.*\)', '', attr['type'])    # remove parentheses
                     t = re.sub(r' unsigned$', '', t)   # remove unsigned
                     assert (t, is_unsigned) in numeric_types, 'dtype not found for type %s' % t
                     attr['dtype'] = numeric_types[(t, is_unsigned)]

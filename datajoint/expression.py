@@ -490,7 +490,7 @@ class QueryExpression:
             ellipsis='<p>...</p>' if has_more else '',
             body='</tr><tr>'.join(
                 ['\n'.join(['<td>%s</td>' % (tup[name] if name in tup.dtype.names else '=BLOB=')
-                    for name in heading.names])
+                            for name in heading.names])
                  for tup in tuples]),
             count=('<p>Total: %d</p>' % len(rel)) if config['display.show_tuple_count'] else '')
 
@@ -505,9 +505,8 @@ class QueryExpression:
         number of elements in the result set.
         """
         return self.connection.query(
-            'SELECT ' + (
-                'count(DISTINCT `{pk}`)'.format(pk='`,`'.join(self.primary_key)) if self.distinct else 'count(*)') +
-            ' FROM {from_}{where}'.format(
+            'SELECT count({count}) FROM {from_}{where}'.format(
+                count='DISTINCT `{pk}`'.format(pk='`,`'.join(self.primary_key)) if self.distinct and self.primary_key else '*',
                 from_=self.from_clause,
                 where=self.where_clause)).fetchone()[0]
 
@@ -687,7 +686,7 @@ class Projection(QueryExpression):
             self._arg = arg._arg
 
     @classmethod
-    def create(cls, arg, attributes=None, named_attributes=None, include_primary_key=True):
+    def create(cls, arg, attributes, named_attributes, include_primary_key=True):
         """
         :param arg: The QueryExression to be projected
         :param attributes:  attributes to select
@@ -695,10 +694,16 @@ class Projection(QueryExpression):
         :param include_primary_key:  True if the primary key must be included even if it's not in attributes.
         :return: the resulting Projection object
         """
+
         obj = cls()
         obj._connection = arg.connection
+
+        if inspect.isclass(arg) and issubclass(arg, QueryExpression):
+            arg = arg()  # instantiate if a class
+
         named_attributes = {k: v.strip() for k, v in named_attributes.items()}  # clean up values
         obj._distinct = arg.distinct
+
         if include_primary_key:  # include primary key of the QueryExpression
             attributes = (list(a for a in arg.primary_key if a not in named_attributes.values()) +
                           list(a for a in attributes if a not in arg.primary_key))
@@ -735,7 +740,7 @@ class Projection(QueryExpression):
 
 class GroupBy(QueryExpression):
     """
-    GroupBy(rel, comp1='expr1', ..., compn='exprn')  yileds an entity set with the primary key specified by rel.heading.
+    GroupBy(rel, comp1='expr1', ..., compn='exprn')  yields an entity set with the primary key specified by rel.heading.
     The computed arguments comp1, ..., compn use aggregation operators on the attributes of rel.
     GroupBy is used QueryExpression.aggr and U.aggr.
     GroupBy is a private class in DataJoint, not exposed to users.
@@ -908,9 +913,9 @@ class U:
         :param named_attributes: computations of the form new_attribute="sql expression on attributes of group"
         :return: The derived query expression
         """
-        return (
-            GroupBy.create(self, group=group, keep_all_rows=False, attributes=(), named_attributes=named_attributes)
-            if self.primary_key else
-            Projection.create(group, attributes=(), named_attributes=named_attributes, include_primary_key=False))
+        if self.primary_key:
+            return GroupBy.create(
+                self, group=group, keep_all_rows=False, attributes=(), named_attributes=named_attributes)
+        return Projection.create(group, attributes=(), named_attributes=named_attributes, include_primary_key=False)
 
     aggregate = aggr  # alias for aggr

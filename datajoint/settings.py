@@ -15,7 +15,6 @@ LOCALCONFIG = 'dj_local_conf.json'
 GLOBALCONFIG = '.datajoint_config.json'
 
 DEFAULT_SUBFOLDING = (2, 2)  # subfolding for external storage in filesystem.  2, 2 means that file abcdef is stored as /ab/cd/abcdef
-DEFAULT_STORE_PROTOCOL = 'LONGBLOB'
 
 validators = collections.defaultdict(lambda: lambda value: True)
 validators['database.port'] = lambda a: isinstance(a, int)
@@ -95,6 +94,7 @@ class Config(collections.MutableMapping):
         """
         Saves the settings in JSON format to the given file path.
         :param filename: filename of the local JSON settings file.
+        :param verbose: report having saved the settings file
         """
         with open(filename, 'w') as fid:
             json.dump(self._conf, fid, indent=4)
@@ -125,22 +125,16 @@ class Config(collections.MutableMapping):
 
     def get_store_spec(self, store):
         """
-        find configuration of blob and attachment stores
+        find configuration of external stores for blobs and attachments
         """
-        # check new style
         try:
-            spec = self['stores']['-' + store]
+            spec = self['stores'][store]
         except KeyError:
-            # check old style
-            try:
-                spec = self['external' + ('-' + store if store else '')]
-            except KeyError:
-                raise DataJointError('Storage {store} is requested but not configured'.format(store=store))
-            else:
-                spec['subfolding'] = spec.get('subfolding', ())   # old style external fields
+            raise DataJointError('Storage {store} is requested but not configured'.format(store=store))
         else:
             spec['subfolding'] = spec.get('subfolding', DEFAULT_SUBFOLDING)
-        spec['protocol'] = spec.get('protocol', DEFAULT_STORE_PROTOCOL)
+        if spec.get('protocol') not in ('file', 's3'):
+            raise DataJointError('Missing or invalid protocol in dj.config["stores"]["{store}"]'.format(store=store))
         return spec
 
     @contextmanager

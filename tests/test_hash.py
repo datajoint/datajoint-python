@@ -3,7 +3,5 @@ from datajoint import hash
 
 
 def test_hash():
-    assert_equal(hash.long_hash(b'abc'), 'ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0')
-    assert_equal(hash.long_hash(b''), '47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU')
-    assert_equal(hash.short_hash(b'abc'), 'qZk-NkcG')
-    assert_equal(hash.short_hash(b''), '2jmj7l5r')
+    assert_equal(hash.uuid_from_buffer(b'abc').hex, '900150983cd24fb0d6963f7d28e17f72')
+    assert_equal(hash.uuid_from_buffer(b'').hex, 'd41d8cd98f00b204e9800998ecf8427e')

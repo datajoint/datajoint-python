@@ -1,5 +1,5 @@
 import hashlib
-import base64
+import uuid
 
 
 def key_hash(key):
@@ -12,31 +12,12 @@ def key_hash(key):
     return hashed.hexdigest()
 
 
-def to_ascii(byte_string):
-    """
-    :param byte_string: a binary string
-    :return:   web-safe 64-bit ASCII encoding of binary strings
-    """
-    return base64.b64encode(byte_string, b'-_').decode()
-
-
-def long_hash(*buffers):
+def uuid_from_buffer(*buffers):
     """
     :param buffers: any number of binary buffers (e.g. serialized blobs)
-    :return: 43-character base64 ASCII rendition SHA-256
+    :return: 16-byte digest SHA-1
     """
-    hashed = hashlib.sha256()
+    hashed = hashlib.md5()
     for buffer in buffers:
         hashed.update(buffer)
-    return to_ascii(hashed.digest())[0:43]
-
-
-def short_hash(*buffers):
-    """
-    :param buffers: any number of binary buffers (e.g. serialized blobs)
-    :return: the first 8 characters of base64 ASCII rendition SHA-1
-    """
-    hashed = hashlib.sha1()
-    for buffer in buffers:
-        hashed.update(buffer)
-    return to_ascii(hashed.digest())[:8]
+    return uuid.UUID(bytes=hashed.digest())

@@ -7,7 +7,7 @@ from .connection import conn
 from .settings import config
 from .errors import DataJointError
 from .jobs import JobTable
-from .external import ExternalTable
+from .external import ExternalMapping
 from .heading import Heading
 from .utils import user_choice, to_camel_case
 from .user_tables import Part, Computed, Imported, Manual, Lookup
@@ -17,16 +17,16 @@ import types
 logger = logging.getLogger(__name__)
 
 
-def ordered_dir(klass):
+def ordered_dir(class_):
     """
     List (most) attributes of the class including inherited ones, similar to `dir` build-in function,
     but respects order of attribute declaration as much as possible.
     This becomes unnecessary in Python 3.6+ as dicts became ordered.
-    :param klass: class to list members for
-    :return: a list of attributes declared in klass and its superclasses
+    :param class_: class to list members for
+    :return: a list of attributes declared in class_ and its superclasses
     """
     attr_list = list()
-    for c in reversed(klass.mro()):
+    for c in reversed(class_.mro()):
         attr_list.extend(e for e in (
             c._ordered_class_members if hasattr(c, '_ordered_class_members') else c.__dict__)
             if e not in attr_list)
@@ -58,7 +58,8 @@ class Schema:
         self.context = context
         self.create_tables = create_tables
         self._jobs = None
-        self._external = None
+        self.external = ExternalMapping(self)
+
         if not self.exists:
             if not create_schema:
                 raise DataJointError(
@@ -227,18 +228,6 @@ class Schema:
             self._jobs = JobTable(self.connection, self.database)
         return self._jobs
 
-    @property
-    def external(self):
-        """
-        schema.external provides a view of the external hash table for the schema
-        :return: external table
-        """
-        if self._external is None:
-            self._external = ExternalTable(self.connection, self.database)
-        return self._external
-
-    external_table = external  # for backward compatibility to pre-0.12.0
-
 
 def create_virtual_module(module_name, schema_name, create_schema=False, create_tables=False, connection=None):
     """
@@ -261,10 +250,6 @@ def create_virtual_module(module_name, schema_name, create_schema=False, create_
 def get_schema_names(connection=None):
     """
     :param connection: a dj.Connection object
-    :return:  a generator of all accessible schemas on the server
+    :return: list of all accessible schemas on the server
     """
-    if connection is None:
-        connection = conn()
-    for r in connection.query('SHOW SCHEMAS'):
-        if r[0] not in {'information_schema'}:
-            yield r[0]
+    return [r[0] for r in (connection or conn()).query('SHOW SCHEMAS') if r[0] not in {'information_schema'}]
