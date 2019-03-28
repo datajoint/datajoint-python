@@ -698,9 +698,7 @@ class Projection(QueryExpression):
                 type(a) for a in attributes if not isinstance(a, str)))
         except StopIteration:
             pass
-        # clean up renamed attributes
-        named_attributes = {k: v.strip() for k, v in named_attributes.items()}
-        # process Ellipsis
+        named_attributes = {k: v.strip() for k, v in named_attributes.items()}  # clean up
         excluded_attributes = set(a.lstrip('-').strip() for a in attributes if a.startswith('-'))
         if has_ellipsis:
             included_already = set(named_attributes.values())
