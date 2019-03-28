@@ -226,7 +226,10 @@ class Heading:
             custom_type = re.match(r':(?P<type>.+):(?P<comment>.*)', attr['comment'])
             if custom_type:
                 attr.update(custom_type.groupdict(), unsupported=False)
-                category = next(c for c in CUSTOM_TYPES if TYPE_PATTERN[c].match(attr['type']))
+                try:
+                    category = next(c for c in CUSTOM_TYPES if TYPE_PATTERN[c].match(attr['type']))
+                except StopIteration:
+                    raise DataJointError('Unknown attribute type `{type}`'.format(**attr)) from None
                 attr.update(
                     is_attachment=category in ('INTERNAL_ATTACH', 'EXTERNAL_ATTACH'),
                     is_blob=category in ('INTERNAL_BLOB', 'EXTERNAL_BLOB'),  # INTERNAL BLOB won't show here but we include for completeness
