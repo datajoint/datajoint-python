@@ -3,7 +3,6 @@ Provides serialization methods for numpy.ndarrays that ensure compatibility with
 """
 
 import zlib
-from functools import reduce
 from itertools import repeat
 from collections import OrderedDict, Mapping, Iterable
 from decimal import Decimal
@@ -280,7 +279,7 @@ def pack_dict(obj):
         b'S' +
         np.array((1, 1), dtype=np.uint64).tostring() +  # dimensionality and dimensions
         np.array(len(obj), dtype=np.uint32).tostring() +  # number of fields
-        reduce(lambda x, y: x + y, map(pack_string, obj)))  # write field names
+        b''.join(map(pack_string, obj)))  # write field names
 
     for v in obj.values():
         blob_part = pack_obj(v)
