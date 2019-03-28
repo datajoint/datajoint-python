@@ -12,26 +12,15 @@ schema = dj.schema(PREFIX + '_extern', connection=dj.conn(**CONN_INFO))
 
 
 dj.config['stores'] = {
-    '-': {
+    'local': {
         'protocol': 'file',
-        'location': 'dj-store/external',
-        'folding': (1, 1)
+        'location': tempfile.mkdtemp(),
+        'subfolding': (1, 1)
     },
 
-    '-b': {
-        'protocol': 'longblob'
-    },
-
-    '-raw': {
+    'raw': {
         'protocol': 'file',
-        'location': 'dj-store/raw'},
-
-    '-compute': {
-        'protocol': 's3',
-        'location': '/datajoint-projects/test',
-        'user': 'djtest',
-        'token': '2e05709792545ce'}
-
+        'location': tempfile.mkdtemp()},
 
 }
 
@@ -43,7 +32,7 @@ class Simple(dj.Manual):
     definition = """
     simple  : int
     ---
-    item  : blob-
+    item  : blob@local
     """
 
 
@@ -74,8 +63,8 @@ class Image(dj.Computed):
     -> Seed
     -> Dimension
     ----
-    img  : blob-raw    #  objects are stored as specified by dj.config['stores'][-raw']
-    neg : blob-    # objects are stored as specified by dj.config['stores']['-']
+    img : blob@raw     #  objects are stored as specified by dj.config['stores'][raw']
+    neg : blob@local   # objects are stored as specified by dj.config['stores']['local']
     """
 
     def make(self, key):
@@ -90,6 +79,6 @@ class Attach(dj.Manual):
     # table for storing attachments
     attach : int
     ----
-    img : attach-raw    #  attachments are stored as specified by dj.config['stores']['-file']
-    txt : attach-b      #  attachments are stored as specified by dj.config['stores']['-b']
+    img : attach@raw    #  attachments are stored as specified by dj.config['stores']['raw']
+    txt : attach      #  attachments are stored directly in the database
     """

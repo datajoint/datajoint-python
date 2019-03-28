@@ -37,27 +37,15 @@ def test_populate():
     image = modu.Image()
     image.populate()
     remaining, total = image.progress()
-    image.external_table.clean_store('raw')
+    image.external['raw'].clean()
     assert_true(total == len(modu.Dimension() * modu.Seed()) and remaining == 0)
     for img, neg, dimensions in zip(*(image * modu.Dimension()).fetch('img', 'neg', 'dimensions')):
         assert_list_equal(list(img.shape), list(dimensions))
         assert_almost_equal(img, -neg)
     image.delete()
-    image.external_table.delete_garbage()
-    image.external_table.clean_store('raw')
-
-
-@raises(dj.DataJointError)
-def test_drop():
-    image = modu.Image()
-    image.populate()
-    image.external_table.drop()
-
-
-@raises(dj.DataJointError)
-def test_delete():
-    image = modu.Image()
-    image.external_table.delete()
+    for external_table in image.external.values():
+        external_table.delete()
+        external_table.clean()
 
 
 

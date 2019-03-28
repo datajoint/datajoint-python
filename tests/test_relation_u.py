@@ -55,8 +55,20 @@ class TestU:
     def test_invalid_join():
         rel = dj.U('language') * dict(language="English")
 
+    def test_repr_without_attrs(self):
+        """test dj.U() display"""
+        query = dj.U().aggr(schema.Language, n='count(*)')
+        repr(query)
+
     def test_aggregations(self):
-        rel = dj.U('language').aggr(schema.Language(), number_of_speakers='count(*)')
+        lang = schema.Language()
+        # test total aggregation on expression object
+        n1 = dj.U().aggr(lang, n='count(*)').fetch1('n')
+        assert_equal(n1, len(lang.fetch()))
+        # test total aggregation on expression class
+        n2 = dj.U().aggr(schema.Language, n='count(*)').fetch1('n')
+        assert_equal(n1, n2)
+        rel = dj.U('language').aggr(schema.Language, number_of_speakers='count(*)')
         assert_equal(len(rel), len(set(l[1] for l in schema.Language.contents)))
         assert_equal((rel & 'language="English"').fetch1('number_of_speakers'), 3)
 

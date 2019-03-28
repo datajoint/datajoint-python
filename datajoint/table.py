@@ -35,7 +35,6 @@ class Table(QueryExpression):
     _heading = None
     database = None
     _log_ = None
-    _external_table = None
 
     # -------------- required by QueryExpression ----------------- #
     @property
@@ -63,9 +62,11 @@ class Table(QueryExpression):
             raise DataJointError('Cannot declare new tables inside a transaction, '
                                  'e.g. from inside a populate/make call')
         try:
-            sql, uses_external = declare(self.full_table_name, self.definition, context)
-            if uses_external:
-                sql = sql.format(external_table=self.external_table.full_table_name)
+            sql, external_stores = declare(self.full_table_name, self.definition, context)
+            sql = sql.format(database=self.database)
+            # declare all external tables before declaring main table
+            for store in external_stores:
+                self.connection.schemas[self.database].external[store]
             self.connection.query(sql)
         except pymysql.OperationalError as error:
             # skip if no create privilege
@@ -136,11 +137,8 @@ class Table(QueryExpression):
         return self._log_
 
     @property
-    def external_table(self):
-        if self._external_table is None:
-            # trigger the creation of the external hash lookup for the current schema
-            self._external_table = self.connection.schemas[self.database].external_table
-        return self._external_table
+    def external(self):
+        return self.connection.schemas[self.database].external
 
     def insert1(self, row, **kwargs):
         """
@@ -234,10 +232,10 @@ class Table(QueryExpression):
                         value = value.bytes
                     elif attr.is_blob:
                         value = blob.pack(value)
-                        value = self.external_table.put(attr.type, value) if attr.is_external else value
+                        value = self.external[attr.store].put(value).bytes if attr.is_external else value
                     elif attr.is_attachment:
                         value = attach.load(value)
-                        value = self.external_table.put(attr.type, value) if attr.is_external else value
+                        value = self.external[attr.store].put(value).bytes if attr.is_external else value
                     elif attr.numeric:
                         value = str(int(value) if isinstance(value, bool) else value)
                 return name, placeholder, value
@@ -463,7 +461,6 @@ class Table(QueryExpression):
     def describe(self, context=None, printout=True):
         """
         :return:  the definition string for the relation using DataJoint DDL.
-            This does not yet work for aliased foreign keys.
         """
         if context is None:
             frame = inspect.currentframe().f_back

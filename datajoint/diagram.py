@@ -50,8 +50,8 @@ if not diagram_active:
         """
 
         def __init__(self, *args, **kwargs):
-            warnings.warn('Diagram functionality depends on matplotlib and pygraphviz. '
-                          'Please install both of these libraries to enable the Diagram feature.')
+            warnings.warn('Please install matplotlib and pygraphviz libraries to enable the Diagram feature.')
+
 else:
     class Diagram(nx.DiGraph):
         """

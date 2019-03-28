@@ -31,6 +31,7 @@ mxClassID = OrderedDict((
 
 rev_class_id = {dtype: i for i, dtype in enumerate(mxClassID.values())}
 dtype_list = list(mxClassID.values())
+type_names = list(mxClassID)
 
 decode_lookup = {
     b'ZL123\0': zlib.decompress
@@ -95,7 +96,7 @@ class BlobReader:
         dtype = dtype_list[dtype_id]
         is_complex = self.read_value('uint32')
 
-        if dtype_id == 4:  # if dealing with character array
+        if type_names[dtype_id] == 'mxCHAR_CLASS':
             data = self.read_value(dtype, count=2 * n_elem)
             data = data[::2].astype('U1')
             if n_dims == 2 and shape[0] == 1 or n_dims == 1:
@@ -255,15 +256,15 @@ def pack_array(array):
     if is_complex:
         array, imaginary = np.real(array), np.imag(array)
 
-    type_number = rev_class_id[array.dtype]
+    type_id = rev_class_id[array.dtype]
 
-    if dtype_list[type_number] is None:
+    if dtype_list[type_id] is None:
         raise DataJointError("Type %s is ambiguous or unknown" % array.dtype)
 
-    blob += np.array(type_number, dtype=np.uint32).tostring()
+    blob += np.array(type_id, dtype=np.uint32).tostring()
 
     blob += np.int32(is_complex).tostring()
-    if type_number == 4:  # if dealing with character array
+    if type_names[type_id] == 'mxCHAR_CLASS':
         blob += ('\x00'.join(array.tostring(order='F').decode()) + '\x00').encode()
     else:
         blob += array.tostring(order='F')

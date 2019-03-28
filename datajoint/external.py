@@ -1,12 +1,15 @@
 import os
 import itertools
+from collections import Mapping
 from .settings import config
 from .errors import DataJointError
-from .hash import long_hash
+from .hash import uuid_from_buffer
 from .table import Table
-from .declare import STORE_HASH_LENGTH, HASH_DATA_TYPE
+from .declare import EXTERNAL_TABLE_ROOT
 from . import s3 
 from .utils import safe_write
+
+CACHE_SUBFOLDING = (2, 2)   # path subfolding. (2, 2) means  "0123456789abcd" will be saved as "01/23/0123456789abcd"
 
 
 def subfold(name, folds):
@@ -21,16 +24,24 @@ class ExternalTable(Table):
     The table tracking externally stored objects.
     Declare as ExternalTable(connection, database)
     """
-    def __init__(self, arg, database=None):
-        if isinstance(arg, ExternalTable):
-            super().__init__(arg)
-            # copy constructor
-            self.database = arg.database
-            self._connection = arg._connection
+    def __init__(self, connection, store=None, database=None):
+
+        # copy constructor -- all QueryExpressions must provide
+        if isinstance(connection, ExternalTable):
+            other = connection   # the first argument is interpreted as the other object
+            super().__init__(other)
+            self.store = other.store
+            self.spec = other.spec
+            self.database = other.database
+            self._connection = other._connection
             return
+
+        # nominal constructor
         super().__init__()
+        self.store = store
+        self.spec = config.get_store_spec(store)
         self.database = database
-        self._connection = arg
+        self._connection = connection
         if not self.is_declared:
             self.declare()
 
@@ -38,46 +49,40 @@ class ExternalTable(Table):
     def definition(self):
         return """
         # external storage tracking
-        hash  : {hash_data_type}  # the hash of stored object + store name
+        hash  : uuid
         ---
         size      :bigint unsigned   # size of object in bytes
         timestamp=CURRENT_TIMESTAMP  :timestamp   # automatic timestamp
-        """.format(hash_data_type=HASH_DATA_TYPE)
+        """
 
     @property
     def table_name(self):
-        return '~external'
+        return '{external_table_root}_{store}'.format(external_table_root=EXTERNAL_TABLE_ROOT, store=self.store)
 
-    def put(self, store, blob):
+    def put(self, blob):
         """
         put an object in external store
         """
-        store = ''.join(store.split('-')[1:])
-        spec = config.get_store_spec(store)
-        blob_hash = long_hash(blob) + store
-        if spec['protocol'] == 'file':
-            folder = os.path.join(spec['location'], self.database, *subfold(blob_hash, spec['subfolding']))
-            full_path = os.path.join(folder, blob_hash)
+        blob_hash = uuid_from_buffer(blob)
+        if self.spec['protocol'] == 'file':
+            folder = os.path.join(self.spec['location'], self.database, *subfold(blob_hash.hex, self.spec['subfolding']))
+            full_path = os.path.join(folder, blob_hash.hex)
             if not os.path.isfile(full_path):
                 try:
                     safe_write(full_path, blob)
                 except FileNotFoundError:
                     os.makedirs(folder)
                     safe_write(full_path, blob)
-        elif spec['protocol'] == 's3':
-            folder = '/'.join(subfold(blob_hash, spec['subfolding']))
-            s3.Folder(database=self.database, **spec).put('/'.join((folder, blob_hash)), blob)
+        elif self.spec['protocol'] == 's3':
+            folder = '/'.join(subfold(blob_hash.hex, self.spec['subfolding']))
+            s3.Folder(database=self.database, **self.spec).put('/'.join((folder, blob_hash.hex)), blob)
         else:
-            raise DataJointError('Unknown external storage protocol {protocol} in store "-{store}"'.format(
-                store=store, protocol=spec['protocol']))
-
+            assert False  # This won't happen
         # insert tracking info
         self.connection.query(
-            "INSERT INTO {tab} (hash, size) VALUES ('{hash}', {size}) "
+            "INSERT INTO {tab} (hash, size) VALUES (%s, {size}) "
             "ON DUPLICATE KEY UPDATE timestamp=CURRENT_TIMESTAMP".format(
-                tab=self.full_table_name,
-                hash=blob_hash,
-                size=len(blob)))
+                tab=self.full_table_name, size=len(blob)), args=(blob_hash.bytes,))
         return blob_hash
 
     def get(self, blob_hash):
@@ -93,36 +98,35 @@ class ExternalTable(Table):
         cache_folder = config.get('cache', None)
         if cache_folder:
             try:
-                with open(os.path.join(cache_folder, blob_hash), 'rb') as f:
+                cache_path = os.path.join(cache_folder, *subfold(blob_hash.hex, CACHE_SUBFOLDING))
+                with open(os.path.join(cache_path, blob_hash.hex), 'rb') as f:
                     blob = f.read()
             except FileNotFoundError:
                 pass
 
         # attempt to get object from store
         if blob is None:
-            store = blob_hash[STORE_HASH_LENGTH:]
-            spec = config.get_store_spec(store)
-            if spec['protocol'] == 'file':
-                subfolders = os.path.join(*subfold(blob_hash, spec['subfolding']))
-                full_path = os.path.join(spec['location'], self.database, subfolders, blob_hash)
+            if self.spec['protocol'] == 'file':
+                subfolders = os.path.join(*subfold(blob_hash.hex, self.spec['subfolding']))
+                full_path = os.path.join(self.spec['location'], self.database, subfolders, blob_hash.hex)
                 try:
                     with open(full_path, 'rb') as f:
                         blob = f.read()
                 except FileNotFoundError:
                     raise DataJointError('Lost access to external blob %s.' % full_path) from None
-            elif spec['protocol'] == 's3':
+            elif self.spec['protocol'] == 's3':
                 try:
-                    subfolder = '/'.join(subfold(blob_hash, spec['subfolding']))
-                    blob = s3.Folder(database=self.database, **spec).get('/'.join((subfolder, blob_hash)))
+                    subfolder = '/'.join(subfold(blob_hash.hex, self.spec['subfolding']))
+                    blob = s3.Folder(database=self.database, **self.spec).get('/'.join((subfolder, blob_hash.hex)))
                 except TypeError:
-                    raise DataJointError('External store {store} configuration is incomplete.'.format(store=store))
+                    raise DataJointError('External store {store} configuration is incomplete.'.format(store=self.store))
             else:
-                raise DataJointError('Unknown external storage protocol "%s"' % spec['protocol'])
+                raise DataJointError('Unknown external storage protocol "%s"' % self.spec['protocol'])
 
             if cache_folder:
-                if not os.path.exists(cache_folder):
-                    os.makedirs(cache_folder)
-                safe_write(os.path.join(cache_folder, blob_hash), blob)
+                if not os.path.exists(cache_path):
+                    os.makedirs(cache_path)
+                safe_write(os.path.join(cache_path, blob_hash.hex), blob)
 
         return blob
 
@@ -137,26 +141,13 @@ class ExternalTable(Table):
         WHERE referenced_table_name="{tab}" and referenced_table_schema="{db}"
         """.format(tab=self.table_name, db=self.database), as_dict=True)
 
-    def delete(self):
-        return self.delete_quick()
-
     def delete_quick(self):
-        raise DataJointError('The external table does not support delete. Please use delete_garbage instead.')
+        raise DataJointError('The external table does not support delete. Please use delete instead.')
 
-    def drop(self):
-        """drop the table"""
-        self.drop_quick()
-
-    def drop_quick(self):
-        """drop the external table -- works only when it's empty"""
-        if self:
-            raise DataJointError('Cannot drop a non-empty external table. Please use delete_garabge to clear it.')
-        self.drop_quick()
-
-    def delete_garbage(self):
+    def delete(self):
         """
         Delete items that are no longer referenced.
-        This operation is safe to perform at any time.
+        This operation is safe to perform at any time but may reduce performance of queries while in progress.
         """
         self.connection.query(
             "DELETE FROM `{db}`.`{tab}` WHERE ".format(tab=self.table_name, db=self.database) +
@@ -165,18 +156,17 @@ class ExternalTable(Table):
                 for ref in self.references) or "TRUE")
         print('Deleted %d items' % self.connection.query("SELECT ROW_COUNT()").fetchone()[0])
 
-    def clean_store(self, store, verbose=True):
+    def clean(self, verbose=True):
         """
         Clean unused data in an external storage repository from unused blobs.
-        This must be performed after delete_garbage during low-usage periods to reduce risks of data loss.
+        This must be performed after external_table.delete() during low-usage periods to reduce risks of data loss.
         """
-        spec = config.get_store_spec(store)
-        in_use = set(x for x in (self & '`hash` LIKE "%%{store}"'.format(store=store)).fetch('hash'))
-        if spec['protocol'] == 'file':
+        in_use = set(x.hex for x in self.fetch('hash'))
+        if self.spec['protocol'] == 'file':
             count = itertools.count()
             print('Deleting...')
             deleted_folders = set()
-            for folder, dirs, files in os.walk(os.path.join(spec['location'], self.database), topdown=False):
+            for folder, dirs, files in os.walk(os.path.join(self.spec['location'], self.database), topdown=False):
                 if dirs and files:
                     raise DataJointError('Invalid repository with files in non-terminal folder %s' % folder)
                 dirs = set(d for d in dirs if os.path.join(folder, d) not in deleted_folders)
@@ -192,8 +182,38 @@ class ExternalTable(Table):
                         os.rmdir(folder)
                         deleted_folders.add(folder)
             print('Deleted %d objects' % next(count))
-        elif spec['protocol'] == 's3':
+        elif self.spec['protocol'] == 's3':
             try:
-                failed_deletes = s3.Folder(database=self.database, **spec).clean(in_use, verbose=verbose)
+                failed_deletes = s3.Folder(database=self.database, **self.spec).clean(in_use, verbose=verbose)
             except TypeError:
-                raise DataJointError('External store {store} configuration is incomplete.'.format(store=store))
+                raise DataJointError('External store {store} configuration is incomplete.'.format(store=self.store))
+
+
+class ExternalMapping(Mapping):
+    """
+    The external manager contains all the tables for all external stores for a given schema
+    :Example:
+        e = ExternalMapping(schema)
+        external_table = e[store]
+    """
+    def __init__(self, schema):
+        self.schema = schema
+        self._tables = {}
+
+    def __getitem__(self, store):
+        """
+        Triggers the creation of an external table.
+        Should only be used when ready to save or read from external storage.
+        :param store: the name of the store
+        :raturn: the ExternalTable object for the store
+        """
+        if store not in self._tables:
+            self._tables[store] = ExternalTable(
+                connection=self.schema.connection, store=store, database=self.schema.database)
+        return self._tables[store]
+
+    def __len__(self):
+        return len(self._tables)
+    
+    def __iter__(self):
+        return iter(self._tables)
