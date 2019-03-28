@@ -51,17 +51,18 @@ class Connection:
 
     Most of the parameters below should be set in the local configuration file.
 
-    :param host: host name
+    :param host: host name, may include port number as hostname:port, in which case it overrides the value in port
     :param user: user name
     :param password: password
+    :param port: port number
     :param init_fun: connection initialization function (SQL)
     """
-
-    def __init__(self, host, user, password, init_fun=None):
+    def __init__(self, host, user, password, port=None, init_fun=None):
         if ':' in host:
+            # the port in the hostname overrides the port argument
             host, port = host.split(':')
             port = int(port)
-        else:
+        elif port is None:
             port = config['database.port']
         self.conn_info = dict(host=host, port=port, user=user, passwd=password)
         self.init_fun = init_fun
