@@ -206,7 +206,7 @@ def pack(obj, compress=True):
     blob += pack_obj(obj)
 
     if compress:
-        compressed = b'ZL123\0' + np.uint64(len(blob)).tostring() + zlib.compress(blob)
+        compressed = b'ZL123\0' + np.uint64(len(blob)).tobytes() + zlib.compress(blob)
         if len(compressed) < len(blob):
             blob = compressed
 
@@ -241,7 +241,7 @@ def pack_array(array):
         raise ValueError("argument must be a numpy array!")
 
     blob = b"A"
-    blob += np.array((len(array.shape), ) + array.shape, dtype=np.uint64).tostring()
+    blob += np.array((len(array.shape), ) + array.shape, dtype=np.uint64).tobytes()
 
     is_complex = np.iscomplexobj(array)
     if is_complex:
@@ -252,16 +252,16 @@ def pack_array(array):
     if dtype_list[type_id] is None:
         raise DataJointError("Type %s is ambiguous or unknown" % array.dtype)
 
-    blob += np.array(type_id, dtype=np.uint32).tostring()
+    blob += np.array(type_id, dtype=np.uint32).tobytes()
 
-    blob += np.int32(is_complex).tostring()
+    blob += np.int32(is_complex).tobytes()
     if type_names[type_id] == 'mxCHAR_CLASS':
-        blob += ('\x00'.join(array.tostring(order='F').decode()) + '\x00').encode()
+        blob += ('\x00'.join(array.tobytes(order='F').decode()) + '\x00').encode()
     else:
-        blob += array.tostring(order='F')
+        blob += array.tobytes(order='F')
 
     if is_complex:
-        blob += imaginary.tostring(order='F')
+        blob += imaginary.tobytes(order='F')
 
     return blob
 
@@ -277,13 +277,13 @@ def pack_dict(obj):
     """
     blob = (
         b'S' +
-        np.array((1, 1), dtype=np.uint64).tostring() +  # dimensionality and dimensions
-        np.array(len(obj), dtype=np.uint32).tostring() +  # number of fields
+        np.array((1, 1), dtype=np.uint64).tobytes() +  # dimensionality and dimensions
+        np.array(len(obj), dtype=np.uint32).tobytes() +  # number of fields
         b''.join(map(pack_string, obj)))  # write field names
 
     for v in obj.values():
         blob_part = pack_obj(v)
-        blob += np.array(len(blob_part), dtype=np.uint64).tostring() + blob_part
+        blob += np.array(len(blob_part), dtype=np.uint64).tobytes() + blob_part
 
     return blob
 
