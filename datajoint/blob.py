@@ -72,7 +72,7 @@ class BlobReader:
             self.read_value('c').decode()]
         v = call()
         if self._pos - start != n_bytes:
-            raise DataJointError('Blob is incorrectly structured')
+            raise DataJointError('Blob was incorrectly structured')
         return v
 
     def read_array(self):
@@ -84,6 +84,7 @@ class BlobReader:
         is_complex = self.read_value('uint32')
 
         if type_names[dtype_id] == 'mxCHAR_CLASS':
+            # compensate for MATLAB packing of char arrays
             data = self.read_value(dtype, count=2 * n_elem)
             data = data[::2].astype('U1')
             if n_dims == 2 and shape[0] == 1 or n_dims == 1:
@@ -91,11 +92,9 @@ class BlobReader:
                 data = compact if compact.shape == () else np.array(''.join(data.squeeze()))
                 shape = (1,)
         else:
-            if is_complex:
-                n_elem *= 2 # read real and imaginary parts
             data = self.read_value(dtype, count=n_elem)
             if is_complex:
-                data = data[:n_elem//2] + 1j * data[n_elem//2:]
+                data = data + 1j * self.read_value(dtype, count=n_elem)
 
         return self.squeeze(data.reshape(shape, order='F'))
 
@@ -223,17 +222,11 @@ def pack_dict(obj):
     Write dictionary object as a singular structure array
     :param obj: a dict-like object to serialize.
     """
-    blob = (
-        b'S' +
-        np.array((1, 1), dtype=np.uint64).tobytes() +  # dimensionality and dimensions
-        np.array(len(obj), dtype=np.uint32).tobytes() +  # number of fields
-        b''.join(map(lambda x: x.encode() + b'\0', obj)))  # write field names
-
-    for v in obj.values():
-        blob_part = pack_obj(v)
-        blob += np.array(len(blob_part), dtype=np.uint64).tobytes() + blob_part
-
-    return blob
+    return (b'S' + np.array((1, 1), dtype=np.uint64).tobytes() +  # dimensionality and dimensions
+            np.array(len(obj), dtype=np.uint32).tobytes() +  # number of fields
+            b''.join(map(lambda x: x.encode() + b'\0', obj)) +  # field names
+            b''.join(
+                np.array(len(p), dtype=np.uint64).tobytes() + p for p in (pack_obj(v) for v in obj.values())))  # values
 
 
 def unpack(blob, **kwargs):
