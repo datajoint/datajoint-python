@@ -9,13 +9,7 @@ import numpy as np
 schema_in = dj.schema('test_blob_bypass_in')
 schema_out = dj.schema('test_blob_bypass_out')
 
-schema_in.drop(force=True)
-schema_out.drop(force=True)
-
-schema_in = dj.schema('test_blob_bypass_in')
-schema_out = dj.schema('test_blob_bypass_out')
-
-tst_dat = np.array([1, 2, 3])  # test blob; TODO: more complex example
+tst_blob = np.array([1, 2, 3])  # test blob;
 
 
 @schema_in
@@ -25,7 +19,7 @@ class InputTable(dj.Lookup):
     ---
     data:               blob
     """
-    contents = [(0, tst_dat)]
+    contents = [(0, tst_blob)]
 
 
 @schema_out
