@@ -46,23 +46,12 @@ class BlobReader:
         self._pos = 0
         self._as_dict = as_dict
 
-    @property
-    def pos(self):
-        return self._pos
-
-    @pos.setter
-    def pos(self, val):
-        self._pos = val
-
-    def reset(self):
-        self.pos = 0
-
     def decompress(self):
         for pattern, decoder in decode_lookup.items():
-            if self._blob[self.pos:].startswith(pattern):
-                self.pos += len(pattern)
+            if self._blob[self._pos:].startswith(pattern):
+                self._pos += len(pattern)
                 blob_size = self.read_value('uint64')
-                blob = decoder(self._blob[self.pos:])
+                blob = decoder(self._blob[self._pos:])
                 assert len(blob) == blob_size
                 self._blob = blob
                 self._pos = 0
@@ -70,26 +59,23 @@ class BlobReader:
 
     def unpack(self):
         self.decompress()
-        blob_format = self.read_string()
+        blob_format = self.read_zero_terminated_string()
         if blob_format == 'mYm':
-            return self.read_mym_data(n_bytes=-1)
+            return self.read_blob(n_bytes=len(self._blob) - self._pos)
 
-    def read_mym_data(self, n_bytes=None):
-        if n_bytes is not None:
-            if n_bytes == -1:
-                n_bytes = len(self._blob) - self.pos
-            n_bytes -= 1
+    def read_blob(self, n_bytes):
+        start = self._pos
+        call = {
+            'A': self.read_array,
+            'S': self.read_structure,
+            'C': self.read_cell_array}[
+            self.read_value('c').decode()]
+        v = call()
+        if self._pos - start != n_bytes:
+            raise DataJointError('Blob is incorrectly structured')
+        return v
 
-        type_id = self.read_value('c')
-        if type_id == b'A':
-            return self.read_array(n_bytes=n_bytes)
-        elif type_id == b'S':
-            return self.read_structure(n_bytes=n_bytes)
-        elif type_id == b'C':
-            return self.read_cell_array(n_bytes=n_bytes)
-
-    def read_array(self, advance=True, n_bytes=None):
-        start = self.pos
+    def read_array(self):
         n_dims = int(self.read_value('uint64'))
         shape = self.read_value('uint64', count=n_dims)
         n_elem = int(np.prod(shape))
@@ -111,36 +97,24 @@ class BlobReader:
             if is_complex:
                 data = data[:n_elem//2] + 1j * data[n_elem//2:]
 
-        if n_bytes is not None:
-            assert self.pos - start == n_bytes
-
-        if not advance:
-            self.pos = start
-
         return self.squeeze(data.reshape(shape, order='F'))
 
-    def read_structure(self, advance=True, n_bytes=None):
-        start = self.pos
+    def read_structure(self):
         n_dims = self.read_value('uint64').item()
         shape = self.read_value('uint64', count=n_dims)
         n_elem = int(np.prod(shape))
         n_field = int(self.read_value('uint32'))
         if not n_field:
             return np.array(None)  # empty array
-        field_names = [self.read_string() for _ in range(n_field)]
+        field_names = [self.read_zero_terminated_string() for _ in range(n_field)]
         raw_data = [
-            tuple(self.read_mym_data(n_bytes=int(self.read_value('uint64'))) for _ in range(n_field))
+            tuple(self.read_blob(n_bytes=int(self.read_value('uint64'))) for _ in range(n_field))
             for __ in range(n_elem)]
 
-        assert n_bytes is None or self.pos - start == n_bytes
-
-        if not advance:
-            self.pos = start
         if self._as_dict and n_elem == 1:
             return dict(zip(field_names, raw_data[0]))
-        else:
-            data = np.rec.array(raw_data, dtype=list(zip(field_names, repeat(np.object))))
-            return self.squeeze(data.reshape(shape, order='F'))
+        data = np.rec.array(raw_data, dtype=list(zip(field_names, repeat(np.object))))
+        return self.squeeze(data.reshape(shape, order='F'))
 
     def squeeze(self, array):
         """
@@ -154,51 +128,29 @@ class BlobReader:
             array = array[()]
         return array
 
-    def read_cell_array(self, advance=True, n_bytes=None):
-        start = self.pos
+    def read_cell_array(self):
         n_dims = self.read_value('uint64').item()
         shape = self.read_value('uint64', count=n_dims)
         n_elem = int(np.prod(shape))
-        data = np.empty(n_elem, dtype=np.object)
-        for i in range(n_elem):
-            nb = self.read_value('uint64').item()
-            data[i] = self.read_mym_data(n_bytes=nb)
-        if n_bytes is not None:
-            assert self.pos - start == n_bytes
-        if not advance:
-            self.pos = start
-        return data
+        return self.squeeze(np.array(
+            [self.read_blob(n_bytes=self.read_value('uint64').item()) for _ in range(n_elem)], dtype=np.object))
 
-    def read_string(self, advance=True):
-        """
-        Read a string terminated by null byte '\0'. The returned string
-        object is ASCII decoded, and will not include the terminating null byte.
-        """
-        target = self._blob.find(b'\0', self.pos)
-        assert target >= self._pos
-        data = self._blob[self._pos:target]
-        if advance:
-            self._pos = target + 1
-        return data.decode('ascii')
-
-    def read_value(self, dtype='uint64', count=1, advance=True):
-        """
-        Read one or more scalars of the indicated dtype. Count specifies the number of
-        scalars to be read in.
-        """
-        data = np.frombuffer(self._blob, dtype=dtype, count=count, offset=self.pos)
-        if advance:
-            # probably the same thing as data.nbytes * 8
-            self._pos += data.dtype.itemsize * data.size
-        if count == 1:
-            data = data[0]
+    def read_zero_terminated_string(self):
+        target = self._blob.find(b'\0', self._pos)
+        data = self._blob[self._pos:target].decode()
+        self._pos = target + 1
         return data
+        
+    def read_value(self, dtype='uint64', count=1):
+        data = np.frombuffer(self._blob, dtype=dtype, count=count, offset=self._pos)
+        self._pos += data.dtype.itemsize * data.size
+        return data[0] if count == 1 else data
 
     def __repr__(self):
-        return repr(self._blob[self.pos:])
+        return repr(self._blob[self._pos:])
 
     def __str__(self):
-        return str(self._blob[self.pos:])
+        return str(self._blob[self._pos:])
 
 
 def pack(obj, compress=True):
@@ -266,10 +218,6 @@ def pack_array(array):
     return blob
 
 
-def pack_string(value):
-    return value.encode('ascii') + b'\0'
-
-
 def pack_dict(obj):
     """
     Write dictionary object as a singular structure array
@@ -279,7 +227,7 @@ def pack_dict(obj):
         b'S' +
         np.array((1, 1), dtype=np.uint64).tobytes() +  # dimensionality and dimensions
         np.array(len(obj), dtype=np.uint32).tobytes() +  # number of fields
-        b''.join(map(pack_string, obj)))  # write field names
+        b''.join(map(lambda x: x.encode() + b'\0', obj)))  # write field names
 
     for v in obj.values():
         blob_part = pack_obj(v)
