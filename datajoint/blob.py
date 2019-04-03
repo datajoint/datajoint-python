@@ -38,6 +38,8 @@ decode_lookup = {
     b'ZL123\0': zlib.decompress
 }
 
+bypass_serialization = False  # runtime setting to bypass blob (en|de)code
+
 
 class BlobReader:
     def __init__(self, blob, squeeze=False, as_dict=False):
@@ -212,7 +214,9 @@ class BlobReader:
 
 
 def pack(obj, compress=True):
-    if config['blob.encode_bypass'] is True:
+    if bypass_serialization is True:
+        assert(any([obj[:len(pattern)] == pattern
+               for pattern in decode_lookup]))
         return obj
 
     blob = b"mYm\0"
@@ -306,10 +310,12 @@ def pack_dict(obj):
 
 def unpack(blob, **kwargs):
 
-    if config['blob.encode_bypass'] is True:
-        return blob
-
     if blob is None:
         return None
+
+    if bypass_serialization is True:
+        assert(any([blob[:len(pattern)] == pattern
+               for pattern in decode_lookup]))
+        return blob
 
     return BlobReader(blob, **kwargs).unpack()
