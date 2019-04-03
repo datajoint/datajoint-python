@@ -36,7 +36,7 @@ class OutputTable(dj.Manual):
 def test_bypass_serialization():
     dj.blob.bypass_serialization = True
     OutputTable.insert(InputTable.fetch(as_dict=True))
-    dj.blob.bypass_serialization = True
+    dj.blob.bypass_serialization = False
 
     ins = InputTable.fetch(as_dict=True)
     outs = OutputTable.fetch(as_dict=True)
