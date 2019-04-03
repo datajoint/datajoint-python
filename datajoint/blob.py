@@ -8,7 +8,6 @@ from decimal import Decimal
 from datetime import datetime
 import numpy as np
 from .errors import DataJointError
-from .settings import config
 
 
 mxClassID = OrderedDict((
