@@ -5,10 +5,10 @@ from nose.tools import assert_true
 import datajoint as dj
 import numpy as np
 
-schema_in = dj.schema(PREFIX + '_test_blob_bypass_in',
+schema_in = dj.schema(PREFIX + '_test_bypass_serialization_in',
                       connection=dj.conn(**CONN_INFO))
 
-schema_out = dj.schema(PREFIX + '_test_blob_bypass_out',
+schema_out = dj.schema(PREFIX + '_test_blob_bypass_serialization_out',
                        connection=dj.conn(**CONN_INFO))
 
 
@@ -33,7 +33,7 @@ class OutputTable(dj.Manual):
     """
 
 
-def test_blob_bypass():
+def test_bypass_serialization():
     dj.blob.bypass_serialization = True
     OutputTable.insert(InputTable.fetch(as_dict=True))
     dj.blob.bypass_serialization = True
