@@ -153,84 +153,65 @@ class BlobReader:
 
 
 def pack(obj, compress=True):
-    blob = b"mYm\0"
-    blob += pack_obj(obj)
-
+    blob = b"mYm\0" + pack_obj(obj)
     if compress:
         compressed = b'ZL123\0' + np.uint64(len(blob)).tobytes() + zlib.compress(blob)
         if len(compressed) < len(blob):
             blob = compressed
-
     return blob
 
 
 def pack_obj(obj):
-    blob = b''
+    """serialize object"""
     if isinstance(obj, np.ndarray):
-        blob += pack_array(obj)
-    elif isinstance(obj, Mapping):
-        blob += pack_dict(obj)
-    elif isinstance(obj, str):
-        blob += pack_array(np.array(obj, dtype=np.dtype('c')))
-    elif isinstance(obj, Iterable):
-        blob += pack_array(np.array(list(obj)))
-    elif isinstance(obj, (int, float, np.float32, np.float64, np.int64, np.uint64,
-                          np.int32, np.uint32, np.int16, np.uint16, np.int8, np.uint8)):
-        blob += pack_array(np.array(obj))
-    elif isinstance(obj, Decimal):
-        blob += pack_array(np.array(np.float64(obj)))
-    elif isinstance(obj, datetime):
-        blob += pack_obj(str(obj))
-    else:
-        raise DataJointError("Packing object of type %s currently not supported!" % type(obj))
+        return pack_array(obj)
+    if isinstance(obj, Mapping):
+        return pack_dict(obj)
+    if isinstance(obj, str):
+        return pack_array(np.array(obj, dtype=np.dtype('c')))
+    if isinstance(obj, Iterable):
+        return pack_array(np.array(list(obj)))
+    if isinstance(obj, (int, float, np.float32, np.float64, np.int64, np.uint64,
+                        np.int32, np.uint32, np.int16, np.uint16, np.int8, np.uint8)):
+        return pack_array(np.array(obj))
+    if isinstance(obj, Decimal):
+        return pack_array(np.array(np.float64(obj)))
+    if isinstance(obj, datetime):
+        return pack_obj(str(obj))
 
-    return blob
+    raise DataJointError("Packing object of type %s currently not supported!" % type(obj))
 
 
 def pack_array(array):
-    if not isinstance(array, np.ndarray):
-        raise ValueError("argument must be a numpy array!")
-
-    blob = b"A"
-    blob += np.array((len(array.shape), ) + array.shape, dtype=np.uint64).tobytes()
-
+    """ Serialize a np.ndarray object into bytes """
+    blob = b"A" + np.uint64(array.ndim).tobytes() + np.array(array.shape, dtype=np.uint64).tobytes()
     is_complex = np.iscomplexobj(array)
     if is_complex:
         array, imaginary = np.real(array), np.imag(array)
 
     type_id = rev_class_id[array.dtype]
-
     if dtype_list[type_id] is None:
         raise DataJointError("Type %s is ambiguous or unknown" % array.dtype)
 
-    blob += np.array(type_id, dtype=np.uint32).tobytes()
+    blob += np.array([type_id, is_complex], dtype=np.uint32).tobytes()
 
-    blob += np.int32(is_complex).tobytes()
     if type_names[type_id] == 'mxCHAR_CLASS':
-        blob += ('\x00'.join(array.tobytes(order='F').decode()) + '\x00').encode()
+        blob += array.view(np.uint8).astype(np.uint16).tobytes()  # convert to 16-bit chars for MATLAB
     else:
         blob += array.tobytes(order='F')
-
-    if is_complex:
-        blob += imaginary.tobytes(order='F')
-
+        if is_complex:
+            blob += imaginary.tobytes(order='F')
     return blob
 
 
 def pack_dict(obj):
-    """
-    Write dictionary object as a singular structure array
-    :param obj: a dict-like object to serialize.
-    """
-    return (b'S' + np.array((1, 1), dtype=np.uint64).tobytes() +  # dimensionality and dimensions
-            np.array(len(obj), dtype=np.uint32).tobytes() +  # number of fields
+    """ Serialize a dict-like object into a singular structure array """
+    return (b'S' + np.uint64(1).tobytes() + np.uint64(1).tobytes() +  # dimensionality and dimensions
+            np.uint32(len(obj)).tobytes() +  # number of fields
             b''.join(map(lambda x: x.encode() + b'\0', obj)) +  # field names
-            b''.join(
-                np.array(len(p), dtype=np.uint64).tobytes() + p for p in (pack_obj(v) for v in obj.values())))  # values
+            b''.join(np.uint64(len(p)).tobytes() + p for p in (pack_obj(v) for v in obj.values())))  # values
 
 
 def unpack(blob, **kwargs):
-    if blob is None:
-        return None
-    return BlobReader(blob, **kwargs).unpack()
-
+    if blob is not None:
+        return BlobReader(blob, **kwargs).unpack()
