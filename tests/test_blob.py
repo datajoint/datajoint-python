@@ -28,7 +28,7 @@ def test_pack():
     assert_array_equal(x, unpack(pack(x)), "Arrays do not match!")
 
     x = {'name': 'Anonymous', 'age': 15}
-    assert_true(x == unpack(pack(x), as_dict=True), "Dict do not match!")
+    assert_true(x == unpack(pack(x)), "Dict do not match!")
 
     x = [1, 2, 3, 4]
     assert_array_equal(x, unpack(pack(x)), "List did not pack/unpack correctly")
