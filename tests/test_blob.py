@@ -3,7 +3,7 @@ from decimal import Decimal
 from datetime import datetime
 from datajoint.blob import pack, unpack
 from numpy.testing import assert_array_equal
-from nose.tools import assert_equal, assert_true
+from nose.tools import assert_equal, assert_true, assert_list_equal, assert_set_equal, assert_tuple_equal
 
 
 def test_pack():
@@ -30,11 +30,17 @@ def test_pack():
     x = {'name': 'Anonymous', 'age': 15}
     assert_true(x == unpack(pack(x)), "Dict do not match!")
 
-    x = [1, 2, 3, 4]
-    assert_array_equal(x, unpack(pack(x)), "List did not pack/unpack correctly")
+    x = [1, datetime.now(), {1: "one", "two": 2}, (1, 2)]
+    assert_list_equal(x, list(unpack(pack(x))), "List did not pack/unpack correctly")
 
-    x = [1, 2, 3, 4]
-    assert_array_equal(x, unpack(pack(x.__iter__())), "Iterator did not pack/unpack correctly")
+    x = (1, {datetime.now().date(): "today", "now": datetime.now().date()}, "yes!", (1, 2, (3, 4)))
+    assert_tuple_equal(x, unpack(pack(x)), "Tuple did not pack/unpack correctly")
+
+    x = {'elephant'}
+    assert_set_equal(x, set(unpack(pack(x))), "Set did not pack/unpack correctly")
+
+    x = tuple(range(10))
+    assert_tuple_equal(x, unpack(pack(range(10))), "Iterator did not pack/unpack correctly")
 
     x = Decimal('1.24')
     assert_true(float(x) == unpack(pack(x)), "Decimal object did not pack/unpack correctly")

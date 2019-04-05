@@ -64,7 +64,7 @@ class TestFetch:
         blobs = Blob().fetch('blob', order_by='id')
         assert_equal(blobs[0][0], 'character string')
         assert_true(np.array_equal(blobs[1][0], np.r_[1:180:15]))
-        assert_list_equal([r for r in blobs[2][0]], ['string1', 'string2'])
+        assert_list_equal(list(blobs[2][0]), ['string1', 'string2'])
         assert_list_equal([r[0, 0] for r in blobs[3]['a'][0]], [1, 2])
         assert_tuple_equal(blobs[3]['b'][0, 0]['c'][0, 0].shape, (3, 3))
         assert_true(np.array_equal(blobs[4], np.r_[1:25].reshape((2, 3, 4), order='F')))
