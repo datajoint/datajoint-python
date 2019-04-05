@@ -127,9 +127,9 @@ class Blob:
         if isinstance(obj, (datetime.datetime, datetime.date, datetime.time)):
             return self.pack_datetime(obj)
         if isinstance(obj, np.number):
-            return self.pack_array(obj)  # np.number provides np.ndarray interface
-        if isinstance(obj, (bool, np.bool)):
             return self.pack_array(np.array(obj))
+        if isinstance(obj, (bool, np.bool)):
+            return self.pack_array(np.array(obj)) 
         if isinstance(obj, (float, Decimal)):
             return self.pack_array(np.array(obj, dtype=np.float64))
         if isinstance(obj, int):
