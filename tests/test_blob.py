@@ -40,7 +40,7 @@ def test_pack():
     assert_true(float(x) == unpack(pack(x)), "Decimal object did not pack/unpack correctly")
 
     x = datetime.now()
-    assert_true(str(x) == unpack(pack(x)), "Datetime object did not pack/unpack correctly")
+    assert_true(x == unpack(pack(x)), "Datetime object did not pack/unpack correctly")
 
 
 def test_complex():

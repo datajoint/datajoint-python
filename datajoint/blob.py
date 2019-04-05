@@ -141,7 +141,7 @@ class Blob:
         if isinstance(obj, bytes):
             return self.pack_bytes(obj)
         if isinstance(obj, Iterable):
-            return self.pack_tuple(obj)
+            return self.pack_tuple(list(obj))
         raise DataJointError("Packing object of type %s currently not supported!" % type(obj))
 
     def read_array(self):
@@ -208,8 +208,8 @@ class Blob:
         return b"b" + len_u64(s) + s
 
     def read_dict(self):
-        return {self.read_blob(self.read_value()): self.read_blob(self.read_value())
-                for _ in range(self.read_value())}
+        return dict((self.read_blob(self.read_value()), self.read_blob(self.read_value()))
+                    for _ in range(self.read_value()))
 
     def pack_dict(self, d):
         return b"d" + len_u64(d) + b"".join(
@@ -235,8 +235,8 @@ class Blob:
         raw_data = [
             tuple(self.read_blob(n_bytes=int(self.read_value('uint64'))) for _ in range(n_field))
             for __ in range(n_elem)]
-        data = MatStruct(raw_data, dtype=list(zip(field_names, repeat(np.object))))
-        return self.squeeze(data.reshape(shape, order='F'))
+        data = np.array(raw_data, dtype=list(zip(field_names, repeat(np.object))))
+        return self.squeeze(data.reshape(shape, order='F')).view(MatStruct)
 
     def pack_struct(self, array):
         """ Serialize a Matlab struct array """
@@ -251,8 +251,8 @@ class Blob:
         n_dims = self.read_value()
         shape = self.read_value(count=n_dims)
         n_elem = int(np.prod(shape))
-        return self.squeeze(MatCell(
-            [self.read_blob(n_bytes=self.read_value()) for _ in range(n_elem)], dtype=np.object))
+        result = [self.read_blob(n_bytes=self.read_value()) for _ in range(n_elem)]
+        return (self.squeeze(np.array(result).reshape(shape, order="F"))).view(MatCell)
 
     def pack_cell_array(self, array):
         return (b"C" + np.array((array.ndim,) + array.shape, dtype=np.uint64).tobytes() +
@@ -260,7 +260,7 @@ class Blob:
 
     def read_datetime(self):
         """ deserialize datetime.date, .time, or .datetime """
-        date, time = self.read('int32'), self.read('int64')
+        date, time = self.read_value('int32'), self.read_value('int64')
         date = datetime.date(
             year=date // 10_000,
             month=(date // 100) % 100,
@@ -271,6 +271,19 @@ class Blob:
             second=(time // 1_000_000) % 100,
             microsecond=time % 1_000_000) if time >= 0 else None
         return time and date and datetime.datetime.combine(date, time) or time or date
+
+    @staticmethod
+    def pack_datetime(d):
+        if isinstance(d, datetime.datetime):
+            date, time = d.date(), d.time()
+        elif isinstance(d, datetime.date):
+            date, time = d, None
+        else:
+            date, time = None, d
+        return b"t" + (
+            np.int32(-1 if date is None else (date.year*100 + date.month)*100 + date.day).tobytes() +
+            np.int64(-1 if time is None else
+                     ((time.hour*100 + time.minute)*100 + time.second)*1000_000 + time.microsecond).tobytes())
 
     def read_zero_terminated_string(self):
         target = self._blob.find(b'\0', self._pos)
@@ -284,14 +297,8 @@ class Blob:
         return data[0] if count == 1 else data
 
     def read_binary(self, size):
-        self._pos += size
-        return self._blob[self._pos-size:self._pos]
-
-    def __repr__(self):
-        return repr(self._blob[self._pos:])
-
-    def __str__(self):
-        return str(self._blob[self._pos:])
+        self._pos += int(size)
+        return self._blob[self._pos-int(size):self._pos]
 
     def pack(self, obj, compress):
         self.protocol = b"mYm\0"  # may be replaced with dj0 if new features are used
