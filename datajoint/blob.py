@@ -266,10 +266,10 @@ class Blob:
             month=(date // 100) % 100,
             day=date % 100) if date >= 0 else None
         time = datetime.time(
-            hour=(time // 10_000_000_000) % 100,
-            minute=(time // 100_000_000) % 100,
-            second=(time // 1_000_000) % 100,
-            microsecond=time % 1_000_000) if time >= 0 else None
+            hour=(time // 10000000000) % 100,
+            minute=(time // 100000000) % 100,
+            second=(time // 1000000) % 100,
+            microsecond=time % 1000000) if time >= 0 else None
         return time and date and datetime.datetime.combine(date, time) or time or date
 
     @staticmethod
@@ -283,7 +283,7 @@ class Blob:
         return b"t" + (
             np.int32(-1 if date is None else (date.year*100 + date.month)*100 + date.day).tostring() +
             np.int64(-1 if time is None else
-                     ((time.hour*100 + time.minute)*100 + time.second)*1000_000 + time.microsecond).tostring())
+                     ((time.hour*100 + time.minute)*100 + time.second)*1000000 + time.microsecond).tostring())
 
     def read_zero_terminated_string(self):
         target = self._blob.find(b'\0', self._pos)
