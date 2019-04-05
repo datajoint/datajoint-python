@@ -39,7 +39,7 @@ compression = {
 }
 
 def len_u64(obj):
-    return np.uint64(len(obj)).tostring()
+    return np.uint64(len(obj)).tobytes()
 
 class MatCell(np.ndarray):
     """ a numpy ndarray representing a Matlab cell array """
@@ -131,9 +131,9 @@ class Blob:
         if isinstance(obj, (bool, np.bool)):
             return self.pack_array(np.array(obj))
         if isinstance(obj, (float, Decimal)):
-            return self.pack_array(np.float64(obj))
+            return self.pack_array(np.array(obj, dtype=np.float64))
         if isinstance(obj, int):
-            return self.pack_array(np.int64(obj))
+            return self.pack_array(np.array(obj, dtype=np.int64))
         if isinstance(obj, Mapping):
             return self.pack_dict(obj)
         if isinstance(obj, str):
@@ -171,7 +171,7 @@ class Blob:
         Serialize a np.ndarray or np.number object into bytes.
         Scalars are encoded with ndim=0.
         """
-        blob = b"A" + np.uint64(array.ndim).tostring() + np.array(array.shape, dtype=np.uint64).tostring()
+        blob = b"A" + np.uint64(array.ndim).tobytes() + np.array(array.shape, dtype=np.uint64).tobytes()
         is_complex = np.iscomplexobj(array)
         if is_complex:
             array, imaginary = np.real(array), np.imag(array)
@@ -180,13 +180,13 @@ class Blob:
         if dtype_list[type_id] is None:
             raise DataJointError("Type %s is ambiguous or unknown" % array.dtype)
 
-        blob += np.array([type_id, is_complex], dtype=np.uint32).tostring()
+        blob += np.array([type_id, is_complex], dtype=np.uint32).tobytes()
         if type_names[type_id] == 'mxCHAR_CLASS':
-            blob += array.view(np.uint8).astype(np.uint16).tostring()  # convert to 16-bit chars for MATLAB
+            blob += array.view(np.uint8).astype(np.uint16).tobytes()  # convert to 16-bit chars for MATLAB
         else:
-            blob += array.tostring(order='F')
+            blob += array.tobytes(order='F')
             if is_complex:
-                blob += imaginary.tostring(order='F')
+                blob += imaginary.tobytes(order='F')
         return blob
 
     def read_sparse_array(self):
@@ -240,7 +240,7 @@ class Blob:
 
     def pack_struct(self, array):
         """ Serialize a Matlab struct array """
-        return (b"S" + np.array((array.ndim,) + array.shape, dtype=np.uint64).tostring() +  # dimensionality
+        return (b"S" + np.array((array.ndim,) + array.shape, dtype=np.uint64).tobytes() +  # dimensionality
                 len_u64(array) +  # number of fields
                 b"".join(map(lambda x: x.encode() + b'\0', array)) +  # field names
                 b"".join(len_u64(it) + it for it in (
@@ -255,7 +255,7 @@ class Blob:
         return (self.squeeze(np.array(result).reshape(shape, order="F"))).view(MatCell)
 
     def pack_cell_array(self, array):
-        return (b"C" + np.array((array.ndim,) + array.shape, dtype=np.uint64).tostring() +
+        return (b"C" + np.array((array.ndim,) + array.shape, dtype=np.uint64).tobytes() +
                 b"".join(len_u64(it) for it in (self.pack_blob(e) for e in array.flatten())))
 
     def read_datetime(self):
@@ -281,9 +281,9 @@ class Blob:
         else:
             date, time = None, d
         return b"t" + (
-            np.int32(-1 if date is None else (date.year*100 + date.month)*100 + date.day).tostring() +
+            np.int32(-1 if date is None else (date.year*100 + date.month)*100 + date.day).tobytes() +
             np.int64(-1 if time is None else
-                     ((time.hour*100 + time.minute)*100 + time.second)*1000000 + time.microsecond).tostring())
+                     ((time.hour*100 + time.minute)*100 + time.second)*1000000 + time.microsecond).tobytes())
 
     def read_zero_terminated_string(self):
         target = self._blob.find(b'\0', self._pos)
