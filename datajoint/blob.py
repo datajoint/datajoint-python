@@ -4,7 +4,8 @@ Provides serialization methods for numpy.ndarrays that ensure compatibility with
 
 import zlib
 from itertools import repeat
-from collections import OrderedDict, Mapping, Iterable
+import collections
+from collections import OrderedDict
 from decimal import Decimal
 import datetime
 import numpy as np
@@ -91,20 +92,23 @@ class Blob:
 
     def read_blob(self, n_bytes):
         start = self._pos
-        data_structure_code = self.read_value('c').decode()
+        data_structure_code = chr(self.read_value('uint8'))
         try:
             call = {
                 # MATLAB-compatible, inherited from original mYm
-                'A': self.read_array,        # matlab numeric arrays
-                'P': self.read_sparse_array, # matlab sparse array
-                'S': self.read_struct,       # matlab struct array
-                'C': self.read_cell_array,   # matlab cell array
+                "A": self.read_array,        # matlab-compatible numeric arrays and scalars with ndim==0
+                "P": self.read_sparse_array, # matlab sparse array -- not supported yet
+                "S": self.read_struct,       # matlab struct array
+                "C": self.read_cell_array,   # matlab cell array
                 # Python-native
-                's': self.read_string,   # UTF8 encoded string
-                'l': self.read_tuple,    # an iterable (tuple, list, set), decoded as a tuple
-                'd': self.read_dict,     # a python dict
-                'b': self.read_bytes,    # a raw bytes string
-                't': self.read_datetime  # date, time, or datetime
+                "\0": self.read_none,      # None
+                "\1": self.read_tuple,     # a Sequence
+                "\2": self.read_list,      # a MutableSequence
+                "\3": self.read_set,       # a Set
+                "\4": self.read_dict,      # a Mapping
+                "s": self.read_string,    # UTF8 encoded string
+                "b": self.read_bytes,     # a ByteString
+                "t": self.read_datetime   # date, time, or datetime
             }[data_structure_code]
         except KeyError:
             raise DataJointError('Unknown data structure code "%s"' % data_structure_code)
@@ -129,19 +133,25 @@ class Blob:
         if isinstance(obj, np.number):
             return self.pack_array(np.array(obj))
         if isinstance(obj, (bool, np.bool)):
-            return self.pack_array(np.array(obj)) 
-        if isinstance(obj, (float, Decimal)):
+            return self.pack_array(np.array(obj))
+        if isinstance(obj, (float, Decimal)):  # decimal is converted to float64 for now
             return self.pack_array(np.array(obj, dtype=np.float64))
         if isinstance(obj, int):
             return self.pack_array(np.array(obj, dtype=np.int64))
-        if isinstance(obj, Mapping):
+        if isinstance(obj, collections.Mapping):
             return self.pack_dict(obj)
         if isinstance(obj, str):
             return self.pack_string(obj)
-        if isinstance(obj, bytes):
+        if isinstance(obj, collections.ByteString):
             return self.pack_bytes(obj)
-        if isinstance(obj, Iterable):
-            return self.pack_tuple(list(obj))
+        if isinstance(obj, collections.MutableSequence):
+            return self.pack_list(obj)
+        if isinstance(obj, collections.Sequence):
+            return self.pack_tuple(obj)
+        if isinstance(obj, collections.Set):
+            return self.pack_set(obj)
+        if obj is None:
+            return self.pack_none()
         raise DataJointError("Packing object of type %s currently not supported!" % type(obj))
 
     def read_array(self):
@@ -195,6 +205,9 @@ class Blob:
     def read_string(self):
         return self.read_binary(self.read_value()).decode()
 
+    def read_decimal(self):
+        raise NotImplementedError
+
     @staticmethod
     def pack_string(s):
         blob = s.encode()
@@ -207,21 +220,42 @@ class Blob:
     def pack_bytes(s):
         return b"b" + len_u64(s) + s
 
-    def read_dict(self):
-        return dict((self.read_blob(self.read_value()), self.read_blob(self.read_value()))
-                    for _ in range(self.read_value()))
+    def read_none(self):
+        pass
 
-    def pack_dict(self, d):
-        return b"d" + len_u64(d) + b"".join(
-            b"".join((len_u64(it) + it) for it in packed)
-            for packed in (map(self.pack_blob, pair) for pair in d.items()))
+    @staticmethod
+    def pack_none():
+        return b"\0"
 
     def read_tuple(self):
         return tuple(self.read_blob(self.read_value()) for _ in range(self.read_value()))
 
     def pack_tuple(self, t):
-        return b"l" + len_u64(t) + b"".join(
+        return b"\1" + len_u64(t) + b"".join(
             len_u64(it) + it for it in (self.pack_blob(i) for i in t))
+
+    def read_list(self):
+        return list(self.read_blob(self.read_value()) for _ in range(self.read_value()))
+
+    def pack_list(self, t):
+        return b"\2" + len_u64(t) + b"".join(
+            len_u64(it) + it for it in (self.pack_blob(i) for i in t))
+
+    def read_set(self):
+        return set(self.read_blob(self.read_value()) for _ in range(self.read_value()))
+
+    def pack_set(self, t):
+        return b"\3" + len_u64(t) + b"".join(
+            len_u64(it) + it for it in (self.pack_blob(i) for i in t))
+
+    def read_dict(self):
+        return dict((self.read_blob(self.read_value()), self.read_blob(self.read_value()))
+                    for _ in range(self.read_value()))
+
+    def pack_dict(self, d):
+        return b"\4" + len_u64(d) + b"".join(
+            b"".join((len_u64(it) + it) for it in packed)
+            for packed in (map(self.pack_blob, pair) for pair in d.items()))
 
     def read_struct(self):
         """deserialize matlab stuct"""

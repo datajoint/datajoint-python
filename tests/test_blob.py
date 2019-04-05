@@ -3,7 +3,8 @@ from decimal import Decimal
 from datetime import datetime
 from datajoint.blob import pack, unpack
 from numpy.testing import assert_array_equal
-from nose.tools import assert_equal, assert_true, assert_list_equal, assert_set_equal, assert_tuple_equal
+from nose.tools import assert_equal, assert_true, \
+    assert_list_equal, assert_set_equal, assert_tuple_equal, assert_dict_equal
 
 
 def test_pack():
@@ -27,17 +28,31 @@ def test_pack():
     x = np.int16(np.random.randn(1, 2, 3))
     assert_array_equal(x, unpack(pack(x)), "Arrays do not match!")
 
-    x = {'name': 'Anonymous', 'age': 15}
-    assert_true(x == unpack(pack(x)), "Dict do not match!")
+    x = None
+    assert_true(x is None, "None did not match")
+
+    x = [None]
+    y = pack(x)
+    z = unpack(y)
+    assert_list_equal(x, z)
+
+    x = {'name': 'Anonymous', 'age': 15, 99: datetime.now(), 'range': [110, 190], (11,12): None}
+    y = pack(x)
+    assert_dict_equal(x, unpack(pack(x)), "Dict do not match!")
 
     x = [1, datetime.now(), {1: "one", "two": 2}, (1, 2)]
-    assert_list_equal(x, list(unpack(pack(x))), "List did not pack/unpack correctly")
+    assert_list_equal(x, unpack(pack(x)), "List did not pack/unpack correctly")
 
-    x = (1, {datetime.now().date(): "today", "now": datetime.now().date()}, "yes!", (1, 2, (3, 4)))
+    x = (1, datetime.now(), {1: "one", "two": 2}, (1, 2))
     assert_tuple_equal(x, unpack(pack(x)), "Tuple did not pack/unpack correctly")
 
+    x = (1, {datetime.now().date(): "today", "now": datetime.now().date()}, {"yes!": [1, 2, np.array((3, 4))]})
+    y = unpack(pack(x))
+    assert_dict_equal(x[1], y[1])
+    assert_array_equal(x[2]['yes!'][2], y[2]['yes!'][2])
+
     x = {'elephant'}
-    assert_set_equal(x, set(unpack(pack(x))), "Set did not pack/unpack correctly")
+    assert_set_equal(x, unpack(pack(x)), "Set did not pack/unpack correctly")
 
     x = tuple(range(10))
     assert_tuple_equal(x, unpack(pack(range(10))), "Iterator did not pack/unpack correctly")
