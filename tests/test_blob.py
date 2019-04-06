@@ -64,6 +64,11 @@ def test_pack():
     assert_true(x == unpack(pack(x)), "Datetime object did not pack/unpack correctly")
 
 
+def test_object_arrays():
+    x = np.array(((1, 2, 3), True))
+    assert_array_equal(x, unpack(pack(x)), "Object array did not serialize correctly")
+
+
 def test_complex():
     z = np.random.randn(8, 10) + 1j*np.random.randn(8,10)
     assert_array_equal(z, unpack(pack(z)), "Arrays do not match!")

@@ -18,7 +18,7 @@ mxClassID = OrderedDict((
     ('mxSTRUCT_CLASS', None),
     ('mxLOGICAL_CLASS', np.dtype('bool')),
     ('mxCHAR_CLASS', np.dtype('c')),
-    ('mxVOID_CLASS', None),
+    ('mxVOID_CLASS', np.dtype('O')),
     ('mxDOUBLE_CLASS', np.dtype('float64')),
     ('mxSINGLE_CLASS', np.dtype('float32')),
     ('mxINT8_CLASS', np.dtype('int8')),
@@ -106,7 +106,7 @@ class Blob:
                 "\2": self.read_list,      # a MutableSequence
                 "\3": self.read_set,       # a Set
                 "\4": self.read_dict,      # a Mapping
-                "s": self.read_string,    # UTF8 encoded string
+                "s": self.read_string,    # a UTF8-encoded string
                 "b": self.read_bytes,     # a ByteString
                 "t": self.read_datetime   # date, time, or datetime
             }[data_structure_code]
@@ -161,7 +161,10 @@ class Blob:
         dtype_id, is_complex = self.read_value('uint32', 2)
         dtype = dtype_list[dtype_id]
 
-        if type_names[dtype_id] == 'mxCHAR_CLASS':
+        if type_names[dtype_id] == 'mxVOID_CLASS':
+            data = np.array(
+                list(self.read_blob(self.read_value()) for _ in range(n_elem)), dtype=np.dtype('O'))
+        elif type_names[dtype_id] == 'mxCHAR_CLASS':
             # compensate for MATLAB packing of char arrays
             data = self.read_value(dtype, count=2 * n_elem)
             data = data[::2].astype('U1')
@@ -175,8 +178,7 @@ class Blob:
                 data = data + 1j * self.read_value(dtype, count=n_elem)
         return self.squeeze(data.reshape(shape, order='F'))
 
-    @staticmethod
-    def pack_array(array):
+    def pack_array(self, array):
         """
         Serialize a np.ndarray or np.number object into bytes.
         Scalars are encoded with ndim=0.
@@ -191,9 +193,11 @@ class Blob:
             raise DataJointError("Type %s is ambiguous or unknown" % array.dtype)
 
         blob += np.array([type_id, is_complex], dtype=np.uint32).tobytes()
-        if type_names[type_id] == 'mxCHAR_CLASS':
+        if type_names[type_id] == 'mxVOID_CLASS':  # array of dtype('O')
+            blob += b"".join(len_u64(it) + it for it in (self.pack_blob(e) for e in array.flatten(order="F")))
+        elif type_names[type_id] == 'mxCHAR_CLASS':  # array of dtype('c')
             blob += array.view(np.uint8).astype(np.uint16).tobytes()  # convert to 16-bit chars for MATLAB
-        else:
+        else:  # numeric arrays
             blob += array.tobytes(order='F')
             if is_complex:
                 blob += imaginary.tobytes(order='F')
