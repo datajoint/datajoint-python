@@ -195,9 +195,12 @@ class Blob:
         blob += np.array([type_id, is_complex], dtype=np.uint32).tobytes()
         if type_names[type_id] == 'mxVOID_CLASS':  # array of dtype('O')
             blob += b"".join(len_u64(it) + it for it in (self.pack_blob(e) for e in array.flatten(order="F")))
+            self.set_dj0()  # not supported by original mym
         elif type_names[type_id] == 'mxCHAR_CLASS':  # array of dtype('c')
             blob += array.view(np.uint8).astype(np.uint16).tobytes()  # convert to 16-bit chars for MATLAB
         else:  # numeric arrays
+            if array.ndim == 0:  # not supported by original mym
+                self.set_dj0()
             blob += array.tobytes(order='F')
             if is_complex:
                 blob += imaginary.tobytes(order='F')
@@ -282,7 +285,7 @@ class Blob:
                 len_u64(array) +  # number of fields
                 b"".join(map(lambda x: x.encode() + b'\0', array)) +  # field names
                 b"".join(len_u64(it) + it for it in (
-                    self.pack_blob(e) for rec in array.flatten() for e in rec)))  # values
+                    self.pack_blob(e) for rec in array.flatten(order="F") for e in rec)))  # values
 
     def read_cell_array(self):
         """ deserialize MATLAB cell array """
@@ -294,7 +297,7 @@ class Blob:
 
     def pack_cell_array(self, array):
         return (b"C" + np.array((array.ndim,) + array.shape, dtype=np.uint64).tobytes() +
-                b"".join(len_u64(it) for it in (self.pack_blob(e) for e in array.flatten())))
+                b"".join(len_u64(it) for it in (self.pack_blob(e) for e in array.flatten(order="F"))))
 
     def read_datetime(self):
         """ deserialize datetime.date, .time, or .datetime """
