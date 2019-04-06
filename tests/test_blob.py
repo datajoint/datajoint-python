@@ -32,9 +32,7 @@ def test_pack():
     assert_true(x is None, "None did not match")
 
     x = [None]
-    y = pack(x)
-    z = unpack(y)
-    assert_list_equal(x, z)
+    assert_list_equal(x, unpack(pack(x)))
 
     x = {'name': 'Anonymous', 'age': 15, 99: datetime.now(), 'range': [110, 190], (11,12): None}
     y = pack(x)
