@@ -39,8 +39,10 @@ compression = {
     b'ZL123\0': zlib.decompress
 }
 
+
 def len_u64(obj):
     return np.uint64(len(obj)).tobytes()
+
 
 class MatCell(np.ndarray):
     """ a numpy ndarray representing a Matlab cell array """
@@ -96,18 +98,18 @@ class Blob:
         try:
             call = {
                 # MATLAB-compatible, inherited from original mYm
-                "A": self.read_array,        # matlab-compatible numeric arrays and scalars with ndim==0
-                "P": self.read_sparse_array, # matlab sparse array -- not supported yet
-                "S": self.read_struct,       # matlab struct array
-                "C": self.read_cell_array,   # matlab cell array
+                "A": self.read_array,         # matlab-compatible numeric arrays and scalars with ndim==0
+                "P": self.read_sparse_array,  # matlab sparse array -- not supported yet
+                "S": self.read_struct,        # matlab struct array
+                "C": self.read_cell_array,    # matlab cell array
                 # Python-native
-                "\0": self.read_none,      # None
+                "\xFF": self.read_none,      # None
                 "\1": self.read_tuple,     # a Sequence
                 "\2": self.read_list,      # a MutableSequence
                 "\3": self.read_set,       # a Set
                 "\4": self.read_dict,      # a Mapping
-                "s": self.read_string,    # a UTF8-encoded string
-                "b": self.read_bytes,     # a ByteString
+                "\5": self.read_string,    # a UTF8-encoded string
+                "\6": self.read_bytes,     # a ByteString
                 "t": self.read_datetime   # date, time, or datetime
             }[data_structure_code]
         except KeyError:
@@ -218,21 +220,21 @@ class Blob:
     @staticmethod
     def pack_string(s):
         blob = s.encode()
-        return b"s" + len_u64(blob) + blob
+        return b"\5" + len_u64(blob) + blob
     
     def read_bytes(self):
         return self.read_binary(self.read_value())
     
     @staticmethod
     def pack_bytes(s):
-        return b"b" + len_u64(s) + s
+        return b"\6" + len_u64(s) + s
 
     def read_none(self):
         pass
 
     @staticmethod
     def pack_none():
-        return b"\0"
+        return b"\xFF"
 
     def read_tuple(self):
         return tuple(self.read_blob(self.read_value()) for _ in range(self.read_value()))
