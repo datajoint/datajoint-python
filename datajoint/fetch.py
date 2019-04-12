@@ -3,11 +3,13 @@ from functools import partial
 import warnings
 import pandas
 import re
+import os
 import numpy as np
 import uuid
-from . import blob, attach
+from . import blob, attach, hash
 from .errors import DataJointError
 from .settings import config
+
 if sys.version_info[1] < 6:
     from collections import OrderedDict
 else:
@@ -35,18 +37,45 @@ def to_dicts(recarray):
 
 def _get(connection, attr, data, squeeze, download_path):
     """
-    :param connection:
-    :param attr: an attribute from the heading
+    This function is called for every attribute 
+
+    :param connection: a dj.Connection object
+    :param attr: attribute name from the table's heading
     :param data: literal value fetched from the table
     :param squeeze: if True squeeze blobs
     :param download_path: for fetches that download data, e.g. attachments
     :return: unpacked data
     """
-    if attr.is_external:
-        data = connection.schemas[attr.database].external[attr.store].get(uuid.UUID(bytes=data) if data is not None else data)
-    return (uuid.UUID(bytes=data) if attr.uuid else
-            blob.unpack(data, squeeze=squeeze) if attr.is_blob else
-            attach.save(data, download_path) if attr.is_attachment else data)
+    if data is None:
+        return 
+
+    extern = connection.schemas[attr.database].external[attr.store] if attr.is_external else None
+
+    if attr.is_attachment:
+        # Steps: 
+        # 1. peek the filename from the blob without downloading remote
+        # 2. check if the file already exists at download_path, verify checksum
+        # 3. if exists and checksum passes then return the local filepath
+        # 4. Otherwise, download the remote file and return the new filepath
+        peek, size = extern.peek(uuid.UUID(bytes=data)) if attr.is_external else (data, len(data))
+        assert size is not None 
+        filename = peek.split(b"\0", 1)[0].decode()
+        size -= len(filename)
+        filepath = os.path.join(download_path, filename)
+        if os.path.isfile(filepath) and size == os.path.getsize(filepath):
+            local_checksum = hash.uuid_from_file(filepath) 
+            remote_checksum = (uuid.UUID(bytes=data)
+                    if attr.is_external else hash.uuid_from_buffer(data))
+            if local_checksum == remote_checksum: 
+                return filepath  # the existing file is okay
+        # Download remote attachment
+        if attr.is_external:
+            data = extern.get(uuid.UUID(bytes=data))
+        return attach.save(data, download_path)  # download file from remote store
+
+    return uuid.UUID(bytes=data) if attr.uuid else (
+            blob.unpack(extern.get(uuid.UUID(bytes=data)) if attr.is_external else data, squeeze=squeeze) 
+            if attr.is_blob else data)
 
 
 def _flatten_attribute_list(primary_key, attrs):

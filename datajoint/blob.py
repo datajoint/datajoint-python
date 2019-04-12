@@ -1,5 +1,6 @@
 """
-Provides serialization methods for numpy.ndarrays that ensure compatibility with Matlab.
+(De)serialization methods for python datatypes and numpy.ndarrays with provisions for mutual 
+compatibility with Matlab-based serialization implemented by mYm.
 """
 
 import zlib
