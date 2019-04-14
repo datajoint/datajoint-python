@@ -213,7 +213,7 @@ class BlobReader:
 
 
 def pack(obj, compress=True):
-    if bypass_serialization is True:
+    if bypass_serialization:
         assert obj.startswith(tuple(decode_lookup))
         return obj
 
@@ -311,7 +311,7 @@ def unpack(blob, **kwargs):
     if blob is None:
         return None
 
-    if bypass_serialization is True:
+    if bypass_serialization:
         assert blob.startswith(tuple(decode_lookup))
         return blob
 
