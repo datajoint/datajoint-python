@@ -12,7 +12,7 @@ schema_out = dj.schema(PREFIX + '_test_blob_bypass_serialization_out',
                        connection=dj.conn(**CONN_INFO))
 
 
-tst_blob = np.array([1, 2, 3])  # test blob;
+test_blob = np.array([1, 2, 3])
 
 @schema_in
 class InputTable(dj.Lookup):
@@ -21,7 +21,7 @@ class InputTable(dj.Lookup):
     ---
     data:               blob
     """
-    contents = [(0, tst_blob)]
+    contents = [(0, test_blob)]
 
 
 @schema_out
@@ -38,10 +38,7 @@ def test_bypass_serialization():
     OutputTable.insert(InputTable.fetch(as_dict=True))
     dj.blob.bypass_serialization = False
 
-    ins = InputTable.fetch(as_dict=True)
-    outs = OutputTable.fetch(as_dict=True)
-
-    assert_true(all(np.array_equals(i[0]['data'], tst_blob),
-                np.array_equals(i[0]['data'], i[1]['data']))
-                for i in zip(ins, outs))
+    i = InputTable.fetch1()
+    o = OutputTable.fetch1()
+    assert_true(np.array_equal(i['data'], o['data']))
 
