@@ -11,6 +11,7 @@ import datetime
 import numpy as np
 from .errors import DataJointError
 
+
 mxClassID = OrderedDict((
     # see http://www.mathworks.com/help/techdoc/apiref/mxclassid.html
     ('mxUNKNOWN_CLASS', None),
@@ -38,6 +39,8 @@ type_names = list(mxClassID)
 compression = {
     b'ZL123\0': zlib.decompress
 }
+
+bypass_serialization = False  # runtime setting to bypass blob (en|de)code
 
 
 def len_u64(obj):
@@ -355,9 +358,19 @@ class Blob:
 
 
 def pack(obj, compress=True):
+    if bypass_serialization:
+        # provide a way to move blobs quickly without de/serialization
+        assert isinstance(obj, bytes) and obj.startswith((b'ZL123\0', b'mYm\0', b'dj0\0'))
+        return obj
+
     return Blob().pack(obj, compress=compress)
 
 
 def unpack(blob, squeeze=False):
+    if bypass_serialization:
+        # provide a way to move blobs quickly without de/serialization
+        assert isinstance(blob, bytes) and blob.startswith((b'ZL123\0', b'mYm\0', b'dj0\0'))
+        return blob
+
     if blob is not None:
         return Blob(squeeze=squeeze).unpack(blob)
