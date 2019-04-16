@@ -8,6 +8,7 @@ import collections
 from collections import OrderedDict
 from decimal import Decimal
 import datetime
+import uuid
 import numpy as np
 from .errors import DataJointError
 
@@ -113,7 +114,8 @@ class Blob:
                 "\4": self.read_dict,      # a Mapping
                 "\5": self.read_string,    # a UTF8-encoded string
                 "\6": self.read_bytes,     # a ByteString
-                "t": self.read_datetime   # date, time, or datetime
+                "t": self.read_datetime,   # date, time, or datetime
+                "u": self.read_uuid        # UUID
             }[data_structure_code]
         except KeyError:
             raise DataJointError('Unknown data structure code "%s"' % data_structure_code)
@@ -155,6 +157,8 @@ class Blob:
             return self.pack_tuple(obj)
         if isinstance(obj, collections.Set):
             return self.pack_set(obj)
+        if isinstance(obj, uuid.UUID):
+            return self.pack_uuid(obj)
         if obj is None:
             return self.pack_none()
         raise DataJointError("Packing object of type %s currently not supported!" % type(obj))
@@ -330,6 +334,14 @@ class Blob:
             np.int32(-1 if date is None else (date.year*100 + date.month)*100 + date.day).tobytes() +
             np.int64(-1 if time is None else
                      ((time.hour*100 + time.minute)*100 + time.second)*1000000 + time.microsecond).tobytes())
+
+    def read_uuid(self):
+        q = self.read_binary(16)
+        return uuid.UUID(bytes=q)
+
+    @staticmethod
+    def pack_uuid(obj):
+        return b"u" + obj.bytes
 
     def read_zero_terminated_string(self):
         target = self._blob.find(b'\0', self._pos)

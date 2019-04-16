@@ -1,4 +1,5 @@
 import numpy as np
+import uuid
 from decimal import Decimal
 from datetime import datetime
 from datajoint.blob import pack, unpack
@@ -35,13 +36,16 @@ def test_pack():
     assert_list_equal(x, unpack(pack(x)))
 
     x = {'name': 'Anonymous', 'age': 15, 99: datetime.now(), 'range': [110, 190], (11,12): None}
-    y = pack(x)
     assert_dict_equal(x, unpack(pack(x)), "Dict do not match!")
+
+    x = uuid.uuid4()
+    assert_equal(x, unpack(pack(x)), 'UUID did not match')
+
 
     x = [1, datetime.now(), {1: "one", "two": 2}, (1, 2)]
     assert_list_equal(x, unpack(pack(x)), "List did not pack/unpack correctly")
 
-    x = (1, datetime.now(), {1: "one", "two": 2}, (1, 2))
+    x = (1, datetime.now(), {1: "one", "two": 2}, (uuid.uuid4(), 2))
     assert_tuple_equal(x, unpack(pack(x)), "Tuple did not pack/unpack correctly")
 
     x = (1, {datetime.now().date(): "today", "now": datetime.now().date()}, {"yes!": [1, 2, np.array((3, 4))]})
