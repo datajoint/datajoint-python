@@ -122,10 +122,18 @@ class QueryExpression:
         :param arg: any valid restriction object.
         :return: an SQL condition string or a boolean value.
         """
-        def prep_value(v):
+        def prep_value(k, v):
             """prepare value v for inclusion as a string in an SQL condition"""
-            return "X'%s'" % binascii.hexlify(v.bytes).decode() if isinstance(v, uuid.UUID) else '%r' % (
-                    str(v) if isinstance(v, (datetime.date, datetime.datetime, datetime.time, decimal.Decimal)) else v)
+            if self.heading[k].uuid:
+                if not isinstance(v, uuid.UUID):
+                    try:
+                        v = uuid.UUID(v)
+                    except (AttributeError, ValueError):
+                        raise DataJointError('Badly formed UUID {v} in restriction by `{k}`'.format(k=k, v=v)) from None
+                return "X'%s'" % binascii.hexlify(v.bytes).decode()
+            if isinstance(v, (datetime.date, datetime.datetime, datetime.time, decimal.Decimal)):
+                return '"%s"' % v
+            return '%r' % v
 
         negate = False
         while isinstance(arg, Not):
@@ -158,12 +166,12 @@ class QueryExpression:
         # restrict by a mapping such as a dict -- convert to an AndList of string equality conditions
         if isinstance(arg, collections.abc.Mapping):
             return template % self._make_condition(
-                AndList('`%s`=%s' % (k, prep_value(v)) for k, v in arg.items() if k in self.heading))
+                AndList('`%s`=%s' % (k, prep_value(k, v)) for k, v in arg.items() if k in self.heading))
 
         # restrict by a numpy record -- convert to an AndList of string equality conditions
         if isinstance(arg, np.void):
             return template % self._make_condition(
-                AndList(('`%s`=%s' % (k, prep_value(arg[k])) for k in arg.dtype.fields if k in self.heading)))
+                AndList(('`%s`=%s' % (k, prep_value(k, arg[k])) for k in arg.dtype.fields if k in self.heading)))
 
         # restrict by a QueryExpression subclass -- triggers instantiation
         if inspect.isclass(arg) and issubclass(arg, QueryExpression):
