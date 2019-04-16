@@ -1,6 +1,6 @@
 
 from . import PREFIX, CONN_INFO
-from nose.tools import assert_true
+from numpy.testing import assert_array_equal
 
 import datajoint as dj
 import numpy as np
@@ -40,5 +40,5 @@ def test_bypass_serialization():
 
     i = InputTable.fetch1()
     o = OutputTable.fetch1()
-    assert_true(np.array_equal(i['data'], o['data']))
+    assert_array_equal(i['data'], o['data'])
 
