@@ -9,6 +9,7 @@ from datetime import datetime
 import numpy as np
 from .errors import DataJointError
 
+
 mxClassID = OrderedDict((
     # see http://www.mathworks.com/help/techdoc/apiref/mxclassid.html
     ('mxUNKNOWN_CLASS', None),
@@ -36,6 +37,8 @@ type_names = list(mxClassID)
 decode_lookup = {
     b'ZL123\0': zlib.decompress
 }
+
+bypass_serialization = False  # runtime setting to bypass blob (en|de)code
 
 
 class BlobReader:
@@ -211,6 +214,10 @@ class BlobReader:
 
 
 def pack(obj, compress=True):
+    if bypass_serialization:
+        assert obj.startswith(tuple(decode_lookup))
+        return obj
+
     blob = b"mYm\0"
     blob += pack_obj(obj)
 
@@ -301,8 +308,12 @@ def pack_dict(obj):
 
 
 def unpack(blob, **kwargs):
+
     if blob is None:
         return None
 
-    return BlobReader(blob, **kwargs).unpack()
+    if bypass_serialization:
+        assert blob.startswith(tuple(decode_lookup))
+        return blob
 
+    return BlobReader(blob, **kwargs).unpack()
