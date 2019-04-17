@@ -114,6 +114,7 @@ class Blob:
                 "\4": self.read_dict,      # a Mapping
                 "\5": self.read_string,    # a UTF8-encoded string
                 "\6": self.read_bytes,     # a ByteString
+                "d": self.read_decimal,    # a decimal
                 "t": self.read_datetime,   # date, time, or datetime
                 "u": self.read_uuid        # UUID
             }[data_structure_code]
@@ -141,7 +142,9 @@ class Blob:
             return self.pack_array(np.array(obj))
         if isinstance(obj, (bool, np.bool)):
             return self.pack_array(np.array(obj))
-        if isinstance(obj, (float, Decimal)):  # decimal is converted to float64 for now
+        if isinstance(obj, Decimal):
+            return self.pack_decimal(obj)
+        if isinstance(obj, float):
             return self.pack_array(np.array(obj, dtype=np.float64))
         if isinstance(obj, int):
             return self.pack_array(np.array(obj, dtype=np.int64))
@@ -218,11 +221,16 @@ class Blob:
     def read_sparse_array(self):
         raise DataJointError('datajoint-python does not yet support sparse arrays. Issue (#590)')
 
+    def read_decimal(self):
+        return Decimal(self.read_string())
+
+    @staticmethod
+    def pack_decimal(d):
+        s = str(d)
+        return b"d" + len_u64(s) + s.encode()
+
     def read_string(self):
         return self.read_binary(self.read_value()).decode()
-
-    def read_decimal(self):
-        raise NotImplementedError
 
     @staticmethod
     def pack_string(s):

@@ -41,6 +41,8 @@ def test_pack():
     x = uuid.uuid4()
     assert_equal(x, unpack(pack(x)), 'UUID did not match')
 
+    x = Decimal("-112122121.000003000")
+    assert_equal(x, unpack(pack(x)), "Decimal did not pack/unpack correctly")
 
     x = [1, datetime.now(), {1: "one", "two": 2}, (1, 2)]
     assert_list_equal(x, unpack(pack(x)), "List did not pack/unpack correctly")
@@ -60,7 +62,7 @@ def test_pack():
     assert_tuple_equal(x, unpack(pack(range(10))), "Iterator did not pack/unpack correctly")
 
     x = Decimal('1.24')
-    assert_true(float(x) == unpack(pack(x)), "Decimal object did not pack/unpack correctly")
+    assert_true(x == unpack(pack(x)), "Decimal object did not pack/unpack correctly")
 
     x = datetime.now()
     assert_true(x == unpack(pack(x)), "Datetime object did not pack/unpack correctly")
