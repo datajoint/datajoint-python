@@ -48,6 +48,10 @@ def len_u64(obj):
     return np.uint64(len(obj)).tobytes()
 
 
+def len_u32(obj):
+    return np.uint32(len(obj)).tobytes()
+
+
 class MatCell(np.ndarray):
     """ a numpy ndarray representing a Matlab cell array """
     pass
@@ -68,15 +72,15 @@ class Blob:
     def set_dj0(self):
         self.protocol = b"dj0\0"  # when using new blob features
             
-    def squeeze(self, array):
+    def squeeze(self, array, convert_to_scalar=True):
         """
-        Simplify the input array - squeeze out all singleton
-        dimensions and also convert a zero dimensional array into array scalar
+        Simplify the input array - squeeze out all singleton dimensions.
+        If convert_to_scalar, then convert zero-dimensional arrays to scalars
         """
         if not self._squeeze:
             return array
         array = array.squeeze()
-        return array if array.ndim else array.item()
+        return array.item() if array.ndim == 0 and convert_to_scalar else array
 
     def unpack(self, blob):
         self._blob = blob
@@ -114,9 +118,10 @@ class Blob:
                 "\4": self.read_dict,      # a Mapping
                 "\5": self.read_string,    # a UTF8-encoded string
                 "\6": self.read_bytes,     # a ByteString
+                "F": self.read_recarray,   # numpy array with fields, including recarrays
                 "d": self.read_decimal,    # a decimal
                 "t": self.read_datetime,   # date, time, or datetime
-                "u": self.read_uuid        # UUID
+                "u": self.read_uuid,       # UUID
             }[data_structure_code]
         except KeyError:
             raise DataJointError('Unknown data structure code "%s"' % data_structure_code)
@@ -131,11 +136,13 @@ class Blob:
             return self.pack_cell(obj)
         if isinstance(obj, MatStruct):
             return self.pack_struct(obj)
-        if isinstance(obj, np.ndarray):
+        if isinstance(obj, np.ndarray) and obj.dtype.fields is None:
             return self.pack_array(obj)
 
         # blob types in the expanded dj0 blob format
         self.set_dj0()
+        if isinstance(obj, np.ndarray) and obj.dtype.fields:
+            return self.pack_recarray(np.array(obj))
         if isinstance(obj, (datetime.datetime, datetime.date, datetime.time)):
             return self.pack_datetime(obj)
         if isinstance(obj, np.number):
@@ -188,18 +195,16 @@ class Blob:
             data = self.read_value(dtype, count=n_elem)
             if is_complex:
                 data = data + 1j * self.read_value(dtype, count=n_elem)
-        return self.squeeze(data.reshape(shape, order='F'))
+        return self.squeeze(data.reshape(shape, order="F"))
 
     def pack_array(self, array):
         """
-        Serialize a np.ndarray or np.number object into bytes.
-        Scalars are encoded with ndim=0.
+        Serialize an np.ndarray into bytes.  Scalars are encoded with ndim=0.
         """
         blob = b"A" + np.uint64(array.ndim).tobytes() + np.array(array.shape, dtype=np.uint64).tobytes()
         is_complex = np.iscomplexobj(array)
         if is_complex:
             array, imaginary = np.real(array), np.imag(array)
-
         type_id = rev_class_id[array.dtype]
         if dtype_list[type_id] is None:
             raise DataJointError("Type %s is ambiguous or unknown" % array.dtype)
@@ -213,10 +218,33 @@ class Blob:
         else:  # numeric arrays
             if array.ndim == 0:  # not supported by original mym
                 self.set_dj0()
-            blob += array.tobytes(order='F')
+            blob += array.tobytes(order="F")
             if is_complex:
-                blob += imaginary.tobytes(order='F')
+                blob += imaginary.tobytes(order="F")
         return blob
+
+    def read_recarray(self):
+        """
+        Serialize an np.ndarray with fields, including recarrays
+        """
+        raise NotImplemented
+        n_fields = self.read_value('uint32')
+        if not n_fields:
+            return np.array(None)  # empty array
+        field_names = [self.read_zero_terminated_string() for _ in range(n_fields)]
+        arrays = [self.read_array() for _ in range(n_fields)]
+        return rec
+
+    def pack_recarray(self, array):
+        """ Serialize a Matlab struct array """
+        raise NotImplemented
+        return (b"F" + np.array((array.ndim,) + array.shape, dtype=np.uint64).tobytes() +  # dimensionality
+                len_u64(array) +  # number of fields
+                b"".join(map(lambda x: x.encode() + b'\0', array)) +  # field names
+                b"".join(len_u64(it) + it for it in (
+                    self.pack_blob(e) for rec in array.flatten(order="F") for e in rec)))  # values
+
+
 
     def read_sparse_array(self):
         raise DataJointError('datajoint-python does not yet support sparse arrays. Issue (#590)')
@@ -286,20 +314,20 @@ class Blob:
         n_dims = self.read_value()
         shape = self.read_value(count=n_dims)
         n_elem = np.prod(shape, dtype=int)
-        n_field = self.read_value('uint32')
-        if not n_field:
+        n_fields = self.read_value('uint32')
+        if not n_fields:
             return np.array(None)  # empty array
-        field_names = [self.read_zero_terminated_string() for _ in range(n_field)]
+        field_names = [self.read_zero_terminated_string() for _ in range(n_fields)]
         raw_data = [
-            tuple(self.read_blob(n_bytes=int(self.read_value('uint64'))) for _ in range(n_field))
+            tuple(self.read_blob(n_bytes=int(self.read_value('uint64'))) for _ in range(n_fields))
             for __ in range(n_elem)]
         data = np.array(raw_data, dtype=list(zip(field_names, repeat(np.object))))
-        return self.squeeze(data.reshape(shape, order='F')).view(MatStruct)
+        return self.squeeze(data.reshape(shape, order="F"), convert_to_scalar=False).view(MatStruct)
 
     def pack_struct(self, array):
         """ Serialize a Matlab struct array """
         return (b"S" + np.array((array.ndim,) + array.shape, dtype=np.uint64).tobytes() +  # dimensionality
-                len_u64(array) +  # number of fields
+                len_u32(array.dtype.names) +  # number of fields
                 b"".join(map(lambda x: x.encode() + b'\0', array)) +  # field names
                 b"".join(len_u64(it) + it for it in (
                     self.pack_blob(e) for rec in array.flatten(order="F") for e in rec)))  # values
@@ -310,7 +338,7 @@ class Blob:
         shape = self.read_value(count=n_dims)
         n_elem = int(np.prod(shape))
         result = [self.read_blob(n_bytes=self.read_value()) for _ in range(n_elem)]
-        return (self.squeeze(np.array(result).reshape(shape, order="F"))).view(MatCell)
+        return (self.squeeze(np.array(result).reshape(shape, order="F"), convert_to_scalar=False)).view(MatCell)
 
     def pack_cell_array(self, array):
         return (b"C" + np.array((array.ndim,) + array.shape, dtype=np.uint64).tobytes() +

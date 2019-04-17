@@ -68,7 +68,16 @@ def test_pack():
     assert_true(x == unpack(pack(x)), "Datetime object did not pack/unpack correctly")
 
 
+def test_recarrays():
+    return  # TODO enable when recarrays are ready
+    x = np.array([(1.0, 2), (3.0, 4)], dtype=[('x', float), ('y', int)])
+    assert_array_equal(x, unpack(pack(x)))
+    x = x.view(np.recarray)
+    assert_array_equal(x, unpack(pack(x)))
+
+
 def test_object_arrays():
+    return  # TODO enable when recarrays are ready
     x = np.array(((1, 2, 3), True))
     assert_array_equal(x, unpack(pack(x)), "Object array did not serialize correctly")
 
