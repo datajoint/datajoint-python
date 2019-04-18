@@ -134,9 +134,14 @@ class Fetch:
             # expand "KEY" or "KEY DESC"
             order_by = list(_flatten_attribute_list(self._expression.primary_key, order_by))
 
-        # as_dict defaults to False for fetch() and to True for fetch('KEY', ...)
+        attrs_as_dict = as_dict and attrs
+        if attrs_as_dict:
+            # absorb KEY into attrs and prepare to return attributes as dict (issue #595)
+            if any(is_key(k) for k in attrs):
+                attrs = list(self._expression.primary_key) + [
+                    a for a in attrs if a not in self._expression.primary_key]
         if as_dict is None:
-            as_dict = bool(attrs)
+            as_dict = bool(attrs)  # default to True for "KEY" and False when fetching entire result
         # format should not be specified with attrs or is_dict=True
         if format is not None and (as_dict or attrs):
             raise DataJointError('Cannot specify output format when as_dict=True or '
@@ -155,8 +160,19 @@ class Fetch:
             limit = 2 * len(self._expression)
 
         get = partial(_get, self._expression.connection, squeeze=squeeze, download_path=download_path)
-        if not attrs:
-            # fetch all attributes as a numpy.record_array or pandas.DataFrame
+        if attrs:  # a list of attributes provided
+            attributes = [a for a in attrs if not is_key(a)]
+            ret = self._expression.proj(*attributes).fetch(
+                offset=offset, limit=limit, order_by=order_by,
+                as_dict=False, squeeze=squeeze, download_path=download_path)
+            if attrs_as_dict:
+                ret = [{k: v for k, v in zip(ret.dtype.names, x) if k in attrs} for x in ret]
+            else:
+                return_values = [
+                    list((to_dicts if as_dict else lambda x: x)(ret[self._expression.primary_key])) if is_key(attribute)
+                    else ret[attribute] for attribute in attrs]
+                ret = return_values[0] if len(attrs) == 1 else return_values
+        else:  # fetch all attributes as a numpy.record_array or pandas.DataFrame
             cur = self._expression.cursor(as_dict=as_dict, limit=limit, offset=offset, order_by=order_by)
             heading = self._expression.heading
             if as_dict:
@@ -168,16 +184,6 @@ class Fetch:
                     ret[name] = list(map(partial(get, heading[name]), ret[name]))
                 if format == "frame":
                     ret = pandas.DataFrame(ret).set_index(heading.primary_key)
-        else:  # if list of attributes provided
-            attributes = [a for a in attrs if not is_key(a)]
-            result = self._expression.proj(*attributes).fetch(
-                offset=offset, limit=limit, order_by=order_by,
-                as_dict=False, squeeze=squeeze, download_path=download_path)
-            return_values = [
-                list((to_dicts if as_dict else lambda x: x)(result[self._expression.primary_key])) if is_key(attribute)
-                else result[attribute] for attribute in attrs]
-            ret = return_values[0] if len(attrs) == 1 else return_values
-
         return ret
 
 
