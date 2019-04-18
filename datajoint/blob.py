@@ -9,8 +9,10 @@ import collections
 from collections import OrderedDict
 from decimal import Decimal
 import datetime
+import uuid
 import numpy as np
 from .errors import DataJointError
+
 
 mxClassID = OrderedDict((
     # see http://www.mathworks.com/help/techdoc/apiref/mxclassid.html
@@ -40,9 +42,15 @@ compression = {
     b'ZL123\0': zlib.decompress
 }
 
+bypass_serialization = False  # runtime setting to bypass blob (en|de)code
+
 
 def len_u64(obj):
     return np.uint64(len(obj)).tobytes()
+
+
+def len_u32(obj):
+    return np.uint32(len(obj)).tobytes()
 
 
 class MatCell(np.ndarray):
@@ -65,15 +73,15 @@ class Blob:
     def set_dj0(self):
         self.protocol = b"dj0\0"  # when using new blob features
             
-    def squeeze(self, array):
+    def squeeze(self, array, convert_to_scalar=True):
         """
-        Simplify the input array - squeeze out all singleton
-        dimensions and also convert a zero dimensional array into array scalar
+        Simplify the input array - squeeze out all singleton dimensions.
+        If convert_to_scalar, then convert zero-dimensional arrays to scalars
         """
         if not self._squeeze:
             return array
         array = array.squeeze()
-        return array if array.ndim else array.item()
+        return array.item() if array.ndim == 0 and convert_to_scalar else array
 
     def unpack(self, blob):
         self._blob = blob
@@ -93,7 +101,7 @@ class Blob:
         if blob_format in ('mYm', 'dj0'):
             return self.read_blob(n_bytes=len(self._blob) - self._pos)
 
-    def read_blob(self, n_bytes):
+    def read_blob(self, n_bytes=None):
         start = self._pos
         data_structure_code = chr(self.read_value('uint8'))
         try:
@@ -111,36 +119,45 @@ class Blob:
                 "\4": self.read_dict,      # a Mapping
                 "\5": self.read_string,    # a UTF8-encoded string
                 "\6": self.read_bytes,     # a ByteString
-                "t": self.read_datetime   # date, time, or datetime
+                "F": self.read_recarray,   # numpy array with fields, including recarrays
+                "d": self.read_decimal,    # a decimal
+                "t": self.read_datetime,   # date, time, or datetime
+                "u": self.read_uuid,       # UUID
             }[data_structure_code]
         except KeyError:
             raise DataJointError('Unknown data structure code "%s"' % data_structure_code)
         v = call()
-        if self._pos - start != n_bytes:
-            raise DataJointError('Blob length did not match')
+        if n_bytes is not None and self._pos - start != n_bytes:
+            raise DataJointError('Blob length check failed! Invalid blob')
         return v
 
     def pack_blob(self, obj):
-        # original mYm-based serialization from
+        # original mYm-based serialization from datajoint-matlab
         if isinstance(obj, MatCell):
-            return self.pack_cell(obj)
+            return self.pack_cell_array(obj)
         if isinstance(obj, MatStruct):
             return self.pack_struct(obj)
-        if isinstance(obj, np.ndarray):
+        if isinstance(obj, np.ndarray) and obj.dtype.fields is None:
             return self.pack_array(obj)
 
         # blob types in the expanded dj0 blob format
         self.set_dj0()
-        if isinstance(obj, (datetime.datetime, datetime.date, datetime.time)):
-            return self.pack_datetime(obj)
+        if isinstance(obj, np.ndarray) and obj.dtype.fields:
+            return self.pack_recarray(np.array(obj))
         if isinstance(obj, np.number):
             return self.pack_array(np.array(obj))
         if isinstance(obj, (bool, np.bool)):
             return self.pack_array(np.array(obj))
-        if isinstance(obj, (float, Decimal)):  # decimal is converted to float64 for now
+        if isinstance(obj, float):
             return self.pack_array(np.array(obj, dtype=np.float64))
         if isinstance(obj, int):
             return self.pack_array(np.array(obj, dtype=np.int64))
+        if isinstance(obj, (datetime.datetime, datetime.date, datetime.time)):
+            return self.pack_datetime(obj)
+        if isinstance(obj, Decimal):
+            return self.pack_decimal(obj)
+        if isinstance(obj, uuid.UUID):
+            return self.pack_uuid(obj)
         if isinstance(obj, collections.Mapping):
             return self.pack_dict(obj)
         if isinstance(obj, str):
@@ -179,18 +196,16 @@ class Blob:
             data = self.read_value(dtype, count=n_elem)
             if is_complex:
                 data = data + 1j * self.read_value(dtype, count=n_elem)
-        return self.squeeze(data.reshape(shape, order='F'))
+        return self.squeeze(data.reshape(shape, order="F"))
 
     def pack_array(self, array):
         """
-        Serialize a np.ndarray or np.number object into bytes.
-        Scalars are encoded with ndim=0.
+        Serialize an np.ndarray into bytes.  Scalars are encoded with ndim=0.
         """
         blob = b"A" + np.uint64(array.ndim).tobytes() + np.array(array.shape, dtype=np.uint64).tobytes()
         is_complex = np.iscomplexobj(array)
         if is_complex:
             array, imaginary = np.real(array), np.imag(array)
-
         type_id = rev_class_id[array.dtype]
         if dtype_list[type_id] is None:
             raise DataJointError("Type %s is ambiguous or unknown" % array.dtype)
@@ -204,19 +219,45 @@ class Blob:
         else:  # numeric arrays
             if array.ndim == 0:  # not supported by original mym
                 self.set_dj0()
-            blob += array.tobytes(order='F')
+            blob += array.tobytes(order="F")
             if is_complex:
-                blob += imaginary.tobytes(order='F')
+                blob += imaginary.tobytes(order="F")
         return blob
+
+    def read_recarray(self):
+        """
+        Serialize an np.ndarray with fields, including recarrays
+        """
+        n_fields = self.read_value('uint32')
+        if not n_fields:
+            return np.array(None)  # empty array
+        field_names = [self.read_zero_terminated_string() for _ in range(n_fields)]
+        arrays = [self.read_blob() for _ in range(n_fields)]
+        rec = np.empty(arrays[0].shape, np.dtype([(f, t.dtype) for f, t in zip(field_names, arrays)]))
+        for f, t in zip(field_names, arrays):
+            rec[f] = t
+        return rec.view(np.recarray)
+
+    def pack_recarray(self, array):
+        """ Serialize a Matlab struct array """
+        return (b"F" + len_u32(array) +  # number of fields
+                '\0'.join(array.dtype.names).encode() + b"\0" +  # field names
+                b"".join(self.pack_recarray(array[f]) if array[f].dtype.fields else self.pack_array(array[f])
+                         for f in array.dtype.names))
 
     def read_sparse_array(self):
         raise DataJointError('datajoint-python does not yet support sparse arrays. Issue (#590)')
 
+    def read_decimal(self):
+        return Decimal(self.read_string())
+
+    @staticmethod
+    def pack_decimal(d):
+        s = str(d)
+        return b"d" + len_u64(s) + s.encode()
+
     def read_string(self):
         return self.read_binary(self.read_value()).decode()
-
-    def read_decimal(self):
-        raise NotImplementedError
 
     @staticmethod
     def pack_string(s):
@@ -272,21 +313,21 @@ class Blob:
         n_dims = self.read_value()
         shape = self.read_value(count=n_dims)
         n_elem = np.prod(shape, dtype=int)
-        n_field = self.read_value('uint32')
-        if not n_field:
+        n_fields = self.read_value('uint32')
+        if not n_fields:
             return np.array(None)  # empty array
-        field_names = [self.read_zero_terminated_string() for _ in range(n_field)]
+        field_names = [self.read_zero_terminated_string() for _ in range(n_fields)]
         raw_data = [
-            tuple(self.read_blob(n_bytes=int(self.read_value('uint64'))) for _ in range(n_field))
+            tuple(self.read_blob(n_bytes=int(self.read_value('uint64'))) for _ in range(n_fields))
             for __ in range(n_elem)]
         data = np.array(raw_data, dtype=list(zip(field_names, repeat(np.object))))
-        return self.squeeze(data.reshape(shape, order='F')).view(MatStruct)
+        return self.squeeze(data.reshape(shape, order="F"), convert_to_scalar=False).view(MatStruct)
 
     def pack_struct(self, array):
         """ Serialize a Matlab struct array """
         return (b"S" + np.array((array.ndim,) + array.shape, dtype=np.uint64).tobytes() +  # dimensionality
-                len_u64(array) +  # number of fields
-                b"".join(map(lambda x: x.encode() + b'\0', array)) +  # field names
+                len_u32(array.dtype.names) +  # number of fields
+                "\0".join(array.dtype.names).encode() + b"\0" +  # field names
                 b"".join(len_u64(it) + it for it in (
                     self.pack_blob(e) for rec in array.flatten(order="F") for e in rec)))  # values
 
@@ -296,11 +337,11 @@ class Blob:
         shape = self.read_value(count=n_dims)
         n_elem = int(np.prod(shape))
         result = [self.read_blob(n_bytes=self.read_value()) for _ in range(n_elem)]
-        return (self.squeeze(np.array(result).reshape(shape, order="F"))).view(MatCell)
+        return (self.squeeze(np.array(result).reshape(shape, order="F"), convert_to_scalar=False)).view(MatCell)
 
     def pack_cell_array(self, array):
         return (b"C" + np.array((array.ndim,) + array.shape, dtype=np.uint64).tobytes() +
-                b"".join(len_u64(it) for it in (self.pack_blob(e) for e in array.flatten(order="F"))))
+                b"".join(len_u64(it) + it for it in (self.pack_blob(e) for e in array.flatten(order="F"))))
 
     def read_datetime(self):
         """ deserialize datetime.date, .time, or .datetime """
@@ -329,6 +370,14 @@ class Blob:
             np.int64(-1 if time is None else
                      ((time.hour*100 + time.minute)*100 + time.second)*1000000 + time.microsecond).tobytes())
 
+    def read_uuid(self):
+        q = self.read_binary(16)
+        return uuid.UUID(bytes=q)
+
+    @staticmethod
+    def pack_uuid(obj):
+        return b"u" + obj.bytes
+
     def read_zero_terminated_string(self):
         target = self._blob.find(b'\0', self._pos)
         data = self._blob[self._pos:target].decode()
@@ -356,9 +405,17 @@ class Blob:
 
 
 def pack(obj, compress=True):
+    if bypass_serialization:
+        # provide a way to move blobs quickly without de/serialization
+        assert isinstance(obj, bytes) and obj.startswith((b'ZL123\0', b'mYm\0', b'dj0\0'))
+        return obj
     return Blob().pack(obj, compress=compress)
 
 
 def unpack(blob, squeeze=False):
+    if bypass_serialization:
+        # provide a way to move blobs quickly without de/serialization
+        assert isinstance(blob, bytes) and blob.startswith((b'ZL123\0', b'mYm\0', b'dj0\0'))
+        return blob
     if blob is not None:
         return Blob(squeeze=squeeze).unpack(blob)

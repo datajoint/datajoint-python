@@ -46,6 +46,7 @@ def _get(connection, attr, data, squeeze, download_path):
     :param download_path: for fetches that download data, e.g. attachments
     :return: unpacked data
     """
+
     if data is None:
         return 
 

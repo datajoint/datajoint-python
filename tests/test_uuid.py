@@ -16,16 +16,45 @@ def test_uuid():
     assert_equal(u, item)
 
 
-@raises(DataJointError)
-def test_invalid_uuid_type():
+def test_string_uuid():
     """test that only UUID objects are accepted when inserting UUID fields"""
-    Basic().insert(dict(item='00000000-0000-0000-0000-000000000000', number=0))
+    u, n = '00000000-0000-0000-0000-000000000000', 24601
+    Basic().insert1(dict(item=u, number=n))
+    k, m = (Basic & {'item': u}).fetch1('KEY', 'number')
+    assert_equal(m, n)
+    assert_true(isinstance(k['item'], uuid.UUID))
+
+
+@raises(DataJointError)
+def test_invalid_uuid_insert1():
+    """test that only UUID objects are accepted when inserting UUID fields"""
+    u, n = 0, 24601
+    Basic().insert1(dict(item=u, number=n))
+
+
+@raises(DataJointError)
+def test_invalid_uuid_insert2():
+    """test that only UUID objects are accepted when inserting UUID fields"""
+    u, n = 'abc', 24601
+    Basic().insert1(dict(item=u, number=n))
+
+
+@raises(DataJointError)
+def test_invalid_uuid_restrict1():
+    """test that only UUID objects are accepted when inserting UUID fields"""
+    u = 0
+    k, m = (Basic & {'item': u}).fetch1('KEY', 'number')
+
+
+@raises(DataJointError)
+def test_invalid_uuid_restrict1():
+    """test that only UUID objects are accepted when inserting UUID fields"""
+    u = 'abc'
+    k, m = (Basic & {'item': u}).fetch1('KEY', 'number')
 
 
 def test_uuid_dependencies():
-    """
-    :return:
-    """
+    """ test the use of UUID in foreign keys """
     for word in ('Neuroscience', 'Knowledge', 'Curiosity', 'Inspiration', 'Science', 'Philosophy', 'Conscience'):
         Topic().add(word)
     Item.populate()

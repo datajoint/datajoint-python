@@ -1,4 +1,5 @@
 import numpy as np
+import uuid
 from decimal import Decimal
 from datetime import datetime
 from datajoint.blob import pack, unpack
@@ -35,13 +36,18 @@ def test_pack():
     assert_list_equal(x, unpack(pack(x)))
 
     x = {'name': 'Anonymous', 'age': 15, 99: datetime.now(), 'range': [110, 190], (11,12): None}
-    y = pack(x)
     assert_dict_equal(x, unpack(pack(x)), "Dict do not match!")
+
+    x = uuid.uuid4()
+    assert_equal(x, unpack(pack(x)), 'UUID did not match')
+
+    x = Decimal("-112122121.000003000")
+    assert_equal(x, unpack(pack(x)), "Decimal did not pack/unpack correctly")
 
     x = [1, datetime.now(), {1: "one", "two": 2}, (1, 2)]
     assert_list_equal(x, unpack(pack(x)), "List did not pack/unpack correctly")
 
-    x = (1, datetime.now(), {1: "one", "two": 2}, (1, 2))
+    x = (1, datetime.now(), {1: "one", "two": 2}, (uuid.uuid4(), 2))
     assert_tuple_equal(x, unpack(pack(x)), "Tuple did not pack/unpack correctly")
 
     x = (1, {datetime.now().date(): "today", "now": datetime.now().date()}, {"yes!": [1, 2, np.array((3, 4))]})
@@ -56,10 +62,17 @@ def test_pack():
     assert_tuple_equal(x, unpack(pack(range(10))), "Iterator did not pack/unpack correctly")
 
     x = Decimal('1.24')
-    assert_true(float(x) == unpack(pack(x)), "Decimal object did not pack/unpack correctly")
+    assert_true(x == unpack(pack(x)), "Decimal object did not pack/unpack correctly")
 
     x = datetime.now()
     assert_true(x == unpack(pack(x)), "Datetime object did not pack/unpack correctly")
+
+
+def test_recarrays():
+    x = np.array([(1.0, 2), (3.0, 4)], dtype=[('x', float), ('y', int)])
+    assert_array_equal(x, unpack(pack(x)))
+    x = x.view(np.recarray)
+    assert_array_equal(x, unpack(pack(x)))
 
 
 def test_object_arrays():
