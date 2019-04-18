@@ -133,7 +133,7 @@ class Blob:
     def pack_blob(self, obj):
         # original mYm-based serialization from datajoint-matlab
         if isinstance(obj, MatCell):
-            return self.pack_cell(obj)
+            return self.pack_cell_array(obj)
         if isinstance(obj, MatStruct):
             return self.pack_struct(obj)
         if isinstance(obj, np.ndarray) and obj.dtype.fields is None:
@@ -326,7 +326,7 @@ class Blob:
         """ Serialize a Matlab struct array """
         return (b"S" + np.array((array.ndim,) + array.shape, dtype=np.uint64).tobytes() +  # dimensionality
                 len_u32(array.dtype.names) +  # number of fields
-                b"".join(map(lambda x: x.encode() + b'\0', array)) +  # field names
+                "\0".join(array.dtype.names).encode() + b"\0" +  # field names
                 b"".join(len_u64(it) + it for it in (
                     self.pack_blob(e) for rec in array.flatten(order="F") for e in rec)))  # values
 
@@ -340,7 +340,7 @@ class Blob:
 
     def pack_cell_array(self, array):
         return (b"C" + np.array((array.ndim,) + array.shape, dtype=np.uint64).tobytes() +
-                b"".join(len_u64(it) for it in (self.pack_blob(e) for e in array.flatten(order="F"))))
+                b"".join(len_u64(it) + it for it in (self.pack_blob(e) for e in array.flatten(order="F"))))
 
     def read_datetime(self):
         """ deserialize datetime.date, .time, or .datetime """
