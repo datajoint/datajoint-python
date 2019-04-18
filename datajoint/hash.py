@@ -1,5 +1,6 @@
 import hashlib
 import uuid
+import os
 
 
 def key_hash(key):
@@ -28,11 +29,11 @@ def uuid_from_file(filepath, filename):
     :return: 16-byte digest SH1
     """
     hashed = hashlib.md5()
-    hashed.update(filename.encode() + '\0')
+    hashed.update(filename.encode() + b'\0')
     with open(os.path.join(filepath, filename), 'br') as f:
         chunk = True
         chunk_size = 1 << 16
         while chunk:
             chunk = f.read(chunk_size)
             hashed.update(chunk)
-
+    return uuid.UUID(bytes=hashed.digest())
