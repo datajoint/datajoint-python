@@ -264,7 +264,11 @@ class Table(QueryExpression):
                     placeholder = '%s'
                     if attr.uuid:
                         if not isinstance(value, uuid.UUID):
-                            raise DataJointError('The value of attribute `%s` must be of type UUID' % attr.name)
+                            try:
+                                value = uuid.UUID(value)
+                            except (AttributeError, ValueError):
+                                raise DataJointError(
+                                    'badly formed UUID value {v} for attribute `{n}`'.format(v=value, n=name)) from None
                         value = value.bytes
                     elif attr.is_blob:
                         value = blob.pack(value)

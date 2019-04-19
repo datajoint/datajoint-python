@@ -1,4 +1,4 @@
-from nose.tools import assert_true, raises, assert_equal, assert_dict_equal, assert_list_equal
+from nose.tools import assert_true, raises, assert_equal, assert_dict_equal, assert_list_equal, assert_set_equal
 from operator import itemgetter
 import itertools
 import numpy as np
@@ -129,6 +129,12 @@ class TestFetch:
 
         for c, c2 in zip(zip(*cur), cur2):
             assert_true(c == tuple(c2.values()), 'Values are not the same')
+
+    def test_attributes_as_dict(self):   # issue #595
+        attrs = ('species', 'date_of_birth')
+        result = self.subject.fetch(*attrs, as_dict=True)
+        assert_true(bool(result) and len(result) == len(self.subject))
+        assert_set_equal(set(result[0]), set(attrs))
 
     def test_fetch1_step1(self):
         key = {'name': 'Edgar', 'language': 'Japanese'}

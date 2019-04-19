@@ -30,6 +30,12 @@ class Folder:
         except minio.error.NoSuchKey:
             return None
 
+    def get_size(self, blob_hash):
+        try: 
+            return self.client.get_object(self.bucket, '/'.join((self.remote_path, blob_hash))).size
+        except minio.error.NoSuchKey:
+            return None
+
     def clean(self, exclude, max_count=None, verbose=False):
         """
         Delete all objects except for those in the exclude

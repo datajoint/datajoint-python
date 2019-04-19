@@ -2,7 +2,7 @@
 functionality for attaching files
 """
 from os import path
-from itertools import count, chain
+from itertools import count
 
 
 def load(local_path):
@@ -14,8 +14,8 @@ def load(local_path):
 
 def save(buffer, save_path='.'):
     """ save attachment from memory buffer into the save_path """
-    p = buffer.find(b'\0')
-    file_path = path.abspath(path.join(save_path, buffer[:p].decode()))
+    rel_path, buffer = buffer.split(b'\0', 1)
+    file_path = path.abspath(path.join(save_path, rel_path.decode()))
 
     if path.isfile(file_path):
         # generate a new filename
@@ -24,5 +24,5 @@ def save(buffer, save_path='.'):
                          if not path.isfile(f))
 
     with open(file_path, mode='wb') as f:
-        f.write(buffer[p+1:])
+        f.write(buffer)
     return file_path

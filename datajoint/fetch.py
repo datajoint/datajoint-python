@@ -3,11 +3,13 @@ from functools import partial
 import warnings
 import pandas
 import re
+import os
 import numpy as np
 import uuid
-from . import blob, attach
+from . import blob, attach, hash
 from .errors import DataJointError
 from .settings import config
+
 if sys.version_info[1] < 6:
     from collections import OrderedDict
 else:
@@ -35,18 +37,46 @@ def to_dicts(recarray):
 
 def _get(connection, attr, data, squeeze, download_path):
     """
-    :param connection:
-    :param attr: an attribute from the heading
+    This function is called for every attribute 
+
+    :param connection: a dj.Connection object
+    :param attr: attribute name from the table's heading
     :param data: literal value fetched from the table
     :param squeeze: if True squeeze blobs
     :param download_path: for fetches that download data, e.g. attachments
     :return: unpacked data
     """
-    if attr.is_external:
-        data = connection.schemas[attr.database].external[attr.store].get(uuid.UUID(bytes=data))
-    return (uuid.UUID(bytes=data) if attr.uuid else
-            blob.unpack(data, squeeze=squeeze) if attr.is_blob else
-            attach.save(data, download_path) if attr.is_attachment else data)
+
+    if data is None:
+        return 
+
+    extern = connection.schemas[attr.database].external[attr.store] if attr.is_external else None
+
+    if attr.is_attachment:
+        # Steps: 
+        # 1. peek the filename from the blob without downloading remote
+        # 2. check if the file already exists at download_path, verify checksum
+        # 3. if exists and checksum passes then return the local filepath
+        # 4. Otherwise, download the remote file and return the new filepath
+        peek, size = extern.peek(uuid.UUID(bytes=data)) if attr.is_external else (data, len(data))
+        assert size is not None 
+        filename = peek.split(b"\0", 1)[0].decode()
+        size -= len(filename) + 1
+        filepath = os.path.join(download_path, filename)
+        if os.path.isfile(filepath) and size == os.path.getsize(filepath):
+            local_checksum = hash.uuid_from_file(download_path, filename)
+            remote_checksum = (uuid.UUID(bytes=data)
+                    if attr.is_external else hash.uuid_from_buffer(data))
+            if local_checksum == remote_checksum: 
+                return filepath  # the existing file is okay
+        # Download remote attachment
+        if attr.is_external:
+            data = extern.get(uuid.UUID(bytes=data))
+        return attach.save(data, download_path)  # download file from remote store
+
+    return uuid.UUID(bytes=data) if attr.uuid else (
+            blob.unpack(extern.get(uuid.UUID(bytes=data)) if attr.is_external else data, squeeze=squeeze) 
+            if attr.is_blob else data)
 
 
 def _flatten_attribute_list(primary_key, attrs):
@@ -104,9 +134,14 @@ class Fetch:
             # expand "KEY" or "KEY DESC"
             order_by = list(_flatten_attribute_list(self._expression.primary_key, order_by))
 
-        # as_dict defaults to False for fetch() and to True for fetch('KEY', ...)
+        attrs_as_dict = as_dict and attrs
+        if attrs_as_dict:
+            # absorb KEY into attrs and prepare to return attributes as dict (issue #595)
+            if any(is_key(k) for k in attrs):
+                attrs = list(self._expression.primary_key) + [
+                    a for a in attrs if a not in self._expression.primary_key]
         if as_dict is None:
-            as_dict = bool(attrs)
+            as_dict = bool(attrs)  # default to True for "KEY" and False when fetching entire result
         # format should not be specified with attrs or is_dict=True
         if format is not None and (as_dict or attrs):
             raise DataJointError('Cannot specify output format when as_dict=True or '
@@ -125,8 +160,19 @@ class Fetch:
             limit = 2 * len(self._expression)
 
         get = partial(_get, self._expression.connection, squeeze=squeeze, download_path=download_path)
-        if not attrs:
-            # fetch all attributes as a numpy.record_array or pandas.DataFrame
+        if attrs:  # a list of attributes provided
+            attributes = [a for a in attrs if not is_key(a)]
+            ret = self._expression.proj(*attributes).fetch(
+                offset=offset, limit=limit, order_by=order_by,
+                as_dict=False, squeeze=squeeze, download_path=download_path)
+            if attrs_as_dict:
+                ret = [{k: v for k, v in zip(ret.dtype.names, x) if k in attrs} for x in ret]
+            else:
+                return_values = [
+                    list((to_dicts if as_dict else lambda x: x)(ret[self._expression.primary_key])) if is_key(attribute)
+                    else ret[attribute] for attribute in attrs]
+                ret = return_values[0] if len(attrs) == 1 else return_values
+        else:  # fetch all attributes as a numpy.record_array or pandas.DataFrame
             cur = self._expression.cursor(as_dict=as_dict, limit=limit, offset=offset, order_by=order_by)
             heading = self._expression.heading
             if as_dict:
@@ -138,16 +184,6 @@ class Fetch:
                     ret[name] = list(map(partial(get, heading[name]), ret[name]))
                 if format == "frame":
                     ret = pandas.DataFrame(ret).set_index(heading.primary_key)
-        else:  # if list of attributes provided
-            attributes = [a for a in attrs if not is_key(a)]
-            result = self._expression.proj(*attributes).fetch(
-                offset=offset, limit=limit, order_by=order_by,
-                as_dict=False, squeeze=squeeze, download_path=download_path)
-            return_values = [
-                list((to_dicts if as_dict else lambda x: x)(result[self._expression.primary_key])) if is_key(attribute)
-                else result[attribute] for attribute in attrs]
-            ret = return_values[0] if len(attrs) == 1 else return_values
-
         return ret
 
 

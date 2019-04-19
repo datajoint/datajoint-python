@@ -1,5 +1,17 @@
 ## Release notes
 
+### 0.12.0 -- April 15, 2019
+
+* Configurable blob storage (#497, #532, #475)
+* Support file attachments: (#480, #532, #475)
+* Expand support of blob serialization (fixed #572, #520, #427, #392, #244)
+* Add support for UUID attributes (#562, #567)
+* Support of ellipsis in `proj`:  `query_expression.proj(.., '-movie')` (#499)
+* `dj.conn()` accepts a `port` keyword argument (#563, #571)
+* `query_expr.fetch("KEY", as_dict=False)` returns results as `np.recarray`(#414, #574)
+* `dj.ERD` is now called `dj.Diagram` (#255, #565)
+* `dj.Diagram` underlines "distinguished" classes (#378, #557)
+
 ### 0.11.1 -- Nov 15, 2018
 * Fix ordering of attributes in proj (#483 and #516)
 * Prohibit direct insert into auto-populated tables (#511)
