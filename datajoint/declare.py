@@ -5,6 +5,7 @@ declare the corresponding mysql tables.
 import re
 import pyparsing as pp
 import logging
+from collections import defaultdict
 from .errors import DataJointError
 
 import sys
@@ -300,8 +301,10 @@ def _make_attribute_alter(new, old, primary_key):
     # parse attribute names
     name_regexp = re.compile(r"^`(?P<name>\w+)`")
     original_regexp = re.compile(r'COMMENT "\{\s*(?P<name>\w+)\s*\}')
-    new_names = OrderedDict((d.group('name'), n.group('name') if n else None)
-                            for d, n in (name_regexp.match(d), original_regexp.search(d) for d in new))
+    matched = ((name_regexp.match(d), original_regexp.search(d)) for d in new)
+    new_names = OrderedDict((
+        (d.group('name'), n.group('name') if n else None))
+                            for d, n in matched)
     old_names = [name_regexp.search(d).group('name') for d in old]
 
     # verify that original names are only used once
@@ -323,20 +326,16 @@ def _make_attribute_alter(new, old, primary_key):
     to_drop = [n for n in old_names if n not in renamed and n not in new_names]
     sql = ['DROP COLUMN `%s`' % n for n in to_drop]
 
-
     # change attributes in order
     prev_ = prev = primary_key[-1]
-    for o, n, (k, v) in zip(old, new, )
-
-
-
+    for o, n, (k, v) in zip(old, new, new_names.items()):
+        print(o, n, k, v)
 
     # verify that original names are unique
     name_count = defaultdict(int)
     for v in new_names.values():
         if v:
             name_count[v] += 1
-
 
     flip_names = {v: k for k, v in new_names.items() if v}
     for n in new_names.values():
@@ -348,9 +347,10 @@ def _make_attribute_alter(new, old, primary_key):
     original_names = {v or k for k, v in new_names.items()}
     sql = ["DROP COLUMN `%s`" % n for n in old_names if n not in original_names]
     # add attributes
-    sql = ['ADD COLUMN %s' % d for ]
+    sql = ['ADD COLUMN %s' % n for n in original_names if n not in old_names]
+    raise NotImplementedError('ALTER is not correct yet')
+    return sql
 
-    # add attributes =
 
 def alter(definition, old_definition, context):
     """
@@ -373,8 +373,7 @@ def alter(definition, old_definition, context):
     if index_sql != index_sql_:
         raise NotImplementedError('table.alter cannot alter indexes (yet)')
     if attribute_sql != attribute_sql_:
-        sql.extend(_make_attribute_alter(attribute_sql, attribute_sql_))
-        raise NotImplementedError('table.alter cannot alter secondary attributes (yet)')
+        sql.extend(_make_attribute_alter(attribute_sql, attribute_sql_, primary_key))
     if table_comment != table_comment_:
         sql.append('COMMENT "%s"' % table_comment)
     return sql, [e for e in external_stores if e not in external_stores_]
