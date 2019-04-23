@@ -119,9 +119,9 @@ class Connection:
         """
         try:
             self.ping()
-            return True
         except:
             return False
+        return True
 
     def query(self, query, args=(), as_dict=False, suppress_warnings=True, reconnect=None):
         """

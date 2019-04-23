@@ -302,9 +302,7 @@ def _make_attribute_alter(new, old, primary_key):
     name_regexp = re.compile(r"^`(?P<name>\w+)`")
     original_regexp = re.compile(r'COMMENT "\{\s*(?P<name>\w+)\s*\}')
     matched = ((name_regexp.match(d), original_regexp.search(d)) for d in new)
-    new_names = OrderedDict((
-        (d.group('name'), n.group('name') if n else None))
-                            for d, n in matched)
+    new_names = OrderedDict((d.group('name'), n and n.group('name')) for d, n in matched)
     old_names = [name_regexp.search(d).group('name') for d in old]
 
     # verify that original names are only used once
@@ -324,31 +322,31 @@ def _make_attribute_alter(new, old, primary_key):
 
     # dropping attributes
     to_drop = [n for n in old_names if n not in renamed and n not in new_names]
-    sql = ['DROP COLUMN `%s`' % n for n in to_drop]
+    sql = ['DROP `%s`' % n for n in to_drop]
+    old_names = [name for name in old_names if name not in to_drop]
 
-    # change attributes in order
-    prev_ = prev = primary_key[-1]
-    for o, n, (k, v) in zip(old, new, new_names.items()):
-        print(o, n, k, v)
+    # add or change attributes in order
+    prev = None
+    for new_def, (new_name, old_name) in zip(new, new_names.items()):
+        if new_name not in primary_key:
+            after = None  # if None, then must include the AFTER clause
+            if prev:
+                try:
+                    idx = old_names.index(old_name or new_name)
+                except ValueError:
+                    after = prev[0]
+                else:
+                    if idx >= 1 and old_names[idx - 1] != (prev[1] or prev[0]):
+                        after = prev[0]
+            if new_def not in old or after:
+                sql.append('{command} {new_def} {after}'.format(
+                    command=("ADD" if (old_name or new_name) not in old_names else
+                             "MODIFY" if not old_name else
+                             "CHANGE `%s`" % old_name),
+                    new_def=new_def,
+                    after="" if after is None else "AFTER `%s`" % after))
+        prev = new_name, old_name
 
-    # verify that original names are unique
-    name_count = defaultdict(int)
-    for v in new_names.values():
-        if v:
-            name_count[v] += 1
-
-    flip_names = {v: k for k, v in new_names.items() if v}
-    for n in new_names.values():
-        if n is not None:
-            if list(new_names.values()).count(n) > 1:
-                raise DataJointError('THe ')
-
-    # remove attributes
-    original_names = {v or k for k, v in new_names.items()}
-    sql = ["DROP COLUMN `%s`" % n for n in old_names if n not in original_names]
-    # add attributes
-    sql = ['ADD COLUMN %s' % n for n in original_names if n not in old_names]
-    raise NotImplementedError('ALTER is not correct yet')
     return sql
 
 
@@ -375,7 +373,7 @@ def alter(definition, old_definition, context):
     if attribute_sql != attribute_sql_:
         sql.extend(_make_attribute_alter(attribute_sql, attribute_sql_, primary_key))
     if table_comment != table_comment_:
-        sql.append('COMMENT "%s"' % table_comment)
+        sql.append('COMMENT="%s"' % table_comment)
     return sql, [e for e in external_stores if e not in external_stores_]
 
 
