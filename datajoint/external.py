@@ -52,6 +52,8 @@ class ExternalTable(Table):
         hash  : uuid
         ---
         size      :bigint unsigned   # size of object in bytes
+        filepath=null :varchar(1024)  # for the filepath datatype
+        unique index (filepath)
         timestamp=CURRENT_TIMESTAMP  :timestamp   # automatic timestamp
         """
 
