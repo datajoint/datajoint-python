@@ -74,7 +74,6 @@ class Connection:
             self.connection_id = self.query('SELECT connection_id()').fetchone()[0]
         else:
             raise DataJointError('Connection failed.')
-        self._conn.autocommit(True)
         self._in_transaction = False
         self.schemas = dict()
         self.dependencies = Dependencies(self)
@@ -99,6 +98,7 @@ class Connection:
                          "STRICT_ALL_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
                 charset=config['connection.charset'],
                 **self.conn_info)
+        self._conn.autocommit(True)
 
     def close(self):
         self._conn.close()
