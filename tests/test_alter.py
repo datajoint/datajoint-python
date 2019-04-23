@@ -24,7 +24,7 @@ class Experiment(dj.Imported):
     data_path=""     :varchar(255)  # file path to recorded data
     extra=null : longblob  # just testing
     -> [nullable] User
-    notes=null         :varchar(2048) # e.g. purpose of experiment
+    subject_notes=null         :varchar(2048) # {notes} e.g. purpose of experiment
     entry_time=CURRENT_TIMESTAMP :timestamp   # automatic timestamp
     """
 
