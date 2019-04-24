@@ -19,9 +19,13 @@ dj.config['stores'] = {
     },
 
     'raw': {
-        'protocol': 'file',
+        'protocol': 's3',
         'location': tempfile.mkdtemp()},
 
+    'repo': {
+        'stage_path': tempfile.mkdtemp(),
+        'protocol': 'file',
+        'location': tempfile.mkdtemp()}
 }
 
 dj.config['cache'] = tempfile.mkdtemp()
@@ -81,4 +85,13 @@ class Attach(dj.Manual):
     ----
     img : attach@raw    #  attachments are stored as specified by dj.config['stores']['raw']
     txt : attach      #  attachments are stored directly in the database
+    """
+
+@schema
+class Filepath(dj.Manual):
+    definition = """
+    # table for file management 
+    fnum : int 
+    ---
+    img : filepath@repo  # managed files 
     """

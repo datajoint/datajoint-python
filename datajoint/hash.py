@@ -24,13 +24,17 @@ def uuid_from_buffer(*buffers):
     return uuid.UUID(bytes=hashed.digest())
 
 
-def uuid_from_file(filepath, filename):
+def uuid_from_file(filepath, filename=None):
     """
-    :return: 16-byte digest SH1
+    :return: 16-byte digest of the file at filepath
+    :filepath: path to the file or folder if filename is provided.
+    :filename: if provided separately, then include in the checksum and join to filepath
     """
     hashed = hashlib.md5()
-    hashed.update(filename.encode() + b'\0')
-    with open(os.path.join(filepath, filename), 'br') as f:
+    if filename is not None:
+        hashed.update(filename.encode() + b'\0')
+        filepath = os.path.join(filepath, filename)
+    with open(filepath, 'br') as f:
         chunk = True
         chunk_size = 1 << 16
         while chunk:

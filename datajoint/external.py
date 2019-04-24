@@ -3,7 +3,7 @@ import itertools
 from collections import Mapping
 from .settings import config
 from .errors import DataJointError
-from .hash import uuid_from_buffer
+from .hash import uuid_from_buffer, uuid_from_file
 from .table import Table
 from .declare import EXTERNAL_TABLE_ROOT
 from . import s3 
@@ -61,9 +61,25 @@ class ExternalTable(Table):
     def table_name(self):
         return '{external_table_root}_{store}'.format(external_table_root=EXTERNAL_TABLE_ROOT, store=self.store)
 
+
+    def upsync(self, source_file):
+        """
+        :param filepath:
+        """
+        source_file = os.path.abspath(source_file)
+        try:
+            stage_path = os.path.abspath(self.spec['stage_path'])
+        except KeyError:
+            raise DataJointError(
+                'datajoint.config["stores"]["{store}"]) must supply the "stage_path" key/value'.format(
+                    store=self.store)) from None
+        if not source_file.startswith(stage_path):
+            raise DataJointError('File "{source}" is not under the stage path "{stage}"'.format(
+                source=source_file, stage=stage_path))
+
     def put(self, blob):
         """
-        put an object in external store
+        put a binary string in external store
         """
         blob_hash = uuid_from_buffer(blob)
         if self.spec['protocol'] == 'file':

@@ -28,11 +28,11 @@ TYPE_PATTERN = {k: re.compile(v, re.I) for k, v in dict(
     FILEPATH=r'filepath@(?P<store>[a-z]\w*)$',
     UUID=r'uuid$').items()}
 
-CUSTOM_TYPES = {'UUID', 'INTERNAL_ATTACH', 'EXTERNAL_ATTACH', 'EXTERNAL_BLOB'}  # types stored in attribute comment
+CUSTOM_TYPES = {'UUID', 'INTERNAL_ATTACH', 'EXTERNAL_ATTACH', 'EXTERNAL_BLOB', 'FILEPATH'}  # types stored in attribute comment
 EXTERNAL_TYPES = {'EXTERNAL_ATTACH', 'EXTERNAL_BLOB', 'FILEPATH'}  # data referenced by a UUID in external tables
 SERIALIZED_TYPES = {'EXTERNAL_ATTACH', 'INTERNAL_ATTACH', 'EXTERNAL_BLOB', 'INTERNAL_BLOB'}  # requires packing data
 
-assert set().union(CUSTOM_TYPES, EXTERNAL_TYPES, SERIALIZED_TYPES) <= set(TYPE_PATTERN)  # for development only
+assert set().union(CUSTOM_TYPES, EXTERNAL_TYPES, SERIALIZED_TYPES) <= set(TYPE_PATTERN)
 
 
 def match_type(datatype):
