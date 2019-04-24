@@ -39,4 +39,3 @@ class TestUnprivileged:
             """
 
         Try().insert1((1, 1.5))
-

@@ -178,6 +178,29 @@ class TestDeclare:
             """
 
     @staticmethod
+    def test_int_datatype():
+
+        @schema
+        class Owner(dj.Manual):
+            definition = """
+            ownerid : int
+            ---
+            car_count : integer
+            """
+
+    @staticmethod
+    @raises(dj.DataJointError)
+    def test_unsupported_int_datatype():
+
+        @schema
+        class Driver(dj.Manual):
+            definition = """
+            driverid : tinyint
+            ---
+            car_count : tinyinteger
+            """
+
+    @staticmethod
     @raises(dj.DataJointError)
     def test_long_table_name():
         """
