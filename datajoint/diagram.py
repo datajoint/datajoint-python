@@ -183,7 +183,8 @@ else:
                         return _unite(lst[:-1] + [el, lst[-1]])
                 return lst + [el]
 
-            return _unite(list(nx.algorithms.dag.topological_sort(self.subgraph(self.nodes_to_show))))
+            return _unite(list(nx.algorithms.dag.topological_sort(
+                nx.DiGraph(self).subgraph(self.nodes_to_show))))
 
         def __add__(self, arg):
             """
