@@ -22,11 +22,7 @@ dj.config['stores'] = {
         'location': tempfile.mkdtemp(),
         'subfolding': (1, 1)},
 
-    'share': {
-        'protocol': 's3',
-        **S3_CONN_INFO,
-        'location': 'dj/store',
-        'subfolding': (2, 4)}
+    'share': dict(S3_CONN_INFO, protocol='s3', location='dj/store', subfolding=(2, 4))
 }
 
 dj.config['cache'] = tempfile.mkdtemp()
