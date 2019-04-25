@@ -22,6 +22,13 @@ dj.config['stores'] = {
         'protocol': 'file',
         'location': tempfile.mkdtemp()},
 
+    'share': {
+        'protocol': 's3',
+        'access_key': CONN_INFO['user'],
+        'secret_key': CONN_INFO['password'],
+        'endpoint': CONN_INFO['host'] + ':9000',
+        'location': 'dj/store',
+        'bucket': 'datajoint-test'}
 }
 
 dj.config['cache'] = tempfile.mkdtemp()
@@ -63,7 +70,7 @@ class Image(dj.Computed):
     -> Seed
     -> Dimension
     ----
-    img : blob@raw     #  objects are stored as specified by dj.config['stores'][raw']
+    img : blob@share     #  objects are stored as specified by dj.config['stores']['share']
     neg : blob@local   # objects are stored as specified by dj.config['stores']['local']
     """
 
