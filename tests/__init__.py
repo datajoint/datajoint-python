@@ -22,6 +22,12 @@ CONN_INFO = dict(
     user=environ.get('DJ_TEST_USER', 'datajoint'),
     password=environ.get('DJ_TEST_PASSWORD', 'datajoint'))
 
+S3_CONN_INFO = dict(
+    host=environ.get('S3_HOST', 'localhost'),
+    access_key=environ.get('S3_ACCESS_KEY', 'datajoint'),
+    secret_key=environ.get('S3_SECRET_KEY', 'datajoint'),
+    bucket=environ.get('S3_BUCKET', 'datajoint-test'))
+
 # Prefix for all databases used during testing
 PREFIX = environ.get('DJ_TEST_DB_PREFIX', 'djtest')
 
