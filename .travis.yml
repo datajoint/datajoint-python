@@ -1,16 +1,7 @@
 sudo: required
 language: python
 env:
-  - DJ_TEST_HOST="127.0.0.1"
-  - DJ_TEST_USER="datajoint"
-  - DJ_TEST_PASSWORD="datajoint"
-  - DJ_HOST="127.0.0.1"
-  - DJ_USER="datajoint"
-  - DJ_PASS="datajoint"
-  - S3_ENDPOINT="127.0.0.1:9000"
-  - S3_ACCESS_KEY="datajoint"
-  - S3_SECRET_KEY="datajoint"
-  - S3_BUCKET="datajoint-test"
+  - DJ_TEST_HOST="127.0.0.1" DJ_TEST_USER="datajoint" DJ_TEST_PASSWORD="datajoint" DJ_HOST="127.0.0.1" DJ_USER="datajoint" DJ_PASS="datajoint" S3_ENDPOINT="127.0.0.1:9000" S3_ACCESS_KEY="datajoint" S3_SECRET_KEY="datajoint" S3_BUCKET="datajoint-test"
 python:
   - "3.4"
   - "3.5"
