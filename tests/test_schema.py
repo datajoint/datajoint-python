@@ -107,6 +107,4 @@ def test_overlapping_name():
 
 
 def test_schema_save():
-    schema_code1 = schema.schema.save()
-    schema_code2 = schema_empty.schema.save()
-    assert_equal(schema_code1, schema_code2)
+    assert_equal(schema_empty.schema.code, schema.schema.code)

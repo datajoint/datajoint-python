@@ -5,7 +5,7 @@ a schema for testing external attributes
 import tempfile
 import datajoint as dj
 
-from . import PREFIX, CONN_INFO
+from . import PREFIX, CONN_INFO, S3_CONN_INFO
 import numpy as np
 
 schema = dj.schema(PREFIX + '_extern', connection=dj.conn(**CONN_INFO))
@@ -24,11 +24,8 @@ dj.config['stores'] = {
 
     'share': {
         'protocol': 's3',
-        'access_key': CONN_INFO['user'],
-        'secret_key': CONN_INFO['password'],
-        'endpoint': CONN_INFO['host'] + ':9000',
+        **S3_CONN_INFO,
         'location': 'dj/store',
-        'bucket': 'datajoint-test',
         'subfolding': (2, 4)}
 }
 
