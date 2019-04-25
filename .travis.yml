@@ -17,10 +17,10 @@ services:
 before_install:
   - sudo apt-get -qq update
   - docker pull minio/minio
-  - docker run -d -p 9000:9000 -e "MINIO_ACCESS_KEY=$DJ_USER" -e "MINIO_SECRET_KEY=$DJ_PASS" minio/minio server /data
+  - docker run -d -p 9000:9000 -e "MINIO_ACCESS_KEY=$DJ_TEST_USER" -e "MINIO_SECRET_KEY=$DJ_TEST_PASSWORD" minio/minio server /data
   - sleep 120
   - docker pull minio/mc
-  - docker run --network="host" --entrypoint=/bin/sh minio/mc -c "mc config host add dj-s3 http://$DJ_HOST:9000 $DJ_USER $DJ_PASS;mc mb datajoint-test;mc policy download datajoint-test"
+  - docker run --network="host" --entrypoint=/bin/sh minio/mc -c "mc config host add dj-s3 http://$DJ_TEST_HOST:9000 $DJ_TEST_USER $DJ_TEST_PASSWORD;mc mb datajoint-test;mc policy download datajoint-test"
   - sudo apt-get install -y libblas-dev liblapack-dev libatlas-dev gfortran
   - sudo apt-get install -y graphviz graphviz-dev pkg-config
   - mysql -e "create user 'datajoint'@'%' identified by 'datajoint'; GRANT ALL PRIVILEGES ON \`djtest\_%\`.* TO 'datajoint'@'%';" -uroot
