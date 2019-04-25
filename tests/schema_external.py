@@ -12,11 +12,15 @@ schema = dj.schema(PREFIX + '_extern', connection=dj.conn(**CONN_INFO))
 
 
 dj.config['stores'] = {
+
+    'raw': {
+        'protocol': 'file',
+        'location': tempfile.mkdtemp()},
+
     'local': {
         'protocol': 'file',
         'location': tempfile.mkdtemp(),
-        'subfolding': (1, 1)
-    },
+        'subfolding': (1, 1)},
 
     'share': {
         'protocol': 's3',
@@ -25,8 +29,7 @@ dj.config['stores'] = {
         'endpoint': CONN_INFO['host'] + ':9000',
         'location': 'dj/store',
         'bucket': 'datajoint-test',
-        'subfolding': (2, 4)
-    }
+        'subfolding': (2, 4)}
 }
 
 dj.config['cache'] = tempfile.mkdtemp()
