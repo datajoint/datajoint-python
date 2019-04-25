@@ -1,5 +1,5 @@
 from nose.tools import assert_true, assert_false, assert_equal, assert_list_equal, raises
-from . import CONN_INFO
+from . import S3_CONN_INFO
 # from .schema import *
 # import datajoint as dj
 
@@ -25,12 +25,10 @@ class TestS3:
             )
 
         # Initialize minioClient with an endpoint and access/secret keys.
-        minioClient = Minio(CONN_INFO['host'] + ':9000',
-                            access_key=CONN_INFO['user'],
-                            secret_key=CONN_INFO['password'],
+        minioClient = Minio(S3_CONN_INFO['host'] + ':9000',
+                            access_key=S3_CONN_INFO['access_key'],
+                            secret_key=S3_CONN_INFO['secret_key'],
                             secure=False,
                             http_client=httpClient)
 
         buckets = minioClient.list_buckets()
-        for bucket in buckets:
-            print(bucket.name, bucket.creation_date)
