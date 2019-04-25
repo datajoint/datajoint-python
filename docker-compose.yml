@@ -1,4 +1,4 @@
-version: '3'
+version: '2.1'
 services:
   datajoint:
     build: .
@@ -10,11 +10,31 @@ services:
       - .:/src
     links:
       - db
+      - minio
     ports:
       - "8888:8888"
   db:
     image: datajoint/mysql
     environment:
       - MYSQL_ROOT_PASSWORD=simple
-
-
+    ports:
+      - "3306:3306"
+  minio:
+    environment:
+      - "MINIO_ACCESS_KEY=datajoint"
+      - "MINIO_SECRET_KEY=datajoint"
+    image: minio/minio
+    ports:
+      - "9000:9000"
+    command: server /data
+  createbuckets:
+    environment:
+      - "MINIO_ACCESS_KEY=datajoint"
+      - "MINIO_SECRET_KEY=datajoint"
+      - "MINIO_BUCKET=datajoint-test"
+    image: minio/mc
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: /bin/sh
+    command: -c "mc config host add dj-s3 http://minio:9000 $$MINIO_ACCESS_KEY $$MINIO_SECRET_KEY;mc mb $$MINIO_BUCKET;mc policy download $$MINIO_BUCKET;exit 0;"
