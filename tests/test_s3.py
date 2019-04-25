@@ -25,7 +25,7 @@ class TestS3:
             )
 
         # Initialize minioClient with an endpoint and access/secret keys.
-        minioClient = Minio(S3_CONN_INFO['host'] + ':9000',
+        minioClient = Minio(S3_CONN_INFO['endpoint'],
                             access_key=S3_CONN_INFO['access_key'],
                             secret_key=S3_CONN_INFO['secret_key'],
                             secure=False,

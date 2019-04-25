@@ -7,12 +7,12 @@ services:
       - DJ_USER=root
       - DJ_PASS=simple
       - DJ_TEST_HOST=db
-      - DJ_TEST_USER="datajoint"
-      - DJ_TEST_PASSWORD="datajoint"
-      - S3_HOST=minio
-      - S3_ACCESS_KEY="datajoint"
-      - S3_SECRET_KEY="datajoint"
-      - S3_BUCKET="datajoint-test"
+      - DJ_TEST_USER=datajoint
+      - DJ_TEST_PASSWORD=datajoint
+      - S3_ENDPOINT=minio:9000
+      - S3_ACCESS_KEY=datajoint
+      - S3_SECRET_KEY=datajoint
+      - S3_BUCKET=datajoint-test
     volumes:
       - .:/src
     links:
@@ -28,20 +28,22 @@ services:
       - "3306:3306"
   minio:
     environment:
-      - "MINIO_ACCESS_KEY=datajoint"
-      - "MINIO_SECRET_KEY=datajoint"
+      - MINIO_ACCESS_KEY=datajoint
+      - MINIO_SECRET_KEY=datajoint
     image: minio/minio
     ports:
       - "9000:9000"
     command: server /data
   createbuckets:
     environment:
-      - "S3_ACCESS_KEY=datajoint"
-      - "S3_SECRET_KEY=datajoint"
-      - "S3_BUCKET=datajoint-test"
+      - S3_ACCESS_KEY=datajoint
+      - S3_SECRET_KEY=datajoint
+      - S3_BUCKET=datajoint-test
     image: minio/mc
     depends_on:
       minio:
         condition: service_healthy
+    links:
+      - minio
     entrypoint: /bin/sh
     command: -c "mc config host add dj-s3 http://minio:9000 $$S3_ACCESS_KEY $$S3_SECRET_KEY;mc mb $$S3_BUCKET;mc policy download $$S3_BUCKET;exit 0;"

@@ -23,7 +23,7 @@ CONN_INFO = dict(
     password=environ.get('DJ_TEST_PASSWORD', 'datajoint'))
 
 S3_CONN_INFO = dict(
-    host=environ.get('S3_HOST', 'localhost'),
+    endpoint=environ.get('S3_ENDPOINT', 'localhost:9000'),
     access_key=environ.get('S3_ACCESS_KEY', 'datajoint'),
     secret_key=environ.get('S3_SECRET_KEY', 'datajoint'),
     bucket=environ.get('S3_BUCKET', 'datajoint-test'))
