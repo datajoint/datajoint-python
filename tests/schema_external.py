@@ -18,17 +18,15 @@ dj.config['stores'] = {
         'subfolding': (1, 1)
     },
 
-    'raw': {
-        'protocol': 'file',
-        'location': tempfile.mkdtemp()},
-
     'share': {
         'protocol': 's3',
         'access_key': CONN_INFO['user'],
         'secret_key': CONN_INFO['password'],
         'endpoint': CONN_INFO['host'] + ':9000',
         'location': 'dj/store',
-        'bucket': 'datajoint-test'}
+        'bucket': 'datajoint-test',
+        'subfolding': (2, 4)
+    }
 }
 
 dj.config['cache'] = tempfile.mkdtemp()
@@ -86,6 +84,6 @@ class Attach(dj.Manual):
     # table for storing attachments
     attach : int
     ----
-    img : attach@raw    #  attachments are stored as specified by dj.config['stores']['raw']
+    img : attach@share    #  attachments are stored as specified by dj.config['stores']['raw']
     txt : attach      #  attachments are stored directly in the database
     """

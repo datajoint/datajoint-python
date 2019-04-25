@@ -1,4 +1,4 @@
-from nose.tools import assert_false, assert_true, raises
+from nose.tools import assert_false, assert_true, raises, assert_equal
 import datajoint as dj
 from inspect import getmembers
 from . import schema
@@ -105,3 +105,8 @@ def test_overlapping_name():
 
     test_schema.drop()
 
+
+def test_schema_save():
+    schema_code1 = schema.schema.save()
+    schema_code2 = schema_empty.schema.save()
+    assert_equal(schema_code1, schema_code2)
