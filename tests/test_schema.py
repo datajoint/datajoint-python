@@ -105,3 +105,6 @@ def test_overlapping_name():
 
     test_schema.drop()
 
+
+def test_schema_save():
+    assert_true(schema_empty.schema.code == schema.schema.code)

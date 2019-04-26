@@ -231,6 +231,10 @@ class Schema:
             self._jobs = JobTable(self.connection, self.database)
         return self._jobs
 
+    @property
+    def code(self):
+        return self.save()
+
     def save(self, python_filename=None):
         """
         Generate the code for a module that recreates the schema.

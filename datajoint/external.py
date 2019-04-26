@@ -166,10 +166,10 @@ class ExternalTable(Table):
         This operation is safe to perform at any time but may reduce performance of queries while in progress.
         """
         self.connection.query(
-            "DELETE FROM `{db}`.`{tab}` WHERE ".format(tab=self.table_name, db=self.database) +
-            " AND ".join(
-                'hash NOT IN (SELECT {column_name} FROM {referencing_table})'.format(**ref)
-                for ref in self.references) or "TRUE")
+            "DELETE FROM `{db}`.`{tab}` WHERE ".format(tab=self.table_name, db=self.database) + (
+                    " AND ".join(
+                        'hash NOT IN (SELECT {column_name} FROM {referencing_table})'.format(**ref)
+                        for ref in self.references) or "TRUE"))
         print('Deleted %d items' % self.connection.query("SELECT ROW_COUNT()").fetchone()[0])
 
     def clean(self, verbose=True):
