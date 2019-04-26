@@ -107,4 +107,5 @@ def test_overlapping_name():
 
 
 def test_schema_save():
-    assert_true(schema_empty.schema.code == schema.schema.code)
+    assert_true("class Experiment(dj.Imported)" in schema.schema.code)
+    assert_true("class Experiment(dj.Imported)" in schema_empty.schema.code)
