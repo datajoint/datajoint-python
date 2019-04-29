@@ -9,7 +9,7 @@ from .declare import EXTERNAL_TABLE_ROOT
 from . import s3 
 from .utils import safe_write
 
-CACHE_SUBFOLDING = (2, 2)   # path subfolding. (2, 2) means  "0123456789abcd" will be saved as "01/23/0123456789abcd"
+CACHE_SUBFOLDING = (2, 2)   # (2, 2) means  "0123456789abcd" will be saved as "01/23/0123456789abcd"
 
 
 def subfold(name, folds):
@@ -205,7 +205,7 @@ class ExternalMapping(Mapping):
         Triggers the creation of an external table.
         Should only be used when ready to save or read from external storage.
         :param store: the name of the store
-        :raturn: the ExternalTable object for the store
+        :return: the ExternalTable object for the store
         """
         if store not in self._tables:
             self._tables[store] = ExternalTable(

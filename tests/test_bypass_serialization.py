@@ -1,9 +1,9 @@
+import datajoint as dj
+import numpy as np
 
 from . import PREFIX, CONN_INFO
 from numpy.testing import assert_array_equal
 
-import datajoint as dj
-import numpy as np
 
 schema_in = dj.schema(PREFIX + '_test_bypass_serialization_in',
                       connection=dj.conn(**CONN_INFO))
@@ -13,6 +13,7 @@ schema_out = dj.schema(PREFIX + '_test_blob_bypass_serialization_out',
 
 
 test_blob = np.array([1, 2, 3])
+
 
 @schema_in
 class InputTable(dj.Lookup):
@@ -35,10 +36,9 @@ class OutputTable(dj.Manual):
 
 def test_bypass_serialization():
     dj.blob.bypass_serialization = True
-    OutputTable.insert(InputTable.fetch(as_dict=True))
+    contents = Input.fetch(as_dict=True)
+    assert_true(isinstance(contents[0]['data'], bytes))
+    Output.insert(contents)
     dj.blob.bypass_serialization = False
-
-    i = InputTable.fetch1()
-    o = OutputTable.fetch1()
-    assert_array_equal(i['data'], o['data'])
+    assert_array_equal(Input.fetch1('data'), Output.fetch1('data'))
 

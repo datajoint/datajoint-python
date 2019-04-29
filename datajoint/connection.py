@@ -152,7 +152,7 @@ class Connection:
                 self.connect()
                 if self._in_transaction:
                     self.cancel_transaction()
-                    raise DataJointError("Connection was lost during a transaction.")
+                    raise DataJointError("Connection was lost during a transaction.") from None
                 else:
                     logger.debug("Re-executing SQL")
                     cur = self.query(query, args=args, as_dict=as_dict, suppress_warnings=suppress_warnings, reconnect=False)

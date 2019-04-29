@@ -247,7 +247,7 @@ def create_virtual_module(module_name, schema_name, create_schema=False, create_
     return module
 
 
-def get_schema_names(connection=None):
+def list_schemas(connection=None):
     """
     :param connection: a dj.Connection object
     :return: list of all accessible schemas on the server
