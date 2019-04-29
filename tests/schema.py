@@ -102,7 +102,6 @@ class Language(dj.Lookup):
     # additional comments are ignored
     name        : varchar(40) # name of the developer
     language    : varchar(40) # language
-    ---
     """
     contents = [
         ('Fabian', 'English'),
