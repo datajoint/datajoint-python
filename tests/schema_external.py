@@ -5,18 +5,13 @@ a schema for testing external attributes
 import tempfile
 import datajoint as dj
 
-from . import PREFIX, CONN_INFO
+from . import PREFIX, CONN_INFO, S3_CONN_INFO
 import numpy as np
 
 schema = dj.schema(PREFIX + '_extern', connection=dj.conn(**CONN_INFO))
 
 
 dj.config['stores'] = {
-    'local': {
-        'protocol': 'file',
-        'location': tempfile.mkdtemp(),
-        'subfolding': (1, 1)
-    },
 
     'raw': {
         'protocol': 's3',
@@ -25,7 +20,14 @@ dj.config['stores'] = {
     'repo': {
         'stage_path': tempfile.mkdtemp(),
         'protocol': 'file',
-        'location': tempfile.mkdtemp()}
+        'location': tempfile.mkdtemp()},
+
+    'local': {
+        'protocol': 'file',
+        'location': tempfile.mkdtemp(),
+        'subfolding': (1, 1)},
+
+    'share': dict(S3_CONN_INFO, protocol='s3', location='dj/store', subfolding=(2, 4))
 }
 
 dj.config['cache'] = tempfile.mkdtemp()
@@ -67,7 +69,7 @@ class Image(dj.Computed):
     -> Seed
     -> Dimension
     ----
-    img : blob@raw     #  objects are stored as specified by dj.config['stores'][raw']
+    img : blob@share     #  objects are stored as specified by dj.config['stores']['share']
     neg : blob@local   # objects are stored as specified by dj.config['stores']['local']
     """
 
@@ -83,7 +85,7 @@ class Attach(dj.Manual):
     # table for storing attachments
     attach : int
     ----
-    img : attach@raw    #  attachments are stored as specified by dj.config['stores']['raw']
+    img : attach@share    #  attachments are stored as specified by dj.config['stores']['raw']
     txt : attach      #  attachments are stored directly in the database
     """
 

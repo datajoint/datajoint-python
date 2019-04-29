@@ -37,7 +37,7 @@ class Folder:
             return None
 
     def get_size(self, blob_hash):
-        try: 
+        try:
             return self.client.stat_object(self.bucket, '/'.join((self.remote_path, blob_hash))).size
         except minio.error.NoSuchKey:
             return None

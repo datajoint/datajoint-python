@@ -14,7 +14,7 @@ CONSTANT_LITERALS = {'CURRENT_TIMESTAMP'}  # SQL literals to be used without quo
 EXTERNAL_TABLE_ROOT = '~external'
 
 TYPE_PATTERN = {k: re.compile(v, re.I) for k, v in dict(
-    INTEGER=r'(tiny|small|medium|big|)int(\s*\(.+\))?(\s+unsigned)?(\s+auto_increment)?$',
+    INTEGER=r'((tiny|small|medium|big|)int|integer)(\s*\(.+\))?(\s+unsigned)?(\s+auto_increment)?$',
     DECIMAL=r'(decimal|numeric)(\s*\(.+\))?(\s+unsigned)?$',
     FLOAT=r'(double|float|real)(\s*\(.+\))?(\s+unsigned)?$',
     STRING=r'(var)?char\s*\(.+\)$',

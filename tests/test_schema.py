@@ -105,3 +105,7 @@ def test_overlapping_name():
 
     test_schema.drop()
 
+
+def test_schema_save():
+    assert_true("class Experiment(dj.Imported)" in schema.schema.code)
+    assert_true("class Experiment(dj.Imported)" in schema_empty.schema.code)
