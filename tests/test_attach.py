@@ -35,6 +35,7 @@ def test_attach_attributes():
     test saving files in attachments
     """
     # create a mock file
+    table = Attach()
     source_folder = tempfile.mkdtemp()
     for i in range(2):
         attach1 = os.path.join(source_folder, 'attach1.img')
@@ -45,10 +46,10 @@ def test_attach_attributes():
         data2 = os.urandom(200)
         with open(attach2, 'wb') as f:
             f.write(data2)
-        Attach().insert1(dict(attach=i, img=attach1, txt=attach2))
+        table.insert1(dict(attach=i, img=attach1, txt=attach2))
 
     download_folder = tempfile.mkdtemp()
-    keys, path1, path2 = Attach.fetch("KEY", 'img', 'txt', download_path=download_folder, order_by="KEY")
+    keys, path1, path2 = table.fetch("KEY", 'img', 'txt', download_path=download_folder, order_by="KEY")
 
     # verify that different attachment are renamed if their filenames collide
     assert_not_equal(path1[0], path2[0])
