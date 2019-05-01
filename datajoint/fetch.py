@@ -64,7 +64,7 @@ def _get(connection, attr, data, squeeze, download_path):
         size -= len(filename) + 1
         filepath = os.path.join(download_path, filename)
         if os.path.isfile(filepath) and size == os.path.getsize(filepath):
-            local_checksum = hash.uuid_from_file(download_path, filename)
+            local_checksum = hash.uuid_from_file(filepath, filename + '\0')
             remote_checksum = (uuid.UUID(bytes=data)
                     if attr.is_external else hash.uuid_from_buffer(data))
             if local_checksum == remote_checksum: 

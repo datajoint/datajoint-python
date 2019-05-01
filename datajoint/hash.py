@@ -1,6 +1,5 @@
 import hashlib
 import uuid
-import os
 
 
 def key_hash(key):
@@ -24,16 +23,13 @@ def uuid_from_buffer(*buffers):
     return uuid.UUID(bytes=hashed.digest())
 
 
-def uuid_from_file(filepath, filename=None):
+def uuid_from_file(filepath, init_string=""):
     """
     :return: 16-byte digest of the file at filepath
     :filepath: path to the file or folder if filename is provided.
-    :filename: if provided separately, then include in the checksum and join to filepath
+    :init_string: string to initialize the checksum
     """
-    hashed = hashlib.md5()
-    if filename is not None:
-        hashed.update(filename.encode() + b'\0')
-        filepath = os.path.join(filepath, filename)
+    hashed = hashlib.md5(init_string.encode())
     with open(filepath, 'br') as f:
         chunk = True
         chunk_size = 1 << 16

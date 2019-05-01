@@ -14,11 +14,11 @@ schema = dj.schema(PREFIX + '_extern', connection=dj.conn(**CONN_INFO))
 dj.config['stores'] = {
 
     'raw': {
-        'protocol': 's3',
+        'protocol': 'file',
         'location': tempfile.mkdtemp()},
 
     'repo': {
-        'stage_path': tempfile.mkdtemp(),
+        'stage': tempfile.mkdtemp(),
         'protocol': 'file',
         'location': tempfile.mkdtemp()},
 

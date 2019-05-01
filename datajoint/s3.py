@@ -11,34 +11,40 @@ class Folder:
     """
     A Folder instance manipulates a flat folder of objects within an S3-compatible object store
     """
-    def __init__(self, endpoint, bucket, access_key, secret_key, location, database, **_):
+    def __init__(self, endpoint, bucket, access_key, secret_key, location, **_):
         self.client = minio.Minio(endpoint, access_key=access_key, secret_key=secret_key, secure=False)
         self.bucket = bucket
-        self.remote_path = '/'.join((location.lstrip('/'), database))
-
-    def put(self, blob_hash, blob):
-        try:
-            self.client.put_object(self.bucket, '/'.join((self.remote_path, blob_hash)), BytesIO(blob), len(blob))
-        except minio.error.NoSuchBucket:
+        if not self.client.bucket_exists(bucket):
             warnings.warn('Creating bucket "%s"' % self.bucket)
             self.client.make_bucket(self.bucket)
-            self.put(blob_hash, blob)
+        self.remote_path = location.lstrip('/')
 
-    def get(self, blob_hash):
+    def put(self, relative_name, buffer, **meta):
+        return self.client.put_object(
+            self.bucket, '/'.join((self.remote_path, relative_name)), BytesIO(buffer),
+            length=len(buffer), metadata=meta or None)
+
+    def fput(self, relative_name, local_file, **meta):
+        with open(local_file, 'rb') as f:
+            return self.client.fput_object(
+                self.bucket, '/'.join((self.remote_path, relative_name)), f, metadata=meta or None)
+
+    def get(self, relative_name):
+        return self.client.get_object(self.bucket, '/'.join((self.remote_path, relative_name))).data
+
+    def fget(self, relative_name):
+        return self.client.get_object(self.bucket, '/'.join((self.remote_path, relative_name))).data
+
+    def partial_get(self, relative_name, offset, size):
         try:
-            return self.client.get_object(self.bucket, '/'.join((self.remote_path, blob_hash))).data
+            return self.client.get_partial_object(
+                self.bucket, '/'.join((self.remote_path, relative_name)), offset, size).data
         except minio.error.NoSuchKey:
             return None
 
-    def partial_get(self, blob_hash, offset, size):
+    def get_size(self, relative_name):
         try:
-            return self.client.get_partial_object(self.bucket, '/'.join((self.remote_path, blob_hash)), offset, size).data
-        except minio.error.NoSuchKey:
-            return None
-
-    def get_size(self, blob_hash):
-        try:
-            return self.client.stat_object(self.bucket, '/'.join((self.remote_path, blob_hash))).size
+            return self.client.stat_object(self.bucket, '/'.join((self.remote_path, relative_name))).size
         except minio.error.NoSuchKey:
             return None
 

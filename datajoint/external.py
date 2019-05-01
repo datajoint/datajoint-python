@@ -7,7 +7,7 @@ from .hash import uuid_from_buffer, uuid_from_file
 from .table import Table
 from .declare import EXTERNAL_TABLE_ROOT
 from . import s3 
-from .utils import safe_write
+from .utils import safe_write, safe_copy
 
 CACHE_SUBFOLDING = (2, 2)   # (2, 2) means  "0123456789abcd" will be saved as "01/23/0123456789abcd"
 
@@ -61,46 +61,49 @@ class ExternalTable(Table):
     def table_name(self):
         return '{external_table_root}_{store}'.format(external_table_root=EXTERNAL_TABLE_ROOT, store=self.store)
 
-
-    def upsync(self, source_file):
-        """
-        :param filepath:
-        """
-        source_file = os.path.abspath(source_file)
-        try:
-            stage_path = os.path.abspath(self.spec['stage_path'])
-        except KeyError:
-            raise DataJointError(
-                'datajoint.config["stores"]["{store}"]) must supply the "stage_path" key/value'.format(
-                    store=self.store)) from None
-        if not source_file.startswith(stage_path):
-            raise DataJointError('File "{source}" is not under the stage path "{stage}"'.format(
-                source=source_file, stage=stage_path))
-
     def put(self, blob):
         """
         put a binary string in external store
         """
-        blob_hash = uuid_from_buffer(blob)
-        if self.spec['protocol'] == 'file':
-            folder = os.path.join(self.spec['location'], self.database, *subfold(blob_hash.hex, self.spec['subfolding']))
-            full_path = os.path.join(folder, blob_hash.hex)
-            if not os.path.isfile(full_path):
-                try:
-                    safe_write(full_path, blob)
-                except FileNotFoundError:
-                    os.makedirs(folder)
-                    safe_write(full_path, blob)
-        elif self.spec['protocol'] == 's3':
-            folder = '/'.join(subfold(blob_hash.hex, self.spec['subfolding']))
-            s3.Folder(database=self.database, **self.spec).put('/'.join((folder, blob_hash.hex)), blob)
-
+        uuid = uuid_from_buffer(blob)
+        if self.spec['protocol'] == 's3':
+            s3.Folder(**self.spec).put(
+                '/'.join((self.database, '/'.join(subfold(uuid.hex, self.spec['subfolding'])), uuid.hex)), blob)
+        else:
+            remote_file = os.path.join(os.path.join(
+                self.spec['location'], self.database, *subfold(uuid.hex, self.spec['subfolding'])), uuid.hex)
+            safe_write(remote_file, blob)
         # insert tracking info
         self.connection.query(
-            "INSERT INTO {tab} (hash, size) VALUES (%s, {size}) "
+            "INSERT INTO {tab} (hash, size) VALUES (%s, {size}) ON DUPLICATE KEY "
+            "UPDATE timestamp=CURRENT_TIMESTAMP".format(
+                tab=self.full_table_name, size=len(blob)), args=(uuid.bytes,))
+        return uuid
+
+    def fput(self, local_file):
+        """
+        put a file identified by the path of local_file relative to spec['stage']
+        """
+        local_file = os.path.abspath(local_file)
+        local_folder = os.path.dirname(local_file)
+        stage_folder = os.path.abspath(self.spec['stage'])
+        if not local_folder.startswith(stage_folder):
+            raise DataJointError('The path {path} is not in stage {stage}'.format(
+                path=local_folder, stage=stage_folder))
+        relative_file = local_file[len(stage_folder):]
+        uuid = uuid_from_file(local_file, relative_file)
+        if self.spec['protocol'] == 's3':
+            s3.Folder(**self.spec).fput(relative_file, local_file, uuid=str(uuid))
+        else:
+            remote_file = os.path.join(self.spec['location'], relative_file)
+            safe_copy(local_file, remote_file)
+        # insert tracking info
+        self.connection.query(
+            "INSERT INTO {tab} (hash, size, filepath) VALUES (%s, {size}, '{filepath}') "
             "ON DUPLICATE KEY UPDATE timestamp=CURRENT_TIMESTAMP".format(
-                tab=self.full_table_name, size=len(blob)), args=(blob_hash.bytes,))
-        return blob_hash
+                tab=self.full_table_name, size=os.path.getsize(local_file),
+                filepath=relative_file), args=(uuid.bytes,))
+        return uuid
 
     def peek(self, blob_hash, bytes_to_peek=120):
         return self.get(blob_hash, size=bytes_to_peek)
@@ -143,17 +146,18 @@ class ExternalTable(Table):
                     if size > 0:
                         blob_size = os.path.getsize(full_path)
             elif self.spec['protocol'] == 's3':
+                full_path = '/'.join(
+                    (self.database,) + subfold(blob_hash.hex, self.spec['subfolding']) + (blob_hash.hex,))
                 try:
-                    full_path = '/'.join(('/'.join(subfold(blob_hash.hex, self.spec['subfolding'])), blob_hash.hex))
-                    s3_folder = s3.Folder(database=self.database, **self.spec)
+                    _s3 = s3.Folder(**self.spec)
                 except TypeError:
                     raise DataJointError('External store {store} configuration is incomplete.'.format(store=self.store))
                 else:
                     if size < 0:
-                        blob = s3_folder.get(full_path) 
+                        blob = _s3.get(full_path) 
                     else:
-                        blob = s3_folder.partial_get(full_path, 0, size)
-                        blob_size = s3_folder.get_size(full_path)
+                        blob = _s3.partial_get(full_path, 0, size)
+                        blob_size = _s3.get_size(full_path)
             else:
                 raise DataJointError('Unknown external storage protocol "%s"' % self.spec['protocol'])
 

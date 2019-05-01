@@ -2,6 +2,7 @@
 
 import re
 import os
+import shutil
 from .errors import DataJointError
 
 
@@ -16,7 +17,6 @@ class ClassProperty:
 def user_choice(prompt, choices=("yes", "no"), default=None):
     """
     Prompts the user for confirmation.  The default value, if any, is capitalized.
-
     :param prompt: Information to display to the user.
     :param choices: an iterable of possible choices.
     :param default: default choice
@@ -34,10 +34,8 @@ def user_choice(prompt, choices=("yes", "no"), default=None):
 def to_camel_case(s):
     """
     Convert names with under score (_) separation into camel case names.
-
     :param s: string in under_score notation
     :returns: string in CamelCase notation
-
     Example:
     >>> to_camel_case("table_name") # yields "TableName"
     """
@@ -51,14 +49,10 @@ def to_camel_case(s):
 def from_camel_case(s):
     """
     Convert names in camel case into underscore (_) separated names
-
     :param s: string in CamelCase notation
     :returns: string in under_score notation
-
     Example:
-
     >>> from_camel_case("TableName") # yields "table_name"
-
     """
 
     def convert(match):
@@ -75,9 +69,21 @@ def safe_write(filename, blob):
     A two-step write.
     :param filename: full path
     :param blob: binary data
-    :return: None
     """
-    temp_file = filename + '.saving'
-    with open(temp_file, 'bw') as f:
-        f.write(blob)
-    os.rename(temp_file, filename)
+    if not os.path.isfile(filename):
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        temp_file = filename + '.saving'
+        with open(temp_file, 'bw') as f:
+            f.write(blob)
+        os.rename(temp_file, filename)
+
+
+def safe_copy(src, dest):
+    """
+    Copy the contents of src file into dest file as a two-step process. Skip if dest exists already
+    """
+    if not os.path.isfile(dest):
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        temp_file = dest + '.copying'
+        shutil.copyfile(src, temp_file)
+        os.rename(temp_file, dest)
