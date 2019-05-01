@@ -9,7 +9,7 @@ from .schema_external import Filepath
 def test_filepath():
     """ test file management """
     store = 'repo'
-    stage_path = dj.config['stores'][store]['stage_path']
+    stage_path = dj.config['stores'][store]['stage']
 
     # create a mock file
     relpath = 'one/two/three'
