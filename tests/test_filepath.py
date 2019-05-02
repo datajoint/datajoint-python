@@ -19,4 +19,12 @@ def test_filepath():
     with open(managed_file, 'wb') as f:
         f.write(data)
 
+    # put the same file twice
     ext = Filepath().external[store]
+    uuid1 = ext.fput(managed_file)
+    uuid2 = ext.fput(managed_file)
+    os.remove(managed_file)
+    relative_path = (ext & {'hash': uuid1}).fetch1('filepath')
+
+    assert_equal(uuid1, uuid2)
+    assert_equal(os.path.dirname(relative_path), relpath)

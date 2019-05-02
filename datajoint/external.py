@@ -90,7 +90,7 @@ class ExternalTable(Table):
         if not local_folder.startswith(stage_folder):
             raise DataJointError('The path {path} is not in stage {stage}'.format(
                 path=local_folder, stage=stage_folder))
-        relative_file = local_file[len(stage_folder):]
+        relative_file = local_file[len(stage_folder)+1:]
         uuid = uuid_from_file(local_file, relative_file)
         if self.spec['protocol'] == 's3':
             s3.Folder(**self.spec).fput(relative_file, local_file, uuid=str(uuid))
