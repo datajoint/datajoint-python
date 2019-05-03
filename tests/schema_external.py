@@ -13,21 +13,31 @@ schema = dj.schema(PREFIX + '_extern', connection=dj.conn(**CONN_INFO))
 
 dj.config['stores'] = {
 
-    'raw': {
-        'protocol': 'file',
-        'location': tempfile.mkdtemp()},
+    'raw': dict(
+        protocol='file',
+        location=tempfile.mkdtemp()),
 
-    'repo': {
-        'stage': tempfile.mkdtemp(),
-        'protocol': 'file',
-        'location': tempfile.mkdtemp()},
+    'repo': dict(
+        stage=tempfile.mkdtemp(),
+        protocol='file',
+        location=tempfile.mkdtemp()),
 
-    'local': {
-        'protocol': 'file',
-        'location': tempfile.mkdtemp(),
-        'subfolding': (1, 1)},
+    'repo_s3': dict(
+        S3_CONN_INFO,
+        protocol='s3',
+        location='dj-repo',
+        stage=tempfile.mkdtemp()),
 
-    'share': dict(S3_CONN_INFO, protocol='s3', location='dj/store', subfolding=(2, 4))
+    'local': dict(
+        protocol='file',
+        location=tempfile.mkdtemp(),
+        subfolding=(1, 1)),
+
+    'share': dict(
+        S3_CONN_INFO,
+        protocol='s3',
+        location='dj/store',
+        subfolding=(2, 4))
 }
 
 dj.config['cache'] = tempfile.mkdtemp()

@@ -21,7 +21,7 @@ def uuid_from_stream(stream, init_string=""):
     """
     hashed = hashlib.md5(init_string.encode())
     chunk = True
-    chunk_size = 1 << 16
+    chunk_size = 1 << 14
     while chunk:
         chunk = stream.read(chunk_size)
         hashed.update(chunk)

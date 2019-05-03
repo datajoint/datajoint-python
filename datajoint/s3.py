@@ -5,6 +5,7 @@ from io import BytesIO
 import minio   # https://docs.minio.io/docs/python-client-api-reference
 import warnings
 import itertools
+import uuid
 
 
 class Folder:
@@ -19,21 +20,28 @@ class Folder:
             self.client.make_bucket(self.bucket)
         self.remote_path = location.lstrip('/')
 
-    def put(self, relative_name, buffer, **meta):
+    def put(self, relative_name, buffer):
         return self.client.put_object(
-            self.bucket, '/'.join((self.remote_path, relative_name)), BytesIO(buffer),
-            length=len(buffer), metadata=meta or None)
+            self.bucket, '/'.join((self.remote_path, relative_name)), BytesIO(buffer), length=len(buffer))
 
     def fput(self, relative_name, local_file, **meta):
-        with open(local_file, 'rb') as f:
-            return self.client.fput_object(
-                self.bucket, '/'.join((self.remote_path, relative_name)), f, metadata=meta or None)
+        return self.client.fput_object(
+            self.bucket, '/'.join((self.remote_path, relative_name)), local_file, metadata=meta or None)
 
     def get(self, relative_name):
         return self.client.get_object(self.bucket, '/'.join((self.remote_path, relative_name))).data
 
-    def fget(self, relative_name):
-        return self.client.get_object(self.bucket, '/'.join((self.remote_path, relative_name))).data
+
+    def fget(self, relative_name, local_filepath):
+        """get file from object name to local filepath"""
+        name = '/'.join((self.remote_path, relative_name))
+        stat = self.client.stat_object(self.bucket, name)
+        meta = {k.lower().lstrip('x-amz-meta'): v for k, v in stat.metadata.items()}
+        data = self.client.get_object(self.bucket, name)
+        with open(local_filepath, 'wb') as f:
+            for d in data.stream(1 << 16):
+                f.write(d)
+        return uuid.UUID(meta['uuid'])
 
     def partial_get(self, relative_name, offset, size):
         try:
