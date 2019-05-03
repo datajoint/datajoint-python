@@ -10,6 +10,7 @@ from . import s3
 from .utils import safe_write, safe_copy
 
 CACHE_SUBFOLDING = (2, 2)   # (2, 2) means  "0123456789abcd" will be saved as "01/23/0123456789abcd"
+MAX_FILEPATH_LENGTH = 255
 
 
 def subfold(name, folds):
@@ -52,10 +53,10 @@ class ExternalTable(Table):
         hash  : uuid
         ---
         size      :bigint unsigned   # size of object in bytes
-        filepath=null :varchar(1024)  # for the filepath datatype
+        filepath=null : varchar({max_filepath_length})  # for the filepath datatype
         unique index (filepath)
         timestamp=CURRENT_TIMESTAMP  :timestamp   # automatic timestamp
-        """
+        """.format(max_filepath_length=MAX_FILEPATH_LENGTH)
 
     @property
     def table_name(self):
