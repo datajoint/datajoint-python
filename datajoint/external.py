@@ -149,18 +149,12 @@ class ExternalTable(Table):
             elif self.spec['protocol'] == 's3':
                 full_path = '/'.join(
                     (self.database,) + subfold(blob_hash.hex, self.spec['subfolding']) + (blob_hash.hex,))
-                try:
-                    _s3 = s3.Folder(**self.spec)
-                except TypeError:
-                    raise DataJointError('External store {store} configuration is incomplete.'.format(store=self.store))
+                _s3 = s3.Folder(**self.spec)
+                if size < 0:
+                    blob = _s3.get(full_path)
                 else:
-                    if size < 0:
-                        blob = _s3.get(full_path) 
-                    else:
-                        blob = _s3.partial_get(full_path, 0, size)
-                        blob_size = _s3.get_size(full_path)
-            else:
-                raise DataJointError('Unknown external storage protocol "%s"' % self.spec['protocol'])
+                    blob = _s3.partial_get(full_path, 0, size)
+                    blob_size = _s3.get_size(full_path)
 
             if cache_folder and size < 0:
                 if not os.path.exists(cache_path):

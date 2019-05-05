@@ -1,5 +1,4 @@
 from nose.tools import assert_true, assert_equal
-import tempfile
 import datajoint as dj
 import os
 
@@ -13,7 +12,7 @@ def test_filepath(store="repo"):
 
     # create a mock file
     relpath = 'one/two/three'
-    os.makedirs(os.path.join(stage_path, relpath))
+    os.makedirs(os.path.join(stage_path, relpath), exist_ok=True)
     managed_file = os.path.join(stage_path, relpath, filename)
     data = os.urandom(3000)
     with open(managed_file, 'wb') as f:
@@ -41,3 +40,17 @@ def test_filepath(store="repo"):
 def test_filepath_s3():
     """ test file management with s3 """
     test_filepath(store="repo_s3")
+
+
+def test_filepath_class():
+
+    stage_path = dj.config['stores']["repo"]['stage']
+    filename = 'attachment.dat'
+
+    # create a mock file
+    relpath = 'one/two/three'
+    os.makedirs(os.path.join(stage_path, relpath), exist_ok=True)
+    managed_file = os.path.join(stage_path, relpath, filename)
+    data = os.urandom(3000)
+    with open(managed_file, 'wb') as f:
+        f.write(data)

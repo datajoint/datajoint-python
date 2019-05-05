@@ -31,7 +31,6 @@ class Folder:
     def get(self, relative_name):
         return self.client.get_object(self.bucket, '/'.join((self.remote_path, relative_name))).data
 
-
     def fget(self, relative_name, local_filepath):
         """get file from object name to local filepath"""
         name = '/'.join((self.remote_path, relative_name))
