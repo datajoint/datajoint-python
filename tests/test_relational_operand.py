@@ -196,12 +196,6 @@ class TestRelational:
                      len(x.heading.attributes))
 
     @staticmethod
-    @raises(dj.DataJointError)
-    def test_invalid_aggregate():
-        """cannot aggregate a less detailed object"""
-        rel = B().aggregate(A())
-
-    @staticmethod
     def test_aggregate():
         x = B().aggregate(B.C())
         assert_equal(len(x), len(B() & B.C()))
