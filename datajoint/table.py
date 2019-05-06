@@ -240,6 +240,8 @@ class Table(QueryExpression):
                     elif attr.is_attachment:
                         value = attach.load(value)
                         value = self.external[attr.store].put(value).bytes if attr.is_external else value
+                    elif attr.is_filepath:
+                        value = self.external[attr.store].fput(value).bytes
                     elif attr.numeric:
                         value = str(int(value) if isinstance(value, bool) else value)
                 return name, placeholder, value

@@ -163,22 +163,24 @@ class ExternalTable(Table):
 
         return blob if size < 0 else (blob, blob_size)
 
-    def fget(self, relative_filepath):
+    def fget(self, filepath_hash):
         """
         sync a file from external store to the local stage
-        :param relative_filepath:
-        :return: hash (UUID) of the contents of the downloaded file
+        :param filepath_hash: The hash (UUID) of the relative_path
+        :return: hash (UUID) of the contents of the downloaded file or Nones
         """
-        if relative_filepath is not None:
+        if filepath_hash is not None:
+            relative_filepath, contents_hash = (self & {hash: filepath_hash}).fetch1('filepath', 'contents_hash')
             local_filepath = os.path.join(os.path.abspath(self.spec['stage']), relative_filepath)
-            if self.spec['protocol'] == 's3':
-                contents_hash = s3.Folder(**self.spec).fget(relative_filepath, local_filepath)
-            else:
-                remote_file = os.path.join(self.spec['location'], relative_filepath)
-                safe_copy(remote_file, local_filepath)
-                contents_hash = uuid_from_file(local_filepath)
-            assert isinstance(contents_hash, uuid.UUID)
-            return contents_hash
+            file_exists = os.path.isfile(local_filepath) and uuid_from_file(local_filepath) == contents_hash
+            if not file_exists:
+                if self.spec['protocol'] == 's3':
+                    contents_hash = s3.Folder(**self.spec).fget(relative_filepath, local_filepath)
+                else:
+                    remote_file = os.path.join(self.spec['location'], relative_filepath)
+                    safe_copy(remote_file, local_filepath)
+            assert isinstance(contents_hash, uuid.UUID) 
+            return local_filepath, contents_hash
 
     @property
     def references(self):

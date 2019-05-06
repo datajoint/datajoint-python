@@ -50,6 +50,10 @@ def _get(connection, attr, data, squeeze, download_path):
         return
     extern = connection.schemas[attr.database].external[attr.store] if attr.is_external else None
 
+    if attr.is_filepath:
+        ret, *_ = extern.fget(data)
+        return ret
+
     if attr.is_attachment:
         # Steps: 
         # 1. peek the filename from the blob without downloading remote
@@ -95,7 +99,7 @@ def _flatten_attribute_list(primary_key, attrs):
 class Fetch:
     """
     A fetch object that handles retrieving elements from the table expression.
-    :param expression: the table expression to fetch from.
+    :param expression: the QueryExpression object to fetch from.
     """
 
     def __init__(self, expression):
