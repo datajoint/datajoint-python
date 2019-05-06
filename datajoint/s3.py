@@ -40,7 +40,7 @@ class Folder:
         with open(local_filepath, 'wb') as f:
             for d in data.stream(1 << 16):
                 f.write(d)
-        return uuid.UUID(meta['uuid'])
+        return uuid.UUID(meta['contents_hash'])
 
     def partial_get(self, relative_name, offset, size):
         try:

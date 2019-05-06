@@ -28,7 +28,7 @@ def uuid_from_stream(stream, init_string=""):
     return uuid.UUID(bytes=hashed.digest())
 
 
-def uuid_from_buffer(buffer, init_string=""):
+def uuid_from_buffer(buffer=b"", init_string=""):
     return uuid_from_stream(io.BytesIO(buffer), init_string=init_string)
 
 

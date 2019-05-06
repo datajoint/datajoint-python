@@ -22,7 +22,7 @@ def test_filepath(store="repo"):
     ext = Filepath().external[store]
     uuid1 = ext.fput(managed_file)
     uuid2 = ext.fput(managed_file)
-    os.remove(managed_file)
+    os.remove(managed_file)   # remove to ensure downloading
     relative_filepath = (ext & {'hash': uuid1}).fetch1('filepath')
 
     assert_equal(uuid1, uuid2)
@@ -33,7 +33,8 @@ def test_filepath(store="repo"):
     with open(managed_file, 'rb') as f:
         synced_data = f.read()
 
-    assert_equal(uuid1, uuid_received)
+    contents_hash = dj.hash.uuid_from_file(managed_file)
+    assert_equal(contents_hash, uuid_received)
     assert_equal(data, synced_data)
 
 

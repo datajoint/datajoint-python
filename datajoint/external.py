@@ -1,5 +1,6 @@
 import os
 import itertools
+import uuid
 from collections import Mapping
 from .settings import config
 from .errors import DataJointError
@@ -49,12 +50,11 @@ class ExternalTable(Table):
     def definition(self):
         return """
         # external storage tracking
-        hash  : uuid
+        hash  : uuid    #  hash of contents (blob), of filename + contents (attach), or relative filepath (filepath)
         ---
-        size      :bigint unsigned   # size of object in bytes
+        size      :bigint unsigned     # size of object in bytes
         filepath=null : varchar(1000)  # relative filepath used in the filepath datatype
-        filepath_hash=null : uuid 
-        unique index (filepath_hash)
+        contents_hash=null : uuid      # used for the filepath datatype 
         timestamp=CURRENT_TIMESTAMP  :timestamp   # automatic timestamp
         """
 
@@ -85,26 +85,25 @@ class ExternalTable(Table):
         """
         put a file identified by the path of local_filepath relative to spec['stage']
         """
-        local_filepath = os.path.abspath(local_filepath)
         local_folder = os.path.dirname(local_filepath)
-        stage_folder = os.path.abspath(self.spec['stage'])
+        stage_folder = os.path.join(os.path.abspath(self.spec['stage']), '')
         if not local_folder.startswith(stage_folder):
             raise DataJointError('The path {path} is not in stage {stage}'.format(
                 path=local_folder, stage=stage_folder))
-        relative_filepath = local_filepath[len(stage_folder)+1:]
-        uuid = uuid_from_file(local_filepath, relative_filepath)
-        filepath_uuid = uuid_from_buffer(b"", relative_filepath)
+        relative_filepath = local_filepath[len(stage_folder):]
+        uuid = uuid_from_buffer(init_string=relative_filepath)
+        contents_hash = uuid_from_file(local_filepath)
         if self.spec['protocol'] == 's3':
-            s3.Folder(**self.spec).fput(relative_filepath, local_filepath, uuid=str(uuid))
+            s3.Folder(**self.spec).fput(relative_filepath, local_filepath, contents_hash=str(contents_hash))
         else:
             remote_file = os.path.join(self.spec['location'], relative_filepath)
             safe_copy(local_filepath, remote_file)
         # insert tracking info
         self.connection.query(
-            "INSERT INTO {tab} (hash, size, filepath, filepath_hash) VALUES (%s, {size}, '{filepath}', %s) "
+            "INSERT INTO {tab} (hash, size, filepath, contents_hash) VALUES (%s, {size}, '{filepath}', %s) "
             "ON DUPLICATE KEY UPDATE timestamp=CURRENT_TIMESTAMP".format(
                 tab=self.full_table_name, size=os.path.getsize(local_filepath),
-                filepath=relative_filepath), args=(uuid.bytes, filepath_uuid.bytes))
+                filepath=relative_filepath), args=(uuid.bytes, contents_hash.bytes))
         return uuid
 
     def peek(self, blob_hash, bytes_to_peek=120):
@@ -167,16 +166,19 @@ class ExternalTable(Table):
     def fget(self, relative_filepath):
         """
         sync a file from external store to the local stage
+        :param relative_filepath:
+        :return: hash (UUID) of the contents of the downloaded file
         """
         if relative_filepath is not None:
             local_filepath = os.path.join(os.path.abspath(self.spec['stage']), relative_filepath)
             if self.spec['protocol'] == 's3':
-                uuid = s3.Folder(**self.spec).fget(relative_filepath, local_filepath)
+                contents_hash = s3.Folder(**self.spec).fget(relative_filepath, local_filepath)
             else:
                 remote_file = os.path.join(self.spec['location'], relative_filepath)
                 safe_copy(remote_file, local_filepath)
-                uuid = uuid_from_file(local_filepath, relative_filepath)
-            return uuid
+                contents_hash = uuid_from_file(local_filepath)
+            assert isinstance(contents_hash, uuid.UUID)
+            return contents_hash
 
     @property
     def references(self):
