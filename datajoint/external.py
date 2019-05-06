@@ -10,7 +10,6 @@ from . import s3
 from .utils import safe_write, safe_copy
 
 CACHE_SUBFOLDING = (2, 2)   # (2, 2) means  "0123456789abcd" will be saved as "01/23/0123456789abcd"
-MAX_FILEPATH_LENGTH = 255
 
 
 def subfold(name, folds):
@@ -53,10 +52,11 @@ class ExternalTable(Table):
         hash  : uuid
         ---
         size      :bigint unsigned   # size of object in bytes
-        filepath=null : varchar({max_filepath_length})  # for the filepath datatype
-        unique index (filepath)
+        filepath=null : varchar(1000)  # relative filepath used in the filepath datatype
+        filepath_hash=null : uuid 
+        unique index (filepath_hash)
         timestamp=CURRENT_TIMESTAMP  :timestamp   # automatic timestamp
-        """.format(max_filepath_length=MAX_FILEPATH_LENGTH)
+        """
 
     @property
     def table_name(self):
@@ -93,6 +93,7 @@ class ExternalTable(Table):
                 path=local_folder, stage=stage_folder))
         relative_filepath = local_filepath[len(stage_folder)+1:]
         uuid = uuid_from_file(local_filepath, relative_filepath)
+        filepath_uuid = uuid_from_buffer(b"", relative_filepath)
         if self.spec['protocol'] == 's3':
             s3.Folder(**self.spec).fput(relative_filepath, local_filepath, uuid=str(uuid))
         else:
@@ -100,10 +101,10 @@ class ExternalTable(Table):
             safe_copy(local_filepath, remote_file)
         # insert tracking info
         self.connection.query(
-            "INSERT INTO {tab} (hash, size, filepath) VALUES (%s, {size}, '{filepath}') "
+            "INSERT INTO {tab} (hash, size, filepath, filepath_hash) VALUES (%s, {size}, '{filepath}', %s) "
             "ON DUPLICATE KEY UPDATE timestamp=CURRENT_TIMESTAMP".format(
                 tab=self.full_table_name, size=os.path.getsize(local_filepath),
-                filepath=relative_filepath), args=(uuid.bytes,))
+                filepath=relative_filepath), args=(uuid.bytes, filepath_uuid.bytes))
         return uuid
 
     def peek(self, blob_hash, bytes_to_peek=120):
@@ -235,6 +236,7 @@ class ExternalTable(Table):
         elif self.spec['protocol'] == 's3':
             try:
                 failed_deletes = s3.Folder(database=self.database, **self.spec).clean(in_use, verbose=verbose)
+                # failed_deletes are quietly ignored for now
             except TypeError:
                 raise DataJointError('External store {store} configuration is incomplete.'.format(store=self.store))
 

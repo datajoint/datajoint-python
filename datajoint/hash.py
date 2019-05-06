@@ -15,8 +15,8 @@ def key_hash(key):
 
 def uuid_from_stream(stream, init_string=""):
     """
-    :return: 16-byte digest of the file at filepath
-    :stream: path to the file or folder if filename is provided.
+    :return: 16-byte digest of stream data
+    :stream: stream object or open file handle
     :init_string: string to initialize the checksum
     """
     hashed = hashlib.md5(init_string.encode())
