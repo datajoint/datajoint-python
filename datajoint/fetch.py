@@ -172,12 +172,6 @@ class Fetch:
                     list((to_dicts if as_dict else lambda x: x)(ret[self._expression.primary_key])) if is_key(attribute)
                     else ret[attribute] for attribute in attrs]
                 ret = return_values[0] if len(attrs) == 1 else return_values
-                
-                if isinstance(ret,(np.ndarray)) and len(ret) > 0:
-                    main_type = type(ret[0])
-                    print(main_type)
-                    if all(isinstance(i, main_type) for i in ret) and not isinstance(ret[0],str):
-                        ret = ret.astype(main_type)
         else:  # fetch all attributes as a numpy.record_array or pandas.DataFrame
             cur = self._expression.cursor(as_dict=as_dict, limit=limit, offset=offset, order_by=order_by)
             heading = self._expression.heading
@@ -185,14 +179,15 @@ class Fetch:
                 ret = [OrderedDict((name, get(heading[name], d[name])) for name in heading.names) for d in cur]
             else:
                 ret = list(cur.fetchall())
-                ret = np.array(ret, dtype=heading.as_dtype)
+                if not ret:
+                    tp = heading.as_dtype
+                else:
+                    tp = np.dtype([(d[0], type(v))
+                            if d[1] == '|O' and not isinstance(v, (str, bytes))
+                            else d for v, d in zip(ret[0], heading.as_dtype.descr)])
+                ret = np.array(ret, dtype=tp)
                 for name in heading:
                     ret[name] = list(map(partial(get, heading[name]), ret[name]))
-
-                    if isinstance(ret[name],(np.ndarray)) and len(ret[name]) > 0:
-                        main_type = type(ret[name][0])
-                        if all(isinstance(i, main_type) for i in ret[name]) and not isinstance(ret[name][0],str):
-                            ret = ret.astype( [ (name, main_type) if d[0] == name else d for d in ret.dtype.descr ] )
                 if format == "frame":
                     ret = pandas.DataFrame(ret).set_index(heading.primary_key)
         return ret
