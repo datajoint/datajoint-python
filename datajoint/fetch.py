@@ -51,8 +51,7 @@ def _get(connection, attr, data, squeeze, download_path):
     extern = connection.schemas[attr.database].external[attr.store] if attr.is_external else None
 
     if attr.is_filepath:
-        ret, *_ = extern.fget(data)
-        return ret
+        return extern.fget(uuid.UUID(bytes=data))[0]
 
     if attr.is_attachment:
         # Steps: 
@@ -67,8 +66,7 @@ def _get(connection, attr, data, squeeze, download_path):
         filepath = os.path.join(download_path, filename)
         if os.path.isfile(filepath) and size == os.path.getsize(filepath):
             local_checksum = hash.uuid_from_file(filepath, filename + '\0')
-            remote_checksum = (uuid.UUID(bytes=data)
-                    if attr.is_external else hash.uuid_from_buffer(data))
+            remote_checksum = uuid.UUID(bytes=data) if attr.is_external else hash.uuid_from_buffer(data)
             if local_checksum == remote_checksum: 
                 return filepath  # the existing file is okay
         # Download remote attachment
@@ -159,7 +157,7 @@ class Fetch:
         if limit is None and offset is not None:
             warnings.warn('Offset set, but no limit. Setting limit to a large number. '
                           'Consider setting a limit explicitly.')
-            limit = 2 * len(self._expression)
+            limit = 8000000000  # just a very large number to effect no limit
 
         get = partial(_get, self._expression.connection, squeeze=squeeze, download_path=download_path)
         if attrs:  # a list of attributes provided
@@ -233,5 +231,4 @@ class Fetch1:
                 next(to_dicts(result[self._expression.primary_key])) if is_key(attribute) else result[attribute][0]
                 for attribute in attrs)
             ret = return_values[0] if len(attrs) == 1 else return_values
-
         return ret

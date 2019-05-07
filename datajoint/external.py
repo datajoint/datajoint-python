@@ -83,7 +83,9 @@ class ExternalTable(Table):
 
     def fput(self, local_filepath):
         """
-        put a file identified by the path of local_filepath relative to spec['stage']
+        Raise exception if an external entry already exists with a different contents checksum.
+        Otherwise, copy (with overwrite) file to remote and
+        If an external entry exists with the same checksum, then no copying should occur
         """
         local_folder = os.path.dirname(local_filepath)
         stage_folder = os.path.join(os.path.abspath(self.spec['stage']), '')
@@ -93,17 +95,25 @@ class ExternalTable(Table):
         relative_filepath = local_filepath[len(stage_folder):]
         uuid = uuid_from_buffer(init_string=relative_filepath)
         contents_hash = uuid_from_file(local_filepath)
-        if self.spec['protocol'] == 's3':
-            s3.Folder(**self.spec).fput(relative_filepath, local_filepath, contents_hash=str(contents_hash))
+
+        # check if the remote file already exists and verify that it matches
+        check_hash = (self & {'hash': uuid}).fetch('contents_hash')
+        if check_hash:
+            # the tracking entry exists, check that it's the same file as before
+            if contents_hash != check_hash[0]:
+                raise DataJointError(
+                    "A different version of '{file}' has already been placed.".format(file=relative_filepath))
         else:
-            remote_file = os.path.join(self.spec['location'], relative_filepath)
-            safe_copy(local_filepath, remote_file)
-        # insert tracking info
-        self.connection.query(
-            "INSERT INTO {tab} (hash, size, filepath, contents_hash) VALUES (%s, {size}, '{filepath}', %s) "
-            "ON DUPLICATE KEY UPDATE timestamp=CURRENT_TIMESTAMP".format(
-                tab=self.full_table_name, size=os.path.getsize(local_filepath),
-                filepath=relative_filepath), args=(uuid.bytes, contents_hash.bytes))
+            # upload the file and create its tracking entry
+            if self.spec['protocol'] == 's3':
+                s3.Folder(**self.spec).fput(relative_filepath, local_filepath, contents_hash=str(contents_hash))
+            else:
+                remote_file = os.path.join(self.spec['location'], relative_filepath)
+                safe_copy(local_filepath, remote_file, overwrite=True)
+            self.connection.query(
+                "INSERT INTO {tab} (hash, size, filepath, contents_hash) VALUES (%s, {size}, '{filepath}', %s)".format(
+                    tab=self.full_table_name, size=os.path.getsize(local_filepath),
+                    filepath=relative_filepath), args=(uuid.bytes, contents_hash.bytes))
         return uuid
 
     def peek(self, blob_hash, bytes_to_peek=120):
@@ -170,16 +180,18 @@ class ExternalTable(Table):
         :return: hash (UUID) of the contents of the downloaded file or Nones
         """
         if filepath_hash is not None:
-            relative_filepath, contents_hash = (self & {hash: filepath_hash}).fetch1('filepath', 'contents_hash')
+            relative_filepath, contents_hash = (self & {'hash': filepath_hash}).fetch1('filepath', 'contents_hash')
             local_filepath = os.path.join(os.path.abspath(self.spec['stage']), relative_filepath)
             file_exists = os.path.isfile(local_filepath) and uuid_from_file(local_filepath) == contents_hash
             if not file_exists:
                 if self.spec['protocol'] == 's3':
-                    contents_hash = s3.Folder(**self.spec).fget(relative_filepath, local_filepath)
+                    checksum = s3.Folder(**self.spec).fget(relative_filepath, local_filepath)
                 else:
                     remote_file = os.path.join(self.spec['location'], relative_filepath)
                     safe_copy(remote_file, local_filepath)
-            assert isinstance(contents_hash, uuid.UUID) 
+                    checksum = uuid_from_file(local_filepath)
+            if checksum != contents_hash:  # this should never happen
+                raise DataJointError("'{file}' downloaded but did not pass checksum'".format(file=local_filepath))
             return local_filepath, contents_hash
 
     @property

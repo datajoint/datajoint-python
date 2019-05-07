@@ -78,11 +78,12 @@ def safe_write(filename, blob):
         os.rename(temp_file, filename)
 
 
-def safe_copy(src, dest):
+
+def safe_copy(src, dest, overwrite=False):
     """
     Copy the contents of src file into dest file as a two-step process. Skip if dest exists already
     """
-    if not os.path.isfile(dest):
+    if overwrite or not os.path.isfile(dest):
         os.makedirs(os.path.dirname(dest), exist_ok=True)
         temp_file = dest + '.copying'
         shutil.copyfile(src, temp_file)

@@ -31,9 +31,7 @@ def test_attach():
 
 
 def test_attach_attributes():
-    """
-    test saving files in attachments
-    """
+    """ test saving files in attachments """
     # create a mock file
     table = Attach()
     source_folder = tempfile.mkdtemp()
