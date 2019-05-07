@@ -190,8 +190,8 @@ class ExternalTable(Table):
                     remote_file = os.path.join(self.spec['location'], relative_filepath)
                     safe_copy(remote_file, local_filepath)
                     checksum = uuid_from_file(local_filepath)
-            if checksum != contents_hash:  # this should never happen
-                raise DataJointError("'{file}' downloaded but did not pass checksum'".format(file=local_filepath))
+                if checksum != contents_hash:  # this should never happen
+                    raise DataJointError("'{file}' downloaded but did not pass checksum'".format(file=local_filepath))
             return local_filepath, contents_hash
 
     @property
