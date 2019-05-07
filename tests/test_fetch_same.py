@@ -22,7 +22,7 @@ class ProjData(dj.Manual):
 
 data_ins = [
     {'id': 0, 'resp': 20.33, 'sim': 45.324, 'big': np.random.randn(10, 5), 'blah': 'yes'},
-    {'id': 1, 'resp': 94.3, 'sim': 34.23, 'big': np.random.randn(20, 10), 'blah': 'si'},
+    {'id': 1, 'resp': 94.3, 'sim': 34.23, 'big': {'key1': np.random.randn(20, 10)}, 'blah': 'si'},
     {'id': 2, 'resp': 1.90, 'sim': 10.23, 'big': np.random.randn(4, 2), 'blah': 'sim'}
 ]
 

@@ -9,6 +9,7 @@ import uuid
 from . import blob, attach, hash
 from .errors import DataJointError
 from .settings import config
+import numbers as num
 
 if sys.version_info[1] < 6:
     from collections import OrderedDict
@@ -179,13 +180,14 @@ class Fetch:
                 ret = [OrderedDict((name, get(heading[name], d[name])) for name in heading.names) for d in cur]
             else:
                 ret = list(cur.fetchall())
-                if not ret:
-                    tp = heading.as_dtype
-                else:
-                    tp = np.dtype([(d[0], type(v))
-                            if d[1] == '|O' and not isinstance(v, (str, bytes))
-                            else d for v, d in zip(ret[0], heading.as_dtype.descr)])
-                ret = np.array(ret, dtype=tp)
+                record_type = (heading.as_dtype if not ret else (np.dtype(
+                        [(col_name, type(col_value))
+                            if col_type == '|O' and isinstance(
+                                col_value, (num.Number))
+                            else (col_name, col_type)
+                            for col_value, (col_name, col_type)
+                            in zip(ret[0], heading.as_dtype.descr)])))
+                ret = np.array(ret, dtype=record_type)
                 for name in heading:
                     ret[name] = list(map(partial(get, heading[name]), ret[name]))
                 if format == "frame":
