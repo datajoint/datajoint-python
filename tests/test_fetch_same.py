@@ -5,7 +5,7 @@ import numpy as np
 import importlib
 try:
     dj = importlib.import_module('datajoint-python.datajoint', None)
-except ModuleNotFoundError:
+except:
     import datajoint as dj
 
 schema = dj.schema(PREFIX + '_fetch_same', connection=dj.conn(**CONN_INFO))
