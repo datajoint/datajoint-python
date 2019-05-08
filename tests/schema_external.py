@@ -25,7 +25,7 @@ dj.config['stores'] = {
     'repo_s3': dict(
         S3_CONN_INFO,
         protocol='s3',
-        location='dj-repo',
+        location='dj/repo',
         stage=tempfile.mkdtemp()),
 
     'local': dict(
@@ -36,7 +36,7 @@ dj.config['stores'] = {
     'share': dict(
         S3_CONN_INFO,
         protocol='s3',
-        location='dj/store',
+        location='dj/store/repo',
         subfolding=(2, 4))
 }
 
@@ -108,6 +108,7 @@ class Filepath(dj.Manual):
     ---
     img : filepath@repo  # managed files 
     """
+
 
 @schema
 class FilepathS3(dj.Manual):
