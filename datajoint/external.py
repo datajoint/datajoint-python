@@ -1,6 +1,5 @@
 import os
 import itertools
-import uuid
 from collections import Mapping
 from .settings import config
 from .errors import DataJointError
@@ -46,6 +45,8 @@ class ExternalTable(Table):
         if not self.is_declared:
             self.declare()
 
+        self._s3 = None
+
     @property
     def definition(self):
         return """
@@ -62,14 +63,19 @@ class ExternalTable(Table):
     def table_name(self):
         return '{external_table_root}_{store}'.format(external_table_root=EXTERNAL_TABLE_ROOT, store=self.store)
 
+    @property
+    def s3(self):
+        if self._s3 is None:
+            self._s3 = s3.Folder(**self.spec)
+        return self._s3
+
     def put(self, blob):
         """
         put a binary string in external store
         """
         uuid = uuid_from_buffer(blob)
         if self.spec['protocol'] == 's3':
-            s3.Folder(**self.spec).put(
-                '/'.join((self.database, '/'.join(subfold(uuid.hex, self.spec['subfolding'])), uuid.hex)), blob)
+            self.s3.put('/'.join((self.database, '/'.join(subfold(uuid.hex, self.spec['subfolding'])), uuid.hex)), blob)
         else:
             remote_file = os.path.join(os.path.join(
                 self.spec['location'], self.database, *subfold(uuid.hex, self.spec['subfolding'])), uuid.hex)
@@ -106,7 +112,7 @@ class ExternalTable(Table):
         else:
             # upload the file and create its tracking entry
             if self.spec['protocol'] == 's3':
-                s3.Folder(**self.spec).fput(relative_filepath, local_filepath, contents_hash=str(contents_hash))
+                self.s3.fput(relative_filepath, local_filepath, contents_hash=str(contents_hash))
             else:
                 remote_file = os.path.join(self.spec['location'], relative_filepath)
                 safe_copy(local_filepath, remote_file, overwrite=True)
@@ -159,12 +165,11 @@ class ExternalTable(Table):
             elif self.spec['protocol'] == 's3':
                 full_path = '/'.join(
                     (self.database,) + subfold(blob_hash.hex, self.spec['subfolding']) + (blob_hash.hex,))
-                _s3 = s3.Folder(**self.spec)
                 if size < 0:
-                    blob = _s3.get(full_path)
+                    blob = self.s3.get(full_path)
                 else:
-                    blob = _s3.partial_get(full_path, 0, size)
-                    blob_size = _s3.get_size(full_path)
+                    blob = self.s3.partial_get(full_path, 0, size)
+                    blob_size = self.s3.get_size(full_path)
 
             if cache_folder and size < 0:
                 if not os.path.exists(cache_path):
@@ -190,7 +195,7 @@ class ExternalTable(Table):
                     remote_file = os.path.join(self.spec['location'], relative_filepath)
                     safe_copy(remote_file, local_filepath)
                     checksum = uuid_from_file(local_filepath)
-                if checksum != contents_hash:  # this should never happen
+                if checksum != contents_hash:  # this should never happen without outside interference
                     raise DataJointError("'{file}' downloaded but did not pass checksum'".format(file=local_filepath))
             return local_filepath, contents_hash
 
@@ -220,19 +225,32 @@ class ExternalTable(Table):
                         for ref in self.references) or "TRUE"))
         print('Deleted %d items' % self.connection.query("SELECT ROW_COUNT()").fetchone()[0])
 
-    def clean(self, verbose=True):
+    def get_untracked_filepaths(self):
         """
-        Clean unused data in an external storage repository from unused blobs.
-        This must be performed after external_table.delete() during low-usage periods to 
-        reduce risks of data loss.
+        :return: the collection of remote filepaths that are no longer tracked.
         """
-        in_use = set(x.hex for x in self.fetch('hash'))
+        remote_path = self.spec['location']
+        if self.spec['protocol'] == 'file':
+            position = len(os.path.join(os.path.abspath(remote_path), ''))
+            generator = (os.path.join(folder[position:], file)
+                         for folder, dirs, files in os.walk(remote_path, topdown=False) for file in files)
+        else:  # self.spec['protocol'] == 's3'
+            position = len(remote_path.rstrip('/')) + 1
+            generator = (x.object_name[position:] for x in s3.Folder(**self.spec).list_objects())
+        in_use = set((self & '`filepath` IS NOT NULL').fetch('filepath'))
+        yield from ('/'.join((remote_path, f)) for f in generator if f not in in_use)
+
+    def clean(self, *, verbose=True):
+        """
+        Remove unused blobs from the external storage repository.
+        This must be performed after external_table.delete() during low-usage periods to reduce risks of data loss.
+        """
+        in_use = set(x.hex for x in (self & '`filepath` is NULL').fetch('hash'))
         if self.spec['protocol'] == 'file':
             count = itertools.count()
             print('Deleting...')
             deleted_folders = set()
-            for folder, dirs, files in os.walk(
-                    os.path.join(self.spec['location'], self.database), topdown=False):
+            for folder, dirs, files in os.walk(os.path.join(self.spec['location'], self.database), topdown=False):
                 if dirs and files:
                     raise DataJointError(
                             'Invalid repository with files in non-terminal folder %s' % folder)
@@ -249,12 +267,21 @@ class ExternalTable(Table):
                         os.rmdir(folder)
                         deleted_folders.add(folder)
             print('Deleted %d objects' % next(count))
-        elif self.spec['protocol'] == 's3':
-            try:
-                failed_deletes = s3.Folder(database=self.database, **self.spec).clean(in_use, verbose=verbose)
-                # failed_deletes are quietly ignored for now
-            except TypeError:
-                raise DataJointError('External store {store} configuration is incomplete.'.format(store=self.store))
+        else:   # self.spec['protocol'] == 's3'
+            count = itertools.count()
+
+            def names():
+                for x in self.s3.list_objects(self.database):
+                    if x.object_name.split('/')[-1] not in in_use:
+                        next(count)
+                        if verbose:
+                            print(x.object_name)
+                        yield x.object_name
+
+            print('Deleting...')
+            failed_deletes = self.s3.remove_objects(names())
+            total = next(count)
+            print('  Deleted: %i S3 objects; %i failed.' % (total - len(failed_deletes), len(failed_deletes)))
 
 
 class ExternalMapping(Mapping):

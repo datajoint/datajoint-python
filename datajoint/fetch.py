@@ -192,7 +192,6 @@ class Fetch1:
     Fetch object for fetching exactly one row.
     :param relation: relation the fetch object fetches data from
     """
-
     def __init__(self, relation):
         self._expression = relation
 

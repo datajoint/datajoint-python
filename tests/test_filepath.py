@@ -1,8 +1,9 @@
 from nose.tools import assert_true, assert_false, assert_equal, assert_not_equal, raises
 import datajoint as dj
 import os
+import random
 
-from .schema_external import schema, Filepath
+from .schema_external import schema, Filepath, FilepathS3
 
 
 def test_filepath(store="repo"):
@@ -38,6 +39,9 @@ def test_filepath(store="repo"):
     with open(managed_file, 'rb') as f:
         synced_data = f.read()
     assert_equal(data, synced_data)
+
+    # cleanup
+    ext.delete()
 
 
 def test_filepath_s3():
@@ -83,9 +87,8 @@ def test_duplicate_error_s3():
     test_duplicate_error(store="repo_s3")
 
 
-def test_filepath_class():
-
-    stage_path = dj.config['stores']["repo"]['stage']
+def test_filepath_class(table=Filepath(), store="repo"):
+    stage_path = dj.config['stores'][store]['stage']
     filename = 'attachment.dat'
 
     # create a mock file
@@ -100,17 +103,78 @@ def test_filepath_class():
     assert_equal(data, contents)
 
     # upload file into shared repo
-    Filepath().insert1((1, managed_file))
+    table.insert1((1, managed_file))
 
     # remove file locally
     os.remove(managed_file)
     assert_false(os.path.isfile(managed_file))
 
     # fetch file from remote
-    filepath = (Filepath & {'fnum': 1}).fetch1('img')
+    filepath = (table & {'fnum': 1}).fetch1('img')
     assert_equal(filepath, managed_file)
 
     # verify original contents
     with open(managed_file, 'rb') as f:
         contents = f.read()
     assert_equal(data, contents)
+
+    # delete from table
+    table.delete()
+    assert_true(table.external[store])
+
+    # delete from external table
+    table.external[store].delete()
+
+
+def test_filepath_class_again():
+    """test_filepath_class again to deal with existing remote files"""
+    test_filepath_class()
+
+
+def test_filepath_class_s3():
+    test_filepath_class(FilepathS3(), "repo_s3")
+
+
+def test_filepath_class_s3_again():
+    """test_filepath_class_s3 again to deal with existing remote files"""
+    test_filepath_class(FilepathS3(), "repo_s3")
+
+
+def test_filepath_cleanup(table=Filepath(), store="repo"):
+    """test deletion of filepath entries from external table """
+    stage_path = dj.config['stores'][store]['stage']
+    filename = 'file.dat'
+    n = 20
+    contents = os.urandom(345)
+    for i in range(n):
+        relative_path = os.path.join(*random.choices(('one', 'two', 'three'), k=3))
+        os.makedirs(os.path.join(stage_path, relative_path), exist_ok=True)
+        managed_file = os.path.join(stage_path, relative_path, filename)
+        with open(managed_file, 'wb') as f:
+            f.write(contents)   # same contents in all the files
+        table.insert1((i, managed_file))
+    assert_equal(len(table), n)
+
+    ext = schema.external[store]
+    assert_equal(len(table), n)
+    assert_true(0 < len(ext) < n)
+
+    (table & 'fnum in (1, 2, 3, 4, 5, 6)').delete()
+    m = n - len(table)  # number deleted
+    assert_true(m == 6)
+
+    ext.delete()  # delete unused entries
+    assert_true(0 < len(ext) <= n - m)
+
+    unused_files = list(ext.get_untracked_filepaths())
+    assert_true(0 < len(unused_files) <= m)
+
+
+def test_filepath_cleanup_s3():
+    """test deletion of filepath entries from external table """
+    store = "repo_s3"
+    ext = schema.external[store]
+    ext.s3.remove_objects(ext.get_untracked_filepaths())
+    test_filepath_cleanup(FilepathS3(), store)
+    ext.s3.remove_objects(ext.get_untracked_filepaths())
+

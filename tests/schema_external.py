@@ -99,6 +99,7 @@ class Attach(dj.Manual):
     txt : attach      #  attachments are stored directly in the database
     """
 
+
 @schema
 class Filepath(dj.Manual):
     definition = """
@@ -106,4 +107,13 @@ class Filepath(dj.Manual):
     fnum : int 
     ---
     img : filepath@repo  # managed files 
+    """
+
+@schema
+class FilepathS3(dj.Manual):
+    definition = """
+    # table for file management 
+    fnum : int 
+    ---
+    img : filepath@repo_s3  # managed files 
     """

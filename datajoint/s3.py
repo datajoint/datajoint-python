@@ -4,7 +4,6 @@ AWS S3 operations
 from io import BytesIO
 import minio   # https://docs.minio.io/docs/python-client-api-reference
 import warnings
-import itertools
 import uuid
 
 
@@ -55,34 +54,10 @@ class Folder:
         except minio.error.NoSuchKey:
             return None
 
-    def clean(self, exclude, max_count=None, verbose=False):
-        """
-        Delete all objects except for those in the exclude
-        :param exclude: a list of blob_hashes to skip.
-        :param max_count: maximum number of object to delete
-        :param verbose: If True, print deleted objects
-        :return: list of objects that failed to delete
-        """
-        count = itertools.count()
-        if verbose:
-            def out(name):
-                next(count)
-                print(name)
-                return name
-        else:
-            def out(name):
-                next(count)
-                return name
+    def list_objects(self, folder=''):
+        return self.client.list_objects(self.bucket, '/'.join((self.remote_path, folder, '')), recursive=True)
 
-        if verbose:
-            print('Deleting...')
+    def remove_objects(self, objects_iter):
 
-        names = (out(x.object_name)
-                 for x in self.client.list_objects(self.bucket, self.remote_path + '/', recursive=True)
-                 if x.object_name.split('/')[-1] not in exclude)
-
-        failed_deletes = list(
-            self.client.remove_objects(self.bucket, itertools.islice(names, max_count)))
-
-        print('Deleted: %i S3 objects' % next(count))
-        return failed_deletes
+        failed_deletes = self.client.remove_objects(self.bucket, objects_iter=objects_iter)
+        return list(failed_deletes)
