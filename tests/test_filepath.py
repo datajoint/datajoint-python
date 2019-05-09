@@ -147,7 +147,7 @@ def test_filepath_cleanup(table=Filepath(), store="repo"):
     n = 20
     contents = os.urandom(345)
     for i in range(n):
-        relative_path = os.path.join(*random.choices(('one', 'two', 'three'), k=3))
+        relative_path = os.path.join(*random.sample(('one', 'two', 'three', 'four'), k=3))
         os.makedirs(os.path.join(stage_path, relative_path), exist_ok=True)
         managed_file = os.path.join(stage_path, relative_path, filename)
         with open(managed_file, 'wb') as f:
@@ -156,6 +156,8 @@ def test_filepath_cleanup(table=Filepath(), store="repo"):
     assert_equal(len(table), n)
 
     ext = schema.external[store]
+    ext.clean_filepaths()
+
     assert_equal(len(table), n)
     assert_true(0 < len(ext) < n)
 
@@ -169,12 +171,12 @@ def test_filepath_cleanup(table=Filepath(), store="repo"):
     unused_files = list(ext.get_untracked_filepaths())
     assert_true(0 < len(unused_files) <= m)
 
+    # check no more untracked files
+    ext.clean_filepaths()
+    assert_false(bool(list(ext.get_untracked_filepaths())))
+
 
 def test_filepath_cleanup_s3():
     """test deletion of filepath entries from external table """
     store = "repo_s3"
-    ext = schema.external[store]
-    ext.s3.remove_objects(ext.get_untracked_filepaths())
     test_filepath_cleanup(FilepathS3(), store)
-    ext.s3.remove_objects(ext.get_untracked_filepaths())
-

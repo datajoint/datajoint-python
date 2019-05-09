@@ -240,7 +240,27 @@ class ExternalTable(Table):
         in_use = set((self & '`filepath` IS NOT NULL').fetch('filepath'))
         yield from ('/'.join((remote_path, f)) for f in generator if f not in in_use)
 
-    def clean(self, *, verbose=True):
+    def clean_filepaths(self, verbose=True):
+        """
+        Delete filepaths that are not tracked in by this store in this schema.
+        Leaves empty subfolders.
+        """
+        if verbose:
+            print('Finding untracking files...')
+        untracked_filepaths = self.get_untracked_filepaths()
+        print('Deleting...')
+        if self.spec['protocol'] == 's3':
+            self.s3.remove_objects(untracked_filepaths)
+            print('Done')
+        else:   # self.spec['protocol'] == 'file'
+            count = 0
+            for f in untracked_filepaths:
+                not verbose or print(f)
+                os.remove(f)
+                count += 1
+            print('Deleted %d files' % count)
+
+    def clean_blobs(self, *, verbose=True):
         """
         Remove unused blobs from the external storage repository.
         This must be performed after external_table.delete() during low-usage periods to reduce risks of data loss.
