@@ -97,7 +97,7 @@ class Heading:
 
     @property
     def non_blobs(self):
-        return [k for k, v in self.attributes.items() if not v.is_blob and not v.is_attachment]
+        return [k for k, v in self.attributes.items() if not v.is_blob and not v.is_attachment and not v.is_filepath]
 
     @property
     def expressions(self):

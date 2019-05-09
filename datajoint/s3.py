@@ -5,6 +5,7 @@ from io import BytesIO
 import minio   # https://docs.minio.io/docs/python-client-api-reference
 import warnings
 import uuid
+import os
 
 
 class Folder:
@@ -36,6 +37,7 @@ class Folder:
         stat = self.client.stat_object(self.bucket, name)
         meta = {k.lower().lstrip('x-amz-meta'): v for k, v in stat.metadata.items()}
         data = self.client.get_object(self.bucket, name)
+        os.makedirs(os.path.split(local_filepath)[0], exist_ok=True)
         with open(local_filepath, 'wb') as f:
             for d in data.stream(1 << 16):
                 f.write(d)
