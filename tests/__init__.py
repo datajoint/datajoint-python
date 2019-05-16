@@ -66,6 +66,6 @@ def teardown_package():
     conn.query('SET FOREIGN_KEY_CHECKS=1')
     remove("dj_local_conf.json")
 
-    conn_root = dj.conn(**CONN_INFO_ROOT, reset=True)
+    conn_root = dj.conn(reset=True, **CONN_INFO_ROOT)
     conn_root.query("DROP USER 'datajoint'@'%%';")
     conn_root.query("DROP USER 'djview'@'%%';")
