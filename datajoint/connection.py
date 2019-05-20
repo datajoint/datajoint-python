@@ -96,8 +96,7 @@ class Connection:
                 sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
                          "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
                 charset=config['connection.charset'],
-                **self.conn_info)
-                
+                **self.conn_info)    
         self._conn.autocommit(True)
 
     def close(self):
