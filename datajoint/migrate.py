@@ -53,6 +53,8 @@ def _convert_blob_single(blob_value, mode='forward'):
 
     if type(ret) is dj.blob.MatStruct or type(ret) is np.recarray:
         ret_iter = ret.dtype.names
+    elif isinstance(ret, dict):
+        ret_iter = list(ret)
     else:
         ret_iter = ret
 
