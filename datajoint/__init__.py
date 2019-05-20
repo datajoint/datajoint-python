@@ -40,5 +40,6 @@ from .admin import set_password, kill
 from .blob import MatCell, MatStruct
 from .errors import DataJointError, DuplicateError
 from .fetch import key
+from .migrate import convert_blob
 
 ERD = Di = Diagram   # Aliases for Diagram

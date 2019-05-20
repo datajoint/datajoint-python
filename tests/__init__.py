@@ -22,6 +22,11 @@ CONN_INFO = dict(
     user=environ.get('DJ_TEST_USER', 'datajoint'),
     password=environ.get('DJ_TEST_PASSWORD', 'datajoint'))
 
+CONN_INFO_ROOT = dict(
+    host=environ.get('DJ_HOST', 'localhost'),
+    user=environ.get('DJ_USER', 'root'),
+    password=environ.get('DJ_PASS', ''))
+
 S3_CONN_INFO = dict(
     endpoint=environ.get('S3_ENDPOINT', 'localhost:9000'),
     access_key=environ.get('S3_ACCESS_KEY', 'datajoint'),
@@ -30,6 +35,12 @@ S3_CONN_INFO = dict(
 
 # Prefix for all databases used during testing
 PREFIX = environ.get('DJ_TEST_DB_PREFIX', 'djtest')
+
+conn_root = dj.conn(**CONN_INFO_ROOT)
+conn_root.query("CREATE USER 'datajoint'@'%%' IDENTIFIED BY 'datajoint';")
+conn_root.query("GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%';")
+conn_root.query("CREATE USER 'djview'@'%%' IDENTIFIED BY 'djview';")
+conn_root.query("grant select on `djtest%%`.* to 'djview'@'%%';")
 
 
 def setup_package():
@@ -54,3 +65,7 @@ def teardown_package():
         conn.query('DROP DATABASE `{}`'.format(db[0]))
     conn.query('SET FOREIGN_KEY_CHECKS=1')
     remove("dj_local_conf.json")
+
+    conn_root = dj.conn(reset=True, **CONN_INFO_ROOT)
+    conn_root.query("DROP USER 'datajoint'@'%%';")
+    conn_root.query("DROP USER 'djview'@'%%';")

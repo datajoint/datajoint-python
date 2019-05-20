@@ -146,7 +146,7 @@ class Blob:
             return self.pack_recarray(np.array(obj))
         if isinstance(obj, np.number):
             return self.pack_array(np.array(obj))
-        if isinstance(obj, (bool, np.bool)):
+        if isinstance(obj, (bool, np.bool, np.bool_)):
             return self.pack_array(np.array(obj))
         if isinstance(obj, float):
             return self.pack_array(np.array(obj, dtype=np.float64))
@@ -206,7 +206,8 @@ class Blob:
         is_complex = np.iscomplexobj(array)
         if is_complex:
             array, imaginary = np.real(array), np.imag(array)
-        type_id = rev_class_id[array.dtype]
+        type_id = (rev_class_id[array.dtype] if array.dtype.char != 'U' 
+                else rev_class_id[np.dtype('O')])
         if dtype_list[type_id] is None:
             raise DataJointError("Type %s is ambiguous or unknown" % array.dtype)
 
