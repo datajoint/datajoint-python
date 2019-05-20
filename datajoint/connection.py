@@ -99,7 +99,7 @@ class Connection:
                 **self.conn_info)
 
             # If the database version is older then 8.0, then include 'NO_AUTO_CREATE_USER'
-            if self._conn.server_version > '8.0.0':
+            if self._conn.server_version < '8.0.0':
                 self.close()
                 self._conn = client.connect(
                 init_command=self.init_fun,
