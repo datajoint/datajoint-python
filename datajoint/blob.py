@@ -206,7 +206,7 @@ class Blob:
         is_complex = np.iscomplexobj(array)
         if is_complex:
             array, imaginary = np.real(array), np.imag(array)
-        type_id = (rev_class_id[array.dtype] if array.dtype.char != 'U' 
+        type_id = (rev_class_id[array.dtype] if array.dtype.char != 'U'
                 else rev_class_id[np.dtype('O')])
         if dtype_list[type_id] is None:
             raise DataJointError("Type %s is ambiguous or unknown" % array.dtype)
