@@ -13,6 +13,7 @@ except:
     from datajoint import errors as djerrors
 import datetime as dt
 import numpy as np
+from collections import OrderedDict
 
 schema = dj.schema(PREFIX + '_blob_migrate', connection=dj.conn(**CONN_INFO))
 
@@ -130,28 +131,28 @@ tests = [
         'backward_stored_value': np.array([np.array([3]*5), 3])
     },
     {
-        'insert_value': {'tmp0': 3, 'tmp1': 4, 'tmp2': 3, 'tmp3': 5, 'tmp4': 3},
-        'forward_stored_value': {'tmp0': 3, 'tmp1': 4, 'tmp2': 3, 'tmp3': 5, 'tmp4': 3},
+        'insert_value': OrderedDict({'tmp0': 3, 'tmp1': 4, 'tmp2': 3, 'tmp3': 5, 'tmp4': 3}),
+        'forward_stored_value': OrderedDict({'tmp0': 3, 'tmp1': 4, 'tmp2': 3, 'tmp3': 5, 'tmp4': 3}),
         'backward_stored_value': np.array([(3, 4, 3, 5, 3)], dtype=[('tmp0', 'O'), ('tmp1', 'O'), ('tmp2', 'O'), ('tmp3', 'O'), ('tmp4', 'O')]).view(np.recarray)
     },
     {
-        'insert_value': {'tmp0': 2.9, 'tmp1': 2.9, 'tmp2': 2.9, 'tmp3': 2.9, 'tmp4': 2.9},
-        'forward_stored_value': {'tmp0': 2.9, 'tmp1': 2.9, 'tmp2': 2.9, 'tmp3': 2.9, 'tmp4': 2.9},
+        'insert_value': OrderedDict({'tmp0': 2.9, 'tmp1': 2.9, 'tmp2': 2.9, 'tmp3': 2.9, 'tmp4': 2.9}),
+        'forward_stored_value': OrderedDict({'tmp0': 2.9, 'tmp1': 2.9, 'tmp2': 2.9, 'tmp3': 2.9, 'tmp4': 2.9}),
         'backward_stored_value': np.array([(2.9, 2.9, 2.9, 2.9, 2.9)], dtype=[('tmp0', 'O'), ('tmp1', 'O'), ('tmp2', 'O'), ('tmp3', 'O'), ('tmp4', 'O')]).view(np.recarray)
     },
     {
-        'insert_value': {'tmp0': True, 'tmp1': True, 'tmp2': True, 'tmp3': True, 'tmp4': True},
-        'forward_stored_value': {'tmp0': True, 'tmp1': True, 'tmp2': True, 'tmp3': True, 'tmp4': True},
+        'insert_value': OrderedDict({'tmp0': True, 'tmp1': True, 'tmp2': True, 'tmp3': True, 'tmp4': True}),
+        'forward_stored_value': OrderedDict({'tmp0': True, 'tmp1': True, 'tmp2': True, 'tmp3': True, 'tmp4': True}),
         'backward_stored_value': np.array([(True, True, True, True, True)], dtype=[('tmp0', 'O'), ('tmp1', 'O'), ('tmp2', 'O'), ('tmp3', 'O'), ('tmp4', 'O')]).view(np.recarray)
     },
     {
-        'insert_value': {'tmp0': 'yes', 'tmp1': 'yes', 'tmp2': 'yes', 'tmp3': 'yes', 'tmp4': 'yes'},
-        'forward_stored_value': {'tmp0': 'yes', 'tmp1': 'yes', 'tmp2': 'yes', 'tmp3': 'yes', 'tmp4': 'yes'},
+        'insert_value': OrderedDict({'tmp0': 'yes', 'tmp1': 'yes', 'tmp2': 'yes', 'tmp3': 'yes', 'tmp4': 'yes'}),
+        'forward_stored_value': OrderedDict({'tmp0': 'yes', 'tmp1': 'yes', 'tmp2': 'yes', 'tmp3': 'yes', 'tmp4': 'yes'}),
         'backward_stored_value': np.array([(np.array(['yes']), np.array(['yes']), np.array(['yes']), np.array(['yes']), np.array(['yes']))], dtype=[('tmp0', 'O'), ('tmp1', 'O'), ('tmp2', 'O'), ('tmp3', 'O'), ('tmp4', 'O')]).view(np.recarray)
     },
     {
-        'insert_value': {'tmp0': timenow, 'tmp1': timenow, 'tmp2': timenow, 'tmp3': timenow, 'tmp4': timenow},
-        'forward_stored_value': {'tmp0': timenow, 'tmp1': timenow, 'tmp2': timenow, 'tmp3': timenow, 'tmp4': timenow},
+        'insert_value': OrderedDict({'tmp0': timenow, 'tmp1': timenow, 'tmp2': timenow, 'tmp3': timenow, 'tmp4': timenow}),
+        'forward_stored_value': OrderedDict({'tmp0': timenow, 'tmp1': timenow, 'tmp2': timenow, 'tmp3': timenow, 'tmp4': timenow}),
         'backward_stored_value': np.array([(np.array([str(timenow)]), np.array([str(timenow)]), np.array([str(timenow)]), np.array([str(timenow)]), np.array([str(timenow)]))], dtype=[('tmp0', 'O'), ('tmp1', 'O'), ('tmp2', 'O'), ('tmp3', 'O'), ('tmp4', 'O')]).view(np.recarray)
     }
 ]
@@ -179,8 +180,7 @@ class TestMigrate:
         for idx in range(id.size):
             assert_equal(blob.pack(lb_pl_ford[id == idx][0]), blob.pack(
                     tests[idx]['forward_stored_value']))
-            assert_equal(type(lb_pl_ford[id == idx][0]), type(
-                    tests[idx]['forward_stored_value']))
+            assert_true(isinstance(tests[idx]['forward_stored_value'], type(lb_pl_ford[id == idx][0])))
 
             if type(lb_pl_ford[id == idx][0]) == np.ndarray:
                 assert_equal(lb_pl_ford[id == idx][0].dtype,
@@ -188,8 +188,7 @@ class TestMigrate:
 
             assert_equal(blob.pack(b_pl_ford[id == idx][0]), blob.pack(
                     tests[idx]['forward_stored_value']))
-            assert_equal(type(b_pl_ford[id == idx][0]), type(
-                    tests[idx]['forward_stored_value']))
+            assert_true(isinstance(tests[idx]['forward_stored_value'], type(b_pl_ford[id == idx][0])))
 
             if type(b_pl_ford[id == idx][0]) == np.ndarray:
                 assert_equal(b_pl_ford[id == idx][0].dtype,
