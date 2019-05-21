@@ -5,12 +5,7 @@ import re
 import logging
 from .errors import DataJointError
 from .declare import UUID_DATA_TYPE, CUSTOM_TYPES, TYPE_PATTERN, EXTERNAL_TYPES, SERIALIZED_TYPES
-import sys
-if sys.version_info[1] < 6:
-    from collections import OrderedDict
-else:
-    # use dict in Python 3.6+ -- They are already ordered and look nicer
-    OrderedDict = dict
+from .utils import OrderedDict
 
 
 logger = logging.getLogger(__name__)

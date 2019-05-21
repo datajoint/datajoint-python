@@ -2,7 +2,15 @@
 
 import re
 import os
+import sys
 from .errors import DataJointError
+
+
+if sys.version_info[1] < 6:
+    from collections import OrderedDict
+else:
+    # use dict in Python 3.6+ -- They are already ordered and look nicer
+    OrderedDict = dict
 
 
 class ClassProperty:
@@ -81,3 +89,5 @@ def safe_write(filename, blob):
     with open(temp_file, 'bw') as f:
         f.write(blob)
     os.rename(temp_file, filename)
+
+

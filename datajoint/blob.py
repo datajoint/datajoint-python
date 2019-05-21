@@ -6,19 +6,12 @@ compatibility with Matlab-based serialization implemented by mYm.
 import zlib
 from itertools import repeat
 import collections
-from collections import OrderedDict
 from decimal import Decimal
 import datetime
 import uuid
 import numpy as np
-import sys
 from .errors import DataJointError
-
-if sys.version_info[1] < 6:
-    from collections import OrderedDict
-else:
-    # use dict in Python 3.6+ -- They are already ordered and look nicer
-    OrderedDict = dict
+from .utils import OrderedDict
 
 
 mxClassID = OrderedDict((
@@ -248,7 +241,7 @@ class Blob:
 
     def pack_recarray(self, array):
         """ Serialize a Matlab struct array """
-        return (b"F" + len_u32(array) +  # number of fields
+        return (b"F" + len_u32(array.dtype) +  # number of fields
                 '\0'.join(array.dtype.names).encode() + b"\0" +  # field names
                 b"".join(self.pack_recarray(array[f]) if array[f].dtype.fields else self.pack_array(array[f])
                          for f in array.dtype.names))

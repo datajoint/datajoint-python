@@ -6,17 +6,11 @@ import re
 import os
 import numpy as np
 import uuid
+import numbers
 from . import blob, attach, hash
 from .errors import DataJointError
 from .settings import config
-import numbers as num
-
-if sys.version_info[1] < 6:
-    from collections import OrderedDict
-else:
-    # use dict in Python 3.6+ -- They are already ordered and look nicer
-    OrderedDict = dict
-
+from .utils import OrderedDict
 
 class key:
     """
@@ -183,7 +177,7 @@ class Fetch:
                 record_type = (heading.as_dtype if not ret else np.dtype(
                     [(name, type(value))
                         if heading.as_dtype[name] == 'O' and isinstance(
-                            value, num.Number)  # value of blob is packed here
+                            value, numbers.Number)  # value of blob is packed here
                         else (name, heading.as_dtype[name])
                         for value, name
                         in zip(ret[0], heading.as_dtype.names)]))
