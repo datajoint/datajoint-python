@@ -23,7 +23,7 @@ services:
   db:
     image: datajoint/mysql
     environment:
-      - MYSQL_ROOT_PASSWORD=simple
+      - MYSQL_ROOT_PASSWORD=""
     ports:
       - "3306:3306"
   minio:

@@ -25,7 +25,7 @@ CONN_INFO = dict(
 CONN_INFO_ROOT = dict(
     host=environ.get('DJ_HOST', 'localhost'),
     user=environ.get('DJ_USER', 'root'),
-    password=environ.get('DJ_PASS', ''))
+    password=environ.get('DJ_PASS', 'simple'))
 
 S3_CONN_INFO = dict(
     endpoint=environ.get('S3_ENDPOINT', 'localhost:9000'),
@@ -37,9 +37,9 @@ S3_CONN_INFO = dict(
 PREFIX = environ.get('DJ_TEST_DB_PREFIX', 'djtest')
 
 conn_root = dj.conn(**CONN_INFO_ROOT)
-conn_root.query("CREATE USER 'datajoint'@'%%' IDENTIFIED BY 'datajoint';")
+conn_root.query("CREATE USER IF NOT EXISTS 'datajoint'@'%%' IDENTIFIED BY 'datajoint';")
 conn_root.query("GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%';")
-conn_root.query("CREATE USER 'djview'@'%%' IDENTIFIED BY 'djview';")
+conn_root.query("CREATE USER IF NOT EXISTS 'djview'@'%%' IDENTIFIED BY 'djview';")
 conn_root.query("grant select on `djtest%%`.* to 'djview'@'%%';")
 
 

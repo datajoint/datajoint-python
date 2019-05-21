@@ -80,7 +80,11 @@ def test_pack():
 def test_recarrays():
     x = np.array([(1.0, 2), (3.0, 4)], dtype=[('x', float), ('y', int)])
     assert_array_equal(x, unpack(pack(x)))
+
     x = x.view(np.recarray)
+    assert_array_equal(x, unpack(pack(x)))
+
+    x = np.array([(3, 4)], dtype=[('tmp0', float), ('tmp1', 'O')]).view(np.recarray)
     assert_array_equal(x, unpack(pack(x)))
 
 

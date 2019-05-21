@@ -241,7 +241,7 @@ class Blob:
 
     def pack_recarray(self, array):
         """ Serialize a Matlab struct array """
-        return (b"F" + len_u32(array) +  # number of fields
+        return (b"F" + len_u32(array.dtype) +  # number of fields
                 '\0'.join(array.dtype.names).encode() + b"\0" +  # field names
                 b"".join(self.pack_recarray(array[f]) if array[f].dtype.fields else self.pack_array(array[f])
                          for f in array.dtype.names))
