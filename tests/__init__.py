@@ -36,18 +36,10 @@ S3_CONN_INFO = dict(
 
 # Prefix for all databases used during testing
 PREFIX = environ.get('DJ_TEST_DB_PREFIX', 'djtest')
-
 conn_root = dj.conn(**CONN_INFO_ROOT)
-conn_root.query("DROP USER IF EXISTS 'datajoint'@'%%';") 
-conn_root.query("CREATE USER 'datajoint'@'%%' IDENTIFIED BY 'datajoint';")
-conn_root.query("GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%';")
-conn_root.query("DROP USER IF EXISTS 'djview'@'%%';") 
-conn_root.query("CREATE USER 'djview'@'%%' IDENTIFIED BY 'djview';")
-conn_root.query("grant select on `djtest%%`.* to 'djview'@'%%';")
 
 # create user if necessary on mysql8
-if StrictVersion(conn_root.query("select @@version;").fetchone()[0]) \
-        >= StrictVersion('8.0.0'):
+if StrictVersion(conn_root.query("select @@version;").fetchone()[0]) >= StrictVersion('8.0.0'):
     conn_root.query("CREATE USER IF NOT EXISTS 'datajoint'@'%%';")
     conn_root.query("CREATE USER IF NOT EXISTS 'djview'@'%%';")
 
