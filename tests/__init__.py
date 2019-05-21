@@ -37,9 +37,11 @@ S3_CONN_INFO = dict(
 PREFIX = environ.get('DJ_TEST_DB_PREFIX', 'djtest')
 
 conn_root = dj.conn(**CONN_INFO_ROOT)
-conn_root.query("CREATE USER IF NOT EXISTS 'datajoint'@'%%' IDENTIFIED BY 'datajoint';")
+conn_root.query("DROP USER IF EXISTS 'datajoint'@'%%';") 
+conn_root.query("CREATE USER 'datajoint'@'%%' IDENTIFIED BY 'datajoint';")
 conn_root.query("GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%';")
-conn_root.query("CREATE USER IF NOT EXISTS 'djview'@'%%' IDENTIFIED BY 'djview';")
+conn_root.query("DROP USER IF EXISTS 'djview'@'%%';") 
+conn_root.query("CREATE USER 'djview'@'%%' IDENTIFIED BY 'djview';")
 conn_root.query("grant select on `djtest%%`.* to 'djview'@'%%';")
 
 
@@ -65,7 +67,3 @@ def teardown_package():
         conn.query('DROP DATABASE `{}`'.format(db[0]))
     conn.query('SET FOREIGN_KEY_CHECKS=1')
     remove("dj_local_conf.json")
-
-    conn_root = dj.conn(reset=True, **CONN_INFO_ROOT)
-    conn_root.query("DROP USER 'datajoint'@'%%';")
-    conn_root.query("DROP USER 'djview'@'%%';")

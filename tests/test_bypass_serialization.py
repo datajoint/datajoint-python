@@ -3,6 +3,8 @@ import numpy as np
 
 from . import PREFIX, CONN_INFO
 from numpy.testing import assert_array_equal
+from nose.tools import assert_true
+
 
 
 schema_in = dj.schema(PREFIX + '_test_bypass_serialization_in',
@@ -16,7 +18,7 @@ test_blob = np.array([1, 2, 3])
 
 
 @schema_in
-class InputTable(dj.Lookup):
+class Input(dj.Lookup):
     definition = """
     id:                 int
     ---
@@ -26,7 +28,7 @@ class InputTable(dj.Lookup):
 
 
 @schema_out
-class OutputTable(dj.Manual):
+class Output(dj.Manual):
     definition = """
     id:                 int
     ---
