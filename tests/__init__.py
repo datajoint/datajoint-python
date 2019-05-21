@@ -26,7 +26,7 @@ CONN_INFO = dict(
 CONN_INFO_ROOT = dict(
     host=environ.get('DJ_HOST', 'localhost'),
     user=environ.get('DJ_USER', 'root'),
-    password=environ.get('DJ_PASS', 'simple'))
+    password=environ.get('DJ_PASS', ''))
 
 S3_CONN_INFO = dict(
     endpoint=environ.get('S3_ENDPOINT', 'localhost:9000'),
