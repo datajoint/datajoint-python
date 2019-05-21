@@ -8,7 +8,7 @@ after the test.
 import logging
 from os import environ, remove
 import datajoint as dj
-from distutils.version import StrictVersion
+from distutils.version import LooseVersion
 
 __author__ = 'Edgar Walker, Fabian Sinz, Dimitri Yatsenko'
 
@@ -26,7 +26,7 @@ CONN_INFO = dict(
 CONN_INFO_ROOT = dict(
     host=environ.get('DJ_HOST', 'localhost'),
     user=environ.get('DJ_USER', 'root'),
-    password=environ.get('DJ_PASS', ''))
+    password=environ.get('DJ_PASS', 'simple'))
 
 S3_CONN_INFO = dict(
     endpoint=environ.get('S3_ENDPOINT', 'localhost:9000'),
@@ -39,7 +39,7 @@ PREFIX = environ.get('DJ_TEST_DB_PREFIX', 'djtest')
 conn_root = dj.conn(**CONN_INFO_ROOT)
 
 # create user if necessary on mysql8
-if StrictVersion(conn_root.query("select @@version;").fetchone()[0]) >= StrictVersion('8.0.0'):
+if LooseVersion(conn_root.query("select @@version;").fetchone()[0]) >= LooseVersion('8.0.0'):
     conn_root.query("CREATE USER IF NOT EXISTS 'datajoint'@'%%';")
     conn_root.query("CREATE USER IF NOT EXISTS 'djview'@'%%';")
 

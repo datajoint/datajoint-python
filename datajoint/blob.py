@@ -6,19 +6,12 @@ compatibility with Matlab-based serialization implemented by mYm.
 import zlib
 from itertools import repeat
 import collections
-from collections import OrderedDict
 from decimal import Decimal
 import datetime
 import uuid
 import numpy as np
-import sys
 from .errors import DataJointError
-
-if sys.version_info[1] < 6:
-    from collections import OrderedDict
-else:
-    # use dict in Python 3.6+ -- They are already ordered and look nicer
-    OrderedDict = dict
+from .utils import OrderedDict
 
 
 mxClassID = OrderedDict((
