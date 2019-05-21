@@ -8,6 +8,7 @@ after the test.
 import logging
 from os import environ, remove
 import datajoint as dj
+from distutils.version import StrictVersion
 
 __author__ = 'Edgar Walker, Fabian Sinz, Dimitri Yatsenko'
 
@@ -43,6 +44,18 @@ conn_root.query("GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%';")
 conn_root.query("DROP USER IF EXISTS 'djview'@'%%';") 
 conn_root.query("CREATE USER 'djview'@'%%' IDENTIFIED BY 'djview';")
 conn_root.query("grant select on `djtest%%`.* to 'djview'@'%%';")
+
+# create user if necessary on mysql8
+if StrictVersion(conn_root.query("select @@version;").fetchone()[0]) \
+        >= StrictVersion('8.0.0'):
+    conn_root.query("CREATE USER IF NOT EXISTS 'datajoint'@'%%';")
+    conn_root.query("CREATE USER IF NOT EXISTS 'djview'@'%%';")
+
+# grant permissions. For mysql5.6/5.7 this also automatically creates user if not exists
+conn_root.query(
+    "GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%' IDENTIFIED BY 'datajoint';")
+conn_root.query(
+    "GRANT SELECT ON `djtest%%`.* TO 'djview'@'%%' IDENTIFIED BY 'djview';")
 
 
 def setup_package():
