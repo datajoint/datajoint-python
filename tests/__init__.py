@@ -38,11 +38,21 @@ S3_CONN_INFO = dict(
 PREFIX = environ.get('DJ_TEST_DB_PREFIX', 'djtest')
 conn_root = dj.conn(**CONN_INFO_ROOT)
 
-if LooseVersion(conn_root.query("select @@version;").fetchone()[0]) >= LooseVersion('8.0.0'):
+if LooseVersion(conn_root.query(
+        "select @@version;").fetchone()[0]) >= LooseVersion('8.0.0'):
     # create user if necessary on mysql8
-    conn_root.query("CREATE USER IF NOT EXISTS 'datajoint'@'%%'  IDENTIFIED BY 'datajoint';")
-    conn_root.query("CREATE USER IF NOT EXISTS 'djview'@'%%' IDENTIFIED BY 'djview';")
-    conn_root.query("CREATE USER IF NOT EXISTS 'djssl'@'%%' IDENTIFIED BY 'djssl';")
+    conn_root.query("""
+            CREATE USER IF NOT EXISTS 'datajoint'@'%%'
+            IDENTIFIED BY 'datajoint';
+            """)
+    conn_root.query("""
+            CREATE USER IF NOT EXISTS 'djview'@'%%'
+            IDENTIFIED BY 'djview';
+            """)
+    conn_root.query("""
+            CREATE USER IF NOT EXISTS 'djssl'@'%%'
+            IDENTIFIED BY 'djssl';
+            """)
     conn_root.query(
         "GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%';")
     conn_root.query(
@@ -50,13 +60,20 @@ if LooseVersion(conn_root.query("select @@version;").fetchone()[0]) >= LooseVers
     conn_root.query(
         "GRANT SELECT ON `djtest%%`.* TO 'djssl'@'%%' REQUIRE SSL;")
 else:
-    # grant permissions. For mysql5.6/5.7 this also automatically creates user if not exists
+    # grant permissions. For mysql5.6/5.7 this also automatically creates user 
+    # if not exists
+    conn_root.query("""
+        GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%'
+        IDENTIFIED BY 'datajoint';
+        """)
     conn_root.query(
-        "GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%' IDENTIFIED BY 'datajoint';")
-    conn_root.query(
-        "GRANT SELECT ON `djtest%%`.* TO 'djview'@'%%' IDENTIFIED BY 'djview';")
-    conn_root.query(
-        "GRANT SELECT ON `djtest%%`.* TO 'djssl'@'%%' IDENTIFIED BY 'djssl' REQUIRE SSL;")
+        "GRANT SELECT ON `djtest%%`.* TO 'djview'@'%%' IDENTIFIED BY 'djview';"
+        )
+    conn_root.query("""
+        GRANT SELECT ON `djtest%%`.* TO 'djssl'@'%%'
+        IDENTIFIED BY 'djssl'
+        REQUIRE SSL;
+        """)
 
 
 def setup_package():
