@@ -51,14 +51,15 @@ if LooseVersion(conn_root.query(
             """)
     conn_root.query("""
             CREATE USER IF NOT EXISTS 'djssl'@'%%'
-            IDENTIFIED BY 'djssl';
+            IDENTIFIED BY 'djssl'
+            REQUIRE SSL;
             """)
     conn_root.query(
         "GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%';")
     conn_root.query(
         "GRANT SELECT ON `djtest%%`.* TO 'djview'@'%%';")
     conn_root.query(
-        "GRANT SELECT ON `djtest%%`.* TO 'djssl'@'%%' REQUIRE SSL;")
+        "GRANT SELECT ON `djtest%%`.* TO 'djssl'@'%%';")
 else:
     # grant permissions. For mysql5.6/5.7 this also automatically creates user 
     # if not exists
