@@ -9,13 +9,13 @@ class TestSSL:
 
     # @staticmethod
     # def test_secure_connection():
-    #     result = dj.conn(**CONN_INFO, reset=True).query(
+    #     result = dj.conn(reset=True, **CONN_INFO).query(
     #             "SHOW STATUS LIKE 'Ssl_cipher';").fetchone()[1]
     #     assert_true(len(result) > 0)
 
     @staticmethod
     def test_insecure_connection():
-        result = dj.conn(**CONN_INFO, ssl=False, reset=True).query(
+        result = dj.conn(ssl=False, reset=True, **CONN_INFO).query(
                 "SHOW STATUS LIKE 'Ssl_cipher';").fetchone()[1]
         assert_equal(result, '')
 
