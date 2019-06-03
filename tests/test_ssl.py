@@ -15,7 +15,7 @@ class TestSSL:
 
     @staticmethod
     def test_insecure_connection():
-        result = dj.conn(ssl=False, reset=True, **CONN_INFO).query(
+        result = dj.conn(use_ssl=False, reset=True, **CONN_INFO).query(
                 "SHOW STATUS LIKE 'Ssl_cipher';").fetchone()[1]
         assert_equal(result, '')
 
@@ -24,5 +24,5 @@ class TestSSL:
     def test_reject_insecure():
         result = dj.conn(
                 CONN_INFO['host'], user='djssl', password='djssl',
-                ssl=False, reset=True
+                use_ssl=False, reset=True
                 ).query("SHOW STATUS LIKE 'Ssl_cipher';").fetchone()[1]
