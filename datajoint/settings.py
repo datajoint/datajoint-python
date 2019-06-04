@@ -42,7 +42,8 @@ default = OrderedDict({
     'fetch_format': 'array',
     'display.limit': 12,
     'display.width': 14,
-    'display.show_tuple_count': True
+    'display.show_tuple_count': True,
+    'database.use_ssl': 'Unset'
 })
 
 logger = logging.getLogger(__name__)

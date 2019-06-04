@@ -17,7 +17,7 @@ from .dependencies import Dependencies
 logger = logging.getLogger(__name__)
 
 
-def conn(host=None, user=None, password=None, init_fun=None, reset=False, use_ssl=True):
+def conn(host=None, user=None, password=None, init_fun=None, reset=False, use_ssl=None):
     """
     Returns a persistent connection object to be shared by multiple modules.
     If the connection is not yet established or reset=True, a new connection is set up.
@@ -40,6 +40,7 @@ def conn(host=None, user=None, password=None, init_fun=None, reset=False, use_ss
         if password is None:  # pragma: no cover
             password = getpass(prompt="Please enter DataJoint password: ")
         init_fun = init_fun if init_fun is not None else config['connection.init_function']
+        use_ssl = use_ssl if use_ssl is not None else config['database.use_ssl']
         conn.connection = Connection(host, user, password, None, init_fun, use_ssl)
     return conn.connection
 
@@ -57,7 +58,7 @@ class Connection:
     :param port: port number
     :param init_fun: connection initialization function (SQL)
     """
-    def __init__(self, host, user, password, port=None, init_fun=None, use_ssl=True):
+    def __init__(self, host, user, password, port=None, init_fun=None, use_ssl='Unset'):
         if ':' in host:
             # the port in the hostname overrides the port argument
             host, port = host.split(':')
@@ -65,8 +66,9 @@ class Connection:
         elif port is None:
             port = config['database.port']
         self.conn_info = dict(host=host, port=port, user=user, passwd=password)
-        if use_ssl:
+        if not use_ssl == False:
             self.conn_info['ssl'] = use_ssl if isinstance(use_ssl, dict) else {'ssl': {}}
+        self.conn_info['ssl_input'] = use_ssl
         self.init_fun = init_fun
         print("Connecting {user}@{host}:{port}".format(**self.conn_info))
         self._conn = None
@@ -92,6 +94,7 @@ class Connection:
         """
         Connects to the database server.
         """
+        ssl_input = self.conn_info.pop('ssl_input')
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', '.*deprecated.*')
             try:
@@ -102,13 +105,15 @@ class Connection:
                     charset=config['connection.charset'],
                     **self.conn_info)
             except err.InternalError:
-                self.conn_info.pop('ssl')
+                if ssl_input == 'Unset':
+                    self.conn_info.pop('ssl')
                 self._conn = client.connect(
                     init_command=self.init_fun,
                     sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
                             "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
                     charset=config['connection.charset'],
                     **self.conn_info)
+        self.conn_info['ssl_input'] = ssl_input
         self._conn.autocommit(True)
 
     def close(self):
