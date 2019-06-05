@@ -6,12 +6,12 @@ compatibility with Matlab-based serialization implemented by mYm.
 import zlib
 from itertools import repeat
 import collections
-from collections import OrderedDict
 from decimal import Decimal
 import datetime
 import uuid
 import numpy as np
 from .errors import DataJointError
+from .utils import OrderedDict
 
 
 mxClassID = OrderedDict((
@@ -146,7 +146,7 @@ class Blob:
             return self.pack_recarray(np.array(obj))
         if isinstance(obj, np.number):
             return self.pack_array(np.array(obj))
-        if isinstance(obj, (bool, np.bool)):
+        if isinstance(obj, (bool, np.bool, np.bool_)):
             return self.pack_array(np.array(obj))
         if isinstance(obj, float):
             return self.pack_array(np.array(obj, dtype=np.float64))
@@ -206,7 +206,8 @@ class Blob:
         is_complex = np.iscomplexobj(array)
         if is_complex:
             array, imaginary = np.real(array), np.imag(array)
-        type_id = rev_class_id[array.dtype]
+        type_id = (rev_class_id[array.dtype] if array.dtype.char != 'U'
+                else rev_class_id[np.dtype('O')])
         if dtype_list[type_id] is None:
             raise DataJointError("Type %s is ambiguous or unknown" % array.dtype)
 
@@ -240,7 +241,7 @@ class Blob:
 
     def pack_recarray(self, array):
         """ Serialize a Matlab struct array """
-        return (b"F" + len_u32(array) +  # number of fields
+        return (b"F" + len_u32(array.dtype) +  # number of fields
                 '\0'.join(array.dtype.names).encode() + b"\0" +  # field names
                 b"".join(self.pack_recarray(array[f]) if array[f].dtype.fields else self.pack_array(array[f])
                          for f in array.dtype.names))
@@ -300,7 +301,7 @@ class Blob:
             len_u64(it) + it for it in (self.pack_blob(i) for i in t))
 
     def read_dict(self):
-        return dict((self.read_blob(self.read_value()), self.read_blob(self.read_value()))
+        return OrderedDict((self.read_blob(self.read_value()), self.read_blob(self.read_value()))
                     for _ in range(self.read_value()))
 
     def pack_dict(self, d):
