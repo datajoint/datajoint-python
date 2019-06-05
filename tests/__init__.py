@@ -8,6 +8,7 @@ after the test.
 import logging
 from os import environ, remove
 import datajoint as dj
+from distutils.version import LooseVersion
 
 __author__ = 'Edgar Walker, Fabian Sinz, Dimitri Yatsenko'
 
@@ -22,6 +23,11 @@ CONN_INFO = dict(
     user=environ.get('DJ_TEST_USER', 'datajoint'),
     password=environ.get('DJ_TEST_PASSWORD', 'datajoint'))
 
+CONN_INFO_ROOT = dict(
+    host=environ.get('DJ_HOST', 'localhost'),
+    user=environ.get('DJ_USER', 'root'),
+    password=environ.get('DJ_PASS', 'simple'))
+
 S3_CONN_INFO = dict(
     endpoint=environ.get('S3_ENDPOINT', 'localhost:9000'),
     access_key=environ.get('S3_ACCESS_KEY', 'datajoint'),
@@ -30,6 +36,18 @@ S3_CONN_INFO = dict(
 
 # Prefix for all databases used during testing
 PREFIX = environ.get('DJ_TEST_DB_PREFIX', 'djtest')
+conn_root = dj.conn(**CONN_INFO_ROOT)
+
+# create user if necessary on mysql8
+if LooseVersion(conn_root.query("select @@version;").fetchone()[0]) >= LooseVersion('8.0.0'):
+    conn_root.query("CREATE USER IF NOT EXISTS 'datajoint'@'%%';")
+    conn_root.query("CREATE USER IF NOT EXISTS 'djview'@'%%';")
+
+# grant permissions. For mysql5.6/5.7 this also automatically creates user if not exists
+conn_root.query(
+    "GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%' IDENTIFIED BY 'datajoint';")
+conn_root.query(
+    "GRANT SELECT ON `djtest%%`.* TO 'djview'@'%%' IDENTIFIED BY 'djview';")
 
 
 def setup_package():
