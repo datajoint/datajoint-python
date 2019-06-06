@@ -17,7 +17,7 @@ from .dependencies import Dependencies
 logger = logging.getLogger(__name__)
 
 
-def conn(host=None, user=None, password=None, init_fun=None, reset=False, use_ssl=None):
+def conn(host=None, user=None, password=None, init_fun=None, reset=False, use_tls=None):
     """
     Returns a persistent connection object to be shared by multiple modules.
     If the connection is not yet established or reset=True, a new connection is set up.
@@ -40,8 +40,8 @@ def conn(host=None, user=None, password=None, init_fun=None, reset=False, use_ss
         if password is None:  # pragma: no cover
             password = getpass(prompt="Please enter DataJoint password: ")
         init_fun = init_fun if init_fun is not None else config['connection.init_function']
-        use_ssl = use_ssl if use_ssl is not None else config['database.use_ssl']
-        conn.connection = Connection(host, user, password, None, init_fun, use_ssl)
+        use_tls = use_tls if use_tls is not None else config['database.use_tls']
+        conn.connection = Connection(host, user, password, None, init_fun, use_tls)
     return conn.connection
 
 
@@ -58,7 +58,7 @@ class Connection:
     :param port: port number
     :param init_fun: connection initialization function (SQL)
     """
-    def __init__(self, host, user, password, port=None, init_fun=None, use_ssl='Unset'):
+    def __init__(self, host, user, password, port=None, init_fun=None, use_tls='Unset'):
         if ':' in host:
             # the port in the hostname overrides the port argument
             host, port = host.split(':')
@@ -66,9 +66,9 @@ class Connection:
         elif port is None:
             port = config['database.port']
         self.conn_info = dict(host=host, port=port, user=user, passwd=password)
-        if not use_ssl == False:
-            self.conn_info['ssl'] = use_ssl if isinstance(use_ssl, dict) else {'ssl': {}}
-        self.conn_info['ssl_input'] = use_ssl
+        if use_tls is not False:
+            self.conn_info['ssl'] = use_tls if isinstance(use_tls, dict) else {'ssl': {}}
+        self.conn_info['ssl_input'] = use_tls
         self.init_fun = init_fun
         print("Connecting {user}@{host}:{port}".format(**self.conn_info))
         self._conn = None

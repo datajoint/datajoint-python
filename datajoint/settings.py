@@ -43,7 +43,7 @@ default = OrderedDict({
     'display.limit': 12,
     'display.width': 14,
     'display.show_tuple_count': True,
-    'database.use_ssl': 'Unset'
+    'database.use_tls': 'Unset'
 })
 
 logger = logging.getLogger(__name__)

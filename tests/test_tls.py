@@ -5,7 +5,7 @@ from . import CONN_INFO
 from pymysql.err import OperationalError
 
 
-class TestSSL:
+class TestTLS:
 
     @staticmethod
     def test_secure_connection():
@@ -15,7 +15,7 @@ class TestSSL:
 
     @staticmethod
     def test_insecure_connection():
-        result = dj.conn(use_ssl=False, reset=True, **CONN_INFO).query(
+        result = dj.conn(use_tls=False, reset=True, **CONN_INFO).query(
                 "SHOW STATUS LIKE 'Ssl_cipher';").fetchone()[1]
         assert_equal(result, '')
 
@@ -24,5 +24,5 @@ class TestSSL:
     def test_reject_insecure():
         result = dj.conn(
                 CONN_INFO['host'], user='djssl', password='djssl',
-                use_ssl=False, reset=True
+                use_tls=False, reset=True
                 ).query("SHOW STATUS LIKE 'Ssl_cipher';").fetchone()[1]
