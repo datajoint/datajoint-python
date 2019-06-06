@@ -58,7 +58,7 @@ class Connection:
     :param port: port number
     :param init_fun: connection initialization function (SQL)
     """
-    def __init__(self, host, user, password, port=None, init_fun=None, use_tls='Unset'):
+    def __init__(self, host, user, password, port=None, init_fun=None, use_tls=None):
         if ':' in host:
             # the port in the hostname overrides the port argument
             host, port = host.split(':')
@@ -105,7 +105,7 @@ class Connection:
                     charset=config['connection.charset'],
                     **self.conn_info)
             except err.InternalError:
-                if ssl_input == 'Unset':
+                if ssl_input is None:
                     self.conn_info.pop('ssl')
                 self._conn = client.connect(
                     init_command=self.init_fun,
