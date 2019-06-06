@@ -4,6 +4,7 @@
 
 * Configurable blob storage (#497, #532, #475)
 * Support file attachments: (#480, #532, #475)
+* Support for filepath datatype: (#481, 603)
 * Expand support of blob serialization (fixed #572, #520, #427, #392, #244)
 * Add support for UUID attributes (#562, #567)
 * Support of ellipsis in `proj`:  `query_expression.proj(.., '-movie')` (#499)
