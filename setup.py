@@ -3,8 +3,10 @@ from setuptools import setup, find_packages
 from os import path
 import sys
 
-if sys.version_info < (3, 4):
-    sys.exit('DataJoint is only supported on Python 3.4 or higher')
+min_py_version = (3, 4)
+
+if sys.version_info <  min_py_version:
+    sys.exit('DataJoint is only supported on Python {}.{} or higher'.format(*min_py_version))
 
 here = path.abspath(path.dirname(__file__))
 
@@ -29,4 +31,5 @@ setup(
     keywords='database organization',
     packages=find_packages(exclude=['contrib', 'docs', 'tests*']),
     install_requires=requirements,
+    python_requires='~={}.{}'.format(*min_py_version)
 )
