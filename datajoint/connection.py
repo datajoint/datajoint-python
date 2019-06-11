@@ -30,6 +30,7 @@ def conn(host=None, user=None, password=None, init_fun=None, reset=False, use_tl
     :param password: mysql password
     :param init_fun: initialization function
     :param reset: whether the connection should be reset or not
+    :param use_tls: TLS encryption option
     """
     if not hasattr(conn, 'connection') or reset:
         host = host if host is not None else config['database.host']
@@ -57,6 +58,7 @@ class Connection:
     :param password: password
     :param port: port number
     :param init_fun: connection initialization function (SQL)
+    :param use_tls: TLS encryption option
     """
     def __init__(self, host, user, password, port=None, init_fun=None, use_tls=None):
         if ':' in host:
