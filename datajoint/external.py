@@ -168,7 +168,7 @@ class ExternalTable(Table):
         self.connection.query(
             "DELETE FROM `{db}`.`{tab}` WHERE ".format(tab=self.table_name, db=self.database) + (
                     " AND ".join(
-                        'hash NOT IN (SELECT {column_name} FROM {referencing_table})'.format(**ref)
+                        'hash NOT IN (SELECT `{column_name}` FROM {referencing_table})'.format(**ref)
                         for ref in self.references) or "TRUE"))
         print('Deleted %d items' % self.connection.query("SELECT ROW_COUNT()").fetchone()[0])
 
