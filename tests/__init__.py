@@ -10,6 +10,11 @@ from os import environ, remove
 import datajoint as dj
 from distutils.version import LooseVersion
 
+import os
+from minio import Minio
+import urllib3
+import certifi
+
 __author__ = 'Edgar Walker, Fabian Sinz, Dimitri Yatsenko'
 
 # turn on verbose logging
@@ -76,6 +81,24 @@ else:
         REQUIRE SSL;
         """)
 
+# Initialize httpClient with relevant timeout.
+httpClient = urllib3.PoolManager(
+        timeout=30,
+                cert_reqs='CERT_REQUIRED',
+                ca_certs=certifi.where(),
+                retries=urllib3.Retry(
+                    total=3,
+                    backoff_factor=0.2,
+                    status_forcelist=[500, 502, 503, 504]
+                )
+    )
+
+# Initialize minioClient with an endpoint and access/secret keys.
+minioClient = Minio('minio:9000',
+                    access_key='datajoint',
+                    secret_key='datajoint',
+                    secure=False,
+                    http_client=httpClient)
 
 def setup_package():
     """
@@ -83,6 +106,14 @@ def setup_package():
     Turns off safemode
     """
     dj.config['safemode'] = False
+
+    objs = list(minioClient.list_objects_v2("datajoint-test-old",recursive=True))
+    objs = [minioClient.remove_object("datajoint-test-old", o.object_name.encode('utf-8')) for o in objs]
+    minioClient.remove_bucket("datajoint-test-old")
+
+    minioClient.make_bucket("datajoint-test-old", location="us-east-1")
+    for filename in os.listdir('./external-legacy-data'):
+        minioClient.fput_object('datajoint-test-old', 'dj/store/djtest_extern/{}'.format(filename), './external-legacy-data/{}'.format(filename))
 
 
 def teardown_package():
