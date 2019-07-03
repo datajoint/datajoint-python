@@ -108,12 +108,14 @@ def setup_package():
     dj.config['safemode'] = False
 
     objs = list(minioClient.list_objects_v2("datajoint-test-old",recursive=True))
-    objs = [minioClient.remove_object("datajoint-test-old", o.object_name.encode('utf-8')) for o in objs]
+    objs = [minioClient.remove_object("datajoint-test-old",
+            o.object_name.encode('utf-8')) for o in objs]
     minioClient.remove_bucket("datajoint-test-old")
 
     minioClient.make_bucket("datajoint-test-old", location="us-east-1")
     for filename in os.listdir('./external-legacy-data'):
-        minioClient.fput_object('datajoint-test-old', 'dj/store/djtest_extern/{}'.format(filename), './external-legacy-data/{}'.format(filename))
+        minioClient.fput_object('datajoint-test-old', 'dj/store/djtest_extern/{}'.format(filename),
+                './external-legacy-data/{}'.format(filename))
 
 
 def teardown_package():
