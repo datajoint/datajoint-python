@@ -5,15 +5,9 @@ declare the corresponding mysql tables.
 import re
 import pyparsing as pp
 import logging
-from collections import defaultdict
 from .errors import DataJointError
 
-import sys
-if sys.version_info[1] < 6:
-    from collections import OrderedDict
-else:
-    # use dict in Python 3.6+ -- They are already ordered and look nicer
-    OrderedDict = dict
+from .utils import OrderedDict
 
 UUID_DATA_TYPE = 'binary(16)'
 MAX_TABLE_NAME_LENGTH = 64
@@ -315,10 +309,11 @@ def _make_attribute_alter(new, old, primary_key):
 
     # verify that all renamed attributes existed in the old definition
     try:
-        raise DataJointError("Attribute {%s} does not exist in the original definition"
-                             % renamed.difference(old_names).pop())
-    except KeyError:
-        pass  # all renamed attributes existed in the original definition
+        raise DataJointError(
+            "Attribute {} does not exist in the original definition".format(
+                next(attr for attr in renamed if attr not in old_names)))
+    except StopIteration:
+        pass
 
     # dropping attributes
     to_drop = [n for n in old_names if n not in renamed and n not in new_names]

@@ -1,4 +1,4 @@
-from nose.tools import assert_true, assert_equal, assert_not_equal
+from nose.tools import assert_equal, assert_not_equal
 
 from .schema import *
 
@@ -21,7 +21,7 @@ class Experiment(dj.Imported):
     -> Subject
     experiment_id  :smallint  # experiment number for this subject
     ---
-    data_path=""     :varchar(255)  # file path to recorded data
+    data_path     : int  # some number
     extra=null : longblob  # just testing
     -> [nullable] User
     subject_notes=null         :varchar(2048) # {notes} e.g. purpose of experiment
