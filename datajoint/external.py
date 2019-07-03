@@ -94,11 +94,10 @@ class ExternalTable(Table):
         If an external entry exists with the same checksum, then no copying should occur
         """
         local_folder = os.path.dirname(local_filepath)
-        stage_folder = os.path.join(os.path.abspath(self.spec['stage']), '')
-        if not local_folder.startswith(stage_folder):
+        relative_filepath = os.path.relpath(local_filepath, start=self.spec['stage'])
+        if relative_filepath.startswith(os.path.pardir):
             raise DataJointError('The path {path} is not in stage {stage}'.format(
-                path=local_folder, stage=stage_folder))
-        relative_filepath = local_filepath[len(stage_folder):]
+                path=local_folder, stage=self.spec['stage']))
         uuid = uuid_from_buffer(init_string=relative_filepath)
         contents_hash = uuid_from_file(local_filepath)
 
@@ -231,7 +230,7 @@ class ExternalTable(Table):
         """
         remote_path = self.spec['location']
         if self.spec['protocol'] == 'file':
-            position = len(os.path.join(os.path.abspath(remote_path), ''))
+            position = len(os.path.join(os.path.abspath(remote_path), ''))  # keep consistent for root path '/'
             generator = (os.path.join(folder[position:], file)
                          for folder, dirs, files in os.walk(remote_path, topdown=False) for file in files)
         else:  # self.spec['protocol'] == 's3'
