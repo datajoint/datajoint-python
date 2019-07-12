@@ -131,11 +131,33 @@ class Config(collections.MutableMapping):
         try:
             spec = self['stores'][store]
         except KeyError:
-            raise DataJointError('Storage {store} is requested but not configured'.format(store=store))
-        else:
-            spec['subfolding'] = spec.get('subfolding', DEFAULT_SUBFOLDING)
-        if spec.get('protocol') not in ('file', 's3'):
-            raise DataJointError('Missing or invalid protocol in dj.config["stores"]["{store}"]'.format(store=store))
+            raise DataJointError('Storage {store} is requested but not configured'.format(store=store)) from None
+
+        spec['subfolding'] = spec.get('subfolding', DEFAULT_SUBFOLDING)
+        spec_keys = {  # REQUIRED in uppercase and allowed in lowercase
+            'file': ('PROTOCOL', 'LOCATION', 'subfolding', 'stage'),
+            's3': ('PROTOCOL', 'ENDPOINT', 'BUCKET', 'ACCESS_KEY', 'SECRET_KEY', 'LOCATION', 'subfolding', 'stage')}
+
+        try:
+            spec_keys = spec_keys[spec.get('protocol', '').lower()]
+        except KeyError:
+            raise DataJointError(
+                'Missing or invalid protocol in dj.config["stores"]["{store}"]'.format(store=store)) from None
+
+        # check that all required keys are present in spec
+        try:
+            raise DataJointError('dj.config["stores"]["{store}" is missing "{k}"'.format(
+                store=store, k=next(k.lower() for k in spec_keys if k.isupper() and k.lower() not in spec)))
+        except StopIteration:
+            pass
+
+        # check that only allowed keys are present in spec
+        try:
+            raise DataJointError('Invalid key "{k}" in dj.config["stores"]["{store}"]'.format(
+                store=store, k=next(k for k in spec if k.upper() not in spec_keys and k.lower() not in spec_keys)))
+        except StopIteration:
+            pass  # no invalid keys
+
         return spec
 
     @contextmanager
