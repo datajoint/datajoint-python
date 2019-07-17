@@ -14,6 +14,8 @@ import os
 from minio import Minio
 import urllib3
 import certifi
+import pymysql
+from pathlib import Path
 
 __author__ = 'Edgar Walker, Fabian Sinz, Dimitri Yatsenko'
 
@@ -66,7 +68,7 @@ if LooseVersion(conn_root.query(
     conn_root.query(
         "GRANT SELECT ON `djtest%%`.* TO 'djssl'@'%%';")
 else:
-    # grant permissions. For mysql5.6/5.7 this also automatically creates user 
+    # grant permissions. For mysql5.6/5.7 this also automatically creates user
     # if not exists
     conn_root.query("""
         GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%'
@@ -83,15 +85,15 @@ else:
 
 # Initialize httpClient with relevant timeout.
 httpClient = urllib3.PoolManager(
-        timeout=30,
-                cert_reqs='CERT_REQUIRED',
-                ca_certs=certifi.where(),
-                retries=urllib3.Retry(
-                    total=3,
-                    backoff_factor=0.2,
-                    status_forcelist=[500, 502, 503, 504]
-                )
-    )
+            timeout=30,
+            cert_reqs='CERT_REQUIRED',
+            ca_certs=certifi.where(),
+            retries=urllib3.Retry(
+                total=3,
+                backoff_factor=0.2,
+                status_forcelist=[500, 502, 503, 504]
+            )
+        )
 
 # Initialize minioClient with an endpoint and access/secret keys.
 minioClient = Minio('minio:9000',
@@ -100,6 +102,7 @@ minioClient = Minio('minio:9000',
                     secure=False,
                     http_client=httpClient)
 
+
 def setup_package():
     """
     Package-level unit test setup
@@ -107,18 +110,75 @@ def setup_package():
     """
     dj.config['safemode'] = False
 
-    #Remove old S3
-    objs = list(minioClient.list_objects_v2("datajoint-test-old",recursive=True))
-    objs = [minioClient.remove_object("datajoint-test-old",
-            o.object_name.encode('utf-8')) for o in objs]
-    minioClient.remove_bucket("datajoint-test-old")
+    # Add old MySQL
+    source = "/src/tests/external-legacy-data"
+    db_name = "djtest_v0_11"
+    db_file = "v0_11.sql"
+    conn_root.query("""
+        CREATE DATABASE {};
+        """.format(db_name))
 
-    #Add old S3
-    minioClient.make_bucket("datajoint-test", location="us-east-1")
-    minioClient.make_bucket("datajoint-test-old", location="us-east-1")
-    for filename in os.listdir('./external-legacy-data'):
-        minioClient.fput_object('datajoint-test-old', 'dj/store/djtest_extern/{}'.format(filename),
-                './external-legacy-data/{}'.format(filename))
+    def parse_sql(filename):
+        data = open(filename, 'r').readlines()
+        stmts = []
+        DELIMITER = ';'
+        stmt = ''
+
+        for lineno, line in enumerate(data):
+            if not line.strip():
+                continue
+
+            if line.startswith('--'):
+                continue
+
+            if 'DELIMITER' in line:
+                DELIMITER = line.split()[1]
+                continue
+
+            if (DELIMITER not in line):
+                stmt += line.replace(DELIMITER, ';')
+                continue
+
+            if stmt:
+                stmt += line
+                stmts.append(stmt.strip())
+                stmt = ''
+            else:
+                stmts.append(line.strip())
+        return stmts
+
+    stmts = parse_sql('{}/{}'.format(source, db_file))
+
+    # conn = pymysql.connect('mysql','root','simple')
+    # with conn.cursor() as cursor:
+    #     for stmt in stmts:
+    #         # print(stmt)
+    #         cursor.execute(stmt)
+    #     conn.commit()
+
+    for stmt in stmts:
+        conn_root.query(stmt)
+
+    # Add old S3
+    bucket = "datajoint-test-old"
+    region = "us-east-1"
+    minioClient.make_bucket(bucket, location=region)
+    # for filename in os.listdir('./external-legacy-data'):
+    #     minioClient.fput_object(
+    #       'datajoint-test-old', 'dj/store/djtest_extern/{}'.format(filename),
+    #             './external-legacy-data/{}'.format(filename))
+
+    pathlist = Path(source).glob('**/*')
+    for path in pathlist:
+        if os.path.isfile(str(path)) and ".sql" not in str(path):
+            minioClient.fput_object(
+                    bucket, os.path.relpath(
+                        str(path),
+                        '{}/{}'.format(source, bucket)
+                        ), str(path))
+
+    # Add S3
+    minioClient.make_bucket("datajoint-test", location=region)
 
 
 def teardown_package():
@@ -135,3 +195,18 @@ def teardown_package():
         conn.query('DROP DATABASE `{}`'.format(db[0]))
     conn.query('SET FOREIGN_KEY_CHECKS=1')
     remove("dj_local_conf.json")
+
+    # Remove old S3
+    bucket = "datajoint-test-old"
+    objs = list(minioClient.list_objects_v2(
+            bucket, recursive=True))
+    objs = [minioClient.remove_object(bucket,
+            o.object_name.encode('utf-8')) for o in objs]
+    minioClient.remove_bucket(bucket)
+
+    # Remove S3
+    bucket = "datajoint-test"
+    objs = list(minioClient.list_objects_v2(bucket, recursive=True))
+    objs = [minioClient.remove_object(bucket,
+            o.object_name.encode('utf-8')) for o in objs]
+    minioClient.remove_bucket(bucket)
