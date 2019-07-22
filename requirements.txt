@@ -1,6 +1,6 @@
 numpy
 pymysql>=0.7.2
-pyparsing
+pyparsing<=2.4.0
 ipython
 pandas
 tqdm
