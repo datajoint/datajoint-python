@@ -1,6 +1,6 @@
 import hashlib
 import uuid
-import os
+import io
 
 
 def key_hash(key):
@@ -13,27 +13,25 @@ def key_hash(key):
     return hashed.hexdigest()
 
 
-def uuid_from_buffer(*buffers):
+def uuid_from_stream(stream, init_string=""):
     """
-    :param buffers: any number of binary buffers (e.g. serialized blobs)
-    :return: UUID converted from the MD5 hash over the buffers.
+    :return: 16-byte digest of stream data
+    :stream: stream object or open file handle
+    :init_string: string to initialize the checksum
     """
-    hashed = hashlib.md5()
-    for buffer in buffers:
-        hashed.update(buffer)
+    hashed = hashlib.md5(init_string.encode())
+    chunk = True
+    chunk_size = 1 << 14
+    while chunk:
+        chunk = stream.read(chunk_size)
+        hashed.update(chunk)
     return uuid.UUID(bytes=hashed.digest())
 
 
-def uuid_from_file(filepath, filename):
-    """
-    :return: 16-byte digest SH1
-    """
-    hashed = hashlib.md5()
-    hashed.update(filename.encode() + b'\0')
-    with open(os.path.join(filepath, filename), 'br') as f:
-        chunk = True
-        chunk_size = 1 << 16
-        while chunk:
-            chunk = f.read(chunk_size)
-            hashed.update(chunk)
-    return uuid.UUID(bytes=hashed.digest())
+def uuid_from_buffer(buffer=b"", init_string=""):
+    return uuid_from_stream(io.BytesIO(buffer), init_string=init_string)
+
+
+def uuid_from_file(filepath, init_string=""):
+    with open(filepath, "rb") as f:
+        return uuid_from_stream(f, init_string=init_string)

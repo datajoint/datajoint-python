@@ -17,7 +17,7 @@ from .dependencies import Dependencies
 logger = logging.getLogger(__name__)
 
 
-def conn(host=None, user=None, password=None, init_fun=None, reset=False):
+def conn(host=None, user=None, password=None, init_fun=None, reset=False, use_tls=None):
     """
     Returns a persistent connection object to be shared by multiple modules.
     If the connection is not yet established or reset=True, a new connection is set up.
@@ -30,6 +30,7 @@ def conn(host=None, user=None, password=None, init_fun=None, reset=False):
     :param password: mysql password
     :param init_fun: initialization function
     :param reset: whether the connection should be reset or not
+    :param use_tls: TLS encryption option
     """
     if not hasattr(conn, 'connection') or reset:
         host = host if host is not None else config['database.host']
@@ -40,7 +41,8 @@ def conn(host=None, user=None, password=None, init_fun=None, reset=False):
         if password is None:  # pragma: no cover
             password = getpass(prompt="Please enter DataJoint password: ")
         init_fun = init_fun if init_fun is not None else config['connection.init_function']
-        conn.connection = Connection(host, user, password, init_fun)
+        use_tls = use_tls if use_tls is not None else config['database.use_tls']
+        conn.connection = Connection(host, user, password, None, init_fun, use_tls)
     return conn.connection
 
 
@@ -56,8 +58,9 @@ class Connection:
     :param password: password
     :param port: port number
     :param init_fun: connection initialization function (SQL)
+    :param use_tls: TLS encryption option
     """
-    def __init__(self, host, user, password, port=None, init_fun=None):
+    def __init__(self, host, user, password, port=None, init_fun=None, use_tls=None):
         if ':' in host:
             # the port in the hostname overrides the port argument
             host, port = host.split(':')
@@ -65,6 +68,9 @@ class Connection:
         elif port is None:
             port = config['database.port']
         self.conn_info = dict(host=host, port=port, user=user, passwd=password)
+        if use_tls is not False:
+            self.conn_info['ssl'] = use_tls if isinstance(use_tls, dict) else {'ssl': {}}
+        self.conn_info['ssl_input'] = use_tls
         self.init_fun = init_fun
         print("Connecting {user}@{host}:{port}".format(**self.conn_info))
         self._conn = None
@@ -90,14 +96,26 @@ class Connection:
         """
         Connects to the database server.
         """
+        ssl_input = self.conn_info.pop('ssl_input')
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', '.*deprecated.*')
-            self._conn = client.connect(
-                init_command=self.init_fun,
-                sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
-                         "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
-                charset=config['connection.charset'],
-                **self.conn_info)    
+            try:
+                self._conn = client.connect(
+                    init_command=self.init_fun,
+                    sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
+                            "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
+                    charset=config['connection.charset'],
+                    **self.conn_info)
+            except err.InternalError:
+                if ssl_input is None:
+                    self.conn_info.pop('ssl')
+                self._conn = client.connect(
+                    init_command=self.init_fun,
+                    sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
+                            "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
+                    charset=config['connection.charset'],
+                    **self.conn_info)
+        self.conn_info['ssl_input'] = ssl_input
         self._conn.autocommit(True)
 
     def close(self):
@@ -119,9 +137,9 @@ class Connection:
         """
         try:
             self.ping()
-            return True
         except:
             return False
+        return True
 
     def query(self, query, args=(), as_dict=False, suppress_warnings=True, reconnect=None):
         """

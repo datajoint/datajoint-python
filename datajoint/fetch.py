@@ -41,11 +41,12 @@ def _get(connection, attr, data, squeeze, download_path):
     :param download_path: for fetches that download data, e.g. attachments
     :return: unpacked data
     """
-
     if data is None:
-        return 
-
+        return
     extern = connection.schemas[attr.database].external[attr.store] if attr.is_external else None
+
+    if attr.is_filepath:
+        return extern.fget(uuid.UUID(bytes=data))[0]
 
     if attr.is_attachment:
         # Steps: 
@@ -59,9 +60,8 @@ def _get(connection, attr, data, squeeze, download_path):
         size -= len(filename) + 1
         filepath = os.path.join(download_path, filename)
         if os.path.isfile(filepath) and size == os.path.getsize(filepath):
-            local_checksum = hash.uuid_from_file(download_path, filename)
-            remote_checksum = (uuid.UUID(bytes=data)
-                    if attr.is_external else hash.uuid_from_buffer(data))
+            local_checksum = hash.uuid_from_file(filepath, filename + '\0')
+            remote_checksum = uuid.UUID(bytes=data) if attr.is_external else hash.uuid_from_buffer(data)
             if local_checksum == remote_checksum: 
                 return filepath  # the existing file is okay
         # Download remote attachment
@@ -92,7 +92,7 @@ def _flatten_attribute_list(primary_key, attrs):
 class Fetch:
     """
     A fetch object that handles retrieving elements from the table expression.
-    :param expression: the table expression to fetch from.
+    :param expression: the QueryExpression object to fetch from.
     """
 
     def __init__(self, expression):
@@ -152,7 +152,7 @@ class Fetch:
         if limit is None and offset is not None:
             warnings.warn('Offset set, but no limit. Setting limit to a large number. '
                           'Consider setting a limit explicitly.')
-            limit = 2 * len(self._expression)
+            limit = 8000000000  # just a very large number to effect no limit
 
         get = partial(_get, self._expression.connection, squeeze=squeeze, download_path=download_path)
         if attrs:  # a list of attributes provided
@@ -194,7 +194,6 @@ class Fetch1:
     Fetch object for fetching exactly one row.
     :param relation: relation the fetch object fetches data from
     """
-
     def __init__(self, relation):
         self._expression = relation
 
@@ -233,5 +232,4 @@ class Fetch1:
                 next(to_dicts(result[self._expression.primary_key])) if is_key(attribute) else result[attribute][0]
                 for attribute in attrs)
             ret = return_values[0] if len(attrs) == 1 else return_values
-
         return ret

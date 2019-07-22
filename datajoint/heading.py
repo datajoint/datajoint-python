@@ -12,7 +12,8 @@ logger = logging.getLogger(__name__)
 
 default_attribute_properties = dict(    # these default values are set in computed attributes
     name=None, type='expression', in_key=False, nullable=False, default=None, comment='calculated attribute',
-    autoincrement=False, numeric=None, string=None, uuid=False, is_blob=False, is_attachment=False, is_external=False,
+    autoincrement=False, numeric=None, string=None, uuid=False, is_blob=False, is_attachment=False, is_filepath=False,
+    is_external=False,
     store=None, unsupported=False, sql_expression=None, database=None, dtype=object)
 
 
@@ -91,7 +92,7 @@ class Heading:
 
     @property
     def non_blobs(self):
-        return [k for k, v in self.attributes.items() if not v.is_blob and not v.is_attachment]
+        return [k for k, v in self.attributes.items() if not v.is_blob and not v.is_attachment and not v.is_filepath]
 
     @property
     def expressions(self):
@@ -210,7 +211,7 @@ class Heading:
                 numeric=any(TYPE_PATTERN[t].match(attr['type']) for t in ('DECIMAL', 'INTEGER', 'FLOAT')),
                 string=any(TYPE_PATTERN[t].match(attr['type']) for t in ('ENUM', 'TEMPORAL', 'STRING')),
                 is_blob=bool(TYPE_PATTERN['INTERNAL_BLOB'].match(attr['type'])),
-                uuid=False, is_attachment=False, store=None, is_external=False, sql_expression=None)
+                uuid=False, is_attachment=False, is_filepath=False, store=None, is_external=False, sql_expression=None)
 
             if any(TYPE_PATTERN[t].match(attr['type']) for t in ('INTEGER', 'FLOAT')):
                 attr['type'] = re.sub(r'\(\d+\)', '', attr['type'], count=1)  # strip size off integers and floats
@@ -227,13 +228,14 @@ class Heading:
                     raise DataJointError('Unknown attribute type `{type}`'.format(**attr)) from None
                 attr.update(
                     is_attachment=category in ('INTERNAL_ATTACH', 'EXTERNAL_ATTACH'),
-                    is_blob=category in ('INTERNAL_BLOB', 'EXTERNAL_BLOB'),  # INTERNAL BLOB won't show here but we include for completeness
+                    is_filepath=category == 'FILEPATH',
+                    is_blob=category in ('INTERNAL_BLOB', 'EXTERNAL_BLOB'), # INTERNAL_BLOB is not a custom type but is included for completeness
                     uuid=category == 'UUID',
                     is_external=category in EXTERNAL_TYPES,
                     store=attr['type'].split('@')[1] if category in EXTERNAL_TYPES else None)
 
-            if attr['in_key'] and (attr['is_blob'] or attr['is_attachment']):
-                raise DataJointError('Blob and attachment attributes are not allowed in the primary key')
+            if attr['in_key'] and (attr['is_blob'] or attr['is_attachment'] or attr['is_filepath']):
+                raise DataJointError('Blob, attachment, or filepath attributes are not allowed in the primary key')
 
             if attr['string'] and attr['default'] is not None and attr['default'] not in sql_literals:
                 attr['default'] = '"%s"' % attr['default']

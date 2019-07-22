@@ -5,8 +5,9 @@ declare the corresponding mysql tables.
 import re
 import pyparsing as pp
 import logging
-
 from .errors import DataJointError
+
+from .utils import OrderedDict
 
 UUID_DATA_TYPE = 'binary(16)'
 MAX_TABLE_NAME_LENGTH = 64
@@ -25,13 +26,14 @@ TYPE_PATTERN = {k: re.compile(v, re.I) for k, v in dict(
     EXTERNAL_BLOB=r'blob@(?P<store>[a-z]\w*)$',
     INTERNAL_ATTACH=r'attach$',
     EXTERNAL_ATTACH=r'attach@(?P<store>[a-z]\w*)$',
+    FILEPATH=r'filepath@(?P<store>[a-z]\w*)$',
     UUID=r'uuid$').items()}
 
-CUSTOM_TYPES = {'UUID', 'INTERNAL_ATTACH', 'EXTERNAL_ATTACH', 'EXTERNAL_BLOB'}  # types stored in attribute comment
-EXTERNAL_TYPES = {'EXTERNAL_ATTACH', 'EXTERNAL_BLOB'}  # data referenced by a UUID in external tables
+CUSTOM_TYPES = {'UUID', 'INTERNAL_ATTACH', 'EXTERNAL_ATTACH', 'EXTERNAL_BLOB', 'FILEPATH'}  # types stored in attribute comment
+EXTERNAL_TYPES = {'EXTERNAL_ATTACH', 'EXTERNAL_BLOB', 'FILEPATH'}  # data referenced by a UUID in external tables
 SERIALIZED_TYPES = {'EXTERNAL_ATTACH', 'INTERNAL_ATTACH', 'EXTERNAL_BLOB', 'INTERNAL_BLOB'}  # requires packing data
 
-assert set().union(CUSTOM_TYPES, EXTERNAL_TYPES, SERIALIZED_TYPES) <= set(TYPE_PATTERN)  # for development only
+assert set().union(CUSTOM_TYPES, EXTERNAL_TYPES, SERIALIZED_TYPES) <= set(TYPE_PATTERN)
 
 
 def match_type(datatype):
@@ -217,20 +219,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
         index_sql.append('UNIQUE INDEX ({attrs})'.format(attrs='`,`'.join(ref.primary_key)))
 
 
-def declare(full_table_name, definition, context):
-    """
-    Parse declaration and create new SQL table accordingly.
-
-    :param full_table_name: full name of the table
-    :param definition: DataJoint table definition
-    :param context: dictionary of objects that might be referred to in the table.
-    """
-    table_name = full_table_name.strip('`').split('.')[1]
-    if len(table_name) > MAX_TABLE_NAME_LENGTH:
-        raise DataJointError(
-            'Table name `{name}` exceeds the max length of {max_length}'.format(
-                name=table_name,
-                max_length=MAX_TABLE_NAME_LENGTH))
+def prepare_declare(definition, context):
     # split definition into lines
     definition = re.split(r'\s*\n\s*', definition.strip())
     # check for optional table comment
@@ -265,7 +254,28 @@ def declare(full_table_name, definition, context):
             if name not in attributes:
                 attributes.append(name)
                 attribute_sql.append(sql)
-    # compile SQL
+
+    return table_comment, primary_key, attribute_sql, foreign_key_sql, index_sql, external_stores
+
+
+def declare(full_table_name, definition, context):
+    """
+    Parse declaration and generate the SQL CREATE TABLE code
+    :param full_table_name: full name of the table
+    :param definition: DataJoint table definition
+    :param context: dictionary of objects that might be referred to in the table
+    :return: SQL CREATE TABLE statement, list of external stores used
+    """
+    table_name = full_table_name.strip('`').split('.')[1]
+    if len(table_name) > MAX_TABLE_NAME_LENGTH:
+        raise DataJointError(
+            'Table name `{name}` exceeds the max length of {max_length}'.format(
+                name=table_name,
+                max_length=MAX_TABLE_NAME_LENGTH))
+
+    table_comment, primary_key, attribute_sql, foreign_key_sql, index_sql, external_stores = prepare_declare(
+        definition, context)
+
     if not primary_key:
         raise DataJointError('Table must have a primary key')
 
@@ -273,6 +283,94 @@ def declare(full_table_name, definition, context):
         'CREATE TABLE IF NOT EXISTS %s (\n' % full_table_name +
         ',\n'.join(attribute_sql + ['PRIMARY KEY (`' + '`,`'.join(primary_key) + '`)'] + foreign_key_sql + index_sql) +
         '\n) ENGINE=InnoDB, COMMENT "%s"' % table_comment), external_stores
+
+
+def _make_attribute_alter(new, old, primary_key):
+    """
+    :param new: new attribute declarations
+    :param old: old attribute declarations
+    :param primary_key: primary key attributes
+    :return: list of SQL ALTER commands
+    """
+
+    # parse attribute names
+    name_regexp = re.compile(r"^`(?P<name>\w+)`")
+    original_regexp = re.compile(r'COMMENT "\{\s*(?P<name>\w+)\s*\}')
+    matched = ((name_regexp.match(d), original_regexp.search(d)) for d in new)
+    new_names = OrderedDict((d.group('name'), n and n.group('name')) for d, n in matched)
+    old_names = [name_regexp.search(d).group('name') for d in old]
+
+    # verify that original names are only used once
+    renamed = set()
+    for v in new_names.values():
+        if v:
+            if v in renamed:
+                raise DataJointError('Alter attempted to rename attribute {%s} twice.' % v)
+            renamed.add(v)
+
+    # verify that all renamed attributes existed in the old definition
+    try:
+        raise DataJointError(
+            "Attribute {} does not exist in the original definition".format(
+                next(attr for attr in renamed if attr not in old_names)))
+    except StopIteration:
+        pass
+
+    # dropping attributes
+    to_drop = [n for n in old_names if n not in renamed and n not in new_names]
+    sql = ['DROP `%s`' % n for n in to_drop]
+    old_names = [name for name in old_names if name not in to_drop]
+
+    # add or change attributes in order
+    prev = None
+    for new_def, (new_name, old_name) in zip(new, new_names.items()):
+        if new_name not in primary_key:
+            after = None  # if None, then must include the AFTER clause
+            if prev:
+                try:
+                    idx = old_names.index(old_name or new_name)
+                except ValueError:
+                    after = prev[0]
+                else:
+                    if idx >= 1 and old_names[idx - 1] != (prev[1] or prev[0]):
+                        after = prev[0]
+            if new_def not in old or after:
+                sql.append('{command} {new_def} {after}'.format(
+                    command=("ADD" if (old_name or new_name) not in old_names else
+                             "MODIFY" if not old_name else
+                             "CHANGE `%s`" % old_name),
+                    new_def=new_def,
+                    after="" if after is None else "AFTER `%s`" % after))
+        prev = new_name, old_name
+
+    return sql
+
+
+def alter(definition, old_definition, context):
+    """
+    :param definition: new table definition
+    :param old_definition: current table definition
+    :param context: the context in which to evaluate foreign key definitions
+    :return: string SQL ALTER command, list of new stores used for external storage
+    """
+    table_comment, primary_key, attribute_sql, foreign_key_sql, index_sql, external_stores = prepare_declare(
+        definition, context)
+    table_comment_, primary_key_, attribute_sql_, foreign_key_sql_, index_sql_, external_stores_ = prepare_declare(
+        old_definition, context)
+
+    # analyze differences between declarations
+    sql = list()
+    if primary_key != primary_key_:
+        raise NotImplementedError('table.alter cannot alter the primary key (yet).')
+    if foreign_key_sql != foreign_key_sql_:
+        raise NotImplementedError('table.alter cannot alter foreign keys (yet).')
+    if index_sql != index_sql_:
+        raise NotImplementedError('table.alter cannot alter indexes (yet)')
+    if attribute_sql != attribute_sql_:
+        sql.extend(_make_attribute_alter(attribute_sql, attribute_sql_, primary_key))
+    if table_comment != table_comment_:
+        sql.append('COMMENT="%s"' % table_comment)
+    return sql, [e for e in external_stores if e not in external_stores_]
 
 
 def compile_index(line, index_sql):

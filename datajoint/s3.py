@@ -4,72 +4,62 @@ AWS S3 operations
 from io import BytesIO
 import minio   # https://docs.minio.io/docs/python-client-api-reference
 import warnings
-import itertools
+import uuid
+import os
 
 
 class Folder:
     """
     A Folder instance manipulates a flat folder of objects within an S3-compatible object store
     """
-    def __init__(self, endpoint, bucket, access_key, secret_key, location, database, **_):
+    def __init__(self, endpoint, bucket, access_key, secret_key, location, **_):
         self.client = minio.Minio(endpoint, access_key=access_key, secret_key=secret_key, secure=False)
         self.bucket = bucket
-        self.remote_path = '/'.join((location.lstrip('/'), database))
-
-    def put(self, blob_hash, blob):
-        try:
-            self.client.put_object(self.bucket, '/'.join((self.remote_path, blob_hash)), BytesIO(blob), len(blob))
-        except minio.error.NoSuchBucket:
+        if not self.client.bucket_exists(bucket):
             warnings.warn('Creating bucket "%s"' % self.bucket)
             self.client.make_bucket(self.bucket)
-            self.put(blob_hash, blob)
+        self.remote_path = location.lstrip('/')
 
-    def get(self, blob_hash):
+    def put(self, relative_name, buffer):
+        return self.client.put_object(
+            self.bucket, '/'.join((self.remote_path, relative_name)), BytesIO(buffer), length=len(buffer))
+
+    def fput(self, relative_name, local_file, **meta):
+        return self.client.fput_object(
+            self.bucket, '/'.join((self.remote_path, relative_name)), local_file, metadata=meta or None)
+
+    def get(self, relative_name):
+        return self.client.get_object(self.bucket, '/'.join((self.remote_path, relative_name))).data
+
+    def fget(self, relative_name, local_filepath):
+        """get file from object name to local filepath"""
+        name = '/'.join((self.remote_path, relative_name))
+        stat = self.client.stat_object(self.bucket, name)
+        meta = {k.lower().lstrip('x-amz-meta'): v for k, v in stat.metadata.items()}
+        data = self.client.get_object(self.bucket, name)
+        os.makedirs(os.path.split(local_filepath)[0], exist_ok=True)
+        with open(local_filepath, 'wb') as f:
+            for d in data.stream(1 << 16):
+                f.write(d)
+        return uuid.UUID(meta['contents_hash'])
+
+    def partial_get(self, relative_name, offset, size):
         try:
-            return self.client.get_object(self.bucket, '/'.join((self.remote_path, blob_hash))).data
+            return self.client.get_partial_object(
+                self.bucket, '/'.join((self.remote_path, relative_name)), offset, size).data
         except minio.error.NoSuchKey:
             return None
 
-    def partial_get(self, blob_hash, offset, size):
+    def get_size(self, relative_name):
         try:
-            return self.client.get_partial_object(self.bucket, '/'.join((self.remote_path, blob_hash)), offset, size).data
+            return self.client.stat_object(self.bucket, '/'.join((self.remote_path, relative_name))).size
         except minio.error.NoSuchKey:
             return None
 
-    def get_size(self, blob_hash):
-        try:
-            return self.client.stat_object(self.bucket, '/'.join((self.remote_path, blob_hash))).size
-        except minio.error.NoSuchKey:
-            return None
+    def list_objects(self, folder=''):
+        return self.client.list_objects(self.bucket, '/'.join((self.remote_path, folder, '')), recursive=True)
 
-    def clean(self, exclude, max_count=None, verbose=False):
-        """
-        Delete all objects except for those in the exclude
-        :param exclude: a list of blob_hashes to skip.
-        :param max_count: maximum number of object to delete
-        :param verbose: If True, print deleted objects
-        :return: list of objects that failed to delete
-        """
-        count = itertools.count()
-        if verbose:
-            def out(name):
-                next(count)
-                print(name)
-                return name
-        else:
-            def out(name):
-                next(count)
-                return name
+    def remove_objects(self, objects_iter):
 
-        if verbose:
-            print('Deleting...')
-
-        names = (out(x.object_name)
-                 for x in self.client.list_objects(self.bucket, self.remote_path + '/', recursive=True)
-                 if x.object_name.split('/')[-1] not in exclude)
-
-        failed_deletes = list(
-            self.client.remove_objects(self.bucket, itertools.islice(names, max_count)))
-
-        print('Deleted: %i S3 objects' % next(count))
-        return failed_deletes
+        failed_deletes = self.client.remove_objects(self.bucket, objects_iter=objects_iter)
+        return list(failed_deletes)
