@@ -45,7 +45,7 @@ def build_foreign_key_parser():
 
 
 def build_attribute_parser():
-    quoted = pp.Or(pp.QuotedString('"'), pp.QuotedString("'"))
+    quoted = pp.QuotedString('"') ^ pp.QuotedString("'")
     colon = pp.Literal(':').suppress()
     attribute_name = pp.Word(pp.srange('[a-z]'), pp.srange('[a-z0-9_]')).setResultsName('name')
     data_type = pp.Combine(pp.Word(pp.alphas) + pp.SkipTo("#", ignore=quoted)).setResultsName('type')
