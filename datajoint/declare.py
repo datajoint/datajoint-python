@@ -393,7 +393,7 @@ def compile_attribute(line, in_key, foreign_key_sql):
         match = attribute_parser.parseString(line + '#', parseAll=True)
     except pp.ParseException as err:
         raise DataJointError('Declaration error in position {pos} in line:\n  {line}\n{msg}'.format(
-            line=err.args[0], pos=err.args[1], msg=err.args[2]))
+            line=err.args[0], pos=err.args[1], msg=err.args[2])) from None
     match['comment'] = match['comment'].rstrip('#')
     if 'default' not in match:
         match['default'] = ''
@@ -413,6 +413,9 @@ def compile_attribute(line, in_key, foreign_key_sql):
 
     match['comment'] = match['comment'].replace('"', '\\"')   # escape double quotes in comment
     category, type_match = match_type(match['type'])
+
+    if match['comment'].startswith(':'):
+        raise DataJointError('An attribute comment must not start with a colon in comment "{comment}"'.format(**match))
 
     if category in CUSTOM_TYPES:
         match['comment'] = ':{type}:{comment}'.format(**match)  # insert custom type into comment
