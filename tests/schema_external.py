@@ -13,16 +13,31 @@ schema = dj.schema(PREFIX + '_extern', connection=dj.conn(**CONN_INFO))
 
 dj.config['stores'] = {
 
-    'raw': {
-        'protocol': 'file',
-        'location': tempfile.mkdtemp()},
+    'raw': dict(
+        protocol='file',
+        location=tempfile.mkdtemp()),
 
-    'local': {
-        'protocol': 'file',
-        'location': tempfile.mkdtemp(),
-        'subfolding': (1, 1)},
+    'repo': dict(
+        stage=tempfile.mkdtemp(),
+        protocol='file',
+        location=tempfile.mkdtemp()),
 
-    'share': dict(S3_CONN_INFO, protocol='s3', location='dj/store', subfolding=(2, 4))
+    'repo_s3': dict(
+        S3_CONN_INFO,
+        protocol='s3',
+        location='dj/repo',
+        stage=tempfile.mkdtemp()),
+
+    'local': dict(
+        protocol='file',
+        location=tempfile.mkdtemp(),
+        subfolding=(1, 1)),
+
+    'share': dict(
+        S3_CONN_INFO,
+        protocol='s3',
+        location='dj/store/repo',
+        subfolding=(2, 4))
 }
 
 dj.config['cache'] = tempfile.mkdtemp()
@@ -82,4 +97,24 @@ class Attach(dj.Manual):
     ----
     img : attach@share    #  attachments are stored as specified by dj.config['stores']['raw']
     txt : attach      #  attachments are stored directly in the database
+    """
+
+
+@schema
+class Filepath(dj.Manual):
+    definition = """
+    # table for file management 
+    fnum : int 
+    ---
+    img : filepath@repo  # managed files 
+    """
+
+
+@schema
+class FilepathS3(dj.Manual):
+    definition = """
+    # table for file management 
+    fnum : int 
+    ---
+    img : filepath@repo_s3  # managed files 
     """

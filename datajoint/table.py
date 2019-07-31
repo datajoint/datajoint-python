@@ -9,7 +9,7 @@ import logging
 import uuid
 from pymysql import OperationalError, InternalError, IntegrityError
 from .settings import config
-from .declare import declare
+from .declare import declare, alter
 from .expression import QueryExpression
 from . import attach, blob
 from .utils import user_choice
@@ -56,14 +56,15 @@ class Table(QueryExpression):
 
     def declare(self, context=None):
         """
-        Use self.definition to declare the table in the schema.
+        Declare the table in the schema based on self.definition.
+        :param context: the context for foreign key resolution. If None, foreign keys are not allowed.
         """
         if self.connection.in_transaction:
             raise DataJointError('Cannot declare new tables inside a transaction, '
                                  'e.g. from inside a populate/make call')
+        sql, external_stores = declare(self.full_table_name, self.definition, context)
+        sql = sql.format(database=self.database)
         try:
-            sql, external_stores = declare(self.full_table_name, self.definition, context)
-            sql = sql.format(database=self.database)
             # declare all external tables before declaring main table
             for store in external_stores:
                 self.connection.schemas[self.database].external[store]
@@ -76,6 +77,41 @@ class Table(QueryExpression):
                 raise
         else:
             self._log('Declared ' + self.full_table_name)
+
+    def alter(self, prompt=True, context=None):
+        """
+        Alter the table definition from self.definition
+        """
+        if self.connection.in_transaction:
+            raise DataJointError('Cannot update table declaration inside a transaction, '
+                                 'e.g. from inside a populate/make call')
+        if context is None:
+            frame = inspect.currentframe().f_back
+            context = dict(frame.f_globals, **frame.f_locals)
+            del frame
+        old_definition = self.describe(context=context, printout=False)
+        sql, external_stores = alter(self.definition, old_definition, context)
+        if not sql:
+            if prompt:
+                print('Nothing to alter.')
+        else:
+            sql = "ALTER TABLE {tab}\n\t".format(tab=self.full_table_name) + ",\n\t".join(sql)
+            if not prompt or user_choice(sql + '\n\nExecute?') == 'yes':
+                try:
+                    # declare all external tables before declaring main table
+                    for store in external_stores:
+                        self.connection.schemas[self.database].external[store]
+                    self.connection.query(sql)
+                except pymysql.OperationalError as error:
+                    # skip if no create privilege
+                    if error.args[0] == server_error_codes['command denied']:
+                        logger.warning(error.args[1])
+                    else:
+                        raise
+                else:
+                    if prompt:
+                        print('Table altered')
+                    self._log('Altered ' + self.full_table_name)
 
     @property
     def from_clause(self):
@@ -240,6 +276,8 @@ class Table(QueryExpression):
                     elif attr.is_attachment:
                         value = attach.load(value)
                         value = self.external[attr.store].put(value).bytes if attr.is_external else value
+                    elif attr.is_filepath:
+                        value = self.external[attr.store].fput(value).bytes
                     elif attr.numeric:
                         value = str(int(value) if isinstance(value, bool) else value)
                 return name, placeholder, value
@@ -542,7 +580,7 @@ class Table(QueryExpression):
 
             Example
 
-            >>> (v2p.Mice() & key).update('mouse_dob',   '2011-01-01')
+            >>> (v2p.Mice() & key).update('mouse_dob', '2011-01-01')
             >>> (v2p.Mice() & key).update( 'lens')   # set the value to NULL
 
         """
