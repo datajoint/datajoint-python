@@ -1,7 +1,7 @@
-USE djtest_v0_11;
+USE djtest_blob_migrate;
 -- MySQL dump 10.13  Distrib 5.7.26, for Linux (x86_64)
 --
--- Host: localhost    Database: djtest_v0_11
+-- Host: localhost    Database: djtest_blob_migrate
 -- ------------------------------------------------------
 -- Server version	5.7.26
 
@@ -15,32 +15,6 @@ USE djtest_v0_11;
 /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
-
---
--- Table structure for table `#ext_blob`
---
-
-DROP TABLE IF EXISTS `#ext_blob`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `#ext_blob` (
-  `name` varchar(30) NOT NULL,
-  `payload` char(51) NOT NULL COMMENT ':external:',
-  PRIMARY KEY (`name`),
-  KEY `payload` (`payload`),
-  CONSTRAINT `#ext_blob_ibfk_1` FOREIGN KEY (`payload`) REFERENCES `~external` (`hash`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `#ext_blob`
---
-
-LOCK TABLES `#ext_blob` WRITE;
-/*!40000 ALTER TABLE `#ext_blob` DISABLE KEYS */;
-INSERT INTO `#ext_blob` VALUES ('np.array','KbNUSXF_zvL-j7LpD9EM1JgKS6qmEYHh3s7O-qsw47c'),('image','wdiE3uQUBGThCDKzyisNoKqdXNxoeV7EiTTI_uPnZ0Q');
-/*!40000 ALTER TABLE `#ext_blob` ENABLE KEYS */;
-UNLOCK TABLES;
 
 --
 -- Table structure for table `~external`
@@ -63,7 +37,7 @@ CREATE TABLE `~external` (
 
 LOCK TABLES `~external` WRITE;
 /*!40000 ALTER TABLE `~external` DISABLE KEYS */;
-INSERT INTO `~external` VALUES ('KbNUSXF_zvL-j7LpD9EM1JgKS6qmEYHh3s7O-qsw47c',950,'2019-07-12 21:37:36'),('wdiE3uQUBGThCDKzyisNoKqdXNxoeV7EiTTI_uPnZ0Q',96615,'2019-07-12 21:37:38');
+INSERT INTO `~external` VALUES ('CxHvWqSykdfezp68kGsEUyUda0l6tqViCSIpqcurflI',237,'2019-07-29 16:46:12'),('FoRROa2LWM6_wx0RIQ0J-LVvgm256cqDQfJa066HoTEshared',37,'2019-07-29 16:46:12'),('L_oYGnEPKaYtc5TJ0ydIt1kddd45NbOOkle6C2fuY44shared',53,'2019-07-29 16:46:12'),('pzyDm09o9hzaj7AUwAKwSw3WIYEKtqO9IGfKgFyKccUlocal',237,'2019-07-29 16:46:12'),('Y2sphJHnmri3xxz8z7wJ97UI_EwhLsMfwQG3xVw76hIshared',53,'2019-07-29 16:46:12'),('_Fhi2GUBB0fgxcSP2q-isgncIUTdgGK7ivHiySAU_94',40,'2019-07-29 16:46:12'),('_Fhi2GUBB0fgxcSP2q-isgncIUTdgGK7ivHiySAU_94local',40,'2019-07-29 16:46:12');
 /*!40000 ALTER TABLE `~external` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -81,7 +55,7 @@ CREATE TABLE `~log` (
   `host` varchar(255) NOT NULL DEFAULT '' COMMENT 'system hostname',
   `event` varchar(255) NOT NULL DEFAULT '' COMMENT 'custom message',
   PRIMARY KEY (`timestamp`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COMMENT='event logging table for `djtest_v0_11`';
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COMMENT='event logging table for `djtest_blob_migrate`';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -90,8 +64,66 @@ CREATE TABLE `~log` (
 
 LOCK TABLES `~log` WRITE;
 /*!40000 ALTER TABLE `~log` DISABLE KEYS */;
-INSERT INTO `~log` VALUES ('2019-07-12 21:37:31','0.11.1py','root@172.168.1.4','a0cda75c134b','Declared `djtest_v0_11`.`~log`'),('2019-07-12 21:37:32','0.11.1py','root@172.168.1.4','a0cda75c134b','Declared `djtest_v0_11`.`~external`');
+INSERT INTO `~log` VALUES ('2019-07-29 16:46:06','0.11.1py','root@172.168.1.4','84722c4b68c4','Declared `djtest_blob_migrate`.`~log`'),('2019-07-29 16:46:10','0.11.1py','root@172.168.1.4','84722c4b68c4','Declared `djtest_blob_migrate`.`~external`');
 /*!40000 ALTER TABLE `~log` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `a`
+--
+
+DROP TABLE IF EXISTS `a`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `a` (
+  `id` int(11) NOT NULL,
+  `blob_external` char(51) NOT NULL COMMENT ':external:uses S3',
+  `blob_share` char(51) NOT NULL COMMENT ':external-shared:uses S3',
+  PRIMARY KEY (`id`),
+  KEY `blob_external` (`blob_external`),
+  KEY `blob_share` (`blob_share`),
+  CONSTRAINT `a_ibfk_1` FOREIGN KEY (`blob_external`) REFERENCES `~external` (`hash`),
+  CONSTRAINT `a_ibfk_2` FOREIGN KEY (`blob_share`) REFERENCES `~external` (`hash`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `a`
+--
+
+LOCK TABLES `a` WRITE;
+/*!40000 ALTER TABLE `a` DISABLE KEYS */;
+INSERT INTO `a` VALUES (0,'CxHvWqSykdfezp68kGsEUyUda0l6tqViCSIpqcurflI','Y2sphJHnmri3xxz8z7wJ97UI_EwhLsMfwQG3xVw76hIshared'),(1,'_Fhi2GUBB0fgxcSP2q-isgncIUTdgGK7ivHiySAU_94','FoRROa2LWM6_wx0RIQ0J-LVvgm256cqDQfJa066HoTEshared');
+/*!40000 ALTER TABLE `a` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `b`
+--
+
+DROP TABLE IF EXISTS `b`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `b` (
+  `id` int(11) NOT NULL,
+  `blob_local` char(51) NOT NULL COMMENT ':external-local:uses files',
+  `blob_share` char(51) NOT NULL COMMENT ':external-shared:uses S3',
+  PRIMARY KEY (`id`),
+  KEY `blob_local` (`blob_local`),
+  KEY `blob_share` (`blob_share`),
+  CONSTRAINT `b_ibfk_1` FOREIGN KEY (`blob_local`) REFERENCES `~external` (`hash`),
+  CONSTRAINT `b_ibfk_2` FOREIGN KEY (`blob_share`) REFERENCES `~external` (`hash`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `b`
+--
+
+LOCK TABLES `b` WRITE;
+/*!40000 ALTER TABLE `b` DISABLE KEYS */;
+INSERT INTO `b` VALUES (0,'pzyDm09o9hzaj7AUwAKwSw3WIYEKtqO9IGfKgFyKccUlocal','L_oYGnEPKaYtc5TJ0ydIt1kddd45NbOOkle6C2fuY44shared'),(1,'_Fhi2GUBB0fgxcSP2q-isgncIUTdgGK7ivHiySAU_94local','FoRROa2LWM6_wx0RIQ0J-LVvgm256cqDQfJa066HoTEshared');
+/*!40000 ALTER TABLE `b` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -103,4 +135,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2019-07-12 21:39:05
+-- Dump completed on 2019-07-29 17:01:20

@@ -112,7 +112,7 @@ def setup_package():
 
     # Add old MySQL
     source = "/src/tests/external-legacy-data"
-    db_name = "djtest_v0_11"
+    db_name = "djtest_blob_migrate"
     db_file = "v0_11.sql"
     conn_root.query("""
         CREATE DATABASE {};
@@ -160,7 +160,7 @@ def setup_package():
         conn_root.query(stmt)
 
     # Add old S3
-    bucket = "datajoint-test-old"
+    bucket = "migrate-test"
     region = "us-east-1"
     minioClient.make_bucket(bucket, location=region)
     # for filename in os.listdir('./external-legacy-data'):
@@ -188,25 +188,25 @@ def teardown_package():
     To deal with possible foreign key constraints, it will unset
     and then later reset FOREIGN_KEY_CHECKS flag
     """
-    conn = dj.conn(**CONN_INFO)
-    conn.query('SET FOREIGN_KEY_CHECKS=0')
-    cur = conn.query('SHOW DATABASES LIKE "{}\_%%"'.format(PREFIX))
-    for db in cur.fetchall():
-        conn.query('DROP DATABASE `{}`'.format(db[0]))
-    conn.query('SET FOREIGN_KEY_CHECKS=1')
-    remove("dj_local_conf.json")
+    # conn = dj.conn(**CONN_INFO)
+    # conn.query('SET FOREIGN_KEY_CHECKS=0')
+    # cur = conn.query('SHOW DATABASES LIKE "{}\_%%"'.format(PREFIX))
+    # for db in cur.fetchall():
+    #     conn.query('DROP DATABASE `{}`'.format(db[0]))
+    # conn.query('SET FOREIGN_KEY_CHECKS=1')
+    # remove("dj_local_conf.json")
 
-    # Remove old S3
-    bucket = "datajoint-test-old"
-    objs = list(minioClient.list_objects_v2(
-            bucket, recursive=True))
-    objs = [minioClient.remove_object(bucket,
-            o.object_name.encode('utf-8')) for o in objs]
-    minioClient.remove_bucket(bucket)
+    # # Remove old S3
+    # bucket = "migrate-test"
+    # objs = list(minioClient.list_objects_v2(
+    #         bucket, recursive=True))
+    # objs = [minioClient.remove_object(bucket,
+    #         o.object_name.encode('utf-8')) for o in objs]
+    # minioClient.remove_bucket(bucket)
 
-    # Remove S3
-    bucket = "datajoint-test"
-    objs = list(minioClient.list_objects_v2(bucket, recursive=True))
-    objs = [minioClient.remove_object(bucket,
-            o.object_name.encode('utf-8')) for o in objs]
-    minioClient.remove_bucket(bucket)
+    # # Remove S3
+    # bucket = "datajoint-test"
+    # objs = list(minioClient.list_objects_v2(bucket, recursive=True))
+    # objs = [minioClient.remove_object(bucket,
+    #         o.object_name.encode('utf-8')) for o in objs]
+    # minioClient.remove_bucket(bucket)
