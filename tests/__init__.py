@@ -16,6 +16,7 @@ import urllib3
 import certifi
 import pymysql
 from pathlib import Path
+import shutil
 
 __author__ = 'Edgar Walker, Fabian Sinz, Dimitri Yatsenko'
 
@@ -160,6 +161,7 @@ def setup_package():
         conn_root.query(stmt)
 
     # Add old S3
+    source = "/src/tests/external-legacy-data/s3"
     bucket = "migrate-test"
     region = "us-east-1"
     minioClient.make_bucket(bucket, location=region)
@@ -179,6 +181,10 @@ def setup_package():
 
     # Add S3
     minioClient.make_bucket("datajoint-test", location=region)
+
+    # Add old File Content
+    shutil.copytree(
+            "/src/tests/external-legacy-data/file/temp", "/home/dja/temp")
 
 
 def teardown_package():
@@ -210,3 +216,6 @@ def teardown_package():
     objs = [minioClient.remove_object(bucket,
             o.object_name.encode('utf-8')) for o in objs]
     minioClient.remove_bucket(bucket)
+
+    # Remove old File Content
+    shutil.rmtree("/home/dja/temp")

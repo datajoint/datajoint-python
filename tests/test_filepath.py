@@ -3,7 +3,11 @@ import datajoint as dj
 import os
 import random
 
-from .schema_external import schema, Filepath, FilepathS3
+from .schema_external import schema, Filepath, FilepathS3, stores_config
+
+
+def setUp(self):
+    dj.config['stores'] = stores_config
 
 
 def test_filepath(store="repo"):

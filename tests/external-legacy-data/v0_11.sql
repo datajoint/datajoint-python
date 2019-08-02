@@ -37,7 +37,7 @@ CREATE TABLE `~external` (
 
 LOCK TABLES `~external` WRITE;
 /*!40000 ALTER TABLE `~external` DISABLE KEYS */;
-INSERT INTO `~external` VALUES ('CxHvWqSykdfezp68kGsEUyUda0l6tqViCSIpqcurflI',237,'2019-07-29 16:46:12'),('FoRROa2LWM6_wx0RIQ0J-LVvgm256cqDQfJa066HoTEshared',37,'2019-07-29 16:46:12'),('L_oYGnEPKaYtc5TJ0ydIt1kddd45NbOOkle6C2fuY44shared',53,'2019-07-29 16:46:12'),('pzyDm09o9hzaj7AUwAKwSw3WIYEKtqO9IGfKgFyKccUlocal',237,'2019-07-29 16:46:12'),('Y2sphJHnmri3xxz8z7wJ97UI_EwhLsMfwQG3xVw76hIshared',53,'2019-07-29 16:46:12'),('_Fhi2GUBB0fgxcSP2q-isgncIUTdgGK7ivHiySAU_94',40,'2019-07-29 16:46:12'),('_Fhi2GUBB0fgxcSP2q-isgncIUTdgGK7ivHiySAU_94local',40,'2019-07-29 16:46:12');
+INSERT INTO `~external` VALUES ('e46pnXQW9GaCKbL3WxV1crGHeGqcE0OLInM_TTwAFfwlocal',237,'2019-07-31 17:55:01'),('FoRROa2LWM6_wx0RIQ0J-LVvgm256cqDQfJa066HoTEshared',37,'2019-07-31 17:55:01'),('NmWj002gtKUkt9GIBwzn6Iw3x6h7ovlX_FfELbfjwRQshared',53,'2019-07-31 17:55:01'),('Ue9c89gKVZD7xPOcHd5Lz6mARJQ50xT1G5cTTX4h0L0shared',53,'2019-07-31 17:55:01'),('_3A03zPqfVhbn0rhlOJYGNivFJ4uqYuHaeQBA-V8PKA',237,'2019-07-31 17:55:01'),('_Fhi2GUBB0fgxcSP2q-isgncIUTdgGK7ivHiySAU_94',40,'2019-07-31 17:55:01'),('_Fhi2GUBB0fgxcSP2q-isgncIUTdgGK7ivHiySAU_94local',40,'2019-07-31 17:55:01');
 /*!40000 ALTER TABLE `~external` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -64,7 +64,7 @@ CREATE TABLE `~log` (
 
 LOCK TABLES `~log` WRITE;
 /*!40000 ALTER TABLE `~log` DISABLE KEYS */;
-INSERT INTO `~log` VALUES ('2019-07-29 16:46:06','0.11.1py','root@172.168.1.4','84722c4b68c4','Declared `djtest_blob_migrate`.`~log`'),('2019-07-29 16:46:10','0.11.1py','root@172.168.1.4','84722c4b68c4','Declared `djtest_blob_migrate`.`~external`');
+INSERT INTO `~log` VALUES ('2019-07-31 17:54:49','0.11.1py','root@172.168.1.4','297df05ab17c','Declared `djtest_blob_migrate`.`~log`'),('2019-07-31 17:54:54','0.11.1py','root@172.168.1.4','297df05ab17c','Declared `djtest_blob_migrate`.`~external`'),('2019-07-31 17:54:55','0.11.1py','root@172.168.1.4','297df05ab17c','Declared `djtest_blob_migrate`.`b`');
 /*!40000 ALTER TABLE `~log` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -93,7 +93,7 @@ CREATE TABLE `a` (
 
 LOCK TABLES `a` WRITE;
 /*!40000 ALTER TABLE `a` DISABLE KEYS */;
-INSERT INTO `a` VALUES (0,'CxHvWqSykdfezp68kGsEUyUda0l6tqViCSIpqcurflI','Y2sphJHnmri3xxz8z7wJ97UI_EwhLsMfwQG3xVw76hIshared'),(1,'_Fhi2GUBB0fgxcSP2q-isgncIUTdgGK7ivHiySAU_94','FoRROa2LWM6_wx0RIQ0J-LVvgm256cqDQfJa066HoTEshared');
+INSERT INTO `a` VALUES (0,'_3A03zPqfVhbn0rhlOJYGNivFJ4uqYuHaeQBA-V8PKA','NmWj002gtKUkt9GIBwzn6Iw3x6h7ovlX_FfELbfjwRQshared'),(1,'_Fhi2GUBB0fgxcSP2q-isgncIUTdgGK7ivHiySAU_94','FoRROa2LWM6_wx0RIQ0J-LVvgm256cqDQfJa066HoTEshared');
 /*!40000 ALTER TABLE `a` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -122,7 +122,7 @@ CREATE TABLE `b` (
 
 LOCK TABLES `b` WRITE;
 /*!40000 ALTER TABLE `b` DISABLE KEYS */;
-INSERT INTO `b` VALUES (0,'pzyDm09o9hzaj7AUwAKwSw3WIYEKtqO9IGfKgFyKccUlocal','L_oYGnEPKaYtc5TJ0ydIt1kddd45NbOOkle6C2fuY44shared'),(1,'_Fhi2GUBB0fgxcSP2q-isgncIUTdgGK7ivHiySAU_94local','FoRROa2LWM6_wx0RIQ0J-LVvgm256cqDQfJa066HoTEshared');
+INSERT INTO `b` VALUES (0,'e46pnXQW9GaCKbL3WxV1crGHeGqcE0OLInM_TTwAFfwlocal','Ue9c89gKVZD7xPOcHd5Lz6mARJQ50xT1G5cTTX4h0L0shared'),(1,'_Fhi2GUBB0fgxcSP2q-isgncIUTdgGK7ivHiySAU_94local','FoRROa2LWM6_wx0RIQ0J-LVvgm256cqDQfJa066HoTEshared');
 /*!40000 ALTER TABLE `b` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -135,4 +135,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2019-07-29 17:01:20
+-- Dump completed on 2019-07-31 18:16:40
