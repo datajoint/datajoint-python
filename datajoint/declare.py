@@ -78,7 +78,8 @@ def build_attribute_parser():
     quoted = pp.QuotedString('"') ^ pp.QuotedString("'")
     colon = pp.Literal(':').suppress()
     attribute_name = pp.Word(pp.srange('[a-z]'), pp.srange('[a-z0-9_]')).setResultsName('name')
-    data_type = pp.Combine(pp.Word(pp.alphas) + pp.SkipTo("#", ignore=quoted)).setResultsName('type')
+    data_type = (pp.Combine(pp.Word(pp.alphas) + pp.SkipTo("#", ignore=quoted))
+                 ^ pp.QuotedString('<', endQuoteChar='>')).setResultsName('type')
     default = pp.Literal('=').suppress() + pp.SkipTo(colon, ignore=quoted).setResultsName('default')
     comment = pp.Literal('#').suppress() + pp.restOfLine.setResultsName('comment')
     return attribute_name + pp.Optional(default) + colon + data_type + comment
