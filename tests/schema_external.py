@@ -95,7 +95,7 @@ class Attach(dj.Manual):
     # table for storing attachments
     attach : int
     ----
-    img : attach@share    #  attachments are stored as specified by dj.config['stores']['raw']
+    img : attach@share    #  attachments are stored as specified by: dj.config['stores']['raw']
     txt : attach      #  attachments are stored directly in the database
     """
 
@@ -104,7 +104,7 @@ class Attach(dj.Manual):
 class Filepath(dj.Manual):
     definition = """
     # table for file management 
-    fnum : int 
+    fnum : int # test comment containing :
     ---
     img : filepath@repo  # managed files 
     """
