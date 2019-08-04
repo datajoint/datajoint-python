@@ -27,9 +27,12 @@ TYPE_PATTERN = {k: re.compile(v, re.I) for k, v in dict(
     INTERNAL_ATTACH=r'attach$',
     EXTERNAL_ATTACH=r'attach@(?P<store>[a-z]\w*)$',
     FILEPATH=r'filepath@(?P<store>[a-z]\w*)$',
-    UUID=r'uuid$').items()}
+    UUID=r'uuid$',
+    USER_DEFINED=r'<\w[\w\d]*>$'
+).items()}
 
-CUSTOM_TYPES = {'UUID', 'INTERNAL_ATTACH', 'EXTERNAL_ATTACH', 'EXTERNAL_BLOB', 'FILEPATH'}  # types stored in attribute comment
+# custom types are stored in attribute comment
+CUSTOM_TYPES = {'UUID', 'INTERNAL_ATTACH', 'EXTERNAL_ATTACH', 'EXTERNAL_BLOB', 'FILEPATH', 'USER_DEFINED'}
 EXTERNAL_TYPES = {'EXTERNAL_ATTACH', 'EXTERNAL_BLOB', 'FILEPATH'}  # data referenced by a UUID in external tables
 SERIALIZED_TYPES = {'EXTERNAL_ATTACH', 'INTERNAL_ATTACH', 'EXTERNAL_BLOB', 'INTERNAL_BLOB'}  # requires packing data
 
@@ -37,11 +40,10 @@ assert set().union(CUSTOM_TYPES, EXTERNAL_TYPES, SERIALIZED_TYPES) <= set(TYPE_P
 
 
 def match_type(datatype):
-    for category, pattern in TYPE_PATTERN.items():
-        match = pattern.match(datatype)
-        if match:
-            return category, match
-    raise DataJointError('Unsupported data types "%s"' % datatype)
+    try:
+        return next(category for category, pattern in TYPE_PATTERN.items() if pattern.match(datatype))
+    except StopIteration:
+        raise DataJointError("Unsupported attribute type {type}".format(type=datatype)) from None
 
 
 logger = logging.getLogger(__name__)
@@ -79,7 +81,7 @@ def build_attribute_parser():
     colon = pp.Literal(':').suppress()
     attribute_name = pp.Word(pp.srange('[a-z]'), pp.srange('[a-z0-9_]')).setResultsName('name')
     data_type = (pp.Combine(pp.Word(pp.alphas) + pp.SkipTo("#", ignore=quoted))
-                 ^ pp.QuotedString('<', endQuoteChar='>')).setResultsName('type')
+                 ^ pp.QuotedString('<', endQuoteChar='>', unquoteResults=False)).setResultsName('type')
     default = pp.Literal('=').suppress() + pp.SkipTo(colon, ignore=quoted).setResultsName('default')
     comment = pp.Literal('#').suppress() + pp.restOfLine.setResultsName('comment')
     return attribute_name + pp.Optional(default) + colon + data_type + comment
@@ -247,7 +249,7 @@ def prepare_declare(definition, context):
         elif re.match(r'^(unique\s+)?index[^:]*$', line, re.I):   # index
             compile_index(line, index_sql)
         else:
-            name, sql, store = compile_attribute(line, in_key, foreign_key_sql)
+            name, sql, store = compile_attribute(line, in_key, foreign_key_sql, context)
             if store:
                 external_stores.append(store)
             if in_key and name not in primary_key:
@@ -381,13 +383,49 @@ def compile_index(line, index_sql):
         attrs=','.join('`%s`' % a for a in match.attr_list)))
 
 
-def compile_attribute(line, in_key, foreign_key_sql):
+def substitute_custom_type(match, category, foreign_key_sql, context):
+    """
+    :param match: dict containing with keys "type" and "comment" -- will be modified in place
+    :param category: attribute type category from TYPE_PATTERN
+    :param foreign_key_sql: list of foreign key declarations to add to
+    :param context: context for looking up user-defined datatype adapters
+    """
+    if category == 'UUID':
+        match['type'] = UUID_DATA_TYPE
+    elif category == 'INTERNAL_ATTACH':
+        match['type'] = 'LONGBLOB'
+    elif category in EXTERNAL_TYPES:
+        match['store'] = match['type'].split('@', 1)[1]
+        match['type'] = UUID_DATA_TYPE
+        foreign_key_sql.append(
+            "FOREIGN KEY (`{name}`) REFERENCES `{{database}}`.`{external_table_root}_{store}` (`hash`) "
+            "ON UPDATE RESTRICT ON DELETE RESTRICT".format(external_table_root=EXTERNAL_TABLE_ROOT, **match))
+    elif category == 'USER_DEFINED':
+        user_type = match['type'].lstrip('<').rstrip('>')
+        try:
+            adapter = context[user_type]
+        except KeyError:
+            raise DataJointError("User datatype '{type}' is not defined.".format(type=user_type)) from None
+        match['type'] = adapter.datatype
+        category = match_type(match['type'])
+        if category in CUSTOM_TYPES:
+            # recursive redefinition from user-defined datatypes
+            substitute_custom_type(match, category, foreign_key_sql, context)
+    else:
+        assert False
+
+    if category in SERIALIZED_TYPES and match['default'] not in {'DEFAULT NULL', 'NOT NULL'}:
+        raise DataJointError(
+            'The default value for a blob or attachment attributes can only be NULL in:\n%s' % line)
+
+
+def compile_attribute(line, in_key, foreign_key_sql, context):
     """
     Convert attribute definition from DataJoint format to SQL
-
     :param line: attribution line
     :param in_key: set to True if attribute is in primary key set
-    :param foreign_key_sql:
+    :param foreign_key_sql: the list of foreign key declarations to add to
+    :param context: context in which to look up custom use-defined datatypes
     :returns: (name, sql, is_external) -- attribute name and sql code for its declaration
     """
     try:
@@ -413,27 +451,14 @@ def compile_attribute(line, in_key, foreign_key_sql):
             match['default'] = 'NOT NULL'
 
     match['comment'] = match['comment'].replace('"', '\\"')   # escape double quotes in comment
-    category, type_match = match_type(match['type'])
 
     if match['comment'].startswith(':'):
         raise DataJointError('An attribute comment must not start with a colon in comment "{comment}"'.format(**match))
 
+    category = match_type(match['type'])
     if category in CUSTOM_TYPES:
         match['comment'] = ':{type}:{comment}'.format(**match)  # insert custom type into comment
-        if category == 'UUID':
-            match['type'] = UUID_DATA_TYPE
-        elif category == 'INTERNAL_ATTACH':
-            match['type'] = 'LONGBLOB'
-        elif category in EXTERNAL_TYPES:
-            match['store'] = match['type'].split('@', 1)[1]
-            match['type'] = UUID_DATA_TYPE
-            foreign_key_sql.append(
-                "FOREIGN KEY (`{name}`) REFERENCES `{{database}}`.`{external_table_root}_{store}` (`hash`) "
-                "ON UPDATE RESTRICT ON DELETE RESTRICT".format(external_table_root=EXTERNAL_TABLE_ROOT, **match))
-
-    if category in SERIALIZED_TYPES and match['default'] not in {'DEFAULT NULL', 'NOT NULL'}:
-        raise DataJointError(
-            'The default value for a blob or attachment attributes can only be NULL in:\n%s' % line)
+        substitute_custom_type(match, category, foreign_key_sql, context)
 
     sql = ('`{name}` {type} {default}' + (' COMMENT "{comment}"' if match['comment'] else '')).format(**match)
     return match['name'], sql, match.get('store')
