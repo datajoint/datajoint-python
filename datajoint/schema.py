@@ -179,6 +179,8 @@ class Schema:
         relation_class.database = self.database
         relation_class._connection = self.connection
         relation_class._heading = Heading()
+        relation_class.declaration_context = context
+
         # instantiate the class, declare the table if not already
         instance = relation_class()
         is_declared = instance.is_declared
