@@ -23,7 +23,7 @@ __all__ = ['__author__', '__version__',
            'Manual', 'Lookup', 'Imported', 'Computed', 'Part',
            'Not', 'AndList', 'U', 'Diagram', 'Di', 'ERD',
            'set_password', 'kill',
-           'MatCell', 'MatStruct', 'AttributeType',
+           'MatCell', 'MatStruct', 'AttributeAdapter',
            'DataJointError', 'DuplicateError', 'key']
 
 
@@ -40,6 +40,6 @@ from .admin import set_password, kill
 from .blob import MatCell, MatStruct
 from .errors import DataJointError, DuplicateError
 from .fetch import key
-from .attribute_type import AttributeType
+from .attribute_adapter import AttributeAdapter
 
 ERD = Di = Diagram   # Aliases for Diagram

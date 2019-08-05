@@ -6,6 +6,7 @@ import re
 import pyparsing as pp
 import logging
 from .errors import DataJointError
+from .attribute_adapter import get_adapter
 
 from .utils import OrderedDict
 
@@ -28,22 +29,23 @@ TYPE_PATTERN = {k: re.compile(v, re.I) for k, v in dict(
     EXTERNAL_ATTACH=r'attach@(?P<store>[a-z]\w*)$',
     FILEPATH=r'filepath@(?P<store>[a-z]\w*)$',
     UUID=r'uuid$',
-    USER_DEFINED=r'<\w[\w\d]*>$'
+    ADAPTED=r'<.+>$'
 ).items()}
 
 # custom types are stored in attribute comment
-CUSTOM_TYPES = {'UUID', 'INTERNAL_ATTACH', 'EXTERNAL_ATTACH', 'EXTERNAL_BLOB', 'FILEPATH', 'USER_DEFINED'}
+SPECIAL_TYPES = {'UUID', 'INTERNAL_ATTACH', 'EXTERNAL_ATTACH', 'EXTERNAL_BLOB', 'FILEPATH', 'ADAPTED'}
+NATIVE_TYPES = set(TYPE_PATTERN) - SPECIAL_TYPES
 EXTERNAL_TYPES = {'EXTERNAL_ATTACH', 'EXTERNAL_BLOB', 'FILEPATH'}  # data referenced by a UUID in external tables
 SERIALIZED_TYPES = {'EXTERNAL_ATTACH', 'INTERNAL_ATTACH', 'EXTERNAL_BLOB', 'INTERNAL_BLOB'}  # requires packing data
 
-assert set().union(CUSTOM_TYPES, EXTERNAL_TYPES, SERIALIZED_TYPES) <= set(TYPE_PATTERN)
+assert set().union(SPECIAL_TYPES, EXTERNAL_TYPES, SERIALIZED_TYPES) <= set(TYPE_PATTERN)
 
 
-def match_type(datatype):
+def match_type(attribute_type):
     try:
-        return next(category for category, pattern in TYPE_PATTERN.items() if pattern.match(datatype))
+        return next(category for category, pattern in TYPE_PATTERN.items() if pattern.match(attribute_type))
     except StopIteration:
-        raise DataJointError("Unsupported attribute type {type}".format(type=datatype)) from None
+        raise DataJointError("Unsupported attribute type {type}".format(type=attribute_type)) from None
 
 
 logger = logging.getLogger(__name__)
@@ -298,7 +300,7 @@ def _make_attribute_alter(new, old, primary_key):
 
     # parse attribute names
     name_regexp = re.compile(r"^`(?P<name>\w+)`")
-    original_regexp = re.compile(r'COMMENT "\{\s*(?P<name>\w+)\s*\}')
+    original_regexp = re.compile(r'COMMENT "{\s*(?P<name>\w+)\s*\}')
     matched = ((name_regexp.match(d), original_regexp.search(d)) for d in new)
     new_names = OrderedDict((d.group('name'), n and n.group('name')) for d, n in matched)
     old_names = [name_regexp.search(d).group('name') for d in old]
@@ -383,12 +385,12 @@ def compile_index(line, index_sql):
         attrs=','.join('`%s`' % a for a in match.attr_list)))
 
 
-def substitute_custom_type(match, category, foreign_key_sql, context):
+def substitute_special_type(match, category, foreign_key_sql, context):
     """
     :param match: dict containing with keys "type" and "comment" -- will be modified in place
     :param category: attribute type category from TYPE_PATTERN
     :param foreign_key_sql: list of foreign key declarations to add to
-    :param context: context for looking up user-defined datatype adapters
+    :param context: context for looking up user-defined attribute_type adapters
     """
     if category == 'UUID':
         match['type'] = UUID_DATA_TYPE
@@ -400,19 +402,15 @@ def substitute_custom_type(match, category, foreign_key_sql, context):
         foreign_key_sql.append(
             "FOREIGN KEY (`{name}`) REFERENCES `{{database}}`.`{external_table_root}_{store}` (`hash`) "
             "ON UPDATE RESTRICT ON DELETE RESTRICT".format(external_table_root=EXTERNAL_TABLE_ROOT, **match))
-    elif category == 'USER_DEFINED':
-        user_type = match['type'].lstrip('<').rstrip('>')
-        try:
-            adapter = context[user_type]
-        except KeyError:
-            raise DataJointError("User datatype '{type}' is not defined.".format(type=user_type)) from None
-        match['type'] = adapter.datatype
+    elif category == 'ADAPTED':
+        adapter = get_adapter(context, match['type'])
+        match['type'] = adapter.attribute_type
         category = match_type(match['type'])
-        if category in CUSTOM_TYPES:
-            # recursive redefinition from user-defined datatypes
-            substitute_custom_type(match, category, foreign_key_sql, context)
+        if category in SPECIAL_TYPES:
+            # recursive redefinition from user-defined datatypes.
+            substitute_special_type(match, category, foreign_key_sql, context)
     else:
-        assert False
+        assert False, 'Unknown special type'
 
     if category in SERIALIZED_TYPES and match['default'] not in {'DEFAULT NULL', 'NOT NULL'}:
         raise DataJointError(
@@ -425,7 +423,7 @@ def compile_attribute(line, in_key, foreign_key_sql, context):
     :param line: attribution line
     :param in_key: set to True if attribute is in primary key set
     :param foreign_key_sql: the list of foreign key declarations to add to
-    :param context: context in which to look up custom use-defined datatypes
+    :param context: context in which to look up user-defined attribute type adapterss
     :returns: (name, sql, is_external) -- attribute name and sql code for its declaration
     """
     try:
@@ -456,9 +454,9 @@ def compile_attribute(line, in_key, foreign_key_sql, context):
         raise DataJointError('An attribute comment must not start with a colon in comment "{comment}"'.format(**match))
 
     category = match_type(match['type'])
-    if category in CUSTOM_TYPES:
+    if category in SPECIAL_TYPES:
         match['comment'] = ':{type}:{comment}'.format(**match)  # insert custom type into comment
-        substitute_custom_type(match, category, foreign_key_sql, context)
+        substitute_special_type(match, category, foreign_key_sql, context)
 
     sql = ('`{name}` {type} {default}' + (' COMMENT "{comment}"' if match['comment'] else '')).format(**match)
     return match['name'], sql, match.get('store')

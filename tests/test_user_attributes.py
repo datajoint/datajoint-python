@@ -4,8 +4,7 @@ from . import PREFIX, CONN_INFO
 schema = dj.schema(PREFIX + '_test_custom_datatype', connection=dj.conn(**CONN_INFO))
 
 
-
-class Phone(dj.AttributeType):
+class Phone(dj.AttributeAdapter):
     """
     handles phones as
     dict(country_code=1, area_code=813, number=5551234, extension=1234)
@@ -14,7 +13,7 @@ class Phone(dj.AttributeType):
         self.max_length = max_length
 
     @property
-    def datatype(self):
+    def attribute_type(self):
         """ how the database will represent this datatype """
         return "varchar({})".format(self.max_length)
 
@@ -46,4 +45,9 @@ class Custom(dj.Manual):
     """
 
 
+def test_user_type():
+    phone = dict(country_code=1, area_code=713, number=5557890, extension='')
+    Custom.insert1(('alice', phone))
+
+    phone = (Custom & {'username': 'alice'}).fetch1('phone')
 

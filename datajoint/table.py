@@ -35,6 +35,7 @@ class Table(QueryExpression):
     _heading = None
     database = None
     _log_ = None
+    declaration_context = None
 
     # -------------- required by QueryExpression ----------------- #
     @property
@@ -51,7 +52,8 @@ class Table(QueryExpression):
                     'DataJoint class is missing a database connection. '
                     'Missing schema decorator on the class? (e.g. @schema)')
             else:
-                self._heading.init_from_database(self.connection, self.database, self.table_name)
+                self._heading.init_from_database(
+                    self.connection, self.database, self.table_name, self.declaration_context)
         return self._heading
 
     def declare(self, context=None):
