@@ -1,5 +1,6 @@
 import datajoint as dj
 from . import PREFIX, CONN_INFO
+from nose.tools import assert_dict_equal
 
 schema = dj.schema(PREFIX + '_test_custom_datatype', connection=dj.conn(**CONN_INFO))
 
@@ -29,7 +30,7 @@ class Phone(dj.AttributeAdapter):
     def get(self, obj):
         country_code, area_code, number = obj.split('-')
         number, extension = number.split('.')
-        return dict(country_code=country_code, area_code=area_code, number=number, extension=extension)
+        return dict(country_code=int(country_code), area_code=int(area_code), number=int(number), extension=extension)
 
 
 # create the datatype object
@@ -48,6 +49,6 @@ class Custom(dj.Manual):
 def test_user_type():
     phone = dict(country_code=1, area_code=713, number=5557890, extension='')
     Custom.insert1(('alice', phone))
-
-    phone = (Custom & {'username': 'alice'}).fetch1('phone')
+    phone_back = (Custom & {'username': 'alice'}).fetch1('cell_phone')
+    assert_dict_equal(phone, phone_back)
 
