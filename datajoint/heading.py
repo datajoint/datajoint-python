@@ -223,7 +223,8 @@ class Heading:
             # process custom DataJoint types
             special = re.match(r':(?P<type>[^:]+):(?P<comment>.*)', attr['comment'])
             if special:
-                attr.update(special.groupdict())
+                special = special.groupdict()
+                attr.update(special)
             # process adapted attribute types
             if special and TYPE_PATTERN['ADAPTED'].match(attr['type']):
                 assert context is not None, 'Declaration context is not set'
