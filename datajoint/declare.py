@@ -173,8 +173,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
             raise DataJointError('Invalid foreign key attributes in "%s"' % line)
         try:
             raise DataJointError('Duplicate attributes "{attr}" in "{line}"'.format(
-                attr=next(attr for attr in result.new_attrs if attr in attributes),
-                line=line))
+                attr=next(attr for attr in result.new_attrs if attr in attributes), line=line))
         except StopIteration:
             pass   # the normal outcome
 
@@ -300,7 +299,7 @@ def _make_attribute_alter(new, old, primary_key):
 
     # parse attribute names
     name_regexp = re.compile(r"^`(?P<name>\w+)`")
-    original_regexp = re.compile(r'COMMENT "{\s*(?P<name>\w+)\s*\}')
+    original_regexp = re.compile(r'COMMENT "{\s*(?P<name>\w+)\s*}')
     matched = ((name_regexp.match(d), original_regexp.search(d)) for d in new)
     new_names = OrderedDict((d.group('name'), n and n.group('name')) for d, n in matched)
     old_names = [name_regexp.search(d).group('name') for d in old]
@@ -412,10 +411,6 @@ def substitute_special_type(match, category, foreign_key_sql, context):
     else:
         assert False, 'Unknown special type'
 
-    if category in SERIALIZED_TYPES and match['default'] not in {'DEFAULT NULL', 'NOT NULL'}:
-        raise DataJointError(
-            'The default value for a blob or attachment attributes can only be NULL in:\n%s' % line)
-
 
 def compile_attribute(line, in_key, foreign_key_sql, context):
     """
@@ -457,6 +452,10 @@ def compile_attribute(line, in_key, foreign_key_sql, context):
     if category in SPECIAL_TYPES:
         match['comment'] = ':{type}:{comment}'.format(**match)  # insert custom type into comment
         substitute_special_type(match, category, foreign_key_sql, context)
+
+    if category in SERIALIZED_TYPES and match['default'] not in {'DEFAULT NULL', 'NOT NULL'}:
+        raise DataJointError(
+            'The default value for a blob or attachment attributes can only be NULL in:\n{line}'.format(line=line))
 
     sql = ('`{name}` {type} {default}' + (' COMMENT "{comment}"' if match['comment'] else '')).format(**match)
     return match['name'], sql, match.get('store')
