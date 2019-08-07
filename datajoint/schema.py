@@ -286,7 +286,8 @@ class Schema:
                 f.write(python_code)
 
 
-def create_virtual_module(module_name, schema_name, *, create_schema=False, create_tables=False, connection=None):
+def create_virtual_module(module_name, schema_name, *,
+                          create_schema=False, create_tables=False, connection=None, add_objects=None):
     """
     Creates a python module with the given name from the name of a schema on the server and
     automatically adds classes to it corresponding to the tables in the schema.
@@ -294,13 +295,16 @@ def create_virtual_module(module_name, schema_name, *, create_schema=False, crea
     :param schema_name: name of the database in mysql
     :param create_schema: if True, create the schema on the database server
     :param create_tables: if True, module.schema can be used as the decorator for declaring new
-    :param connection: a dj.Connection object to pass into the schema.
+    :param connection: a dj.Connection object to pass into the schema
+    :param add_objects: additional objects to add to the module
     :return: the python module containing classes from the schema object and the table classes
     """
     module = types.ModuleType(module_name)
     _schema = Schema(schema_name, create_schema=create_schema, create_tables=create_tables, connection=connection)
-    _schema.spawn_missing_classes(context=module.__dict__)
+    if add_objects:
+        module.__dict__.update(add_objects)
     module.__dict__['schema'] = _schema
+    _schema.spawn_missing_classes(context=module.__dict__)
     return module
 
 

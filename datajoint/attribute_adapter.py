@@ -10,13 +10,23 @@ class AttributeAdapter:
         """
         :return: a supported DataJoint attribute type to use; e.g. "longblob", "blob@store"
         """
-        raise NotImplementedError
+        raise NotImplementedError('Undefined attribute adapter')
 
-    def get(self, obj):
-        raise NotImplementedError
+    def get(self, value):
+        """
+        convert value retrieved from the the attribute in a table into the adapted type
+        :param value: value from the database
+        :return: object of the adapted type
+        """
+        raise NotImplementedError('Undefined attribute adapter')
 
     def put(self, obj):
-        raise NotImplementedError
+        """
+        convert an object of the adapted type into a value that DataJoint can store in a table attribute
+        :param object: an object of the adapted type
+        :return: value to store in the database
+        """
+        raise NotImplementedError('Undefined attribute adapter')
 
 
 def get_adapter(context, adapter_name):
