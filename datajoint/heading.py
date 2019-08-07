@@ -219,7 +219,7 @@ class Heading:
             attr.pop('Extra')
 
             # process custom DataJoint types
-            custom_type = re.match(r':(?P<type>.+):(?P<comment>.*)', attr['comment'])
+            custom_type = re.match(r':(?P<type>[^:]+):(?P<comment>.*)', attr['comment'])
             if custom_type:
                 attr.update(custom_type.groupdict(), unsupported=False)
                 try:

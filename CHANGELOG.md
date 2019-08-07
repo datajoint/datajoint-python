@@ -1,6 +1,6 @@
 ## Release notes
 
-### 0.12.0 -- April 15, 2019
+### 0.12.0 -- August 15, 2019 (planned)
 
 * Configurable blob storage (#497, #532, #475)
 * Support file attachments: (#480, #532, #475)
@@ -12,6 +12,7 @@
 * `query_expr.fetch("KEY", as_dict=False)` returns results as `np.recarray`(#414, #574)
 * `dj.ERD` is now called `dj.Diagram` (#255, #565)
 * `dj.Diagram` underlines "distinguished" classes (#378, #557)
+* Bugfixes: #629, #633
 
 ### 0.11.1 -- Nov 15, 2018
 * Fix ordering of attributes in proj (#483 and #516)
