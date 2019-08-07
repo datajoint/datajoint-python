@@ -2,6 +2,7 @@ from nose.tools import assert_true, assert_false, assert_equal, \
                         assert_list_equal, raises
 
 import datajoint as dj
+import os, re
 
 
 class TestBlobMigrate:
@@ -13,7 +14,6 @@ class TestBlobMigrate:
         query = schema.connection.query
 
         # Configure stores
-        import os 
 
         default_store = 'external'  # naming the unnamed external store
 
@@ -55,7 +55,6 @@ class TestBlobMigrate:
         WHERE referenced_table_name="{tab}" and referenced_table_schema="{db}"
         """.format(tab=legacy_external.table_name, db=legacy_external.database), as_dict=True).fetchall()
 
-        import re
 
         for ref in refs:
             # get comment
@@ -159,18 +158,16 @@ class TestBlobMigrate:
         # import time
         # time.sleep(420)
 
-        import datajoint as dj
-
         dj.config['database.password'] = 'simple'
         dj.config['database.user'] = 'root'
         dj.config['database.host'] = 'mysql'
 
         schema = dj.schema('djtest_blob_migrate')
         # schema = dj.schema('djtest_blob_migrate', locals(), connection=dj.conn())
-        query = schema.connection.query
+        # query = schema.connection.query
 
         # Configure stores
-        import os 
+        
 
         default_store = 'external'  # naming the unnamed external store
 
@@ -198,15 +195,8 @@ class TestBlobMigrate:
         }
 
         dj.config['cache'] = os.path.expanduser('~/temp/dj-cache')
-        schema.spawn_missing_classes()
-        # unprivileged.spawn_missing_classes()
 
-        import numpy as np
-        A()
-        A.insert((
-            (2, np.random.randn(2,3,4), np.random.randn(3)),
-            (3, np.array([1,2,3]), np.array([1,2]))
-        ))
-        A.fetch('blob_share')
+        # schema.spawn_missing_classes()
+        test_mod = dj.create_virtual_module('test_mod', 'djtest_blob_migrate')
 
-        # assert_equal('good', 'good')
+        assert_equal(test_mod.A.fetch('blob_share')[1][1], 2)

@@ -22,3 +22,6 @@ build/
 dj011/*
 *.ipynb
 LNX-docker-compose.yml
+notebooks/*
+test.dockerfile
+__main__.py
