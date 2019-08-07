@@ -32,5 +32,5 @@ class Connectivity(dj.Manual):
     definition = """
     connid : int
     ---
-    conn_graph : <graph>
+    conn_graph = null : <graph>
     """
