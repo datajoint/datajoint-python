@@ -296,7 +296,6 @@ def _make_attribute_alter(new, old, primary_key):
     :param primary_key: primary key attributes
     :return: list of SQL ALTER commands
     """
-
     # parse attribute names
     name_regexp = re.compile(r"^`(?P<name>\w+)`")
     original_regexp = re.compile(r'COMMENT "{\s*(?P<name>\w+)\s*}')

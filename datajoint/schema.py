@@ -42,7 +42,7 @@ class Schema:
     It also specifies the namespace `context` in which other UserTable classes are defined.
     """
 
-    def __init__(self, schema_name, context=None, connection=None, create_schema=True, create_tables=True):
+    def __init__(self, schema_name, context=None, *, connection=None, create_schema=True, create_tables=True):
         """
         Associate database schema `schema_name`. If the schema does not exist, attempt to create it on the server.
 
@@ -132,7 +132,7 @@ class Schema:
                         part_tables.append(table_name)
                 else:
                     # declare and decorate master relation classes
-                    context[class_name] = self(type(class_name, (cls,), dict()))
+                    context[class_name] = self(type(class_name, (cls,), dict()), context=context)
 
         # attach parts to masters
         for table_name in part_tables:
@@ -144,7 +144,7 @@ class Schema:
                 raise DataJointError('The table %s does not follow DataJoint naming conventions' % table_name)
             part_class = type(class_name, (Part,), dict(definition=...))
             part_class._master = master_class
-            self.process_relation_class(part_class, context=context, assert_declared=True)
+            self.process_table_class(part_class, context=context, assert_declared=True)
             setattr(master_class, class_name, part_class)
 
     def drop(self, force=False):
@@ -172,17 +172,17 @@ class Schema:
         cur = self.connection.query("SHOW DATABASES LIKE '{database}'".format(database=self.database))
         return cur.rowcount > 0
 
-    def process_relation_class(self, relation_class, context, assert_declared=False):
+    def process_table_class(self, table_class, context, assert_declared=False):
         """
         assign schema properties to the relation class and declare the table
         """
-        relation_class.database = self.database
-        relation_class._connection = self.connection
-        relation_class._heading = Heading()
-        relation_class.declaration_context = context
+        table_class.database = self.database
+        table_class._connection = self.connection
+        table_class._heading = Heading()
+        table_class.declaration_context = context
 
         # instantiate the class, declare the table if not already
-        instance = relation_class()
+        instance = table_class()
         is_declared = instance.is_declared
         if not is_declared:
             if not self.create_tables or assert_declared:
@@ -202,15 +202,16 @@ class Schema:
                 else:
                     instance.insert(contents, skip_duplicates=True)
 
-    def __call__(self, cls):
+    def __call__(self, cls, *, context=None):
         """
         Binds the supplied class to a schema. This is intended to be used as a decorator.
         :param cls: class to decorate.
+        :param context: supplied when called from spawn_missing_classes
         """
-        context = self.context if self.context is not None else inspect.currentframe().f_back.f_locals
+        context = context or self.context or inspect.currentframe().f_back.f_locals
         if issubclass(cls, Part):
             raise DataJointError('The schema decorator should not be applied to Part relations')
-        self.process_relation_class(cls, context=dict(context, self=cls, **{cls.__name__: cls}))
+        self.process_table_class(cls, context=dict(context, self=cls, **{cls.__name__: cls}))
 
         # Process part relations
         for part in ordered_dir(cls):
@@ -219,7 +220,7 @@ class Schema:
                 if inspect.isclass(part) and issubclass(part, Part):
                     part._master = cls
                     # allow addressing master by name or keyword 'master'
-                    self.process_relation_class(part, context=dict(
+                    self.process_table_class(part, context=dict(
                         context, master=cls, self=part, **{cls.__name__: cls}))
         return cls
 
@@ -285,15 +286,15 @@ class Schema:
                 f.write(python_code)
 
 
-def create_virtual_module(module_name, schema_name, create_schema=False, create_tables=False, connection=None):
+def create_virtual_module(module_name, schema_name, *, create_schema=False, create_tables=False, connection=None):
     """
     Creates a python module with the given name from the name of a schema on the server and
     automatically adds classes to it corresponding to the tables in the schema.
-
     :param module_name: displayed module name
     :param schema_name: name of the database in mysql
     :param create_schema: if True, create the schema on the database server
     :param create_tables: if True, module.schema can be used as the decorator for declaring new
+    :param connection: a dj.Connection object to pass into the schema.
     :return: the python module containing classes from the schema object and the table classes
     """
     module = types.ModuleType(module_name)
