@@ -582,11 +582,9 @@ class Table(QueryExpression):
                1. self must be restricted to exactly one tuple
                2. the update attribute must not be in primary key
 
-            Example
-
+            Example:
             >>> (v2p.Mice() & key).update('mouse_dob', '2011-01-01')
             >>> (v2p.Mice() & key).update( 'lens')   # set the value to NULL
-
         """
         if len(self) != 1:
             raise DataJointError('Update is only allowed on one tuple at a time')

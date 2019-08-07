@@ -241,9 +241,6 @@ class Heading:
                             "Invalid attribute type '{type}' in adapter object <{adapter_name}>.".format(
                                 adapter_name=adapter_name, **attr))
                     special = not any(TYPE_PATTERN[c].match(attr['type']) for c in NATIVE_TYPES)
-                finally:
-                    # attach the adapter name to the adapter object for reference
-                    attr['adapter'].name = adapter_name
 
             if special:
                 try:
@@ -280,6 +277,11 @@ class Heading:
                     t = re.sub(r' unsigned$', '', t)   # remove unsigned
                     assert (t, is_unsigned) in numeric_types, 'dtype not found for type %s' % t
                     attr['dtype'] = numeric_types[(t, is_unsigned)]
+
+            if attr['adapter']:
+                # restore adapted type name
+                attr['type'] = adapter_name
+
         self.attributes = OrderedDict(((q['name'], Attribute(**q)) for q in attributes))
 
         # Read and tabulate secondary indexes
