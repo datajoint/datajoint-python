@@ -40,7 +40,6 @@ virtual_module = dj.create_virtual_module('virtual_module', adapted.schema_name,
 
 def test_adapted_virtual():
     c = virtual_module.Connectivity()
-    c.describe()
     graphs = [nx.lollipop_graph(4, 2), nx.star_graph(5), nx.barbell_graph(3, 1), nx.cycle_graph(5)]
     c.insert((i, g) for i, g in enumerate(graphs))
     returned_graphs = c.fetch('conn_graph', order_by='connid')
