@@ -19,8 +19,6 @@ build/
 ./tests/dj-store/*
 *.log
 *.env
-dj011/*
-*.ipynb
 LNX-docker-compose.yml
 notebooks/*
 test.dockerfile

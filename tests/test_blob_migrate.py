@@ -2,9 +2,11 @@ from nose.tools import assert_true, assert_false, assert_equal, \
                         assert_list_equal, raises
 
 import datajoint as dj
-import os, re
+import os
+import re
 from . import S3_CONN_INFO
 from . import CONN_INFO
+
 
 class TestBlobMigrate:
 
@@ -19,7 +21,7 @@ class TestBlobMigrate:
         default_store = 'external'  # naming the unnamed external store
 
         dj.config['stores'] = {
-            
+
             default_store: dict(
                 protocol='s3',
                 endpoint=S3_CONN_INFO['endpoint'],
@@ -27,7 +29,7 @@ class TestBlobMigrate:
                 location='store',
                 access_key=S3_CONN_INFO['access_key'],
                 secret_key=S3_CONN_INFO['secret_key']),
-            
+
             'shared': dict(
                 protocol='s3',
                 endpoint=S3_CONN_INFO['endpoint'],
@@ -35,7 +37,7 @@ class TestBlobMigrate:
                 location='maps',
                 access_key=S3_CONN_INFO['access_key'],
                 secret_key=S3_CONN_INFO['secret_key']),
-            
+
             'local': dict(
                 protocol='file',
                 location=os.path.expanduser('~/temp/migrate-test'))
@@ -51,25 +53,29 @@ class TestBlobMigrate:
 
         # get referencing tables
         refs = query("""
-        SELECT concat('`', table_schema, '`.`', table_name, '`') as referencing_table, column_name, constraint_name
+        SELECT concat('`', table_schema, '`.`', table_name, '`')
+             as referencing_table, column_name, constraint_name
         FROM information_schema.key_column_usage
         WHERE referenced_table_name="{tab}" and referenced_table_schema="{db}"
-        """.format(tab=legacy_external.table_name, db=legacy_external.database), as_dict=True).fetchall()
-
+        """.format(
+            tab=legacy_external.table_name,
+            db=legacy_external.database), as_dict=True).fetchall()
 
         for ref in refs:
             # get comment
             column = query(
                 'SHOW FULL COLUMNS FROM {referencing_table}'
-                'WHERE Field="{column_name}"'.format(**ref), as_dict=True).fetchone()
+                'WHERE Field="{column_name}"'.format(
+                    **ref), as_dict=True).fetchone()
 
             store, comment = re.match(
-                r':external(-(?P<store>.+))?:(?P<comment>.*)', 
+                r':external(-(?P<store>.+))?:(?P<comment>.*)',
                 column['Comment']).group('store', 'comment')
 
             # get all the hashes from the reference
             hashes = {x[0] for x in query(
-                'SELECT `{column_name}` FROM {referencing_table}'.format(**ref))}
+                'SELECT `{column_name}` FROM {referencing_table}'.format(
+                    **ref))}
 
             # sanity check make sure that store suffixes match
             if store is None:
@@ -84,23 +90,25 @@ class TestBlobMigrate:
             temp_suffix = 'tempsub'
 
             try:
-                query("""ALTER TABLE {referencing_table} 
-                ADD COLUMN `{column_name}_{temp_suffix}` {type} DEFAULT NULL
+                query("""ALTER TABLE {referencing_table}
+                 ADD COLUMN `{column_name}_{temp_suffix}` {type} DEFAULT NULL
                 COMMENT ":blob@{store}:{comment}"
-                """.format(type=dj.declare.UUID_DATA_TYPE, 
-                        temp_suffix=temp_suffix, 
-                        store=(store or default_store), comment=comment, **ref))
+                """.format(
+                    type=dj.declare.UUID_DATA_TYPE,
+                    temp_suffix=temp_suffix,
+                    store=(store or default_store), comment=comment, **ref))
             except:
                 print('Column already added')
                 pass
-
 
             # Copy references into the new external table
             # No Windows! Backslashes will cause problems
 
             contents_hash_function = {
-                'file': lambda ext, relative_path: dj.hash.uuid_from_file(os.path.join(ext.spec['location'], relative_path)),
-                's3': lambda ext, relative_path: dj.hash.uuid_from_buffer(ext.s3.get(relative_path))
+                'file': lambda ext, relative_path: dj.hash.uuid_from_file(
+                    os.path.join(ext.spec['location'], relative_path)),
+                's3': lambda ext, relative_path: dj.hash.uuid_from_buffer(
+                    ext.s3.get(relative_path))
             }
 
             for _hash, size in zip(*legacy_external.fetch('hash', 'size')):
@@ -110,20 +118,25 @@ class TestBlobMigrate:
                     ext.insert1(dict(
                         filepath=relative_path,
                         size=size,
-                        contents_hash=contents_hash_function[ext.spec['protocol']](ext, relative_path),
+                        contents_hash=contents_hash_function[ext.spec[
+                            'protocol']](ext, relative_path),
                         hash=uuid
                     ), skip_duplicates=True)
 
-                    query('UPDATE {referencing_table} '
+                    query(
+                        'UPDATE {referencing_table} '
                         'SET `{column_name}_{temp_suffix}`=%s '
                         'WHERE `{column_name}` = "{_hash}"'
-                        .format(_hash=_hash, temp_suffix=temp_suffix, **ref), uuid.bytes)
+                        .format(
+                            _hash=_hash,
+                            temp_suffix=temp_suffix, **ref), uuid.bytes)
 
             # check that all have been copied
-            check = query('SELECT * FROM {referencing_table} '
-                        'WHERE `{column_name}` IS NOT NULL'
-                        '  AND `{column_name}_{temp_suffix}` IS NULL'
-                        .format(temp_suffix=temp_suffix, **ref)).fetchall()
+            check = query(
+                'SELECT * FROM {referencing_table} '
+                'WHERE `{column_name}` IS NOT NULL'
+                '  AND `{column_name}_{temp_suffix}` IS NULL'
+                .format(temp_suffix=temp_suffix, **ref)).fetchall()
 
             assert len(check) == 0, 'Some hashes havent been migrated'
 
@@ -132,21 +145,27 @@ class TestBlobMigrate:
                 ALTER TABLE {referencing_table}
                 DROP FOREIGN KEY `{constraint_name}`,
                 DROP COLUMN `{column_name}`,
-                CHANGE COLUMN `{column_name}_{temp_suffix}` `{column_name}` {type} DEFAULT NULL
+                CHANGE COLUMN `{column_name}_{temp_suffix}` `{column_name}`
+                 {type} DEFAULT NULL
                     COMMENT ":blob@{store}:{comment}",
-                ADD FOREIGN KEY (`{column_name}`) REFERENCES {ext_table_name} (`hash`)
-                """.format(temp_suffix=temp_suffix, 
-                        ext_table_name=ext.full_table_name, 
-                        type=dj.declare.UUID_DATA_TYPE, 
-                        store=(store or default_store), comment=comment, **ref))
+                ADD FOREIGN KEY (`{column_name}`) REFERENCES {ext_table_name}
+                 (`hash`)
+                """.format(
+                    temp_suffix=temp_suffix,
+                    ext_table_name=ext.full_table_name,
+                    type=dj.declare.UUID_DATA_TYPE,
+                    store=(store or default_store), comment=comment, **ref))
 
         # Drop the old external table but make sure it's no longer referenced
         # get referencing tables
         refs = query("""
-        SELECT concat('`', table_schema, '`.`', table_name, '`') as referencing_table, column_name, constraint_name
+        SELECT concat('`', table_schema, '`.`', table_name, '`') as
+         referencing_table, column_name, constraint_name
         FROM information_schema.key_column_usage
         WHERE referenced_table_name="{tab}" and referenced_table_schema="{db}"
-        """.format(tab=legacy_external.table_name, db=legacy_external.database), as_dict=True).fetchall()
+        """.format(
+            tab=legacy_external.table_name,
+            db=legacy_external.database), as_dict=True).fetchall()
 
         assert not refs, 'Some references still exist'
 
@@ -156,24 +175,15 @@ class TestBlobMigrate:
     @staticmethod
     def test_query():
 
-        # import time
-        # time.sleep(420)
-
         dj.config['database.password'] = CONN_INFO['password']
         dj.config['database.user'] = CONN_INFO['user']
         dj.config['database.host'] = CONN_INFO['host']
 
         schema = dj.schema('djtest_blob_migrate')
-        # schema = dj.schema('djtest_blob_migrate', locals(), connection=dj.conn())
-        # query = schema.connection.query
 
         # Configure stores
-        
-
         default_store = 'external'  # naming the unnamed external store
-
         dj.config['stores'] = {
-            
             default_store: dict(
                 protocol='s3',
                 endpoint=S3_CONN_INFO['endpoint'],
@@ -181,7 +191,6 @@ class TestBlobMigrate:
                 location='store',
                 access_key=S3_CONN_INFO['access_key'],
                 secret_key=S3_CONN_INFO['secret_key']),
-            
             'shared': dict(
                 protocol='s3',
                 endpoint=S3_CONN_INFO['endpoint'],
@@ -189,7 +198,6 @@ class TestBlobMigrate:
                 location='maps',
                 access_key=S3_CONN_INFO['access_key'],
                 secret_key=S3_CONN_INFO['secret_key']),
-            
             'local': dict(
                 protocol='file',
                 location=os.path.expanduser('~/temp/migrate-test'))

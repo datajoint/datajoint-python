@@ -112,7 +112,8 @@ def setup_package():
     dj.config['safemode'] = False
 
     # Add old MySQL
-    source = os.path.dirname(os.path.realpath(__file__)) + "/external-legacy-data"
+    source = os.path.dirname(os.path.realpath(__file__)) + \
+        "/external-legacy-data"
     db_name = "djtest_blob_migrate"
     db_file = "v0_11.sql"
     conn_root.query("""
@@ -120,12 +121,11 @@ def setup_package():
         """.format(db_name))
 
     def parse_sql(filename):
-        data = open(filename, 'r').readlines()
         stmts = []
         DELIMITER = ';'
         stmt = ''
 
-        for lineno, line in enumerate(data):
+        for line in open(filename, 'r').readlines():
             if not line.strip():
                 continue
 
@@ -150,25 +150,15 @@ def setup_package():
 
     stmts = parse_sql('{}/{}'.format(source, db_file))
 
-    # conn = pymysql.connect('mysql','root','simple')
-    # with conn.cursor() as cursor:
-    #     for stmt in stmts:
-    #         # print(stmt)
-    #         cursor.execute(stmt)
-    #     conn.commit()
-
     for stmt in stmts:
         conn_root.query(stmt)
 
     # Add old S3
-    source = os.path.dirname(os.path.realpath(__file__)) + "/external-legacy-data/s3"
+    source = os.path.dirname(os.path.realpath(__file__)) + \
+        "/external-legacy-data/s3"
     bucket = "migrate-test"
     region = "us-east-1"
     minioClient.make_bucket(bucket, location=region)
-    # for filename in os.listdir('./external-legacy-data'):
-    #     minioClient.fput_object(
-    #       'datajoint-test-old', 'dj/store/djtest_extern/{}'.format(filename),
-    #             './external-legacy-data/{}'.format(filename))
 
     pathlist = Path(source).glob('**/*')
     for path in pathlist:
@@ -184,7 +174,9 @@ def setup_package():
 
     # Add old File Content
     shutil.copytree(
-            os.path.dirname(os.path.realpath(__file__)) + "/external-legacy-data/file/temp", os.path.expanduser('~/temp'))
+            os.path.dirname(os.path.realpath(__file__)) +
+            "/external-legacy-data/file/temp",
+            os.path.expanduser('~/temp'))
 
 
 def teardown_package():
