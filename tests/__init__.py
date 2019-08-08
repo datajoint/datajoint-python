@@ -9,16 +9,13 @@ import logging
 from os import environ, remove
 import datajoint as dj
 from distutils.version import LooseVersion
-
 import os
 from minio import Minio
 import urllib3
 import certifi
-import pymysql
-from pathlib import Path
 import shutil
 
-__author__ = 'Edgar Walker, Fabian Sinz, Dimitri Yatsenko'
+__author__ = 'Edgar Walker, Fabian Sinz, Dimitri Yatsenko, Raphael Guzman'
 
 # turn on verbose logging
 logging.basicConfig(level=logging.DEBUG)
@@ -124,7 +121,6 @@ def setup_package():
         stmts = []
         DELIMITER = ';'
         stmt = ''
-
         for line in open(filename, 'r').readlines():
             if not line.strip():
                 continue
@@ -149,7 +145,6 @@ def setup_package():
         return stmts
 
     stmts = parse_sql('{}/{}'.format(source, db_file))
-
     for stmt in stmts:
         conn_root.query(stmt)
 

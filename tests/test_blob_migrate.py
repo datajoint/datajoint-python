@@ -17,11 +17,8 @@ class TestBlobMigrate:
         query = schema.connection.query
 
         # Configure stores
-
         default_store = 'external'  # naming the unnamed external store
-
         dj.config['stores'] = {
-
             default_store: dict(
                 protocol='s3',
                 endpoint=S3_CONN_INFO['endpoint'],
@@ -29,7 +26,6 @@ class TestBlobMigrate:
                 location='store',
                 access_key=S3_CONN_INFO['access_key'],
                 secret_key=S3_CONN_INFO['secret_key']),
-
             'shared': dict(
                 protocol='s3',
                 endpoint=S3_CONN_INFO['endpoint'],
@@ -37,12 +33,10 @@ class TestBlobMigrate:
                 location='maps',
                 access_key=S3_CONN_INFO['access_key'],
                 secret_key=S3_CONN_INFO['secret_key']),
-
             'local': dict(
                 protocol='file',
                 location=os.path.expanduser('~/temp/migrate-test'))
         }
-
         dj.config['cache'] = os.path.expanduser('~/temp/dj-cache')
 
         LEGACY_HASH_SIZE = 43
@@ -202,10 +196,7 @@ class TestBlobMigrate:
                 protocol='file',
                 location=os.path.expanduser('~/temp/migrate-test'))
         }
-
         dj.config['cache'] = os.path.expanduser('~/temp/dj-cache')
 
-        # schema.spawn_missing_classes()
         test_mod = dj.create_virtual_module('test_mod', 'djtest_blob_migrate')
-
         assert_equal(test_mod.A.fetch('blob_share')[1][1], 2)
