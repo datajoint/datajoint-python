@@ -112,7 +112,7 @@ def setup_package():
     dj.config['safemode'] = False
 
     # Add old MySQL
-    source = "./external-legacy-data"
+    source = os.path.dirname(os.path.realpath(__file__)) + "/external-legacy-data"
     db_name = "djtest_blob_migrate"
     db_file = "v0_11.sql"
     conn_root.query("""
@@ -161,7 +161,7 @@ def setup_package():
         conn_root.query(stmt)
 
     # Add old S3
-    source = "./external-legacy-data/s3"
+    source = os.path.dirname(os.path.realpath(__file__)) + "/external-legacy-data/s3"
     bucket = "migrate-test"
     region = "us-east-1"
     minioClient.make_bucket(bucket, location=region)
@@ -184,7 +184,7 @@ def setup_package():
 
     # Add old File Content
     shutil.copytree(
-            "./external-legacy-data/file/temp", os.path.expanduser('~/temp'))
+            os.path.dirname(os.path.realpath(__file__)) + "/external-legacy-data/file/temp", os.path.expanduser('~/temp'))
 
 
 def teardown_package():
