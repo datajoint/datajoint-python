@@ -97,9 +97,9 @@ httpClient = urllib3.PoolManager(
         )
 
 # Initialize minioClient with an endpoint and access/secret keys.
-minioClient = Minio('minio:9000',
-                    access_key='datajoint',
-                    secret_key='datajoint',
+minioClient = Minio(S3_CONN_INFO['endpoint'],
+                    access_key=S3_CONN_INFO['access_key'],
+                    secret_key=S3_CONN_INFO['secret_key'],
                     secure=False,
                     http_client=httpClient)
 

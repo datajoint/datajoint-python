@@ -3,7 +3,8 @@ from nose.tools import assert_true, assert_false, assert_equal, \
 
 import datajoint as dj
 import os, re
-
+from . import S3_CONN_INFO
+from . import CONN_INFO
 
 class TestBlobMigrate:
 
@@ -21,19 +22,19 @@ class TestBlobMigrate:
             
             default_store: dict(
                 protocol='s3',
-                endpoint="minio:9000",
+                endpoint=S3_CONN_INFO['endpoint'],
                 bucket='migrate-test',
                 location='store',
-                access_key="datajoint",
-                secret_key="datajoint"),
+                access_key=S3_CONN_INFO['access_key'],
+                secret_key=S3_CONN_INFO['secret_key']),
             
             'shared': dict(
                 protocol='s3',
-                endpoint="minio:9000",
+                endpoint=S3_CONN_INFO['endpoint'],
                 bucket='migrate-test',
                 location='maps',
-                access_key="datajoint",
-                secret_key="datajoint"),
+                access_key=S3_CONN_INFO['access_key'],
+                secret_key=S3_CONN_INFO['secret_key']),
             
             'local': dict(
                 protocol='file',
@@ -158,9 +159,9 @@ class TestBlobMigrate:
         # import time
         # time.sleep(420)
 
-        dj.config['database.password'] = 'simple'
-        dj.config['database.user'] = 'root'
-        dj.config['database.host'] = 'mysql'
+        dj.config['database.password'] = CONN_INFO['password']
+        dj.config['database.user'] = CONN_INFO['user']
+        dj.config['database.host'] = CONN_INFO['host']
 
         schema = dj.schema('djtest_blob_migrate')
         # schema = dj.schema('djtest_blob_migrate', locals(), connection=dj.conn())
@@ -175,19 +176,19 @@ class TestBlobMigrate:
             
             default_store: dict(
                 protocol='s3',
-                endpoint="minio:9000",
+                endpoint=S3_CONN_INFO['endpoint'],
                 bucket='migrate-test',
                 location='store',
-                access_key="datajoint",
-                secret_key="datajoint"),
+                access_key=S3_CONN_INFO['access_key'],
+                secret_key=S3_CONN_INFO['secret_key']),
             
             'shared': dict(
                 protocol='s3',
-                endpoint="minio:9000",
+                endpoint=S3_CONN_INFO['endpoint'],
                 bucket='migrate-test',
                 location='maps',
-                access_key="datajoint",
-                secret_key="datajoint"),
+                access_key=S3_CONN_INFO['access_key'],
+                secret_key=S3_CONN_INFO['secret_key']),
             
             'local': dict(
                 protocol='file',
