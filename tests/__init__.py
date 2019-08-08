@@ -10,6 +10,7 @@ from os import environ, remove
 import datajoint as dj
 from distutils.version import LooseVersion
 import os
+from pathlib import Path
 from minio import Minio
 import urllib3
 import certifi
