@@ -95,3 +95,19 @@ def safe_copy(src, dest, overwrite=False):
         temp_file = dest + '.copying'
         shutil.copyfile(src, temp_file)
         os.rename(temp_file, dest)
+
+
+def parse_sql(filepath):
+    DELIMITER = ';'
+    statement = ''
+    with open(filepath, 'rt') as f:
+        for line in f:
+            line = line.strip()
+            if not line.startswith('--') and len(line) > 1:
+                if not line.startswith('DELIMITER'):
+                    statement += ' ' + line
+                    if line.endswith(DELIMITER):
+                        yield statement[1:]
+                        statement = ''
+                else:
+                    DELIMITER = line.split()[1]

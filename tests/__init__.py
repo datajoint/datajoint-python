@@ -15,6 +15,7 @@ from minio import Minio
 import urllib3
 import certifi
 import shutil
+from datajoint.utils import parse_sql
 
 __author__ = 'Edgar Walker, Fabian Sinz, Dimitri Yatsenko, Raphael Guzman'
 
@@ -118,36 +119,9 @@ def setup_package():
         CREATE DATABASE {};
         """.format(db_name))
 
-    def parse_sql(filename):
-        stmts = []
-        DELIMITER = ';'
-        stmt = ''
-        for line in open(filename, 'r').readlines():
-            if not line.strip():
-                continue
-
-            if line.startswith('--'):
-                continue
-
-            if 'DELIMITER' in line:
-                DELIMITER = line.split()[1]
-                continue
-
-            if (DELIMITER not in line):
-                stmt += line.replace(DELIMITER, ';')
-                continue
-
-            if stmt:
-                stmt += line
-                stmts.append(stmt.strip())
-                stmt = ''
-            else:
-                stmts.append(line.strip())
-        return stmts
-
-    stmts = parse_sql('{}/{}'.format(source, db_file))
-    for stmt in stmts:
-        conn_root.query(stmt)
+    statements = parse_sql('{}/{}'.format(source, db_file))
+    for s in statements:
+        conn_root.query(s)
 
     # Add old S3
     source = os.path.dirname(os.path.realpath(__file__)) + \
