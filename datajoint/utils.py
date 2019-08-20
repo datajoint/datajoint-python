@@ -99,15 +99,15 @@ def safe_copy(src, dest, overwrite=False):
 
 def parse_sql(filepath):
     DELIMITER = ';'
-    statement = ''
+    statement = []
     with open(filepath, 'rt') as f:
         for line in f:
             line = line.strip()
             if not line.startswith('--') and len(line) > 1:
-                if not line.startswith('DELIMITER'):
-                    statement += ' ' + line
-                    if line.endswith(DELIMITER):
-                        yield statement[1:]
-                        statement = ''
-                else:
+                if line.startswith('DELIMITER'):
                     DELIMITER = line.split()[1]
+                else:
+                    statement.append(line)
+                    if line.endswith(DELIMITER):
+                        yield ' '.join(statement)
+                        statement = []
