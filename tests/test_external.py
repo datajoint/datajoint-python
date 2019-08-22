@@ -4,7 +4,13 @@ from nose.tools import assert_true, assert_equal
 from datajoint.external import ExternalTable
 from datajoint.blob import pack, unpack
 
-from . schema_external import schema
+from .schema_external import schema
+import datajoint as dj
+from .schema_external import stores_config
+
+
+def setUp(self):
+    dj.config['stores'] = stores_config
 
 
 def test_external_put():
