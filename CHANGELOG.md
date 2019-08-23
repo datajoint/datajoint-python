@@ -9,6 +9,7 @@
 * Support of ellipsis in `proj`:  `query_expression.proj(.., '-movie')` (#499) PR578
 * Expand support of blob serialization (#572, #520, #427, #392, #244, #594) PR577
 * Support for alter (#110) PR573
+* Support for `conda install datajoint` via `conda-forge` channel (#293)
 * `dj.conn()` accepts a `port` keyword argument (#563) PR571
 * Support for UUID datatype (#562) PR567
 * `query_expr.fetch("KEY", as_dict=False)` returns results as `np.recarray`(#414) PR574
