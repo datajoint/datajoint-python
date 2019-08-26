@@ -14,6 +14,9 @@
 * `dj.Diagram` underlines "distinguished" classes (#378, #557)
 * Bugfixes: #629, #633
 
+### 0.11.2 -- July 25, 2019
+* Fix #628 - incompatibility with pyparsing 2.4.1
+
 ### 0.11.1 -- Nov 15, 2018
 * Fix ordering of attributes in proj (#483 and #516)
 * Prohibit direct insert into auto-populated tables (#511)
