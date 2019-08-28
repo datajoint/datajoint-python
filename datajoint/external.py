@@ -2,7 +2,7 @@ import os
 import itertools
 from collections import Mapping
 from .settings import config
-from .errors import DataJointError
+from .errors import DataJointError, MissingExternalFile
 from .hash import uuid_from_buffer, uuid_from_file
 from .table import Table
 from .declare import EXTERNAL_TABLE_ROOT
@@ -10,6 +10,7 @@ from . import s3
 from .utils import safe_write, safe_copy
 
 CACHE_SUBFOLDING = (2, 2)   # (2, 2) means  "0123456789abcd" will be saved as "01/23/0123456789abcd"
+SUPPORT_MIGRATED_BLOBS = True   # support blobs migrated from datajoint 0.11.*
 
 
 def subfold(name, folds):
@@ -124,11 +125,21 @@ class ExternalTable(Table):
     def peek(self, blob_hash, bytes_to_peek=120):
         return self.get(blob_hash, size=bytes_to_peek)
 
-    def get(self, blob_hash, size=-1):
+    def get(self, blob_hash, *, size=-1):
         """
         get an object from external store.
         :param size: max number of bytes to retrieve. If size<0, retrieve entire blob
+        :param explicit_path: if given, then use it as relative path rather than the path derived from
         """
+
+        def read_file(filepath, size):
+            try:
+                with open(filepath, 'rb') as f:
+                    blob = f.read(size)
+            except FileNotFoundError:
+                raise MissingExternalFile('Lost access to external blob %s.' % full_path) from None
+            return blob
+
         if blob_hash is None:
             return None
 
@@ -154,10 +165,16 @@ class ExternalTable(Table):
                 subfolders = os.path.join(*subfold(blob_hash.hex, self.spec['subfolding']))
                 full_path = os.path.join(self.spec['location'], self.database, subfolders, blob_hash.hex)
                 try:
-                    with open(full_path, 'rb') as f:
-                        blob = f.read(size)
-                except FileNotFoundError:
-                    raise DataJointError('Lost access to external blob %s.' % full_path) from None
+                    blob = read_file(full_path, size)
+                except MissingExternalFile:
+                    if not SUPPORT_MIGRATED_BLOBS:
+                        raise
+                    # migrated blobs from 0.11
+                    relative_filepath, contents_hash = (self & {'hash': blob_hash}).fetch1(
+                        'filepath', 'contents_hash')
+                    if relative_filepath is None:
+                        raise
+                    blob = read_file(os.path.join(self.spec['location'], relative_filepath))
                 else:
                     if size > 0:
                         blob_size = os.path.getsize(full_path)
@@ -165,7 +182,16 @@ class ExternalTable(Table):
                 full_path = '/'.join(
                     (self.database,) + subfold(blob_hash.hex, self.spec['subfolding']) + (blob_hash.hex,))
                 if size < 0:
-                    blob = self.s3.get(full_path)
+                    try:
+                        blob = self.s3.get(full_path)
+                    except MissingExternalFile:
+                        if not SUPPORT_MIGRATED_BLOBS:
+                            raise
+                        relative_filepath, contents_hash = (self & {'hash': blob_hash}).fetch1(
+                            'filepath', 'contents_hash')
+                        if relative_filepath is None:
+                            raise
+                        blob = self.s3.get(relative_filepath)
                 else:
                     blob = self.s3.partial_get(full_path, 0, size)
                     blob_size = self.s3.get_size(full_path)

@@ -35,3 +35,9 @@ class DuplicateError(DataJointError):
     Error caused by a violation of a unique constraint when inserting data
     """
     pass
+
+
+class MissingExternalFile(DataJointError):
+    """
+    Error raised when an external file managed by DataJoint is no longer accessible
+    """

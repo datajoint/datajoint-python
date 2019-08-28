@@ -4,6 +4,10 @@ import datajoint as dj
 from . import schema_external as modu
 
 
+def setUp(self):
+    dj.config['stores'] = modu.stores_config
+
+
 def test_heading():
     heading = modu.Simple.heading
     assert_true('item' in heading)

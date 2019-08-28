@@ -246,8 +246,9 @@ class Heading:
                 try:
                     category = next(c for c in SPECIAL_TYPES if TYPE_PATTERN[c].match(attr['type']))
                 except StopIteration:
-                    raise DataJointError('Unknown attribute type `{type}` in a declared table'.format(**attr)) from None
-
+                    if attr['type'].startswith('external'):
+                        raise DataJointError('Legacy datatype `{type}`.'.format(**attr)) from None
+                    raise DataJointError('Unknown attribute type `{type}`'.format(**attr)) from None
                 attr.update(
                     unsupported=False,
                     is_attachment=category in ('INTERNAL_ATTACH', 'EXTERNAL_ATTACH'),

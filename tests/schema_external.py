@@ -11,7 +11,7 @@ import numpy as np
 schema = dj.schema(PREFIX + '_extern', connection=dj.conn(**CONN_INFO))
 
 
-dj.config['stores'] = {
+stores_config = {
 
     'raw': dict(
         protocol='file',
@@ -39,6 +39,8 @@ dj.config['stores'] = {
         location='dj/store/repo',
         subfolding=(2, 4))
 }
+
+dj.config['stores'] = stores_config
 
 dj.config['cache'] = tempfile.mkdtemp()
 
