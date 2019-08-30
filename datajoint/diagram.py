@@ -230,8 +230,8 @@ else:
             # mark "distinguished" tables, i.e. those that introduce new primary key attributes
             for name in self.nodes_to_show:
                 foreign_attributes = set(attr for p in self.in_edges(name, data=True) for attr in p[2]['attr_map'])
-                self.node[name]['distinguished'] = (foreign_attributes < self.node[name]['primary_key']
-                        if ('primary_key' in self.node[name].keys()) else False)
+                self.node[name]['distinguished'] = ('primary_key' in self.node[name] and
+                        foreign_attributes < self.node[name]['primary_key'])
             # include aliased nodes that are sandwiched between two displayed nodes
             gaps = set(nx.algorithms.boundary.node_boundary(self, self.nodes_to_show)).intersection(
                 nx.algorithms.boundary.node_boundary(nx.DiGraph(self).reverse(), self.nodes_to_show))
