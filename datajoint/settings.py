@@ -131,7 +131,7 @@ class Config(collections.MutableMapping):
         try:
             spec = self['stores'][store]
         except KeyError:
-            raise DataJointError('Storage {store} is requested but not configured'.format(store=store)) from None
+            raise DataJointError('Storage "{store}" is requested but not configured'.format(store=store)) from None
 
         spec['subfolding'] = spec.get('subfolding', DEFAULT_SUBFOLDING)
         spec_keys = {  # REQUIRED in uppercase and allowed in lowercase
