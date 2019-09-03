@@ -22,21 +22,21 @@ class Folder:
 
     def put(self, relative_name, buffer):
         return self.client.put_object(
-            self.bucket, '/'.join((self.remote_path, relative_name)), BytesIO(buffer), length=len(buffer))
+            self.bucket, '/'.join((self.remote_path, relative_name)).lstrip('/'), BytesIO(buffer), length=len(buffer))
 
     def fput(self, relative_name, local_file, **meta):
         return self.client.fput_object(
-            self.bucket, '/'.join((self.remote_path, relative_name)), local_file, metadata=meta or None)
+            self.bucket, '/'.join((self.remote_path, relative_name)).lstrip('/'), local_file, metadata=meta or None)
 
     def get(self, relative_name):
         try:
-            return self.client.get_object(self.bucket, '/'.join((self.remote_path, relative_name))).data
+            return self.client.get_object(self.bucket, '/'.join((self.remote_path, relative_name)).lstrip('/')).data
         except minio.error.NoSuchKey:
             raise errors.MissingExternalFile from None
 
     def fget(self, relative_name, local_filepath):
         """get file from object name to local filepath"""
-        name = '/'.join((self.remote_path, relative_name))
+        name = '/'.join((self.remote_path, relative_name)).lstrip('/')
         stat = self.client.stat_object(self.bucket, name)
         meta = {k.lower().lstrip('x-amz-meta'): v for k, v in stat.metadata.items()}
         data = self.client.get_object(self.bucket, name)
@@ -49,18 +49,18 @@ class Folder:
     def partial_get(self, relative_name, offset, size):
         try:
             return self.client.get_partial_object(
-                self.bucket, '/'.join((self.remote_path, relative_name)), offset, size).data
+                self.bucket, '/'.join((self.remote_path, relative_name)).lstrip('/'), offset, size).data
         except minio.error.NoSuchKey:
             raise errors.MissingExternalFile from None
 
     def get_size(self, relative_name):
         try:
-            return self.client.stat_object(self.bucket, '/'.join((self.remote_path, relative_name))).size
+            return self.client.stat_object(self.bucket, '/'.join((self.remote_path, relative_name)).lstrip('/')).size
         except minio.error.NoSuchKey:
             raise errors.MissingExternalFile from None
 
     def list_objects(self, folder=''):
-        return self.client.list_objects(self.bucket, '/'.join((self.remote_path, folder, '')), recursive=True)
+        return self.client.list_objects(self.bucket, '/'.join((self.remote_path, folder, '').lstrip('/')), recursive=True)
 
     def remove_objects(self, objects_iter):
 
