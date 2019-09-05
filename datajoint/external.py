@@ -260,7 +260,7 @@ class ExternalTable(Table):
             generator = (os.path.join(folder[position:], file)
                          for folder, dirs, files in os.walk(remote_path, topdown=False) for file in files)
         else:  # self.spec['protocol'] == 's3'
-            position = len(remote_path.rstrip('/')) + 1
+            position = len(remote_path.lstrip('/').rstrip('/'))
             generator = (x.object_name[position:] for x in s3.Folder(**self.spec).list_objects())
         in_use = set((self & '`filepath` IS NOT NULL').fetch('filepath'))
         yield from ('/'.join((remote_path, f)) for f in generator if f not in in_use)
