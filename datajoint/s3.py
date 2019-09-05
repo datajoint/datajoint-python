@@ -60,7 +60,7 @@ class Folder:
             raise errors.MissingExternalFile from None
 
     def list_objects(self, folder=''):
-        return self.client.list_objects(self.bucket, '/'.join((self.remote_path, folder, '').lstrip('/')), recursive=True)
+        return self.client.list_objects(self.bucket, '/'.join((self.remote_path, folder, '')).lstrip('/'), recursive=True)
 
     def remove_objects(self, objects_iter):
 
