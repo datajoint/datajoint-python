@@ -182,9 +182,6 @@ class Heading:
                        for k, v in x.items() if k not in fields_to_drop}
                       for x in attributes]
 
-        # exclude attributes that begin with an underscore: these are reserved for DataJoint internals
-        attributes = [a for a in attributes if not a['name'].startswith('_')]
-
         numeric_types = {
             ('float', False): np.float64,
             ('float', True): np.float64,

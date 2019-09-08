@@ -210,8 +210,8 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
     # declare the foreign key
     foreign_key_sql.append(
         'FOREIGN KEY (`{fk}`) REFERENCES {ref} (`{pk}`) ON UPDATE CASCADE ON DELETE RESTRICT'.format(
-            fk='`,`'.join(ref.primary_key) or '_',  # dimensionless tables use _ as primary key
-            pk='`,`'.join(base.primary_key) or '_',
+            fk='`,`'.join(ref.primary_key),
+            pk='`,`'.join(base.primary_key),
             ref=base.full_table_name))
 
     # declare unique index
@@ -275,12 +275,6 @@ def declare(full_table_name, definition, context):
 
     table_comment, primary_key, attribute_sql, foreign_key_sql, index_sql, external_stores = prepare_declare(
         definition, context)
-
-    if not primary_key:
-        # singular (dimensionless) table -- can contain only one element
-        attribute_sql.insert(0, '`_` char(1) not null default "" COMMENT "dimensionless primary key"')
-        primary_key = ['_']
-
     return (
         'CREATE TABLE IF NOT EXISTS %s (\n' % full_table_name +
         ',\n'.join(attribute_sql + ['PRIMARY KEY (`' + '`,`'.join(primary_key) + '`)'] + foreign_key_sql + index_sql) +
