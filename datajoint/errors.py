@@ -66,7 +66,7 @@ class IntegrityError(QueryError):
     An integrity error triggered by foreign key constraints
     """
 
-class MissingAttributeValueError(QueryError):
+class MissingAttributeError(QueryError):
     """
     An error arising when a required attribute value is not provided in INSERT
     """

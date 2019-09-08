@@ -47,7 +47,7 @@ def translate_query_error(client_error, query, args):
     if isinstance(client_error, client.err.ProgrammingError) and client_error.args[0] == 1146:
         return errors.MissingTableError(*args[1:], query)
     if isinstance(client_error, client.err.InternalError) and client_error.args[0] == 1364:
-        return errors.MissingAttributeValueError(*args[1:])
+        return errors.MissingAttributeError(*args[1:])
     raise client_error
 
 
