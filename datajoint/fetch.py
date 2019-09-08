@@ -121,7 +121,6 @@ class Fetch:
         :param download_path: for fetches that download data, e.g. attachments
         :return: the contents of the relation in the form of a structured numpy.array or a dict list
         """
-
         if order_by is not None:
             # if 'order_by' passed in a string, make into list
             if isinstance(order_by, str):
