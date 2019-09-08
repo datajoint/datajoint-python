@@ -4,17 +4,15 @@ import inspect
 import platform
 import numpy as np
 import pandas
-import pymysql
 import logging
 import uuid
-from pymysql import OperationalError, InternalError, IntegrityError
 from .settings import config
 from .declare import declare, alter
 from .expression import QueryExpression
 from . import attach, blob
 from .utils import user_choice
 from .heading import Heading
-from .errors import server_error_codes, DataJointError, DuplicateError
+from .errors import DuplicateError, AccessError, DataJointError, UnknownAttributeError
 from .version import __version__ as version
 
 logger = logging.getLogger(__name__)
@@ -69,12 +67,9 @@ class Table(QueryExpression):
             for store in external_stores:
                 self.connection.schemas[self.database].external[store]
             self.connection.query(sql)
-        except pymysql.OperationalError as error:
+        except AccessError:
             # skip if no create privilege
-            if error.args[0] == server_error_codes['command denied']:
-                logger.warning(error.args[1])
-            else:
-                raise
+            pass
         else:
             self._log('Declared ' + self.full_table_name)
 
@@ -102,12 +97,9 @@ class Table(QueryExpression):
                     for store in external_stores:
                         self.connection.schemas[self.database].external[store]
                     self.connection.query(sql)
-                except pymysql.OperationalError as error:
+                except AccessError:
                     # skip if no create privilege
-                    if error.args[0] == server_error_codes['command denied']:
-                        logger.warning(error.args[1])
-                    else:
-                        raise
+                    pass
                 else:
                     if prompt:
                         print('Table altered')
@@ -343,20 +335,10 @@ class Table(QueryExpression):
                                if skip_duplicates else ''))
                 self.connection.query(query, args=list(
                     itertools.chain.from_iterable((v for v in r['values'] if v is not None) for r in rows)))
-            except (OperationalError, InternalError, IntegrityError) as err:
-                if err.args[0] == server_error_codes['command denied']:
-                    raise DataJointError('Command denied:  %s' % err.args[1]) from None
-                elif err.args[0] == server_error_codes['unknown column']:
-                    # args[1] -> Unknown column 'extra' in 'field list'
-                    raise DataJointError(
-                        '{} : To ignore extra fields, set ignore_extra_fields=True in insert.'.format(err.args[1])
-                    ) from None
-                elif err.args[0] == server_error_codes['duplicate entry']:
-                    raise DuplicateError(
-                        '{} : To ignore duplicate entries, set skip_duplicates=True in insert.'.format(err.args[1])
-                    ) from None
-                else:
-                    raise
+            except UnknownAttributeError as err:
+                raise err.suggest('To ignore extra fields in insert, set ignore_extra_fields=True') from None
+            except DuplicateError as err:
+                raise err.suggest('To ignore duplicate entries in insert, set skip_duplicates=True') from None
 
     def delete_quick(self, get_count=False):
         """

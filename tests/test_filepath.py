@@ -1,4 +1,4 @@
-from nose.tools import assert_true, assert_false, assert_equal, assert_not_equal, raises
+from nose.tools import assert_true, assert_false, assert_equal, raises
 import datajoint as dj
 import os
 import random

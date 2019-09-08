@@ -2,7 +2,7 @@ from .hash import key_hash
 import os
 import platform
 from .table import Table
-from .errors import DuplicateError
+from .errors import DuplicateError, IntegrityError
 
 ERROR_MESSAGE_LENGTH = 2047
 TRUNCATION_APPENDIX = '...truncated'

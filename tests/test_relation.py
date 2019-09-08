@@ -3,7 +3,6 @@ import re
 import pandas
 import numpy as np
 from nose.tools import assert_equal, assert_not_equal, assert_true, assert_list_equal, raises
-from pymysql import InternalError
 import datajoint as dj
 from datajoint import utils, DataJointError
 from datajoint.table import Table
@@ -200,7 +199,7 @@ class TestRelation:
             dtype=self.subject.heading.as_dtype)
         self.subject.insert(tmp, skip_duplicates=False)
 
-    @raises(InternalError)
+    @raises(dj.DataJointError)
     def test_no_error_suppression(self):
         """skip_duplicates=True should not suppress other errors"""
         self.test.insert([dict(key=100)], skip_duplicates=True)

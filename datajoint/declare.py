@@ -210,8 +210,8 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
     # declare the foreign key
     foreign_key_sql.append(
         'FOREIGN KEY (`{fk}`) REFERENCES {ref} (`{pk}`) ON UPDATE CASCADE ON DELETE RESTRICT'.format(
-            fk='`,`'.join(ref.primary_key),
-            pk='`,`'.join(base.primary_key),
+            fk='`,`'.join(ref.primary_key) or '_',  # dimensionless tables use _ as primary key
+            pk='`,`'.join(base.primary_key) or '_',
             ref=base.full_table_name))
 
     # declare unique index
@@ -235,7 +235,7 @@ def prepare_declare(definition, context):
     external_stores = []
 
     for line in definition:
-        if line.startswith('#'):  # ignore additional comments
+        if not line or line.startswith('#'):  # ignore additional comments
             pass
         elif line.startswith('---') or line.startswith('___'):
             in_key = False  # start parsing dependent attributes
@@ -277,7 +277,9 @@ def declare(full_table_name, definition, context):
         definition, context)
 
     if not primary_key:
-        raise DataJointError('Table must have a primary key')
+        # singular (dimensionless) table -- can contain only one element
+        attribute_sql.insert(0, '`_` char(1) not null default "" COMMENT "dimensionless primary key"')
+        primary_key = ['_']
 
     return (
         'CREATE TABLE IF NOT EXISTS %s (\n' % full_table_name +
