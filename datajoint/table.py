@@ -504,7 +504,7 @@ class Table(QueryExpression):
                 definition += '---\n'
                 in_key = False
             attributes_thus_far.add(attr.name)
-            do_include = True
+            do_include = not attr.name.startswith('_')  # attributes prefixed with underscore are for internal use
             for parent_name, fk_props in list(parents.items()):  # need list() to force a copy
                 if attr.name in fk_props['attr_map']:
                     do_include = False

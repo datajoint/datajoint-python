@@ -255,6 +255,12 @@ def prepare_declare(definition, context):
                 attributes.append(name)
                 attribute_sql.append(sql)
 
+    # singleton table: primary key with a single permissible value
+    if not primary_key:
+        primary_key = ['_']
+        attribute_sql.insert(0, '`_` enum(" ") NOT NULL DEFAULT " " COMMENT "singleton primary key"')
+        attributes.insert(0, '_')
+
     return table_comment, primary_key, attribute_sql, foreign_key_sql, index_sql, external_stores
 
 
