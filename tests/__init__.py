@@ -116,7 +116,7 @@ def setup_package():
     db_name = "djtest_blob_migrate"
     db_file = "v0_11.sql"
     conn_root.query("""
-        CREATE DATABASE {};
+        CREATE DATABASE IF NOT EXISTS {};
         """.format(db_name))
 
     statements = parse_sql('{}/{}'.format(source, db_file))
