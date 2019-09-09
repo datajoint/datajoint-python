@@ -203,3 +203,13 @@ class TestFetch:
         assert_true(len(rel & keys[0]) == 1)
         keys = rel.fetch(dj.key)
         assert_true(len(rel & keys[1]) == 1)
+
+    def test_nullable_numbers(self):
+        """ test mixture of values and nulls in numeric attributes """
+        table = schema.NullableNumbers()
+        table.insert((
+            (k, np.random.randn(), np.random.randint(-1000, 1000), np.random.randn())
+            for k in range(10)))
+        table.insert1((100, None, None, None))
+        f, d, i = table.fetch('fvalue', 'dvalue', 'ivalue')
+        assert_true(None in i)
