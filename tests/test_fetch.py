@@ -213,3 +213,5 @@ class TestFetch:
         table.insert1((100, None, None, None))
         f, d, i = table.fetch('fvalue', 'dvalue', 'ivalue')
         assert_true(None in i)
+        assert_true(any(np.isnan(d)))
+        assert_true(any(np.isnan(f)))
