@@ -62,10 +62,10 @@ class Dependencies(nx.DiGraph):
         # add edges to the graph
         for fk in fks.values():
             props = dict(
-                primary=all(attr in pks[fk['referencing_table']] for attr in fk['attr_map']),
+                primary=set(fk['attr_map']) <= set(pks[fk['referencing_table']]),
                 attr_map=fk['attr_map'],
                 aliased=any(k != v for k, v in fk['attr_map'].items()),
-                multi=not all(a in fk['attr_map'] for a in pks[fk['referencing_table']]))
+                multi=set(fk['attr_map']) != set(pks[fk['referencing_table']]))
             if not props['aliased']:
                 self.add_edge(fk['referenced_table'], fk['referencing_table'], **props)
             else:

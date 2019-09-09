@@ -24,8 +24,7 @@ __all__ = ['__author__', '__version__',
            'Not', 'AndList', 'U', 'Diagram', 'Di', 'ERD',
            'set_password', 'kill',
            'MatCell', 'MatStruct',
-           'DataJointError', 'DuplicateError', 'key']
-
+           'errors', 'DataJointError', 'key']
 
 from .version import __version__
 from .settings import config
@@ -38,7 +37,8 @@ from .expression import Not, AndList, U
 from .diagram import Diagram
 from .admin import set_password, kill
 from .blob import MatCell, MatStruct
-from .errors import DataJointError, DuplicateError
 from .fetch import key
+from . import errors
+from .errors import DataJointError
 
 ERD = Di = Diagram   # Aliases for Diagram
