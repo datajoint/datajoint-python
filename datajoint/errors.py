@@ -14,7 +14,7 @@ class DataJointError(Exception):
         :param args: addition arguments
         :return: a new exception of the same type with the additional arguments
         """
-        return self.__class__(*self.args, *args)
+        return self.__class__(*(self.args + args))
 
 
 # --- Second Level ---
