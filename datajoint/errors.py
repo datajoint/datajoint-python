@@ -66,7 +66,14 @@ class IntegrityError(QueryError):
     An integrity error triggered by foreign key constraints
     """
 
+
 class MissingAttributeError(QueryError):
     """
     An error arising when a required attribute value is not provided in INSERT
+    """
+
+
+class MissingExternalFile(DataJointError):
+    """
+    Error raised when an external file managed by DataJoint is no longer accessible
     """
