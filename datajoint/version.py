@@ -1,1 +1,1 @@
-__version__ = "0.12.dev-attribute-adapter-6"
+__version__ = "0.12.dev6c"
