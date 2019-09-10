@@ -14,7 +14,7 @@ class DataJointError(Exception):
         :param args: addition arguments
         :return: a new exception of the same type with the additional arguments
         """
-        return self.__class__(*self.args, *args)
+        return self.__class__(*(self.args + args))
 
 
 # --- Second Level ---
@@ -70,4 +70,10 @@ class IntegrityError(QueryError):
 class MissingAttributeError(QueryError):
     """
     An error arising when a required attribute value is not provided in INSERT
+    """
+
+
+class MissingExternalFile(DataJointError):
+    """
+    Error raised when an external file managed by DataJoint is no longer accessible
     """

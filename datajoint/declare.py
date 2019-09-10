@@ -281,6 +281,10 @@ def declare(full_table_name, definition, context):
 
     table_comment, primary_key, attribute_sql, foreign_key_sql, index_sql, external_stores = prepare_declare(
         definition, context)
+
+    if not primary_key:
+        raise DataJointError('Table must have a primary key')
+
     return (
         'CREATE TABLE IF NOT EXISTS %s (\n' % full_table_name +
         ',\n'.join(attribute_sql + ['PRIMARY KEY (`' + '`,`'.join(primary_key) + '`)'] + foreign_key_sql + index_sql) +

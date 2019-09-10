@@ -4,7 +4,7 @@ from itertools import chain
 import re
 import logging
 from .errors import DataJointError
-from .declare import UUID_DATA_TYPE, CUSTOM_TYPES, TYPE_PATTERN, EXTERNAL_TYPES, SERIALIZED_TYPES
+from .declare import UUID_DATA_TYPE, CUSTOM_TYPES, TYPE_PATTERN, EXTERNAL_TYPES
 from .utils import OrderedDict
 
 
@@ -225,11 +225,13 @@ class Heading:
                 try:
                     category = next(c for c in CUSTOM_TYPES if TYPE_PATTERN[c].match(attr['type']))
                 except StopIteration:
+                    if attr['type'].startswith('external'):
+                        raise DataJointError('Legacy datatype `{type}`.'.format(**attr)) from None
                     raise DataJointError('Unknown attribute type `{type}`'.format(**attr)) from None
                 attr.update(
                     is_attachment=category in ('INTERNAL_ATTACH', 'EXTERNAL_ATTACH'),
                     is_filepath=category == 'FILEPATH',
-                    is_blob=category in ('INTERNAL_BLOB', 'EXTERNAL_BLOB'), # INTERNAL_BLOB is not a custom type but is included for completeness
+                    is_blob=category in ('INTERNAL_BLOB', 'EXTERNAL_BLOB'),  # INTERNAL_BLOB is not a custom type but is included for completeness
                     uuid=category == 'UUID',
                     is_external=category in EXTERNAL_TYPES,
                     store=attr['type'].split('@')[1] if category in EXTERNAL_TYPES else None)

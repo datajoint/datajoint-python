@@ -6,7 +6,7 @@ import minio   # https://docs.minio.io/docs/python-client-api-reference
 import warnings
 import uuid
 import os
-
+from . import errors
 
 class Folder:
     """
@@ -29,7 +29,10 @@ class Folder:
             self.bucket, '/'.join((self.remote_path, relative_name)), local_file, metadata=meta or None)
 
     def get(self, relative_name):
-        return self.client.get_object(self.bucket, '/'.join((self.remote_path, relative_name))).data
+        try:
+            return self.client.get_object(self.bucket, '/'.join((self.remote_path, relative_name))).data
+        except minio.error.NoSuchKey:
+            raise errors.MissingExternalFile from None
 
     def fget(self, relative_name, local_filepath):
         """get file from object name to local filepath"""
@@ -48,13 +51,13 @@ class Folder:
             return self.client.get_partial_object(
                 self.bucket, '/'.join((self.remote_path, relative_name)), offset, size).data
         except minio.error.NoSuchKey:
-            return None
+            raise errors.MissingExternalFile from None
 
     def get_size(self, relative_name):
         try:
             return self.client.stat_object(self.bucket, '/'.join((self.remote_path, relative_name))).size
         except minio.error.NoSuchKey:
-            return None
+            raise errors.MissingExternalFile from None
 
     def list_objects(self, folder=''):
         return self.client.list_objects(self.bucket, '/'.join((self.remote_path, folder, '')), recursive=True)

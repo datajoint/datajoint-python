@@ -16,12 +16,11 @@ from .dependencies import Dependencies
 client_errors = (client.err.InterfaceError, client.err.DatabaseError)
 
 
-def translate_query_error(client_error, query, args):
+def translate_query_error(client_error, query):
     """
     Take client error and original query and return the corresponding DataJoint exception.
     :param client_error: the exception raised by the client interface
     :param query: sql query with placeholders
-    :param args: values for query placeholders
     :return: an instance of the corresponding subclass of datajoint.errors.DataJointError
     """
     # Loss of connection errors
@@ -34,7 +33,7 @@ def translate_query_error(client_error, query, args):
         return errors.LostConnectionError(disconnect_codes[client_error.args[0]], *client_error.args[1:])
     # Access errors
     if isinstance(client_error, client.err.OperationalError) and client_error.args[0] in (1044, 1142):
-        return errors.AccessError('Insufficient privileges.', *client_error.args[1:], query)
+        return errors.AccessError('Insufficient privileges.', client_error.args[1],  query)
     # Integrity errors
     if isinstance(client_error, client.err.IntegrityError) and client_error.args[0] == 1062:
         return errors.DuplicateError(*client_error.args[1:])
@@ -42,12 +41,12 @@ def translate_query_error(client_error, query, args):
         return errors.IntegrityError(*client_error.args[1:])
     # Syntax Errors
     if isinstance(client_error, client.err.ProgrammingError) and client_error.args[0] == 1064:
-        return errors.QuerySyntaxError(*client_error.args[1:], query)
+        return errors.QuerySyntaxError(client_error.args[1], query)
     # Existence Errors
     if isinstance(client_error, client.err.ProgrammingError) and client_error.args[0] == 1146:
-        return errors.MissingTableError(*args[1:], query)
+        return errors.MissingTableError(client_error.args[1], query)
     if isinstance(client_error, client.err.InternalError) and client_error.args[0] == 1364:
-        return errors.MissingAttributeError(*args[1:])
+        return errors.MissingAttributeError(*client_error.args[1:])
     raise client_error
 
 
@@ -188,7 +187,7 @@ class Connection:
                     warnings.simplefilter("ignore")
                 cursor.execute(query, args)
         except client_errors as err:
-            raise translate_query_error(err, query, args)
+            raise translate_query_error(err, query)
 
     def query(self, query, args=(), *, as_dict=False, suppress_warnings=True, reconnect=None):
         """
@@ -284,3 +283,4 @@ class Connection:
             raise
         else:
             self.commit_transaction()
+            
