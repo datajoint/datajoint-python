@@ -191,6 +191,8 @@ else:
                         new = nx.algorithms.boundary.node_boundary(self, self.nodes_to_show)
                         if not new:
                             break
+                        # add nodes referenced by aliased nodes
+                        new.update(nx.algorithms.boundary.node_boundary(self, (a for a in new if a.isdigit())))
                         self.nodes_to_show.update(new)
             return self
 
@@ -207,9 +209,12 @@ else:
                     self.nodes_to_show.remove(arg.full_table_name)
                 except AttributeError:
                     for i in range(arg):
-                        new = nx.algorithms.boundary.node_boundary(nx.DiGraph(self).reverse(), self.nodes_to_show)
+                        graph = nx.DiGraph(self).reverse()
+                        new = nx.algorithms.boundary.node_boundary(graph, self.nodes_to_show)
                         if not new:
                             break
+                        # add nodes referenced by aliased nodes
+                        new.update(nx.algorithms.boundary.node_boundary(graph, (a for a in new if a.isdigit())))
                         self.nodes_to_show.update(new)
             return self
 
@@ -229,8 +234,10 @@ else:
             """
             # mark "distinguished" tables, i.e. those that introduce new primary key attributes
             for name in self.nodes_to_show:
-                foreign_attributes = set(attr for p in self.in_edges(name, data=True) for attr in p[2]['attr_map'])
-                self.node[name]['distinguished'] = foreign_attributes < self.node[name]['primary_key']
+                foreign_attributes = set(
+                    attr for p in self.in_edges(name, data=True) for attr in p[2]['attr_map'] if p[2]['primary'])
+                self.node[name]['distinguished'] = (
+                        'primary_key' in self.node[name] and foreign_attributes < self.node[name]['primary_key'])
             # include aliased nodes that are sandwiched between two displayed nodes
             gaps = set(nx.algorithms.boundary.node_boundary(self, self.nodes_to_show)).intersection(
                 nx.algorithms.boundary.node_boundary(nx.DiGraph(self).reverse(), self.nodes_to_show))
