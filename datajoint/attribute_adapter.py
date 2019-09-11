@@ -1,5 +1,27 @@
 import re
+import os
 from .errors import DataJointError
+
+
+ADAPTED_TYPE_SWITCH = "DJ_SUPPORT_ADAPTED_TYPES"
+
+
+def _switch_adapated_types(on):
+    """
+    Enable (on=True) or disable (on=False) support for AttributeAdapter
+    """
+    if on:
+        os.environ[ADAPTED_TYPE_SWITCH] = "TRUE"
+    else:
+        del os.environ[ADAPTED_TYPE_SWITCH]
+
+
+def _support_adapted_types():
+    """
+    check if support for AttributeAdapter is enabled
+    """
+    return os.getenv(ADAPTED_TYPE_SWITCH, "FALSE").upper() == "TRUE"
+
 
 class AttributeAdapter:
     """
@@ -33,6 +55,8 @@ def get_adapter(context, adapter_name):
     """
     Extract the AttributeAdapter object by its name from the context and validate.
     """
+    if not _support_adapted_types():
+        raise DataJointError('Support for Adapted Attribute types is disabled.')
     adapter_name = adapter_name.lstrip('<').rstrip('>')
     try:
         adapter = context[adapter_name]

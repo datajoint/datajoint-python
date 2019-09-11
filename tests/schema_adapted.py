@@ -1,10 +1,14 @@
 import datajoint as dj
 import networkx as nx
+from datajoint import attribute_adapter
 
 from . import PREFIX, CONN_INFO
 
+
 schema_name = PREFIX + '_test_custom_datatype'
 schema = dj.schema(schema_name, connection=dj.conn(**CONN_INFO))
+
+attribute_adapter._switch_adapated_types(True)
 
 
 class GraphAdapter(dj.AttributeAdapter):
@@ -34,3 +38,6 @@ class Connectivity(dj.Manual):
     ---
     conn_graph = null : <graph>
     """
+
+
+attribute_adapter._switch_adapated_types(False)
