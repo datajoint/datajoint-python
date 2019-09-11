@@ -177,13 +177,14 @@ class Fetch:
             else:
                 ret = list(cur.fetchall())
                 record_type = (heading.as_dtype if not ret else np.dtype(
-                    [(name, type(value))
-                        if heading.as_dtype[name] == 'O' and isinstance(
-                            value, numbers.Number)  # value of blob is packed here
+                    [(name, type(value))   # use the first element to determine the type for blobs
+                        if heading[name].is_blob and isinstance(value, numbers.Number)
                         else (name, heading.as_dtype[name])
-                        for value, name
-                        in zip(ret[0], heading.as_dtype.names)]))
-                ret = np.array(ret, dtype=record_type)
+                        for value, name in zip(ret[0], heading.as_dtype.names)]))
+                try:
+                    ret = np.array(ret, dtype=record_type)
+                except Exception as e:
+                    raise
                 for name in heading:
                     ret[name] = list(map(partial(get, heading[name]), ret[name]))
                 if format == "frame":

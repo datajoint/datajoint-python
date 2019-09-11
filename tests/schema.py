@@ -40,6 +40,17 @@ class TTest3(dj.Manual):
 
 
 @schema
+class NullableNumbers(dj.Manual):
+    definition = """
+    key : int 
+    ---
+    fvalue = null : float
+    dvalue = null : double
+    ivalue = null : int
+    """
+
+
+@schema
 class TTestExtra(dj.Manual):
     """
     clone of Test but with an extra field
