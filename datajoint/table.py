@@ -33,6 +33,7 @@ class Table(QueryExpression):
     _heading = None
     database = None
     _log_ = None
+    declaration_context = None
 
     # -------------- required by QueryExpression ----------------- #
     @property
@@ -49,7 +50,8 @@ class Table(QueryExpression):
                     'DataJoint class is missing a database connection. '
                     'Missing schema decorator on the class? (e.g. @schema)')
             else:
-                self._heading.init_from_database(self.connection, self.database, self.table_name)
+                self._heading.init_from_database(
+                    self.connection, self.database, self.table_name, self.declaration_context)
         return self._heading
 
     def declare(self, context=None):
@@ -249,6 +251,8 @@ class Table(QueryExpression):
                 if ignore_extra_fields and name not in heading:
                     return None
                 attr = heading[name]
+                if attr.adapter:
+                    value = attr.adapter.put(value)
                 if value is None or (attr.numeric and (value == '' or np.isnan(np.float(value)))):
                     # set default value
                     placeholder, value = 'DEFAULT', None
@@ -560,11 +564,9 @@ class Table(QueryExpression):
                1. self must be restricted to exactly one tuple
                2. the update attribute must not be in primary key
 
-            Example
-
+            Example:
             >>> (v2p.Mice() & key).update('mouse_dob', '2011-01-01')
             >>> (v2p.Mice() & key).update( 'lens')   # set the value to NULL
-
         """
         if len(self) != 1:
             raise DataJointError('Update is only allowed on one tuple at a time')

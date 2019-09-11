@@ -6,6 +6,7 @@ import re
 import pyparsing as pp
 import logging
 from .errors import DataJointError
+from .attribute_adapter import get_adapter
 
 from .utils import OrderedDict
 
@@ -27,21 +28,24 @@ TYPE_PATTERN = {k: re.compile(v, re.I) for k, v in dict(
     INTERNAL_ATTACH=r'attach$',
     EXTERNAL_ATTACH=r'attach@(?P<store>[a-z]\w*)$',
     FILEPATH=r'filepath@(?P<store>[a-z]\w*)$',
-    UUID=r'uuid$').items()}
+    UUID=r'uuid$',
+    ADAPTED=r'<.+>$'
+).items()}
 
-CUSTOM_TYPES = {'UUID', 'INTERNAL_ATTACH', 'EXTERNAL_ATTACH', 'EXTERNAL_BLOB', 'FILEPATH'}  # types stored in attribute comment
+# custom types are stored in attribute comment
+SPECIAL_TYPES = {'UUID', 'INTERNAL_ATTACH', 'EXTERNAL_ATTACH', 'EXTERNAL_BLOB', 'FILEPATH', 'ADAPTED'}
+NATIVE_TYPES = set(TYPE_PATTERN) - SPECIAL_TYPES
 EXTERNAL_TYPES = {'EXTERNAL_ATTACH', 'EXTERNAL_BLOB', 'FILEPATH'}  # data referenced by a UUID in external tables
 SERIALIZED_TYPES = {'EXTERNAL_ATTACH', 'INTERNAL_ATTACH', 'EXTERNAL_BLOB', 'INTERNAL_BLOB'}  # requires packing data
 
-assert set().union(CUSTOM_TYPES, EXTERNAL_TYPES, SERIALIZED_TYPES) <= set(TYPE_PATTERN)
+assert set().union(SPECIAL_TYPES, EXTERNAL_TYPES, SERIALIZED_TYPES) <= set(TYPE_PATTERN)
 
 
-def match_type(datatype):
-    for category, pattern in TYPE_PATTERN.items():
-        match = pattern.match(datatype)
-        if match:
-            return category, match
-    raise DataJointError('Unsupported data types "%s"' % datatype)
+def match_type(attribute_type):
+    try:
+        return next(category for category, pattern in TYPE_PATTERN.items() if pattern.match(attribute_type))
+    except StopIteration:
+        raise DataJointError("Unsupported attribute type {type}".format(type=attribute_type)) from None
 
 
 logger = logging.getLogger(__name__)
@@ -78,7 +82,8 @@ def build_attribute_parser():
     quoted = pp.QuotedString('"') ^ pp.QuotedString("'")
     colon = pp.Literal(':').suppress()
     attribute_name = pp.Word(pp.srange('[a-z]'), pp.srange('[a-z0-9_]')).setResultsName('name')
-    data_type = pp.Combine(pp.Word(pp.alphas) + pp.SkipTo("#", ignore=quoted)).setResultsName('type')
+    data_type = (pp.Combine(pp.Word(pp.alphas) + pp.SkipTo("#", ignore=quoted))
+                 ^ pp.QuotedString('<', endQuoteChar='>', unquoteResults=False)).setResultsName('type')
     default = pp.Literal('=').suppress() + pp.SkipTo(colon, ignore=quoted).setResultsName('default')
     comment = pp.Literal('#').suppress() + pp.restOfLine.setResultsName('comment')
     return attribute_name + pp.Optional(default) + colon + data_type + comment
@@ -168,8 +173,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
             raise DataJointError('Invalid foreign key attributes in "%s"' % line)
         try:
             raise DataJointError('Duplicate attributes "{attr}" in "{line}"'.format(
-                attr=next(attr for attr in result.new_attrs if attr in attributes),
-                line=line))
+                attr=next(attr for attr in result.new_attrs if attr in attributes), line=line))
         except StopIteration:
             pass   # the normal outcome
 
@@ -246,7 +250,7 @@ def prepare_declare(definition, context):
         elif re.match(r'^(unique\s+)?index[^:]*$', line, re.I):   # index
             compile_index(line, index_sql)
         else:
-            name, sql, store = compile_attribute(line, in_key, foreign_key_sql)
+            name, sql, store = compile_attribute(line, in_key, foreign_key_sql, context)
             if store:
                 external_stores.append(store)
             if in_key and name not in primary_key:
@@ -298,10 +302,9 @@ def _make_attribute_alter(new, old, primary_key):
     :param primary_key: primary key attributes
     :return: list of SQL ALTER commands
     """
-
     # parse attribute names
     name_regexp = re.compile(r"^`(?P<name>\w+)`")
-    original_regexp = re.compile(r'COMMENT "\{\s*(?P<name>\w+)\s*\}')
+    original_regexp = re.compile(r'COMMENT "{\s*(?P<name>\w+)\s*}')
     matched = ((name_regexp.match(d), original_regexp.search(d)) for d in new)
     new_names = OrderedDict((d.group('name'), n and n.group('name')) for d, n in matched)
     old_names = [name_regexp.search(d).group('name') for d in old]
@@ -386,13 +389,41 @@ def compile_index(line, index_sql):
         attrs=','.join('`%s`' % a for a in match.attr_list)))
 
 
-def compile_attribute(line, in_key, foreign_key_sql):
+def substitute_special_type(match, category, foreign_key_sql, context):
+    """
+    :param match: dict containing with keys "type" and "comment" -- will be modified in place
+    :param category: attribute type category from TYPE_PATTERN
+    :param foreign_key_sql: list of foreign key declarations to add to
+    :param context: context for looking up user-defined attribute_type adapters
+    """
+    if category == 'UUID':
+        match['type'] = UUID_DATA_TYPE
+    elif category == 'INTERNAL_ATTACH':
+        match['type'] = 'LONGBLOB'
+    elif category in EXTERNAL_TYPES:
+        match['store'] = match['type'].split('@', 1)[1]
+        match['type'] = UUID_DATA_TYPE
+        foreign_key_sql.append(
+            "FOREIGN KEY (`{name}`) REFERENCES `{{database}}`.`{external_table_root}_{store}` (`hash`) "
+            "ON UPDATE RESTRICT ON DELETE RESTRICT".format(external_table_root=EXTERNAL_TABLE_ROOT, **match))
+    elif category == 'ADAPTED':
+        adapter = get_adapter(context, match['type'])
+        match['type'] = adapter.attribute_type
+        category = match_type(match['type'])
+        if category in SPECIAL_TYPES:
+            # recursive redefinition from user-defined datatypes.
+            substitute_special_type(match, category, foreign_key_sql, context)
+    else:
+        assert False, 'Unknown special type'
+
+
+def compile_attribute(line, in_key, foreign_key_sql, context):
     """
     Convert attribute definition from DataJoint format to SQL
-
     :param line: attribution line
     :param in_key: set to True if attribute is in primary key set
-    :param foreign_key_sql:
+    :param foreign_key_sql: the list of foreign key declarations to add to
+    :param context: context in which to look up user-defined attribute type adapterss
     :returns: (name, sql, is_external) -- attribute name and sql code for its declaration
     """
     try:
@@ -418,27 +449,18 @@ def compile_attribute(line, in_key, foreign_key_sql):
             match['default'] = 'NOT NULL'
 
     match['comment'] = match['comment'].replace('"', '\\"')   # escape double quotes in comment
-    category, type_match = match_type(match['type'])
 
     if match['comment'].startswith(':'):
         raise DataJointError('An attribute comment must not start with a colon in comment "{comment}"'.format(**match))
 
-    if category in CUSTOM_TYPES:
+    category = match_type(match['type'])
+    if category in SPECIAL_TYPES:
         match['comment'] = ':{type}:{comment}'.format(**match)  # insert custom type into comment
-        if category == 'UUID':
-            match['type'] = UUID_DATA_TYPE
-        elif category == 'INTERNAL_ATTACH':
-            match['type'] = 'LONGBLOB'
-        elif category in EXTERNAL_TYPES:
-            match['store'] = match['type'].split('@', 1)[1]
-            match['type'] = UUID_DATA_TYPE
-            foreign_key_sql.append(
-                "FOREIGN KEY (`{name}`) REFERENCES `{{database}}`.`{external_table_root}_{store}` (`hash`) "
-                "ON UPDATE RESTRICT ON DELETE RESTRICT".format(external_table_root=EXTERNAL_TABLE_ROOT, **match))
+        substitute_special_type(match, category, foreign_key_sql, context)
 
     if category in SERIALIZED_TYPES and match['default'] not in {'DEFAULT NULL', 'NOT NULL'}:
         raise DataJointError(
-            'The default value for a blob or attachment attributes can only be NULL in:\n%s' % line)
+            'The default value for a blob or attachment attributes can only be NULL in:\n{line}'.format(line=line))
 
     sql = ('`{name}` {type} {default}' + (' COMMENT "{comment}"' if match['comment'] else '')).format(**match)
     return match['name'], sql, match.get('store')
