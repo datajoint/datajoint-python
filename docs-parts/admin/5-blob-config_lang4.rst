@@ -1,3 +1,3 @@
 .. code-block:: python
 
-    >>> schema.external_table.delete_garbage()
+    >>> schema.external['external_raw'].delete()
