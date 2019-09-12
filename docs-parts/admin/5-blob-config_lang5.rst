@@ -1,3 +1,3 @@
 .. code-block:: python
 
-    >>> schema.external_table.clean_store('external-name')
+    >>> schema.external['external-raw'].clean_blobs()
