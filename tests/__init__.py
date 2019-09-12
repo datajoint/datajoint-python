@@ -11,7 +11,7 @@ import datajoint as dj
 from distutils.version import LooseVersion
 import os
 from pathlib import Path
-from minio import Minio
+import minio
 import urllib3
 import certifi
 import shutil
@@ -96,11 +96,12 @@ httpClient = urllib3.PoolManager(
         )
 
 # Initialize minioClient with an endpoint and access/secret keys.
-minioClient = Minio(S3_CONN_INFO['endpoint'],
-                    access_key=S3_CONN_INFO['access_key'],
-                    secret_key=S3_CONN_INFO['secret_key'],
-                    secure=False,
-                    http_client=httpClient)
+minioClient = minio.Minio(
+    S3_CONN_INFO['endpoint'],
+    access_key=S3_CONN_INFO['access_key'],
+    secret_key=S3_CONN_INFO['secret_key'],
+    secure=False,
+    http_client=httpClient)
 
 
 def setup_package():
@@ -116,7 +117,7 @@ def setup_package():
     db_name = "djtest_blob_migrate"
     db_file = "v0_11.sql"
     conn_root.query("""
-        CREATE DATABASE {};
+        CREATE DATABASE IF NOT EXISTS {};
         """.format(db_name))
 
     statements = parse_sql('{}/{}'.format(source, db_file))
@@ -128,7 +129,10 @@ def setup_package():
         "/external-legacy-data/s3"
     bucket = "migrate-test"
     region = "us-east-1"
-    minioClient.make_bucket(bucket, location=region)
+    try:
+        minioClient.make_bucket(bucket, location=region)
+    except minio.error.BucketAlreadyOwnedByYou:
+        pass
 
     pathlist = Path(source).glob('**/*')
     for path in pathlist:
@@ -138,15 +142,20 @@ def setup_package():
                         str(path),
                         '{}/{}'.format(source, bucket)
                         ), str(path))
-
     # Add S3
-    minioClient.make_bucket("datajoint-test", location=region)
+    try:
+        minioClient.make_bucket("datajoint-test", location=region)
+    except minio.error.BucketAlreadyOwnedByYou:
+        pass
 
     # Add old File Content
-    shutil.copytree(
-            os.path.dirname(os.path.realpath(__file__)) +
-            "/external-legacy-data/file/temp",
-            os.path.expanduser('~/temp'))
+    try:
+        shutil.copytree(
+                os.path.dirname(os.path.realpath(__file__)) +
+                "/external-legacy-data/file/temp",
+                os.path.expanduser('~/temp'))
+    except FileExistsError:
+        pass
 
 
 def teardown_package():

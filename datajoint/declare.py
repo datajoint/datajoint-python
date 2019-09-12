@@ -235,7 +235,7 @@ def prepare_declare(definition, context):
     external_stores = []
 
     for line in definition:
-        if line.startswith('#'):  # ignore additional comments
+        if not line or line.startswith('#'):  # ignore additional comments
             pass
         elif line.startswith('---') or line.startswith('___'):
             in_key = False  # start parsing dependent attributes
