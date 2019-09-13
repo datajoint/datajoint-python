@@ -1,16 +1,16 @@
-import sys
 from functools import partial
+from pathlib import Path
 import warnings
 import pandas
+import itertools
 import re
-import os
 import numpy as np
 import uuid
 import numbers
-from . import blob, attach, hash
+from . import blob, hash
 from .errors import DataJointError
 from .settings import config
-from .utils import OrderedDict
+from .utils import OrderedDict, safe_write
 
 class key:
     """
@@ -54,22 +54,33 @@ def _get(connection, attr, data, squeeze, download_path):
 
     if attr.is_attachment:
         # Steps:
-        # 1. peek the filename from the blob without downloading remote
+        # 1. get the attachment filename
         # 2. check if the file already exists at download_path, verify checksum
         # 3. if exists and checksum passes then return the local filepath
         # 4. Otherwise, download the remote file and return the new filepath
-        filename = (extern.get_attachment_filename(uuid.UUID(bytes=data))
-                    if attr.is_external else data.split(b"\0", 1)[0].decode())
-        local_filepath = os.path.join(download_path, filename)
-        if os.path.isfile(local_filepath):
-            local_checksum = hash.uuid_from_file(local_filepath, filename + '\0')
-            remote_checksum = uuid.UUID(bytes=data) if attr.is_external else hash.uuid_from_buffer(data)
-            if local_checksum == remote_checksum:
-                return adapt(local_filepath)  # no need to download again
-        # Download remote attachment
+        _uuid = uuid.UUID(bytes=data) if attr.is_external else None
+        basename = (extern.get_attachment_basename(_uuid) if attr.is_external
+                    else data.split(b"\0", 1)[0].decode())
+        local_filepath = Path(download_path) / basename
+        if local_filepath.is_file():
+            attachment_checksum = _uuid if attr.is_external else hash.uuid_from_buffer(data)
+            if attachment_checksum == hash.uuid_from_file(local_filepath, init_string=basename + '\0'):
+                return adapt(local_filepath)  # checksum passed, no need to download again
+            # generate the next available alias filename
+            for n in itertools.count():
+                f = local_filepath.parent / ('_%04x' % n + local_filepath.suffix)
+                if not f.is_file():
+                    local_filepath = f
+                    break
+                if attachment_checksum == hash.uuid_from_file(f, init_string=basename + '\0'):
+                    return adapt(f)  # checksum passed, no need to download again
+        # Save attachment
         if attr.is_external:
-            data = extern.download_attachment(uuid.UUID(bytes=data), local_filepath)
-        return adapt(attach.save(data, download_path))  # download file from remote store
+            extern.download_attachment(_uuid, basename, local_filepath)
+        else:
+            # write from buffer
+            safe_write(local_filepath, data.split(b"\0")[1])
+        return adapt(local_filepath)  # download file from remote store
 
     return adapt(uuid.UUID(bytes=data) if attr.uuid else (
             blob.unpack(extern.get(uuid.UUID(bytes=data)) if attr.is_external else data, squeeze=squeeze) 

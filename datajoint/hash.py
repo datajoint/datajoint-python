@@ -1,6 +1,7 @@
 import hashlib
 import uuid
 import io
+from pathlib import Path
 
 
 def key_hash(key):
@@ -13,7 +14,7 @@ def key_hash(key):
     return hashed.hexdigest()
 
 
-def uuid_from_stream(stream, init_string=""):
+def uuid_from_stream(stream, *, init_string=""):
     """
     :return: 16-byte digest of stream data
     :stream: stream object or open file handle
@@ -28,10 +29,9 @@ def uuid_from_stream(stream, init_string=""):
     return uuid.UUID(bytes=hashed.digest())
 
 
-def uuid_from_buffer(buffer=b"", init_string=""):
+def uuid_from_buffer(buffer=b"", *, init_string=""):
     return uuid_from_stream(io.BytesIO(buffer), init_string=init_string)
 
 
-def uuid_from_file(filepath, init_string=""):
-    with open(filepath, "rb") as f:
-        return uuid_from_stream(f, init_string=init_string)
+def uuid_from_file(filepath, *, init_string=""):
+    return uuid_from_stream(Path(filepath).open("rb"), init_string=init_string)

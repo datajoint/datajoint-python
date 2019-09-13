@@ -2,32 +2,9 @@ from nose.tools import assert_true, assert_equal, assert_not_equal
 from numpy.testing import assert_array_equal
 import tempfile
 import filecmp
-from datajoint import attach
 import os
 
 from .schema_external import Attach
-
-
-def test_attach():
-    """
-    test attaching files and writing attached files
-    """
-    # create a mock file
-    folder = tempfile.mkdtemp()
-    attach_file = os.path.join(folder, 'attachment.dat')
-    data = os.urandom(3000)
-    with open(attach_file, 'wb') as f:
-        f.write(data)
-    # load as an attachment buffer
-    buffer = attach.load(attach_file)
-    # save from an attachment buffer
-    download_file = attach.save(buffer, folder)
-    assert_true(filecmp.cmp(download_file, attach_file))
-    assert_not_equal(os.path.basename(attach_file), os.path.basename(download_file))
-    # verify that the files are the same
-    with open(download_file, 'rb') as f:
-        attachment_data = f.read()
-    assert_array_equal(data, attachment_data)
 
 
 def test_attach_attributes():

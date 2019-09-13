@@ -1,5 +1,5 @@
-import os
 import itertools
+from pathlib import Path
 from collections import Mapping
 from .settings import config
 from .errors import DataJointError, MissingExternalFile
@@ -80,7 +80,7 @@ class ExternalTable(Table):
         if self.spec['protocol'] == 's3':
             self.s3.put('/'.join((self.database, '/'.join(subfold(uuid.hex, self.spec['subfolding'])), uuid.hex)), blob)
         else:
-            remote_file = os.path.join(os.path.join(
+            remote_file = Path(Path(
                 self.spec['location'], self.database, *subfold(uuid.hex, self.spec['subfolding'])), uuid.hex)
             safe_write(remote_file, blob)
         # insert tracking info
@@ -94,45 +94,38 @@ class ExternalTable(Table):
         """
         get an object from external store.
         """
-        def read_file(filepath):
-            try:
-                with open(filepath, 'rb') as f:
-                    blob = f.read()
-            except FileNotFoundError:
-                raise MissingExternalFile('Lost access to external blob %s.' % full_path) from None
-            return blob
-
         if blob_hash is None:
             return None
-
         # attempt to get object from cache
         blob = None
         cache_folder = config.get('cache', None)
         if cache_folder:
             try:
-                cache_path = os.path.join(cache_folder, *subfold(blob_hash.hex, CACHE_SUBFOLDING))
-                cache_file = os.path.join(cache_path, blob_hash.hex)
-                with open(cache_file, 'rb') as f:
-                    blob = f.read()
+                cache_path = Path(cache_folder, *subfold(blob_hash.hex, CACHE_SUBFOLDING))
+                cache_file = Path(cache_path, blob_hash.hex)
+                blob = cache_file.read_bytes()
             except FileNotFoundError:
-                pass
-
+                pass  # not cached
         # attempt to get object from store
         if blob is None:
             if self.spec['protocol'] == 'file':
-                subfolders = os.path.join(*subfold(blob_hash.hex, self.spec['subfolding']))
-                full_path = os.path.join(self.spec['location'], self.database, subfolders, blob_hash.hex)
+                subfolders = Path(*subfold(blob_hash.hex, self.spec['subfolding']))
+                full_path = Path(self.spec['location'], self.database, subfolders, blob_hash.hex)
                 try:
-                    blob = read_file(full_path)
+                    blob = full_path.read_bytes()
                 except MissingExternalFile:
                     if not SUPPORT_MIGRATED_BLOBS:
-                        raise
+                        raise MissingExternalFile("Missing blob file " + full_path) from None
                     # migrated blobs from 0.11
                     relative_filepath, contents_hash = (self & {'hash': blob_hash}).fetch1(
                         'filepath', 'contents_hash')
                     if relative_filepath is None:
-                        raise
-                    blob = read_file(os.path.join(self.spec['location'], relative_filepath))
+                        raise MissingExternalFile("Missing blob file " + full_path) from None
+                    stored_path = Path(self.spec['location'], relative_filepath)
+                    try:
+                        blob = stored_path.read_bytes()
+                    except FileNotFoundError:
+                        raise MissingExternalFile("Missing blob file " + stored_path)
             elif self.spec['protocol'] == 's3':
                 full_path = '/'.join(
                     (self.database,) + subfold(blob_hash.hex, self.spec['subfolding']) + (blob_hash.hex,))
@@ -147,33 +140,51 @@ class ExternalTable(Table):
                         raise
                     blob = self.s3.get(relative_filepath)
             if cache_folder:
-                if not os.path.exists(cache_path):
-                    os.makedirs(cache_path)
-                safe_write(os.path.join(cache_path, blob_hash.hex), blob)
+                cache_path.mkdir(parents=True, exist_ok=True)
+                safe_write(cache_path / blob_hash.hex, blob)
         return blob
 
     # --- ATTACHMENTS ---
-    def get_attachment_filename(self, hash):
-        pass
 
-    def upload_attachment(self, local_filepath):
-        pass
+    def upload_attachment(self, local_path):
+        basename = Path(local_path).name
+        uuid = uuid_from_file(local_path, init_string=basename + '\0')
+        remote_path = '/'.join((
+            self.database, '/'.join(subfold(uuid.hex, self.spec['subfolding'])),  uuid.hex + '-' + basename))
+        if self.spec['protocol'] == 's3':
+            self.s3.fput(remote_path, local_path)
+        else:
+            safe_copy(local_path, Path(self.spec['location']) / remote_path)
+        # insert tracking info
+        self.connection.query(
+            "INSERT INTO {tab} (hash, size) VALUES (%s, {size}) ON DUPLICATE KEY "
+            "UPDATE timestamp=CURRENT_TIMESTAMP".format(
+                tab=self.full_table_name, size=Path(local_path).stat().st_size), args=[uuid.bytes])
+        return uuid
 
-    def download_attachment(self, hash):
+    def get_attachment_basename(self, uuid):
+        """
+        get the original filename, stripping the checksum
+        """
+        remote_path = '/'.join((self.database, '/'.join(subfold(uuid.hex, self.spec['subfolding']))))
+        name_generator = (
+            Path(self.spec['location'], remote_path).glob(uuid.hex + '-*') if self.spec['protocol'] == 'file'
+            else (obj.object_name for obj in self.s3.list_objects(remote_path) if uuid.hex in obj.object_name))
+        try:
+            attachment_filename = next(name_generator)
+        except StopIteration:
+            raise MissingExternalFile('Missing attachment {protocol}://{path}'.format(
+                path=remote_path + '/' + uuid.hex + '-*'), **self.spec)
+        return attachment_filename.split(uuid.hex + '-')[-1]
 
+    def download_attachment(self, uuid, basename, download_path):
         """ save attachment from memory buffer into the save_path """
-        rel_path, buffer = buffer.split(b'\0', 1)
-        file_path = os.path.abspath(os.path.join(save_path, rel_path.decode()))
-
-        if os.path.isfile(file_path):
-            # generate a new filename
-            file, ext = os.path.splitext(file_path)
-            file_path = next(f for f in ('%s_%04x%s' % (file, n, ext) for n in count())
-                             if not os.path.isfile(f))
-
-        with open(file_path, mode='wb') as f:
-            f.write(buffer)
-        return file_path
+        remote_path = '/'.join([
+            self.database, '/'.join(subfold(uuid.hex, self.spec['subfolding'])), uuid.hex + '-' + basename])
+        if self.spec['protocol'] == 's3':
+            self.s3.fget(remote_path, download_path)
+        else:
+            safe_copy(Path(self.spec['location']) / remote_path, download_path)
 
     # --- FILEPATH ---
 
@@ -183,11 +194,12 @@ class ExternalTable(Table):
         Otherwise, copy (with overwrite) file to remote and
         If an external entry exists with the same checksum, then no copying should occur
         """
-        local_folder = os.path.dirname(local_filepath)
-        relative_filepath = os.path.relpath(local_filepath, start=self.spec['stage'])
-        if relative_filepath.startswith(os.path.pardir):
-            raise DataJointError('The path {path} is not in stage {stage}'.format(
-                path=local_folder, stage=self.spec['stage']))
+        local_filepath = Path(local_filepath)
+        local_folder = local_filepath.parent
+        try:
+            relative_filepath = local_filepath.relative_to(self.spec['stage'])
+        except:
+            raise DataJointError('The path {path} is not in stage {stage}'.format(path=local_folder, **self.spec))
         uuid = uuid_from_buffer(init_string=relative_filepath)
         contents_hash = uuid_from_file(local_filepath)
 
@@ -203,11 +215,11 @@ class ExternalTable(Table):
             if self.spec['protocol'] == 's3':
                 self.s3.fput(relative_filepath, local_filepath, contents_hash=str(contents_hash))
             else:
-                remote_file = os.path.join(self.spec['location'], relative_filepath)
+                remote_file = Path(self.spec['location'], relative_filepath)
                 safe_copy(local_filepath, remote_file, overwrite=True)
             self.connection.query(
                 "INSERT INTO {tab} (hash, size, filepath, contents_hash) VALUES (%s, {size}, '{filepath}', %s)".format(
-                    tab=self.full_table_name, size=os.path.getsize(local_filepath),
+                    tab=self.full_table_name, size=Path(local_filepath).stat().st_size,
                     filepath=relative_filepath), args=(uuid.bytes, contents_hash.bytes))
         return uuid
 
@@ -219,13 +231,13 @@ class ExternalTable(Table):
         """
         if filepath_hash is not None:
             relative_filepath, contents_hash = (self & {'hash': filepath_hash}).fetch1('filepath', 'contents_hash')
-            local_filepath = os.path.join(os.path.abspath(self.spec['stage']), relative_filepath)
-            file_exists = os.path.isfile(local_filepath) and uuid_from_file(local_filepath) == contents_hash
+            local_filepath = Path(self.spec['stage']).absolute / Path(relative_filepath)
+            file_exists = Path(local_filepath).is_file() and uuid_from_file(local_filepath) == contents_hash
             if not file_exists:
                 if self.spec['protocol'] == 's3':
                     checksum = s3.Folder(**self.spec).fget(relative_filepath, local_filepath)
                 else:
-                    remote_file = os.path.join(self.spec['location'], relative_filepath)
+                    remote_file = Path(self.spec['location'], relative_filepath)
                     safe_copy(remote_file, local_filepath)
                     checksum = uuid_from_file(local_filepath)
                 if checksum != contents_hash:  # this should never happen without outside interference
@@ -264,8 +276,8 @@ class ExternalTable(Table):
         """
         remote_path = self.spec['location']
         if self.spec['protocol'] == 'file':
-            position = len(os.path.join(os.path.abspath(remote_path), ''))  # keep consistent for root path '/'
-            generator = (os.path.join(folder[position:], file)
+            re
+            generator = (Path(folder[position:], file)
                          for folder, dirs, files in os.walk(remote_path, topdown=False) for file in files)
         else:  # self.spec['protocol'] == 's3'
             position = len(remote_path.rstrip('/')) + 1
@@ -298,24 +310,25 @@ class ExternalTable(Table):
         Remove unused blobs from the external storage repository.
         This must be performed after external_table.delete() during low-usage periods to reduce risks of data loss.
         """
+        assert False
         in_use = set(x.hex for x in (self & '`filepath` is NULL').fetch('hash'))
         if self.spec['protocol'] == 'file':
             count = itertools.count()
             print('Deleting...')
             deleted_folders = set()
-            for folder, dirs, files in os.walk(os.path.join(self.spec['location'], self.database), topdown=False):
+            for folder, dirs, files in Path(self.spec['location'], self.database).rglob('*'):
                 if dirs and files:
                     raise DataJointError(
                             'Invalid repository with files in non-terminal folder %s' % folder)
-                dirs = set(d for d in dirs if os.path.join(folder, d) not in deleted_folders)
+                dirs = set(d for d in dirs if Path(folder, d) not in deleted_folders)
                 if not dirs:
                     files_not_in_use = [f for f in files if f not in in_use]
                     for f in files_not_in_use:
-                        filename = os.path.join(folder, f)
+                        filename = Path(folder, f)
                         next(count)
                         if verbose:
                             print(filename)
-                        os.remove(filename)
+                        filename.unlink()
                     if len(files_not_in_use) == len(files):
                         os.rmdir(folder)
                         deleted_folders.add(folder)
