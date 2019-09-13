@@ -6,6 +6,7 @@ import numpy as np
 import pandas
 import logging
 import uuid
+from os import path
 from .settings import config
 from .declare import declare, alter
 from .expression import QueryExpression
@@ -270,8 +271,16 @@ class Table(QueryExpression):
                         value = blob.pack(value)
                         value = self.external[attr.store].put(value).bytes if attr.is_external else value
                     elif attr.is_attachment:
+                        # value is a local_path to the attachment
+                        if attr.is_external:
+                            value = self.external[attr.store].upload_attachment(value)  # value is local filepath
+                        else:
+                            # if database blob, then insert the file contents
+                            with open(value, mode='rb') as f:
+                                contents = f.read()
+                            value = str.encode(path.basename(value)) + b'\0' + contents
                         value = attach.load(value)
-                        value = self.external[attr.store].put(value).bytes if attr.is_external else value
+                        value = self.external[attr.store].upload_attachment(value).bytes if attr.is_external else value
                     elif attr.is_filepath:
                         value = self.external[attr.store].fput(value).bytes
                     elif attr.numeric:

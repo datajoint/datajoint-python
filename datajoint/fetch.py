@@ -46,6 +46,7 @@ def _get(connection, attr, data, squeeze, download_path):
 
     extern = connection.schemas[attr.database].external[attr.store] if attr.is_external else None
 
+    # apply attribute adapter if present
     adapt = attr.adapter.get if attr.adapter else lambda x: x
 
     if attr.is_filepath:
@@ -57,19 +58,17 @@ def _get(connection, attr, data, squeeze, download_path):
         # 2. check if the file already exists at download_path, verify checksum
         # 3. if exists and checksum passes then return the local filepath
         # 4. Otherwise, download the remote file and return the new filepath
-        peek, size = extern.peek(uuid.UUID(bytes=data)) if attr.is_external else (data, len(data))
-        assert size is not None
-        filename = peek.split(b"\0", 1)[0].decode()
-        size -= len(filename) + 1
-        filepath = os.path.join(download_path, filename)
-        if os.path.isfile(filepath) and size == os.path.getsize(filepath):
-            local_checksum = hash.uuid_from_file(filepath, filename + '\0')
+        filename = (extern.get_attachment_filename(uuid.UUID(bytes=data))
+                    if attr.is_external else data.split(b"\0", 1)[0].decode())
+        local_filepath = os.path.join(download_path, filename)
+        if os.path.isfile(local_filepath):
+            local_checksum = hash.uuid_from_file(local_filepath, filename + '\0')
             remote_checksum = uuid.UUID(bytes=data) if attr.is_external else hash.uuid_from_buffer(data)
             if local_checksum == remote_checksum:
-                return adapt(filepath)  # the existing file is okay
+                return adapt(local_filepath)  # no need to download again
         # Download remote attachment
         if attr.is_external:
-            data = extern.get(uuid.UUID(bytes=data))
+            data = extern.download_attachment(uuid.UUID(bytes=data), local_filepath)
         return adapt(attach.save(data, download_path))  # download file from remote store
 
     return adapt(uuid.UUID(bytes=data) if attr.uuid else (
@@ -104,8 +103,8 @@ class Fetch:
     def __call__(self, *attrs, offset=None, limit=None, order_by=None, format=None, as_dict=None,
                  squeeze=False, download_path='.'):
         """
-        Fetches the expression results from the database into an np.array or list of dictionaries and unpacks blob attributes.
-
+        Fetches the expression results from the database into an np.array or list of dictionaries and
+        unpacks blob attributes.
         :param attrs: zero or more attributes to fetch. If not provided, the call will return
         all attributes of this relation. If provided, returns tuples with an entry for each attribute.
         :param offset: the number of tuples to skip in the returned result

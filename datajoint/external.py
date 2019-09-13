@@ -70,6 +70,8 @@ class ExternalTable(Table):
             self._s3 = s3.Folder(**self.spec)
         return self._s3
 
+    # --- BLOBS ----
+
     def put(self, blob):
         """
         put a binary string in external store
@@ -87,6 +89,93 @@ class ExternalTable(Table):
             "UPDATE timestamp=CURRENT_TIMESTAMP".format(
                 tab=self.full_table_name, size=len(blob)), args=(uuid.bytes,))
         return uuid
+
+    def get(self, blob_hash):
+        """
+        get an object from external store.
+        """
+        def read_file(filepath):
+            try:
+                with open(filepath, 'rb') as f:
+                    blob = f.read()
+            except FileNotFoundError:
+                raise MissingExternalFile('Lost access to external blob %s.' % full_path) from None
+            return blob
+
+        if blob_hash is None:
+            return None
+
+        # attempt to get object from cache
+        blob = None
+        cache_folder = config.get('cache', None)
+        if cache_folder:
+            try:
+                cache_path = os.path.join(cache_folder, *subfold(blob_hash.hex, CACHE_SUBFOLDING))
+                cache_file = os.path.join(cache_path, blob_hash.hex)
+                with open(cache_file, 'rb') as f:
+                    blob = f.read()
+            except FileNotFoundError:
+                pass
+
+        # attempt to get object from store
+        if blob is None:
+            if self.spec['protocol'] == 'file':
+                subfolders = os.path.join(*subfold(blob_hash.hex, self.spec['subfolding']))
+                full_path = os.path.join(self.spec['location'], self.database, subfolders, blob_hash.hex)
+                try:
+                    blob = read_file(full_path)
+                except MissingExternalFile:
+                    if not SUPPORT_MIGRATED_BLOBS:
+                        raise
+                    # migrated blobs from 0.11
+                    relative_filepath, contents_hash = (self & {'hash': blob_hash}).fetch1(
+                        'filepath', 'contents_hash')
+                    if relative_filepath is None:
+                        raise
+                    blob = read_file(os.path.join(self.spec['location'], relative_filepath))
+            elif self.spec['protocol'] == 's3':
+                full_path = '/'.join(
+                    (self.database,) + subfold(blob_hash.hex, self.spec['subfolding']) + (blob_hash.hex,))
+                try:
+                    blob = self.s3.get(full_path)
+                except MissingExternalFile:
+                    if not SUPPORT_MIGRATED_BLOBS:
+                        raise
+                    relative_filepath, contents_hash = (self & {'hash': blob_hash}).fetch1(
+                        'filepath', 'contents_hash')
+                    if relative_filepath is None:
+                        raise
+                    blob = self.s3.get(relative_filepath)
+            if cache_folder:
+                if not os.path.exists(cache_path):
+                    os.makedirs(cache_path)
+                safe_write(os.path.join(cache_path, blob_hash.hex), blob)
+        return blob
+
+    # --- ATTACHMENTS ---
+    def get_attachment_filename(self, hash):
+        pass
+
+    def upload_attachment(self, local_filepath):
+        pass
+
+    def download_attachment(self, hash):
+
+        """ save attachment from memory buffer into the save_path """
+        rel_path, buffer = buffer.split(b'\0', 1)
+        file_path = os.path.abspath(os.path.join(save_path, rel_path.decode()))
+
+        if os.path.isfile(file_path):
+            # generate a new filename
+            file, ext = os.path.splitext(file_path)
+            file_path = next(f for f in ('%s_%04x%s' % (file, n, ext) for n in count())
+                             if not os.path.isfile(f))
+
+        with open(file_path, mode='wb') as f:
+            f.write(buffer)
+        return file_path
+
+    # --- FILEPATH ---
 
     def fput(self, local_filepath):
         """
@@ -121,87 +210,6 @@ class ExternalTable(Table):
                     tab=self.full_table_name, size=os.path.getsize(local_filepath),
                     filepath=relative_filepath), args=(uuid.bytes, contents_hash.bytes))
         return uuid
-
-    def peek(self, blob_hash, bytes_to_peek=120):
-        return self.get(blob_hash, size=bytes_to_peek)
-
-    def get(self, blob_hash, *, size=-1):
-        """
-        get an object from external store.
-        :param size: max number of bytes to retrieve. If size<0, retrieve entire blob
-        :param explicit_path: if given, then use it as relative path rather than the path derived from
-        """
-
-        def read_file(filepath, size):
-            try:
-                with open(filepath, 'rb') as f:
-                    blob = f.read(size)
-            except FileNotFoundError:
-                raise MissingExternalFile('Lost access to external blob %s.' % full_path) from None
-            return blob
-
-        if blob_hash is None:
-            return None
-
-        # attempt to get object from cache
-        blob = None
-        cache_folder = config.get('cache', None)
-        blob_size = None
-        if cache_folder:
-            try:
-                cache_path = os.path.join(cache_folder, *subfold(blob_hash.hex, CACHE_SUBFOLDING))
-                cache_file = os.path.join(cache_path, blob_hash.hex)
-                with open(cache_file, 'rb') as f:
-                    blob = f.read(size)
-            except FileNotFoundError:
-                pass
-            else:
-                if size > 0:
-                    blob_size = os.path.getsize(cache_file)
-
-        # attempt to get object from store
-        if blob is None:
-            if self.spec['protocol'] == 'file':
-                subfolders = os.path.join(*subfold(blob_hash.hex, self.spec['subfolding']))
-                full_path = os.path.join(self.spec['location'], self.database, subfolders, blob_hash.hex)
-                try:
-                    blob = read_file(full_path, size)
-                except MissingExternalFile:
-                    if not SUPPORT_MIGRATED_BLOBS:
-                        raise
-                    # migrated blobs from 0.11
-                    relative_filepath, contents_hash = (self & {'hash': blob_hash}).fetch1(
-                        'filepath', 'contents_hash')
-                    if relative_filepath is None:
-                        raise
-                    blob = read_file(os.path.join(self.spec['location'], relative_filepath))
-                else:
-                    if size > 0:
-                        blob_size = os.path.getsize(full_path)
-            elif self.spec['protocol'] == 's3':
-                full_path = '/'.join(
-                    (self.database,) + subfold(blob_hash.hex, self.spec['subfolding']) + (blob_hash.hex,))
-                if size < 0:
-                    try:
-                        blob = self.s3.get(full_path)
-                    except MissingExternalFile:
-                        if not SUPPORT_MIGRATED_BLOBS:
-                            raise
-                        relative_filepath, contents_hash = (self & {'hash': blob_hash}).fetch1(
-                            'filepath', 'contents_hash')
-                        if relative_filepath is None:
-                            raise
-                        blob = self.s3.get(relative_filepath)
-                else:
-                    blob = self.s3.partial_get(full_path, 0, size)
-                    blob_size = self.s3.get_size(full_path)
-
-            if cache_folder and size < 0:
-                if not os.path.exists(cache_path):
-                    os.makedirs(cache_path)
-                safe_write(os.path.join(cache_path, blob_hash.hex), blob)
-
-        return blob if size < 0 else (blob, blob_size)
 
     def fget(self, filepath_hash):
         """
