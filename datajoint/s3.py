@@ -25,9 +25,9 @@ class Folder:
         return self.client.put_object(
             self.bucket, '/'.join((self.root_path, relative_name)), BytesIO(buffer), length=len(buffer))
 
-    def fput(self, relative_name, local_file, **meta):
+    def fput(self, relative_name, local_file, metadata=None):
         return self.client.fput_object(
-            self.bucket, '/'.join((self.root_path, relative_name)), local_file, metadata=meta or None)
+            self.bucket, '/'.join((self.root_path, relative_name)), str(local_file), metadata=metadata)
 
     def get(self, relative_name):
         try:

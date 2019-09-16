@@ -9,7 +9,7 @@ def setUp(self):
 
 
 def test_heading():
-    heading = modu.Simple.heading
+    heading = modu.Simple().heading
     assert_true('item' in heading)
     assert_true(heading['item'].is_external)
 
@@ -41,7 +41,7 @@ def test_populate():
     image = modu.Image()
     image.populate()
     remaining, total = image.progress()
-    image.external['raw'].clean_blobs()
+    image.external['raw'].clean()
     assert_true(total == len(modu.Dimension() * modu.Seed()) and remaining == 0)
     for img, neg, dimensions in zip(*(image * modu.Dimension()).fetch('img', 'neg', 'dimensions')):
         assert_list_equal(list(img.shape), list(dimensions))
@@ -49,7 +49,7 @@ def test_populate():
     image.delete()
     for external_table in image.external.values():
         external_table.delete()
-        external_table.clean_blobs()
+        external_table.clean()
 
 
 

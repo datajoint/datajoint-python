@@ -70,6 +70,12 @@ class ExternalTable(Table):
             self._s3 = s3.Folder(**self.spec)
         return self._s3
 
+    def upload_file(self, local_path, remote_path, metadata=None):
+        if self.spec['protocol'] == 's3':
+            self.s3.fput(remote_path, local_path, metadata)
+        else:
+            safe_copy(local_path, Path(self.spec['location']) / remote_path, overwrite=True)
+
     # --- BLOBS ----
 
     def put(self, blob):
@@ -151,10 +157,7 @@ class ExternalTable(Table):
         uuid = uuid_from_file(local_path, init_string=basename + '\0')
         remote_path = '/'.join((
             self.database, '/'.join(subfold(uuid.hex, self.spec['subfolding'])),  uuid.hex + '-' + basename))
-        if self.spec['protocol'] == 's3':
-            self.s3.fput(remote_path, local_path)
-        else:
-            safe_copy(local_path, Path(self.spec['location']) / remote_path)
+        self.upload_file(local_path, remote_path)
         # insert tracking info
         self.connection.query(
             "INSERT INTO {tab} (hash, size) VALUES (%s, {size}) ON DUPLICATE KEY "
@@ -174,7 +177,7 @@ class ExternalTable(Table):
             attachment_filename = next(name_generator)
         except StopIteration:
             raise MissingExternalFile('Missing attachment {protocol}://{path}'.format(
-                path=remote_path + '/' + uuid.hex + '-*'), **self.spec)
+                path=remote_path + '/' + uuid.hex + '-*', **self.spec))
         return attachment_filename.split(uuid.hex + '-')[-1]
 
     def download_attachment(self, uuid, basename, download_path):
@@ -188,7 +191,7 @@ class ExternalTable(Table):
 
     # --- FILEPATH ---
 
-    def fput(self, local_filepath):
+    def upload_filepath(self, local_filepath):
         """
         Raise exception if an external entry already exists with a different contents checksum.
         Otherwise, copy (with overwrite) file to remote and
@@ -197,7 +200,7 @@ class ExternalTable(Table):
         local_filepath = Path(local_filepath)
         local_folder = local_filepath.parent
         try:
-            relative_filepath = local_filepath.relative_to(self.spec['stage'])
+            relative_filepath = str(local_filepath.relative_to(self.spec['stage']))
         except:
             raise DataJointError('The path {path} is not in stage {stage}'.format(path=local_folder, **self.spec))
         uuid = uuid_from_buffer(init_string=relative_filepath)
@@ -212,18 +215,14 @@ class ExternalTable(Table):
                     "A different version of '{file}' has already been placed.".format(file=relative_filepath))
         else:
             # upload the file and create its tracking entry
-            if self.spec['protocol'] == 's3':
-                self.s3.fput(relative_filepath, local_filepath, contents_hash=str(contents_hash))
-            else:
-                remote_file = Path(self.spec['location'], relative_filepath)
-                safe_copy(local_filepath, remote_file, overwrite=True)
+            self.upload_file(local_filepath, relative_filepath, metadata={'contents_hash': str(contents_hash)})
             self.connection.query(
                 "INSERT INTO {tab} (hash, size, filepath, contents_hash) VALUES (%s, {size}, '{filepath}', %s)".format(
                     tab=self.full_table_name, size=Path(local_filepath).stat().st_size,
                     filepath=relative_filepath), args=(uuid.bytes, contents_hash.bytes))
         return uuid
 
-    def fget(self, filepath_hash):
+    def download_filepath(self, filepath_hash):
         """
         sync a file from external store to the local stage
         :param filepath_hash: The hash (UUID) of the relative_path
@@ -231,7 +230,7 @@ class ExternalTable(Table):
         """
         if filepath_hash is not None:
             relative_filepath, contents_hash = (self & {'hash': filepath_hash}).fetch1('filepath', 'contents_hash')
-            local_filepath = Path(self.spec['stage']).absolute / Path(relative_filepath)
+            local_filepath = Path(self.spec['stage']).absolute() / Path(relative_filepath)
             file_exists = Path(local_filepath).is_file() and uuid_from_file(local_filepath) == contents_hash
             if not file_exists:
                 if self.spec['protocol'] == 's3':
@@ -270,84 +269,33 @@ class ExternalTable(Table):
                         for ref in self.references) or "TRUE"))
         print('Deleted %d items' % self.connection.query("SELECT ROW_COUNT()").fetchone()[0])
 
-    def get_untracked_filepaths(self):
+    def get_untracked_external_files(self, *, limit=None,
+                                     include_blobs=True, include_attachments=True, include_filepaths=True):
         """
-        :return: the collection of remote filepaths that are no longer tracked.
+        :return: generate the absolute paths to external blobs, attachments, and filepaths that are no longer
+        tracked by this external table.
+        Caution: when multiple schemas manage the same filepath location or if multiple servers use the same
+        external location for blobs and attachments, then it is not safe to assume that untracked external files
+        are no longer needed by other schemas. Delete with caution. The safest approach is to ensure that each external
+        store is tracked by one database server only and that filepath locations are tracked by only one schema.
         """
-        remote_path = self.spec['location']
-        if self.spec['protocol'] == 'file':
-            re
-            generator = (Path(folder[position:], file)
-                         for folder, dirs, files in os.walk(remote_path, topdown=False) for file in files)
-        else:  # self.spec['protocol'] == 's3'
-            position = len(remote_path.rstrip('/')) + 1
-            generator = (x.object_name[position:] for x in s3.Folder(**self.spec).list_objects())
-        in_use = set((self & '`filepath` IS NOT NULL').fetch('filepath'))
-        yield from ('/'.join((remote_path, f)) for f in generator if f not in in_use)
+        raise NotImplementedError
 
-    def clean_filepaths(self, verbose=True):
+    def clean(self, *, limit=None, verbose=True,
+              delete_blobs=True, delete_attachments=True, delete_filepaths=True):
         """
-        Delete filepaths that are not tracked in by this store in this schema.
-        Leaves empty subfolders.
+        remove blobs, attachments, and
+        :param verbose: if True, print information about deleted files
+        :param: limit: max number of items to delete. None=delete all
+        :param include_{blobs, attachments, filepaths}: if True, delete blobs, attachments, filepaths
         """
+        delete_list = self.get_untracked_external_files(
+            limit=limit,
+            include_blobs=delete_blobs, include_attachments=delete_attachments, include_filepaths=delete_filepaths)
         if verbose:
-            print('Finding untracking files...')
-        untracked_filepaths = self.get_untracked_filepaths()
-        print('Deleting...')
-        if self.spec['protocol'] == 's3':
-            self.s3.remove_objects(untracked_filepaths)
-            print('Done')
-        else:   # self.spec['protocol'] == 'file'
-            count = 0
-            for f in untracked_filepaths:
-                not verbose or print(f)
-                os.remove(f)
-                count += 1
-            print('Deleted %d files' % count)
-
-    def clean_blobs(self, *, verbose=True):
-        """
-        Remove unused blobs from the external storage repository.
-        This must be performed after external_table.delete() during low-usage periods to reduce risks of data loss.
-        """
-        assert False
-        in_use = set(x.hex for x in (self & '`filepath` is NULL').fetch('hash'))
-        if self.spec['protocol'] == 'file':
-            count = itertools.count()
-            print('Deleting...')
-            deleted_folders = set()
-            for folder, dirs, files in Path(self.spec['location'], self.database).rglob('*'):
-                if dirs and files:
-                    raise DataJointError(
-                            'Invalid repository with files in non-terminal folder %s' % folder)
-                dirs = set(d for d in dirs if Path(folder, d) not in deleted_folders)
-                if not dirs:
-                    files_not_in_use = [f for f in files if f not in in_use]
-                    for f in files_not_in_use:
-                        filename = Path(folder, f)
-                        next(count)
-                        if verbose:
-                            print(filename)
-                        filename.unlink()
-                    if len(files_not_in_use) == len(files):
-                        os.rmdir(folder)
-                        deleted_folders.add(folder)
-            print('Deleted %d objects' % next(count))
-        else:   # self.spec['protocol'] == 's3'
-            count = itertools.count()
-
-            def names():
-                for x in self.s3.list_objects(self.database):
-                    if x.object_name.split('/')[-1] not in in_use:
-                        next(count)
-                        if verbose:
-                            print(x.object_name)
-                        yield x.object_name
-
-            print('Deleting...')
-            failed_deletes = self.s3.remove_objects(names())
-            total = next(count)
-            print('  Deleted: %i S3 objects; %i failed.' % (total - len(failed_deletes), len(failed_deletes)))
+            print('Deleting %i items:' % len(delete_list))
+            for item in delete_list:
+                print(item)
 
 
 class ExternalMapping(Mapping):

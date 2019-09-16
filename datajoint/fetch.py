@@ -50,7 +50,7 @@ def _get(connection, attr, data, squeeze, download_path):
     adapt = attr.adapter.get if attr.adapter else lambda x: x
 
     if attr.is_filepath:
-        return adapt(extern.fget(uuid.UUID(bytes=data))[0])
+        return adapt(extern.download_filepath(uuid.UUID(bytes=data))[0])
 
     if attr.is_attachment:
         # Steps:
@@ -68,7 +68,7 @@ def _get(connection, attr, data, squeeze, download_path):
                 return adapt(local_filepath)  # checksum passed, no need to download again
             # generate the next available alias filename
             for n in itertools.count():
-                f = local_filepath.parent / ('_%04x' % n + local_filepath.suffix)
+                f = local_filepath.parent / (local_filepath.stem + '_%04x' % n + local_filepath.suffix)
                 if not f.is_file():
                     local_filepath = f
                     break
@@ -79,7 +79,7 @@ def _get(connection, attr, data, squeeze, download_path):
             extern.download_attachment(_uuid, basename, local_filepath)
         else:
             # write from buffer
-            safe_write(local_filepath, data.split(b"\0")[1])
+            safe_write(local_filepath, data.split(b"\0", 1)[1])
         return adapt(local_filepath)  # download file from remote store
 
     return adapt(uuid.UUID(bytes=data) if attr.uuid else (
