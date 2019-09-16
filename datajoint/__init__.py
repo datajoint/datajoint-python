@@ -23,7 +23,7 @@ __all__ = ['__author__', '__version__',
            'Manual', 'Lookup', 'Imported', 'Computed', 'Part',
            'Not', 'AndList', 'U', 'Diagram', 'Di', 'ERD',
            'set_password', 'kill',
-           'MatCell', 'MatStruct',
+           'MatCell', 'MatStruct', 'AttributeAdapter',
            'errors', 'DataJointError', 'key']
 
 from .version import __version__
@@ -38,6 +38,7 @@ from .diagram import Diagram
 from .admin import set_password, kill
 from .blob import MatCell, MatStruct
 from .fetch import key
+from .attribute_adapter import AttributeAdapter
 from . import errors
 from .errors import DataJointError
 

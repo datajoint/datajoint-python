@@ -4,8 +4,9 @@ from itertools import chain
 import re
 import logging
 from .errors import DataJointError
-from .declare import UUID_DATA_TYPE, CUSTOM_TYPES, TYPE_PATTERN, EXTERNAL_TYPES
+from .declare import UUID_DATA_TYPE, SPECIAL_TYPES, TYPE_PATTERN, EXTERNAL_TYPES, NATIVE_TYPES
 from .utils import OrderedDict
+from .attribute_adapter import get_adapter, AttributeAdapter
 
 
 logger = logging.getLogger(__name__)
@@ -13,7 +14,7 @@ logger = logging.getLogger(__name__)
 default_attribute_properties = dict(    # these default values are set in computed attributes
     name=None, type='expression', in_key=False, nullable=False, default=None, comment='calculated attribute',
     autoincrement=False, numeric=None, string=None, uuid=False, is_blob=False, is_attachment=False, is_filepath=False,
-    is_external=False,
+    is_external=False, adapter=None,
     store=None, unsupported=False, sql_expression=None, database=None, dtype=object)
 
 
@@ -146,7 +147,7 @@ class Heading:
     def __iter__(self):
         return iter(self.attributes)
 
-    def init_from_database(self, conn, database, table_name):
+    def init_from_database(self, conn, database, table_name, context):
         """
         initialize heading from a database table.  The table must exist already.
         """
@@ -211,7 +212,8 @@ class Heading:
                 numeric=any(TYPE_PATTERN[t].match(attr['type']) for t in ('DECIMAL', 'INTEGER', 'FLOAT')),
                 string=any(TYPE_PATTERN[t].match(attr['type']) for t in ('ENUM', 'TEMPORAL', 'STRING')),
                 is_blob=bool(TYPE_PATTERN['INTERNAL_BLOB'].match(attr['type'])),
-                uuid=False, is_attachment=False, is_filepath=False, store=None, is_external=False, sql_expression=None)
+                uuid=False, is_attachment=False, is_filepath=False, adapter=None,
+                store=None, is_external=False, sql_expression=None)
 
             if any(TYPE_PATTERN[t].match(attr['type']) for t in ('INTEGER', 'FLOAT')):
                 attr['type'] = re.sub(r'\(\d+\)', '', attr['type'], count=1)  # strip size off integers and floats
@@ -219,16 +221,36 @@ class Heading:
             attr.pop('Extra')
 
             # process custom DataJoint types
-            custom_type = re.match(r':(?P<type>[^:]+):(?P<comment>.*)', attr['comment'])
-            if custom_type:
-                attr.update(custom_type.groupdict(), unsupported=False)
+            special = re.match(r':(?P<type>[^:]+):(?P<comment>.*)', attr['comment'])
+            if special:
+                special = special.groupdict()
+                attr.update(special)
+            # process adapted attribute types
+            if special and TYPE_PATTERN['ADAPTED'].match(attr['type']):
+                assert context is not None, 'Declaration context is not set'
+                adapter_name = special['type']
                 try:
-                    category = next(c for c in CUSTOM_TYPES if TYPE_PATTERN[c].match(attr['type']))
+                    attr.update(adapter=get_adapter(context, adapter_name))
+                except DataJointError:
+                    # if no adapter, then delay the error until the first invocation
+                    attr.update(adapter=AttributeAdapter())
+                else:
+                    attr.update(type=attr['adapter'].attribute_type)
+                    if not any(r.match(attr['type']) for r in TYPE_PATTERN.values()):
+                        raise DataJointError(
+                            "Invalid attribute type '{type}' in adapter object <{adapter_name}>.".format(
+                                adapter_name=adapter_name, **attr))
+                    special = not any(TYPE_PATTERN[c].match(attr['type']) for c in NATIVE_TYPES)
+
+            if special:
+                try:
+                    category = next(c for c in SPECIAL_TYPES if TYPE_PATTERN[c].match(attr['type']))
                 except StopIteration:
                     if attr['type'].startswith('external'):
                         raise DataJointError('Legacy datatype `{type}`.'.format(**attr)) from None
                     raise DataJointError('Unknown attribute type `{type}`'.format(**attr)) from None
                 attr.update(
+                    unsupported=False,
                     is_attachment=category in ('INTERNAL_ATTACH', 'EXTERNAL_ATTACH'),
                     is_filepath=category == 'FILEPATH',
                     is_blob=category in ('INTERNAL_BLOB', 'EXTERNAL_BLOB'),  # INTERNAL_BLOB is not a custom type but is included for completeness
@@ -236,7 +258,7 @@ class Heading:
                     is_external=category in EXTERNAL_TYPES,
                     store=attr['type'].split('@')[1] if category in EXTERNAL_TYPES else None)
 
-            if attr['in_key'] and (attr['is_blob'] or attr['is_attachment'] or attr['is_filepath']):
+            if attr['in_key'] and any((attr['is_blob'], attr['is_attachment'], attr['is_filepath'])):
                 raise DataJointError('Blob, attachment, or filepath attributes are not allowed in the primary key')
 
             if attr['string'] and attr['default'] is not None and attr['default'] not in sql_literals:
@@ -256,6 +278,11 @@ class Heading:
                     t = re.sub(r' unsigned$', '', t)   # remove unsigned
                     assert (t, is_unsigned) in numeric_types, 'dtype not found for type %s' % t
                     attr['dtype'] = numeric_types[(t, is_unsigned)]
+
+            if attr['adapter']:
+                # restore adapted type name
+                attr['type'] = adapter_name
+
         self.attributes = OrderedDict(((q['name'], Attribute(**q)) for q in attributes))
 
         # Read and tabulate secondary indexes

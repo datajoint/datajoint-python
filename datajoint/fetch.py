@@ -43,35 +43,38 @@ def _get(connection, attr, data, squeeze, download_path):
     """
     if data is None:
         return
+
     extern = connection.schemas[attr.database].external[attr.store] if attr.is_external else None
 
+    adapt = attr.adapter.get if attr.adapter else lambda x: x
+
     if attr.is_filepath:
-        return extern.fget(uuid.UUID(bytes=data))[0]
+        return adapt(extern.fget(uuid.UUID(bytes=data))[0])
 
     if attr.is_attachment:
-        # Steps: 
+        # Steps:
         # 1. peek the filename from the blob without downloading remote
         # 2. check if the file already exists at download_path, verify checksum
         # 3. if exists and checksum passes then return the local filepath
         # 4. Otherwise, download the remote file and return the new filepath
         peek, size = extern.peek(uuid.UUID(bytes=data)) if attr.is_external else (data, len(data))
-        assert size is not None 
+        assert size is not None
         filename = peek.split(b"\0", 1)[0].decode()
         size -= len(filename) + 1
         filepath = os.path.join(download_path, filename)
         if os.path.isfile(filepath) and size == os.path.getsize(filepath):
             local_checksum = hash.uuid_from_file(filepath, filename + '\0')
             remote_checksum = uuid.UUID(bytes=data) if attr.is_external else hash.uuid_from_buffer(data)
-            if local_checksum == remote_checksum: 
-                return filepath  # the existing file is okay
+            if local_checksum == remote_checksum:
+                return adapt(filepath)  # the existing file is okay
         # Download remote attachment
         if attr.is_external:
             data = extern.get(uuid.UUID(bytes=data))
-        return attach.save(data, download_path)  # download file from remote store
+        return adapt(attach.save(data, download_path))  # download file from remote store
 
-    return uuid.UUID(bytes=data) if attr.uuid else (
+    return adapt(uuid.UUID(bytes=data) if attr.uuid else (
             blob.unpack(extern.get(uuid.UUID(bytes=data)) if attr.is_external else data, squeeze=squeeze) 
-            if attr.is_blob else data)
+            if attr.is_blob else data))
 
 
 def _flatten_attribute_list(primary_key, attrs):
