@@ -78,7 +78,7 @@ def safe_write(filepath, blob):
     :param filename: full path
     :param blob: binary data
     """
-    assert isinstance(filepath, Path)
+    filepath = Path(filepath)
     if not filepath.is_file():
         filepath.parent.mkdir(parents=True, exist_ok=True)
         temp_file = filepath.with_suffix(filepath.suffix + '.saving')
@@ -90,7 +90,7 @@ def safe_copy(src, dest, overwrite=False):
     """
     Copy the contents of src file into dest file as a two-step process. Skip if dest exists already
     """
-    assert isinstance(src, Path) and isinstance(dest, Path)
+    src, dest = Path(src), Path(dest)
     if overwrite or not dest.is_file():
         dest.parent.mkdir(parents=True, exist_ok=True)
         temp_file = dest.with_suffix(dest.suffix + '.copying')

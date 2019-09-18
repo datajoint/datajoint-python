@@ -147,7 +147,6 @@ def test_filepath_cleanup(table=Filepath(), store="repo"):
     assert_equal(len(table), n)
 
     ext = schema.external[store]
-    ext.clean()
 
     assert_equal(len(table), n)
     assert_true(0 < len(ext) < n)
