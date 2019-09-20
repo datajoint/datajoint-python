@@ -91,7 +91,7 @@ def safe_copy(src, dest, overwrite=False):
     Copy the contents of src file into dest file as a two-step process. Skip if dest exists already
     """
     src, dest = Path(src), Path(dest)
-    if overwrite or not dest.is_file():
+    if not src.samefile(dest) and (overwrite or not dest.is_file()):  
         dest.parent.mkdir(parents=True, exist_ok=True)
         temp_file = dest.with_suffix(dest.suffix + '.copying')
         shutil.copyfile(str(src), str(temp_file))

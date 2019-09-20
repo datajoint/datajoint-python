@@ -6,7 +6,7 @@ from .errors import DataJointError, MissingExternalFile
 from .hash import uuid_from_buffer, uuid_from_file
 from .table import Table
 from .declare import EXTERNAL_TABLE_ROOT
-from . import s3 
+from . import s3
 from .utils import safe_write, safe_copy
 
 CACHE_SUBFOLDING = (2, 2)   # (2, 2) means  "0123456789abcd" will be saved as "01/23/0123456789abcd"
@@ -71,11 +71,11 @@ class ExternalTable(Table):
         return self._s3
 
     # - low-level operations - private
-    
+
     def _make_external_filepath(self, relative_filepath):
         """resolve the complete external path based on the relative path"""
         return PurePosixPath(self.spec['location'], relative_filepath)
-    
+
     def _make_uuid_path(self, uuid, suffix=''):
         """create external path based on the uuid hash"""
         return self._make_external_filepath(PurePosixPath(
@@ -292,18 +292,16 @@ class ExternalTable(Table):
         query expression for unused hashes
         :return: self restricted to elements that are not in use by any tables in the schema
         """
-        return self - [
-            "hash IN (SELECT `{column_name}` FROM {referencing_table})".format(**ref)
-            for ref in self.references]
+        return self - ["hash IN (SELECT `{column_name}` FROM {referencing_table})".format(**ref)
+                       for ref in self.references]
 
     def used(self):
         """
         query expression for used hashes
         :return: self restricted to elements that in use by tables in the schema
         """
-        return self - [
-            "hash IN (SELECT `{column_name}` FROM {referencing_table})".format(**ref)
-            for ref in self.references]
+        return self & ["hash IN (SELECT `{column_name}` FROM {referencing_table})".format(**ref)
+                       for ref in self.references]
 
     def delete(self, limit=None, display_progress=True):
         """
@@ -342,7 +340,9 @@ class ExternalMapping(Mapping):
         self._tables = {}
 
     def __repr__(self):
-        return "\n   ".join(["External tables for schema {schema}:".format(schema=self.schema)] + list(self))
+        return ("External file tables for schema `{schema}`:\n    ".format(schema=self.schema.database)
+                + "\n    ".join('"{store}" {protocol}:{location}"'.format(
+                    store=k, **v.spec) for k, v in self.items()))
 
     def __getitem__(self, store):
         """
@@ -358,6 +358,6 @@ class ExternalMapping(Mapping):
 
     def __len__(self):
         return len(self._tables)
-    
+
     def __iter__(self):
         return iter(self._tables)
