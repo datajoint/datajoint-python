@@ -203,5 +203,5 @@ class TestBlobMigrate:
         dj.config['cache'] = os.path.expanduser('~/temp/dj-cache')
 
         test_mod = dj.create_virtual_module('test_mod', 'djtest_blob_migrate')
-        r = test_mod.A.fetch('blob_share')
-        assert_equal(test_mod.A.fetch('blob_share')[1][1], 2)
+        r = test_mod.A.fetch('blob_share', order_by='id')
+        assert_equal(r[1][1], 2)

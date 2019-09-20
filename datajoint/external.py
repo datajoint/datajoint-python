@@ -54,7 +54,7 @@ class ExternalTable(Table):
         hash  : uuid    #  hash of contents (blob), of filename + contents (attach), or relative filepath (filepath)
         ---
         size      :bigint unsigned     # size of object in bytes
-        basename=null : varchar(255)  # the filename of an attachment
+        attachment_name=null : varchar(255)  # the filename of an attachment
         filepath=null : varchar(1000)  # relative filepath or attachment filename
         contents_hash=null : uuid      # used for the filepath datatype 
         timestamp=CURRENT_TIMESTAMP  :timestamp   # automatic timestamp
@@ -179,26 +179,26 @@ class ExternalTable(Table):
     # --- ATTACHMENTS ---
 
     def upload_attachment(self, local_path):
-        basename = Path(local_path).name
-        uuid = uuid_from_file(local_path, init_string=basename + '\0')
-        external_path = self._make_uuid_path(uuid, '.' + basename)
+        attachment_name = Path(local_path).name
+        uuid = uuid_from_file(local_path, init_string=attachment_name + '\0')
+        external_path = self._make_uuid_path(uuid, '.' + attachment_name)
         self._upload_file(local_path, external_path)
         # insert tracking info
         self.connection.query("""
-        INSERT INTO {tab} (hash, size, basename) 
-        VALUES (%s, {size}, "{basename}") 
+        INSERT INTO {tab} (hash, size, attachment_name) 
+        VALUES (%s, {size}, "{attachment_name}") 
         ON DUPLICATE KEY UPDATE timestamp=CURRENT_TIMESTAMP""".format(
                 tab=self.full_table_name,
                 size=Path(local_path).stat().st_size,
-                basename=basename), args=[uuid.bytes])
+                attachment_name=attachment_name), args=[uuid.bytes])
         return uuid
 
-    def get_attachment_basename(self, uuid):
-        return (self & {'hash': uuid}).fetch1('basename')
+    def get_attachment_name(self, uuid):
+        return (self & {'hash': uuid}).fetch1('attachment_name')
 
-    def download_attachment(self, uuid, basename, download_path):
+    def download_attachment(self, uuid, attachment_name, download_path):
         """ save attachment from memory buffer into the save_path """
-        external_path = self._make_uuid_path(uuid, '.' + basename)
+        external_path = self._make_uuid_path(uuid, '.' + attachment_name)
         self._download_file(external_path, download_path)
 
     # --- FILEPATH ---
@@ -274,10 +274,10 @@ class ExternalTable(Table):
         """
         fetch_kwargs.update(as_dict=True)
         paths = []
-        for item in self.fetch('hash', 'basename', 'filepath', **fetch_kwargs):
-            if item['basename']:
+        for item in self.fetch('hash', 'attachment_name', 'filepath', **fetch_kwargs):
+            if item['attachment_name']:
                 # attachments
-                path = self._make_uud_path(item['hash'], '.' + item['basename'])
+                path = self._make_uuid_path(item['hash'], '.' + item['attachment_name'])
             elif item['filepath']:
                 # external filepaths
                 path = self._make_external_filepath(item['filepath'])
@@ -340,6 +340,9 @@ class ExternalMapping(Mapping):
     def __init__(self, schema):
         self.schema = schema
         self._tables = {}
+
+    def __repr__(self):
+        return "\n   ".join(["External tables for schema {schema}:".format(schema=self.schema)] + list(self))
 
     def __getitem__(self, store):
         """
