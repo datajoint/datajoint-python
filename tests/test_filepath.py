@@ -158,13 +158,6 @@ def test_filepath_cleanup(table=Filepath(), store="repo"):
     ext.delete()  # delete unused entries
     assert_true(0 < len(ext) <= n - m)
 
-    unused_files = list(ext.get_untracked_filepaths())
-    assert_true(0 < len(unused_files) <= m)
-
-    # check no more untracked files
-    ext.clean()
-    assert_false(bool(list(ext.get_untracked_filepaths())))
-
 
 def test_filepath_cleanup_s3():
     """test deletion of filepath entries from external table """

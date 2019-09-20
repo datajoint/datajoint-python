@@ -109,11 +109,15 @@ class TestBlobMigrate:
                 if _hash in hashes:
                     relative_path = os.path.join(schema.database, _hash)
                     uuid = dj.hash.uuid_from_buffer(init_string=relative_path)
+                    external_path = ext._make_external_filepath(relative_path)
+                    if ext.spec['protocol'] == 's3':
+                        contents_hash = dj.hash.uuid_from_buffer(ext._download_buffer(external_path))
+                    else:
+                        contents_hash = dj.hash.uuid_from_file(external_path)
                     ext.insert1(dict(
                         filepath=relative_path,
                         size=size,
-                        contents_hash=contents_hash_function[ext.spec[
-                            'protocol']](ext, relative_path),
+                        contents_hash=contents_hash,
                         hash=uuid
                     ), skip_duplicates=True)
 
@@ -199,4 +203,5 @@ class TestBlobMigrate:
         dj.config['cache'] = os.path.expanduser('~/temp/dj-cache')
 
         test_mod = dj.create_virtual_module('test_mod', 'djtest_blob_migrate')
+        r = test_mod.A.fetch('blob_share')
         assert_equal(test_mod.A.fetch('blob_share')[1][1], 2)

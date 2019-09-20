@@ -73,12 +73,13 @@ class ExternalTable(Table):
     # - low-level operations - private
     
     def _make_external_filepath(self, relative_filepath):
+        """resolve the complete external path based on the relative path"""
         return PurePosixPath(self.spec['location'], relative_filepath)
     
     def _make_uuid_path(self, uuid, suffix=''):
-        return PurePosixPath(
-            self.spec['location'], self.database,
-            '/'.join(subfold(uuid.hex, self.spec['subfolding'])), uuid.hex).with_suffix(suffix)
+        """create external path based on the uuid hash"""
+        return self._make_external_filepath(PurePosixPath(
+            self.database, '/'.join(subfold(uuid.hex, self.spec['subfolding'])), uuid.hex).with_suffix(suffix))
 
     def _upload_file(self, local_path, external_path, metadata=None):
         if self.spec['protocol'] == 's3':
@@ -169,7 +170,7 @@ class ExternalTable(Table):
                 relative_filepath, contents_hash = (self & {'hash': uuid}).fetch1('filepath', 'contents_hash')
                 if relative_filepath is None:
                     raise
-                blob = self._download_buffer(relative_filepath)
+                blob = self._download_buffer(self._make_external_filepath(relative_filepath))
             if cache_folder:
                 cache_path.mkdir(parents=True, exist_ok=True)
                 safe_write(cache_path / uuid.hex, blob)
@@ -265,20 +266,26 @@ class ExternalTable(Table):
         WHERE referenced_table_name="{tab}" and referenced_table_schema="{db}"
         """.format(tab=self.table_name, db=self.database), as_dict=True)
 
-    def fetch_filepaths(self, **fetch_kwargs):
+    def fetch_external_paths(self, **fetch_kwargs):
         """
         generate complete external filepaths from the query.
         Each element is a tuple: (uuid, path)
         :param fetch_kwargs: keyword arguments to pass to fetch
         """
         fetch_kwargs.update(as_dict=True)
+        paths = []
         for item in self.fetch('hash', 'basename', 'filepath', **fetch_kwargs):
             if item['basename']:
-                yield item['hash'], self._make_uuid_path(item['hash'], '.' + item['basename'])
+                # attachments
+                path = self._make_uud_path(item['hash'], '.' + item['basename'])
             elif item['filepath']:
-                yield item['hash'], self._make_external_filepath(item['filepath'])
+                # external filepaths
+                path = self._make_external_filepath(item['filepath'])
             else:
-                yield item['hash'], self._make_external_filepath(item['hash'])
+                # blobs
+                path = self._make_uuid_path(item['hash'])
+            paths.append((item['hash'], path))
+        return paths
 
     def unused(self):
         """
@@ -299,21 +306,28 @@ class ExternalTable(Table):
             for ref in self.references]
 
     def delete(self, limit=None, display_progress=True):
-        items = self.unused().fetch_filepaths(limit=limit)
+        """
+        :param limit: (integer) limit the number of items to delete
+        :param display_progress: if True, display progress as files are cleaned up
+        :return: yields
+        """
+        items = self.unused().fetch_external_paths(limit=limit)
         if display_progress:
             items = tqdm(items)
         # delete items one by one, close to transaction-safe
+        error_list = []
         for uuid, external_path in items:
             try:
-               count = (self & {'hash': uuid}).delete_quck(get_count=True)
-            except Exception:
+               count = (self & {'hash': uuid}).delete_quick(get_count=True)  # optimize
+            except Exception as err:
                 pass   # if delete failed, do not remove the external file
             else:
                 assert count in (0, 1)
                 try:
                     self._remove_external_file(external_path)
                 except Exception as error:
-                    yield uuid, external_path, str(error)
+                    error_list.append((uuid, external_path, str(error)))
+        return error_list
 
 
 class ExternalMapping(Mapping):
