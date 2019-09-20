@@ -44,7 +44,7 @@ def test_filepath(store="repo"):
     assert_equal(data, synced_data)
 
     # cleanup
-    ext.delete()
+    ext.delete(delete_external_files=True)
 
 
 def test_filepath_s3():
@@ -116,7 +116,7 @@ def test_filepath_class(table=Filepath(), store="repo"):
     assert_true(table.external[store])
 
     # delete from external table
-    table.external[store].delete()
+    table.external[store].delete(delete_external_files=True)
 
 
 def test_filepath_class_again():
@@ -155,7 +155,7 @@ def test_filepath_cleanup(table=Filepath(), store="repo"):
     m = n - len(table)  # number deleted
     assert_true(m == 6)
 
-    ext.delete()  # delete unused entries
+    ext.delete(delete_external_files=True)  # delete unused entries
     assert_true(0 < len(ext) <= n - m)
 
 

@@ -47,7 +47,7 @@ def test_populate():
         assert_almost_equal(img, -neg)
     image.delete()
     for external_table in image.external.values():
-        external_table.delete(display_progress=False)
+        external_table.delete(display_progress=False, delete_external_files=True)
 
 
 

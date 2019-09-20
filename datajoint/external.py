@@ -303,29 +303,38 @@ class ExternalTable(Table):
         return self & ["hash IN (SELECT `{column_name}` FROM {referencing_table})".format(**ref)
                        for ref in self.references]
 
-    def delete(self, limit=None, display_progress=True):
+    def delete(self, *, delete_external_files=None, limit=None, display_progress=True):
         """
+        :param delete_external_files: True or False. If False, only the tracking info is removed from the
+        external store table but the external files remain intact. If True, then the external files
+        themselves are deleted too.
         :param limit: (integer) limit the number of items to delete
         :param display_progress: if True, display progress as files are cleaned up
         :return: yields
         """
-        items = self.unused().fetch_external_paths(limit=limit)
-        if display_progress:
-            items = tqdm(items)
-        # delete items one by one, close to transaction-safe
-        error_list = []
-        for uuid, external_path in items:
-            try:
-               count = (self & {'hash': uuid}).delete_quick(get_count=True)  # optimize
-            except Exception as err:
-                pass   # if delete failed, do not remove the external file
-            else:
-                assert count in (0, 1)
+        if delete_external_files not in (True, False):
+            raise DataJointError("The delete_external_files argument must be set to either True or False in delete()")
+
+        if not delete_external_files:
+            self.unused.delete_quick()
+        else:
+            items = self.unused().fetch_external_paths(limit=limit)
+            if display_progress:
+                items = tqdm(items)
+            # delete items one by one, close to transaction-safe
+            error_list = []
+            for uuid, external_path in items:
                 try:
-                    self._remove_external_file(external_path)
-                except Exception as error:
-                    error_list.append((uuid, external_path, str(error)))
-        return error_list
+                   count = (self & {'hash': uuid}).delete_quick(get_count=True)  # optimize
+                except Exception as err:
+                    pass   # if delete failed, do not remove the external file
+                else:
+                    assert count in (0, 1)
+                    try:
+                        self._remove_external_file(external_path)
+                    except Exception as error:
+                        error_list.append((uuid, external_path, str(error)))
+            return error_list
 
 
 class ExternalMapping(Mapping):
@@ -341,7 +350,7 @@ class ExternalMapping(Mapping):
 
     def __repr__(self):
         return ("External file tables for schema `{schema}`:\n    ".format(schema=self.schema.database)
-                + "\n    ".join('"{store}" {protocol}:{location}"'.format(
+                + "\n    ".join('"{store}" {protocol}:{location}'.format(
                     store=k, **v.spec) for k, v in self.items()))
 
     def __getitem__(self, store):
