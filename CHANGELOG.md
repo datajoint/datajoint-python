@@ -1,7 +1,7 @@
 ## Release notes
 
-### 0.12.0 -- Aug 23, 2019
-* Support TLS/SSL connections PR620
+### 0.12.0 -- October 1, 2019
+* Support secure connections with TLS (aka SSL) PR #620
 * Convert numpy array from python object to appropriate data type if all elements are of the same type (#587) PR #608
 * Remove expression requirement to have additional attributes (#604) PR #604
 * Support for filepath datatype (#481) PR #603
@@ -19,7 +19,7 @@
 * Support for pandas and order by "KEY" (#459, #537, #538, #541) PR #534
 * Support file attachment datatype and configurable blob storage (#467, #475, #480, #497) PR #532
 * Increase default display rows (#523) PR #526
-* Bugfixes (#521, #205, #279, #477, #570, #581, #597, #596, #618, #633, #643, #644, #647)
+* Bugfixes (#521, #205, #279, #477, #570, #581, #597, #596, #618, #633, #643, #644, #647, #656)
 
 ### 0.11.3 -- Jul 26, 2019
 * Fix incompatibility with pyparsing 2.4.1 (#629) PR #631
