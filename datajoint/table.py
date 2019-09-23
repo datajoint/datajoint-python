@@ -277,8 +277,7 @@ class Table(QueryExpression):
                             value = self.external[attr.store].upload_attachment(attachment_path).bytes
                         else:
                             # value is filename + contents
-                            with attachment_path.open('rb') as f:
-                                value = str.encode(attachment_path.name) + b'\0' + f.read()
+                            value = str.encode(attachment_path.name) + b'\0' + attachment_path.read_bytes()
                     elif attr.is_filepath:
                         value = self.external[attr.store].upload_filepath(value).bytes
                     elif attr.numeric:

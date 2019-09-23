@@ -82,8 +82,7 @@ def safe_write(filepath, blob):
     if not filepath.is_file():
         filepath.parent.mkdir(parents=True, exist_ok=True)
         temp_file = filepath.with_suffix(filepath.suffix + '.saving')
-        with temp_file.open('wb') as f:
-            f.write(blob)
+        temp_file.write_bytes(blob)
         temp_file.rename(filepath)
 
 
