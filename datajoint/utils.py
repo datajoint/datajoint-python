@@ -82,7 +82,8 @@ def safe_write(filepath, blob):
     if not filepath.is_file():
         filepath.parent.mkdir(parents=True, exist_ok=True)
         temp_file = filepath.with_suffix(filepath.suffix + '.saving')
-        temp_file.write_bytes(blob)
+        with temp_file.open('wb') as f:
+            f.write(blob)
         temp_file.rename(filepath)
 
 
@@ -104,7 +105,7 @@ def parse_sql(filepath):
     """
     delimiter = ';'
     statement = []
-    with open(filepath, 'rt') as f:
+    with Path(filepath).open('rt') as f:
         for line in f:
             line = line.strip()
             if not line.startswith('--') and len(line) > 1:

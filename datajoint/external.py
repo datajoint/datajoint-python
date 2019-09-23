@@ -109,7 +109,7 @@ class ExternalTable(Table):
         if self.spec['protocol'] == 's3':
             return self.s3.get(external_path)
         if self.spec['protocol'] == 'file':
-            with open(Path(external_path), 'rb') as f:
+            with Path(external_path).open('rb') as f:
                 return f.read()
         assert False
 
@@ -157,7 +157,7 @@ class ExternalTable(Table):
             try:
                 cache_path = Path(cache_folder, *subfold(uuid.hex, CACHE_SUBFOLDING))
                 cache_file = Path(cache_path, uuid.hex)
-                with open(cache_file, 'rb') as f:
+                with cache_file.open('rb') as f:
                     blob = f.read()
             except FileNotFoundError:
                 pass  # not cached

@@ -15,10 +15,12 @@ def test_attach_attributes():
     for i in range(2):
         attach1 = Path(source_folder, 'attach1.img')
         data1 = os.urandom(100)
-        attach1.write_bytes(data1)
+        with attach1.open('wb') as f:
+            f.write(data1)
         attach2 = Path(source_folder, 'attach2.txt')
         data2 = os.urandom(200)
-        attach2.write_bytes(data2)
+        with attach2.open('wb') as f:
+            f.write(data2)
         table.insert1(dict(attach=i, img=attach1, txt=attach2))
 
     download_folder = Path(tempfile.mkdtemp())
@@ -28,9 +30,9 @@ def test_attach_attributes():
     assert_not_equal(path1[0], path2[0])
     assert_not_equal(path1[0], path1[1])
     assert_equal(path1[0].parent, download_folder)
-    with open(path1[-1], 'rb') as f:
+    with path1[-1].open('rb') as f:
         check1 = f.read()
-    with open(path2[-1], 'rb') as f:
+    with path2[-1].open('rb') as f:
         check2 = f.read()
     assert_equal(data1, check1)
     assert_equal(data2, check2)

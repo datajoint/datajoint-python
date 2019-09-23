@@ -22,7 +22,8 @@ def test_filepath(store="repo"):
     managed_file = Path(stage_path, relpath, filename)
     managed_file.parent.mkdir(parents=True, exist_ok=True)
     data = os.urandom(3000)
-    managed_file.write_bytes(data)
+    with managed_file.open('wb') as f:
+        f.write(data)
 
     # put the same file twice to ensure storing once
     uuid1 = ext.upload_filepath(managed_file)
@@ -40,7 +41,7 @@ def test_filepath(store="repo"):
         assert_equal(checksum, dj.hash.uuid_from_file(managed_file))
 
     # verify same data
-    with open(managed_file, 'rb') as f:
+    with managed_file.open('rb') as f:
         synced_data = f.read()
     assert_equal(data, synced_data)
 
@@ -59,7 +60,8 @@ def test_duplicate_upload(store="repo"):
     relpath = 'one/two/three'
     managed_file = Path(stage_path, relpath, 'plot.dat')
     managed_file.parent.mkdir(parents=True, exist_ok=True)
-    managed_file.write_bytes(os.urandom(300))
+    with managed_file.open('wb') as f:
+        f.write(os.urandom(300))
     ext.upload_filepath(managed_file)
     ext.upload_filepath(managed_file)  # this is fine because the file is the same
 
@@ -76,9 +78,11 @@ def test_duplicate_error(store="repo"):
     relpath = 'one/two/three'
     managed_file = Path(stage_path, relpath, 'thesis.dat')
     managed_file.parent.mkdir(parents=True, exist_ok=True)
-    managed_file.write_bytes(os.urandom(300))
+    with managed_file.open('wb') as f:
+        f.write(os.urandom(300))
     ext.upload_filepath(managed_file)
-    managed_file.write_bytes(os.urandom(300))
+    with managed_file.open('wb') as f:
+        f.write(os.urandom(300))
     ext.upload_filepath(managed_file)  # this should raise exception because the file has changed
 
 
@@ -93,8 +97,9 @@ def test_filepath_class(table=Filepath(), store="repo"):
     managed_file = Path(stage_path, relative_path, 'attachment.dat')
     managed_file.parent.mkdir(parents=True, exist_ok=True)
     data = os.urandom(3000)
-    managed_file.write_bytes(data)
-    with open(managed_file, 'rb') as f:
+    with managed_file.open('wb') as f:
+        f.write(data)
+    with managed_file.open('rb') as f:
         contents = f.read()
     assert_equal(data, contents)
 
@@ -110,7 +115,7 @@ def test_filepath_class(table=Filepath(), store="repo"):
     assert_equal(filepath, managed_file)
 
     # verify original contents
-    with open(managed_file, 'rb') as f:
+    with managed_file.open('rb') as f:
         contents = f.read()
     assert_equal(data, contents)
 
@@ -145,7 +150,8 @@ def test_filepath_cleanup(table=Filepath(), store="repo"):
         relative_path = Path(*random.sample(('one', 'two', 'three', 'four'), k=3))
         managed_file = Path(stage_path, relative_path, 'file.dat')
         managed_file.parent.mkdir(parents=True, exist_ok=True)
-        managed_file.write_bytes(contents)  # same in all files
+        with managed_file.open('wb') as f:
+            f.write(contents)  # same in all files
         table.insert1((i, managed_file))
     assert_equal(len(table), n)
 
