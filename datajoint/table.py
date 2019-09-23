@@ -6,10 +6,11 @@ import numpy as np
 import pandas
 import logging
 import uuid
+from pathlib import Path
 from .settings import config
 from .declare import declare, alter
 from .expression import QueryExpression
-from . import attach, blob
+from . import blob
 from .utils import user_choice
 from .heading import Heading
 from .errors import DuplicateError, AccessError, DataJointError, UnknownAttributeError
@@ -270,10 +271,15 @@ class Table(QueryExpression):
                         value = blob.pack(value)
                         value = self.external[attr.store].put(value).bytes if attr.is_external else value
                     elif attr.is_attachment:
-                        value = attach.load(value)
-                        value = self.external[attr.store].put(value).bytes if attr.is_external else value
+                        attachment_path = Path(value)
+                        if attr.is_external:
+                            # value is hash of contents
+                            value = self.external[attr.store].upload_attachment(attachment_path).bytes
+                        else:
+                            # value is filename + contents
+                            value = str.encode(attachment_path.name) + b'\0' + attachment_path.read_bytes()
                     elif attr.is_filepath:
-                        value = self.external[attr.store].fput(value).bytes
+                        value = self.external[attr.store].upload_filepath(value).bytes
                     elif attr.numeric:
                         value = str(int(value) if isinstance(value, bool) else value)
                 return name, placeholder, value
