@@ -220,7 +220,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
 
     # declare unique index
     if is_unique:
-        index_sql.append('UNIQUE INDEX ({attrs})'.format(attrs='`,`'.join(ref.primary_key)))
+        index_sql.append('UNIQUE INDEX ({attrs})'.format(attrs=','.join("`%s`" % attr for attr in ref.primary_key)))
 
 
 def prepare_declare(definition, context):
