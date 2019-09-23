@@ -40,7 +40,8 @@ def test_filepath(store="repo"):
         assert_equal(checksum, dj.hash.uuid_from_file(managed_file))
 
     # verify same data
-    synced_data = managed_file.read_bytes()
+    with open(managed_file, 'rb') as f:
+        synced_data = f.read()
     assert_equal(data, synced_data)
 
     # cleanup
@@ -93,7 +94,8 @@ def test_filepath_class(table=Filepath(), store="repo"):
     managed_file.parent.mkdir(parents=True, exist_ok=True)
     data = os.urandom(3000)
     managed_file.write_bytes(data)
-    contents = managed_file.read_bytes()
+    with open(managed_file, 'rb') as f:
+        contents = f.read()
     assert_equal(data, contents)
 
     # upload file into shared repo
@@ -108,7 +110,8 @@ def test_filepath_class(table=Filepath(), store="repo"):
     assert_equal(filepath, managed_file)
 
     # verify original contents
-    contents = managed_file.read_bytes()
+    with open(managed_file, 'rb') as f:
+        contents = f.read()
     assert_equal(data, contents)
 
     # delete from table

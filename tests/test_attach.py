@@ -28,8 +28,10 @@ def test_attach_attributes():
     assert_not_equal(path1[0], path2[0])
     assert_not_equal(path1[0], path1[1])
     assert_equal(path1[0].parent, download_folder)
-    check1 = path1[-1].read_bytes()
-    check2 = path2[-1].read_bytes()
+    with open(path1[-1], 'rb') as f:
+        check1 = f.read()
+    with open(path2[-1], 'rb') as f:
+        check2 = f.read()
     assert_equal(data1, check1)
     assert_equal(data2, check2)
 
