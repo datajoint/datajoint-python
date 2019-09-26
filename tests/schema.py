@@ -296,4 +296,29 @@ class IndexRich(dj.Manual):
     index (first_date, value)
     """
 
+#  Schema for issue 656
+@schema
+class ThingA(dj.Manual):
+    definition = """
+    a: int
+    """
+
+
+@schema
+class ThingB(dj.Manual):
+    definition = """
+    b1: int
+    b2: int
+    ---
+    b3: int
+    """
+
+
+@schema
+class ThingC(dj.Manual):
+    definition = """
+    -> ThingA
+    ---
+    -> [unique, nullable] ThingB
+    """
 
