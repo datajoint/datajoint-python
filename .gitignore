@@ -19,7 +19,6 @@ build/
 ./tests/dj-store/*
 *.log
 *.env
-LNX-docker-compose.yml
+raphael-docker-compose.yml
 notebooks/*
-test.dockerfile
 __main__.py
