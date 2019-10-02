@@ -37,7 +37,6 @@ services:
         pip install --user .;
         pip freeze | grep datajoint;
         nosetests -vsw tests --with-coverage --cover-package=datajoint;
-        coveralls;
         # jupyter notebook;
        "
     # ports:

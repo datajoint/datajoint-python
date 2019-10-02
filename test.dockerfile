@@ -5,4 +5,4 @@ FROM datajoint/pydev:${PY_VER}-alpine${ALPINE_VER}
 ENV PYTHON_USER dja
 RUN \
     /startup $(id -u) $(id -g) && \
-    pip install --user nose nose-cov ptvsd python-coveralls
+    pip install --user nose nose-cov ptvsd
