@@ -1,4 +1,4 @@
-version: '2.4'
+version: '2.2'
 x-net: &net
   networks:
       - main
@@ -42,7 +42,7 @@ services:
        "
     # ports:
     #   - "8888:8888"
-    user: 1000:1000
+    user: 2000:2000
     volumes:
       - .:/src
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
