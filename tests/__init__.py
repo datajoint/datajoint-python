@@ -112,21 +112,23 @@ def setup_package():
     dj.config['safemode'] = False
 
     # Add old MySQL
-    source = os.path.dirname(os.path.realpath(__file__)) + \
-        "/external-legacy-data"
+    source = Path(
+        os.path.dirname(os.path.realpath(__file__)),
+        'external-legacy-data')
     db_name = "djtest_blob_migrate"
     db_file = "v0_11.sql"
     conn_root.query("""
         CREATE DATABASE IF NOT EXISTS {};
         """.format(db_name))
 
-    statements = parse_sql('{}/{}'.format(source, db_file))
+    statements = parse_sql(Path(source,db_file))
     for s in statements:
         conn_root.query(s)
 
     # Add old S3
-    source = os.path.dirname(os.path.realpath(__file__)) + \
-        "/external-legacy-data/s3"
+    source = Path(
+        os.path.dirname(os.path.realpath(__file__)),
+        'external-legacy-data','s3')
     bucket = "migrate-test"
     region = "us-east-1"
     try:
@@ -138,10 +140,9 @@ def setup_package():
     for path in pathlist:
         if os.path.isfile(str(path)) and ".sql" not in str(path):
             minioClient.fput_object(
-                    bucket, os.path.relpath(
-                        str(path),
-                        '{}/{}'.format(source, bucket)
-                        ), str(path))
+                    bucket, str(Path(
+                        os.path.relpath(path,Path(source,bucket)))
+                                .as_posix()), str(path))
     # Add S3
     try:
         minioClient.make_bucket("datajoint-test", location=region)
@@ -151,9 +152,9 @@ def setup_package():
     # Add old File Content
     try:
         shutil.copytree(
-                os.path.dirname(os.path.realpath(__file__)) +
-                "/external-legacy-data/file/temp",
-                os.path.expanduser('~/temp'))
+                Path(os.path.dirname(os.path.realpath(__file__)),
+                'external-legacy-data','file','temp'),
+                Path(os.path.expanduser('~'),'temp'))
     except FileExistsError:
         pass
 
@@ -189,4 +190,4 @@ def teardown_package():
     minioClient.remove_bucket(bucket)
 
     # Remove old File Content
-    shutil.rmtree(os.path.expanduser('~/temp'))
+    shutil.rmtree(Path(os.path.expanduser('~'),'temp'))
