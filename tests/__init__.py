@@ -172,7 +172,8 @@ def teardown_package():
     for db in cur.fetchall():
         conn.query('DROP DATABASE `{}`'.format(db[0]))
     conn.query('SET FOREIGN_KEY_CHECKS=1')
-    remove("dj_local_conf.json")
+    if os.path.exists("dj_local_conf.json"):
+        remove("dj_local_conf.json")
 
     # Remove old S3
     bucket = "migrate-test"
