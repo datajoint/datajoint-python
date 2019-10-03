@@ -36,7 +36,7 @@ services:
        "
     # ports:
     #   - "8888:8888"
-    user: 2000:2000
+    user: ${UID}:${GID}
     volumes:
       - .:/src
       - /tmp/.X11-unix:/tmp/.X11-unix:rw

@@ -4,6 +4,8 @@ env:
     - MINIO_VER="RELEASE.2019-09-26T19-42-35Z"
     - ALPINE_VER="3.10"
     - COMPOSE_HTTP_TIMEOUT="300"
+    - UID="2000"
+    - GID="2000"
 services: 
 - docker
 main: &main
