@@ -5,7 +5,6 @@ from datajoint.jobs import ERROR_MESSAGE_LENGTH, TRUNCATION_APPENDIX
 import random
 import string
 
-
 subjects = schema.Subject()
 
 
@@ -45,7 +44,6 @@ def test_reserve_job():
     assert_false(schema.schema.jobs,
                  'failed to clear error jobs')
 
-
 def test_restrictions():
     # clear out jobs table
     jobs = schema.schema.jobs
@@ -62,7 +60,6 @@ def test_restrictions():
                 'There should be only one entries with error status in table a')
     jobs.delete()
 
-
 def test_sigint():
     # clear out job table
     schema.schema.jobs.delete()
@@ -76,7 +73,6 @@ def test_sigint():
     assert_equals(error_message, 'KeyboardInterrupt')
     schema.schema.jobs.delete()
 
-
 def test_sigterm():
     # clear out job table
     schema.schema.jobs.delete()
@@ -89,7 +85,6 @@ def test_sigterm():
     assert_equals(status, 'error')
     assert_equals(error_message, 'SystemExit: SIGTERM received')
     schema.schema.jobs.delete()
-
 
 def test_long_error_message():
     # clear out jobs table
