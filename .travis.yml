@@ -1,30 +1,73 @@
 sudo: required
-dist: xenial
-language: python
 env:
-  - DJ_TEST_HOST="127.0.0.1" DJ_TEST_USER="datajoint" DJ_TEST_PASSWORD="datajoint" DJ_HOST="127.0.0.1" DJ_USER="root" DJ_PASS="" S3_ACCESS_KEY="datajoint" S3_SECRET_KEY="datajoint"
-python:
-  - "3.5"
-  - "3.6"
-  - "3.7"
-services:
-  - mysql
-  - docker
-before_install:
-  - sudo apt-get -qq update
-  - docker pull minio/minio
-  - docker run -d -p 9000:9000 -e "MINIO_ACCESS_KEY=$S3_ACCESS_KEY" -e "MINIO_SECRET_KEY=$S3_SECRET_KEY" minio/minio server /data
-  - sleep 120
-  - sudo apt-get install -y libblas-dev liblapack-dev libatlas-dev gfortran
-  - sudo apt-get install -y graphviz graphviz-dev pkg-config
-  - mysql --version 
-install:
-  - travis_wait 30 pip install -r requirements.txt
-  - travis_wait 30 pip install -r test_requirements.txt
-  - pip install nose nose-cov python-coveralls
-# command to run tests
-script:
-  - nosetests -vv --with-coverage --cover-package=datajoint
-
-after_success:
-  - coveralls
+  global:
+    - MINIO_VER="RELEASE.2019-09-26T19-42-35Z"
+    - ALPINE_VER="3.10"
+    - COMPOSE_HTTP_TIMEOUT="300"
+    - UID="2000"
+    - GID="2000"
+services: 
+- docker
+main: &main
+      stage: Alpine
+      os: linux
+      language: shell
+      script:
+        - docker-compose -f LNX-docker-compose.yml up --build --exit-code-from dj
+jobs:
+  include:
+    - <<: *main
+      env:
+      - PY_VER: "3.8-rc"
+      - MYSQL_VER: "5.7"
+    - <<: *main
+      env:
+      - PY_VER: "3.7"
+      - MYSQL_VER: "5.7"
+    - <<: *main
+      env:
+      - PY_VER: "3.6"
+      - MYSQL_VER: "5.7"
+    - <<: *main
+      env:
+      - PY_VER: "3.5"
+      - MYSQL_VER: "5.7"
+    - <<: *main
+      env:
+      - PY_VER: "3.8-rc"
+      - MYSQL_VER: "8.0"
+    - <<: *main
+      env:
+      - PY_VER: "3.7"
+      - MYSQL_VER: "8.0"
+    - <<: *main
+      env:
+      - PY_VER: "3.6"
+      - MYSQL_VER: "8.0"
+    - <<: *main
+      env:
+      - PY_VER: "3.5"
+      - MYSQL_VER: "8.0"
+    - <<: *main
+      env:
+      - PY_VER: "3.8-rc"
+      - MYSQL_VER: "5.6"
+    - <<: *main
+      env:
+      - PY_VER: "3.7"
+      - MYSQL_VER: "5.6"
+    - <<: *main
+      env:
+      - PY_VER: "3.6"
+      - MYSQL_VER: "5.6"
+    - <<: *main
+      env:
+      - PY_VER: "3.5"
+      - MYSQL_VER: "5.6"
+    - stage: Coverage
+      os: linux
+      language: shell
+      script:
+        - sudo pip install python-coveralls
+        - coveralls
+>>>>>>> bff58baac8da58b43be95ba1c58174cb7721411f

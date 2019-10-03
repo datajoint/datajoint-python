@@ -1,0 +1,71 @@
+version: '2.2'
+x-net: &net
+  networks:
+      - main
+services:
+  dj:
+    <<: *net
+    image: datajoint/pydev:${PY_VER}-alpine${ALPINE_VER}
+    depends_on:
+      db:
+        condition: service_healthy 
+      minio:
+        condition: service_healthy 
+    environment:
+      - DJ_HOST=db
+      - DJ_USER=root
+      - DJ_PASS=simple
+      - DJ_TEST_HOST=db
+      - DJ_TEST_USER=datajoint
+      - DJ_TEST_PASSWORD=datajoint
+      - S3_ENDPOINT=minio:9000
+      - S3_ACCESS_KEY=datajoint
+      - S3_SECRET_KEY=datajoint
+      - S3_BUCKET=datajoint-test
+      - PYTHON_USER=dja
+      - JUPYTER_PASSWORD=datajoint
+      - DISPLAY
+    working_dir: /src
+    command: >
+      /bin/sh -c
+       "
+        pip install --user nose nose-cov .;
+        pip freeze | grep datajoint;
+        nosetests -vsw tests --with-coverage --cover-package=datajoint;
+        # jupyter notebook;
+       "
+    # ports:
+    #   - "8888:8888"
+    user: ${UID}:${GID}
+    volumes:
+      - .:/src
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      # - ./notebooks:/home/dja/notebooks
+  db:
+    <<: *net
+    image: datajoint/mysql:$MYSQL_VER
+    environment:
+      - MYSQL_ROOT_PASSWORD=simple
+    # ports:
+    #   - "3306:3306"
+    # volumes:
+    #   - ./mysql/data:/var/lib/mysql
+  minio:
+    <<: *net
+    environment:
+      - MINIO_ACCESS_KEY=datajoint
+      - MINIO_SECRET_KEY=datajoint
+    image: minio/minio:$MINIO_VER
+    # ports:
+    #   - "9000:9000"
+    # volumes:
+    #   - ./minio/config:/root/.minio
+    #   - ./minio/data:/data
+    command: server /data
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://minio:9000/minio/health/live"]
+      timeout: 5s
+      retries: 60
+      interval: 1s
+networks:
+  main:
