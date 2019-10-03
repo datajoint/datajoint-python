@@ -5,12 +5,7 @@ x-net: &net
 services:
   dj:
     <<: *net
-    build:
-      context: .
-      dockerfile: test.dockerfile
-      args:
-        - PY_VER
-        - ALPINE_VER
+    image: datajoint/pydev:${PY_VER}-alpine${ALPINE_VER}
     depends_on:
       db:
         condition: service_healthy 
@@ -34,7 +29,7 @@ services:
     command: >
       /bin/sh -c
        "
-        pip install --user .;
+        pip install --user nose nose-cov .;
         pip freeze | grep datajoint;
         nosetests -vsw tests --with-coverage --cover-package=datajoint;
         # jupyter notebook;
