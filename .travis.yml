@@ -17,35 +17,35 @@ jobs:
     - <<: *main
       env:
       - PY_VER: "3.8-rc"
-      - MYSQL_VER: "8.0"
+      - MYSQL_VER: "5.7"
     - <<: *main
       env:
       - PY_VER: "3.7"
-      - MYSQL_VER: "8.0"
+      - MYSQL_VER: "5.7"
     - <<: *main
       env:
       - PY_VER: "3.6"
-      - MYSQL_VER: "8.0"
+      - MYSQL_VER: "5.7"
     - <<: *main
       env:
       - PY_VER: "3.5"
-      - MYSQL_VER: "8.0"
+      - MYSQL_VER: "5.7"
     - <<: *main
       env:
       - PY_VER: "3.8-rc"
-      - MYSQL_VER: "5.7"
+      - MYSQL_VER: "8.0"
     - <<: *main
       env:
       - PY_VER: "3.7"
-      - MYSQL_VER: "5.7"
+      - MYSQL_VER: "8.0"
     - <<: *main
       env:
       - PY_VER: "3.6"
-      - MYSQL_VER: "5.7"
+      - MYSQL_VER: "8.0"
     - <<: *main
       env:
       - PY_VER: "3.5"
-      - MYSQL_VER: "5.7"
+      - MYSQL_VER: "8.0"
     - <<: *main
       env:
       - PY_VER: "3.8-rc"
@@ -65,6 +65,6 @@ jobs:
     - stage: Coverage
       os: linux
       language: shell
-      after_success:
+      script:
         - sudo pip install python-coveralls
         - coveralls
