@@ -9,8 +9,8 @@ services:
     depends_on:
       db:
         condition: service_healthy 
-      minio:
-        condition: service_healthy 
+      # minio:
+      #   condition: service_healthy 
     environment:
       - DJ_HOST=db
       - DJ_USER=root
@@ -62,10 +62,10 @@ services:
     #   - ./minio/config:/root/.minio
     #   - ./minio/data:/data
     command: server /data
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://minio:9000/minio/health/live"]
-      timeout: 5s
-      retries: 60
-      interval: 1s
+    # healthcheck:
+    #   test: ["CMD", "curl", "--fail", "http://minio:9000/minio/health/live"]
+    #   timeout: 5s
+    #   retries: 60
+    #   interval: 1s
 networks:
   main:

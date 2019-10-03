@@ -66,5 +66,5 @@ jobs:
       os: linux
       language: shell
       after_success:
-        - pip install python-coveralls
+        - sudo pip install python-coveralls
         - coveralls
