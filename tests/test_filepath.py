@@ -19,7 +19,7 @@ def test_path_match(store="repo"):
     relpath = 'path/to/films'
     managed_file = Path(stage_path, relpath, 'vid.mov')
     managed_file.parent.mkdir(parents=True, exist_ok=True)
-    open(managed_file, 'a').close()
+    open(str(managed_file), 'a').close()
 
     # put the file
     uuid = ext.upload_filepath(managed_file)

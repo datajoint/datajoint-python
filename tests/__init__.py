@@ -191,4 +191,4 @@ def teardown_package():
     minioClient.remove_bucket(bucket)
 
     # Remove old File Content
-    shutil.rmtree(Path(os.path.expanduser('~'),'temp'))
+    shutil.rmtree(str(Path(os.path.expanduser('~'),'temp')))
