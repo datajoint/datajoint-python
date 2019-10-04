@@ -152,9 +152,9 @@ def setup_package():
     # Add old File Content
     try:
         shutil.copytree(
-            Path(Path(__file__).resolve().parent,
+            str(Path(Path(__file__).resolve().parent,
             'external-legacy-data','file','temp'),
-            Path(os.path.expanduser('~'),'temp'))
+            Path(os.path.expanduser('~'),'temp')))
     except FileExistsError:
         pass
 
