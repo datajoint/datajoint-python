@@ -153,8 +153,8 @@ def setup_package():
     try:
         shutil.copytree(
             str(Path(Path(__file__).resolve().parent,
-            'external-legacy-data','file','temp'),
-            Path(os.path.expanduser('~'),'temp')))
+            'external-legacy-data','file','temp')),
+            str(Path(os.path.expanduser('~'),'temp')))
     except FileExistsError:
         pass
 
