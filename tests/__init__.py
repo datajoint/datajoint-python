@@ -113,7 +113,7 @@ def setup_package():
 
     # Add old MySQL
     source = Path(
-        os.path.dirname(os.path.realpath(__file__)),
+        Path(__file__).resolve().parent,
         'external-legacy-data')
     db_name = "djtest_blob_migrate"
     db_file = "v0_11.sql"
@@ -127,7 +127,7 @@ def setup_package():
 
     # Add old S3
     source = Path(
-        os.path.dirname(os.path.realpath(__file__)),
+        Path(__file__).resolve().parent,
         'external-legacy-data','s3')
     bucket = "migrate-test"
     region = "us-east-1"
@@ -152,9 +152,9 @@ def setup_package():
     # Add old File Content
     try:
         shutil.copytree(
-                Path(os.path.dirname(os.path.realpath(__file__)),
-                'external-legacy-data','file','temp'),
-                Path(os.path.expanduser('~'),'temp'))
+            Path(Path(__file__).resolve().parent,
+            'external-legacy-data','file','temp'),
+            Path(os.path.expanduser('~'),'temp'))
     except FileExistsError:
         pass
 

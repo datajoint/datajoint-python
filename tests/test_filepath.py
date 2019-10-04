@@ -10,6 +10,36 @@ from .schema_external import schema, Filepath, FilepathS3, stores_config
 def setUp(self):
     dj.config['stores'] = stores_config
 
+def test_path_match(store="repo"):
+    """ test file path matches and empty file"""
+    ext = schema.external[store]
+    stage_path = dj.config['stores'][store]['stage']
+
+    # create a mock file
+    relpath = 'path/to/films'
+    managed_file = Path(stage_path, relpath, 'vid.mov')
+    managed_file.parent.mkdir(parents=True, exist_ok=True)
+    open(managed_file, 'a').close()
+
+    # put the file
+    uuid = ext.upload_filepath(managed_file)
+
+    #remove
+    managed_file.unlink()
+    assert_false(managed_file.exists())
+
+    #check filepath
+    assert_equal(
+        (ext & {'hash': uuid}).fetch1('filepath'),
+        str(managed_file.relative_to(stage_path).as_posix()))
+    
+    # # Download the file and check its contents.
+    restored_path, checksum = ext.download_filepath(uuid)
+    assert_equal(restored_path, managed_file)
+    assert_equal(checksum, dj.hash.uuid_from_file(managed_file))
+
+    # cleanup
+    ext.delete(delete_external_files=True)
 
 def test_filepath(store="repo"):
     """ test file management """
