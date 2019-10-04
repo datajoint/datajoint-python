@@ -141,7 +141,7 @@ def setup_package():
         if os.path.isfile(str(path)) and ".sql" not in str(path):
             minioClient.fput_object(
                     bucket, str(Path(
-                        os.path.relpath(path,Path(source,bucket)))
+                        os.path.relpath(str(path),str(Path(source,bucket))))
                                 .as_posix()), str(path))
     # Add S3
     try:
