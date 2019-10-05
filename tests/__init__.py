@@ -113,7 +113,7 @@ def setup_package():
 
     # Add old MySQL
     source = Path(
-        os.path.dirname(os.path.realpath(__file__)),
+        Path(__file__).resolve().parent,
         'external-legacy-data')
     db_name = "djtest_blob_migrate"
     db_file = "v0_11.sql"
@@ -127,7 +127,7 @@ def setup_package():
 
     # Add old S3
     source = Path(
-        os.path.dirname(os.path.realpath(__file__)),
+        Path(__file__).resolve().parent,
         'external-legacy-data','s3')
     bucket = "migrate-test"
     region = "us-east-1"
@@ -141,7 +141,7 @@ def setup_package():
         if os.path.isfile(str(path)) and ".sql" not in str(path):
             minioClient.fput_object(
                     bucket, str(Path(
-                        os.path.relpath(path,Path(source,bucket)))
+                        os.path.relpath(str(path),str(Path(source,bucket))))
                                 .as_posix()), str(path))
     # Add S3
     try:
@@ -152,9 +152,9 @@ def setup_package():
     # Add old File Content
     try:
         shutil.copytree(
-                Path(os.path.dirname(os.path.realpath(__file__)),
-                'external-legacy-data','file','temp'),
-                Path(os.path.expanduser('~'),'temp'))
+            str(Path(Path(__file__).resolve().parent,
+            'external-legacy-data','file','temp')),
+            str(Path(os.path.expanduser('~'),'temp')))
     except FileExistsError:
         pass
 
@@ -191,4 +191,4 @@ def teardown_package():
     minioClient.remove_bucket(bucket)
 
     # Remove old File Content
-    shutil.rmtree(Path(os.path.expanduser('~'),'temp'))
+    shutil.rmtree(str(Path(os.path.expanduser('~'),'temp')))
