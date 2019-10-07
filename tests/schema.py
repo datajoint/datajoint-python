@@ -264,7 +264,7 @@ class SigIntTable(dj.Computed):
     """
 
     def _make_tuples(self, key):
-        os.kill(os.getpid(), signal.SIGINT)
+        raise KeyboardInterrupt
 
 
 @schema
@@ -274,7 +274,7 @@ class SigTermTable(dj.Computed):
     """
 
     def make(self, key):
-        os.kill(os.getpid(), signal.SIGTERM)
+        raise SystemExit('SIGTERM received')
 
 
 @schema
