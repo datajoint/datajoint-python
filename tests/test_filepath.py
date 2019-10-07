@@ -91,6 +91,7 @@ def test_duplicate_error_s3():
 
 
 def test_filepath_class(table=Filepath(), store="repo"):
+    dj.errors._switch_filepath_types(True)
     stage_path = dj.config['stores'][store]['stage']
     # create a mock file
     relative_path = 'one/two/three'
@@ -125,6 +126,7 @@ def test_filepath_class(table=Filepath(), store="repo"):
 
     # delete from external table
     table.external[store].delete(delete_external_files=True)
+    dj.errors._switch_filepath_types(False)
 
 
 def test_filepath_class_again():
@@ -143,6 +145,9 @@ def test_filepath_class_s3_again():
 
 def test_filepath_cleanup(table=Filepath(), store="repo"):
     """test deletion of filepath entries from external table """
+
+    dj.errors._switch_filepath_types(True)
+
     stage_path = dj.config['stores'][store]['stage']
     n = 20
     contents = os.urandom(345)
@@ -166,6 +171,9 @@ def test_filepath_cleanup(table=Filepath(), store="repo"):
 
     ext.delete(delete_external_files=True)  # delete unused entries
     assert_true(0 < len(ext) <= n - m)
+
+    dj.errors._switch_filepath_types(False)
+
 
 
 def test_filepath_cleanup_s3():

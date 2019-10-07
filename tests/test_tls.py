@@ -7,13 +7,11 @@ from pymysql.err import OperationalError
 
 class TestTLS:
 
-    if False:
-        # This will be re-enabled once MySQL is set up correctly in Travis CI
-        @staticmethod
-        def test_secure_connection():
-            result = dj.conn(reset=True, **CONN_INFO).query(
-                    "SHOW STATUS LIKE 'Ssl_cipher';").fetchone()[1]
-            assert_true(len(result) > 0)
+    @staticmethod
+    def test_secure_connection():
+        result = dj.conn(reset=True, **CONN_INFO).query(
+                "SHOW STATUS LIKE 'Ssl_cipher';").fetchone()[1]
+        assert_true(len(result) > 0)
 
     @staticmethod
     def test_insecure_connection():

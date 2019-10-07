@@ -5,7 +5,7 @@ declare the corresponding mysql tables.
 import re
 import pyparsing as pp
 import logging
-from .errors import DataJointError
+from .errors import DataJointError, _support_filepath_types, FILEPATH_FEATURE_SWITCH
 from .attribute_adapter import get_adapter
 
 from .utils import OrderedDict
@@ -395,6 +395,12 @@ def substitute_special_type(match, category, foreign_key_sql, context):
     elif category == 'INTERNAL_ATTACH':
         match['type'] = 'LONGBLOB'
     elif category in EXTERNAL_TYPES:
+        if category == 'FILEPATH' and not _support_filepath_types():
+            raise DataJointError("""
+            The filepath data type is disabled until complete validation. 
+            To turn it on as experimental feature, set the environment variable 
+            {env} = TRUE or upgrade datajoint.
+            """.format(env=FILEPATH_FEATURE_SWITCH))
         match['store'] = match['type'].split('@', 1)[1]
         match['type'] = UUID_DATA_TYPE
         foreign_key_sql.append(
