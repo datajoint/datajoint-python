@@ -22,7 +22,7 @@
 * Support for ordering by "KEY" in `fetch` (#541) PR #534
 * Improved external storage - a migration script needed from version 0.11  (#467, #475, #480, #497) PR #532
 * Increase default display rows (#523) PR #526
-* Bugfixes (#521, #205, #279, #477, #570, #581, #597, #596, #618, #633, #643, #644, #647, #656)
+* Bugfixes (#521, #205, #279, #477, #570, #581, #597, #596, #618, #633, #643, #644, #647, #648, #650, #656)
 * Minor improvements (#538)
 
 ### 0.11.3 -- Jul 26, 2019
