@@ -1,7 +1,7 @@
 """General-purpose utilities"""
 
 import re
-import os
+from pathlib import Path
 import shutil
 import sys
 from .errors import DataJointError
@@ -72,42 +72,46 @@ def from_camel_case(s):
     return re.sub(r'(\B[A-Z])|(\b[A-Z])', convert, s)
 
 
-def safe_write(filename, blob):
+def safe_write(filepath, blob):
     """
     A two-step write.
     :param filename: full path
     :param blob: binary data
     """
-    if not os.path.isfile(filename):
-        os.makedirs(os.path.dirname(filename), exist_ok=True)
-        temp_file = filename + '.saving'
-        with open(temp_file, 'bw') as f:
-            f.write(blob)
-        os.rename(temp_file, filename)
+    filepath = Path(filepath)
+    if not filepath.is_file():
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        temp_file = filepath.with_suffix(filepath.suffix + '.saving')
+        temp_file.write_bytes(blob)
+        temp_file.rename(filepath)
 
 
 def safe_copy(src, dest, overwrite=False):
     """
     Copy the contents of src file into dest file as a two-step process. Skip if dest exists already
     """
-    if overwrite or not os.path.isfile(dest):
-        os.makedirs(os.path.dirname(dest), exist_ok=True)
-        temp_file = dest + '.copying'
-        shutil.copyfile(src, temp_file)
-        os.rename(temp_file, dest)
+    src, dest = Path(src), Path(dest)
+    if not (dest.exists() and src.samefile(dest)) and (overwrite or not dest.is_file()):
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        temp_file = dest.with_suffix(dest.suffix + '.copying')
+        shutil.copyfile(str(src), str(temp_file))
+        temp_file.rename(dest)
 
 
 def parse_sql(filepath):
-    DELIMITER = ';'
+    """
+    yield SQL statements from an SQL file
+    """
+    delimiter = ';'
     statement = []
-    with open(filepath, 'rt') as f:
+    with Path(filepath).open('rt') as f:
         for line in f:
             line = line.strip()
             if not line.startswith('--') and len(line) > 1:
-                if line.startswith('DELIMITER'):
-                    DELIMITER = line.split()[1]
+                if line.startswith('delimiter'):
+                    delimiter = line.split()[1]
                 else:
                     statement.append(line)
-                    if line.endswith(DELIMITER):
+                    if line.endswith(delimiter):
                         yield ' '.join(statement)
                         statement = []

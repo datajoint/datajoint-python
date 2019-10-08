@@ -47,7 +47,6 @@ def translate_query_error(client_error, query):
         return errors.MissingTableError(client_error.args[1], query)
     if isinstance(client_error, client.err.InternalError) and client_error.args[0] == 1364:
         return errors.MissingAttributeError(*client_error.args[1:])
-    raise client_error
 
 
 logger = logging.getLogger(__name__)
@@ -187,7 +186,7 @@ class Connection:
                     warnings.simplefilter("ignore")
                 cursor.execute(query, args)
         except client_errors as err:
-            raise translate_query_error(err, query)
+            raise translate_query_error(err, query) from None
 
     def query(self, query, args=(), *, as_dict=False, suppress_warnings=True, reconnect=None):
         """

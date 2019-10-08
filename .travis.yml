@@ -6,6 +6,8 @@ env:
     - COMPOSE_HTTP_TIMEOUT="300"
     - UID="2000"
     - GID="2000"
+    - COVERALLS_SERVICE_NAME="travis-ci"
+    - COVERALLS_REPO_TOKEN="fd0BoXG46TPReEem0uMy7BJO5j0w1MQiY"
 services: 
 - docker
 main: &main
@@ -64,9 +66,3 @@ jobs:
       env:
       - PY_VER: "3.5"
       - MYSQL_VER: "5.6"
-    - stage: Coverage
-      os: linux
-      language: shell
-      script:
-        - sudo pip install python-coveralls
-        - coveralls

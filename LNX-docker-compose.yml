@@ -25,13 +25,16 @@ services:
       - PYTHON_USER=dja
       - JUPYTER_PASSWORD=datajoint
       - DISPLAY
+      - COVERALLS_SERVICE_NAME
+      - COVERALLS_REPO_TOKEN
     working_dir: /src
     command: >
       /bin/sh -c
        "
-        pip install --user nose nose-cov .;
+        pip install --user nose nose-cov coveralls .;
         pip freeze | grep datajoint;
         nosetests -vsw tests --with-coverage --cover-package=datajoint;
+        coveralls;
         # jupyter notebook;
        "
     # ports:
