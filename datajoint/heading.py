@@ -1,16 +1,21 @@
 import numpy as np
-from collections import namedtuple, OrderedDict, defaultdict
+from collections import namedtuple, defaultdict
 from itertools import chain
 import re
 import logging
-from .errors import DataJointError
+from .errors import DataJointError, _support_filepath_types, FILEPATH_FEATURE_SWITCH
+from .declare import UUID_DATA_TYPE, SPECIAL_TYPES, TYPE_PATTERN, EXTERNAL_TYPES, NATIVE_TYPES
+from .utils import OrderedDict
+from .attribute_adapter import get_adapter, AttributeAdapter
+
 
 logger = logging.getLogger(__name__)
 
 default_attribute_properties = dict(    # these default values are set in computed attributes
     name=None, type='expression', in_key=False, nullable=False, default=None, comment='calculated attribute',
-    autoincrement=False, numeric=None, string=None, is_blob=False, is_external=False, sql_expression=None,
-    database=None, dtype=object)
+    autoincrement=False, numeric=None, string=None, uuid=False, is_blob=False, is_attachment=False, is_filepath=False,
+    is_external=False, adapter=None,
+    store=None, unsupported=False, sql_expression=None, database=None, dtype=object)
 
 
 class Attribute(namedtuple('_Attribute', default_attribute_properties)):
@@ -22,16 +27,29 @@ class Attribute(namedtuple('_Attribute', default_attribute_properties)):
         return OrderedDict((name, self[i]) for i, name in enumerate(self._fields))
 
     @property
+    def sql_type(self):
+        """
+        :return: datatype (as string) in database. In most cases, it is the same as self.type
+        """
+        return UUID_DATA_TYPE if self.uuid else self.type
+
+    @property
+    def sql_comment(self):
+        """
+        :return: full comment for the SQL declaration. Includes custom type specification
+        """
+        return (':uuid:' if self.uuid else '') + self.comment
+
+    @property
     def sql(self):
         """
         Convert primary key attribute tuple into its SQL CREATE TABLE clause.
         Default values are not reflected.
         This is used for declaring foreign keys in referencing tables
-        :return: SQL code
+        :return: SQL code for attribute declaration
         """
-        assert self.in_key and not self.nullable   # primary key attributes are never nullable
         return '`{name}` {type} NOT NULL COMMENT "{comment}"'.format(
-            name=self.name, type=self.type, comment=self.comment)
+            name=self.name, type=self.sql_type, comment=self.sql_comment)
 
 
 class Heading:
@@ -66,7 +84,7 @@ class Heading:
         return [k for k, v in self.attributes.items() if v.in_key]
 
     @property
-    def dependent_attributes(self):
+    def secondary_attributes(self):
         return [k for k, v in self.attributes.items() if not v.in_key]
 
     @property
@@ -75,7 +93,7 @@ class Heading:
 
     @property
     def non_blobs(self):
-        return [k for k, v in self.attributes.items() if not v.is_blob]
+        return [k for k, v in self.attributes.items() if not v.is_blob and not v.is_attachment and not v.is_filepath]
 
     @property
     def expressions(self):
@@ -129,7 +147,7 @@ class Heading:
     def __iter__(self):
         return iter(self.attributes)
 
-    def init_from_database(self, conn, database, table_name):
+    def init_from_database(self, conn, database, table_name, context):
         """
         initialize heading from a database table.  The table must exist already.
         """
@@ -185,21 +203,69 @@ class Heading:
 
         # additional attribute properties
         for attr in attributes:
-            # process external attributes
-            split_comment = attr['comment'].split(':')
-            attr['is_external'] = len(split_comment) >= 3 and split_comment[1].startswith('external')
-            if attr['is_external']:
-                attr['comment'] = ':'.join(split_comment[2:])
-                attr['type'] = split_comment[1]
 
-            attr['nullable'] = (attr['nullable'] == 'YES')
-            attr['in_key'] = (attr['in_key'] == 'PRI')
-            attr['autoincrement'] = bool(re.search(r'auto_increment', attr['Extra'], flags=re.IGNORECASE))
-            attr['type'] = re.sub(r'int\(\d+\)', 'int', attr['type'], count=1)   # strip size off integers
-            attr['numeric'] = bool(re.match(r'(tiny|small|medium|big)?int|decimal|double|float', attr['type']))
-            attr['string'] = bool(re.match(r'(var)?char|enum|date|year|time|timestamp', attr['type']))
-            attr['is_blob'] = attr['is_external'] or bool(re.match(r'(tiny|medium|long)?blob', attr['type']))
-            attr['database'] = database
+            attr.update(
+                in_key=(attr['in_key'] == 'PRI'),
+                database=database,
+                nullable=attr['nullable'] == 'YES',
+                autoincrement=bool(re.search(r'auto_increment', attr['Extra'], flags=re.I)),
+                numeric=any(TYPE_PATTERN[t].match(attr['type']) for t in ('DECIMAL', 'INTEGER', 'FLOAT')),
+                string=any(TYPE_PATTERN[t].match(attr['type']) for t in ('ENUM', 'TEMPORAL', 'STRING')),
+                is_blob=bool(TYPE_PATTERN['INTERNAL_BLOB'].match(attr['type'])),
+                uuid=False, is_attachment=False, is_filepath=False, adapter=None,
+                store=None, is_external=False, sql_expression=None)
+
+            if any(TYPE_PATTERN[t].match(attr['type']) for t in ('INTEGER', 'FLOAT')):
+                attr['type'] = re.sub(r'\(\d+\)', '', attr['type'], count=1)  # strip size off integers and floats
+            attr['unsupported'] = not any((attr['is_blob'], attr['numeric'], attr['numeric']))
+            attr.pop('Extra')
+
+            # process custom DataJoint types
+            special = re.match(r':(?P<type>[^:]+):(?P<comment>.*)', attr['comment'])
+            if special:
+                special = special.groupdict()
+                attr.update(special)
+            # process adapted attribute types
+            if special and TYPE_PATTERN['ADAPTED'].match(attr['type']):
+                assert context is not None, 'Declaration context is not set'
+                adapter_name = special['type']
+                try:
+                    attr.update(adapter=get_adapter(context, adapter_name))
+                except DataJointError:
+                    # if no adapter, then delay the error until the first invocation
+                    attr.update(adapter=AttributeAdapter())
+                else:
+                    attr.update(type=attr['adapter'].attribute_type)
+                    if not any(r.match(attr['type']) for r in TYPE_PATTERN.values()):
+                        raise DataJointError(
+                            "Invalid attribute type '{type}' in adapter object <{adapter_name}>.".format(
+                                adapter_name=adapter_name, **attr))
+                    special = not any(TYPE_PATTERN[c].match(attr['type']) for c in NATIVE_TYPES)
+
+            if special:
+                try:
+                    category = next(c for c in SPECIAL_TYPES if TYPE_PATTERN[c].match(attr['type']))
+                except StopIteration:
+                    if attr['type'].startswith('external'):
+                        raise DataJointError('Legacy datatype `{type}`.'.format(**attr)) from None
+                    raise DataJointError('Unknown attribute type `{type}`'.format(**attr)) from None
+                if category == 'FILEPATH' and not _support_filepath_types():
+                    raise DataJointError("""
+                        The filepath data type is disabled until complete validation. 
+                        To turn it on as experimental feature, set the environment variable 
+                        {env} = TRUE or upgrade datajoint.
+                        """.format(env=FILEPATH_FEATURE_SWITCH))
+                attr.update(
+                    unsupported=False,
+                    is_attachment=category in ('INTERNAL_ATTACH', 'EXTERNAL_ATTACH'),
+                    is_filepath=category == 'FILEPATH',
+                    is_blob=category in ('INTERNAL_BLOB', 'EXTERNAL_BLOB'),  # INTERNAL_BLOB is not a custom type but is included for completeness
+                    uuid=category == 'UUID',
+                    is_external=category in EXTERNAL_TYPES,
+                    store=attr['type'].split('@')[1] if category in EXTERNAL_TYPES else None)
+
+            if attr['in_key'] and any((attr['is_blob'], attr['is_attachment'], attr['is_filepath'])):
+                raise DataJointError('Blob, attachment, or filepath attributes are not allowed in the primary key')
 
             if attr['string'] and attr['default'] is not None and attr['default'] not in sql_literals:
                 attr['default'] = '"%s"' % attr['default']
@@ -207,25 +273,23 @@ class Heading:
             if attr['nullable']:   # nullable fields always default to null
                 attr['default'] = 'null'
 
-            attr['sql_expression'] = None
-            if not (attr['numeric'] or attr['string'] or attr['is_blob']):
-                raise DataJointError('Unsupported field type {field} in `{database}`.`{table_name}`'.format(
-                    field=attr['type'], database=database, table_name=table_name))
-            attr.pop('Extra')
-
             # fill out dtype. All floats and non-nullable integers are turned into specific dtypes
             attr['dtype'] = object
             if attr['numeric']:
-                is_integer = bool(re.match(r'(tiny|small|medium|big)?int', attr['type']))
-                is_float = bool(re.match(r'(double|float)', attr['type']))
+                is_integer = TYPE_PATTERN['INTEGER'].match(attr['type'])
+                is_float = TYPE_PATTERN['FLOAT'].match(attr['type'])
                 if is_integer and not attr['nullable'] or is_float:
-                    is_unsigned = bool(re.match('\sunsigned', attr['type'], flags=re.IGNORECASE))
-                    t = attr['type']
-                    t = re.sub(r'\(.*\)', '', t)    # remove parentheses
+                    is_unsigned = bool(re.match('\sunsigned', attr['type'], flags=re.I))
+                    t = re.sub(r'\(.*\)', '', attr['type'])    # remove parentheses
                     t = re.sub(r' unsigned$', '', t)   # remove unsigned
                     assert (t, is_unsigned) in numeric_types, 'dtype not found for type %s' % t
                     attr['dtype'] = numeric_types[(t, is_unsigned)]
-        self.attributes = OrderedDict([(q['name'], Attribute(**q)) for q in attributes])
+
+            if attr['adapter']:
+                # restore adapted type name
+                attr['type'] = adapter_name
+
+        self.attributes = OrderedDict(((q['name'], Attribute(**q)) for q in attributes))
 
         # Read and tabulate secondary indexes
         keys = defaultdict(dict)
@@ -276,8 +340,8 @@ class Heading:
         return Heading(
             [self.attributes[name].todict() for name in self.primary_key] +
             [other.attributes[name].todict() for name in other.primary_key if name not in self.primary_key] +
-            [self.attributes[name].todict() for name in self.dependent_attributes if name not in other.primary_key] +
-            [other.attributes[name].todict() for name in other.dependent_attributes if name not in self.primary_key])
+            [self.attributes[name].todict() for name in self.secondary_attributes if name not in other.primary_key] +
+            [other.attributes[name].todict() for name in other.secondary_attributes if name not in self.primary_key])
 
     def make_subquery_heading(self):
         """

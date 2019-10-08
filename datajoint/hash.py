@@ -1,5 +1,7 @@
 import hashlib
-import base64
+import uuid
+import io
+from pathlib import Path
 
 
 def key_hash(key):
@@ -12,32 +14,24 @@ def key_hash(key):
     return hashed.hexdigest()
 
 
-def to_ascii(byte_string):
+def uuid_from_stream(stream, *, init_string=""):
     """
-    :param byte_string: a binary string
-    :return:   web-safe 64-bit ASCII encoding of binary strings
+    :return: 16-byte digest of stream data
+    :stream: stream object or open file handle
+    :init_string: string to initialize the checksum
     """
-    return base64.b64encode(byte_string, b'-_').decode()
+    hashed = hashlib.md5(init_string.encode())
+    chunk = True
+    chunk_size = 1 << 14
+    while chunk:
+        chunk = stream.read(chunk_size)
+        hashed.update(chunk)
+    return uuid.UUID(bytes=hashed.digest())
 
 
-def long_hash(*buffers):
-    """
-    :param buffer: a binary buffer (e.g. serialized blob)
-    :return: 43-character base64 ASCII rendition SHA-256
-    """
-    hashed = hashlib.sha256()
-    for buffer in buffers:
-        hashed.update(buffer)
-    return to_ascii(hashed.digest())[0:43]
+def uuid_from_buffer(buffer=b"", *, init_string=""):
+    return uuid_from_stream(io.BytesIO(buffer), init_string=init_string)
 
 
-def short_hash(*buffers):
-    """
-    :param buffer: a binary buffer (e.g. serialized blob)
-    :return: the first 8 characters of base64 ASCII rendition SHA-1
-    """
-    hashed = hashlib.sha1()
-    for buffer in buffers:
-        hashed.update(buffer)
-    return to_ascii(hashed.digest())[:8]
-
+def uuid_from_file(filepath, *, init_string=""):
+    return uuid_from_stream(Path(filepath).open("rb"), init_string=init_string)

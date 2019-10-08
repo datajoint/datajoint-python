@@ -3,6 +3,7 @@ import logging
 import datetime
 import traceback
 import random
+import inspect
 from tqdm import tqdm
 from pymysql import OperationalError
 from .expression import QueryExpression, AndList, U
@@ -84,6 +85,11 @@ class AutoPopulate:
             raise DataJointError('Cannot call populate on a restricted table. '
                                  'Instead, pass conditions to populate() as arguments.')
         todo = self.key_source
+
+        # key_source is a QueryExpression subclass -- trigger instantiation
+        if inspect.isclass(todo) and issubclass(todo, QueryExpression):
+            todo = todo()
+
         if not isinstance(todo, QueryExpression):
             raise DataJointError('Invalid key_source value')
         # check if target lacks any attributes from the primary key of key_source
@@ -149,7 +155,7 @@ class AutoPopulate:
                 else:
                     logger.info('Populating: ' + str(key))
                     call_count += 1
-                    self._allow_insert = True
+                    self.__class__._allow_insert = True
                     try:
                         make(dict(key))
                     except (KeyboardInterrupt, SystemExit, Exception) as error:
@@ -175,7 +181,7 @@ class AutoPopulate:
                         if reserve_jobs:
                             jobs.complete(self.target.table_name, self._job_key(key))
                     finally:
-                        self._allow_insert = False
+                        self.__class__._allow_insert = False
 
         # place back the original signal handler
         if reserve_jobs:

@@ -196,12 +196,6 @@ class TestRelational:
                      len(x.heading.attributes))
 
     @staticmethod
-    @raises(dj.DataJointError)
-    def test_invalid_aggregate():
-        """cannot aggregate a less detailed object"""
-        rel = B().aggregate(A())
-
-    @staticmethod
     def test_aggregate():
         x = B().aggregate(B.C())
         assert_equal(len(x), len(B() & B.C()))
@@ -344,6 +338,11 @@ class TestRelational:
         """Test join of projected relations with matching non-primary key"""
         assert_true(len(DataA.proj() * DataB.proj()) == len(DataA()) == len(DataB()),
                     "Join of projected relations does not work")
+
+    @staticmethod
+    def test_ellipsis():
+        r = Experiment.proj(..., '- data_path').head(1, as_dict=True)
+        assert_set_equal(set(Experiment.heading).difference(r[0]), {'data_path'})
 
     @staticmethod
     @raises(dj.DataJointError)

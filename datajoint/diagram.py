@@ -9,9 +9,9 @@ from .table import Table
 try:
     from matplotlib import pyplot as plt
     from networkx.drawing.nx_pydot import pydot_layout
-    erd_active = True
+    diagram_active = True
 except:
-    erd_active = False
+    diagram_active = False
 
 from .user_tables import Manual, Imported, Computed, Lookup, Part
 from .errors import DataJointError
@@ -39,45 +39,45 @@ def _get_tier(table_name):
             return None
 
 
-if not erd_active:
-    class ERD:
+if not diagram_active:
+    class Diagram:
         """
         Entity relationship diagram, currently disabled due to the lack of required packages: matplotlib and pygraphviz.
 
-        To enable ERD feature, please install both matplotlib and pygraphviz. For instructions on how to install
+        To enable Diagram feature, please install both matplotlib and pygraphviz. For instructions on how to install
         these two packages, refer to http://docs.datajoint.io/setup/Install-and-connect.html#python and
         http://tutorials.datajoint.io/setting-up/datajoint-python.html
         """
 
         def __init__(self, *args, **kwargs):
-            warnings.warn('ERD functionality depends on matplotlib and pygraphviz. Please install both of these '
-                          'libraries to enable the ERD feature.')
+            warnings.warn('Please install matplotlib and pygraphviz libraries to enable the Diagram feature.')
+
 else:
-    class ERD(nx.DiGraph):
+    class Diagram(nx.DiGraph):
         """
         Entity relationship diagram.
 
         Usage:
 
-        >>>  erd = Erd(source)
+        >>>  diag = Diagram(source)
 
         source can be a base relation object, a base relation class, a schema, or a module that has a schema.
 
-        >>> erd.draw()
+        >>> diag.draw()
 
         draws the diagram using pyplot
 
-        erd1 + erd2  - combines the two ERDs.
-        erd + n   - adds n levels of successors
-        erd - n   - adds n levels of predecessors
-        Thus dj.ERD(schema.Table)+1-1 defines the diagram of immediate ancestors and descendants of schema.Table
+        diag1 + diag2  - combines the two diagrams.
+        diag + n   - expands n levels of successors
+        diag - n   - expands n levels of predecessors
+        Thus dj.Diagram(schema.Table)+1-1 defines the diagram of immediate ancestors and descendants of schema.Table
 
-        Note that erd + 1 - 1  may differ from erd - 1 + 1 and so forth.
+        Note that diagram + 1 - 1  may differ from diagram - 1 + 1 and so forth.
         Only those tables that are loaded in the connection object are displayed
         """
         def __init__(self, source, context=None):
 
-            if isinstance(source, ERD):
+            if isinstance(source, Diagram):
                 # copy constructor
                 self.nodes_to_show = set(source.nodes_to_show)
                 self.context = source.context
@@ -116,30 +116,19 @@ else:
                     try:
                         database = source.schema.database
                     except AttributeError:
-                        raise DataJointError('Cannot plot ERD for %s' % repr(source))
+                        raise DataJointError('Cannot plot Diagram for %s' % repr(source))
                 for node in self:
                     if node.startswith('`%s`' % database):
                         self.nodes_to_show.add(node)
 
-            for full_table_name in self.nodes_to_show:
-                #one entry per parent
-                parents = connection.dependencies.parents(full_table_name,True)
-                
-                # all the foreign primary keys
-                # set because multiple foreign constraints can be applied on the same local attribute
-                foreign_primary_attributes = set(attr for parent in parents.values() for attr in parent['attr_map'].keys())
-                
-                #distinguished table if table introduces atleast one primary key in the schema
-                self.nodes._nodes[full_table_name]['distinguished'] = foreign_primary_attributes < self.nodes._nodes[full_table_name]['primary_key']
-                
         @classmethod
         def from_sequence(cls, sequence):
             """
-            The join ERD for all objects in sequence
+            The join Diagram for all objects in sequence
             :param sequence: a sequence (e.g. list, tuple)
-            :return: ERD(arg1) + ... + ERD(argn)
+            :return: Diagram(arg1) + ... + Diagram(argn)
             """
-            return functools.reduce(lambda x, y: x+y, map(ERD, sequence))
+            return functools.reduce(lambda x, y: x+y, map(Diagram, sequence))
 
         def add_parts(self):
             """
@@ -156,16 +145,42 @@ else:
                 master = [s.strip('`') for s in master.split('.')]
                 return master[0] == part[0] and master[1] + '__' == part[1][:len(master[1])+2]
 
-            self = ERD(self)  # copy
+            self = Diagram(self)  # copy
             self.nodes_to_show.update(n for n in self.nodes() if any(is_part(n, m) for m in self.nodes_to_show))
             return self
 
+        def topological_sort(self):
+            """
+            :return:  list of nodes in topological order
+            """
+
+            def _unite(lst):
+                """
+                reorder list so that parts immediately follow their masters without breaking the topological order.
+                Without this correction, simple topological sort may insert other descendants between master and parts
+                :example:
+                _unite(['a', 'a__q', 'b', 'c', 'c__q', 'b__q', 'd', 'a__r'])
+                -> ['a', 'a__q', 'a__r', 'b', 'b__q', 'c', 'c__q', 'd']
+                """
+                if len(lst) <= 2:
+                    return lst
+                el = lst.pop()
+                lst = _unite(lst)
+                if '__' in el:
+                    master = el.split('__')[0]
+                    if not lst[-1].startswith(master):
+                        return _unite(lst[:-1] + [el, lst[-1]])
+                return lst + [el]
+
+            return _unite(list(nx.algorithms.dag.topological_sort(
+                nx.DiGraph(self).subgraph(self.nodes_to_show))))
+
         def __add__(self, arg):
             """
-            :param arg: either another ERD or a positive integer.
-            :return: Union of the ERDs when arg is another ERD or an expansion downstream when arg is a positive integer.
+            :param arg: either another Diagram or a positive integer.
+            :return: Union of the diagrams when arg is another Diagram or an expansion downstream when arg is a positive integer.
             """
-            self = ERD(self)   # copy
+            self = Diagram(self)   # copy
             try:
                 self.nodes_to_show.update(arg.nodes_to_show)
             except AttributeError:
@@ -176,15 +191,17 @@ else:
                         new = nx.algorithms.boundary.node_boundary(self, self.nodes_to_show)
                         if not new:
                             break
+                        # add nodes referenced by aliased nodes
+                        new.update(nx.algorithms.boundary.node_boundary(self, (a for a in new if a.isdigit())))
                         self.nodes_to_show.update(new)
             return self
 
         def __sub__(self, arg):
             """
-            :param arg: either another ERD or a positive integer.
-            :return: Difference of the ERDs when arg is another ERD or an expansion upstream when arg is a positive integer.
+            :param arg: either another Diagram or a positive integer.
+            :return: Difference of the diagrams when arg is another Diagram or an expansion upstream when arg is a positive integer.
             """
-            self = ERD(self)   # copy
+            self = Diagram(self)   # copy
             try:
                 self.nodes_to_show.difference_update(arg.nodes_to_show)
             except AttributeError:
@@ -192,19 +209,22 @@ else:
                     self.nodes_to_show.remove(arg.full_table_name)
                 except AttributeError:
                     for i in range(arg):
-                        new = nx.algorithms.boundary.node_boundary(nx.DiGraph(self).reverse(), self.nodes_to_show)
+                        graph = nx.DiGraph(self).reverse()
+                        new = nx.algorithms.boundary.node_boundary(graph, self.nodes_to_show)
                         if not new:
                             break
+                        # add nodes referenced by aliased nodes
+                        new.update(nx.algorithms.boundary.node_boundary(graph, (a for a in new if a.isdigit())))
                         self.nodes_to_show.update(new)
             return self
 
         def __mul__(self, arg):
             """
-            Intersection of two ERDs
-            :param arg: another ERD
-            :return: a new ERD comprising nodes that are present in both operands.
+            Intersection of two diagrams
+            :param arg: another Diagram
+            :return: a new Diagram comprising nodes that are present in both operands.
             """
-            self = ERD(self)   # copy
+            self = Diagram(self)   # copy
             self.nodes_to_show.intersection_update(arg.nodes_to_show)
             return self
 
@@ -212,7 +232,13 @@ else:
             """
             Make the self.graph - a graph object ready for drawing
             """
-            # include aliased nodes
+            # mark "distinguished" tables, i.e. those that introduce new primary key attributes
+            for name in self.nodes_to_show:
+                foreign_attributes = set(
+                    attr for p in self.in_edges(name, data=True) for attr in p[2]['attr_map'] if p[2]['primary'])
+                self.node[name]['distinguished'] = (
+                        'primary_key' in self.node[name] and foreign_attributes < self.node[name]['primary_key'])
+            # include aliased nodes that are sandwiched between two displayed nodes
             gaps = set(nx.algorithms.boundary.node_boundary(self, self.nodes_to_show)).intersection(
                 nx.algorithms.boundary.node_boundary(nx.DiGraph(self).reverse(), self.nodes_to_show))
             nodes = self.nodes_to_show.union(a for a in gaps if a.isdigit)
@@ -223,12 +249,11 @@ else:
             mapping = {node: lookup_class_name(node, self.context) or node for node in graph.nodes()}
             new_names = [mapping.values()]
             if len(new_names) > len(set(new_names)):
-                raise DataJointError('Some classes have identical names. The ERD cannot be plotted.')
+                raise DataJointError('Some classes have identical names. The Diagram cannot be plotted.')
             nx.relabel_nodes(graph, mapping, copy=False)
             return graph
 
         def make_dot(self):
-            import networkx as nx
 
             graph = self._make_graph()
             graph.nodes()

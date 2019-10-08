@@ -3,9 +3,7 @@ import re
 import pandas
 import numpy as np
 from nose.tools import assert_equal, assert_not_equal, assert_true, assert_list_equal, raises
-from pymysql import InternalError
 import datajoint as dj
-from datajoint import utils, DataJointError
 from datajoint.table import Table
 from unittest.mock import patch
 
@@ -190,7 +188,7 @@ class TestRelation:
             dtype=self.subject.heading.as_dtype)
         self.subject.insert(tmp, skip_duplicates=True)
 
-    @raises(DataJointError)
+    @raises(dj.errors.DuplicateError)
     def test_not_skip_duplicate(self):
         """Tests if duplicates are not skipped."""
         tmp = np.array([
@@ -200,7 +198,7 @@ class TestRelation:
             dtype=self.subject.heading.as_dtype)
         self.subject.insert(tmp, skip_duplicates=False)
 
-    @raises(InternalError)
+    @raises(dj.errors.MissingAttributeError)
     def test_no_error_suppression(self):
         """skip_duplicates=True should not suppress other errors"""
         self.test.insert([dict(key=100)], skip_duplicates=True)
@@ -212,12 +210,12 @@ class TestRelation:
         Y = self.img.fetch()[0]['img']
         assert_true(np.all(X == Y), 'Inserted and retrieved image are not identical')
 
-    @raises(DataJointError)
+    @raises(dj.DataJointError)
     def test_drop(self):
         """Tests dropping tables"""
         dj.config['safemode'] = True
         try:
-            with patch.object(utils, "input", create=True, return_value='yes'):
+            with patch.object(dj.utils, "input", create=True, return_value='yes'):
                 self.trash.drop()
         except:
             pass

@@ -40,6 +40,17 @@ class TTest3(dj.Manual):
 
 
 @schema
+class NullableNumbers(dj.Manual):
+    definition = """
+    key : int 
+    ---
+    fvalue = null : float
+    dvalue = null : double
+    ivalue = null : int
+    """
+
+
+@schema
 class TTestExtra(dj.Manual):
     """
     clone of Test but with an extra field
@@ -102,7 +113,6 @@ class Language(dj.Lookup):
     # additional comments are ignored
     name        : varchar(40) # name of the developer
     language    : varchar(40) # language
-    ---
     """
     contents = [
         ('Fabian', 'English'),
@@ -254,7 +264,7 @@ class SigIntTable(dj.Computed):
     """
 
     def _make_tuples(self, key):
-        os.kill(os.getpid(), signal.SIGINT)
+        raise KeyboardInterrupt
 
 
 @schema
@@ -264,7 +274,7 @@ class SigTermTable(dj.Computed):
     """
 
     def make(self, key):
-        os.kill(os.getpid(), signal.SIGTERM)
+        raise SystemExit('SIGTERM received')
 
 
 @schema
@@ -285,3 +295,30 @@ class IndexRich(dj.Manual):
     value : int
     index (first_date, value)
     """
+
+#  Schema for issue 656
+@schema
+class ThingA(dj.Manual):
+    definition = """
+    a: int
+    """
+
+
+@schema
+class ThingB(dj.Manual):
+    definition = """
+    b1: int
+    b2: int
+    ---
+    b3: int
+    """
+
+
+@schema
+class ThingC(dj.Manual):
+    definition = """
+    -> ThingA
+    ---
+    -> [unique, nullable] ThingB
+    """
+

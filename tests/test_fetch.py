@@ -1,4 +1,4 @@
-from nose.tools import assert_true, raises, assert_equal, assert_dict_equal, assert_list_equal
+from nose.tools import assert_true, raises, assert_equal, assert_dict_equal, assert_list_equal, assert_set_equal
 from operator import itemgetter
 import itertools
 import numpy as np
@@ -81,6 +81,7 @@ class TestFetch:
         query = schema.User * schema.Language
         n = 5
         frame = query.head(n, format='frame')
+        assert_true(isinstance(frame, pandas.DataFrame))
         array = query.head(n, format='array')
         assert_equal(array.size, n)
         assert_equal(len(frame), n)
@@ -118,16 +119,22 @@ class TestFetch:
             assert_true(row['name'] == tname and row['language'] == tlang, 'Values are not the same')
 
     def test_keys(self):
-        """test key iterator"""
+        """test key fetch"""
         languages = schema.Language.contents
         languages.sort(key=itemgetter(0), reverse=True)
         languages.sort(key=itemgetter(1), reverse=False)
 
         cur = self.lang.fetch('name', 'language', order_by=('language', 'name DESC'))
-        cur2 = list(self.lang.fetch.keys(order_by=['language', 'name DESC']))
+        cur2 = list(self.lang.fetch("KEY", order_by=['language', 'name DESC']))
 
         for c, c2 in zip(zip(*cur), cur2):
             assert_true(c == tuple(c2.values()), 'Values are not the same')
+
+    def test_attributes_as_dict(self):   # issue #595
+        attrs = ('species', 'date_of_birth')
+        result = self.subject.fetch(*attrs, as_dict=True)
+        assert_true(bool(result) and len(result) == len(self.subject))
+        assert_set_equal(set(result[0]), set(attrs))
 
     def test_fetch1_step1(self):
         key = {'name': 'Edgar', 'language': 'Japanese'}
@@ -196,3 +203,15 @@ class TestFetch:
         assert_true(len(rel & keys[0]) == 1)
         keys = rel.fetch(dj.key)
         assert_true(len(rel & keys[1]) == 1)
+
+    def test_nullable_numbers(self):
+        """ test mixture of values and nulls in numeric attributes """
+        table = schema.NullableNumbers()
+        table.insert((
+            (k, np.random.randn(), np.random.randint(-1000, 1000), np.random.randn())
+            for k in range(10)))
+        table.insert1((100, None, None, None))
+        f, d, i = table.fetch('fvalue', 'dvalue', 'ivalue')
+        assert_true(None in i)
+        assert_true(any(np.isnan(d)))
+        assert_true(any(np.isnan(f)))

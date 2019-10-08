@@ -1,6 +1,5 @@
 from nose.tools import assert_equal, assert_false, assert_true, raises
 from datajoint.declare import declare
-from datajoint import DataJointError
 
 from . import schema_advanced
 

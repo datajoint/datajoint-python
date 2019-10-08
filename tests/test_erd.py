@@ -34,6 +34,7 @@ class TestERD:
 
     @staticmethod
     def test_erd():
+        assert_true(dj.diagram.diagram_active, 'Failed to import networkx and pydot')
         erd = dj.ERD(schema, context=namespace)
         graph = erd._make_graph()
         assert_true(set(cls.__name__ for cls in (A, B, D, E, L)).issubset(graph.nodes()))
@@ -42,7 +43,7 @@ class TestERD:
     def test_erd_algebra():
         erd0 = dj.ERD(B)
         erd1 = erd0 + 3
-        erd2 = dj.ERD(E) - 3
+        erd2 = dj.Di(E) - 3
         erd3 = erd1 * erd2
         erd4 = (erd0 + E).add_parts() - B - E
         assert_true(erd0.nodes_to_show == set(cls.full_table_name for cls in [B]))

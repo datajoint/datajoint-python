@@ -1,13 +1,18 @@
 """
-Provides serialization methods for numpy.ndarrays that ensure compatibility with Matlab.
+(De)serialization methods for python datatypes and numpy.ndarrays with provisions for mutual 
+compatibility with Matlab-based serialization implemented by mYm.
 """
 
 import zlib
-from collections import OrderedDict, Mapping, Iterable
+from itertools import repeat
+import collections
 from decimal import Decimal
-from datetime import datetime
+import datetime
+import uuid
 import numpy as np
 from .errors import DataJointError
+from .utils import OrderedDict
+
 
 mxClassID = OrderedDict((
     # see http://www.mathworks.com/help/techdoc/apiref/mxclassid.html
@@ -16,7 +21,7 @@ mxClassID = OrderedDict((
     ('mxSTRUCT_CLASS', None),
     ('mxLOGICAL_CLASS', np.dtype('bool')),
     ('mxCHAR_CLASS', np.dtype('c')),
-    ('mxVOID_CLASS', None),
+    ('mxVOID_CLASS', np.dtype('O')),
     ('mxDOUBLE_CLASS', np.dtype('float64')),
     ('mxSINGLE_CLASS', np.dtype('float32')),
     ('mxINT8_CLASS', np.dtype('int8')),
@@ -31,71 +36,156 @@ mxClassID = OrderedDict((
 
 rev_class_id = {dtype: i for i, dtype in enumerate(mxClassID.values())}
 dtype_list = list(mxClassID.values())
+type_names = list(mxClassID)
 
-decode_lookup = {
+compression = {
     b'ZL123\0': zlib.decompress
 }
 
+bypass_serialization = False  # runtime setting to bypass blob (en|de)code
 
-class BlobReader:
-    def __init__(self, blob, squeeze=False, as_dict=False):
+
+def len_u64(obj):
+    return np.uint64(len(obj)).tobytes()
+
+
+def len_u32(obj):
+    return np.uint32(len(obj)).tobytes()
+
+
+class MatCell(np.ndarray):
+    """ a numpy ndarray representing a Matlab cell array """
+    pass
+
+
+class MatStruct(np.recarray):
+    """ numpy.recarray representing a Matlab struct array """
+    pass
+
+
+class Blob:
+    def __init__(self, squeeze=False):
         self._squeeze = squeeze
-        self._blob = blob
+        self._blob = None
         self._pos = 0
-        self._as_dict = as_dict
+        self.protocol = None
 
-    @property
-    def pos(self):
-        return self._pos
+    def set_dj0(self):
+        self.protocol = b"dj0\0"  # when using new blob features
+            
+    def squeeze(self, array, convert_to_scalar=True):
+        """
+        Simplify the input array - squeeze out all singleton dimensions.
+        If convert_to_scalar, then convert zero-dimensional arrays to scalars
+        """
+        if not self._squeeze:
+            return array
+        array = array.squeeze()
+        return array.item() if array.ndim == 0 and convert_to_scalar else array
 
-    @pos.setter
-    def pos(self, val):
-        self._pos = val
+    def unpack(self, blob):
+        self._blob = blob
+        try:
+            # decompress
+            prefix = next(p for p in compression if self._blob[self._pos:].startswith(p))
+        except StopIteration:
+            pass  # assume uncompressed but could be unrecognized compression
+        else:
+            self._pos += len(prefix)
+            blob_size = self.read_value('uint64')
+            blob = compression[prefix](self._blob[self._pos:])
+            assert len(blob) == blob_size
+            self._blob = blob
+            self._pos = 0
+        blob_format = self.read_zero_terminated_string()
+        if blob_format in ('mYm', 'dj0'):
+            return self.read_blob(n_bytes=len(self._blob) - self._pos)
 
-    def reset(self):
-        self.pos = 0
+    def read_blob(self, n_bytes=None):
+        start = self._pos
+        data_structure_code = chr(self.read_value('uint8'))
+        try:
+            call = {
+                # MATLAB-compatible, inherited from original mYm
+                "A": self.read_array,         # matlab-compatible numeric arrays and scalars with ndim==0
+                "P": self.read_sparse_array,  # matlab sparse array -- not supported yet
+                "S": self.read_struct,        # matlab struct array
+                "C": self.read_cell_array,    # matlab cell array
+                # Python-native
+                "\xFF": self.read_none,      # None
+                "\1": self.read_tuple,     # a Sequence
+                "\2": self.read_list,      # a MutableSequence
+                "\3": self.read_set,       # a Set
+                "\4": self.read_dict,      # a Mapping
+                "\5": self.read_string,    # a UTF8-encoded string
+                "\6": self.read_bytes,     # a ByteString
+                "F": self.read_recarray,   # numpy array with fields, including recarrays
+                "d": self.read_decimal,    # a decimal
+                "t": self.read_datetime,   # date, time, or datetime
+                "u": self.read_uuid,       # UUID
+            }[data_structure_code]
+        except KeyError:
+            raise DataJointError('Unknown data structure code "%s"' % data_structure_code)
+        v = call()
+        if n_bytes is not None and self._pos - start != n_bytes:
+            raise DataJointError('Blob length check failed! Invalid blob')
+        return v
 
-    def decompress(self):
-        for pattern, decoder in decode_lookup.items():
-            if self._blob[self.pos:].startswith(pattern):
-                self.pos += len(pattern)
-                blob_size = self.read_value('uint64')
-                blob = decoder(self._blob[self.pos:])
-                assert len(blob) == blob_size
-                self._blob = blob
-                self._pos = 0
-                break
+    def pack_blob(self, obj):
+        # original mYm-based serialization from datajoint-matlab
+        if isinstance(obj, MatCell):
+            return self.pack_cell_array(obj)
+        if isinstance(obj, MatStruct):
+            return self.pack_struct(obj)
+        if isinstance(obj, np.ndarray) and obj.dtype.fields is None:
+            return self.pack_array(obj)
 
-    def unpack(self):
-        self.decompress()
-        blob_format = self.read_string()
-        if blob_format == 'mYm':
-            return self.read_mym_data(n_bytes=-1)
+        # blob types in the expanded dj0 blob format
+        self.set_dj0()
+        if isinstance(obj, np.ndarray) and obj.dtype.fields:
+            return self.pack_recarray(np.array(obj))
+        if isinstance(obj, np.number):
+            return self.pack_array(np.array(obj))
+        if isinstance(obj, (bool, np.bool, np.bool_)):
+            return self.pack_array(np.array(obj))
+        if isinstance(obj, float):
+            return self.pack_array(np.array(obj, dtype=np.float64))
+        if isinstance(obj, int):
+            return self.pack_array(np.array(obj, dtype=np.int64))
+        if isinstance(obj, (datetime.datetime, datetime.date, datetime.time)):
+            return self.pack_datetime(obj)
+        if isinstance(obj, Decimal):
+            return self.pack_decimal(obj)
+        if isinstance(obj, uuid.UUID):
+            return self.pack_uuid(obj)
+        if isinstance(obj, collections.Mapping):
+            return self.pack_dict(obj)
+        if isinstance(obj, str):
+            return self.pack_string(obj)
+        if isinstance(obj, collections.ByteString):
+            return self.pack_bytes(obj)
+        if isinstance(obj, collections.MutableSequence):
+            return self.pack_list(obj)
+        if isinstance(obj, collections.Sequence):
+            return self.pack_tuple(obj)
+        if isinstance(obj, collections.Set):
+            return self.pack_set(obj)
+        if obj is None:
+            return self.pack_none()
+        raise DataJointError("Packing object of type %s currently not supported!" % type(obj))
 
-    def read_mym_data(self, n_bytes=None):
-        if n_bytes is not None:
-            if n_bytes == -1:
-                n_bytes = len(self._blob) - self.pos
-            n_bytes -= 1
-
-        type_id = self.read_value('c')
-        if type_id == b'A':
-            return self.read_array(n_bytes=n_bytes)
-        elif type_id == b'S':
-            return self.read_structure(n_bytes=n_bytes)
-        elif type_id == b'C':
-            return self.read_cell_array(n_bytes=n_bytes)
-
-    def read_array(self, advance=True, n_bytes=None):
-        start = self.pos
+    def read_array(self):
         n_dims = int(self.read_value('uint64'))
         shape = self.read_value('uint64', count=n_dims)
-        n_elem = int(np.prod(shape))
-        dtype_id = self.read_value('uint32')
+        n_elem = np.prod(shape, dtype=int)
+        dtype_id, is_complex = self.read_value('uint32', 2)
         dtype = dtype_list[dtype_id]
-        is_complex = self.read_value('uint32')
 
-        if dtype_id == 4:  # if dealing with character array
+        if type_names[dtype_id] == 'mxVOID_CLASS':
+            data = np.array(
+                list(self.read_blob(self.read_value()) for _ in range(n_elem)), dtype=np.dtype('O'))
+        elif type_names[dtype_id] == 'mxCHAR_CLASS':
+            # compensate for MATLAB packing of char arrays
             data = self.read_value(dtype, count=2 * n_elem)
             data = data[::2].astype('U1')
             if n_dims == 2 and shape[0] == 1 or n_dims == 1:
@@ -103,205 +193,230 @@ class BlobReader:
                 data = compact if compact.shape == () else np.array(''.join(data.squeeze()))
                 shape = (1,)
         else:
-            if is_complex:
-                n_elem *= 2 # read real and imaginary parts
             data = self.read_value(dtype, count=n_elem)
             if is_complex:
-                data = data[:n_elem//2] + 1j * data[n_elem//2:]
+                data = data + 1j * self.read_value(dtype, count=n_elem)
+        return self.squeeze(data.reshape(shape, order="F"))
 
-        if n_bytes is not None:
-            assert self.pos - start == n_bytes
+    def pack_array(self, array):
+        """
+        Serialize an np.ndarray into bytes.  Scalars are encoded with ndim=0.
+        """
+        blob = b"A" + np.uint64(array.ndim).tobytes() + np.array(array.shape, dtype=np.uint64).tobytes()
+        is_complex = np.iscomplexobj(array)
+        if is_complex:
+            array, imaginary = np.real(array), np.imag(array)
+        type_id = (rev_class_id[array.dtype] if array.dtype.char != 'U'
+                else rev_class_id[np.dtype('O')])
+        if dtype_list[type_id] is None:
+            raise DataJointError("Type %s is ambiguous or unknown" % array.dtype)
 
-        if not advance:
-            self.pos = start
+        blob += np.array([type_id, is_complex], dtype=np.uint32).tobytes()
+        if type_names[type_id] == 'mxVOID_CLASS':  # array of dtype('O')
+            blob += b"".join(len_u64(it) + it for it in (self.pack_blob(e) for e in array.flatten(order="F")))
+            self.set_dj0()  # not supported by original mym
+        elif type_names[type_id] == 'mxCHAR_CLASS':  # array of dtype('c')
+            blob += array.view(np.uint8).astype(np.uint16).tobytes()  # convert to 16-bit chars for MATLAB
+        else:  # numeric arrays
+            if array.ndim == 0:  # not supported by original mym
+                self.set_dj0()
+            blob += array.tobytes(order="F")
+            if is_complex:
+                blob += imaginary.tobytes(order="F")
+        return blob
 
-        return self.squeeze(data.reshape(shape, order='F'))
+    def read_recarray(self):
+        """
+        Serialize an np.ndarray with fields, including recarrays
+        """
+        n_fields = self.read_value('uint32')
+        if not n_fields:
+            return np.array(None)  # empty array
+        field_names = [self.read_zero_terminated_string() for _ in range(n_fields)]
+        arrays = [self.read_blob() for _ in range(n_fields)]
+        rec = np.empty(arrays[0].shape, np.dtype([(f, t.dtype) for f, t in zip(field_names, arrays)]))
+        for f, t in zip(field_names, arrays):
+            rec[f] = t
+        return rec.view(np.recarray)
 
-    def read_structure(self, advance=True, n_bytes=None):
-        start = self.pos
-        n_dims = self.read_value('uint64').item()
-        shape = self.read_value('uint64', count=n_dims)
+    def pack_recarray(self, array):
+        """ Serialize a Matlab struct array """
+        return (b"F" + len_u32(array.dtype) +  # number of fields
+                '\0'.join(array.dtype.names).encode() + b"\0" +  # field names
+                b"".join(self.pack_recarray(array[f]) if array[f].dtype.fields else self.pack_array(array[f])
+                         for f in array.dtype.names))
+
+    def read_sparse_array(self):
+        raise DataJointError('datajoint-python does not yet support sparse arrays. Issue (#590)')
+
+    def read_decimal(self):
+        return Decimal(self.read_string())
+
+    @staticmethod
+    def pack_decimal(d):
+        s = str(d)
+        return b"d" + len_u64(s) + s.encode()
+
+    def read_string(self):
+        return self.read_binary(self.read_value()).decode()
+
+    @staticmethod
+    def pack_string(s):
+        blob = s.encode()
+        return b"\5" + len_u64(blob) + blob
+    
+    def read_bytes(self):
+        return self.read_binary(self.read_value())
+    
+    @staticmethod
+    def pack_bytes(s):
+        return b"\6" + len_u64(s) + s
+
+    def read_none(self):
+        pass
+
+    @staticmethod
+    def pack_none():
+        return b"\xFF"
+
+    def read_tuple(self):
+        return tuple(self.read_blob(self.read_value()) for _ in range(self.read_value()))
+
+    def pack_tuple(self, t):
+        return b"\1" + len_u64(t) + b"".join(
+            len_u64(it) + it for it in (self.pack_blob(i) for i in t))
+
+    def read_list(self):
+        return list(self.read_blob(self.read_value()) for _ in range(self.read_value()))
+
+    def pack_list(self, t):
+        return b"\2" + len_u64(t) + b"".join(
+            len_u64(it) + it for it in (self.pack_blob(i) for i in t))
+
+    def read_set(self):
+        return set(self.read_blob(self.read_value()) for _ in range(self.read_value()))
+
+    def pack_set(self, t):
+        return b"\3" + len_u64(t) + b"".join(
+            len_u64(it) + it for it in (self.pack_blob(i) for i in t))
+
+    def read_dict(self):
+        return OrderedDict((self.read_blob(self.read_value()), self.read_blob(self.read_value()))
+                    for _ in range(self.read_value()))
+
+    def pack_dict(self, d):
+        return b"\4" + len_u64(d) + b"".join(
+            b"".join((len_u64(it) + it) for it in packed)
+            for packed in (map(self.pack_blob, pair) for pair in d.items()))
+
+    def read_struct(self):
+        """deserialize matlab stuct"""
+        n_dims = self.read_value()
+        shape = self.read_value(count=n_dims)
+        n_elem = np.prod(shape, dtype=int)
+        n_fields = self.read_value('uint32')
+        if not n_fields:
+            return np.array(None)  # empty array
+        field_names = [self.read_zero_terminated_string() for _ in range(n_fields)]
+        raw_data = [
+            tuple(self.read_blob(n_bytes=int(self.read_value('uint64'))) for _ in range(n_fields))
+            for __ in range(n_elem)]
+        data = np.array(raw_data, dtype=list(zip(field_names, repeat(np.object))))
+        return self.squeeze(data.reshape(shape, order="F"), convert_to_scalar=False).view(MatStruct)
+
+    def pack_struct(self, array):
+        """ Serialize a Matlab struct array """
+        return (b"S" + np.array((array.ndim,) + array.shape, dtype=np.uint64).tobytes() +  # dimensionality
+                len_u32(array.dtype.names) +  # number of fields
+                "\0".join(array.dtype.names).encode() + b"\0" +  # field names
+                b"".join(len_u64(it) + it for it in (
+                    self.pack_blob(e) for rec in array.flatten(order="F") for e in rec)))  # values
+
+    def read_cell_array(self):
+        """ deserialize MATLAB cell array """
+        n_dims = self.read_value()
+        shape = self.read_value(count=n_dims)
         n_elem = int(np.prod(shape))
-        n_field = int(self.read_value('uint32'))
-        field_names = []
-        for i in range(n_field):
-            field_names.append(self.read_string())
-        if not field_names:
-            # return an empty array
-            return np.array(None)
-        dt = [(f, np.object) for f in field_names]
-        raw_data = []
-        for k in range(n_elem):
-            values = []
-            for i in range(n_field):
-                nb = int(self.read_value('uint64')) # dealing with a weird bug of numpy
-                values.append(self.read_mym_data(n_bytes=nb))
-            raw_data.append(tuple(values))
-        if n_bytes is not None:
-            assert self.pos - start == n_bytes
-        if not advance:
-            self.pos = start
+        result = [self.read_blob(n_bytes=self.read_value()) for _ in range(n_elem)]
+        return (self.squeeze(np.array(result).reshape(shape, order="F"), convert_to_scalar=False)).view(MatCell)
 
-        if self._as_dict and n_elem == 1:
-            data = dict(zip(field_names, values))
-            return data
+    def pack_cell_array(self, array):
+        return (b"C" + np.array((array.ndim,) + array.shape, dtype=np.uint64).tobytes() +
+                b"".join(len_u64(it) + it for it in (self.pack_blob(e) for e in array.flatten(order="F"))))
+
+    def read_datetime(self):
+        """ deserialize datetime.date, .time, or .datetime """
+        date, time = self.read_value('int32'), self.read_value('int64')
+        date = datetime.date(
+            year=date // 10000,
+            month=(date // 100) % 100,
+            day=date % 100) if date >= 0 else None
+        time = datetime.time(
+            hour=(time // 10000000000) % 100,
+            minute=(time // 100000000) % 100,
+            second=(time // 1000000) % 100,
+            microsecond=time % 1000000) if time >= 0 else None
+        return time and date and datetime.datetime.combine(date, time) or time or date
+
+    @staticmethod
+    def pack_datetime(d):
+        if isinstance(d, datetime.datetime):
+            date, time = d.date(), d.time()
+        elif isinstance(d, datetime.date):
+            date, time = d, None
         else:
-            data = np.rec.array(raw_data, dtype=dt)
-            return self.squeeze(data.reshape(shape, order='F'))
+            date, time = None, d
+        return b"t" + (
+            np.int32(-1 if date is None else (date.year*100 + date.month)*100 + date.day).tobytes() +
+            np.int64(-1 if time is None else
+                     ((time.hour*100 + time.minute)*100 + time.second)*1000000 + time.microsecond).tobytes())
 
-    def squeeze(self, array):
-        """
-        Simplify the given array as much as possible - squeeze out all singleton
-        dimensions and also convert a zero dimensional array into array scalar
-        """
-        if not self._squeeze:
-            return array
-        array = array.copy()
-        array = array.squeeze()
-        if array.ndim == 0:
-            array = array[()]
-        return array
+    def read_uuid(self):
+        q = self.read_binary(16)
+        return uuid.UUID(bytes=q)
 
-    def read_cell_array(self, advance=True, n_bytes=None):
-        start = self.pos
-        n_dims = self.read_value('uint64').item()
-        shape = self.read_value('uint64', count=n_dims)
-        n_elem = int(np.prod(shape))
-        data = np.empty(n_elem, dtype=np.object)
-        for i in range(n_elem):
-            nb = self.read_value('uint64').item()
-            data[i] = self.read_mym_data(n_bytes=nb)
-        if n_bytes is not None:
-            assert self.pos - start == n_bytes
-        if not advance:
-            self.pos = start
+    @staticmethod
+    def pack_uuid(obj):
+        return b"u" + obj.bytes
+
+    def read_zero_terminated_string(self):
+        target = self._blob.find(b'\0', self._pos)
+        data = self._blob[self._pos:target].decode()
+        self._pos = target + 1
         return data
+        
+    def read_value(self, dtype='uint64', count=1):
+        data = np.frombuffer(self._blob, dtype=dtype, count=count, offset=self._pos)
+        self._pos += data.dtype.itemsize * data.size
+        return data[0] if count == 1 else data
 
-    def read_string(self, advance=True):
-        """
-        Read a string terminated by null byte '\0'. The returned string
-        object is ASCII decoded, and will not include the terminating null byte.
-        """
-        target = self._blob.find(b'\0', self.pos)
-        assert target >= self._pos
-        data = self._blob[self._pos:target]
-        if advance:
-            self._pos = target + 1
-        return data.decode('ascii')
+    def read_binary(self, size):
+        self._pos += int(size)
+        return self._blob[self._pos-int(size):self._pos]
 
-    def read_value(self, dtype='uint64', count=1, advance=True):
-        """
-        Read one or more scalars of the indicated dtype. Count specifies the number of
-        scalars to be read in.
-        """
-        data = np.frombuffer(self._blob, dtype=dtype, count=count, offset=self.pos)
-        if advance:
-            # probably the same thing as data.nbytes * 8
-            self._pos += data.dtype.itemsize * data.size
-        if count == 1:
-            data = data[0]
-        return data
-
-    def __repr__(self):
-        return repr(self._blob[self.pos:])
-
-    def __str__(self):
-        return str(self._blob[self.pos:])
+    def pack(self, obj, compress):
+        self.protocol = b"mYm\0"  # will be replaced with dj0 if new features are used
+        blob = self.pack_blob(obj)  # this may reset the protocol and must precede protocol evaluation
+        blob = self.protocol + blob
+        if compress and len(blob) > 1000:
+            compressed = b'ZL123\0' + len_u64(blob) + zlib.compress(blob)
+            if len(compressed) < len(blob):
+                blob = compressed
+        return blob
 
 
 def pack(obj, compress=True):
-    blob = b"mYm\0"
-    blob += pack_obj(obj)
-
-    if compress:
-        compressed = b'ZL123\0' + np.uint64(len(blob)).tostring() + zlib.compress(blob)
-        if len(compressed) < len(blob):
-            blob = compressed
-
-    return blob
+    if bypass_serialization:
+        # provide a way to move blobs quickly without de/serialization
+        assert isinstance(obj, bytes) and obj.startswith((b'ZL123\0', b'mYm\0', b'dj0\0'))
+        return obj
+    return Blob().pack(obj, compress=compress)
 
 
-def pack_obj(obj):
-    blob = b''
-    if isinstance(obj, np.ndarray):
-        blob += pack_array(obj)
-    elif isinstance(obj, Mapping):
-        blob += pack_dict(obj)
-    elif isinstance(obj, str):
-        blob += pack_array(np.array(obj, dtype=np.dtype('c')))
-    elif isinstance(obj, Iterable):
-        blob += pack_array(np.array(list(obj)))
-    elif isinstance(obj, int) or isinstance(obj, float):
-        blob += pack_array(np.array(obj))
-    elif isinstance(obj, Decimal):
-        blob += pack_array(np.array(np.float64(obj)))
-    elif isinstance(obj, datetime):
-        blob += pack_obj(str(obj))
-    else:
-        raise DataJointError("Packing object of type %s currently not supported!" % type(obj))
-
-    return blob
-
-
-def pack_array(array):
-    if not isinstance(array, np.ndarray):
-        raise ValueError("argument must be a numpy array!")
-
-    blob = b"A"
-    blob += np.array((len(array.shape), ) + array.shape, dtype=np.uint64).tostring()
-
-    is_complex = np.iscomplexobj(array)
-    if is_complex:
-        array, imaginary = np.real(array), np.imag(array)
-
-    type_number = rev_class_id[array.dtype]
-
-    if dtype_list[type_number] is None:
-        raise DataJointError("Type %s is ambiguous or unknown" % array.dtype)
-
-    blob += np.array(type_number, dtype=np.uint32).tostring()
-
-    blob += np.int32(is_complex).tostring()
-    if type_number == 4:  # if dealing with character array
-        blob += ('\x00'.join(array.tostring(order='F').decode()) + '\x00').encode()
-    else:
-        blob += array.tostring(order='F')
-
-    if is_complex:
-        blob += imaginary.tostring(order='F')
-
-    return blob
-
-
-def pack_string(value):
-    return value.encode('ascii') + b'\0'
-
-
-def pack_dict(obj):
-    """
-    Write dictionary object as a singular structure array
-    :param obj: dictionary object to serialize. The fields must be simple scalar or an array.
-    """
-    obj = OrderedDict(obj)
-    blob = b'S'
-    blob += np.array((1, 1), dtype=np.uint64).tostring()
-    blob += np.array(len(obj), dtype=np.uint32).tostring()
-
-    # write out field names
-    for k in obj:
-        blob += pack_string(k)
-
-    for k, v in obj.items():
-        blob_part = pack_obj(v)
-        blob += np.array(len(blob_part), dtype=np.uint64).tostring()
-        blob += blob_part
-
-    return blob
-
-
-def unpack(blob, **kwargs):
-    if blob is None:
-        return None
-
-    return BlobReader(blob, **kwargs).unpack()
-
+def unpack(blob, squeeze=False):
+    if bypass_serialization:
+        # provide a way to move blobs quickly without de/serialization
+        assert isinstance(blob, bytes) and blob.startswith((b'ZL123\0', b'mYm\0', b'dj0\0'))
+        return blob
+    if blob is not None:
+        return Blob(squeeze=squeeze).unpack(blob)

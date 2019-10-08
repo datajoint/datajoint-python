@@ -4,17 +4,16 @@ import inspect
 import platform
 import numpy as np
 import pandas
-import pymysql
 import logging
-import warnings
-from pymysql import OperationalError, InternalError, IntegrityError
+import uuid
+from pathlib import Path
 from .settings import config
-from .declare import declare
+from .declare import declare, alter
 from .expression import QueryExpression
-from .blob import pack
+from . import blob
 from .utils import user_choice
 from .heading import Heading
-from .errors import server_error_codes, DataJointError, DuplicateError
+from .errors import DuplicateError, AccessError, DataJointError, UnknownAttributeError
 from .version import __version__ as version
 
 logger = logging.getLogger(__name__)
@@ -35,7 +34,7 @@ class Table(QueryExpression):
     _heading = None
     database = None
     _log_ = None
-    _external_table = None
+    declaration_context = None
 
     # -------------- required by QueryExpression ----------------- #
     @property
@@ -52,26 +51,62 @@ class Table(QueryExpression):
                     'DataJoint class is missing a database connection. '
                     'Missing schema decorator on the class? (e.g. @schema)')
             else:
-                self._heading.init_from_database(self.connection, self.database, self.table_name)
+                self._heading.init_from_database(
+                    self.connection, self.database, self.table_name, self.declaration_context)
         return self._heading
 
     def declare(self, context=None):
         """
-        Use self.definition to declare the table in the schema.
+        Declare the table in the schema based on self.definition.
+        :param context: the context for foreign key resolution. If None, foreign keys are not allowed.
         """
+        if self.connection.in_transaction:
+            raise DataJointError('Cannot declare new tables inside a transaction, '
+                                 'e.g. from inside a populate/make call')
+        sql, external_stores = declare(self.full_table_name, self.definition, context)
+        sql = sql.format(database=self.database)
         try:
-            sql, uses_external = declare(self.full_table_name, self.definition, context)
-            if uses_external:
-                sql = sql.format(external_table=self.external_table.full_table_name)
+            # declare all external tables before declaring main table
+            for store in external_stores:
+                self.connection.schemas[self.database].external[store]
             self.connection.query(sql)
-        except pymysql.OperationalError as error:
+        except AccessError:
             # skip if no create privilege
-            if error.args[0] == server_error_codes['command denied']:
-                logger.warning(error.args[1])
-            else:
-                raise
+            pass
         else:
             self._log('Declared ' + self.full_table_name)
+
+    def alter(self, prompt=True, context=None):
+        """
+        Alter the table definition from self.definition
+        """
+        if self.connection.in_transaction:
+            raise DataJointError('Cannot update table declaration inside a transaction, '
+                                 'e.g. from inside a populate/make call')
+        if context is None:
+            frame = inspect.currentframe().f_back
+            context = dict(frame.f_globals, **frame.f_locals)
+            del frame
+        old_definition = self.describe(context=context, printout=False)
+        sql, external_stores = alter(self.definition, old_definition, context)
+        if not sql:
+            if prompt:
+                print('Nothing to alter.')
+        else:
+            sql = "ALTER TABLE {tab}\n\t".format(tab=self.full_table_name) + ",\n\t".join(sql)
+            if not prompt or user_choice(sql + '\n\nExecute?') == 'yes':
+                try:
+                    # declare all external tables before declaring main table
+                    for store in external_stores:
+                        self.connection.schemas[self.database].external[store]
+                    self.connection.query(sql)
+                except AccessError:
+                    # skip if no create privilege
+                    pass
+                else:
+                    if prompt:
+                        print('Table altered')
+                    self._log('Altered ' + self.full_table_name)
 
     @property
     def from_clause(self):
@@ -133,11 +168,8 @@ class Table(QueryExpression):
         return self._log_
 
     @property
-    def external_table(self):
-        if self._external_table is None:
-            # trigger the creation of the external hash lookup for the current schema
-            self._external_table = self.connection.schemas[self.database].external_table
-        return self._external_table
+    def external(self):
+        return self.connection.schemas[self.database].external
 
     def insert1(self, row, **kwargs):
         """
@@ -170,7 +202,8 @@ class Table(QueryExpression):
         # prohibit direct inserts into auto-populated tables
         if not (allow_direct_insert or getattr(self, '_allow_insert', True)):  # _allow_insert is only present in AutoPopulate
             raise DataJointError(
-                'Auto-populate tables can only be inserted into from their make methods during populate calls. (see allow_direct_insert)')
+                'Auto-populate tables can only be inserted into from their make methods during populate calls.'
+                ' To override, use the the allow_direct_insert argument.')
 
         heading = self.heading
         if inspect.isclass(rows) and issubclass(rows, QueryExpression):   # instantiate if a class
@@ -180,7 +213,7 @@ class Table(QueryExpression):
             if not ignore_extra_fields:
                 try:
                     raise DataJointError(
-                        "Attribute %s not found.  To ignore extra attributes in insert, set ignore_extra_fields=True." %
+                        "Attribute %s not found. To ignore extra attributes in insert, set ignore_extra_fields=True." %
                         next(name for name in rows.heading if name not in heading))
                 except StopIteration:
                     pass
@@ -213,25 +246,42 @@ class Table(QueryExpression):
                 For a given attribute `name` with `value`, return its processed value or value placeholder
                 as a string to be included in the query and the value, if any, to be submitted for
                 processing by mysql API.
-                :param name:
-                :param value:
+                :param name:  name of attribute to be inserted
+                :param value: value of attribute to be inserted
                 """
                 if ignore_extra_fields and name not in heading:
                     return None
-                if heading[name].is_external:
-                    placeholder, value = '%s', self.external_table.put(heading[name].type, value)
-                elif heading[name].is_blob:
-                    if value is None:
-                        placeholder, value = 'NULL', None
-                    else:
-                        placeholder, value = '%s', pack(value)
-                elif heading[name].numeric:
-                    if value is None or value == '' or np.isnan(np.float(value)):  # nans are turned into NULLs
-                        placeholder, value = 'NULL', None
-                    else:
-                        placeholder, value = '%s', (str(int(value) if isinstance(value, bool) else value))
-                else:
+                attr = heading[name]
+                if attr.adapter:
+                    value = attr.adapter.put(value)
+                if value is None or (attr.numeric and (value == '' or np.isnan(np.float(value)))):
+                    # set default value
+                    placeholder, value = 'DEFAULT', None
+                else:  # not NULL
                     placeholder = '%s'
+                    if attr.uuid:
+                        if not isinstance(value, uuid.UUID):
+                            try:
+                                value = uuid.UUID(value)
+                            except (AttributeError, ValueError):
+                                raise DataJointError(
+                                    'badly formed UUID value {v} for attribute `{n}`'.format(v=value, n=name)) from None
+                        value = value.bytes
+                    elif attr.is_blob:
+                        value = blob.pack(value)
+                        value = self.external[attr.store].put(value).bytes if attr.is_external else value
+                    elif attr.is_attachment:
+                        attachment_path = Path(value)
+                        if attr.is_external:
+                            # value is hash of contents
+                            value = self.external[attr.store].upload_attachment(attachment_path).bytes
+                        else:
+                            # value is filename + contents
+                            value = str.encode(attachment_path.name) + b'\0' + attachment_path.read_bytes()
+                    elif attr.is_filepath:
+                        value = self.external[attr.store].upload_filepath(value).bytes
+                    elif attr.numeric:
+                        value = str(int(value) if isinstance(value, bool) else value)
                 return name, placeholder, value
 
             def check_fields(fields):
@@ -295,20 +345,10 @@ class Table(QueryExpression):
                                if skip_duplicates else ''))
                 self.connection.query(query, args=list(
                     itertools.chain.from_iterable((v for v in r['values'] if v is not None) for r in rows)))
-            except (OperationalError, InternalError, IntegrityError) as err:
-                if err.args[0] == server_error_codes['command denied']:
-                    raise DataJointError('Command denied:  %s' % err.args[1]) from None
-                elif err.args[0] == server_error_codes['unknown column']:
-                    # args[1] -> Unknown column 'extra' in 'field list'
-                    raise DataJointError(
-                        '{} : To ignore extra fields, set ignore_extra_fields=True in insert.'.format(err.args[1])
-                    ) from None
-                elif err.args[0] == server_error_codes['duplicate entry']:
-                    raise DuplicateError(
-                        '{} : To ignore duplicate entries, set skip_duplicates=True in insert.'.format(err.args[1])
-                    ) from None
-                else:
-                    raise
+            except UnknownAttributeError as err:
+                raise err.suggest('To ignore extra fields in insert, set ignore_extra_fields=True') from None
+            except DuplicateError as err:
+                raise err.suggest('To ignore duplicate entries in insert, set skip_duplicates=True') from None
 
     def delete_quick(self, get_count=False):
         """
@@ -450,13 +490,11 @@ class Table(QueryExpression):
         return ret['Data_length'] + ret['Index_length']
 
     def show_definition(self):
-        logger.warning('show_definition is deprecated.  Use describe instead.')
-        return self.describe()
+        raise AttributeError('show_definition is deprecated. Use the describe method instead.')
 
     def describe(self, context=None, printout=True):
         """
         :return:  the definition string for the relation using DataJoint DDL.
-            This does not yet work for aliased foreign keys.
         """
         if context is None:
             frame = inspect.currentframe().f_back
@@ -508,9 +546,8 @@ class Table(QueryExpression):
                             attributes_declared.update(fk_props['attr_map'])
             if do_include:
                 attributes_declared.add(attr.name)
-                name = attr.name.lstrip('_')  # for external
                 definition += '%-20s : %-28s %s\n' % (
-                    name if attr.default is None else '%s=%s' % (name, attr.default),
+                    attr.name if attr.default is None else '%s=%s' % (attr.name, attr.default),
                     '%s%s' % (attr.type, ' auto_increment' if attr.autoincrement else ''),
                     '# ' + attr.comment if attr.comment else '')
         # add remaining indexes
@@ -533,11 +570,9 @@ class Table(QueryExpression):
                1. self must be restricted to exactly one tuple
                2. the update attribute must not be in primary key
 
-            Example
-
-            >>> (v2p.Mice() & key).update('mouse_dob',   '2011-01-01')
+            Example:
+            >>> (v2p.Mice() & key).update('mouse_dob', '2011-01-01')
             >>> (v2p.Mice() & key).update( 'lens')   # set the value to NULL
-
         """
         if len(self) != 1:
             raise DataJointError('Update is only allowed on one tuple at a time')
@@ -549,7 +584,7 @@ class Table(QueryExpression):
         attr = self.heading[attrname]
 
         if attr.is_blob:
-            value = pack(value)
+            value = blob.pack(value)
             placeholder = '%s'
         elif attr.numeric:
             if value is None or np.isnan(np.float(value)):  # nans are turned into NULLs

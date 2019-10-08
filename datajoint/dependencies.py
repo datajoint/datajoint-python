@@ -62,10 +62,10 @@ class Dependencies(nx.DiGraph):
         # add edges to the graph
         for fk in fks.values():
             props = dict(
-                primary=all(attr in pks[fk['referencing_table']] for attr in fk['attr_map']),
+                primary=set(fk['attr_map']) <= set(pks[fk['referencing_table']]),
                 attr_map=fk['attr_map'],
                 aliased=any(k != v for k, v in fk['attr_map'].items()),
-                multi=not all(a in fk['attr_map'] for a in pks[fk['referencing_table']]))
+                multi=set(fk['attr_map']) != set(pks[fk['referencing_table']]))
             if not props['aliased']:
                 self.add_edge(fk['referenced_table'], fk['referencing_table'], **props)
             else:
@@ -86,8 +86,8 @@ class Dependencies(nx.DiGraph):
             attribute are considered.
         :return: dict of tables referenced by the foreign keys of table
         """
-        return dict(p[::2] for p in self.in_edges(table_name, data=True)
-                    if primary is None or p[2]['primary'] == primary)
+        return {p[0]: p[2] for p in self.in_edges(table_name, data=True)
+                if primary is None or p[2]['primary'] == primary}
 
     def children(self, table_name, primary=None):
         """
@@ -97,8 +97,8 @@ class Dependencies(nx.DiGraph):
             attribute are considered.
         :return: dict of tables referencing the table through foreign keys
         """
-        return dict(p[1:3] for p in self.out_edges(table_name, data=True)
-                    if primary is None or p[2]['primary'] == primary)
+        return {p[1]: p[2] for p in self.out_edges(table_name, data=True)
+                if primary is None or p[2]['primary'] == primary}
 
     def descendants(self, full_table_name):
         """

@@ -4,6 +4,10 @@ import datajoint as dj
 from . import schema_external as modu
 
 
+def setUp(self):
+    dj.config['stores'] = modu.stores_config
+
+
 def test_heading():
     heading = modu.Simple().heading
     assert_true('item' in heading)
@@ -37,27 +41,13 @@ def test_populate():
     image = modu.Image()
     image.populate()
     remaining, total = image.progress()
-    image.external_table.clean_store('external-raw')
     assert_true(total == len(modu.Dimension() * modu.Seed()) and remaining == 0)
     for img, neg, dimensions in zip(*(image * modu.Dimension()).fetch('img', 'neg', 'dimensions')):
         assert_list_equal(list(img.shape), list(dimensions))
         assert_almost_equal(img, -neg)
     image.delete()
-    image.external_table.delete_garbage()
-    image.external_table.clean_store('external-raw')
-
-
-@raises(dj.DataJointError)
-def test_drop():
-    image = modu.Image()
-    image.populate()
-    image.external_table.drop()
-
-
-@raises(dj.DataJointError)
-def test_delete():
-    image = modu.Image()
-    image.external_table.delete()
+    for external_table in image.external.values():
+        external_table.delete(display_progress=False, delete_external_files=True)
 
 
 

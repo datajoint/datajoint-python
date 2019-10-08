@@ -5,27 +5,44 @@ a schema for testing external attributes
 import tempfile
 import datajoint as dj
 
-from . import PREFIX, CONN_INFO
+from . import PREFIX, CONN_INFO, S3_CONN_INFO
 import numpy as np
 
 schema = dj.schema(PREFIX + '_extern', connection=dj.conn(**CONN_INFO))
 
 
-dj.config['external'] = {
-    'protocol': 'file',
-    'location': 'dj-store/external'}
+stores_config = {
 
-dj.config['external-raw'] = {
-    'protocol': 'file',
-    'location': 'dj-store/raw'}
+    'raw': dict(
+        protocol='file',
+        location=tempfile.mkdtemp()),
 
-dj.config['external-compute'] = {
-    'protocol': 's3',
-    'location': '/datajoint-projects/test',
-    'user': 'djtest',
-    'token': '2e05709792545ce'}
+    'repo': dict(
+        stage=tempfile.mkdtemp(),
+        protocol='file',
+        location=tempfile.mkdtemp()),
 
-dj.config['cache'] = tempfile.mkdtemp('dj-cache')
+    'repo_s3': dict(
+        S3_CONN_INFO,
+        protocol='s3',
+        location='dj/repo',
+        stage=tempfile.mkdtemp()),
+
+    'local': dict(
+        protocol='file',
+        location=tempfile.mkdtemp(),
+        subfolding=(1, 1)),
+
+    'share': dict(
+        S3_CONN_INFO,
+        protocol='s3',
+        location='dj/store/repo',
+        subfolding=(2, 4))
+}
+
+dj.config['stores'] = stores_config
+
+dj.config['cache'] = tempfile.mkdtemp()
 
 
 @schema
@@ -33,7 +50,7 @@ class Simple(dj.Manual):
     definition = """
     simple  : int
     ---
-    item  : external-raw
+    item  : blob@local
     """
 
 
@@ -64,11 +81,47 @@ class Image(dj.Computed):
     -> Seed
     -> Dimension
     ----
-    img  : external-raw    #  objects are stored as specified by dj.config['external-raw']
-    neg : external    # objects are stored as specified by dj.config['external']
+    img : blob@share     #  objects are stored as specified by dj.config['stores']['share']
+    neg : blob@local   # objects are stored as specified by dj.config['stores']['local']
     """
 
     def make(self, key):
         np.random.seed(key['seed'])
         img = np.random.rand(*(Dimension() & key).fetch1('dimensions'))
         self.insert1(dict(key, img=img, neg=-img.astype(np.float32)))
+
+
+@schema
+class Attach(dj.Manual):
+    definition = """
+    # table for storing attachments
+    attach : int
+    ----
+    img : attach@share    #  attachments are stored as specified by: dj.config['stores']['raw']
+    txt : attach      #  attachments are stored directly in the database
+    """
+
+
+dj.errors._switch_filepath_types(True)
+
+
+@schema
+class Filepath(dj.Manual):
+    definition = """
+    # table for file management 
+    fnum : int # test comment containing :
+    ---
+    img : filepath@repo  # managed files 
+    """
+
+
+@schema
+class FilepathS3(dj.Manual):
+    definition = """
+    # table for file management 
+    fnum : int 
+    ---
+    img : filepath@repo_s3  # managed files 
+    """
+
+dj.errors._switch_filepath_types(False)

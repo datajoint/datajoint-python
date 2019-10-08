@@ -41,6 +41,16 @@ class TestDeclare:
         assert_equal(s1, s2)
 
     @staticmethod
+    def test_describe_dependencies():
+        """real_definition should match original definition"""
+        rel = ThingC()
+        context = inspect.currentframe().f_globals
+        s1 = declare(rel.full_table_name, rel.definition, context)
+        s2 = declare(rel.full_table_name, rel.describe(), context)
+        assert_equal(s1, s2)
+
+
+    @staticmethod
     def test_part():
         # Lookup and part with the same name.  See issue #365
         local_schema = dj.schema(schema.database)
@@ -175,6 +185,29 @@ class TestDeclare:
             experiment : int
             ---
             description : text
+            """
+
+    @staticmethod
+    def test_int_datatype():
+
+        @schema
+        class Owner(dj.Manual):
+            definition = """
+            ownerid : int
+            ---
+            car_count : integer
+            """
+
+    @staticmethod
+    @raises(dj.DataJointError)
+    def test_unsupported_int_datatype():
+
+        @schema
+        class Driver(dj.Manual):
+            definition = """
+            driverid : tinyint
+            ---
+            car_count : tinyinteger
             """
 
     @staticmethod

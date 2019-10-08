@@ -7,6 +7,8 @@ import re
 import datetime
 import decimal
 import pandas
+import uuid
+import binascii   # for Python 3.4 compatibility
 from .settings import config
 from .errors import DataJointError
 from .fetch import Fetch, Fetch1
@@ -28,7 +30,7 @@ def assert_join_compatibility(rel1, rel2):
     if not isinstance(rel1, U) and not isinstance(rel2, U):  # dj.U is always compatible
         try:
             raise DataJointError("Cannot join query expressions on dependent attribute `%s`" % next(r for r in set(
-                rel1.heading.dependent_attributes).intersection(rel2.heading.dependent_attributes)))
+                rel1.heading.secondary_attributes).intersection(rel2.heading.secondary_attributes)))
         except StopIteration:
             pass
 
@@ -120,8 +122,18 @@ class QueryExpression:
         :param arg: any valid restriction object.
         :return: an SQL condition string or a boolean value.
         """
-        def prep_value(v):
-            return str(v) if isinstance(v, (datetime.date, datetime.datetime, datetime.time, decimal.Decimal)) else v
+        def prep_value(k, v):
+            """prepare value v for inclusion as a string in an SQL condition"""
+            if self.heading[k].uuid:
+                if not isinstance(v, uuid.UUID):
+                    try:
+                        v = uuid.UUID(v)
+                    except (AttributeError, ValueError):
+                        raise DataJointError('Badly formed UUID {v} in restriction by `{k}`'.format(k=k, v=v)) from None
+                return "X'%s'" % binascii.hexlify(v.bytes).decode()
+            if isinstance(v, (datetime.date, datetime.datetime, datetime.time, decimal.Decimal)):
+                return '"%s"' % v
+            return '%r' % v
 
         negate = False
         while isinstance(arg, Not):
@@ -154,12 +166,12 @@ class QueryExpression:
         # restrict by a mapping such as a dict -- convert to an AndList of string equality conditions
         if isinstance(arg, collections.abc.Mapping):
             return template % self._make_condition(
-                AndList('`%s`=%r' % (k, prep_value(v)) for k, v in arg.items() if k in self.heading))
+                AndList('`%s`=%s' % (k, prep_value(k, v)) for k, v in arg.items() if k in self.heading))
 
         # restrict by a numpy record -- convert to an AndList of string equality conditions
         if isinstance(arg, np.void):
             return template % self._make_condition(
-                AndList(('`%s`=%r' % (k, prep_value(arg[k])) for k in arg.dtype.fields if k in self.heading)))
+                AndList(('`%s`=%s' % (k, prep_value(k, arg[k])) for k in arg.dtype.fields if k in self.heading)))
 
         # restrict by a QueryExpression subclass -- triggers instantiation
         if inspect.isclass(arg) and issubclass(arg, QueryExpression):
@@ -226,12 +238,15 @@ class QueryExpression:
         :param attributes:  attributes to be included in the result. (The primary key is already included).
         :param named_attributes: new attributes computed or renamed from existing attributes.
         :return: the projected expression.
-        Primary key attributes are always cannot be excluded but may be renamed.
+        Primary key attributes cannot be excluded but may be renamed.
         Thus self.proj() leaves only the primary key attributes of self.
         self.proj(a='id') renames the attribute 'id' into 'a' and includes 'a' in the projection.
         self.proj(a='expr') adds a new field a with the value computed with an SQL expression.
         self.proj(a='(id)') adds a new computed field named 'a' that has the same value as id
         Each attribute can only be used once in attributes or named_attributes.
+        If the attribute list contains an Ellipsis ..., then all secondary attributes are included
+        If an entry of the attribute list starts with a dash, e.g. '-attr', then the secondary attribute
+        attr will be excluded, if already present but ignored if not found.
         """
         return Projection.create(self, attributes, named_attributes)
 
@@ -486,7 +501,7 @@ class QueryExpression:
             ellipsis='<p>...</p>' if has_more else '',
             body='</tr><tr>'.join(
                 ['\n'.join(['<td>%s</td>' % (tup[name] if name in tup.dtype.names else '=BLOB=')
-                    for name in heading.names])
+                            for name in heading.names])
                  for tup in tuples]),
             count=('<p>Total: %d</p>' % len(rel)) if config['display.show_tuple_count'] else '')
 
@@ -501,9 +516,8 @@ class QueryExpression:
         number of elements in the result set.
         """
         return self.connection.query(
-            'SELECT ' + (
-                'count(DISTINCT `{pk}`)'.format(pk='`,`'.join(self.primary_key)) if self.distinct else 'count(*)') +
-            ' FROM {from_}{where}'.format(
+            'SELECT count({count}) FROM {from_}{where}'.format(
+                count='DISTINCT `{pk}`'.format(pk='`,`'.join(self.primary_key)) if self.distinct and self.primary_key else '*',
                 from_=self.from_clause,
                 where=self.where_clause)).fetchone()[0]
 
@@ -682,10 +696,29 @@ class Projection(QueryExpression):
             self._heading = arg.heading
             self._arg = arg._arg
 
+    @staticmethod
+    def prepare_attribute_lists(arg, attributes, named_attributes):
+        # check that all attributes are strings
+        has_ellipsis = Ellipsis in attributes
+        attributes = [a for a in attributes if a is not Ellipsis]
+        try:
+            raise DataJointError("Attribute names must be strings or ..., got %s" % next(
+                type(a) for a in attributes if not isinstance(a, str)))
+        except StopIteration:
+            pass
+        named_attributes = {k: v.strip() for k, v in named_attributes.items()}  # clean up
+        excluded_attributes = set(a.lstrip('-').strip() for a in attributes if a.startswith('-'))
+        if has_ellipsis:
+            included_already = set(named_attributes.values())
+            attributes = [a for a in arg.heading.secondary_attributes if a not in included_already]
+        # process excluded attributes
+        attributes = [a for a in attributes if a not in excluded_attributes]
+        return attributes, named_attributes
+
     @classmethod
-    def create(cls, arg, attributes=None, named_attributes=None, include_primary_key=True):
+    def create(cls, arg, attributes, named_attributes, include_primary_key=True):
         """
-        :param arg: The QueryExression to be projected
+        :param arg: The QueryExpression to be projected
         :param attributes:  attributes to select
         :param named_attributes:  new attributes to create by renaming or computing
         :param include_primary_key:  True if the primary key must be included even if it's not in attributes.
@@ -693,8 +726,13 @@ class Projection(QueryExpression):
         """
         obj = cls()
         obj._connection = arg.connection
-        named_attributes = {k: v.strip() for k, v in named_attributes.items()}  # clean up values
+
+        if inspect.isclass(arg) and issubclass(arg, QueryExpression):
+            arg = arg()  # instantiate if a class
+
+        attributes, named_attributes = Projection.prepare_attribute_lists(arg, attributes, named_attributes)
         obj._distinct = arg.distinct
+
         if include_primary_key:  # include primary key of the QueryExpression
             attributes = (list(a for a in arg.primary_key if a not in named_attributes.values()) +
                           list(a for a in attributes if a not in arg.primary_key))
@@ -731,7 +769,7 @@ class Projection(QueryExpression):
 
 class GroupBy(QueryExpression):
     """
-    GroupBy(rel, comp1='expr1', ..., compn='exprn')  yileds an entity set with the primary key specified by rel.heading.
+    GroupBy(rel, comp1='expr1', ..., compn='exprn')  yields an entity set with the primary key specified by rel.heading.
     The computed arguments comp1, ..., compn use aggregation operators on the attributes of rel.
     GroupBy is used QueryExpression.aggr and U.aggr.
     GroupBy is a private class in DataJoint, not exposed to users.
@@ -748,15 +786,13 @@ class GroupBy(QueryExpression):
             self._keep_all_rows = arg._keep_all_rows
 
     @classmethod
-    def create(cls, arg, group, attributes=None, named_attributes=None, keep_all_rows=False):
+    def create(cls, arg, group, attributes, named_attributes, keep_all_rows=False):
         if inspect.isclass(group) and issubclass(group, QueryExpression):
             group = group()   # instantiate if a class
+        attributes, named_attributes = Projection.prepare_attribute_lists(arg, attributes, named_attributes)
         assert_join_compatibility(arg, group)
         obj = cls()
         obj._keep_all_rows = keep_all_rows
-        if not set(group.primary_key) - set(arg.primary_key):
-            raise DataJointError('The primary key of the grouped set must contain '
-                                 'additional attributes besides those in the grouping set.')
         obj._arg = (Join.make_argument_subquery(group) if isinstance(arg, U)
                     else Join.create(arg, group, keep_all_rows=keep_all_rows))
         obj._connection = obj._arg.connection
@@ -904,9 +940,9 @@ class U:
         :param named_attributes: computations of the form new_attribute="sql expression on attributes of group"
         :return: The derived query expression
         """
-        return (
-            GroupBy.create(self, group=group, keep_all_rows=False, attributes=(), named_attributes=named_attributes)
-            if self.primary_key else
-            Projection.create(group, attributes=(), named_attributes=named_attributes, include_primary_key=False))
+        if self.primary_key:
+            return GroupBy.create(
+                self, group=group, keep_all_rows=False, attributes=(), named_attributes=named_attributes)
+        return Projection.create(group, attributes=(), named_attributes=named_attributes, include_primary_key=False)
 
     aggregate = aggr  # alias for aggr
