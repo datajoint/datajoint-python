@@ -6,7 +6,7 @@
 * Convert numpy array from python object to appropriate data type if all elements are of the same type (#587) PR #608
 * Remove expression requirement to have additional attributes (#604) PR #604
 * Support for filepath datatype (#481) PR #603, #659
-* Support file attachment datatype (#480, #592, #637, PR #659)
+* Support file attachment datatype (#480, #592, #637) PR #659
 * Fetch return a dict array when specifying `as_dict=True` for specified attributes. (#595) PR #593
 * Support of ellipsis in `proj`:  `query_expression.proj(.., '-movie')` (#499) PR #578
 * Expand support of blob serialization (#572, #520, #427, #392, #244, #594) PR #577
