@@ -3,7 +3,7 @@ from collections import namedtuple, defaultdict
 from itertools import chain
 import re
 import logging
-from .errors import DataJointError
+from .errors import DataJointError, _support_filepath_types, FILEPATH_FEATURE_SWITCH
 from .declare import UUID_DATA_TYPE, SPECIAL_TYPES, TYPE_PATTERN, EXTERNAL_TYPES, NATIVE_TYPES
 from .utils import OrderedDict
 from .attribute_adapter import get_adapter, AttributeAdapter
@@ -249,6 +249,12 @@ class Heading:
                     if attr['type'].startswith('external'):
                         raise DataJointError('Legacy datatype `{type}`.'.format(**attr)) from None
                     raise DataJointError('Unknown attribute type `{type}`'.format(**attr)) from None
+                if category == 'FILEPATH' and not _support_filepath_types():
+                    raise DataJointError("""
+                        The filepath data type is disabled until complete validation. 
+                        To turn it on as experimental feature, set the environment variable 
+                        {env} = TRUE or upgrade datajoint.
+                        """.format(env=FILEPATH_FEATURE_SWITCH))
                 attr.update(
                     unsupported=False,
                     is_attachment=category in ('INTERNAL_ATTACH', 'EXTERNAL_ATTACH'),

@@ -1,6 +1,6 @@
 import datajoint as dj
 import networkx as nx
-from datajoint import attribute_adapter
+from datajoint import errors
 
 from . import PREFIX, CONN_INFO
 
@@ -8,7 +8,8 @@ from . import PREFIX, CONN_INFO
 schema_name = PREFIX + '_test_custom_datatype'
 schema = dj.schema(schema_name, connection=dj.conn(**CONN_INFO))
 
-attribute_adapter._switch_adapated_types(True)
+
+errors._switch_adapted_types(True)  # enable adapted types for testing only
 
 
 class GraphAdapter(dj.AttributeAdapter):
@@ -40,4 +41,4 @@ class Connectivity(dj.Manual):
     """
 
 
-attribute_adapter._switch_adapated_types(False)
+errors._switch_adapted_types(False)  # disable again

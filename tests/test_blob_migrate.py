@@ -3,6 +3,7 @@ from nose.tools import assert_true, assert_false, assert_equal, \
 
 import datajoint as dj
 import os
+from pathlib import Path
 import re
 from . import S3_CONN_INFO
 from . import CONN_INFO
@@ -35,9 +36,9 @@ class TestBlobMigrate:
                 secret_key=S3_CONN_INFO['secret_key']),
             'local': dict(
                 protocol='file',
-                location=os.path.expanduser('~/temp/migrate-test'))
+                location=str(Path(os.path.expanduser('~'),'temp','migrate-test')))
         }
-        dj.config['cache'] = os.path.expanduser('~/temp/dj-cache')
+        dj.config['cache'] = str(Path(os.path.expanduser('~'),'temp','dj-cache'))
 
         LEGACY_HASH_SIZE = 43
 
@@ -100,20 +101,24 @@ class TestBlobMigrate:
 
             contents_hash_function = {
                 'file': lambda ext, relative_path: dj.hash.uuid_from_file(
-                    os.path.join(ext.spec['location'], relative_path)),
+                    str(Path(ext.spec['location'], relative_path))),
                 's3': lambda ext, relative_path: dj.hash.uuid_from_buffer(
                     ext.s3.get(relative_path))
             }
 
             for _hash, size in zip(*legacy_external.fetch('hash', 'size')):
                 if _hash in hashes:
-                    relative_path = os.path.join(schema.database, _hash)
+                    relative_path = str(Path(schema.database, _hash).as_posix())
                     uuid = dj.hash.uuid_from_buffer(init_string=relative_path)
+                    external_path = ext._make_external_filepath(relative_path)
+                    if ext.spec['protocol'] == 's3':
+                        contents_hash = dj.hash.uuid_from_buffer(ext._download_buffer(external_path))
+                    else:
+                        contents_hash = dj.hash.uuid_from_file(external_path)
                     ext.insert1(dict(
                         filepath=relative_path,
                         size=size,
-                        contents_hash=contents_hash_function[ext.spec[
-                            'protocol']](ext, relative_path),
+                        contents_hash=contents_hash,
                         hash=uuid
                     ), skip_duplicates=True)
 
@@ -194,9 +199,10 @@ class TestBlobMigrate:
                 secret_key=S3_CONN_INFO['secret_key']),
             'local': dict(
                 protocol='file',
-                location=os.path.expanduser('~/temp/migrate-test'))
+                location=str(Path(os.path.expanduser('~'),'temp','migrate-test')))
         }
-        dj.config['cache'] = os.path.expanduser('~/temp/dj-cache')
+        dj.config['cache'] = str(Path(os.path.expanduser('~'),'temp','dj-cache'))
 
         test_mod = dj.create_virtual_module('test_mod', 'djtest_blob_migrate')
-        assert_equal(test_mod.A.fetch('blob_share')[1][1], 2)
+        r = test_mod.A.fetch('blob_share', order_by='id')
+        assert_equal(r[1][1], 2)

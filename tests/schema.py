@@ -264,7 +264,7 @@ class SigIntTable(dj.Computed):
     """
 
     def _make_tuples(self, key):
-        os.kill(os.getpid(), signal.SIGINT)
+        raise KeyboardInterrupt
 
 
 @schema
@@ -274,7 +274,7 @@ class SigTermTable(dj.Computed):
     """
 
     def make(self, key):
-        os.kill(os.getpid(), signal.SIGTERM)
+        raise SystemExit('SIGTERM received')
 
 
 @schema
@@ -296,4 +296,29 @@ class IndexRich(dj.Manual):
     index (first_date, value)
     """
 
+#  Schema for issue 656
+@schema
+class ThingA(dj.Manual):
+    definition = """
+    a: int
+    """
+
+
+@schema
+class ThingB(dj.Manual):
+    definition = """
+    b1: int
+    b2: int
+    ---
+    b3: int
+    """
+
+
+@schema
+class ThingC(dj.Manual):
+    definition = """
+    -> ThingA
+    ---
+    -> [unique, nullable] ThingB
+    """
 
