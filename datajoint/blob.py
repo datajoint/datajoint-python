@@ -14,6 +14,9 @@ from .errors import DataJointError
 from .utils import OrderedDict
 
 
+DJ0_ENABLE = True  # temporary hook to allow dj0 linting
+
+
 mxClassID = OrderedDict((
     # see http://www.mathworks.com/help/techdoc/apiref/mxclassid.html
     ('mxUNKNOWN_CLASS', None),
@@ -71,6 +74,9 @@ class Blob:
         self.protocol = None
 
     def set_dj0(self):
+        if not DJ0_ENABLE:
+            raise RuntimeError('dj0 encoding disabled by user')
+
         self.protocol = b"dj0\0"  # when using new blob features
             
     def squeeze(self, array, convert_to_scalar=True):
