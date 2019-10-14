@@ -18,3 +18,7 @@ build/
 ./tests/.coverage
 ./tests/dj-store/*
 *.log
+*.env
+local-docker-compose.yml
+notebooks/*
+__main__.py

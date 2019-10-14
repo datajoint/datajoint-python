@@ -7,17 +7,52 @@ from contextlib import contextmanager
 import pymysql as client
 import logging
 from getpass import getpass
-from pymysql import err
 
 from .settings import config
-from .errors import DataJointError, server_error_codes, is_connection_error
+from . import errors
 from .dependencies import Dependencies
+
+# client errors to catch
+client_errors = (client.err.InterfaceError, client.err.DatabaseError)
+
+
+def translate_query_error(client_error, query):
+    """
+    Take client error and original query and return the corresponding DataJoint exception.
+    :param client_error: the exception raised by the client interface
+    :param query: sql query with placeholders
+    :return: an instance of the corresponding subclass of datajoint.errors.DataJointError
+    """
+    # Loss of connection errors
+    if isinstance(client_error, client.err.InterfaceError) and client_error.args[0] == "(0, '')":
+        return errors.LostConnectionError('Server connection lost due to an interface error.', *client_error.args[1:])
+    disconnect_codes = {
+        2006: "Connection timed out",
+        2013: "Server connection lost"}
+    if isinstance(client_error, client.err.OperationalError) and client_error.args[0] in disconnect_codes:
+        return errors.LostConnectionError(disconnect_codes[client_error.args[0]], *client_error.args[1:])
+    # Access errors
+    if isinstance(client_error, client.err.OperationalError) and client_error.args[0] in (1044, 1142):
+        return errors.AccessError('Insufficient privileges.', client_error.args[1],  query)
+    # Integrity errors
+    if isinstance(client_error, client.err.IntegrityError) and client_error.args[0] == 1062:
+        return errors.DuplicateError(*client_error.args[1:])
+    if isinstance(client_error, client.err.IntegrityError) and client_error.args[0] == 1452:
+        return errors.IntegrityError(*client_error.args[1:])
+    # Syntax Errors
+    if isinstance(client_error, client.err.ProgrammingError) and client_error.args[0] == 1064:
+        return errors.QuerySyntaxError(client_error.args[1], query)
+    # Existence Errors
+    if isinstance(client_error, client.err.ProgrammingError) and client_error.args[0] == 1146:
+        return errors.MissingTableError(client_error.args[1], query)
+    if isinstance(client_error, client.err.InternalError) and client_error.args[0] == 1364:
+        return errors.MissingAttributeError(*client_error.args[1:])
 
 
 logger = logging.getLogger(__name__)
 
 
-def conn(host=None, user=None, password=None, init_fun=None, reset=False):
+def conn(host=None, user=None, password=None, init_fun=None, reset=False, use_tls=None):
     """
     Returns a persistent connection object to be shared by multiple modules.
     If the connection is not yet established or reset=True, a new connection is set up.
@@ -30,6 +65,7 @@ def conn(host=None, user=None, password=None, init_fun=None, reset=False):
     :param password: mysql password
     :param init_fun: initialization function
     :param reset: whether the connection should be reset or not
+    :param use_tls: TLS encryption option
     """
     if not hasattr(conn, 'connection') or reset:
         host = host if host is not None else config['database.host']
@@ -40,7 +76,8 @@ def conn(host=None, user=None, password=None, init_fun=None, reset=False):
         if password is None:  # pragma: no cover
             password = getpass(prompt="Please enter DataJoint password: ")
         init_fun = init_fun if init_fun is not None else config['connection.init_function']
-        conn.connection = Connection(host, user, password, init_fun)
+        use_tls = use_tls if use_tls is not None else config['database.use_tls']
+        conn.connection = Connection(host, user, password, None, init_fun, use_tls)
     return conn.connection
 
 
@@ -56,8 +93,10 @@ class Connection:
     :param password: password
     :param port: port number
     :param init_fun: connection initialization function (SQL)
+    :param use_tls: TLS encryption option
     """
-    def __init__(self, host, user, password, port=None, init_fun=None):
+
+    def __init__(self, host, user, password, port=None, init_fun=None, use_tls=None):
         if ':' in host:
             # the port in the hostname overrides the port argument
             host, port = host.split(':')
@@ -65,6 +104,9 @@ class Connection:
         elif port is None:
             port = config['database.port']
         self.conn_info = dict(host=host, port=port, user=user, passwd=password)
+        if use_tls is not False:
+            self.conn_info['ssl'] = use_tls if isinstance(use_tls, dict) else {'ssl': {}}
+        self.conn_info['ssl_input'] = use_tls
         self.init_fun = init_fun
         print("Connecting {user}@{host}:{port}".format(**self.conn_info))
         self._conn = None
@@ -73,7 +115,7 @@ class Connection:
             logger.info("Connected {user}@{host}:{port}".format(**self.conn_info))
             self.connection_id = self.query('SELECT connection_id()').fetchone()[0]
         else:
-            raise DataJointError('Connection failed.')
+            raise errors.ConnectionError('Connection failed.')
         self._in_transaction = False
         self.schemas = dict()
         self.dependencies = Dependencies(self)
@@ -90,14 +132,26 @@ class Connection:
         """
         Connects to the database server.
         """
+        ssl_input = self.conn_info.pop('ssl_input')
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', '.*deprecated.*')
-            self._conn = client.connect(
-                init_command=self.init_fun,
-                sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
-                         "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
-                charset=config['connection.charset'],
-                **self.conn_info)    
+            try:
+                self._conn = client.connect(
+                    init_command=self.init_fun,
+                    sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
+                             "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
+                    charset=config['connection.charset'],
+                    **self.conn_info)
+            except client.err.InternalError:
+                if ssl_input is None:
+                    self.conn_info.pop('ssl')
+                self._conn = client.connect(
+                    init_command=self.init_fun,
+                    sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
+                             "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
+                    charset=config['connection.charset'],
+                    **self.conn_info)
+        self.conn_info['ssl_input'] = ssl_input
         self._conn.autocommit(True)
 
     def close(self):
@@ -119,54 +173,50 @@ class Connection:
         """
         try:
             self.ping()
-            return True
         except:
             return False
+        return True
 
-    def query(self, query, args=(), as_dict=False, suppress_warnings=True, reconnect=None):
-        """
-        Execute the specified query and return the tuple generator (cursor).
-
-        :param query: mysql query
-        :param args: additional arguments for the client.cursor
-        :param as_dict: If as_dict is set to True, the returned cursor objects returns
-                        query results as dictionary.
-        :param suppress_warnings: If True, suppress all warnings arising from underlying query library
-        """
-        if reconnect is None:
-            reconnect = config['database.reconnect']
-
-        cursor = client.cursors.DictCursor if as_dict else client.cursors.Cursor
-        cur = self._conn.cursor(cursor=cursor)
-
-        logger.debug("Executing SQL:" + query[0:300])
+    @staticmethod
+    def __execute_query(cursor, query, args, cursor_class, suppress_warnings):
         try:
             with warnings.catch_warnings():
                 if suppress_warnings:
                     # suppress all warnings arising from underlying SQL library
                     warnings.simplefilter("ignore")
-                cur.execute(query, args)
-        except (err.InterfaceError, err.OperationalError) as e:
-            if is_connection_error(e) and reconnect:
-                warnings.warn("Mysql server has gone away. Reconnecting to the server.")
-                self.connect()
-                if self._in_transaction:
-                    self.cancel_transaction()
-                    raise DataJointError("Connection was lost during a transaction.") from None
-                else:
-                    logger.debug("Re-executing SQL")
-                    cur = self.query(query, args=args, as_dict=as_dict, suppress_warnings=suppress_warnings, reconnect=False)
-            else:
-                logger.debug("Caught InterfaceError/OperationalError.")
+                cursor.execute(query, args)
+        except client_errors as err:
+            raise translate_query_error(err, query) from None
+
+    def query(self, query, args=(), *, as_dict=False, suppress_warnings=True, reconnect=None):
+        """
+        Execute the specified query and return the tuple generator (cursor).
+        :param query: SQL query
+        :param args: additional arguments for the client.cursor
+        :param as_dict: If as_dict is set to True, the returned cursor objects returns
+                        query results as dictionary.
+        :param suppress_warnings: If True, suppress all warnings arising from underlying query library
+        :param reconnect: when None, get from config, when True, attempt to reconnect if disconnected
+        """
+        if reconnect is None:
+            reconnect = config['database.reconnect']
+        logger.debug("Executing SQL:" + query[0:300])
+        cursor_class = client.cursors.DictCursor if as_dict else client.cursors.Cursor
+        cursor = self._conn.cursor(cursor=cursor_class)
+        try:
+            self.__execute_query(cursor, query, args, cursor_class, suppress_warnings)
+        except errors.LostConnectionError:
+            if not reconnect:
                 raise
-        except err.ProgrammingError as e:
-            if e.args[0] == server_error_codes['parse error']:
-                raise DataJointError("\n".join((
-                    "Error in query:", query,
-                    "Please check spelling, syntax, and existence of tables and attributes.",
-                    "When restricting a relation by a condition in a string, enclose attributes in backquotes."
-                ))) from None
-        return cur
+            warnings.warn("MySQL server has gone away. Reconnecting to the server.")
+            self.connect()
+            if self._in_transaction:
+                self.cancel_transaction()
+                raise errors.LostConnectionError("Connection was lost during a transaction.") from None
+            logger.debug("Re-executing")
+            cursor = self._conn.cursor(cursor=cursor_class)
+            self.__execute_query(cursor, query, args, cursor_class, suppress_warnings)
+        return cursor
 
     def get_user(self):
         """
@@ -186,11 +236,9 @@ class Connection:
     def start_transaction(self):
         """
         Starts a transaction error.
-
-        :raise DataJointError: if there is an ongoing transaction.
         """
         if self.in_transaction:
-            raise DataJointError("Nested connections are not supported.")
+            raise errors.DataJointError("Nested connections are not supported.")
         self.query('START TRANSACTION WITH CONSISTENT SNAPSHOT')
         self._in_transaction = True
         logger.info("Transaction started")
@@ -234,3 +282,4 @@ class Connection:
             raise
         else:
             self.commit_transaction()
+            

@@ -1,22 +1,16 @@
-import sys
 from functools import partial
+from pathlib import Path
 import warnings
 import pandas
+import itertools
 import re
-import os
 import numpy as np
 import uuid
-from . import blob, attach, hash
+import numbers
+from . import blob, hash
 from .errors import DataJointError
 from .settings import config
-import numbers as num
-
-if sys.version_info[1] < 6:
-    from collections import OrderedDict
-else:
-    # use dict in Python 3.6+ -- They are already ordered and look nicer
-    OrderedDict = dict
-
+from .utils import OrderedDict, safe_write
 
 class key:
     """
@@ -47,37 +41,50 @@ def _get(connection, attr, data, squeeze, download_path):
     :param download_path: for fetches that download data, e.g. attachments
     :return: unpacked data
     """
-
     if data is None:
-        return 
+        return
 
     extern = connection.schemas[attr.database].external[attr.store] if attr.is_external else None
 
+    # apply attribute adapter if present
+    adapt = attr.adapter.get if attr.adapter else lambda x: x
+
+    if attr.is_filepath:
+        return adapt(extern.download_filepath(uuid.UUID(bytes=data))[0])
+
     if attr.is_attachment:
-        # Steps: 
-        # 1. peek the filename from the blob without downloading remote
+        # Steps:
+        # 1. get the attachment filename
         # 2. check if the file already exists at download_path, verify checksum
         # 3. if exists and checksum passes then return the local filepath
         # 4. Otherwise, download the remote file and return the new filepath
-        peek, size = extern.peek(uuid.UUID(bytes=data)) if attr.is_external else (data, len(data))
-        assert size is not None 
-        filename = peek.split(b"\0", 1)[0].decode()
-        size -= len(filename) + 1
-        filepath = os.path.join(download_path, filename)
-        if os.path.isfile(filepath) and size == os.path.getsize(filepath):
-            local_checksum = hash.uuid_from_file(download_path, filename)
-            remote_checksum = (uuid.UUID(bytes=data)
-                    if attr.is_external else hash.uuid_from_buffer(data))
-            if local_checksum == remote_checksum: 
-                return filepath  # the existing file is okay
-        # Download remote attachment
+        _uuid = uuid.UUID(bytes=data) if attr.is_external else None
+        attachment_name = (extern.get_attachment_name(_uuid) if attr.is_external
+                    else data.split(b"\0", 1)[0].decode())
+        local_filepath = Path(download_path) / attachment_name
+        if local_filepath.is_file():
+            attachment_checksum = _uuid if attr.is_external else hash.uuid_from_buffer(data)
+            if attachment_checksum == hash.uuid_from_file(local_filepath, init_string=attachment_name + '\0'):
+                return adapt(local_filepath)  # checksum passed, no need to download again
+            # generate the next available alias filename
+            for n in itertools.count():
+                f = local_filepath.parent / (local_filepath.stem + '_%04x' % n + local_filepath.suffix)
+                if not f.is_file():
+                    local_filepath = f
+                    break
+                if attachment_checksum == hash.uuid_from_file(f, init_string=attachment_name + '\0'):
+                    return adapt(f)  # checksum passed, no need to download again
+        # Save attachment
         if attr.is_external:
-            data = extern.get(uuid.UUID(bytes=data))
-        return attach.save(data, download_path)  # download file from remote store
+            extern.download_attachment(_uuid, attachment_name, local_filepath)
+        else:
+            # write from buffer
+            safe_write(local_filepath, data.split(b"\0", 1)[1])
+        return adapt(local_filepath)  # download file from remote store
 
-    return uuid.UUID(bytes=data) if attr.uuid else (
+    return adapt(uuid.UUID(bytes=data) if attr.uuid else (
             blob.unpack(extern.get(uuid.UUID(bytes=data)) if attr.is_external else data, squeeze=squeeze) 
-            if attr.is_blob else data)
+            if attr.is_blob else data))
 
 
 def _flatten_attribute_list(primary_key, attrs):
@@ -98,7 +105,7 @@ def _flatten_attribute_list(primary_key, attrs):
 class Fetch:
     """
     A fetch object that handles retrieving elements from the table expression.
-    :param expression: the table expression to fetch from.
+    :param expression: the QueryExpression object to fetch from.
     """
 
     def __init__(self, expression):
@@ -107,8 +114,8 @@ class Fetch:
     def __call__(self, *attrs, offset=None, limit=None, order_by=None, format=None, as_dict=None,
                  squeeze=False, download_path='.'):
         """
-        Fetches the expression results from the database into an np.array or list of dictionaries and unpacks blob attributes.
-
+        Fetches the expression results from the database into an np.array or list of dictionaries and
+        unpacks blob attributes.
         :param attrs: zero or more attributes to fetch. If not provided, the call will return
         all attributes of this relation. If provided, returns tuples with an entry for each attribute.
         :param offset: the number of tuples to skip in the returned result
@@ -127,7 +134,6 @@ class Fetch:
         :param download_path: for fetches that download data, e.g. attachments
         :return: the contents of the relation in the form of a structured numpy.array or a dict list
         """
-
         if order_by is not None:
             # if 'order_by' passed in a string, make into list
             if isinstance(order_by, str):
@@ -158,7 +164,7 @@ class Fetch:
         if limit is None and offset is not None:
             warnings.warn('Offset set, but no limit. Setting limit to a large number. '
                           'Consider setting a limit explicitly.')
-            limit = 2 * len(self._expression)
+            limit = 8000000000  # just a very large number to effect no limit
 
         get = partial(_get, self._expression.connection, squeeze=squeeze, download_path=download_path)
         if attrs:  # a list of attributes provided
@@ -181,13 +187,14 @@ class Fetch:
             else:
                 ret = list(cur.fetchall())
                 record_type = (heading.as_dtype if not ret else np.dtype(
-                    [(name, type(value))
-                        if heading.as_dtype[name] == 'O' and isinstance(
-                            value, num.Number)  # value of blob is packed here
+                    [(name, type(value))   # use the first element to determine the type for blobs
+                        if heading[name].is_blob and isinstance(value, numbers.Number)
                         else (name, heading.as_dtype[name])
-                        for value, name
-                        in zip(ret[0], heading.as_dtype.names)]))
-                ret = np.array(ret, dtype=record_type)
+                        for value, name in zip(ret[0], heading.as_dtype.names)]))
+                try:
+                    ret = np.array(ret, dtype=record_type)
+                except Exception as e:
+                    raise
                 for name in heading:
                     ret[name] = list(map(partial(get, heading[name]), ret[name]))
                 if format == "frame":
@@ -200,7 +207,6 @@ class Fetch1:
     Fetch object for fetching exactly one row.
     :param relation: relation the fetch object fetches data from
     """
-
     def __init__(self, relation):
         self._expression = relation
 
@@ -239,5 +245,4 @@ class Fetch1:
                 next(to_dicts(result[self._expression.primary_key])) if is_key(attribute) else result[attribute][0]
                 for attribute in attrs)
             ret = return_values[0] if len(attrs) == 1 else return_values
-
         return ret

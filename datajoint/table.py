@@ -4,17 +4,16 @@ import inspect
 import platform
 import numpy as np
 import pandas
-import pymysql
 import logging
 import uuid
-from pymysql import OperationalError, InternalError, IntegrityError
+from pathlib import Path
 from .settings import config
-from .declare import declare
+from .declare import declare, alter
 from .expression import QueryExpression
-from . import attach, blob
+from . import blob
 from .utils import user_choice
 from .heading import Heading
-from .errors import server_error_codes, DataJointError, DuplicateError
+from .errors import DuplicateError, AccessError, DataJointError, UnknownAttributeError
 from .version import __version__ as version
 
 logger = logging.getLogger(__name__)
@@ -35,6 +34,7 @@ class Table(QueryExpression):
     _heading = None
     database = None
     _log_ = None
+    declaration_context = None
 
     # -------------- required by QueryExpression ----------------- #
     @property
@@ -51,31 +51,62 @@ class Table(QueryExpression):
                     'DataJoint class is missing a database connection. '
                     'Missing schema decorator on the class? (e.g. @schema)')
             else:
-                self._heading.init_from_database(self.connection, self.database, self.table_name)
+                self._heading.init_from_database(
+                    self.connection, self.database, self.table_name, self.declaration_context)
         return self._heading
 
     def declare(self, context=None):
         """
-        Use self.definition to declare the table in the schema.
+        Declare the table in the schema based on self.definition.
+        :param context: the context for foreign key resolution. If None, foreign keys are not allowed.
         """
         if self.connection.in_transaction:
             raise DataJointError('Cannot declare new tables inside a transaction, '
                                  'e.g. from inside a populate/make call')
+        sql, external_stores = declare(self.full_table_name, self.definition, context)
+        sql = sql.format(database=self.database)
         try:
-            sql, external_stores = declare(self.full_table_name, self.definition, context)
-            sql = sql.format(database=self.database)
             # declare all external tables before declaring main table
             for store in external_stores:
                 self.connection.schemas[self.database].external[store]
             self.connection.query(sql)
-        except pymysql.OperationalError as error:
+        except AccessError:
             # skip if no create privilege
-            if error.args[0] == server_error_codes['command denied']:
-                logger.warning(error.args[1])
-            else:
-                raise
+            pass
         else:
             self._log('Declared ' + self.full_table_name)
+
+    def alter(self, prompt=True, context=None):
+        """
+        Alter the table definition from self.definition
+        """
+        if self.connection.in_transaction:
+            raise DataJointError('Cannot update table declaration inside a transaction, '
+                                 'e.g. from inside a populate/make call')
+        if context is None:
+            frame = inspect.currentframe().f_back
+            context = dict(frame.f_globals, **frame.f_locals)
+            del frame
+        old_definition = self.describe(context=context, printout=False)
+        sql, external_stores = alter(self.definition, old_definition, context)
+        if not sql:
+            if prompt:
+                print('Nothing to alter.')
+        else:
+            sql = "ALTER TABLE {tab}\n\t".format(tab=self.full_table_name) + ",\n\t".join(sql)
+            if not prompt or user_choice(sql + '\n\nExecute?') == 'yes':
+                try:
+                    # declare all external tables before declaring main table
+                    for store in external_stores:
+                        self.connection.schemas[self.database].external[store]
+                    self.connection.query(sql)
+                except AccessError:
+                    # skip if no create privilege
+                    pass
+                else:
+                    if prompt:
+                        print('Table altered')
+                    self._log('Altered ' + self.full_table_name)
 
     @property
     def from_clause(self):
@@ -221,6 +252,8 @@ class Table(QueryExpression):
                 if ignore_extra_fields and name not in heading:
                     return None
                 attr = heading[name]
+                if attr.adapter:
+                    value = attr.adapter.put(value)
                 if value is None or (attr.numeric and (value == '' or np.isnan(np.float(value)))):
                     # set default value
                     placeholder, value = 'DEFAULT', None
@@ -238,8 +271,15 @@ class Table(QueryExpression):
                         value = blob.pack(value)
                         value = self.external[attr.store].put(value).bytes if attr.is_external else value
                     elif attr.is_attachment:
-                        value = attach.load(value)
-                        value = self.external[attr.store].put(value).bytes if attr.is_external else value
+                        attachment_path = Path(value)
+                        if attr.is_external:
+                            # value is hash of contents
+                            value = self.external[attr.store].upload_attachment(attachment_path).bytes
+                        else:
+                            # value is filename + contents
+                            value = str.encode(attachment_path.name) + b'\0' + attachment_path.read_bytes()
+                    elif attr.is_filepath:
+                        value = self.external[attr.store].upload_filepath(value).bytes
                     elif attr.numeric:
                         value = str(int(value) if isinstance(value, bool) else value)
                 return name, placeholder, value
@@ -305,20 +345,10 @@ class Table(QueryExpression):
                                if skip_duplicates else ''))
                 self.connection.query(query, args=list(
                     itertools.chain.from_iterable((v for v in r['values'] if v is not None) for r in rows)))
-            except (OperationalError, InternalError, IntegrityError) as err:
-                if err.args[0] == server_error_codes['command denied']:
-                    raise DataJointError('Command denied:  %s' % err.args[1]) from None
-                elif err.args[0] == server_error_codes['unknown column']:
-                    # args[1] -> Unknown column 'extra' in 'field list'
-                    raise DataJointError(
-                        '{} : To ignore extra fields, set ignore_extra_fields=True in insert.'.format(err.args[1])
-                    ) from None
-                elif err.args[0] == server_error_codes['duplicate entry']:
-                    raise DuplicateError(
-                        '{} : To ignore duplicate entries, set skip_duplicates=True in insert.'.format(err.args[1])
-                    ) from None
-                else:
-                    raise
+            except UnknownAttributeError as err:
+                raise err.suggest('To ignore extra fields in insert, set ignore_extra_fields=True') from None
+            except DuplicateError as err:
+                raise err.suggest('To ignore duplicate entries in insert, set skip_duplicates=True') from None
 
     def delete_quick(self, get_count=False):
         """
@@ -540,11 +570,9 @@ class Table(QueryExpression):
                1. self must be restricted to exactly one tuple
                2. the update attribute must not be in primary key
 
-            Example
-
-            >>> (v2p.Mice() & key).update('mouse_dob',   '2011-01-01')
+            Example:
+            >>> (v2p.Mice() & key).update('mouse_dob', '2011-01-01')
             >>> (v2p.Mice() & key).update( 'lens')   # set the value to NULL
-
         """
         if len(self) != 1:
             raise DataJointError('Update is only allowed on one tuple at a time')

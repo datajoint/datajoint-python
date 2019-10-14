@@ -41,6 +41,16 @@ class TestDeclare:
         assert_equal(s1, s2)
 
     @staticmethod
+    def test_describe_dependencies():
+        """real_definition should match original definition"""
+        rel = ThingC()
+        context = inspect.currentframe().f_globals
+        s1 = declare(rel.full_table_name, rel.definition, context)
+        s2 = declare(rel.full_table_name, rel.describe(), context)
+        assert_equal(s1, s2)
+
+
+    @staticmethod
     def test_part():
         # Lookup and part with the same name.  See issue #365
         local_schema = dj.schema(schema.database)

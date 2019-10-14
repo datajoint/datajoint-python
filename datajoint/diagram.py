@@ -121,17 +121,6 @@ else:
                     if node.startswith('`%s`' % database):
                         self.nodes_to_show.add(node)
 
-            for full_table_name in self.nodes_to_show:
-                #one entry per parent
-                parents = connection.dependencies.parents(full_table_name,True)
-                
-                # all the foreign primary keys
-                # set because multiple foreign constraints can be applied on the same local attribute
-                foreign_primary_attributes = set(attr for parent in parents.values() for attr in parent['attr_map'].keys())
-                
-                #distinguished table if table introduces atleast one primary key in the schema
-                self.nodes._nodes[full_table_name]['distinguished'] = foreign_primary_attributes < self.nodes._nodes[full_table_name]['primary_key']
-                
         @classmethod
         def from_sequence(cls, sequence):
             """
@@ -202,6 +191,8 @@ else:
                         new = nx.algorithms.boundary.node_boundary(self, self.nodes_to_show)
                         if not new:
                             break
+                        # add nodes referenced by aliased nodes
+                        new.update(nx.algorithms.boundary.node_boundary(self, (a for a in new if a.isdigit())))
                         self.nodes_to_show.update(new)
             return self
 
@@ -218,9 +209,12 @@ else:
                     self.nodes_to_show.remove(arg.full_table_name)
                 except AttributeError:
                     for i in range(arg):
-                        new = nx.algorithms.boundary.node_boundary(nx.DiGraph(self).reverse(), self.nodes_to_show)
+                        graph = nx.DiGraph(self).reverse()
+                        new = nx.algorithms.boundary.node_boundary(graph, self.nodes_to_show)
                         if not new:
                             break
+                        # add nodes referenced by aliased nodes
+                        new.update(nx.algorithms.boundary.node_boundary(graph, (a for a in new if a.isdigit())))
                         self.nodes_to_show.update(new)
             return self
 
@@ -238,7 +232,13 @@ else:
             """
             Make the self.graph - a graph object ready for drawing
             """
-            # include aliased nodes
+            # mark "distinguished" tables, i.e. those that introduce new primary key attributes
+            for name in self.nodes_to_show:
+                foreign_attributes = set(
+                    attr for p in self.in_edges(name, data=True) for attr in p[2]['attr_map'] if p[2]['primary'])
+                self.node[name]['distinguished'] = (
+                        'primary_key' in self.node[name] and foreign_attributes < self.node[name]['primary_key'])
+            # include aliased nodes that are sandwiched between two displayed nodes
             gaps = set(nx.algorithms.boundary.node_boundary(self, self.nodes_to_show)).intersection(
                 nx.algorithms.boundary.node_boundary(nx.DiGraph(self).reverse(), self.nodes_to_show))
             nodes = self.nodes_to_show.union(a for a in gaps if a.isdigit)

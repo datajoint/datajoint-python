@@ -5,8 +5,10 @@ declare the corresponding mysql tables.
 import re
 import pyparsing as pp
 import logging
+from .errors import DataJointError, _support_filepath_types, FILEPATH_FEATURE_SWITCH
+from .attribute_adapter import get_adapter
 
-from .errors import DataJointError
+from .utils import OrderedDict
 
 UUID_DATA_TYPE = 'binary(16)'
 MAX_TABLE_NAME_LENGTH = 64
@@ -25,21 +27,25 @@ TYPE_PATTERN = {k: re.compile(v, re.I) for k, v in dict(
     EXTERNAL_BLOB=r'blob@(?P<store>[a-z]\w*)$',
     INTERNAL_ATTACH=r'attach$',
     EXTERNAL_ATTACH=r'attach@(?P<store>[a-z]\w*)$',
-    UUID=r'uuid$').items()}
+    FILEPATH=r'filepath@(?P<store>[a-z]\w*)$',
+    UUID=r'uuid$',
+    ADAPTED=r'<.+>$'
+).items()}
 
-CUSTOM_TYPES = {'UUID', 'INTERNAL_ATTACH', 'EXTERNAL_ATTACH', 'EXTERNAL_BLOB'}  # types stored in attribute comment
-EXTERNAL_TYPES = {'EXTERNAL_ATTACH', 'EXTERNAL_BLOB'}  # data referenced by a UUID in external tables
+# custom types are stored in attribute comment
+SPECIAL_TYPES = {'UUID', 'INTERNAL_ATTACH', 'EXTERNAL_ATTACH', 'EXTERNAL_BLOB', 'FILEPATH', 'ADAPTED'}
+NATIVE_TYPES = set(TYPE_PATTERN) - SPECIAL_TYPES
+EXTERNAL_TYPES = {'EXTERNAL_ATTACH', 'EXTERNAL_BLOB', 'FILEPATH'}  # data referenced by a UUID in external tables
 SERIALIZED_TYPES = {'EXTERNAL_ATTACH', 'INTERNAL_ATTACH', 'EXTERNAL_BLOB', 'INTERNAL_BLOB'}  # requires packing data
 
-assert set().union(CUSTOM_TYPES, EXTERNAL_TYPES, SERIALIZED_TYPES) <= set(TYPE_PATTERN)  # for development only
+assert set().union(SPECIAL_TYPES, EXTERNAL_TYPES, SERIALIZED_TYPES) <= set(TYPE_PATTERN)
 
 
-def match_type(datatype):
-    for category, pattern in TYPE_PATTERN.items():
-        match = pattern.match(datatype)
-        if match:
-            return category, match
-    raise DataJointError('Unsupported data types "%s"' % datatype)
+def match_type(attribute_type):
+    try:
+        return next(category for category, pattern in TYPE_PATTERN.items() if pattern.match(attribute_type))
+    except StopIteration:
+        raise DataJointError("Unsupported attribute type {type}".format(type=attribute_type)) from None
 
 
 logger = logging.getLogger(__name__)
@@ -73,10 +79,11 @@ def build_foreign_key_parser():
 
 
 def build_attribute_parser():
-    quoted = pp.Or(pp.QuotedString('"'), pp.QuotedString("'"))
+    quoted = pp.QuotedString('"') ^ pp.QuotedString("'")
     colon = pp.Literal(':').suppress()
     attribute_name = pp.Word(pp.srange('[a-z]'), pp.srange('[a-z0-9_]')).setResultsName('name')
-    data_type = pp.Combine(pp.Word(pp.alphas) + pp.SkipTo("#", ignore=quoted)).setResultsName('type')
+    data_type = (pp.Combine(pp.Word(pp.alphas) + pp.SkipTo("#", ignore=quoted))
+                 ^ pp.QuotedString('<', endQuoteChar='>', unquoteResults=False)).setResultsName('type')
     default = pp.Literal('=').suppress() + pp.SkipTo(colon, ignore=quoted).setResultsName('default')
     comment = pp.Literal('#').suppress() + pp.restOfLine.setResultsName('comment')
     return attribute_name + pp.Optional(default) + colon + data_type + comment
@@ -166,8 +173,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
             raise DataJointError('Invalid foreign key attributes in "%s"' % line)
         try:
             raise DataJointError('Duplicate attributes "{attr}" in "{line}"'.format(
-                attr=next(attr for attr in result.new_attrs if attr in attributes),
-                line=line))
+                attr=next(attr for attr in result.new_attrs if attr in attributes), line=line))
         except StopIteration:
             pass   # the normal outcome
 
@@ -214,23 +220,10 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
 
     # declare unique index
     if is_unique:
-        index_sql.append('UNIQUE INDEX ({attrs})'.format(attrs='`,`'.join(ref.primary_key)))
+        index_sql.append('UNIQUE INDEX ({attrs})'.format(attrs=','.join("`%s`" % attr for attr in ref.primary_key)))
 
 
-def declare(full_table_name, definition, context):
-    """
-    Parse declaration and create new SQL table accordingly.
-
-    :param full_table_name: full name of the table
-    :param definition: DataJoint table definition
-    :param context: dictionary of objects that might be referred to in the table.
-    """
-    table_name = full_table_name.strip('`').split('.')[1]
-    if len(table_name) > MAX_TABLE_NAME_LENGTH:
-        raise DataJointError(
-            'Table name `{name}` exceeds the max length of {max_length}'.format(
-                name=table_name,
-                max_length=MAX_TABLE_NAME_LENGTH))
+def prepare_declare(definition, context):
     # split definition into lines
     definition = re.split(r'\s*\n\s*', definition.strip())
     # check for optional table comment
@@ -246,7 +239,7 @@ def declare(full_table_name, definition, context):
     external_stores = []
 
     for line in definition:
-        if line.startswith('#'):  # ignore additional comments
+        if not line or line.startswith('#'):  # ignore additional comments
             pass
         elif line.startswith('---') or line.startswith('___'):
             in_key = False  # start parsing dependent attributes
@@ -257,7 +250,7 @@ def declare(full_table_name, definition, context):
         elif re.match(r'^(unique\s+)?index[^:]*$', line, re.I):   # index
             compile_index(line, index_sql)
         else:
-            name, sql, store = compile_attribute(line, in_key, foreign_key_sql)
+            name, sql, store = compile_attribute(line, in_key, foreign_key_sql, context)
             if store:
                 external_stores.append(store)
             if in_key and name not in primary_key:
@@ -265,7 +258,28 @@ def declare(full_table_name, definition, context):
             if name not in attributes:
                 attributes.append(name)
                 attribute_sql.append(sql)
-    # compile SQL
+
+    return table_comment, primary_key, attribute_sql, foreign_key_sql, index_sql, external_stores
+
+
+def declare(full_table_name, definition, context):
+    """
+    Parse declaration and generate the SQL CREATE TABLE code
+    :param full_table_name: full name of the table
+    :param definition: DataJoint table definition
+    :param context: dictionary of objects that might be referred to in the table
+    :return: SQL CREATE TABLE statement, list of external stores used
+    """
+    table_name = full_table_name.strip('`').split('.')[1]
+    if len(table_name) > MAX_TABLE_NAME_LENGTH:
+        raise DataJointError(
+            'Table name `{name}` exceeds the max length of {max_length}'.format(
+                name=table_name,
+                max_length=MAX_TABLE_NAME_LENGTH))
+
+    table_comment, primary_key, attribute_sql, foreign_key_sql, index_sql, external_stores = prepare_declare(
+        definition, context)
+
     if not primary_key:
         raise DataJointError('Table must have a primary key')
 
@@ -275,6 +289,93 @@ def declare(full_table_name, definition, context):
         '\n) ENGINE=InnoDB, COMMENT "%s"' % table_comment), external_stores
 
 
+def _make_attribute_alter(new, old, primary_key):
+    """
+    :param new: new attribute declarations
+    :param old: old attribute declarations
+    :param primary_key: primary key attributes
+    :return: list of SQL ALTER commands
+    """
+    # parse attribute names
+    name_regexp = re.compile(r"^`(?P<name>\w+)`")
+    original_regexp = re.compile(r'COMMENT "{\s*(?P<name>\w+)\s*}')
+    matched = ((name_regexp.match(d), original_regexp.search(d)) for d in new)
+    new_names = OrderedDict((d.group('name'), n and n.group('name')) for d, n in matched)
+    old_names = [name_regexp.search(d).group('name') for d in old]
+
+    # verify that original names are only used once
+    renamed = set()
+    for v in new_names.values():
+        if v:
+            if v in renamed:
+                raise DataJointError('Alter attempted to rename attribute {%s} twice.' % v)
+            renamed.add(v)
+
+    # verify that all renamed attributes existed in the old definition
+    try:
+        raise DataJointError(
+            "Attribute {} does not exist in the original definition".format(
+                next(attr for attr in renamed if attr not in old_names)))
+    except StopIteration:
+        pass
+
+    # dropping attributes
+    to_drop = [n for n in old_names if n not in renamed and n not in new_names]
+    sql = ['DROP `%s`' % n for n in to_drop]
+    old_names = [name for name in old_names if name not in to_drop]
+
+    # add or change attributes in order
+    prev = None
+    for new_def, (new_name, old_name) in zip(new, new_names.items()):
+        if new_name not in primary_key:
+            after = None  # if None, then must include the AFTER clause
+            if prev:
+                try:
+                    idx = old_names.index(old_name or new_name)
+                except ValueError:
+                    after = prev[0]
+                else:
+                    if idx >= 1 and old_names[idx - 1] != (prev[1] or prev[0]):
+                        after = prev[0]
+            if new_def not in old or after:
+                sql.append('{command} {new_def} {after}'.format(
+                    command=("ADD" if (old_name or new_name) not in old_names else
+                             "MODIFY" if not old_name else
+                             "CHANGE `%s`" % old_name),
+                    new_def=new_def,
+                    after="" if after is None else "AFTER `%s`" % after))
+        prev = new_name, old_name
+
+    return sql
+
+
+def alter(definition, old_definition, context):
+    """
+    :param definition: new table definition
+    :param old_definition: current table definition
+    :param context: the context in which to evaluate foreign key definitions
+    :return: string SQL ALTER command, list of new stores used for external storage
+    """
+    table_comment, primary_key, attribute_sql, foreign_key_sql, index_sql, external_stores = prepare_declare(
+        definition, context)
+    table_comment_, primary_key_, attribute_sql_, foreign_key_sql_, index_sql_, external_stores_ = prepare_declare(
+        old_definition, context)
+
+    # analyze differences between declarations
+    sql = list()
+    if primary_key != primary_key_:
+        raise NotImplementedError('table.alter cannot alter the primary key (yet).')
+    if foreign_key_sql != foreign_key_sql_:
+        raise NotImplementedError('table.alter cannot alter foreign keys (yet).')
+    if index_sql != index_sql_:
+        raise NotImplementedError('table.alter cannot alter indexes (yet)')
+    if attribute_sql != attribute_sql_:
+        sql.extend(_make_attribute_alter(attribute_sql, attribute_sql_, primary_key))
+    if table_comment != table_comment_:
+        sql.append('COMMENT="%s"' % table_comment)
+    return sql, [e for e in external_stores if e not in external_stores_]
+
+
 def compile_index(line, index_sql):
     match = index_parser.parseString(line)
     index_sql.append('{unique} index ({attrs})'.format(
@@ -282,20 +383,54 @@ def compile_index(line, index_sql):
         attrs=','.join('`%s`' % a for a in match.attr_list)))
 
 
-def compile_attribute(line, in_key, foreign_key_sql):
+def substitute_special_type(match, category, foreign_key_sql, context):
+    """
+    :param match: dict containing with keys "type" and "comment" -- will be modified in place
+    :param category: attribute type category from TYPE_PATTERN
+    :param foreign_key_sql: list of foreign key declarations to add to
+    :param context: context for looking up user-defined attribute_type adapters
+    """
+    if category == 'UUID':
+        match['type'] = UUID_DATA_TYPE
+    elif category == 'INTERNAL_ATTACH':
+        match['type'] = 'LONGBLOB'
+    elif category in EXTERNAL_TYPES:
+        if category == 'FILEPATH' and not _support_filepath_types():
+            raise DataJointError("""
+            The filepath data type is disabled until complete validation. 
+            To turn it on as experimental feature, set the environment variable 
+            {env} = TRUE or upgrade datajoint.
+            """.format(env=FILEPATH_FEATURE_SWITCH))
+        match['store'] = match['type'].split('@', 1)[1]
+        match['type'] = UUID_DATA_TYPE
+        foreign_key_sql.append(
+            "FOREIGN KEY (`{name}`) REFERENCES `{{database}}`.`{external_table_root}_{store}` (`hash`) "
+            "ON UPDATE RESTRICT ON DELETE RESTRICT".format(external_table_root=EXTERNAL_TABLE_ROOT, **match))
+    elif category == 'ADAPTED':
+        adapter = get_adapter(context, match['type'])
+        match['type'] = adapter.attribute_type
+        category = match_type(match['type'])
+        if category in SPECIAL_TYPES:
+            # recursive redefinition from user-defined datatypes.
+            substitute_special_type(match, category, foreign_key_sql, context)
+    else:
+        assert False, 'Unknown special type'
+
+
+def compile_attribute(line, in_key, foreign_key_sql, context):
     """
     Convert attribute definition from DataJoint format to SQL
-
     :param line: attribution line
     :param in_key: set to True if attribute is in primary key set
-    :param foreign_key_sql:
+    :param foreign_key_sql: the list of foreign key declarations to add to
+    :param context: context in which to look up user-defined attribute type adapterss
     :returns: (name, sql, is_external) -- attribute name and sql code for its declaration
     """
     try:
         match = attribute_parser.parseString(line + '#', parseAll=True)
     except pp.ParseException as err:
         raise DataJointError('Declaration error in position {pos} in line:\n  {line}\n{msg}'.format(
-            line=err.args[0], pos=err.args[1], msg=err.args[2]))
+            line=err.args[0], pos=err.args[1], msg=err.args[2])) from None
     match['comment'] = match['comment'].rstrip('#')
     if 'default' not in match:
         match['default'] = ''
@@ -314,24 +449,18 @@ def compile_attribute(line, in_key, foreign_key_sql):
             match['default'] = 'NOT NULL'
 
     match['comment'] = match['comment'].replace('"', '\\"')   # escape double quotes in comment
-    category, type_match = match_type(match['type'])
 
-    if category in CUSTOM_TYPES:
+    if match['comment'].startswith(':'):
+        raise DataJointError('An attribute comment must not start with a colon in comment "{comment}"'.format(**match))
+
+    category = match_type(match['type'])
+    if category in SPECIAL_TYPES:
         match['comment'] = ':{type}:{comment}'.format(**match)  # insert custom type into comment
-        if category == 'UUID':
-            match['type'] = UUID_DATA_TYPE
-        elif category == 'INTERNAL_ATTACH':
-            match['type'] = 'LONGBLOB'
-        elif category in EXTERNAL_TYPES:
-            match['store'] = match['type'].split('@', 1)[1]
-            match['type'] = UUID_DATA_TYPE
-            foreign_key_sql.append(
-                "FOREIGN KEY (`{name}`) REFERENCES `{{database}}`.`{external_table_root}_{store}` (`hash`) "
-                "ON UPDATE RESTRICT ON DELETE RESTRICT".format(external_table_root=EXTERNAL_TABLE_ROOT, **match))
+        substitute_special_type(match, category, foreign_key_sql, context)
 
     if category in SERIALIZED_TYPES and match['default'] not in {'DEFAULT NULL', 'NOT NULL'}:
         raise DataJointError(
-            'The default value for a blob or attachment attributes can only be NULL in:\n%s' % line)
+            'The default value for a blob or attachment attributes can only be NULL in:\n{line}'.format(line=line))
 
     sql = ('`{name}` {type} {default}' + (' COMMENT "{comment}"' if match['comment'] else '')).format(**match)
     return match['name'], sql, match.get('store')

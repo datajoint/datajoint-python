@@ -1,15 +1,16 @@
-import os
-import itertools
+from pathlib import Path, PurePosixPath
 from collections import Mapping
+from tqdm import tqdm
 from .settings import config
-from .errors import DataJointError
-from .hash import uuid_from_buffer
+from .errors import DataJointError, MissingExternalFile
+from .hash import uuid_from_buffer, uuid_from_file
 from .table import Table
 from .declare import EXTERNAL_TABLE_ROOT
-from . import s3 
-from .utils import safe_write
+from . import s3
+from .utils import safe_write, safe_copy
 
 CACHE_SUBFOLDING = (2, 2)   # (2, 2) means  "0123456789abcd" will be saved as "01/23/0123456789abcd"
+SUPPORT_MIGRATED_BLOBS = True   # support blobs migrated from datajoint 0.11.*
 
 
 def subfold(name, folds):
@@ -44,14 +45,18 @@ class ExternalTable(Table):
         self._connection = connection
         if not self.is_declared:
             self.declare()
+        self._s3 = None
 
     @property
     def definition(self):
         return """
         # external storage tracking
-        hash  : uuid
+        hash  : uuid    #  hash of contents (blob), of filename + contents (attach), or relative filepath (filepath)
         ---
-        size      :bigint unsigned   # size of object in bytes
+        size      :bigint unsigned     # size of object in bytes
+        attachment_name=null : varchar(255)  # the filename of an attachment
+        filepath=null : varchar(1000)  # relative filepath or attachment filename
+        contents_hash=null : uuid      # used for the filepath datatype 
         timestamp=CURRENT_TIMESTAMP  :timestamp   # automatic timestamp
         """
 
@@ -59,92 +64,196 @@ class ExternalTable(Table):
     def table_name(self):
         return '{external_table_root}_{store}'.format(external_table_root=EXTERNAL_TABLE_ROOT, store=self.store)
 
+    @property
+    def s3(self):
+        if self._s3 is None:
+            self._s3 = s3.Folder(**self.spec)
+        return self._s3
+
+    # - low-level operations - private
+
+    def _make_external_filepath(self, relative_filepath):
+        """resolve the complete external path based on the relative path"""
+        return PurePosixPath(Path(self.spec['location']), relative_filepath)
+
+    def _make_uuid_path(self, uuid, suffix=''):
+        """create external path based on the uuid hash"""
+        return self._make_external_filepath(PurePosixPath(
+            self.database, '/'.join(subfold(uuid.hex, self.spec['subfolding'])), uuid.hex).with_suffix(suffix))
+
+    def _upload_file(self, local_path, external_path, metadata=None):
+        if self.spec['protocol'] == 's3':
+            self.s3.fput(local_path, external_path, metadata)
+        elif self.spec['protocol'] == 'file':
+            safe_copy(local_path, external_path, overwrite=True)
+        else:
+            assert False
+
+    def _download_file(self, external_path, download_path):
+        if self.spec['protocol'] == 's3':
+            self.s3.fget(external_path, download_path)
+        elif self.spec['protocol'] == 'file':
+            safe_copy(external_path, download_path)
+        else:
+            assert False
+
+    def _upload_buffer(self, buffer, external_path):
+        if self.spec['protocol'] == 's3':
+            self.s3.put(external_path, buffer)
+        elif self.spec['protocol'] == 'file':
+            safe_write(external_path, buffer)
+        else:
+            assert False
+
+    def _download_buffer(self, external_path):
+        if self.spec['protocol'] == 's3':
+            return self.s3.get(external_path)
+        if self.spec['protocol'] == 'file':
+            return Path(external_path).read_bytes()
+        assert False
+
+    def _remove_external_file(self, external_path):
+        if self.spec['protocol'] == 's3':
+            self.s3.remove_object(external_path)
+        elif self.spec['protocol'] == 'file':
+            Path(external_path).unlink()
+
+    def exists(self, external_filepath):
+        """
+        :return: True if the external file is accessible
+        """
+        if self.spec['protocol'] == 's3':
+            return self.s3.exists(external_filepath)
+        if self.spec['protocol'] == 'file':
+            return Path(external_filepath).is_file()
+        assert False
+
+    # --- BLOBS ----
+
     def put(self, blob):
         """
-        put an object in external store
+        put a binary string (blob) in external store
         """
-        blob_hash = uuid_from_buffer(blob)
-        if self.spec['protocol'] == 'file':
-            folder = os.path.join(self.spec['location'], self.database, *subfold(blob_hash.hex, self.spec['subfolding']))
-            full_path = os.path.join(folder, blob_hash.hex)
-            if not os.path.isfile(full_path):
-                try:
-                    safe_write(full_path, blob)
-                except FileNotFoundError:
-                    os.makedirs(folder)
-                    safe_write(full_path, blob)
-        elif self.spec['protocol'] == 's3':
-            folder = '/'.join(subfold(blob_hash.hex, self.spec['subfolding']))
-            s3.Folder(database=self.database, **self.spec).put('/'.join((folder, blob_hash.hex)), blob)
-
+        uuid = uuid_from_buffer(blob)
+        self._upload_buffer(blob, self._make_uuid_path(uuid))
         # insert tracking info
         self.connection.query(
-            "INSERT INTO {tab} (hash, size) VALUES (%s, {size}) "
-            "ON DUPLICATE KEY UPDATE timestamp=CURRENT_TIMESTAMP".format(
-                tab=self.full_table_name, size=len(blob)), args=(blob_hash.bytes,))
-        return blob_hash
+            "INSERT INTO {tab} (hash, size) VALUES (%s, {size}) ON DUPLICATE KEY "
+            "UPDATE timestamp=CURRENT_TIMESTAMP".format(
+                tab=self.full_table_name, size=len(blob)), args=(uuid.bytes,))
+        return uuid
 
-    def peek(self, blob_hash, bytes_to_peek=120):
-        return self.get(blob_hash, size=bytes_to_peek)
-
-    def get(self, blob_hash, size=-1):
+    def get(self, uuid):
         """
         get an object from external store.
-        :param size: max number of bytes to retrieve. If size<0, retrieve entire blob
         """
-        if blob_hash is None:
+        if uuid is None:
             return None
-
         # attempt to get object from cache
         blob = None
         cache_folder = config.get('cache', None)
-        blob_size = None
         if cache_folder:
             try:
-                cache_path = os.path.join(cache_folder, *subfold(blob_hash.hex, CACHE_SUBFOLDING))
-                cache_file = os.path.join(cache_path, blob_hash.hex)
-                with open(cache_file, 'rb') as f:
-                    blob = f.read(size)
+                cache_path = Path(cache_folder, *subfold(uuid.hex, CACHE_SUBFOLDING))
+                cache_file = Path(cache_path, uuid.hex)
+                blob = cache_file.read_bytes()
             except FileNotFoundError:
-                pass
-            else:
-                if size > 0:
-                    blob_size = os.path.getsize(cache_file)
-
-        # attempt to get object from store
+                pass  # not cached
+        # download blob from external store
         if blob is None:
-            if self.spec['protocol'] == 'file':
-                subfolders = os.path.join(*subfold(blob_hash.hex, self.spec['subfolding']))
-                full_path = os.path.join(self.spec['location'], self.database, subfolders, blob_hash.hex)
-                try:
-                    with open(full_path, 'rb') as f:
-                        blob = f.read(size)
-                except FileNotFoundError:
-                    raise DataJointError('Lost access to external blob %s.' % full_path) from None
-                else:
-                    if size > 0:
-                        blob_size = os.path.getsize(full_path)
-            elif self.spec['protocol'] == 's3':
-                try:
-                    full_path = '/'.join(('/'.join(subfold(blob_hash.hex, self.spec['subfolding'])), blob_hash.hex))
-                    s3_folder = s3.Folder(database=self.database, **self.spec)
-                except TypeError:
-                    raise DataJointError('External store {store} configuration is incomplete.'.format(store=self.store))
-                else:
-                    if size < 0:
-                        blob = s3_folder.get(full_path) 
-                    else:
-                        blob = s3_folder.partial_get(full_path, 0, size)
-                        blob_size = s3_folder.get_size(full_path)
-            else:
-                raise DataJointError('Unknown external storage protocol "%s"' % self.spec['protocol'])
+            try:
+                blob = self._download_buffer(self._make_uuid_path(uuid))
+            except MissingExternalFile:
+                if not SUPPORT_MIGRATED_BLOBS:
+                    raise
+                # blobs migrated from datajoint 0.11 are stored at explicitly defined filepaths
+                relative_filepath, contents_hash = (self & {'hash': uuid}).fetch1('filepath', 'contents_hash')
+                if relative_filepath is None:
+                    raise
+                blob = self._download_buffer(self._make_external_filepath(relative_filepath))
+            if cache_folder:
+                cache_path.mkdir(parents=True, exist_ok=True)
+                safe_write(cache_path / uuid.hex, blob)
+        return blob
 
-            if cache_folder and size < 0:
-                if not os.path.exists(cache_path):
-                    os.makedirs(cache_path)
-                safe_write(os.path.join(cache_path, blob_hash.hex), blob)
+    # --- ATTACHMENTS ---
 
-        return blob if size < 0 else (blob, blob_size)
+    def upload_attachment(self, local_path):
+        attachment_name = Path(local_path).name
+        uuid = uuid_from_file(local_path, init_string=attachment_name + '\0')
+        external_path = self._make_uuid_path(uuid, '.' + attachment_name)
+        self._upload_file(local_path, external_path)
+        # insert tracking info
+        self.connection.query("""
+        INSERT INTO {tab} (hash, size, attachment_name) 
+        VALUES (%s, {size}, "{attachment_name}") 
+        ON DUPLICATE KEY UPDATE timestamp=CURRENT_TIMESTAMP""".format(
+                tab=self.full_table_name,
+                size=Path(local_path).stat().st_size,
+                attachment_name=attachment_name), args=[uuid.bytes])
+        return uuid
+
+    def get_attachment_name(self, uuid):
+        return (self & {'hash': uuid}).fetch1('attachment_name')
+
+    def download_attachment(self, uuid, attachment_name, download_path):
+        """ save attachment from memory buffer into the save_path """
+        external_path = self._make_uuid_path(uuid, '.' + attachment_name)
+        self._download_file(external_path, download_path)
+
+    # --- FILEPATH ---
+
+    def upload_filepath(self, local_filepath):
+        """
+        Raise exception if an external entry already exists with a different contents checksum.
+        Otherwise, copy (with overwrite) file to remote and
+        If an external entry exists with the same checksum, then no copying should occur
+        """
+        local_filepath = Path(local_filepath)
+        try:
+            relative_filepath = str(local_filepath.relative_to(self.spec['stage']).as_posix())
+        except ValueError:
+            raise DataJointError('The path {path} is not in stage {stage}'.format(
+                path=local_filepath.parent, **self.spec)) from None
+        uuid = uuid_from_buffer(init_string=relative_filepath)  # hash relative path, not contents
+        contents_hash = uuid_from_file(local_filepath)
+
+        # check if the remote file already exists and verify that it matches
+        check_hash = (self & {'hash': uuid}).fetch('contents_hash')
+        if check_hash:
+            # the tracking entry exists, check that it's the same file as before
+            if contents_hash != check_hash[0]:
+                raise DataJointError(
+                    "A different version of '{file}' has already been placed.".format(file=relative_filepath))
+        else:
+            # upload the file and create its tracking entry
+            self._upload_file(local_filepath, self._make_external_filepath(relative_filepath),
+                              metadata={'contents_hash': str(contents_hash)})
+            self.connection.query(
+                "INSERT INTO {tab} (hash, size, filepath, contents_hash) VALUES (%s, {size}, '{filepath}', %s)".format(
+                    tab=self.full_table_name, size=Path(local_filepath).stat().st_size,
+                    filepath=relative_filepath), args=(uuid.bytes, contents_hash.bytes))
+        return uuid
+
+    def download_filepath(self, filepath_hash):
+        """
+        sync a file from external store to the local stage
+        :param filepath_hash: The hash (UUID) of the relative_path
+        :return: hash (UUID) of the contents of the downloaded file or Nones
+        """
+        if filepath_hash is not None:
+            relative_filepath, contents_hash = (self & {'hash': filepath_hash}).fetch1('filepath', 'contents_hash')
+            external_path = self._make_external_filepath(relative_filepath)
+            local_filepath = Path(self.spec['stage']).absolute() / relative_filepath
+            file_exists = Path(local_filepath).is_file() and uuid_from_file(local_filepath) == contents_hash
+            if not file_exists:
+                self._download_file(external_path, local_filepath)
+                checksum = uuid_from_file(local_filepath)
+                if checksum != contents_hash:  # this should never happen without outside interference
+                    raise DataJointError("'{file}' downloaded but did not pass checksum'".format(file=local_filepath))
+            return local_filepath, contents_hash
+
+    # --- UTILITIES ---
 
     @property
     def references(self):
@@ -157,55 +266,75 @@ class ExternalTable(Table):
         WHERE referenced_table_name="{tab}" and referenced_table_schema="{db}"
         """.format(tab=self.table_name, db=self.database), as_dict=True)
 
-    def delete_quick(self):
-        raise DataJointError('The external table does not support delete_quick. Please use delete instead.')
+    def fetch_external_paths(self, **fetch_kwargs):
+        """
+        generate complete external filepaths from the query.
+        Each element is a tuple: (uuid, path)
+        :param fetch_kwargs: keyword arguments to pass to fetch
+        """
+        fetch_kwargs.update(as_dict=True)
+        paths = []
+        for item in self.fetch('hash', 'attachment_name', 'filepath', **fetch_kwargs):
+            if item['attachment_name']:
+                # attachments
+                path = self._make_uuid_path(item['hash'], '.' + item['attachment_name'])
+            elif item['filepath']:
+                # external filepaths
+                path = self._make_external_filepath(item['filepath'])
+            else:
+                # blobs
+                path = self._make_uuid_path(item['hash'])
+            paths.append((item['hash'], path))
+        return paths
 
-    def delete(self):
+    def unused(self):
         """
-        Delete items that are no longer referenced.
-        This operation is safe to perform at any time but may reduce performance of queries while in progress.
+        query expression for unused hashes
+        :return: self restricted to elements that are not in use by any tables in the schema
         """
-        self.connection.query(
-            "DELETE FROM `{db}`.`{tab}` WHERE ".format(tab=self.table_name, db=self.database) + (
-                    " AND ".join(
-                        'hash NOT IN (SELECT {column_name} FROM {referencing_table})'.format(**ref)
-                        for ref in self.references) or "TRUE"))
-        print('Deleted %d items' % self.connection.query("SELECT ROW_COUNT()").fetchone()[0])
+        return self - ["hash IN (SELECT `{column_name}` FROM {referencing_table})".format(**ref)
+                       for ref in self.references]
 
-    def clean(self, verbose=True):
+    def used(self):
         """
-        Clean unused data in an external storage repository from unused blobs.
-        This must be performed after external_table.delete() during low-usage periods to 
-        reduce risks of data loss.
+        query expression for used hashes
+        :return: self restricted to elements that in use by tables in the schema
         """
-        in_use = set(x.hex for x in self.fetch('hash'))
-        if self.spec['protocol'] == 'file':
-            count = itertools.count()
-            print('Deleting...')
-            deleted_folders = set()
-            for folder, dirs, files in os.walk(
-                    os.path.join(self.spec['location'], self.database), topdown=False):
-                if dirs and files:
-                    raise DataJointError(
-                            'Invalid repository with files in non-terminal folder %s' % folder)
-                dirs = set(d for d in dirs if os.path.join(folder, d) not in deleted_folders)
-                if not dirs:
-                    files_not_in_use = [f for f in files if f not in in_use]
-                    for f in files_not_in_use:
-                        filename = os.path.join(folder, f)
-                        next(count)
-                        if verbose:
-                            print(filename)
-                        os.remove(filename)
-                    if len(files_not_in_use) == len(files):
-                        os.rmdir(folder)
-                        deleted_folders.add(folder)
-            print('Deleted %d objects' % next(count))
-        elif self.spec['protocol'] == 's3':
-            try:
-                failed_deletes = s3.Folder(database=self.database, **self.spec).clean(in_use, verbose=verbose)
-            except TypeError:
-                raise DataJointError('External store {store} configuration is incomplete.'.format(store=self.store))
+        return self & ["hash IN (SELECT `{column_name}` FROM {referencing_table})".format(**ref)
+                       for ref in self.references]
+
+    def delete(self, *, delete_external_files=None, limit=None, display_progress=True):
+        """
+        :param delete_external_files: True or False. If False, only the tracking info is removed from the
+        external store table but the external files remain intact. If True, then the external files
+        themselves are deleted too.
+        :param limit: (integer) limit the number of items to delete
+        :param display_progress: if True, display progress as files are cleaned up
+        :return: yields
+        """
+        if delete_external_files not in (True, False):
+            raise DataJointError("The delete_external_files argument must be set to either True or False in delete()")
+
+        if not delete_external_files:
+            self.unused.delete_quick()
+        else:
+            items = self.unused().fetch_external_paths(limit=limit)
+            if display_progress:
+                items = tqdm(items)
+            # delete items one by one, close to transaction-safe
+            error_list = []
+            for uuid, external_path in items:
+                try:
+                   count = (self & {'hash': uuid}).delete_quick(get_count=True)  # optimize
+                except Exception as err:
+                    pass   # if delete failed, do not remove the external file
+                else:
+                    assert count in (0, 1)
+                    try:
+                        self._remove_external_file(external_path)
+                    except Exception as error:
+                        error_list.append((uuid, external_path, str(error)))
+            return error_list
 
 
 class ExternalMapping(Mapping):
@@ -218,6 +347,11 @@ class ExternalMapping(Mapping):
     def __init__(self, schema):
         self.schema = schema
         self._tables = {}
+
+    def __repr__(self):
+        return ("External file tables for schema `{schema}`:\n    ".format(schema=self.schema.database)
+                + "\n    ".join('"{store}" {protocol}:{location}'.format(
+                    store=k, **v.spec) for k, v in self.items()))
 
     def __getitem__(self, store):
         """
@@ -233,6 +367,6 @@ class ExternalMapping(Mapping):
 
     def __len__(self):
         return len(self._tables)
-    
+
     def __iter__(self):
         return iter(self._tables)

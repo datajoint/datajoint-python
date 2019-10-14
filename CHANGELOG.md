@@ -1,16 +1,35 @@
 ## Release notes
 
-### 0.12.0 -- April 15, 2019
+### 0.12.0 -- October 1, 2019
+* Dropped support for Python 3.4
+* Support secure connections with TLS (aka SSL) PR #620
+* Convert numpy array from python object to appropriate data type if all elements are of the same type (#587) PR #608
+* Remove expression requirement to have additional attributes (#604) PR #604
+* Support for filepath datatype (#481) PR #603, #659
+* Support file attachment datatype (#480, #592, #637) PR #659
+* Fetch return a dict array when specifying `as_dict=True` for specified attributes. (#595) PR #593
+* Support of ellipsis in `proj`:  `query_expression.proj(.., '-movie')` (#499) PR #578
+* Expand support of blob serialization (#572, #520, #427, #392, #244, #594) PR #577
+* Support for alter (#110) PR #573
+* Support for `conda install datajoint` via `conda-forge` channel (#293)
+* `dj.conn()` accepts a `port` keyword argument (#563) PR #571
+* Support for UUID datatype (#562) PR #567
+* `query_expr.fetch("KEY", as_dict=False)` returns results as `np.recarray`(#414) PR #574
+* `dj.ERD` is now called `dj.Diagram` (#255, #546) PR #565
+* `dj.Diagram` underlines "distinguished" classes (#378) PR #557
+* Accept alias for supported MySQL datatypes (#544) PR #545
+* Support for pandas in `fetch` (#459, #537) PR #534
+* Support for ordering by "KEY" in `fetch` (#541) PR #534
+* Improved external storage - a migration script needed from version 0.11  (#467, #475, #480, #497) PR #532
+* Increase default display rows (#523) PR #526
+* Bugfixes (#521, #205, #279, #477, #570, #581, #597, #596, #618, #633, #643, #644, #647, #648, #650, #656)
+* Minor improvements (#538)
 
-* Configurable blob storage (#497, #532, #475)
-* Support file attachments: (#480, #532, #475)
-* Expand support of blob serialization (fixed #572, #520, #427, #392, #244)
-* Add support for UUID attributes (#562, #567)
-* Support of ellipsis in `proj`:  `query_expression.proj(.., '-movie')` (#499)
-* `dj.conn()` accepts a `port` keyword argument (#563, #571)
-* `query_expr.fetch("KEY", as_dict=False)` returns results as `np.recarray`(#414, #574)
-* `dj.ERD` is now called `dj.Diagram` (#255, #565)
-* `dj.Diagram` underlines "distinguished" classes (#378, #557)
+### 0.11.3 -- Jul 26, 2019
+* Fix incompatibility with pyparsing 2.4.1 (#629) PR #631
+
+### 0.11.2 -- July 25, 2019
+* Fix #628 - incompatibility with pyparsing 2.4.1
 
 ### 0.11.1 -- Nov 15, 2018
 * Fix ordering of attributes in proj (#483 and #516)

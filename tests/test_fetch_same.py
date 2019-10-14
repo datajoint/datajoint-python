@@ -35,31 +35,23 @@ class TestFetchSame:
 
     @staticmethod
     def test_object_conversion_one():
-
-        new = ProjData.proj(sub='resp-sim').fetch('sub')
-
+        new = ProjData.proj(sub='resp').fetch('sub')
         assert_equal(new.dtype, np.float64)
 
     @staticmethod
     def test_object_conversion_two():
-
-        [sub, add] = ProjData.proj(sub='resp-sim', add='resp+sim').fetch(
-                'sub', 'add')
-
+        [sub, add] = ProjData.proj(sub='resp', add='sim').fetch('sub', 'add')
         assert_equal(sub.dtype, np.float64)
         assert_equal(add.dtype, np.float64)
 
     @staticmethod
     def test_object_conversion_all():
-
-        new = ProjData.proj(sub='resp-sim', add='resp+sim').fetch()
-
+        new = ProjData.proj(sub='resp', add='sim').fetch()
         assert_equal(new['sub'].dtype, np.float64)
         assert_equal(new['add'].dtype, np.float64)
 
     @staticmethod
     def test_object_no_convert():
-
         new = ProjData.fetch()
         assert_equal(new['big'].dtype, 'object')
         assert_equal(new['blah'].dtype, 'object')

@@ -8,8 +8,16 @@ after the test.
 import logging
 from os import environ, remove
 import datajoint as dj
+from distutils.version import LooseVersion
+import os
+from pathlib import Path
+import minio
+import urllib3
+import certifi
+import shutil
+from datajoint.utils import parse_sql
 
-__author__ = 'Edgar Walker, Fabian Sinz, Dimitri Yatsenko'
+__author__ = 'Edgar Walker, Fabian Sinz, Dimitri Yatsenko, Raphael Guzman'
 
 # turn on verbose logging
 logging.basicConfig(level=logging.DEBUG)
@@ -22,6 +30,11 @@ CONN_INFO = dict(
     user=environ.get('DJ_TEST_USER', 'datajoint'),
     password=environ.get('DJ_TEST_PASSWORD', 'datajoint'))
 
+CONN_INFO_ROOT = dict(
+    host=environ.get('DJ_HOST', 'localhost'),
+    user=environ.get('DJ_USER', 'root'),
+    password=environ.get('DJ_PASS', 'simple'))
+
 S3_CONN_INFO = dict(
     endpoint=environ.get('S3_ENDPOINT', 'localhost:9000'),
     access_key=environ.get('S3_ACCESS_KEY', 'datajoint'),
@@ -30,6 +43,65 @@ S3_CONN_INFO = dict(
 
 # Prefix for all databases used during testing
 PREFIX = environ.get('DJ_TEST_DB_PREFIX', 'djtest')
+conn_root = dj.conn(**CONN_INFO_ROOT)
+
+if LooseVersion(conn_root.query(
+        "select @@version;").fetchone()[0]) >= LooseVersion('8.0.0'):
+    # create user if necessary on mysql8
+    conn_root.query("""
+            CREATE USER IF NOT EXISTS 'datajoint'@'%%'
+            IDENTIFIED BY 'datajoint';
+            """)
+    conn_root.query("""
+            CREATE USER IF NOT EXISTS 'djview'@'%%'
+            IDENTIFIED BY 'djview';
+            """)
+    conn_root.query("""
+            CREATE USER IF NOT EXISTS 'djssl'@'%%'
+            IDENTIFIED BY 'djssl'
+            REQUIRE SSL;
+            """)
+    conn_root.query(
+        "GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%';")
+    conn_root.query(
+        "GRANT SELECT ON `djtest%%`.* TO 'djview'@'%%';")
+    conn_root.query(
+        "GRANT SELECT ON `djtest%%`.* TO 'djssl'@'%%';")
+else:
+    # grant permissions. For mysql5.6/5.7 this also automatically creates user
+    # if not exists
+    conn_root.query("""
+        GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%'
+        IDENTIFIED BY 'datajoint';
+        """)
+    conn_root.query(
+        "GRANT SELECT ON `djtest%%`.* TO 'djview'@'%%' IDENTIFIED BY 'djview';"
+        )
+    conn_root.query("""
+        GRANT SELECT ON `djtest%%`.* TO 'djssl'@'%%'
+        IDENTIFIED BY 'djssl'
+        REQUIRE SSL;
+        """)
+
+# Initialize httpClient with relevant timeout.
+httpClient = urllib3.PoolManager(
+            timeout=30,
+            cert_reqs='CERT_REQUIRED',
+            ca_certs=certifi.where(),
+            retries=urllib3.Retry(
+                total=3,
+                backoff_factor=0.2,
+                status_forcelist=[500, 502, 503, 504]
+            )
+        )
+
+# Initialize minioClient with an endpoint and access/secret keys.
+minioClient = minio.Minio(
+    S3_CONN_INFO['endpoint'],
+    access_key=S3_CONN_INFO['access_key'],
+    secret_key=S3_CONN_INFO['secret_key'],
+    secure=False,
+    http_client=httpClient)
 
 
 def setup_package():
@@ -38,6 +110,53 @@ def setup_package():
     Turns off safemode
     """
     dj.config['safemode'] = False
+
+    # Add old MySQL
+    source = Path(
+        Path(__file__).resolve().parent,
+        'external-legacy-data')
+    db_name = "djtest_blob_migrate"
+    db_file = "v0_11.sql"
+    conn_root.query("""
+        CREATE DATABASE IF NOT EXISTS {};
+        """.format(db_name))
+
+    statements = parse_sql(Path(source,db_file))
+    for s in statements:
+        conn_root.query(s)
+
+    # Add old S3
+    source = Path(
+        Path(__file__).resolve().parent,
+        'external-legacy-data','s3')
+    bucket = "migrate-test"
+    region = "us-east-1"
+    try:
+        minioClient.make_bucket(bucket, location=region)
+    except minio.error.BucketAlreadyOwnedByYou:
+        pass
+
+    pathlist = Path(source).glob('**/*')
+    for path in pathlist:
+        if os.path.isfile(str(path)) and ".sql" not in str(path):
+            minioClient.fput_object(
+                    bucket, str(Path(
+                        os.path.relpath(str(path),str(Path(source,bucket))))
+                                .as_posix()), str(path))
+    # Add S3
+    try:
+        minioClient.make_bucket("datajoint-test", location=region)
+    except minio.error.BucketAlreadyOwnedByYou:
+        pass
+
+    # Add old File Content
+    try:
+        shutil.copytree(
+            str(Path(Path(__file__).resolve().parent,
+            'external-legacy-data','file','temp')),
+            str(Path(os.path.expanduser('~'),'temp')))
+    except FileExistsError:
+        pass
 
 
 def teardown_package():
@@ -53,4 +172,23 @@ def teardown_package():
     for db in cur.fetchall():
         conn.query('DROP DATABASE `{}`'.format(db[0]))
     conn.query('SET FOREIGN_KEY_CHECKS=1')
-    remove("dj_local_conf.json")
+    if os.path.exists("dj_local_conf.json"):
+        remove("dj_local_conf.json")
+
+    # Remove old S3
+    bucket = "migrate-test"
+    objs = list(minioClient.list_objects_v2(
+            bucket, recursive=True))
+    objs = [minioClient.remove_object(bucket,
+            o.object_name.encode('utf-8')) for o in objs]
+    minioClient.remove_bucket(bucket)
+
+    # Remove S3
+    bucket = "datajoint-test"
+    objs = list(minioClient.list_objects_v2(bucket, recursive=True))
+    objs = [minioClient.remove_object(bucket,
+            o.object_name.encode('utf-8')) for o in objs]
+    minioClient.remove_bucket(bucket)
+
+    # Remove old File Content
+    shutil.rmtree(str(Path(os.path.expanduser('~'),'temp')))

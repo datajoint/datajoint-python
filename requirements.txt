@@ -7,3 +7,4 @@ tqdm
 networkx
 pydot
 minio
+matplotlib
