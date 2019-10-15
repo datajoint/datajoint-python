@@ -73,7 +73,7 @@ class Blob:
 
     def set_dj0(self):
         if not config.get('enable_python_native_blobs'):
-            raise RuntimeError('v0.12+ python native blobs disabled. see also: TODO URL')
+            raise DataJointError('v0.12+ python native blobs disabled. see also: https://github.com/datajoint/datajoint-python/blob/master/README.md')
 
         self.protocol = b"dj0\0"  # when using new blob features
             
