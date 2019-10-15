@@ -12,9 +12,7 @@ import uuid
 import numpy as np
 from .errors import DataJointError
 from .utils import OrderedDict
-
-
-DJ0_ENABLE = True  # temporary hook to allow dj0 linting
+from .settings import config
 
 
 mxClassID = OrderedDict((
@@ -74,8 +72,8 @@ class Blob:
         self.protocol = None
 
     def set_dj0(self):
-        if not DJ0_ENABLE:
-            raise RuntimeError('dj0 encoding disabled by user')
+        if not config.get('enable_python_native_blobs'):
+            raise RuntimeError('v0.12+ python native blobs disabled. see also: TODO URL')
 
         self.protocol = b"dj0\0"  # when using new blob features
             
