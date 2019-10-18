@@ -12,6 +12,7 @@ import uuid
 import numpy as np
 from .errors import DataJointError
 from .utils import OrderedDict
+from .settings import config
 
 
 mxClassID = OrderedDict((
@@ -71,6 +72,9 @@ class Blob:
         self.protocol = None
 
     def set_dj0(self):
+        if not config.get('enable_python_native_blobs'):
+            raise DataJointError('v0.12+ python native blobs disabled. see also: https://github.com/datajoint/datajoint-python/blob/master/README.md')
+
         self.protocol = b"dj0\0"  # when using new blob features
             
     def squeeze(self, array, convert_to_scalar=True):
