@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from . import S3_CONN_INFO
 from . import CONN_INFO
-from datajoint.migrate import _migrate_dj11_blob
+from datajoint.migrate import _migrate_dj011_blob
 
 
 class TestBlobMigrate:
