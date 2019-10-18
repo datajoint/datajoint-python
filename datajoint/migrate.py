@@ -4,7 +4,7 @@ import re
 from .utils import user_choice
 
 
-def migrate_dj11_external_blob_storage_to_dj12(migration_schema, store):
+def migrate_dj011_external_blob_storage_to_dj012(migration_schema, store):
     do_migration = False
     do_migration = user_choice(
             """
@@ -15,14 +15,14 @@ Warning: Ensure the following are completed before proceeding.
 Proceed?
             """, default='no') == 'yes'
     if do_migration:
-        _migrate_dj11_blob(dj.schema(migration_schema), store)
+        _migrate_dj011_blob(dj.schema(migration_schema), store)
         print('Migration completed for schema: {}, store: {}.'.format(
                 migration_schema, store))
         return
     print('No migration performed.')
 
 
-def _migrate_dj11_blob(schema, default_store):
+def _migrate_dj011_blob(schema, default_store):
     query = schema.connection.query
 
     LEGACY_HASH_SIZE = 43

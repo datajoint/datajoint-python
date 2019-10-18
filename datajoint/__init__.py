@@ -41,6 +41,6 @@ from .fetch import key
 from .attribute_adapter import AttributeAdapter
 from . import errors
 from .errors import DataJointError
-from .migrate import migrate_dj11_external_blob_storage_to_dj12
+from .migrate import migrate_dj011_external_blob_storage_to_dj012
 
 ERD = Di = Diagram   # Aliases for Diagram

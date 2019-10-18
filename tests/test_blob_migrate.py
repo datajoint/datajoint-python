@@ -42,7 +42,7 @@ class TestBlobMigrate:
         schema = dj.schema('djtest_blob_migrate')
 
         # Test if migration throws unexpected exceptions
-        _migrate_dj11_blob(schema, default_store)
+        _migrate_dj011_blob(schema, default_store)
 
         # Test Fetch
         test_mod = dj.create_virtual_module('test_mod', 'djtest_blob_migrate')
