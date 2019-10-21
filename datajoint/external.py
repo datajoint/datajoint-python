@@ -316,7 +316,7 @@ class ExternalTable(Table):
             raise DataJointError("The delete_external_files argument must be set to either True or False in delete()")
 
         if not delete_external_files:
-            self.unused.delete_quick()
+            self.unused().delete_quick()
         else:
             items = self.unused().fetch_external_paths(limit=limit)
             if display_progress:
