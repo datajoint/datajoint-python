@@ -56,3 +56,8 @@ class TestBlobMigrate:
             'blob_share': {'number': 5}})
         r2 = (test_mod.A & 'id=3').fetch1()
         assert_equal(r2['blob_share']['number'], 5)
+
+    @staticmethod
+    @raises(ValueError)
+    def test_type_check():
+        dj.migrate_dj011_external_blob_storage_to_dj012(10, 'store')

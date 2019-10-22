@@ -10,6 +10,11 @@ def migrate_dj011_external_blob_storage_to_dj012(migration_schema, store):
     :param migration_schema: string of target schema to be migrated
     :param store: string of target dj.config['store'] to be migrated
     """
+    if not isinstance(migration_schema, str):
+        raise ValueError(
+                'Expected type {} for migration_schema, not {}.'.format(
+                str, type(migration_schema)))
+
     do_migration = False
     do_migration = user_choice(
             """

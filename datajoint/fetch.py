@@ -50,7 +50,7 @@ def _get(connection, attr, data, squeeze, download_path):
     adapt = attr.adapter.get if attr.adapter else lambda x: x
 
     if attr.is_filepath:
-        return adapt(extern.download_filepath(uuid.UUID(bytes=data))[0])
+        return str(adapt(extern.download_filepath(uuid.UUID(bytes=data))[0]))
 
     if attr.is_attachment:
         # Steps:
@@ -65,7 +65,7 @@ def _get(connection, attr, data, squeeze, download_path):
         if local_filepath.is_file():
             attachment_checksum = _uuid if attr.is_external else hash.uuid_from_buffer(data)
             if attachment_checksum == hash.uuid_from_file(local_filepath, init_string=attachment_name + '\0'):
-                return adapt(local_filepath)  # checksum passed, no need to download again
+                return str(adapt(local_filepath))  # checksum passed, no need to download again
             # generate the next available alias filename
             for n in itertools.count():
                 f = local_filepath.parent / (local_filepath.stem + '_%04x' % n + local_filepath.suffix)
@@ -73,14 +73,14 @@ def _get(connection, attr, data, squeeze, download_path):
                     local_filepath = f
                     break
                 if attachment_checksum == hash.uuid_from_file(f, init_string=attachment_name + '\0'):
-                    return adapt(f)  # checksum passed, no need to download again
+                    return str(adapt(f))  # checksum passed, no need to download again
         # Save attachment
         if attr.is_external:
             extern.download_attachment(_uuid, attachment_name, local_filepath)
         else:
             # write from buffer
             safe_write(local_filepath, data.split(b"\0", 1)[1])
-        return adapt(local_filepath)  # download file from remote store
+        return str(adapt(local_filepath))  # download file from remote store
 
     return adapt(uuid.UUID(bytes=data) if attr.uuid else (
             blob.unpack(extern.get(uuid.UUID(bytes=data)) if attr.is_external else data, squeeze=squeeze) 

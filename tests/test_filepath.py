@@ -143,7 +143,7 @@ def test_filepath_class(table=Filepath(), store="repo"):
 
     # fetch file from remote
     filepath = (table & {'fnum': 1}).fetch1('img')
-    assert_equal(filepath, managed_file)
+    assert_equal(filepath, str(managed_file))
 
     # verify original contents
     with managed_file.open('rb') as f:
@@ -205,8 +205,43 @@ def test_filepath_cleanup(table=Filepath(), store="repo"):
     dj.errors._switch_filepath_types(False)
 
 
-
 def test_filepath_cleanup_s3():
     """test deletion of filepath entries from external table """
     store = "repo_s3"
     test_filepath_cleanup(FilepathS3(), store)
+
+
+def test_delete_without_files(store="repo"):
+    """test deletion of filepath entries from external table without removing files"""
+    dj.errors._switch_filepath_types(True)
+    # do not delete unused entries
+    schema.external[store].delete(delete_external_files=False)
+    dj.errors._switch_filepath_types(False)
+
+
+def test_return_string(table=Filepath(), store="repo"):
+    """ test returning string on fetch """
+    dj.errors._switch_filepath_types(True)
+    stage_path = dj.config['stores'][store]['stage']
+    # create a mock file
+    relative_path = 'this/is/a/test'
+    managed_file = Path(stage_path, relative_path, 'string.dat')
+    managed_file.parent.mkdir(parents=True, exist_ok=True)
+    data = os.urandom(3000)
+    with managed_file.open('wb') as f:
+        f.write(data)
+    with managed_file.open('rb') as f:
+        contents = f.read()
+    assert_equal(data, contents)
+
+    # upload file into shared repo
+    table.insert1((138, managed_file))
+
+    # remove file locally
+    managed_file.unlink()
+    assert_false(managed_file.is_file())
+
+    # fetch file from remote
+    filepath = (table & {'fnum': 138}).fetch1('img')
+    assert_true(isinstance(filepath, str))
+    dj.errors._switch_filepath_types(False)
