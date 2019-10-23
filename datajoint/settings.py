@@ -43,7 +43,8 @@ default = OrderedDict({
     'display.limit': 12,
     'display.width': 14,
     'display.show_tuple_count': True,
-    'database.use_tls': None
+    'database.use_tls': None,
+    'enable_python_native_blobs': False,  # python-native/dj0 encoding support
 })
 
 logger = logging.getLogger(__name__)
@@ -136,7 +137,7 @@ class Config(collections.MutableMapping):
         spec['subfolding'] = spec.get('subfolding', DEFAULT_SUBFOLDING)
         spec_keys = {  # REQUIRED in uppercase and allowed in lowercase
             'file': ('PROTOCOL', 'LOCATION', 'subfolding', 'stage'),
-            's3': ('PROTOCOL', 'ENDPOINT', 'BUCKET', 'ACCESS_KEY', 'SECRET_KEY', 'LOCATION', 'subfolding', 'stage')}
+            's3': ('PROTOCOL', 'ENDPOINT', 'BUCKET', 'ACCESS_KEY', 'SECRET_KEY', 'LOCATION', 'secure', 'subfolding', 'stage')}
 
         try:
             spec_keys = spec_keys[spec.get('protocol', '').lower()]
@@ -146,7 +147,7 @@ class Config(collections.MutableMapping):
 
         # check that all required keys are present in spec
         try:
-            raise DataJointError('dj.config["stores"]["{store}" is missing "{k}"'.format(
+            raise DataJointError('dj.config["stores"]["{store}"] is missing "{k}"'.format(
                 store=store, k=next(k.lower() for k in spec_keys if k.isupper() and k.lower() not in spec)))
         except StopIteration:
             pass
