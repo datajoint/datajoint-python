@@ -18,7 +18,7 @@ services:
       - DJ_TEST_HOST=db
       - DJ_TEST_USER=datajoint
       - DJ_TEST_PASSWORD=datajoint
-      - S3_ENDPOINT=minio:9000
+      - S3_ENDPOINT=fakeminio.datajoint.io:9000
       - S3_ACCESS_KEY=datajoint
       - S3_SECRET_KEY=datajoint
       - S3_BUCKET=datajoint-test
@@ -70,5 +70,26 @@ services:
       timeout: 5s
       retries: 60
       interval: 1s
+  fakeminio.datajoint.io:
+    <<: *net
+    image: nginx:alpine
+    environment:
+      - URL=datajoint.io
+      - SUBDOMAINS=fakeminio
+      - MINIO_SERVER=http://minio:9000
+    entrypoint: /entrypoint.sh
+    healthcheck:
+      test: wget --quiet --tries=1 --spider https://fakeminio.datajoint.io:443/minio/health/live || exit 1
+      timeout: 5s
+      retries: 300
+      interval: 1s
+    # ports:
+    #   - "9000:9000"
+    #   - "443:443"
+    volumes:
+      - ./tests/nginx/base.conf:/base.conf
+      - ./tests/nginx/entrypoint.sh:/entrypoint.sh
+      - ./tests/nginx/fullchain.pem:/certs/fullchain.pem
+      - ./tests/nginx/privkey.pem:/certs/privkey.pem
 networks:
   main:
