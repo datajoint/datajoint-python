@@ -20,8 +20,8 @@
 * Accept alias for supported MySQL datatypes (#544) PR #545
 * Support for pandas in `fetch` (#459, #537) PR #534
 * Support for ordering by "KEY" in `fetch` (#541) PR #534
-* Add config to enable python native blobs PR #672, PR #676
-* Add secure option for external storage (#663) PR #674, PR #676
+* Add config to enable python native blobs PR #672, #676
+* Add secure option for external storage (#663) PR #674, #676
 * Add blob migration utility from DJ011 to DJ012 PR #673
 * Improved external storage - a migration script needed from version 0.11  (#467, #475, #480, #497) PR #532
 * Increase default display rows (#523) PR #526
