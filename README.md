@@ -44,7 +44,7 @@ dj.config["enable_python_native_blobs"] = True
 You can safely enable this setting if both of the following are true:
 
   * All blobs in your current DataJoint databases contain only numerical arrays.
-  * You do not need to share blob data between Python and Matlab
+  * You do not need to share blob data between Python and MATLAB.
 
 Otherwise, read the following explanation.
 
@@ -54,7 +54,7 @@ and lists of strings.
 
 Prior to DataJoint v0.12, certain python native datatypes such as
 dictionaries were 'squashed' into numpy structured arrays when saved into
-blob attributes. This facilitated easier data sharing between Matlab
+blob attributes. This facilitated easier data sharing between MATLAB
 and Python for certain record types. However, this created a discrepancy
 between insert and fetch datatypes which could cause problems in other
 portions of users pipelines.
@@ -71,14 +71,14 @@ Furthermore, DataJoint for MATLAB does not yet support unpacking native Python d
 With `dj.config["enable_python_native_blobs"]` set to `False` (default), 
 any attempt to insert any datatype other than a numpy array will result in an exception.
 This is meant to get users to read this message in order to allow proper testing
-and migration of pre-0.12 pipelines to 0.11 in a safe manner.
+and migration of pre-0.12 pipelines to 0.12 in a safe manner.
 
 The exact process to update a specific pipeline will vary depending on
 the situation, but generally the following strategies may apply:
 
   * Altering code to directly store numpy structured arrays or plain
     multidimensional arrays. This strategy is likely best one for those 
-    tables requiring compatibility with Matlab.
+    tables requiring compatibility with MATLAB.
   * Adjust code to deal with both structured array and native fetched data
     for those tables that are populated with `dict`s in blobs in pre-0.12 version. 
     In this case, insert logic is not adjusted, but downstream consumers
