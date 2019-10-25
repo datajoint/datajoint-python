@@ -74,7 +74,7 @@ class ExternalTable(Table):
 
     def _make_external_filepath(self, relative_filepath):
         """resolve the complete external path based on the relative path"""
-        return PurePosixPath(self.spec['location'], relative_filepath)
+        return PurePosixPath(Path(self.spec['location']), relative_filepath)
 
     def _make_uuid_path(self, uuid, suffix=''):
         """create external path based on the uuid hash"""
@@ -211,7 +211,7 @@ class ExternalTable(Table):
         """
         local_filepath = Path(local_filepath)
         try:
-            relative_filepath = str(local_filepath.relative_to(self.spec['stage']))
+            relative_filepath = str(local_filepath.relative_to(self.spec['stage']).as_posix())
         except ValueError:
             raise DataJointError('The path {path} is not in stage {stage}'.format(
                 path=local_filepath.parent, **self.spec)) from None

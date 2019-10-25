@@ -10,6 +10,36 @@ from .schema_external import schema, Filepath, FilepathS3, stores_config
 def setUp(self):
     dj.config['stores'] = stores_config
 
+def test_path_match(store="repo"):
+    """ test file path matches and empty file"""
+    ext = schema.external[store]
+    stage_path = dj.config['stores'][store]['stage']
+
+    # create a mock file
+    relpath = 'path/to/films'
+    managed_file = Path(stage_path, relpath, 'vid.mov')
+    managed_file.parent.mkdir(parents=True, exist_ok=True)
+    open(str(managed_file), 'a').close()
+
+    # put the file
+    uuid = ext.upload_filepath(managed_file)
+
+    #remove
+    managed_file.unlink()
+    assert_false(managed_file.exists())
+
+    #check filepath
+    assert_equal(
+        (ext & {'hash': uuid}).fetch1('filepath'),
+        str(managed_file.relative_to(stage_path).as_posix()))
+    
+    # # Download the file and check its contents.
+    restored_path, checksum = ext.download_filepath(uuid)
+    assert_equal(restored_path, managed_file)
+    assert_equal(checksum, dj.hash.uuid_from_file(managed_file))
+
+    # cleanup
+    ext.delete(delete_external_files=True)
 
 def test_filepath(store="repo"):
     """ test file management """
@@ -91,6 +121,7 @@ def test_duplicate_error_s3():
 
 
 def test_filepath_class(table=Filepath(), store="repo"):
+    dj.errors._switch_filepath_types(True)
     stage_path = dj.config['stores'][store]['stage']
     # create a mock file
     relative_path = 'one/two/three'
@@ -125,6 +156,7 @@ def test_filepath_class(table=Filepath(), store="repo"):
 
     # delete from external table
     table.external[store].delete(delete_external_files=True)
+    dj.errors._switch_filepath_types(False)
 
 
 def test_filepath_class_again():
@@ -143,6 +175,9 @@ def test_filepath_class_s3_again():
 
 def test_filepath_cleanup(table=Filepath(), store="repo"):
     """test deletion of filepath entries from external table """
+
+    dj.errors._switch_filepath_types(True)
+
     stage_path = dj.config['stores'][store]['stage']
     n = 20
     contents = os.urandom(345)
@@ -166,6 +201,8 @@ def test_filepath_cleanup(table=Filepath(), store="repo"):
 
     ext.delete(delete_external_files=True)  # delete unused entries
     assert_true(0 < len(ext) <= n - m)
+
+    dj.errors._switch_filepath_types(False)
 
 
 def test_filepath_cleanup_s3():

@@ -102,6 +102,9 @@ class Attach(dj.Manual):
     """
 
 
+dj.errors._switch_filepath_types(True)
+
+
 @schema
 class Filepath(dj.Manual):
     definition = """
@@ -120,3 +123,5 @@ class FilepathS3(dj.Manual):
     ---
     img : filepath@repo_s3  # managed files 
     """
+
+dj.errors._switch_filepath_types(False)

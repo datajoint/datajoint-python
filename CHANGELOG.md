@@ -1,12 +1,13 @@
 ## Release notes
 
 ### 0.12.0 -- October 1, 2019
+* Dropped support for Python 3.4
 * Support secure connections with TLS (aka SSL) PR #620
 * Dropped support for Python 3.4
 * Convert numpy array from python object to appropriate data type if all elements are of the same type (#587) PR #608
 * Remove expression requirement to have additional attributes (#604) PR #604
 * Support for filepath datatype (#481) PR #603, #659
-* Support file attachment datatype (#480, #592, #637, PR #659)
+* Support file attachment datatype (#480, #592, #637) PR #659
 * Fetch return a dict array when specifying `as_dict=True` for specified attributes. (#595) PR #593
 * Support of ellipsis in `proj`:  `query_expression.proj(.., '-movie')` (#499) PR #578
 * Expand support of blob serialization (#572, #520, #427, #392, #244, #594) PR #577
@@ -22,7 +23,7 @@
 * Support for ordering by "KEY" in `fetch` (#541) PR #534
 * Improved external storage - a migration script needed from version 0.11  (#467, #475, #480, #497) PR #532
 * Increase default display rows (#523) PR #526
-* Bugfixes (#521, #205, #279, #477, #570, #581, #597, #596, #618, #633, #643, #644, #647, #656)
+* Bugfixes (#521, #205, #279, #477, #570, #581, #597, #596, #618, #633, #643, #644, #647, #648, #650, #656)
 * Minor improvements (#538)
 
 ### 0.11.3 -- Jul 26, 2019

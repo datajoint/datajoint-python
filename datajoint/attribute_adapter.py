@@ -1,26 +1,5 @@
 import re
-import os
-from .errors import DataJointError
-
-
-ADAPTED_TYPE_SWITCH = "DJ_SUPPORT_ADAPTED_TYPES"
-
-
-def _switch_adapated_types(on):
-    """
-    Enable (on=True) or disable (on=False) support for AttributeAdapter
-    """
-    if on:
-        os.environ[ADAPTED_TYPE_SWITCH] = "TRUE"
-    else:
-        del os.environ[ADAPTED_TYPE_SWITCH]
-
-
-def _support_adapted_types():
-    """
-    check if support for AttributeAdapter is enabled
-    """
-    return os.getenv(ADAPTED_TYPE_SWITCH, "FALSE").upper() == "TRUE"
+from .errors import DataJointError, _support_adapted_types
 
 
 class AttributeAdapter:

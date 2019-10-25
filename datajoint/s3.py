@@ -13,8 +13,8 @@ class Folder:
     """
     A Folder instance manipulates a flat folder of objects within an S3-compatible object store
     """
-    def __init__(self, endpoint, bucket, access_key, secret_key, **_):
-        self.client = minio.Minio(endpoint, access_key=access_key, secret_key=secret_key, secure=False)
+    def __init__(self, endpoint, bucket, access_key, secret_key, *, secure=False, **_):
+        self.client = minio.Minio(endpoint, access_key=access_key, secret_key=secret_key, secure=secure)
         self.bucket = bucket
         if not self.client.bucket_exists(bucket):
             warnings.warn('Creating bucket "%s"' % self.bucket)
