@@ -32,7 +32,7 @@ Some Python datatypes such as dicts were coerced into numpy recarrays and then f
 However, since some Python types were coerced into MATLAB types, old blobs and new blobs may now be fetched as different types of objects even if they were inserted the same way. 
 For example, new `dict` objects will be returned as `dict` while the same types of objects inserted with `datajoint 0.11` will be recarrays.
 
-Since this is a big change, we chose to disable full blobs support by default as a temporary precaution. 
+Since this is a big change, we chose to disable full blob support by default as a temporary precaution, which will be removed in version 0.13.
 
 You can enable it by setting the `enable_python_native_blobs` flag in `dj.config`. 
 
