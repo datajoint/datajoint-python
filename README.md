@@ -43,7 +43,7 @@ dj.config["enable_python_native_blobs"] = True
 
 You can safely enable this setting if both of the following are true:
 
-  * All blobs in your current DataJoint databases contain only numerical arrays.
+  * The only kinds of blobs your pipeline inserts are numerical arrays.
   * You do not need to share blob data between Python and MATLAB.
 
 Otherwise, read the following explanation.
