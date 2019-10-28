@@ -34,7 +34,7 @@ For example, new `dict` objects will be returned as `dict` while the same types 
 
 Since this is a big change, we chose to disable full blob support by default as a temporary precaution, which will be removed in version 0.13.
 
-You can enable it by setting the `enable_python_native_blobs` flag in `dj.config`. 
+You may enable it by setting the `enable_python_native_blobs` flag in `dj.config`. 
 
 ```python
 import datajoint as dj
