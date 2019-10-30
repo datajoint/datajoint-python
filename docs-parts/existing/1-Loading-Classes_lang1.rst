@@ -38,9 +38,9 @@ You may then import the module to interact with its tables:
 ..     :file: virtual-module-ERD.svg
 
 Note that dj.Diagram can extract the diagram from a schema object or from a
-python module containing its schema object, lending further support to the
+Python module containing its schema object, lending further support to the
 convention of one-to-one correspondence between database schemas and Python
-modules in a datajoint project:
+modules in a DataJoint project:
 
 ``dj.Diagram(uni)``
 
@@ -70,7 +70,7 @@ not have classes declared to interact with it.
 
 So let's start over in this scenario.
 
-You can may use the ``dj.list_schemas`` function (new in datajoint 0.12.0) to
+You can may use the ``dj.list_schemas`` function (new in DataJoint 0.12.0) to
 list the names of database schemas available to you.
 
 .. code-block:: python
@@ -142,8 +142,8 @@ this namespace:
 Creating a virtual module
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 Now ``spawn_missing_classes`` creates the new classes in the local namespace.
-However, it is often more convenient to import a schema with its python module,
-equivalent to the python command
+However, it is often more convenient to import a schema with its Python module,
+equivalent to the Python command
 
 .. code-block:: python
 
