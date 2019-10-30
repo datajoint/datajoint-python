@@ -1,7 +1,7 @@
 
-To remove only the tracking entries in the external table, call `delete`
-on the external table for the external configuration with the argument 
-`delete_external_files=False`.
+To remove only the tracking entries in the external table, call ``delete``
+on the ``~external_<storename>`` table for the external configuration with the argument 
+``delete_external_files=False``.
 
 .. note::
 
@@ -23,7 +23,7 @@ on the external table for the external configuration with the argument
 
 .. note::
 
-  Setting `delete_external_files=True` will always attempt to delete
+  Setting ``delete_external_files=True`` will always attempt to delete
   the underlying data file, and so should not typically be used with 
-  the `filepath` datatype.
+  the ``filepath`` datatype.
 

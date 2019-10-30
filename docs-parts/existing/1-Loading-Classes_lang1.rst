@@ -107,7 +107,7 @@ table names as they appear in the database.
 .. .. raw:: html
 ..    :file: dimitri-ERD.svg
 
-You may view the diagram but, at this point, there is now way to interact with
+You may view the diagram but, at this point, there is no way to interact with
 these tables. A similar situation arises when another developer has added new
 tables to the schema but has not yet shared the updated module code with you.
 Then the diagram will show a mixture of class names and database table names.
@@ -160,7 +160,7 @@ We can mimick this import without having access to ``university.py`` using the
 
 *Connecting dimitri@localhost:3306*
 
-Now uni behaves as an imported module complete with the schema object and all
+Now ``uni`` behaves as an imported module complete with the schema object and all
 the table classes.
 
 .. code-block:: python

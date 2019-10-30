@@ -1,6 +1,6 @@
 ## Release notes
 
-### 0.12.0 -- October 1, 2019
+### 0.12.0 -- October 31, 2019
 * Dropped support for Python 3.4
 * Support secure connections with TLS (aka SSL) PR #620
 * Convert numpy array from python object to appropriate data type if all elements are of the same type (#587) PR #608
