@@ -1,4 +1,4 @@
-0.12.0 -- October 1, 2019
+0.12.0 -- October 31, 2019
 -------------------------
 * Dropped support for Python 3.4
 * Support secure connections with TLS (aka SSL) PR #620
@@ -19,6 +19,9 @@
 * Accept alias for supported MySQL datatypes (#544) PR #545
 * Support for pandas in `fetch` (#459, #537) PR #534
 * Support for ordering by "KEY" in `fetch` (#541) PR #534
+* Add config to enable python native blobs PR #672, #676
+* Add secure option for external storage (#663) PR #674, #676
+* Add blob migration utility from DJ011 to DJ012 PR #673
 * Improved external storage - a migration script needed from version 0.11  (#467, #475, #480, #497) PR #532
 * Increase default display rows (#523) PR #526
 * Bugfixes (#521, #205, #279, #477, #570, #581, #597, #596, #618, #633, #643, #644, #647, #648, #650, #656)
