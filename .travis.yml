@@ -13,8 +13,8 @@ services:
 main: &main
       stage: Alpine
       os: linux
-      dist: bionic # precise, trusty, xenial, bionic
-      language: shell
+      dist: xenial # precise, trusty, xenial, bionic
+      language: python
       script:
         - docker-compose -f LNX-docker-compose.yml up --build --exit-code-from dj
 jobs:
