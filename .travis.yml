@@ -10,6 +10,7 @@ env:
     - COVERALLS_REPO_TOKEN="fd0BoXG46TPReEem0uMy7BJO5j0w1MQiY"
 services: 
 - docker
+- mysql
 main: &main
       stage: Alpine
       os: linux
