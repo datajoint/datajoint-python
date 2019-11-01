@@ -34,7 +34,7 @@ For example, new `dict` objects will be returned as `dict` while the same types 
 
 Since this is a big change, we chose to disable full blob support by default as a temporary precaution, which will be removed in version 0.13.
 
-You can enable it by setting the `enable_python_native_blobs` flag in `dj.config`. 
+You may enable it by setting the `enable_python_native_blobs` flag in `dj.config`. 
 
 ```python
 import datajoint as dj
@@ -43,7 +43,7 @@ dj.config["enable_python_native_blobs"] = True
 
 You can safely enable this setting if both of the following are true:
 
-  * The only kinds of blobs your pipeline inserts are numerical arrays.
+  * The only kinds of blobs your pipeline have inserted previously were numerical arrays.
   * You do not need to share blob data between Python and MATLAB.
 
 Otherwise, read the following explanation.
