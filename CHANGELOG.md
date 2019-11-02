@@ -1,6 +1,9 @@
 ## Release notes
 
-### 0.12.0 -- October 31, 2019
+### 0.12.1 -- Nov 2, 2019
+* Bugfix - AttributeAdapter converts into a string (#684)
+
+### 0.12.0 -- Oct 31, 2019
 * Dropped support for Python 3.4
 * Support secure connections with TLS (aka SSL) PR #620
 * Convert numpy array from python object to appropriate data type if all elements are of the same type (#587) PR #608
@@ -31,7 +34,7 @@
 ### 0.11.3 -- Jul 26, 2019
 * Fix incompatibility with pyparsing 2.4.1 (#629) PR #631
 
-### 0.11.2 -- July 25, 2019
+### 0.11.2 -- Jul 25, 2019
 * Fix #628 - incompatibility with pyparsing 2.4.1
 
 ### 0.11.1 -- Nov 15, 2018

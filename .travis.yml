@@ -10,12 +10,11 @@ env:
     - COVERALLS_REPO_TOKEN="fd0BoXG46TPReEem0uMy7BJO5j0w1MQiY"
 services: 
 - docker
-- mysql
 main: &main
       stage: Alpine
       os: linux
       dist: xenial # precise, trusty, xenial, bionic
-      language: python
+      language: shell
       script:
         - docker-compose -f LNX-docker-compose.yml up --build --exit-code-from dj
 jobs:
