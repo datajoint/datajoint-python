@@ -8,7 +8,7 @@
                   location = 'datajoint-projects/lab1',
                   access_key='1234567',
                   secret_key='foaf1234'),
-    'external-raw'] = dict( # 'raw' storage for this pipeline
+    'external-raw': dict( # 'raw' storage for this pipeline
                   protocol='file',
                   location='/net/djblobs/myschema')
   }

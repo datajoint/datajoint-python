@@ -1,4 +1,8 @@
-0.12.0 -- October 31, 2019
+0.12.1 -- Nov 2, 2019
+-------------------------
+* Bugfix - AttributeAdapter converts into a string (#684)
+
+0.12.0 -- Oct 31, 2019
 -------------------------
 * Dropped support for Python 3.4
 * Support secure connections with TLS (aka SSL) PR #620

@@ -10,6 +10,7 @@ from .schema_external import schema, Filepath, FilepathS3, stores_config
 def setUp(self):
     dj.config['stores'] = stores_config
 
+
 def test_path_match(store="repo"):
     """ test file path matches and empty file"""
     ext = schema.external[store]
@@ -22,7 +23,7 @@ def test_path_match(store="repo"):
     open(str(managed_file), 'a').close()
 
     # put the file
-    uuid = ext.upload_filepath(managed_file)
+    uuid = ext.upload_filepath(str(managed_file))
 
     #remove
     managed_file.unlink()
@@ -35,11 +36,12 @@ def test_path_match(store="repo"):
     
     # # Download the file and check its contents.
     restored_path, checksum = ext.download_filepath(uuid)
-    assert_equal(restored_path, managed_file)
-    assert_equal(checksum, dj.hash.uuid_from_file(managed_file))
+    assert_equal(restored_path, str(managed_file))
+    assert_equal(checksum, dj.hash.uuid_from_file(str(managed_file)))
 
     # cleanup
     ext.delete(delete_external_files=True)
+
 
 def test_filepath(store="repo"):
     """ test file management """
@@ -56,8 +58,8 @@ def test_filepath(store="repo"):
         f.write(data)
 
     # put the same file twice to ensure storing once
-    uuid1 = ext.upload_filepath(managed_file)
-    uuid2 = ext.upload_filepath(managed_file)   # no duplication should arise if file is the same
+    uuid1 = ext.upload_filepath(str(managed_file))
+    uuid2 = ext.upload_filepath(str(managed_file))   # no duplication should arise if file is the same
     assert_equal(uuid1, uuid2)
 
     # remove to ensure downloading
@@ -67,8 +69,8 @@ def test_filepath(store="repo"):
     # Download the file and check its contents. Repeat causes no download from remote
     for _ in 1, 2:
         restored_path, checksum = ext.download_filepath(uuid1)
-        assert_equal(restored_path, managed_file)
-        assert_equal(checksum, dj.hash.uuid_from_file(managed_file))
+        assert_equal(restored_path, str(managed_file))
+        assert_equal(checksum, dj.hash.uuid_from_file(str(managed_file)))
 
     # verify same data
     with managed_file.open('rb') as f:
@@ -92,8 +94,8 @@ def test_duplicate_upload(store="repo"):
     managed_file.parent.mkdir(parents=True, exist_ok=True)
     with managed_file.open('wb') as f:
         f.write(os.urandom(300))
-    ext.upload_filepath(managed_file)
-    ext.upload_filepath(managed_file)  # this is fine because the file is the same
+    ext.upload_filepath(str(managed_file))
+    ext.upload_filepath(str(managed_file))  # this is fine because the file is the same
 
 
 def test_duplicate_upload_s3():
@@ -110,10 +112,10 @@ def test_duplicate_error(store="repo"):
     managed_file.parent.mkdir(parents=True, exist_ok=True)
     with managed_file.open('wb') as f:
         f.write(os.urandom(300))
-    ext.upload_filepath(managed_file)
+    ext.upload_filepath(str(managed_file))
     with managed_file.open('wb') as f:
         f.write(os.urandom(300))
-    ext.upload_filepath(managed_file)  # this should raise exception because the file has changed
+    ext.upload_filepath(str(managed_file))  # this should raise exception because the file has changed
 
 
 def test_duplicate_error_s3():
@@ -135,7 +137,7 @@ def test_filepath_class(table=Filepath(), store="repo"):
     assert_equal(data, contents)
 
     # upload file into shared repo
-    table.insert1((1, managed_file))
+    table.insert1((1, str(managed_file)))
 
     # remove file locally
     managed_file.unlink()
@@ -187,7 +189,7 @@ def test_filepath_cleanup(table=Filepath(), store="repo"):
         managed_file.parent.mkdir(parents=True, exist_ok=True)
         with managed_file.open('wb') as f:
             f.write(contents)  # same in all files
-        table.insert1((i, managed_file))
+        table.insert1((i, str(managed_file)))
     assert_equal(len(table), n)
 
     ext = schema.external[store]
@@ -235,7 +237,7 @@ def test_return_string(table=Filepath(), store="repo"):
     assert_equal(data, contents)
 
     # upload file into shared repo
-    table.insert1((138, managed_file))
+    table.insert1((138, str(managed_file)))
 
     # remove file locally
     managed_file.unlink()
