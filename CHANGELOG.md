@@ -1,5 +1,8 @@
 ## Release notes
 
+### 0.12.2 -- Nov 8, 2019
+* Bugfix - Insert into external does not trim leading slash if defined in `dj.config['stores']['<store>']['location']` (#692)
+
 ### 0.12.1 -- Nov 2, 2019
 * Bugfix - AttributeAdapter converts into a string (#684)
 

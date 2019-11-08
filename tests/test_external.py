@@ -7,6 +7,7 @@ from datajoint.blob import pack, unpack
 from .schema_external import schema
 import datajoint as dj
 from .schema_external import stores_config
+from .schema_external import SimpleRemote
 
 
 def setUp(self):
@@ -33,3 +34,34 @@ def test_external_put():
 
     output_ = unpack(ext.get(hash1))
     assert_array_equal(input_, output_)
+
+
+def test_leading_slash():
+    """
+    external storage configured with leading slash
+    """
+    value = np.array([1, 2, 3])
+
+    id = 100
+    dj.config['stores']['share']['location'] = 'leading/slash/test'
+    SimpleRemote.insert([{'simple': id, 'item': value}])
+    assert_true(np.array_equal(
+        value, (SimpleRemote & 'simple={}'.format(id)).fetch1('item')))
+
+    id = 101
+    dj.config['stores']['share']['location'] = '/leading/slash/test'
+    SimpleRemote.insert([{'simple': id, 'item': value}])
+    assert_true(np.array_equal(
+        value, (SimpleRemote & 'simple={}'.format(id)).fetch1('item')))
+
+    id = 102
+    dj.config['stores']['share']['location'] = 'leading\\slash\\test'
+    SimpleRemote.insert([{'simple': id, 'item': value}])
+    assert_true(np.array_equal(
+        value, (SimpleRemote & 'simple={}'.format(id)).fetch1('item')))
+
+    id = 103
+    dj.config['stores']['share']['location'] = 'f:\\leading\\slash\\test'
+    SimpleRemote.insert([{'simple': id, 'item': value}])
+    assert_true(np.array_equal(
+        value, (SimpleRemote & 'simple={}'.format(id)).fetch1('item')))

@@ -1,4 +1,4 @@
-from pathlib import Path, PurePosixPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from collections import Mapping
 from tqdm import tqdm
 from .settings import config
@@ -74,7 +74,12 @@ class ExternalTable(Table):
 
     def _make_external_filepath(self, relative_filepath):
         """resolve the complete external path based on the relative path"""
-        return PurePosixPath(Path(self.spec['location']), relative_filepath)
+        posix_path = PurePosixPath(PureWindowsPath(self.spec['location']))
+        location_path = Path(
+                *posix_path.parts[1:]) if any(
+                    case in posix_path.parts[0] for case in (
+                        '\\', ':')) else Path(posix_path)
+        return PurePosixPath(location_path, relative_filepath)
 
     def _make_uuid_path(self, uuid, suffix=''):
         """create external path based on the uuid hash"""
