@@ -74,12 +74,17 @@ class ExternalTable(Table):
 
     def _make_external_filepath(self, relative_filepath):
         """resolve the complete external path based on the relative path"""
-        posix_path = PurePosixPath(PureWindowsPath(self.spec['location']))
-        location_path = Path(
-                *posix_path.parts[1:]) if any(
-                    case in posix_path.parts[0] for case in (
-                        '\\', ':')) else Path(posix_path)
-        return PurePosixPath(location_path, relative_filepath)
+        if self.spec['protocol'] == 's3':
+            posix_path = PurePosixPath(PureWindowsPath(self.spec['location']))
+            location_path = Path(
+                    *posix_path.parts[1:]) if any(
+                        case in posix_path.parts[0] for case in (
+                            '\\', ':')) else Path(posix_path)
+            return PurePosixPath(location_path, relative_filepath)
+        elif self.spec['protocol'] == 'file':
+            return PurePosixPath(Path(self.spec['location']), relative_filepath)
+        else:
+            assert False
 
     def _make_uuid_path(self, uuid, suffix=''):
         """create external path based on the uuid hash"""
