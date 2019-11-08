@@ -74,6 +74,7 @@ class ExternalTable(Table):
 
     def _make_external_filepath(self, relative_filepath):
         """resolve the complete external path based on the relative path"""
+        # Strip root
         if self.spec['protocol'] == 's3':
             posix_path = PurePosixPath(PureWindowsPath(self.spec['location']))
             location_path = Path(
@@ -81,6 +82,7 @@ class ExternalTable(Table):
                         case in posix_path.parts[0] for case in (
                             '\\', ':')) else Path(posix_path)
             return PurePosixPath(location_path, relative_filepath)
+        # Preserve root
         elif self.spec['protocol'] == 'file':
             return PurePosixPath(Path(self.spec['location']), relative_filepath)
         else:
