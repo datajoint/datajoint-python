@@ -8,10 +8,15 @@ from .schema_external import schema
 import datajoint as dj
 from .schema_external import stores_config
 from .schema_external import SimpleRemote
+current_location = dj.config['stores']['share']['location']
 
 
 def setUp(self):
     dj.config['stores'] = stores_config
+
+
+def tearDown(self):
+    dj.config['stores']['share']['location'] = current_location
 
 
 def test_external_put():
