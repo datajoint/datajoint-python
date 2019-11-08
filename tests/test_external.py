@@ -65,3 +65,9 @@ def test_leading_slash():
     SimpleRemote.insert([{'simple': id, 'item': value}])
     assert_true(np.array_equal(
         value, (SimpleRemote & 'simple={}'.format(id)).fetch1('item')))
+
+    id = 104
+    dj.config['stores']['share']['location'] = 'f:\\leading/slash\\test'
+    SimpleRemote.insert([{'simple': id, 'item': value}])
+    assert_true(np.array_equal(
+        value, (SimpleRemote & 'simple={}'.format(id)).fetch1('item')))
