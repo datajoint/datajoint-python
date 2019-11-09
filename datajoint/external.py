@@ -78,9 +78,10 @@ class ExternalTable(Table):
         if self.spec['protocol'] == 's3':
             posix_path = PurePosixPath(PureWindowsPath(self.spec['location']))
             location_path = Path(
-                    *posix_path.parts[1:]) if any(
-                        case in posix_path.parts[0] for case in (
-                            '\\', ':')) else Path(posix_path)
+                    *posix_path.parts[1:]) if len(
+                    self.spec['location']) > 0 and any(
+                    case in posix_path.parts[0] for case in (
+                        '\\', ':')) else Path(posix_path)
             return PurePosixPath(location_path, relative_filepath)
         # Preserve root
         elif self.spec['protocol'] == 'file':
