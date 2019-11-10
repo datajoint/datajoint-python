@@ -56,6 +56,15 @@ class Simple(dj.Manual):
 
 
 @schema
+class SimpleRemote(dj.Manual):
+    definition = """
+    simple  : int
+    ---
+    item  : blob@share
+    """
+
+
+@schema
 class Seed(dj.Lookup):
     definition = """
     seed :  int
