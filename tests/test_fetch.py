@@ -145,6 +145,10 @@ class TestFetch:
             assert_true(k == c == (self.lang & key).fetch1(ke),
                         'Values are not the same')
 
+    @raises(dj.DataJointError)
+    def test_misspelled_attribute(self):
+        f = (schema.Language & 'lang = "ENGLISH"').fetch()
+
     def test_repr(self):
         """Test string representation of fetch, returning table preview"""
         repr = self.subject.fetch.__repr__()
