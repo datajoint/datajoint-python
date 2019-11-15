@@ -6,7 +6,7 @@ import os
 
 
 # --- Top Level ---
-class DataJointError(BaseException):
+class DataJointError(Exception):
     """
     Base class for errors specific to DataJoint internal operation.
     """
