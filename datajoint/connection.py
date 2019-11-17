@@ -39,10 +39,10 @@ def translate_query_error(client_error, query):
         return errors.DuplicateError(*client_error.args[1:])
     if isinstance(client_error, client.err.IntegrityError) and client_error.args[0] == 1452:
         return errors.IntegrityError(*client_error.args[1:])
-    # Syntax Errors
+    # Syntax errors
     if isinstance(client_error, client.err.ProgrammingError) and client_error.args[0] == 1064:
         return errors.QuerySyntaxError(client_error.args[1], query)
-    # Existence Errors
+    # Existence errors
     if isinstance(client_error, client.err.ProgrammingError) and client_error.args[0] == 1146:
         return errors.MissingTableError(client_error.args[1], query)
     if isinstance(client_error, client.err.InternalError) and client_error.args[0] == 1364:
@@ -286,4 +286,3 @@ class Connection:
             raise
         else:
             self.commit_transaction()
-            
