@@ -1,11 +1,25 @@
 from .hash import key_hash
 import os
 import platform
+import numpy as np
 from .table import Table
-from .errors import DuplicateError, IntegrityError
+from .errors import DuplicateError
+from .settings import config
+from .blob import MatStruct
 
 ERROR_MESSAGE_LENGTH = 2047
 TRUNCATION_APPENDIX = '...truncated'
+
+
+def _adapt_key_to_matstruct(key):
+    """
+    Only used as a temporary measure for uninterrupted interoperability with datajoint 0.11.
+    Will be deprecated in datajoint 0.13 when support for native python data types is accepted.
+    :param key: a dict representing the primary key
+    :return: converted to dj.blob.MatStruct
+    """
+    return (key if config.get('enable_python_native_blobs')
+            else np.reshape(np.rec.array((list(key.values())), names=list(key)), (1, 1)).view(MatStruct))
 
 
 class JobTable(Table):
@@ -73,7 +87,7 @@ class JobTable(Table):
             host=platform.node(),
             pid=os.getpid(),
             connection_id=self.connection.connection_id,
-            key=key,
+            key=_adapt_key_to_matstruct(key),
             user=self._user)
         try:
             self.insert1(job, ignore_extra_fields=True)
@@ -101,15 +115,16 @@ class JobTable(Table):
         """
         if len(error_message) > ERROR_MESSAGE_LENGTH:
             error_message = error_message[:ERROR_MESSAGE_LENGTH-len(TRUNCATION_APPENDIX)] + TRUNCATION_APPENDIX
-        job_key = dict(table_name=table_name, key_hash=key_hash(key))
         self.insert1(
-            dict(job_key,
-                 status="error",
-                 host=platform.node(),
-                 pid=os.getpid(),
-                 connection_id=self.connection.connection_id,
-                 user=self._user,
-                 key=key,
-                 error_message=error_message,
-                 error_stack=error_stack),
+            dict(
+                table_name=table_name,
+                key_hash=key_hash(key),
+                status="error",
+                host=platform.node(),
+                pid=os.getpid(),
+                connection_id=self.connection.connection_id,
+                user=self._user,
+                key=_adapt_key_to_matstruct(key),
+                error_message=error_message,
+                error_stack=error_stack),
             replace=True, ignore_extra_fields=True)
