@@ -117,7 +117,7 @@ class AutoPopulate:
 
     def populate(self, *restrictions, suppress_errors=False, return_exception_objects=False,
                  reserve_jobs=False, order="original", limit=None, max_calls=None,
-                 display_progress=False, max_processes=None):
+                 display_progress=False, multiprocess=False):
         """
         rel.populate() calls rel.make(key) for every primary key in self.key_source
         for which there is not already a tuple in rel.
@@ -129,7 +129,8 @@ class AutoPopulate:
         :param limit: if not None, check at most this many keys
         :param max_calls: if not None, populate at most this many keys
         :param display_progress: if True, report progress_bar
-        :param max_processes: max number of processes to use simultaneously
+        :param multiprocess: if True, use as many processes as CPU cores, or use the integer
+        number of processes specified
         """
         self._make_key_kwargs = {'suppress_errors':suppress_errors,
                                  'return_exception_objects':return_exception_objects,
@@ -163,9 +164,15 @@ class AutoPopulate:
             keys = keys[:max_calls]
         nkeys = len(keys)
 
-        nproc = 1
-        if max_processes and max_processes > 1:
-            nproc = min(max_processes, nkeys)
+        if multiprocess: # True or int, presumably
+            if multiprocess == True:
+                nproc = mp.cpu_count()
+            else:
+                assert type(multiprocess) == int
+                nproc = multiprocess
+        else:
+            nproc = 1
+        nproc = min(nproc, nkeys) # no sense spawning more than can be used
         error_list = []
         if nproc > 1: # spawn multiple processes
             # prepare to pickle self:
