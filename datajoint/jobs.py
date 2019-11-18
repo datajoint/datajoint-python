@@ -77,7 +77,7 @@ class JobTable(Table):
             key=key,
             user=self._user)
         try:
-            with config(enable_pyton_native_blobs=True):
+            with config(enable_python_native_blobs=True):
                 self.insert1(job, ignore_extra_fields=True)
         except DuplicateError:
             return False
@@ -103,7 +103,7 @@ class JobTable(Table):
         """
         if len(error_message) > ERROR_MESSAGE_LENGTH:
             error_message = error_message[:ERROR_MESSAGE_LENGTH-len(TRUNCATION_APPENDIX)] + TRUNCATION_APPENDIX
-        with config(enable_pyton_native_blobs=True):
+        with config(enable_python_native_blobs=True):
             self.insert1(
                 dict(
                     table_name=table_name,
