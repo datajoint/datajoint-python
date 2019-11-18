@@ -124,11 +124,11 @@ class AutoPopulate:
         :param restrictions: a list of restrictions each restrict (rel.key_source - target.proj())
         :param suppress_errors: if True, do not terminate execution.
         :param return_exception_objects: return error objects instead of just error messages
-        :param reserve_jobs: if true, reserves job to populate in asynchronous fashion
+        :param reserve_jobs: if True, reserve jobs to populate in asynchronous fashion
         :param order: "original"|"reverse"|"random"  - the order of execution
+        :param limit: if not None, check at most this many keys
+        :param max_calls: if not None, populate at most this many keys
         :param display_progress: if True, report progress_bar
-        :param limit: if not None, checks at most that many keys
-        :param max_calls: if not None, populates at max that many keys
         :param max_processes: max number of processes to use simultaneously
         """
         self._make_key_kwargs = {'suppress_errors':suppress_errors,
@@ -144,7 +144,7 @@ class AutoPopulate:
             raise DataJointError('The order argument must be one of %s' % str(valid_order))
         jobs = self.connection.schemas[self.target.database].jobs if reserve_jobs else None
 
-        # define and setup signal handler for SIGTERM
+        # define and set up signal handler for SIGTERM:
         if reserve_jobs:
             def handler(signum, frame):
                 logger.info('Populate terminated by SIGTERM')
