@@ -132,11 +132,6 @@ class AutoPopulate:
         :param multiprocess: if True, use as many processes as CPU cores, or use the integer
         number of processes specified
         """
-        self._make_key_kwargs = {'suppress_errors':suppress_errors,
-                                 'return_exception_objects':return_exception_objects,
-                                 'reserve_jobs':reserve_jobs,
-                                }
-
         if self.connection.in_transaction:
             raise DataJointError('Populate cannot be called during a transaction.')
 
@@ -144,6 +139,12 @@ class AutoPopulate:
         if order not in valid_order:
             raise DataJointError('The order argument must be one of %s' % str(valid_order))
         jobs = self.connection.schemas[self.target.database].jobs if reserve_jobs else None
+
+        self._make_key_kwargs = {'suppress_errors':suppress_errors,
+                                 'return_exception_objects':return_exception_objects,
+                                 'reserve_jobs':reserve_jobs,
+                                 'jobs':jobs,
+                                }
 
         # define and set up signal handler for SIGTERM:
         if reserve_jobs:
@@ -215,6 +216,7 @@ class AutoPopulate:
         suppress_errors = kwargs['suppress_errors']
         return_exception_objects = kwargs['return_exception_objects']
         reserve_jobs = kwargs['reserve_jobs']
+        jobs = kwargs['jobs']
 
         if not reserve_jobs or jobs.reserve(self.target.table_name, self._job_key(key)):
             self.connection.start_transaction()
