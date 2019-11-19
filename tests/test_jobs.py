@@ -96,9 +96,7 @@ def test_suppress_dj_errors():
     schema.schema.jobs.delete()
     with dj.config(enable_python_native_blobs=False):
         schema.ErrorClass.populate(reserve_jobs=True, suppress_errors=True)
-    number_of_exceptions = len(schema.DjExceptionName())
-    assert_true(number_of_exceptions > 0)
-    assert_equals(number_of_exceptions, len(schema.schema.jobs))
+    assert_true(len(schema.DjExceptionName()) == len(schema.schema.jobs) > 0)
 
 
 def test_long_error_message():
