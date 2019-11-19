@@ -193,7 +193,7 @@ class Schema:
 
         # add table definition to the doc string
         if isinstance(table_class.definition, str):
-            table_class.__doc__ = ((table_class.__doc__ or "") + "\n\nTable definition:\n"
+            table_class.__doc__ = ((table_class.__doc__ or "") + "\nTable definition:\n\n"
                                    + table_class.describe(printout=False, context=context))
 
         # fill values in Lookup tables from their contents property
