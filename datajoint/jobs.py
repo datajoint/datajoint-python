@@ -2,7 +2,8 @@ from .hash import key_hash
 import os
 import platform
 from .table import Table
-from .errors import DuplicateError, IntegrityError
+from .settings import config
+from .errors import DuplicateError
 
 ERROR_MESSAGE_LENGTH = 2047
 TRUNCATION_APPENDIX = '...truncated'
@@ -76,7 +77,8 @@ class JobTable(Table):
             key=key,
             user=self._user)
         try:
-            self.insert1(job, ignore_extra_fields=True)
+            with config(enable_python_native_blobs=True):
+                self.insert1(job, ignore_extra_fields=True)
         except DuplicateError:
             return False
         return True
@@ -101,15 +103,17 @@ class JobTable(Table):
         """
         if len(error_message) > ERROR_MESSAGE_LENGTH:
             error_message = error_message[:ERROR_MESSAGE_LENGTH-len(TRUNCATION_APPENDIX)] + TRUNCATION_APPENDIX
-        job_key = dict(table_name=table_name, key_hash=key_hash(key))
-        self.insert1(
-            dict(job_key,
-                 status="error",
-                 host=platform.node(),
-                 pid=os.getpid(),
-                 connection_id=self.connection.connection_id,
-                 user=self._user,
-                 key=key,
-                 error_message=error_message,
-                 error_stack=error_stack),
-            replace=True, ignore_extra_fields=True)
+        with config(enable_python_native_blobs=True):
+            self.insert1(
+                dict(
+                    table_name=table_name,
+                    key_hash=key_hash(key),
+                    status="error",
+                    host=platform.node(),
+                    pid=os.getpid(),
+                    connection_id=self.connection.connection_id,
+                    user=self._user,
+                    key=key,
+                    error_message=error_message,
+                    error_stack=error_stack),
+                replace=True, ignore_extra_fields=True)

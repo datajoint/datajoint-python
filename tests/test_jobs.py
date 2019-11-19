@@ -1,4 +1,3 @@
-from decimal import Decimal
 from nose.tools import assert_true, assert_false, assert_equals
 from . import schema
 from datajoint.jobs import ERROR_MESSAGE_LENGTH, TRUNCATION_APPENDIX
@@ -46,6 +45,7 @@ def test_reserve_job():
     assert_false(schema.schema.jobs,
                  'failed to clear error jobs')
 
+
 def test_restrictions():
     # clear out jobs table
     jobs = schema.schema.jobs
@@ -62,6 +62,7 @@ def test_restrictions():
                 'There should be only one entries with error status in table a')
     jobs.delete()
 
+
 def test_sigint():
     # clear out job table
     schema.schema.jobs.delete()
@@ -75,6 +76,7 @@ def test_sigint():
     assert_equals(error_message, 'KeyboardInterrupt')
     schema.schema.jobs.delete()
 
+
 def test_sigterm():
     # clear out job table
     schema.schema.jobs.delete()
@@ -87,6 +89,17 @@ def test_sigterm():
     assert_equals(status, 'error')
     assert_equals(error_message, 'SystemExit: SIGTERM received')
     schema.schema.jobs.delete()
+
+
+def test_suppress_dj_errors():
+    """ test_suppress_dj_errors: dj errors suppressable w/o native py blobs """
+    schema.schema.jobs.delete()
+    with dj.config(enable_python_native_blobs=False):
+        schema.ErrorClass.populate(reserve_jobs=True, suppress_errors=True)
+    number_of_exceptions = len(schema.DjExceptionName())
+    assert_true(number_of_exceptions > 0)
+    assert_equals(number_of_exceptions, len(schema.schema.jobs))
+
 
 def test_long_error_message():
     # clear out jobs table
