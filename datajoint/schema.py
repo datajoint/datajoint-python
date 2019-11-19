@@ -193,7 +193,8 @@ class Schema:
 
         # add table definition to the doc string
         if isinstance(table_class.definition, str):
-            table_class.__doc__ = (table_class.__doc__ or "") + "\n\nTable definition:\n\n" + table_class.definition
+            table_class.__doc__ = ((table_class.__doc__ or "") + "\n\nTable definition:\n"
+                                   + table_class.describe(printout=False))
 
         # fill values in Lookup tables from their contents property
         if isinstance(instance, Lookup) and hasattr(instance, 'contents') and is_declared:
