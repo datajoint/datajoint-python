@@ -19,7 +19,7 @@ from .version import __version__ as version
 logger = logging.getLogger(__name__)
 
 
-class _rename_map(tuple):
+class _RenameMap(tuple):
     """ for internal use """
     pass
 
@@ -375,7 +375,7 @@ class Table(QueryExpression):
         graph = conn.dependencies
         graph.load()
         delete_list = collections.OrderedDict(
-            (name, _rename_map(next(iter(graph.parents(name).items()))) if name.isdigit() else FreeTable(conn, name))
+            (name, _RenameMap(next(iter(graph.parents(name).items()))) if name.isdigit() else FreeTable(conn, name))
             for name in graph.descendants(self.full_table_name))
 
         # construct restrictions for each relation
@@ -405,7 +405,7 @@ class Table(QueryExpression):
                 table.restrict([
                     r.proj() if isinstance(r, FreeTable) else (
                         delete_list[r[0]].proj(**{a: b for a, b in r[1]['attr_map'].items()})
-                        if isinstance(r, _rename_map) else r)
+                        if isinstance(r, _RenameMap) else r)
                     for r in restrictions[name]])
         if safe:
             print('About to delete:')
