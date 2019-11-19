@@ -247,7 +247,8 @@ class Heading:
                     category = next(c for c in SPECIAL_TYPES if TYPE_PATTERN[c].match(attr['type']))
                 except StopIteration:
                     if attr['type'].startswith('external'):
-                        raise DataJointError('Legacy datatype `{type}`.'.format(**attr)) from None
+                        raise DataJointError('Legacy datatype `{type}`. '
+                                             'Migrate your external stores to datajoint 0.12'.format(**attr)) from None
                     raise DataJointError('Unknown attribute type `{type}`'.format(**attr)) from None
                 if category == 'FILEPATH' and not _support_filepath_types():
                     raise DataJointError("""
