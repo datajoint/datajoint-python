@@ -40,3 +40,4 @@ def test_alter():
     restored = schema.connection.query("SHOW CREATE TABLE " + Experiment.full_table_name).fetchone()[1]
     assert_equal(original, restored)
     assert_not_equal(original, altered)
+
