@@ -13,7 +13,7 @@ _base_regexp = r'[a-z][a-z0-9]*(_[a-z][a-z0-9]*)*'
 # attributes that trigger instantiation of user classes
 supported_class_attrs = {
     'key_source', 'describe', 'alter', 'heading', 'populate', 'progress', 'primary_key', 'proj', 'aggr',
-    'fetch', 'fetch1','head', 'tail',
+    'fetch', 'fetch1', 'head', 'tail',
     'insert', 'insert1', 'drop', 'drop_quick', 'delete', 'delete_quick'}
 
 
@@ -92,7 +92,7 @@ class UserTable(Table, metaclass=OrderedClass):
 
     @ClassProperty
     def full_table_name(cls):
-        if cls not in {Manual, Imported, Lookup, Computed, Part}:
+        if cls not in {Manual, Imported, Lookup, Computed, Part, UserTable}:
             if cls.database is None:
                 raise DataJointError('Class %s is not properly declared (schema decorator not applied?)' % cls.__name__)
             return r"`{0:s}`.`{1:s}`".format(cls.database, cls.table_name)
