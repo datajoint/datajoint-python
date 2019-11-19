@@ -10,11 +10,11 @@ subjects = schema.Subject()
 
 
 def test_reserve_job():
-    # clean jobs table
-    schema.schema.jobs.delete()
 
+    schema.schema.jobs.delete()
     assert_true(subjects)
     table_name = 'fake_table'
+
     # reserve jobs
     for key in subjects.fetch('KEY'):
         assert_true(schema.schema.jobs.reserve(table_name, key), 'failed to reserve a job')
