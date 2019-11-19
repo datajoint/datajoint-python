@@ -236,8 +236,8 @@ else:
             for name in self.nodes_to_show:
                 foreign_attributes = set(
                     attr for p in self.in_edges(name, data=True) for attr in p[2]['attr_map'] if p[2]['primary'])
-                self.node[name]['distinguished'] = (
-                        'primary_key' in self.node[name] and foreign_attributes < self.node[name]['primary_key'])
+                self.nodes[name]['distinguished'] = (
+                        'primary_key' in self.nodes[name] and foreign_attributes < self.nodes[name]['primary_key'])
             # include aliased nodes that are sandwiched between two displayed nodes
             gaps = set(nx.algorithms.boundary.node_boundary(self, self.nodes_to_show)).intersection(
                 nx.algorithms.boundary.node_boundary(nx.DiGraph(self).reverse(), self.nodes_to_show))
@@ -307,7 +307,7 @@ else:
                 props = graph.get_edge_data(src, dest)
                 edge.set_color('#00000040')
                 edge.set_style('solid' if props['primary'] else 'dashed')
-                master_part = graph.node[dest]['node_type'] is Part and dest.startswith(src+'.')
+                master_part = graph.nodes[dest]['node_type'] is Part and dest.startswith(src+'.')
                 edge.set_weight(3 if master_part else 1)
                 edge.set_arrowhead('none')
                 edge.set_penwidth(.75 if props['multi'] else 2)
