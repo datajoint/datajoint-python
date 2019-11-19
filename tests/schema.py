@@ -278,6 +278,38 @@ class SigTermTable(dj.Computed):
 
 
 @schema
+class DjExceptionNames(dj.Lookup):
+    definition = """
+    dj_exception_name:    char(64)
+    """
+    @property
+    def contents(self):
+        ret = []
+        for e in dir(dj.errors):
+            ea = getattr(dj.errors, e) 
+            if callable(ea):
+                try:
+                    werks = (isinstance(ea, type(Exception))
+                             and isinstance(ea(), Exception))
+                except TypeError as te:
+                    pass
+                if werks:
+                    ret.append((e,))
+        return ret
+
+
+@schema
+class ErrorClassTable(dj.Computed):
+    definition = """
+    -> DjExceptionNames
+    """
+    def make(self, key):
+        ename = key['dj_exception_name']
+        raise getattr(dj.errors, ename)(ename)
+
+
+
+@schema
 class DecimalPrimaryKey(dj.Lookup):
     definition = """
     id  :  decimal(4,3)

@@ -88,6 +88,18 @@ def test_sigterm():
     assert_equals(error_message, 'SystemExit: SIGTERM received')
     schema.schema.jobs.delete()
 
+
+def test_suppress_dj_errors():
+    ''' test_suppress_dj_errors: dj errors suppressable w/o native py blobs'''
+    schema.schema.jobs.delete()
+    with dj.config(enable_python_native_blobs=False):
+        schema.ErrorClassTable().populate(
+            reserve_jobs=True, suppress_errors=True)
+
+        assert len(schema.DjExceptionNames()) == len(schema.DjExceptionNames
+                                                     & schema.schema.jobs)
+
+
 def test_long_error_message():
     # clear out jobs table
     schema.schema.jobs.delete()
