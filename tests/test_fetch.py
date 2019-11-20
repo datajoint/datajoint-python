@@ -7,6 +7,7 @@ import pandas
 import warnings
 from . import schema
 import datajoint as dj
+dj.config['enable_python_native_blobs'] = True
 
 
 class TestFetch:
@@ -143,6 +144,10 @@ class TestFetch:
         for k, (ke, c) in zip(true, dat.items()):
             assert_true(k == c == (self.lang & key).fetch1(ke),
                         'Values are not the same')
+
+    @raises(dj.DataJointError)
+    def test_misspelled_attribute(self):
+        f = (schema.Language & 'lang = "ENGLISH"').fetch()
 
     def test_repr(self):
         """Test string representation of fetch, returning table preview"""

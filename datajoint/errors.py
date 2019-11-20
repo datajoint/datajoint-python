@@ -45,12 +45,6 @@ class AccessError(QueryError):
     """
 
 
-class UnknownAttributeError(DataJointError):
-    """
-    Error caused by referencing to a non-existing attributes
-    """
-
-
 class MissingTableError(DataJointError):
     """
     Query on a table that has not been declared
@@ -66,6 +60,12 @@ class DuplicateError(QueryError):
 class IntegrityError(QueryError):
     """
     An integrity error triggered by foreign key constraints
+    """
+
+
+class UnknownAttributeError(QueryError):
+    """
+    User requests an attribute name not found in query heading
     """
 
 

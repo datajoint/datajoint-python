@@ -5,7 +5,7 @@ Sample schema with realistic tables for testing
 import random
 import numpy as np
 import datajoint as dj
-import os, signal
+import inspect
 from . import PREFIX, CONN_INFO
 
 schema = dj.schema(PREFIX + '_test1', connection=dj.conn(**CONN_INFO))
@@ -275,6 +275,29 @@ class SigTermTable(dj.Computed):
 
     def make(self, key):
         raise SystemExit('SIGTERM received')
+
+
+@schema
+class DjExceptionName(dj.Lookup):
+    definition = """
+    dj_exception_name:    char(64)
+    """
+
+    @property
+    def contents(self):
+        return [[member_name] for member_name, member_type in inspect.getmembers(dj.errors)
+                if inspect.isclass(member_type) and issubclass(member_type, Exception)]
+
+
+@schema
+class ErrorClass(dj.Computed):
+    definition = """
+    -> DjExceptionName
+    """
+
+    def make(self, key):
+        exception_name = key['dj_exception_name']
+        raise getattr(dj.errors, exception_name)
 
 
 @schema

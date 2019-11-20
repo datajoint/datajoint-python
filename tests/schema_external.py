@@ -9,6 +9,7 @@ from . import PREFIX, CONN_INFO, S3_CONN_INFO
 import numpy as np
 
 schema = dj.schema(PREFIX + '_extern', connection=dj.conn(**CONN_INFO))
+dj.config['enable_python_native_blobs'] = True
 
 
 stores_config = {
@@ -51,6 +52,15 @@ class Simple(dj.Manual):
     simple  : int
     ---
     item  : blob@local
+    """
+
+
+@schema
+class SimpleRemote(dj.Manual):
+    definition = """
+    simple  : int
+    ---
+    item  : blob@share
     """
 
 

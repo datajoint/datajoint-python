@@ -22,3 +22,4 @@ build/
 local-docker-compose.yml
 notebooks/*
 __main__.py
+jupyter_custom.js

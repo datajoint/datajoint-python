@@ -24,15 +24,29 @@ pip3 install --upgrade datajoint
 ```
 ## Python Native Blobs
 
-For the v0.12 release, the variable `enable_python_native_blobs` can be
-safely enabled for improved blob support of python datatypes if the following
-are true:
+DataJoint 0.12 adds full support for all native python data types in blobs: tuples, lists, sets, dicts, strings, bytes, `None`, and all their recursive combinations.
+The new blobs are a superset of the old functionality and are fully backward compatible.
+In previous versions, only MATLAB-style numerical arrays were fully supported.
+Some Python datatypes such as dicts were coerced into numpy recarrays and then fetched as such.
 
-  * This is a new DataJoint installation / pipeline(s)
-  * You have not used DataJoint prior to v0.12 with your pipeline(s)
-  * You do not share blob data between Python and Matlab
+However, since some Python types were coerced into MATLAB types, old blobs and new blobs may now be fetched as different types of objects even if they were inserted the same way. 
+For example, new `dict` objects will be returned as `dict` while the same types of objects inserted with `datajoint 0.11` will be recarrays.
 
-Otherwise, please read the following carefully:
+Since this is a big change, we chose to disable full blob support by default as a temporary precaution, which will be removed in version 0.13.
+
+You may enable it by setting the `enable_python_native_blobs` flag in `dj.config`. 
+
+```python
+import datajoint as dj
+dj.config["enable_python_native_blobs"] = True
+```
+
+You can safely enable this setting if both of the following are true:
+
+  * The only kinds of blobs your pipeline have inserted previously were numerical arrays.
+  * You do not need to share blob data between Python and MATLAB.
+
+Otherwise, read the following explanation.
 
 DataJoint v0.12 expands DataJoint's blob serialization mechanism with
 improved support for complex native python datatypes, such as dictionaries
@@ -40,42 +54,37 @@ and lists of strings.
 
 Prior to DataJoint v0.12, certain python native datatypes such as
 dictionaries were 'squashed' into numpy structured arrays when saved into
-blob attributes. This facilitated easier data sharing between Matlab
+blob attributes. This facilitated easier data sharing between MATLAB
 and Python for certain record types. However, this created a discrepancy
 between insert and fetch datatypes which could cause problems in other
 portions of users pipelines.
 
-For v0.12, it was decided to remove the type squashing behavior, instead
-creating a separate storage encoding which improves support for storing
-native python datatypes in blobs without squashing them into numpy
-structured arrays. However, this change creates a compatibility problem
-for pipelines which previously relied on the type squashing behavior
-since records saved via the old squashing format will continue to fetch
+DataJoint v0.12, removes the squashing behavior, instead encoding native python datatypes in blobs directly. 
+However, this change creates a compatibility problem for pipelines 
+which previously relied on the type squashing behavior since records 
+saved via the old squashing format will continue to fetch
 as structured arrays, whereas new record inserted in DataJoint 0.12 with
 `enable_python_native_blobs` would result in records returned as the
-appropriate native python type (dict, etc).  Read support for python
-native blobs also not yet implemented in DataJoint for Matlab.
+appropriate native python type (dict, etc).  
+Furthermore, DataJoint for MATLAB does not yet support unpacking native Python datatypes.
 
-To prevent data from being stored in mixed format within a table across
-upgrades from previous versions of DataJoint, the
-`enable_python_native_blobs` flag was added as a temporary guard measure
-for the 0.12 release. This flag will trigger an exception if any of the
-ambiguous cases are encountered during inserts in order to allow testing
-and migration of pre-0.12 pipelines to 0.11 in a safe manner.
+With `dj.config["enable_python_native_blobs"]` set to `False` (default), 
+any attempt to insert any datatype other than a numpy array will result in an exception.
+This is meant to get users to read this message in order to allow proper testing
+and migration of pre-0.12 pipelines to 0.12 in a safe manner.
 
 The exact process to update a specific pipeline will vary depending on
 the situation, but generally the following strategies may apply:
 
   * Altering code to directly store numpy structured arrays or plain
     multidimensional arrays. This strategy is likely best one for those 
-    tables requiring compatibility with Matlab.
-  * Adjust code to deal with both structured array and native fetched data.
+    tables requiring compatibility with MATLAB.
+  * Adjust code to deal with both structured array and native fetched data
+    for those tables that are populated with `dict`s in blobs in pre-0.12 version. 
     In this case, insert logic is not adjusted, but downstream consumers
     are adjusted to handle records saved under the old and new schemes.
-  * Manually convert data using fetch/insert into a fresh schema.
-    In this approach, DataJoint's create_virtual_module functionality would 
-    be used in conjunction with a a fetch/convert/insert loop to update 
-    the data to the new native_blob functionality.
+  * Migrate data into a fresh schema, fetching the old data, converting blobs to 
+    a uniform data type and re-inserting.
   * Drop/Recompute imported/computed tables to ensure they are in the new
     format.
 

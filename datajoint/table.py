@@ -19,7 +19,7 @@ from .version import __version__ as version
 logger = logging.getLogger(__name__)
 
 
-class _rename_map(tuple):
+class _RenameMap(tuple):
     """ for internal use """
     pass
 
@@ -188,7 +188,7 @@ class Table(QueryExpression):
         :param replace: If True, replaces the existing tuple.
         :param skip_duplicates: If True, silently skip duplicate inserts.
         :param ignore_extra_fields: If False, fields that are not in the heading raise error.
-        :param allow_direct_insert: applies only in auto-populated tables. Set True to insert outside populate calls.
+        :param allow_direct_insert: applies only in auto-populated tables. If False (default), insert are allowed only from inside the make callback.
 
         Example::
         >>> relation.insert([
@@ -200,10 +200,10 @@ class Table(QueryExpression):
             rows = rows.to_records()
 
         # prohibit direct inserts into auto-populated tables
-        if not (allow_direct_insert or getattr(self, '_allow_insert', True)):  # _allow_insert is only present in AutoPopulate
+        if not allow_direct_insert and not getattr(self, '_allow_insert', True):  # allow_insert is only used in AutoPopulate
             raise DataJointError(
-                'Auto-populate tables can only be inserted into from their make methods during populate calls.'
-                ' To override, use the the allow_direct_insert argument.')
+                'Inserts into an auto-populated table can only done inside its make method during a populate call.'
+                ' To override, set keyword argument allow_direct_insert=True.')
 
         heading = self.heading
         if inspect.isclass(rows) and issubclass(rows, QueryExpression):   # instantiate if a class
@@ -375,7 +375,7 @@ class Table(QueryExpression):
         graph = conn.dependencies
         graph.load()
         delete_list = collections.OrderedDict(
-            (name, _rename_map(next(iter(graph.parents(name).items()))) if name.isdigit() else FreeTable(conn, name))
+            (name, _RenameMap(next(iter(graph.parents(name).items()))) if name.isdigit() else FreeTable(conn, name))
             for name in graph.descendants(self.full_table_name))
 
         # construct restrictions for each relation
@@ -405,7 +405,7 @@ class Table(QueryExpression):
                 table.restrict([
                     r.proj() if isinstance(r, FreeTable) else (
                         delete_list[r[0]].proj(**{a: b for a, b in r[1]['attr_map'].items()})
-                        if isinstance(r, _rename_map) else r)
+                        if isinstance(r, _RenameMap) else r)
                     for r in restrictions[name]])
         if safe:
             print('About to delete:')
