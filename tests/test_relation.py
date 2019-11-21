@@ -36,12 +36,6 @@ class TestRelation:
         cls.img = schema.Image()
         cls.trash = schema.UberTrash()
 
-    def test_class_help(self):
-        help(schema.TTest)
-
-    def test_instance_help(self):
-        help(schema.TTest())
-
     def test_contents(self):
         """
         test the ability of tables to self-populate using the contents property
