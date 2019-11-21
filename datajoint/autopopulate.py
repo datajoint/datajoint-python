@@ -166,7 +166,7 @@ class AutoPopulate:
         nkeys = len(keys)
 
         if multiprocess: # True or int, presumably
-            if multiprocess == True:
+            if multiprocess is True:
                 nproc = mp.cpu_count()
             else:
                 assert type(multiprocess) == int
