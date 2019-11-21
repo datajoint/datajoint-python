@@ -169,7 +169,9 @@ class AutoPopulate:
             if multiprocess is True:
                 nproc = mp.cpu_count()
             else:
-                assert type(multiprocess) == int
+
+                if not isinstance(multiprocess, int):
+                    raise DataJointError("multiprocess can be False, True or a positive integer")
                 nproc = multiprocess
         else:
             nproc = 1
