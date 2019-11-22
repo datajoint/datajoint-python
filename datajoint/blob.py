@@ -253,6 +253,9 @@ class Blob:
     def read_sparse_array(self):
         raise DataJointError('datajoint-python does not yet support sparse arrays. Issue (#590)')
 
+    def read_scalar(selfs):
+        
+
     def read_decimal(self):
         return Decimal(self.read_string())
 
