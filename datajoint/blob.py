@@ -116,13 +116,14 @@ class Blob:
                 "S": self.read_struct,        # matlab struct array
                 "C": self.read_cell_array,    # matlab cell array
                 # Python-native
-                "\xFF": self.read_none,      # None
+                "\xFF": self.read_none,    # None
                 "\1": self.read_tuple,     # a Sequence
                 "\2": self.read_list,      # a MutableSequence
                 "\3": self.read_set,       # a Set
                 "\4": self.read_dict,      # a Mapping
                 "\5": self.read_string,    # a UTF8-encoded string
                 "\6": self.read_bytes,     # a ByteString
+                "s": self.read_scalar,     # python-native scalars: bool, int, float, and complex
                 "F": self.read_recarray,   # numpy array with fields, including recarrays
                 "d": self.read_decimal,    # a decimal
                 "t": self.read_datetime,   # date, time, or datetime
@@ -146,13 +147,13 @@ class Blob:
 
         # blob types in the expanded dj0 blob format
         self.set_dj0()
+        if isinstance(obj, (bool, float, int, complex)):
+            return self.pack_scalar(obj)
         if isinstance(obj, np.ndarray) and obj.dtype.fields:
             return self.pack_recarray(np.array(obj))
         if isinstance(obj, np.number):
             return self.pack_array(np.array(obj))
-        if isinstance(obj, (bool, np.bool, np.bool_)):
-            return self.pack_array(np.array(obj))
-        if isinstance(obj, (float, int, complex)):
+        if isinstance(obj, (np.bool, np.bool_)):
             return self.pack_array(np.array(obj))
         if isinstance(obj, (datetime.datetime, datetime.date, datetime.time)):
             return self.pack_datetime(obj)
@@ -250,6 +251,30 @@ class Blob:
 
     def read_sparse_array(self):
         raise DataJointError('datajoint-python does not yet support sparse arrays. Issue (#590)')
+
+    def read_scalar(self):
+        code = self.read_value('uint8')
+        if code == 1:  # boolean
+            return bool(self.read_value('bool'))
+        if code == 2:  # integer
+            return int(self.read_value('int64'))
+        if code == 3:  # float
+            return float(self.read_value('float64'))
+        if code == 4:  # complex
+            return complex(self.read_value('complex128'))
+        raise DataJointError('Unsupported code in blob. Upgrade datajoint.')
+
+    @staticmethod
+    def pack_scalar(v):
+        if isinstance(v, bool):
+            return b"s\1\1" if v else b"s\1\0"
+        if isinstance(v, int):
+            return b"s\2" + np.array(v, dtype='int64').tobytes()
+        if isinstance(v, float):
+            return b"s\3" + np.array(v, dtype='float64').tobytes()
+        if isinstance(v, complex):
+            return b"s\4" + np.array(v, dtype='complex128').tobytes()
+        assert False
 
     def read_decimal(self):
         return Decimal(self.read_string())

@@ -23,9 +23,6 @@ def test_pack():
     x = np.random.randn(10)
     assert_array_equal(x, unpack(pack(x)), "Arrays do not match!")
 
-    x = 7j
-    assert_equal(x, unpack(pack(x)), "Complex scalar does not match")
-
     x = np.float32(np.random.randn(3, 4, 5))
     assert_array_equal(x, unpack(pack(x)), "Arrays do not match!")
 
@@ -33,12 +30,27 @@ def test_pack():
     assert_array_equal(x, unpack(pack(x)), "Arrays do not match!")
 
     x = None
-    assert_true(x is None, "None did not match")
+    assert_true(unpack(pack(x)) is None, "None did not match")
+
+    x = 7
+    y = unpack(pack(x))
+    assert_true(x == y and isinstance(y, int), "Native int did not match")
+
+    x = 7.
+    y = unpack(pack(x))
+    assert_true(x == y and isinstance(y, float), "Native float did not match")
+
+    x = 7j
+    y = unpack(pack(x))
+    assert_true(x == y and isinstance(y, complex), "Native complex did not match")
+
+    x = True
+    assert_true(unpack(pack(x)) is True, "Native bool did not match")
 
     x = [None]
     assert_list_equal(x, unpack(pack(x)))
 
-    x = {'name': 'Anonymous', 'age': 15, 99: datetime.now(), 'range': [110, 190], (11,12): None}
+    x = {'name': 'Anonymous', 'age': 15, 99: datetime.now(), 'range': [110, 190], (11, 12): None}
     assert_dict_equal(x, unpack(pack(x)), "Dict do not match!")
 
     x = uuid.uuid4()
