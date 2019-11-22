@@ -152,10 +152,8 @@ class Blob:
             return self.pack_array(np.array(obj))
         if isinstance(obj, (bool, np.bool, np.bool_)):
             return self.pack_array(np.array(obj))
-        if isinstance(obj, float):
-            return self.pack_array(np.array(obj, dtype=np.float64))
-        if isinstance(obj, int):
-            return self.pack_array(np.array(obj, dtype=np.int64))
+        if isinstance(obj, (float, int, complex)):
+            return self.pack_array(np.array(obj))
         if isinstance(obj, (datetime.datetime, datetime.date, datetime.time)):
             return self.pack_datetime(obj)
         if isinstance(obj, Decimal):
@@ -252,9 +250,6 @@ class Blob:
 
     def read_sparse_array(self):
         raise DataJointError('datajoint-python does not yet support sparse arrays. Issue (#590)')
-
-    def read_scalar(selfs):
-        
 
     def read_decimal(self):
         return Decimal(self.read_string())

@@ -23,6 +23,9 @@ def test_pack():
     x = np.random.randn(10)
     assert_array_equal(x, unpack(pack(x)), "Arrays do not match!")
 
+    x = 7j
+    assert_equal(x, unpack(pack(x)), "Complex scalar does not match")
+
     x = np.float32(np.random.randn(3, 4, 5))
     assert_array_equal(x, unpack(pack(x)), "Arrays do not match!")
 
