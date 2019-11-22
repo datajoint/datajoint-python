@@ -1,5 +1,10 @@
 ## Release notes
 
+## 0.12.3 -- Nov 22, 2019
+* Bugfix #675 (PR #705) networkx 2.4+ is now supported
+* Bugfix #698 and #699 (PR #706) display table definition in doc string and help
+* Bugfix #701 (PR #702) job reservation works with native python datatype support disabled
+
 ### 0.12.2 -- Nov 11, 2019
 * Bugfix - Convoluted error thrown if there is a reference to a non-existent table attribute (#691)
 * Bugfix - Insert into external does not trim leading slash if defined in `dj.config['stores']['<store>']['location']` (#692)
