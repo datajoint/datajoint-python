@@ -130,7 +130,7 @@ class Blob:
                 "u": self.read_uuid,       # UUID
             }[data_structure_code]
         except KeyError:
-            raise DataJointError('Unknown data structure code "%s"' % data_structure_code)
+            raise DataJointError('Unknown data structure code "%s". Upgrade datajoint.' % data_structure_code)
         v = call()
         if n_bytes is not None and self._pos - start != n_bytes:
             raise DataJointError('Blob length check failed! Invalid blob')
