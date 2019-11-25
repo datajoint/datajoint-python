@@ -52,7 +52,8 @@ services:
       - .:/src
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       # Additional mounted notebooks may go here
-      # - ./notebooks:/home/dja/notebooks
+      - ./notebook:/home/dja/notebooks
+      - ../dj-python-101/ch1:/home/dja/tutorials
   db:
     <<: *net
     image: datajoint/mysql:$MYSQL_VER

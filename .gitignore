@@ -20,6 +20,7 @@ build/
 *.log
 *.env
 docker-compose.yml
-notebooks/*
+notebook
+.vscode
 __main__.py
 jupyter_custom.js
