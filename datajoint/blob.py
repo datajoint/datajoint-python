@@ -117,17 +117,20 @@ class Blob:
                 "C": self.read_cell_array,    # matlab cell array
                 # Python-native
                 "\xFF": self.read_none,    # None
-                "\1": self.read_tuple,     # a Sequence
-                "\2": self.read_list,      # a MutableSequence
-                "\3": self.read_set,       # a Set
-                "\4": self.read_dict,      # a Mapping
-                "\5": self.read_string,    # a UTF8-encoded string
-                "\6": self.read_bytes,     # a ByteString
-                "s": self.read_scalar,     # python-native scalars: bool, int, float, and complex
-                "F": self.read_recarray,   # numpy array with fields, including recarrays
-                "d": self.read_decimal,    # a decimal
-                "t": self.read_datetime,   # date, time, or datetime
-                "u": self.read_uuid,       # UUID
+                "\x01": self.read_tuple,     # a Sequence (e.g. tuple)
+                "\x02": self.read_list,      # a MutableSequence (e.g. list)
+                "\x03": self.read_set,       # a Set
+                "\x04": self.read_dict,      # a Mapping (e.g. dict)
+                "\x05": self.read_string,    # a UTF8-encoded string
+                "\x06": self.read_bytes,     # a ByteString
+                "\x0a": self.read_int,       # python-native int
+                "\x0b": self.read_bool,      # python-native bool
+                "\x0c": self.read_complex,   # python-native complex
+                "\x0d": self.read_float,     # python-native float
+                "F": self.read_recarray,     # numpy array with fields, including recarrays
+                "d": self.read_decimal,      # a decimal
+                "t": self.read_datetime,     # date, time, or datetime
+                "u": self.read_uuid,         # UUID
             }[data_structure_code]
         except KeyError:
             raise DataJointError('Unknown data structure code "%s". Upgrade datajoint.' % data_structure_code)
@@ -147,8 +150,16 @@ class Blob:
 
         # blob types in the expanded dj0 blob format
         self.set_dj0()
-        if isinstance(obj, (bool, float, int, complex)):
-            return self.pack_scalar(obj)
+        if not isinstance(obj, np.ndarray):
+            # python built-in data types
+            if isinstance(obj, bool):
+                return self.pack_bool(obj)
+            if isinstance(obj, int):
+                return self.pack_int(obj)
+            if isinstance(obj, complex):
+                return self.pack_complex(obj)
+            if isinstance(obj, float):
+                return self.pack_float(obj)
         if isinstance(obj, np.ndarray) and obj.dtype.fields:
             return self.pack_recarray(np.array(obj))
         if isinstance(obj, np.number):
@@ -252,29 +263,33 @@ class Blob:
     def read_sparse_array(self):
         raise DataJointError('datajoint-python does not yet support sparse arrays. Issue (#590)')
 
-    def read_scalar(self):
-        code = self.read_value('uint8')
-        if code == 1:  # boolean
-            return bool(self.read_value('bool'))
-        if code == 2:  # integer
-            return int(self.read_value('int64'))
-        if code == 3:  # float
-            return float(self.read_value('float64'))
-        if code == 4:  # complex
-            return complex(self.read_value('complex128'))
-        raise DataJointError('Unsupported code in blob. Upgrade datajoint.')
+    def read_int(self):
+        return int(self.read_value('int64'))
 
     @staticmethod
-    def pack_scalar(v):
-        if isinstance(v, bool):
-            return b"s\1\1" if v else b"s\1\0"
-        if isinstance(v, int):
-            return b"s\2" + np.array(v, dtype='int64').tobytes()
-        if isinstance(v, float):
-            return b"s\3" + np.array(v, dtype='float64').tobytes()
-        if isinstance(v, complex):
-            return b"s\4" + np.array(v, dtype='complex128').tobytes()
-        assert False
+    def pack_int(v):
+        return b"\x0a" + np.array(v, dtype='int64').tobytes()
+
+    def read_bool(self):
+        return bool(self.read_value('bool'))
+
+    @staticmethod
+    def pack_bool(v):
+        return b"\x0b" + np.array(v, dtype='bool').tobytes()
+
+    def read_complex(self):
+        return complex(self.read_value('complex128'))
+
+    @staticmethod
+    def pack_complex(v):
+        return b"\x0c" + np.array(v, dtype='complex128').tobytes()
+
+    def read_float(self):
+        return float(self.read_value('float64'))
+
+    @staticmethod
+    def pack_float(v):
+        return b"\x0d" + np.array(v, dtype='float64').tobytes()
 
     def read_decimal(self):
         return Decimal(self.read_string())

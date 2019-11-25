@@ -4,7 +4,7 @@ from decimal import Decimal
 from datetime import datetime
 from datajoint.blob import pack, unpack
 from numpy.testing import assert_array_equal
-from nose.tools import assert_equal, assert_true, \
+from nose.tools import assert_equal, assert_true, assert_false, \
     assert_list_equal, assert_set_equal, assert_tuple_equal, assert_dict_equal
 
 
@@ -34,15 +34,15 @@ def test_pack():
 
     x = 7
     y = unpack(pack(x))
-    assert_true(x == y and isinstance(y, int), "Native int did not match")
+    assert_true(x == y and isinstance(y, int) and not isinstance(y, np.ndarray), "Native int did not match")
 
     x = 7.
     y = unpack(pack(x))
-    assert_true(x == y and isinstance(y, float), "Native float did not match")
+    assert_true(x == y and isinstance(y, float) and not isinstance(y, np.ndarray), "Native float did not match")
 
     x = 7j
     y = unpack(pack(x))
-    assert_true(x == y and isinstance(y, complex), "Native complex did not match")
+    assert_true(x == y and isinstance(y, complex) and not isinstance(y, np.ndarray), "Native complex did not match")
 
     x = True
     assert_true(unpack(pack(x)) is True, "Native bool did not match")
@@ -51,7 +51,9 @@ def test_pack():
     assert_list_equal(x, unpack(pack(x)))
 
     x = {'name': 'Anonymous', 'age': 15, 99: datetime.now(), 'range': [110, 190], (11, 12): None}
-    assert_dict_equal(x, unpack(pack(x)), "Dict do not match!")
+    y = unpack(pack(x))
+    assert_dict_equal(x, y, "Dict do not match!")
+    assert_false(isinstance(['range'][0], np.ndarray), "Python-native scalars did not match.")
 
     x = uuid.uuid4()
     assert_equal(x, unpack(pack(x)), 'UUID did not match')
