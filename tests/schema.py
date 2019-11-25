@@ -13,6 +13,9 @@ schema = dj.schema(PREFIX + '_test1', connection=dj.conn(**CONN_INFO))
 
 @schema
 class TTest(dj.Lookup):
+    """
+    doc string
+    """
     definition = """
     key   :   int     # key
     ---
