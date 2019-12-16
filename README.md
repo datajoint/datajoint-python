@@ -119,8 +119,8 @@ GID=1000
 | Use Case                     | Shell Code                                                                    |
 | ---------------------------- | ------------------------------------------------------------------------------ |
 | Run all tests                | `nosetests -vsw tests --with-coverage --cover-package=datajoint`                                                              |
-| Run one class of tests       | `nosetests -vs --tests=tests.test_fetch:TestFetch.test_getattribute_for_fetch1`                                                           |
-| Run one specific test        | `nosetests -vs --tests=tests.test_external_class:test_insert_and_fetch`                                   |
+| Run one specific class test       | `nosetests -vs --tests=tests.test_fetch:TestFetch.test_getattribute_for_fetch1`                                                           |
+| Run one specific basic test        | `nosetests -vs --tests=tests.test_external_class:test_insert_and_fetch`                                   |
 
 
 ### Launch Docker Terminal
