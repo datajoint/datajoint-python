@@ -683,8 +683,9 @@ class Log(Table):
         self.database = database
         self._connection = arg
         self._definition = """    # event logging table for `{database}`
-        timestamp = CURRENT_TIMESTAMP : timestamp
+        id :  smallint auto_increment
         ---
+        timestamp = CURRENT_TIMESTAMP(3) : timestamp(3)
         version  :varchar(12)   # datajoint version
         user     :varchar(255)  # user@host
         host=""  :varchar(255)  # system hostname

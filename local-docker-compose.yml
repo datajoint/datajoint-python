@@ -45,7 +45,7 @@ services:
         done;
        "
     ports:
-      - "8888:8888"
+      - "8889:8888"
       - "5678:5678"
     user: ${UID}:${GID}
     volumes:
@@ -60,7 +60,7 @@ services:
     environment:
       - MYSQL_ROOT_PASSWORD=simple
     ports:
-      - "3306:3306"
+      - "3307:3306"
     # To persist MySQL data
     # volumes:
     #   - ./mysql/data:/var/lib/mysql
