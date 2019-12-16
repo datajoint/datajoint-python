@@ -150,7 +150,7 @@ class Blob:
 
         # blob types in the expanded dj0 blob format
         self.set_dj0()
-        if not isinstance(obj, np.ndarray):
+        if not isinstance(obj, (np.ndarray, np.number)):
             # python built-in data types
             if isinstance(obj, bool):
                 return self.pack_bool(obj)
