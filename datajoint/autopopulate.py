@@ -10,10 +10,24 @@ from .expression import QueryExpression, AndList, U
 from .errors import DataJointError
 from .table import FreeTable
 import signal
+import multiprocessing as mp
 
 # noinspection PyExceptionInherit,PyCallingNonCallable
 
 logger = logging.getLogger(__name__)
+
+
+def initializer(table):
+    """Save pickled copy of (disconnected) table to the current process,
+    then reconnect to server. For use by call_make_key()"""
+    mp.current_process().table = table
+    table.connection.connect() # reconnect
+
+def call_make_key(key):
+    """Call current process' table.make_key()"""
+    table = mp.current_process().table
+    error = table.make_key(key)
+    return error
 
 
 class AutoPopulate:
@@ -103,18 +117,20 @@ class AutoPopulate:
 
     def populate(self, *restrictions, suppress_errors=False, return_exception_objects=False,
                  reserve_jobs=False, order="original", limit=None, max_calls=None,
-                 display_progress=False):
+                 display_progress=False, multiprocess=False):
         """
         rel.populate() calls rel.make(key) for every primary key in self.key_source
         for which there is not already a tuple in rel.
         :param restrictions: a list of restrictions each restrict (rel.key_source - target.proj())
         :param suppress_errors: if True, do not terminate execution.
         :param return_exception_objects: return error objects instead of just error messages
-        :param reserve_jobs: if true, reserves job to populate in asynchronous fashion
+        :param reserve_jobs: if True, reserve jobs to populate in asynchronous fashion
         :param order: "original"|"reverse"|"random"  - the order of execution
+        :param limit: if not None, check at most this many keys
+        :param max_calls: if not None, populate at most this many keys
         :param display_progress: if True, report progress_bar
-        :param limit: if not None, checks at most that many keys
-        :param max_calls: if not None, populates at max that many keys
+        :param multiprocess: if True, use as many processes as CPU cores, or use the integer
+        number of processes specified
         """
         if self.connection.in_transaction:
             raise DataJointError('Populate cannot be called during a transaction.')
@@ -122,10 +138,15 @@ class AutoPopulate:
         valid_order = ['original', 'reverse', 'random']
         if order not in valid_order:
             raise DataJointError('The order argument must be one of %s' % str(valid_order))
-        error_list = [] if suppress_errors else None
         jobs = self.connection.schemas[self.target.database].jobs if reserve_jobs else None
 
-        # define and setup signal handler for SIGTERM
+        self._make_key_kwargs = {'suppress_errors':suppress_errors,
+                                 'return_exception_objects':return_exception_objects,
+                                 'reserve_jobs':reserve_jobs,
+                                 'jobs':jobs,
+                                }
+
+        # define and set up signal handler for SIGTERM:
         if reserve_jobs:
             def handler(signum, frame):
                 logger.info('Populate terminated by SIGTERM')
@@ -138,55 +159,101 @@ class AutoPopulate:
         elif order == "random":
             random.shuffle(keys)
 
-        call_count = 0
         logger.info('Found %d keys to populate' % len(keys))
 
-        make = self._make_tuples if hasattr(self, '_make_tuples') else self.make
+        if max_calls is not None:
+            keys = keys[:max_calls]
+        nkeys = len(keys)
 
-        for key in (tqdm(keys) if display_progress else keys):
-            if max_calls is not None and call_count >= max_calls:
-                break
-            if not reserve_jobs or jobs.reserve(self.target.table_name, self._job_key(key)):
-                self.connection.start_transaction()
-                if key in self.target:  # already populated
-                    self.connection.cancel_transaction()
-                    if reserve_jobs:
-                        jobs.complete(self.target.table_name, self._job_key(key))
+        if multiprocess: # True or int, presumably
+            if multiprocess is True:
+                nproc = mp.cpu_count()
+            else:
+                if not isinstance(multiprocess, int):
+                    raise DataJointError("multiprocess can be False, True or a positive integer")
+                nproc = multiprocess
+        else:
+            nproc = 1
+        nproc = min(nproc, nkeys) # no sense spawning more than can be used
+        error_list = []
+        if nproc > 1: # spawn multiple processes
+            # prepare to pickle self:
+            self.connection.close() # disconnect parent process from MySQL server
+            del self.connection._conn.ctx # SSLContext is not picklable
+            print('*** Spawning pool of %d processes' % nproc)
+            # send pickled copy of self to each process,
+            # each worker process calls initializer(*initargs) when it starts
+            with mp.Pool(nproc, initializer, (self,)) as pool:
+                if display_progress:
+                    with tqdm(total=nkeys) as pbar:
+                        for error in pool.imap(call_make_key, keys, chunksize=1):
+                            if error is not None:
+                                error_list.append(error)
+                            pbar.update()
                 else:
-                    logger.info('Populating: ' + str(key))
-                    call_count += 1
-                    self.__class__._allow_insert = True
-                    try:
-                        make(dict(key))
-                    except (KeyboardInterrupt, SystemExit, Exception) as error:
-                        try:
-                            self.connection.cancel_transaction()
-                        except OperationalError:
-                            pass
-                        error_message = '{exception}{msg}'.format(
-                            exception=error.__class__.__name__,
-                            msg=': ' + str(error) if str(error) else '')
-                        if reserve_jobs:
-                            # show error name and error message (if any)
-                            jobs.error(
-                                self.target.table_name, self._job_key(key),
-                                error_message=error_message, error_stack=traceback.format_exc())
-                        if not suppress_errors or isinstance(error, SystemExit):
-                            raise
-                        else:
-                            logger.error(error)
-                            error_list.append((key, error if return_exception_objects else error_message))
-                    else:
-                        self.connection.commit_transaction()
-                        if reserve_jobs:
-                            jobs.complete(self.target.table_name, self._job_key(key))
-                    finally:
-                        self.__class__._allow_insert = False
+                    for error in pool.imap(call_make_key, keys):
+                        if error is not None:
+                            error_list.append(error)
+            self.connection.connect() # reconnect parent process to MySQL server
+        else: # use single process
+            for key in tqdm(keys) if display_progress else keys:
+                error = self.make_key(key)
+                if error is not None:
+                    error_list.append(error)
 
-        # place back the original signal handler
+        del self._make_key_kwargs # clean up
+
+        # restore original signal handler:
         if reserve_jobs:
             signal.signal(signal.SIGTERM, old_handler)
-        return error_list
+
+        if suppress_errors:
+            return error_list
+
+    def make_key(self, key):
+        make = self._make_tuples if hasattr(self, '_make_tuples') else self.make
+
+        kwargs = self._make_key_kwargs
+        suppress_errors = kwargs['suppress_errors']
+        return_exception_objects = kwargs['return_exception_objects']
+        reserve_jobs = kwargs['reserve_jobs']
+        jobs = kwargs['jobs']
+
+        if not reserve_jobs or jobs.reserve(self.target.table_name, self._job_key(key)):
+            self.connection.start_transaction()
+            if key in self.target: # already populated
+                self.connection.cancel_transaction()
+                if reserve_jobs:
+                    jobs.complete(self.target.table_name, self._job_key(key))
+            else:
+                logger.info('Populating: ' + str(key))
+                self.__class__._allow_insert = True
+                try:
+                    make(dict(key))
+                except (KeyboardInterrupt, SystemExit, Exception) as error:
+                    try:
+                        self.connection.cancel_transaction()
+                    except OperationalError:
+                        pass
+                    error_message = '{exception}{msg}'.format(
+                        exception=error.__class__.__name__,
+                        msg=': ' + str(error) if str(error) else '')
+                    if reserve_jobs:
+                        # show error name and error message (if any)
+                        jobs.error(
+                            self.target.table_name, self._job_key(key),
+                            error_message=error_message, error_stack=traceback.format_exc())
+                    if not suppress_errors or isinstance(error, SystemExit):
+                        raise
+                    else:
+                        logger.error(error)
+                        return (key, error if return_exception_objects else error_message)
+                else:
+                    self.connection.commit_transaction()
+                    if reserve_jobs:
+                        jobs.complete(self.target.table_name, self._job_key(key))
+                finally:
+                    self.__class__._allow_insert = False
 
     def progress(self, *restrictions, display=True):
         """

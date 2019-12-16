@@ -45,14 +45,9 @@ class Table(QueryExpression):
         """
         if self._heading is None:
             self._heading = Heading()  # instance-level heading
-        if not self._heading:  # lazy loading of heading
-            if self.connection is None:
-                raise DataJointError(
-                    'DataJoint class is missing a database connection. '
-                    'Missing schema decorator on the class? (e.g. @schema)')
-            else:
-                self._heading.init_from_database(
-                    self.connection, self.database, self.table_name, self.declaration_context)
+        if not self._heading and self.connection is not None:  # lazy loading of heading
+            self._heading.init_from_database(
+                self.connection, self.database, self.table_name, self.declaration_context)
         return self._heading
 
     def declare(self, context=None):
@@ -411,7 +406,7 @@ class Table(QueryExpression):
             print('About to delete:')
 
         if not already_in_transaction:
-            self.connection.start_transaction()
+            conn.start_transaction()
         total = 0
         try:
             for name, table in reversed(list(delete_list.items())):
@@ -423,25 +418,25 @@ class Table(QueryExpression):
         except:
             # Delete failed, perhaps due to insufficient privileges. Cancel transaction.
             if not already_in_transaction:
-                self.connection.cancel_transaction()
+                conn.cancel_transaction()
             raise
         else:
             assert not (already_in_transaction and safe)
             if not total:
                 print('Nothing to delete')
                 if not already_in_transaction:
-                    self.connection.cancel_transaction()
+                    conn.cancel_transaction()
             else:
                 if already_in_transaction:
                     if verbose:
                         print('The delete is pending within the ongoing transaction.')
                 else:
                     if not safe or user_choice("Proceed?", default='no') == 'yes':
-                        self.connection.commit_transaction()
+                        conn.commit_transaction()
                         if verbose or safe:
                             print('Committed.')
                     else:
-                        self.connection.cancel_transaction()
+                        conn.cancel_transaction()
                         if verbose or safe:
                             print('Cancelled deletes.')
 

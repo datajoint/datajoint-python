@@ -23,6 +23,20 @@ class TestDeclare:
         assert_true(not issubclass(Subject, dj.Part))
 
     @staticmethod
+    def test_class_help():
+        help(TTest)
+        help(TTest2)
+        assert_true(TTest.definition in TTest.__doc__)
+        assert_true(TTest.definition in TTest2.__doc__)
+
+    @staticmethod
+    def test_instance_help():
+        help(TTest())
+        help(TTest2())
+        assert_true(TTest().definition in TTest().__doc__)
+        assert_true(TTest2().definition in TTest2().__doc__)
+
+    @staticmethod
     def test_describe():
         """real_definition should match original definition"""
         rel = Experiment()
