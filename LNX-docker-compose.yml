@@ -3,7 +3,7 @@ x-net: &net
   networks:
       - main
 services:
-  dj:
+  app:
     <<: *net
     image: datajoint/pydev:${PY_VER}-alpine${ALPINE_VER}
     depends_on:

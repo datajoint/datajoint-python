@@ -16,7 +16,7 @@ main: &main
       dist: xenial # precise, trusty, xenial, bionic
       language: shell
       script:
-        - docker-compose -f LNX-docker-compose.yml up --build --exit-code-from dj
+        - docker-compose -f LNX-docker-compose.yml up --build --exit-code-from app
 jobs:
   include:
     - <<: *main

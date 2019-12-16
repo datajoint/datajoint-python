@@ -3,7 +3,7 @@ x-net: &net
   networks:
       - main
 services:
-  dj:
+  app:
     <<: *net
     image: datajoint/pydev:${PY_VER}-alpine${ALPINE_VER}
     depends_on:
@@ -32,7 +32,7 @@ services:
        "
         pip install --user nose nose-cov coveralls ptvsd .;
         pip freeze | grep datajoint;
-        ## You may run the below tests once sh'ed into container i.e. docker exec -it datajoint-python_dj_1 sh
+        ## You may run the below tests once sh'ed into container i.e. docker exec -it datajoint-python_app_1 sh
         # nosetests -vsw tests --with-coverage --cover-package=datajoint; #run all tests
         # nosetests -vs --tests=tests.test_external_class:test_insert_and_fetch; #run specific basic test
         # nosetests -vs --tests=tests.test_fetch:TestFetch.test_getattribute_for_fetch1; #run specific Class test
@@ -45,22 +45,22 @@ services:
         done;
        "
     ports:
-      - "8889:8888"
+      - "8888:8888"
       - "5678:5678"
     user: ${UID}:${GID}
     volumes:
       - .:/src
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       # Additional mounted notebooks may go here
-      - ./notebook:/home/dja/notebooks
-      - ../dj-python-101/ch1:/home/dja/tutorials
+      # - ./notebook:/home/dja/notebooks
+      # - ../dj-python-101/ch1:/home/dja/tutorials
   db:
     <<: *net
     image: datajoint/mysql:$MYSQL_VER
     environment:
       - MYSQL_ROOT_PASSWORD=simple
     ports:
-      - "3307:3306"
+      - "3306:3306"
     # To persist MySQL data
     # volumes:
     #   - ./mysql/data:/var/lib/mysql
