@@ -12,7 +12,7 @@ from .utils import OrderedDict
 
 UUID_DATA_TYPE = 'binary(16)'
 MAX_TABLE_NAME_LENGTH = 64
-CONSTANT_LITERALS = {'CURRENT_TIMESTAMP', 'CURRENT_TIMESTAMP(3)'}  # SQL literals to be used without quotes (case insensitive)
+CONSTANT_LITERALS = {'CURRENT_TIMESTAMP'}  # SQL literals to be used without quotes (case insensitive)
 EXTERNAL_TABLE_ROOT = '~external'
 
 TYPE_PATTERN = {k: re.compile(v, re.I) for k, v in dict(
@@ -443,7 +443,8 @@ def compile_attribute(line, in_key, foreign_key_sql, context):
         match['default'] = 'DEFAULT NULL'  # nullable attributes default to null
     else:
         if match['default']:
-            quote = match['default'].upper() not in CONSTANT_LITERALS and match['default'][0] not in '"\''
+            quote = (match['default'].split('(')[0].upper() not in CONSTANT_LITERALS
+                        and match['default'][0] not in '"\'')
             match['default'] = 'NOT NULL DEFAULT ' + ('"%s"' if quote else "%s") % match['default']
         else:
             match['default'] = 'NOT NULL'
