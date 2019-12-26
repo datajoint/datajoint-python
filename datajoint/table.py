@@ -683,13 +683,13 @@ class Log(Table):
         self.database = database
         self._connection = arg
         self._definition = """    # event logging table for `{database}`
-        id :  serial
+        id       :int unsigned auto_increment     # event order id
         ---
-        timestamp = CURRENT_TIMESTAMP(3) : timestamp(3)
-        version  :varchar(12)   # datajoint version
-        user     :varchar(255)  # user@host
-        host=""  :varchar(255)  # system hostname
-        event="" :varchar(255)  # custom message
+        timestamp = CURRENT_TIMESTAMP : timestamp # event timestamp
+        version  :varchar(12)                     # datajoint version
+        user     :varchar(255)                    # user@host
+        host=""  :varchar(255)                    # system hostname
+        event="" :varchar(255)                    # event message
         """.format(database=database)
 
         if not self.is_declared:
