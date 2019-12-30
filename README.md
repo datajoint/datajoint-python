@@ -98,3 +98,43 @@ A number of labs are currently adopting DataJoint and we are quickly getting the
 * https://docs.datajoint.io -- up-to-date documentation
 * https://tutorials.datajoint.io -- step-by-step tutorials
 * https://catalog.datajoint.io -- catalog of example pipelines
+
+## Running Tests Locally
+
+
+* Create an `.env` with desired development environment values e.g.
+``` sh
+PY_VER=3.7
+ALPINE_VER=3.10
+MYSQL_VER=5.7
+MINIO_VER=RELEASE.2019-09-26T19-42-35Z
+UID=1000
+GID=1000
+```
+* `cp local-docker-compose.yml docker-compose.yml`
+* `docker-compose up -d` (Note configured `JUPYTER_PASSWORD`)
+* Select a means of running Tests e.g. Docker Terminal, or Local Terminal (see bottom)
+* Run desired tests. Some examples are as follows:
+
+| Use Case                     | Shell Code                                                                    |
+| ---------------------------- | ------------------------------------------------------------------------------ |
+| Run all tests                | `nosetests -vsw tests --with-coverage --cover-package=datajoint`                                                              |
+| Run one specific class test       | `nosetests -vs --tests=tests.test_fetch:TestFetch.test_getattribute_for_fetch1`                                                           |
+| Run one specific basic test        | `nosetests -vs --tests=tests.test_external_class:test_insert_and_fetch`                                   |
+
+
+### Launch Docker Terminal
+* Shell into `datajoint-python_app_1` i.e. `docker exec -it datajoint-python_app_1 sh`
+
+
+### Launch Local Terminal
+* See `datajoint-python_app` environment variables in `local-docker-compose.yml`
+* Launch local terminal
+* `export` environment variables in shell
+* Add entry in `/etc/hosts` for `127.0.0.1 fakeminio.datajoint.io`
+
+
+### Launch Jupyter Notebook for Interactive Use
+* Navigate to `localhost:8888`
+* Input Jupyter password
+* Launch a notebook i.e. `New > Python 3`

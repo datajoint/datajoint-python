@@ -16,7 +16,7 @@ CONSTANT_LITERALS = {'CURRENT_TIMESTAMP'}  # SQL literals to be used without quo
 EXTERNAL_TABLE_ROOT = '~external'
 
 TYPE_PATTERN = {k: re.compile(v, re.I) for k, v in dict(
-    INTEGER=r'((tiny|small|medium|big|)int|integer)(\s*\(.+\))?(\s+unsigned)?(\s+auto_increment)?$',
+    INTEGER=r'((tiny|small|medium|big|)int|integer)(\s*\(.+\))?(\s+unsigned)?(\s+auto_increment)?|serial$',
     DECIMAL=r'(decimal|numeric)(\s*\(.+\))?(\s+unsigned)?$',
     FLOAT=r'(double|float|real)(\s*\(.+\))?(\s+unsigned)?$',
     STRING=r'(var)?char\s*\(.+\)$',
@@ -443,7 +443,8 @@ def compile_attribute(line, in_key, foreign_key_sql, context):
         match['default'] = 'DEFAULT NULL'  # nullable attributes default to null
     else:
         if match['default']:
-            quote = match['default'].upper() not in CONSTANT_LITERALS and match['default'][0] not in '"\''
+            quote = (match['default'].split('(')[0].upper() not in CONSTANT_LITERALS
+                        and match['default'][0] not in '"\'')
             match['default'] = 'NOT NULL DEFAULT ' + ('"%s"' if quote else "%s") % match['default']
         else:
             match['default'] = 'NOT NULL'
