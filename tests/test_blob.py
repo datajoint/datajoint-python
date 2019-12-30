@@ -34,22 +34,22 @@ def test_pack():
 
     x = -255
     y = unpack(pack(x))
-    assert_true(x == y and isinstance(y, int) and not isinstance(y, np.ndarray), "Native int did not match")
+    assert_true(x == y and isinstance(y, int) and not isinstance(y, np.ndarray), "Scalar int did not match")
 
     x = -25523987234234287910987234987098245697129798713407812347
     y = unpack(pack(x))
-    assert_true(x == y and isinstance(y, int) and not isinstance(y, np.ndarray), "Native int did not match")
+    assert_true(x == y and isinstance(y, int) and not isinstance(y, np.ndarray), "Unbounded int did not match")
 
     x = 7.
     y = unpack(pack(x))
-    assert_true(x == y and isinstance(y, float) and not isinstance(y, np.ndarray), "Native float did not match")
+    assert_true(x == y and isinstance(y, float) and not isinstance(y, np.ndarray), "Scalar float did not match")
 
     x = 7j
     y = unpack(pack(x))
-    assert_true(x == y and isinstance(y, complex) and not isinstance(y, np.ndarray), "Native complex did not match")
+    assert_true(x == y and isinstance(y, complex) and not isinstance(y, np.ndarray), "Complex scalar did not match")
 
     x = True
-    assert_true(unpack(pack(x)) is True, "Native bool did not match")
+    assert_true(unpack(pack(x)) is True, "Scalar bool did not match")
 
     x = [None]
     assert_list_equal(x, unpack(pack(x)))
@@ -57,7 +57,7 @@ def test_pack():
     x = {'name': 'Anonymous', 'age': 15, 99: datetime.now(), 'range': [110, 190], (11, 12): None}
     y = unpack(pack(x))
     assert_dict_equal(x, y, "Dict do not match!")
-    assert_false(isinstance(['range'][0], np.ndarray), "Python-native scalars did not match.")
+    assert_false(isinstance(['range'][0], np.ndarray), "Scalar int was coerced into arrray.")
 
     x = uuid.uuid4()
     assert_equal(x, unpack(pack(x)), 'UUID did not match')

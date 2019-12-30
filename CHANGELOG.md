@@ -1,6 +1,13 @@
 ## Release notes
 
-## 0.12.3 -- Nov 22, 2019
+### 0.12.4 -- Jan 03, 2020
+* Support for simple scalar datatypes in blobs (#690 and PR #706)
+* Add support for the `serial` data type in declarations: alias for `bigint unsigned auto_increment` (#713)
+* Improve the log table to avoid primary key collisions (#713)
+* Improve documentation in README
+
+
+### 0.12.3 -- Nov 22, 2019
 * Bugfix #675 (PR #705) networkx 2.4+ is now supported
 * Bugfix #698 and #699 (PR #706) display table definition in doc string and help
 * Bugfix #701 (PR #702) job reservation works with native python datatype support disabled
