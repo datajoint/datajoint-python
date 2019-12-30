@@ -32,7 +32,7 @@ def test_pack():
     x = None
     assert_true(unpack(pack(x)) is None, "None did not match")
 
-    x = 7
+    x = -255
     y = unpack(pack(x))
     assert_true(x == y and isinstance(y, int) and not isinstance(y, np.ndarray), "Native int did not match")
 

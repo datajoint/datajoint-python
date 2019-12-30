@@ -264,11 +264,11 @@ class Blob:
         raise DataJointError('datajoint-python does not yet support sparse arrays. Issue (#590)')
 
     def read_int(self):
-        return int(self.read_value('int64'))
+        return int.from_bytes(self.read_value('int64'), byteorder='little', signed=True)
 
     @staticmethod
     def pack_int(v):
-        return b"\x0a" + np.array(v, dtype='int64').tobytes()
+        return b"\x0a" + v.to_bytes((v.bit_length() + 7 + (v < 0)) // 8, byteorder='little', signed=True)
 
     def read_bool(self):
         return bool(self.read_value('bool'))
