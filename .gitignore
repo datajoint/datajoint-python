@@ -19,7 +19,8 @@ build/
 ./tests/dj-store/*
 *.log
 *.env
-local-docker-compose.yml
-notebooks/*
+docker-compose.yml
+notebook
+.vscode
 __main__.py
 jupyter_custom.js

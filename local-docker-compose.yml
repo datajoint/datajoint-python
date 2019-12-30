@@ -18,6 +18,7 @@ services:
       - DJ_TEST_HOST=db
       - DJ_TEST_USER=datajoint
       - DJ_TEST_PASSWORD=datajoint
+      # If running tests locally, make sure to add entry in /etc/hosts for 127.0.0.1 fakeminio.datajoint.io
       - S3_ENDPOINT=fakeminio.datajoint.io:9000
       - S3_ACCESS_KEY=datajoint
       - S3_SECRET_KEY=datajoint
@@ -25,32 +26,42 @@ services:
       - PYTHON_USER=dja
       - JUPYTER_PASSWORD=datajoint
       - DISPLAY
-      - COVERALLS_SERVICE_NAME
-      - COVERALLS_REPO_TOKEN
     working_dir: /src
     command: >
       /bin/sh -c
        "
-        pip install --user nose nose-cov coveralls .;
+        pip install --user nose nose-cov coveralls ptvsd .;
         pip freeze | grep datajoint;
-        nosetests -vsw tests --with-coverage --cover-package=datajoint;
-        coveralls;
-        # jupyter notebook;
+        ## You may run the below tests once sh'ed into container i.e. docker exec -it datajoint-python_app_1 sh
+        # nosetests -vsw tests --with-coverage --cover-package=datajoint; #run all tests
+        # nosetests -vs --tests=tests.test_external_class:test_insert_and_fetch; #run specific basic test
+        # nosetests -vs --tests=tests.test_fetch:TestFetch.test_getattribute_for_fetch1; #run specific Class test
+        ## Interactive Jupyter Notebook environment
+        jupyter notebook &
+        ## Remote debugger
+        while true;
+        do python -m ptvsd --host 0.0.0.0 --port 5678 --wait .;
+        sleep 2;
+        done;
        "
-    # ports:
-    #   - "8888:8888"
+    ports:
+      - "8888:8888"
+      - "5678:5678"
     user: ${UID}:${GID}
     volumes:
       - .:/src
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
-      # - ./notebooks:/home/dja/notebooks
+      # Additional mounted notebooks may go here
+      # - ./notebook:/home/dja/notebooks
+      # - ../dj-python-101/ch1:/home/dja/tutorials
   db:
     <<: *net
     image: datajoint/mysql:$MYSQL_VER
     environment:
       - MYSQL_ROOT_PASSWORD=simple
-    # ports:
-    #   - "3306:3306"
+    ports:
+      - "3306:3306"
+    # To persist MySQL data
     # volumes:
     #   - ./mysql/data:/var/lib/mysql
   minio:
@@ -59,11 +70,10 @@ services:
       - MINIO_ACCESS_KEY=datajoint
       - MINIO_SECRET_KEY=datajoint
     image: minio/minio:$MINIO_VER
-    # ports:
-    #   - "9000:9000"
+    # To persist MinIO data and config
     # volumes:
-    #   - ./minio/config:/root/.minio
     #   - ./minio/data:/data
+    #   - ./minio/config:/root/.minio
     command: server /data
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://minio:9000/minio/health/live"]
@@ -83,9 +93,9 @@ services:
       timeout: 5s
       retries: 300
       interval: 1s
-    # ports:
-    #   - "9000:9000"
-    #   - "443:443"
+    ports:
+      - "9000:9000"
+      - "443:443"
     volumes:
       - ./tests/nginx/base.conf:/base.conf
       - ./tests/nginx/entrypoint.sh:/entrypoint.sh
