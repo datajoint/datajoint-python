@@ -36,6 +36,10 @@ def test_pack():
     y = unpack(pack(x))
     assert_true(x == y and isinstance(y, int) and not isinstance(y, np.ndarray), "Native int did not match")
 
+    x = -25523987234234287910987234987098245697129798713407812347
+    y = unpack(pack(x))
+    assert_true(x == y and isinstance(y, int) and not isinstance(y, np.ndarray), "Native int did not match")
+
     x = 7.
     y = unpack(pack(x))
     assert_true(x == y and isinstance(y, float) and not isinstance(y, np.ndarray), "Native float did not match")
