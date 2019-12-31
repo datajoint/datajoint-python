@@ -268,7 +268,7 @@ class Blob:
 
     @staticmethod
     def pack_int(v):
-        return b"\x0a" + v.to_bytes((v.bit_length() + 7 + (v < 0)) // 8, byteorder='little', signed=True)
+        return b"\x0a" + v.to_bytes(v.bit_length() // 8 + 1, byteorder='little', signed=True)
 
     def read_bool(self):
         return bool(self.read_value('bool'))
