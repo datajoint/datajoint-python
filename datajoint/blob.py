@@ -221,7 +221,7 @@ class Blob:
         if is_complex:
             array, imaginary = np.real(array), np.imag(array)
         type_id = (rev_class_id[array.dtype] if array.dtype.char != 'U'
-                else rev_class_id[np.dtype('O')])
+                   else rev_class_id[np.dtype('O')])
         if dtype_list[type_id] is None:
             raise DataJointError("Type %s is ambiguous or unknown" % array.dtype)
 
@@ -264,11 +264,13 @@ class Blob:
         raise DataJointError('datajoint-python does not yet support sparse arrays. Issue (#590)')
 
     def read_int(self):
-        return int.from_bytes(self.read_value('int64'), byteorder='little', signed=True)
+        return int.from_bytes(self.read_binary(self.read_value('uint16')), byteorder='little', signed=True)
 
     @staticmethod
     def pack_int(v):
-        return b"\x0a" + v.to_bytes(v.bit_length() // 8 + 1, byteorder='little', signed=True)
+        n_bytes = v.bit_length() // 8 + 1
+        assert n_bytes <= 0xFFFF, 'Integers are limited to 65535 bytes'
+        return b"\x0a" + np.uint16(n_bytes).tobytes() + v.to_bytes(n_bytes, byteorder='little', signed=True)
 
     def read_bool(self):
         return bool(self.read_value('bool'))
@@ -309,7 +311,7 @@ class Blob:
     
     def read_bytes(self):
         return self.read_binary(self.read_value())
-    
+
     @staticmethod
     def pack_bytes(s):
         return b"\6" + len_u64(s) + s
