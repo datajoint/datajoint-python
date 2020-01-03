@@ -1,5 +1,5 @@
 """
-(De)serialization methods for python datatypes and numpy.ndarrays with provisions for mutual 
+(De)serialization methods for basic datatypes and numpy.ndarrays with provisions for mutual
 compatibility with Matlab-based serialization implemented by mYm.
 """
 
@@ -115,7 +115,7 @@ class Blob:
                 "P": self.read_sparse_array,  # matlab sparse array -- not supported yet
                 "S": self.read_struct,        # matlab struct array
                 "C": self.read_cell_array,    # matlab cell array
-                # Python-native
+                # basic data types
                 "\xFF": self.read_none,    # None
                 "\x01": self.read_tuple,     # a Sequence (e.g. tuple)
                 "\x02": self.read_list,      # a MutableSequence (e.g. list)
@@ -123,10 +123,10 @@ class Blob:
                 "\x04": self.read_dict,      # a Mapping (e.g. dict)
                 "\x05": self.read_string,    # a UTF8-encoded string
                 "\x06": self.read_bytes,     # a ByteString
-                "\x0a": self.read_int,       # python-native int
-                "\x0b": self.read_bool,      # python-native bool
-                "\x0c": self.read_complex,   # python-native complex
-                "\x0d": self.read_float,     # python-native float
+                "\x0a": self.read_int,       # unbounded scalar int
+                "\x0b": self.read_bool,      # scalar boolean
+                "\x0c": self.read_complex,   # scalar 128-bit complex number
+                "\x0d": self.read_float,     # scalar 64-bit float
                 "F": self.read_recarray,     # numpy array with fields, including recarrays
                 "d": self.read_decimal,      # a decimal
                 "t": self.read_datetime,     # date, time, or datetime
