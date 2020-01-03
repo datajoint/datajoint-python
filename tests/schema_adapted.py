@@ -1,5 +1,6 @@
 import datajoint as dj
 import networkx as nx
+import json
 from pathlib import Path
 import tempfile
 from datajoint import errors
@@ -11,8 +12,8 @@ stores_config = {
         S3_CONN_INFO,
         protocol='s3',
         location='adapted/repo',
-        stage=tempfile.mkdtemp())
-}
+        stage=tempfile.mkdtemp())}
+
 dj.config['stores'] = stores_config
 
 schema_name = PREFIX + '_test_custom_datatype'
@@ -53,37 +54,36 @@ class Connectivity(dj.Manual):
 errors._switch_filepath_types(True)
 
 
-class Filepath2GraphAdapter(dj.AttributeAdapter):
+class LayoutToFilepath(dj.AttributeAdapter):
+    """
+    An adapted data type that saves a graph layout into fixed filepath
+    """
 
     attribute_type = 'filepath@repo_s3'
 
     @staticmethod
-    def get(obj):
-        s = open(obj, "r").read()
-        return nx.spring_layout(
-            nx.lollipop_graph(4, 2), seed=int(s))
+    def get(path):
+        with open(path, "r") as f:
+            return json.load(f)
 
     @staticmethod
-    def put(obj):
-        path = Path(
-            dj.config['stores']['repo_s3']['stage'], 'sample.txt')
-
-        f = open(path, "w")
-        f.write(str(obj*obj))
-        f.close()
-
+    def put(layout):
+        path = Path(dj.config['stores']['repo_s3']['stage'], 'layout.json')
+        with open(str(path), "w") as f:
+            json.dump(layout, f)
         return path
 
 
-file2graph = Filepath2GraphAdapter()
+layout_to_filepath = LayoutToFilepath()
 
 
 @schema
-class Position(dj.Manual):
+class Layout(dj.Manual):
     definition = """
-    pos_id : int
+    # stores graph layout
+    -> Connectivity
     ---
-    seed_root: <file2graph>
+    layout: <layout_to_filepath>
     """
 
 errors._switch_filepath_types(False)
