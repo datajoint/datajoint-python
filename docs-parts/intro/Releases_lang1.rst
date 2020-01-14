@@ -1,18 +1,23 @@
+0.12.4 -- Jan 14, 2020
+* Support for simple scalar datatypes in blobs (#690) PR #709
+* Add support for the `serial` data type in declarations: alias for `bigint unsigned auto_increment` PR #713
+* Improve the log table to avoid primary key collisions PR #713
+* Improve documentation in README PR #713
+
 0.12.3 -- Nov 22, 2019
 ----------------------
 * Bugfix - networkx 2.4 causes error in diagrams (#675) PR #705
-* Bugfix - include definition in doc string and help (#698, #699) PR #706
-* Bugfix - job reservation fails when native python datatype support is disabled (#701) PR #702 
-
+* Bugfix - include table definition in doc string and help (#698, #699) PR #706
+* Bugfix - job reservation fails when native python datatype support is disabled (#701) PR #702
 
 0.12.2 -- Nov 11, 2019
 -------------------------
-* Bugfix - Convoluted error thrown if there is a reference to a non-existent table attribute (#691)
-* Bugfix - Insert into external does not trim leading slash if defined in `dj.config['stores']['<store>']['location']` (#692)
+* Bugfix - Convoluted error thrown if there is a reference to a non-existent table attribute (#691) PR #696
+* Bugfix - Insert into external does not trim leading slash if defined in `dj.config['stores']['<store>']['location']` (#692) PR #693
 
 0.12.1 -- Nov 2, 2019
 -------------------------
-* Bugfix - AttributeAdapter converts into a string (#684)
+* Bugfix - AttributeAdapter converts into a string (#684) PR #688
 
 0.12.0 -- Oct 31, 2019
 -------------------------
