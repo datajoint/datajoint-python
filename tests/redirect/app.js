@@ -1,6 +1,3 @@
-// curl -d '{"org":"test1", "project":"test2"}' -H "Content-Typeapplication/json" -X POST http://hub-redirect:4000/v0.000/get_database_fqdn
-// curl -d '{"org":"test1", "project":"test2"}' -H "Content-Typeapplication/json" -X POST http://fakeminio.datajoint.io:4000/v0.000/get_database_fqdn
-// curl -d '{"org":"test1", "project":"test2"}' -H "Content-Typeapplication/json" -X POST https://fakeminio.datajoint.io/v0.000/get_database_fqdn
 const http = require('http');
 const { parse } = require('querystring');
 var send_correct_response = false;
