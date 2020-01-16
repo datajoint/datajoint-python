@@ -8,3 +8,4 @@ networkx
 pydot
 minio
 matplotlib
+requests

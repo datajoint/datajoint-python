@@ -2,6 +2,7 @@ from nose.tools import assert_true, raises
 import datajoint as dj
 from os import environ
 from . import schema, CONN_INFO
+from datajoint.hub import get_host
 
 namespace = locals()
 
@@ -11,7 +12,7 @@ class TestUnprivileged:
     @classmethod
     def setup_class(cls):
         """A connection with only SELECT privilege to djtest schemas"""
-        cls.connection = dj.Connection(host=CONN_INFO['host'], user='djview', password='djview')
+        cls.connection = dj.Connection(host=get_host(CONN_INFO['host']), user='djview', password='djview')
 
     @raises(dj.DataJointError)
     def test_fail_create_schema(self):
