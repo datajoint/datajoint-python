@@ -11,7 +11,8 @@ def test_normal_host():
 
 
 def test_hub_host():
-    assert_equal(hub.get_host('hub://fakeminio.datajoint.io/datajoint/travis'), 'db:3306')
+    assert_equal(hub.get_host('hub://fakeminio.datajoint.io/datajoint/travis'),
+        'fakeminio.datajoint.io:3306')
 
 
 @raises(dj.DataJointError)

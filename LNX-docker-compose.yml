@@ -8,9 +8,13 @@ services:
     image: datajoint/pydev:${PY_VER}-alpine${ALPINE_VER}
     depends_on:
       db:
-        condition: service_healthy 
+        condition: service_healthy
       minio:
-        condition: service_healthy 
+        condition: service_healthy
+      hub-redirect:
+        condition: service_healthy
+      fakeminio.datajoint.io:
+        condition: service_healthy
     environment:
       - DJ_HOST=hub://fakeminio.datajoint.io/datajoint/travis
       - DJ_USER=root
@@ -78,6 +82,7 @@ services:
       - SUBDOMAINS=fakeminio
       - MINIO_SERVER=http://minio:9000
       - REDIRECT_SERVER=http://hub-redirect:4000
+      - MYSQL_SERVER=db:3306
     entrypoint: /entrypoint.sh
     healthcheck:
       test: wget --quiet --tries=1 --spider https://fakeminio.datajoint.io:443/minio/health/live || exit 1
@@ -88,8 +93,10 @@ services:
     #   - "9000:9000"
     #   - "443:443"
     #   - "4000:4000"
+    #   - "3306:3306"
     volumes:
       - ./tests/nginx/base.conf:/base.conf
+      - ./tests/nginx/nginx.conf:/nginx.conf
       - ./tests/nginx/entrypoint.sh:/entrypoint.sh
       - ./tests/nginx/fullchain.pem:/certs/fullchain.pem
       - ./tests/nginx/privkey.pem:/certs/privkey.pem
@@ -102,5 +109,10 @@ services:
     #   - "4000:4000"
     volumes:
       - ./tests/redirect/app.js:/app.js
+    healthcheck:
+      test: wget --quiet --tries=1 --spider http://hub-redirect:4000/status || exit 1
+      timeout: 5s
+      retries: 300
+      interval: 1s
 networks:
   main:

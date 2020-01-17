@@ -13,9 +13,9 @@ const requestListener = function (req, res) {
             var host;
             if (payload.org === 'datajoint' && payload.project === 'travis') {
                 if (send_correct_response) {
-                    host = "db:3306";
+                    host = "fakeminio.datajoint.io:3306";
                 } else {
-                    host = "db:3307";
+                    host = "fakeminio.datajoint.io:3307";
                     send_correct_response = true;
                 }
                 res.writeHead(200, {'Content-Type': 'application/json'});
@@ -26,6 +26,9 @@ const requestListener = function (req, res) {
             }
             res.end();
         });
+    } else if (req.url === '/status' && req.method === 'GET') {
+            res.writeHead(200);
+            res.end();
     } else {
         res.writeHead(501);
         res.end();
