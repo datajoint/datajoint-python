@@ -12,10 +12,10 @@ services:
       minio:
         condition: service_healthy 
     environment:
-      - DJ_HOST=db
+      - DJ_HOST=hub://fakeminio.datajoint.io/datajoint/travis
       - DJ_USER=root
       - DJ_PASS=simple
-      - DJ_TEST_HOST=db
+      - DJ_TEST_HOST=hub://fakeminio.datajoint.io/datajoint/travis
       - DJ_TEST_USER=datajoint
       - DJ_TEST_PASSWORD=datajoint
       # If running tests locally, make sure to add entry in /etc/hosts for 127.0.0.1 fakeminio.datajoint.io
@@ -70,6 +70,8 @@ services:
       - MINIO_ACCESS_KEY=datajoint
       - MINIO_SECRET_KEY=datajoint
     image: minio/minio:$MINIO_VER
+    # ports:
+    #   - "9000:9000"
     # To persist MinIO data and config
     # volumes:
     #   - ./minio/data:/data
@@ -87,6 +89,7 @@ services:
       - URL=datajoint.io
       - SUBDOMAINS=fakeminio
       - MINIO_SERVER=http://minio:9000
+      - REDIRECT_SERVER=http://hub-redirect:4000
     entrypoint: /entrypoint.sh
     healthcheck:
       test: wget --quiet --tries=1 --spider https://fakeminio.datajoint.io:443/minio/health/live || exit 1
@@ -96,10 +99,20 @@ services:
     ports:
       - "9000:9000"
       - "443:443"
+      - "4000:4000"
     volumes:
       - ./tests/nginx/base.conf:/base.conf
       - ./tests/nginx/entrypoint.sh:/entrypoint.sh
       - ./tests/nginx/fullchain.pem:/certs/fullchain.pem
       - ./tests/nginx/privkey.pem:/certs/privkey.pem
+  hub-redirect:
+    <<: *net
+    image: node:13-alpine3.10
+    working_dir: /
+    entrypoint: node /app.js
+    # ports:
+    #   - "4000:4000"
+    volumes:
+      - ./tests/redirect/app.js:/app.js
 networks:
   main:

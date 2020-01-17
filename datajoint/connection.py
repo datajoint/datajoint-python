@@ -163,14 +163,13 @@ class Connection:
                         self.conn_info['ssl_input'] is not None or k != 'ssl')})
             except client.err.OperationalError:
                 if not self.is_connected:
-                    port = self.conn_info['port']
-                    host = get_host(self.conn_info['host_input'])
-                    if ':' in host:
-                        host, port = host.split(':')
-                        port = int(port)
-                    if host != self.conn_info['host'] or port != self.conn_info['port']:
-                        self.conn_info['host'] = host
-                        self.conn_info['port'] = port
+                    target = [int(v) if i == 1 else v
+                        for i, v in enumerate(
+                        get_host(self.conn_info['host_input']).split(':'))]
+                    target[1] = self.conn_info['port'] if len(target) == 1 else target[1]
+                    if (target[0] != self.conn_info['host'] or
+                            target[1] != self.conn_info['port']):
+                        self.conn_info['host'], self.conn_info['port'] = target
                         self.connect()
                     else:
                         raise
