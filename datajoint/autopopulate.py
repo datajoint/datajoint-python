@@ -5,9 +5,8 @@ import traceback
 import random
 import inspect
 from tqdm import tqdm
-from pymysql import OperationalError
 from .expression import QueryExpression, AndList, U
-from .errors import DataJointError
+from .errors import DataJointError, LostConnectionError
 from .table import FreeTable
 import signal
 
@@ -161,7 +160,7 @@ class AutoPopulate:
                     except (KeyboardInterrupt, SystemExit, Exception) as error:
                         try:
                             self.connection.cancel_transaction()
-                        except OperationalError:
+                        except LostConnectionError:
                             pass
                         error_message = '{exception}{msg}'.format(
                             exception=error.__class__.__name__,
