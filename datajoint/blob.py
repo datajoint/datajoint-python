@@ -166,6 +166,8 @@ class Blob:
             return self.pack_array(np.array(obj))
         if isinstance(obj, (np.bool, np.bool_)):
             return self.pack_array(np.array(obj))
+        if isinstance(obj, (float, int, complex)):
+            return self.pack_array(np.array(obj))
         if isinstance(obj, (datetime.datetime, datetime.date, datetime.time)):
             return self.pack_datetime(obj)
         if isinstance(obj, Decimal):
