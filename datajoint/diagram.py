@@ -8,6 +8,11 @@ from .table import Table
 
 try:
     from matplotlib import pyplot as plt
+    plot_active = True
+except:
+    plot_active = False
+
+try:
     from networkx.drawing.nx_pydot import pydot_layout
     diagram_active = True
 except:
@@ -322,15 +327,21 @@ else:
             return io.BytesIO(self.make_dot().create_png())
 
         def make_image(self):
-            return plt.imread(self.make_png())
+            if plot_active:
+                return plt.imread(self.make_png())
+            else:
+                raise DataJointError("pyplot was not imported")
 
         def _repr_svg_(self):
             return self.make_svg()._repr_svg_()
 
         def draw(self):
-            plt.imshow(self.make_image())
-            plt.gca().axis('off')
-            plt.show()
+            if plot_active:
+                plt.imshow(self.make_image())
+                plt.gca().axis('off')
+                plt.show()
+            else:
+                raise DataJointError("pyplot was not imported")
 
         def save(self, filename, format=None):
             if format is None:
