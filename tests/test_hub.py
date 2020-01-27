@@ -11,18 +11,18 @@ def test_normal_host():
 
 
 def test_hub_host():
-    assert_equal(hub.get_host('hub://fakeminio.datajoint.io/datajoint/travis'),
-        'fakeminio.datajoint.io:3306')
+    assert_equal(hub.get_host('hub://fakeservices.datajoint.io/datajoint/travis'),
+        'fakeservices.datajoint.io:3306')
 
 
 @raises(dj.DataJointError)
 def test_hub_missing_project():
-    hub.get_host('hub://fakeminio.datajoint.io/datajoint/test')
+    hub.get_host('hub://fakeservices.datajoint.io/datajoint/test')
 
 
 @raises(dj.DataJointError)
 def test_hub_no_tls():
-    hub.get_host('hub://fakeminio.datajoint.io:4000/datajoint/travis')
+    hub.get_host('hub://fakeservices.datajoint.io:4000/datajoint/travis')
 
 
 @raises(dj.DataJointError)
@@ -32,7 +32,7 @@ def test_hub_incorrect_protocol():
 
 @raises(dj.DataJointError)
 def test_hub_unreachable_server():
-    hub.get_host('hub://fakeminio.datajoint.io:4001/datajoint/travis')
+    hub.get_host('hub://fakeservices.datajoint.io:4001/datajoint/travis')
 
 
 @raises(dj.DataJointError)
@@ -40,7 +40,7 @@ def test_hub_unreachable_endpoint():
     current = hub.API_TARGETS
     hub.API_TARGETS = {'GET_DB_FQDN': '/wrong_one'}
     try:
-        hub.get_host('hub://fakeminio.datajoint.io/datajoint/travis')
+        hub.get_host('hub://fakeservices.datajoint.io/datajoint/travis')
     except:
         hub.API_TARGETS = current
         raise

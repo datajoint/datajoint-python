@@ -11,11 +11,11 @@ const requestListener = function (req, res) {
             var payload = parse(body);
             console.log(payload);
             var host;
-            if (payload.org === 'datajoint' && payload.project === 'travis') {
+            if (payload.org_name === 'datajoint' && payload.project_name === 'travis') {
                 if (send_correct_response) {
-                    host = "fakeminio.datajoint.io:3306";
+                    host = "fakeservices.datajoint.io:3306";
                 } else {
-                    host = "fakeminio.datajoint.io:3307";
+                    host = "fakeservices.datajoint.io:3307";
                     send_correct_response = true;
                 }
                 res.writeHead(200, {'Content-Type': 'application/json'});

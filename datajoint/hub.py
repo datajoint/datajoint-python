@@ -18,7 +18,8 @@ def get_host(host):
         try:
             resp = session.post('{}{}{}{}'.format(
                 REQUEST_PROTOCOL, hub_path[0][1:], API_ROUTE, API_TARGETS['GET_DB_FQDN']),
-                data={'org': hub_path[1][1:], 'project': hub_path[2][1:]}, timeout=10)
+                data={'org_name': hub_path[1][1:], 'project_name': hub_path[2][1:]},
+                timeout=10)
             if resp.status_code == 200:
                 return resp.json()['database.host']
             elif resp.status_code == 404:
