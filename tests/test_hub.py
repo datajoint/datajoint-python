@@ -38,7 +38,7 @@ def test_hub_unreachable_server():
 @raises(dj.DataJointError)
 def test_hub_unreachable_endpoint():
     current = hub.API_TARGETS
-    hub.API_TARGETS = {'GET_DB_FQDN': '/wrong_one'}
+    hub.API_TARGETS = {'PROJECT': '/wrong_one'}
     try:
         hub.get_host('hub://fakeservices.datajoint.io/datajoint/travis')
     except:

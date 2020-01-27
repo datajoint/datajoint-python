@@ -1,38 +1,32 @@
 const http = require('http');
-const { parse } = require('querystring');
+const url = require('url');
 var send_correct_response = false;
 const requestListener = function (req, res) {
-    if (req.url === '/v0.000/get_database_fqdn' && req.method === 'POST') {
-        let body = '';
-        req.on('data', chunk => {
-            body += chunk.toString(); // convert Buffer to string
-        });
-        req.on('end', () => {
-            var payload = parse(body);
-            console.log(payload);
-            var host;
-            if (payload.org_name === 'datajoint' && payload.project_name === 'travis') {
-                if (send_correct_response) {
-                    host = "fakeservices.datajoint.io:3306";
-                } else {
-                    host = "fakeservices.datajoint.io:3307";
-                    send_correct_response = true;
-                }
-                res.writeHead(200, {'Content-Type': 'application/json'});
-                res.write(`{"database.host": "${host}"}`);
+    var host;
+    var urlObject = url.parse(req.url, true);
+    if (urlObject.pathname.includes('/projects/') && req.method === 'GET') {
+        if (urlObject.query.org_name === 'datajoint' && 
+                urlObject.pathname.split('/projects/')[1] === 'travis') {
+            if (send_correct_response) {
+                host = "fakeservices.datajoint.io:3306";
+            } else {
+                host = "fakeservices.datajoint.io:3307";
+                send_correct_response = true;
             }
-            else {
-                res.writeHead(404);
-            }
-            res.end();
-        });
-    } else if (req.url === '/status' && req.method === 'GET') {
+            res.writeHead(200, {'Content-Type': 'application/json'});
+            res.write(`[{"org_name": "${urlObject.query.org_name}", 
+                "project_name": "${urlObject.pathname.split('/projects/')[1]}", 
+                "database_dsn": "${host}"}]`);
+        }
+        else {
+            res.writeHead(404);
+        }
+    } else if (urlObject.pathname === '/status' && req.method === 'GET') {
             res.writeHead(200);
-            res.end();
     } else {
         res.writeHead(501);
-        res.end();
     }
+    res.end();
 }
 const server = http.createServer(requestListener);
 server.listen(4000);

@@ -6,22 +6,22 @@ from datajoint.errors import DataJointError
 HUB_PROTOCOL = 'hub://'
 REQUEST_PROTOCOL = 'https://'
 API_ROUTE = '/api'
-API_TARGETS = dict(GET_DB_FQDN='/v0.000/get_database_fqdn')
+API_TARGETS = dict(PROJECT='/projects')
 
 session = requests.Session()
-session.mount('http://', HTTPAdapter(max_retries=3))
+session.mount(REQUEST_PROTOCOL, HTTPAdapter(max_retries=3))
 
 
 def get_host(host):
     hub_path = re.findall('/[:._\-a-zA-Z0-9]+', host)
     if re.match(HUB_PROTOCOL, host) and len(hub_path) > 2:
         try:
-            resp = session.post('{}{}{}{}'.format(
-                REQUEST_PROTOCOL, hub_path[0][1:], API_ROUTE, API_TARGETS['GET_DB_FQDN']),
-                data={'org_name': hub_path[1][1:], 'project_name': hub_path[2][1:]},
+            resp = session.get('{}{}{}{}/{}'.format(REQUEST_PROTOCOL,
+                hub_path[0][1:], API_ROUTE, API_TARGETS['PROJECT'], hub_path[2][1:]),
+                params={'org_name': hub_path[1][1:]},
                 timeout=10)
             if resp.status_code == 200:
-                return resp.json()['database.host']
+                return resp.json()[0]['database_dsn']
             elif resp.status_code == 404:
                 raise DataJointError(
                     'DataJoint Hub database resource `{}/{}/{}` not found.'.format(
@@ -29,7 +29,7 @@ def get_host(host):
             elif resp.status_code == 501:
                 raise DataJointError(
                     'DataJoint Hub endpoint `{}{}{}{}` unavailable.'.format(
-                    REQUEST_PROTOCOL, hub_path[0][1:], API_ROUTE, API_TARGETS['GET_DB_FQDN']))
+                    REQUEST_PROTOCOL, hub_path[0][1:], API_ROUTE, API_TARGETS['PROJECT']))
         except requests.exceptions.SSLError:
             raise DataJointError(
                 'TLS security violation on DataJoint Hub target `{}{}{}`.'.format(
