@@ -131,7 +131,7 @@ GID=1000
 * See `datajoint-python_app` environment variables in `local-docker-compose.yml`
 * Launch local terminal
 * `export` environment variables in shell
-* Add entry in `/etc/hosts` for `127.0.0.1 fakeminio.datajoint.io`
+* Add entry in `/etc/hosts` for `127.0.0.1 fakeservices.datajoint.io`
 
 
 ### Launch Jupyter Notebook for Interactive Use
