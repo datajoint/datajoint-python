@@ -127,7 +127,7 @@ class Table(QueryExpression):
 
     def children(self, primary=None):
         """
-        :param primary: if None, then all parents are returned. If True, then only foreign keys composed of
+        :param primary: if None, then all children are returned. If True, then only foreign keys composed of
             primary key attributes are considered.  If False, the only foreign keys including at least one non-primary
             attribute are considered.
         :return: dict of tables with foreign keys referencing self
@@ -135,10 +135,10 @@ class Table(QueryExpression):
         return self.connection.dependencies.children(self.full_table_name, primary)
 
     def descendants(self):
-        return self. connection.dependencies.descendants(self.full_table_name)
+        return self.connection.dependencies.descendants(self.full_table_name)
 
     def ancestors(self):
-        return self. connection.dependencies.ancestors(self.full_table_name)
+        return self.connection.dependencies.ancestors(self.full_table_name)
 
     @property
     def is_declared(self):
