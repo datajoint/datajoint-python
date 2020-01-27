@@ -8,9 +8,11 @@ services:
     image: datajoint/pydev:${PY_VER}-alpine${ALPINE_VER}
     depends_on:
       db:
-        condition: service_healthy 
+        condition: service_healthy
       minio:
-        condition: service_healthy 
+        condition: service_healthy
+      fakeservices.datajoint.io:
+        condition: service_healthy
     environment:
       - DJ_HOST=db
       - DJ_USER=root
