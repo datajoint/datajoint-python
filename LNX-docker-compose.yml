@@ -8,9 +8,11 @@ services:
     image: datajoint/pydev:${PY_VER}-alpine${ALPINE_VER}
     depends_on:
       db:
-        condition: service_healthy 
+        condition: service_healthy
       minio:
-        condition: service_healthy 
+        condition: service_healthy
+      fakeservices.datajoint.io:
+        condition: service_healthy
     environment:
       - DJ_HOST=db
       - DJ_USER=root
@@ -18,7 +20,7 @@ services:
       - DJ_TEST_HOST=db
       - DJ_TEST_USER=datajoint
       - DJ_TEST_PASSWORD=datajoint
-      - S3_ENDPOINT=fakeminio.datajoint.io:9000
+      - S3_ENDPOINT=fakeservices.datajoint.io:9000
       - S3_ACCESS_KEY=datajoint
       - S3_SECRET_KEY=datajoint
       - S3_BUCKET=datajoint-test
@@ -70,16 +72,16 @@ services:
       timeout: 5s
       retries: 60
       interval: 1s
-  fakeminio.datajoint.io:
+  fakeservices.datajoint.io:
     <<: *net
     image: nginx:alpine
     environment:
       - URL=datajoint.io
-      - SUBDOMAINS=fakeminio
+      - SUBDOMAINS=fakeservices
       - MINIO_SERVER=http://minio:9000
     entrypoint: /entrypoint.sh
     healthcheck:
-      test: wget --quiet --tries=1 --spider https://fakeminio.datajoint.io:443/minio/health/live || exit 1
+      test: wget --quiet --tries=1 --spider https://fakeservices.datajoint.io:443/minio/health/live || exit 1
       timeout: 5s
       retries: 300
       interval: 1s
