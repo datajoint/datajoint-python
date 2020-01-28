@@ -148,22 +148,35 @@ class Connection:
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', '.*deprecated.*')
             try:
-                self._conn = client.connect(
-                    init_command=self.init_fun,
-                    sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
-                             "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
-                    charset=config['connection.charset'],
-                    **{k: v for k, v in self.conn_info.items()
-                    if k != 'ssl_input'})
-            except client.err.InternalError:
-                self._conn = client.connect(
-                    init_command=self.init_fun,
-                    sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
-                             "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
-                    charset=config['connection.charset'],
-                    **{k: v for k, v in self.conn_info.items()
-                    if not(k == 'ssl_input' or
-                    k == 'ssl' and self.conn_info['ssl_input'] is None)})
+                try:
+                    self._conn = client.connect(
+                        init_command=self.init_fun,
+                        sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
+                                "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
+                        charset=config['connection.charset'],
+                        **{k: v for k, v in self.conn_info.items()
+                        if k != 'ssl_input'})
+                except client.err.InternalError:
+                    self._conn = client.connect(
+                        init_command=self.init_fun,
+                        sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
+                                "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
+                        charset=config['connection.charset'],
+                        **{k: v for k, v in self.conn_info.items()
+                        if not(k == 'ssl_input' or
+                        k == 'ssl' and self.conn_info['ssl_input'] is None)})
+            except client.err.OperationalError:
+                if not self.is_connected:
+                    target = [int(v) if i == 1 else v
+                        for i, v in enumerate(
+                        get_host(self.conn_info['host_input']).split(':'))]
+                    target[1] = self.conn_info['port'] if len(target) == 1 else target[1]
+                    if (target[0] != self.conn_info['host'] or
+                            target[1] != self.conn_info['port']):
+                        self.conn_info['host'], self.conn_info['port'] = target
+                        self.connect()
+                    else:
+                        raise
         self._conn.autocommit(True)
 
     def close(self):
