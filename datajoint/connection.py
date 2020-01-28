@@ -57,7 +57,7 @@ def translate_query_error(client_error, query):
 logger = logging.getLogger(__name__)
 
 
-def conn(host=None, user=None, password=None, init_fun=None, reset=False, use_tls=None):
+def conn(host=None, user=None, password=None, *, init_fun=None, reset=False, use_tls=None):
     """
     Returns a persistent connection object to be shared by multiple modules.
     If the connection is not yet established or reset=True, a new connection is set up.
@@ -70,7 +70,11 @@ def conn(host=None, user=None, password=None, init_fun=None, reset=False, use_tl
     :param password: mysql password
     :param init_fun: initialization function
     :param reset: whether the connection should be reset or not
-    :param use_tls: TLS encryption option
+    :param use_tls: TLS encryption option. Valid options are: True (required), 
+                    False (required no TLS), None (TLS prefered, default), 
+                    dict (Manually specify values per 
+                    https://dev.mysql.com/doc/refman/5.7/en/connection-options.html
+                        #encrypted-connection-options).
     """
     if not hasattr(conn, 'connection') or reset:
         host_input = host if host is not None else config['database.host']
@@ -144,35 +148,22 @@ class Connection:
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', '.*deprecated.*')
             try:
-                try:
-                    self._conn = client.connect(
-                        init_command=self.init_fun,
-                        sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
-                                "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
-                        charset=config['connection.charset'],
-                        **{k: v for k, v in self.conn_info.items()
-                        if k not in ['ssl_input', 'host_input']})
-                except client.err.InternalError:
-                    self._conn = client.connect(
-                        init_command=self.init_fun,
-                        sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
-                                "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
-                        charset=config['connection.charset'],
-                        **{k: v for k, v in self.conn_info.items()
-                        if (k not in ['ssl_input', 'host_input']) and (
-                        self.conn_info['ssl_input'] is not None or k != 'ssl')})
-            except client.err.OperationalError:
-                if not self.is_connected:
-                    target = [int(v) if i == 1 else v
-                        for i, v in enumerate(
-                        get_host(self.conn_info['host_input']).split(':'))]
-                    target[1] = self.conn_info['port'] if len(target) == 1 else target[1]
-                    if (target[0] != self.conn_info['host'] or
-                            target[1] != self.conn_info['port']):
-                        self.conn_info['host'], self.conn_info['port'] = target
-                        self.connect()
-                    else:
-                        raise
+                self._conn = client.connect(
+                    init_command=self.init_fun,
+                    sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
+                             "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
+                    charset=config['connection.charset'],
+                    **{k: v for k, v in self.conn_info.items()
+                    if k != 'ssl_input'})
+            except client.err.InternalError:
+                self._conn = client.connect(
+                    init_command=self.init_fun,
+                    sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
+                             "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
+                    charset=config['connection.charset'],
+                    **{k: v for k, v in self.conn_info.items()
+                    if not(k == 'ssl_input' or
+                    k == 'ssl' and self.conn_info['ssl_input'] is None)})
         self._conn.autocommit(True)
 
     def close(self):
