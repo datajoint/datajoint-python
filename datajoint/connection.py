@@ -155,7 +155,7 @@ class Connection:
                                 "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
                         charset=config['connection.charset'],
                         **{k: v for k, v in self.conn_info.items()
-                        if k != 'ssl_input'})
+                        if k not in ['ssl_input', 'host_input']})
                 except client.err.InternalError:
                     self._conn = client.connect(
                         init_command=self.init_fun,
@@ -163,7 +163,7 @@ class Connection:
                                 "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
                         charset=config['connection.charset'],
                         **{k: v for k, v in self.conn_info.items()
-                        if not(k == 'ssl_input' or
+                        if not(k in ['ssl_input', 'host_input'] or
                         k == 'ssl' and self.conn_info['ssl_input'] is None)})
             except client.err.OperationalError:
                 if not self.is_connected:
