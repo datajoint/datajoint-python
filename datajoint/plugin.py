@@ -87,7 +87,12 @@ def override(plugin_type, context, method_list=None):
             _update_error_stack(module)
             # override based on plugon preference
             if method_list is not None:
-                new_methods = [getattr(module, v) for v in method_list]
+                new_methods = []
+                for v in method_list:
+                    try:
+                        new_methods.append(getattr(module, v))
+                    except AttributeError:
+                        pass
                 context.update(dict(zip(method_list, new_methods)))
             else:
                 try:
