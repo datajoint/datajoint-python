@@ -48,7 +48,7 @@ class AutoPopulate:
             try:
                 self._key_source = next(parents)
             except StopIteration:
-                raise DataJointError('A relation must have primary dependencies for auto-populate to work') from None
+                raise DataJointError('A relation must have primary dependencies for auto-populate to work')
             for q in parents:
                 self._key_source *= q
         return self._key_source

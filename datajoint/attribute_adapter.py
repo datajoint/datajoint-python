@@ -41,7 +41,7 @@ def get_adapter(context, adapter_name):
         adapter = context[adapter_name]
     except KeyError:
         raise DataJointError(
-            "Attribute adapter '{adapter_name}' is not defined.".format(adapter_name=adapter_name)) from None
+            "Attribute adapter '{adapter_name}' is not defined.".format(adapter_name=adapter_name))
     if not isinstance(adapter, AttributeAdapter):
         raise DataJointError(
             "Attribute adapter '{adapter_name}' must be an instance of datajoint.AttributeAdapter".format(

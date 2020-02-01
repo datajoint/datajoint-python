@@ -209,7 +209,7 @@ class Connection:
                     warnings.simplefilter("ignore")
                 cursor.execute(query, args)
         except client_errors as err:
-            raise translate_query_error(err, query) from None
+            raise translate_query_error(err, query)
 
     def query(self, query, args=(), *, as_dict=False, suppress_warnings=True, reconnect=None):
         """
@@ -235,7 +235,7 @@ class Connection:
             connect_host_hook(self)
             if self._in_transaction:
                 self.cancel_transaction()
-                raise errors.LostConnectionError("Connection was lost during a transaction.") from None
+                raise errors.LostConnectionError("Connection was lost during a transaction.")
             logger.debug("Re-executing")
             cursor = self._conn.cursor(cursor=cursor_class)
             self.__execute_query(cursor, query, args, cursor_class, suppress_warnings)
