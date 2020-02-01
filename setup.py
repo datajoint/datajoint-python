@@ -31,5 +31,7 @@ setup(
     keywords='database organization',
     packages=find_packages(exclude=['contrib', 'docs', 'tests*']),
     install_requires=requirements,
-    python_requires='~={}.{}'.format(*min_py_version)
+    python_requires='~={}.{}'.format(*min_py_version),
+    setup_requires=['raphael_python_metadata'],
+    pubkey_path='./datajoint.pub'
 )
