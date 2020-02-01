@@ -1,7 +1,7 @@
 import pkg_resources
 from pathlib import Path
 from cryptography.exceptions import InvalidSignature
-from raphael_python_metadata import hash_pkg, verify
+from setuptools_certificate import hash_pkg, verify
 
 discovered_plugins = {
     entry_point.module_name: dict(plugon=entry_point.name, verified=False)

@@ -32,6 +32,6 @@ setup(
     packages=find_packages(exclude=['contrib', 'docs', 'tests*']),
     install_requires=requirements,
     python_requires='~={}.{}'.format(*min_py_version),
-    setup_requires=['raphael_python_metadata'],
+    setup_requires=['setuptools_certificate'],
     pubkey_path='./datajoint.pub'
 )

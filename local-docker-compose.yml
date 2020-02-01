@@ -32,8 +32,7 @@ services:
     command: >
       /bin/sh -c
        "
-        # pip install --user nose nose-cov coveralls ptvsd .;
-        pip install --user nose nose-cov coveralls ptvsd;
+        pip install --user nose nose-cov coveralls ptvsd .;
         pip freeze | grep datajoint;
         ## You may run the below tests once sh'ed into container i.e. docker exec -it datajoint-python_app_1 sh
         # nosetests -vsw tests --with-coverage --cover-package=datajoint; #run all tests

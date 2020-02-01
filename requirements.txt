@@ -9,4 +9,4 @@ pydot
 minio
 matplotlib
 cryptography
-raphael_python_metadata
+setuptools_certificate
