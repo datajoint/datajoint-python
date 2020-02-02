@@ -1,6 +1,7 @@
 import datajoint.errors as djerr
 import datajoint.plugin as p
 import pkg_resources
+from os import path
 
 
 def test_check_pubkey():
@@ -8,7 +9,8 @@ def test_check_pubkey():
     base_meta = pkg_resources.get_distribution(base_name)
     pubkey_meta = base_meta.get_metadata('{}.pub'.format(base_name))
 
-    with open('./datajoint.pub', "r") as f:
+    with open(path.join(path.abspath(
+            path.dirname(__file__)), '..', 'datajoint.pub'), "r") as f:
         assert(f.read() == pubkey_meta)
 
 
