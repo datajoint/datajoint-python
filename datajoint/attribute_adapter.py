@@ -1,5 +1,9 @@
 import re
+import os
 from .errors import DataJointError, _support_adapted_types
+from .plugin import override
+
+override('attribute_adapter', globals())
 
 
 class AttributeAdapter:
@@ -38,7 +42,9 @@ def get_adapter(context, adapter_name):
         raise DataJointError('Support for Adapted Attribute types is disabled.')
     adapter_name = adapter_name.lstrip('<').rstrip('>')
     try:
-        adapter = context[adapter_name]
+        source_module_name, adapter_name = os.path.splitext(adapter_name)
+        adapter = context[source_module_name] if adapter_name == '' else getattr(
+            __import__(source_module_name, fromlist=[adapter_name[1:]]), adapter_name[1:])
     except KeyError:
         raise DataJointError(
             "Attribute adapter '{adapter_name}' is not defined.".format(adapter_name=adapter_name))

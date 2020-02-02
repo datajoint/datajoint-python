@@ -16,7 +16,9 @@ from .utils import user_choice, to_camel_case
 from .user_tables import Part, Computed, Imported, Manual, Lookup
 from .table import lookup_class_name, Log, FreeTable
 import types
+from .plugin import override
 
+override('schema', globals())
 logger = logging.getLogger(__name__)
 
 

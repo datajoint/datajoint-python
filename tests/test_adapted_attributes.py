@@ -6,9 +6,8 @@ from . import schema_adapted as adapted
 from .schema_adapted import graph, layout_to_filepath
 
 
-def test_adapted_type():
+def test_adapted_type(c=adapted.Connectivity()):
     dj.errors._switch_adapted_types(True)
-    c = adapted.Connectivity()
     graphs = [nx.lollipop_graph(4, 2), nx.star_graph(5), nx.barbell_graph(3, 1), nx.cycle_graph(5)]
     c.insert((i, g) for i, g in enumerate(graphs))
     returned_graphs = c.fetch('conn_graph', order_by='connid')
@@ -85,4 +84,15 @@ def test_adapted_virtual():
     dj.errors._switch_adapted_types(False)
 
 
-
+def test_adapted_exeternal_ref():
+    # currently does not support aliased modules
+    dj.errors._switch_adapted_types(True)
+    @adapted.schema
+    class Connectivity2(dj.Manual):
+        definition = """
+        connid : int
+        ---
+        conn_graph = null : <tests.schema_adapted.graph>
+        """
+    dj.errors._switch_adapted_types(False)
+    test_adapted_type(c=Connectivity2())
