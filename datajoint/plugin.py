@@ -9,7 +9,7 @@ discovered_plugins = {
     for entry_point
     in pkg_resources.iter_entry_points('datajoint.plugins')
     if 'plugin' not in config or entry_point.name not in config['plugin'] or
-    config['plugin'][entry_point.name] == entry_point.module_name
+    entry_point.module_name in config['plugin'][entry_point.name]
 }
 
 
