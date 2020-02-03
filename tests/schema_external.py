@@ -8,7 +8,7 @@ import datajoint as dj
 from . import PREFIX, CONN_INFO, S3_CONN_INFO
 import numpy as np
 
-schema = dj.schema(PREFIX + '_extern', connection=dj.conn(**CONN_INFO))
+schema = dj.Schema(PREFIX + '_extern', connection=dj.conn(**CONN_INFO))
 dj.config['enable_python_native_blobs'] = True
 
 

@@ -18,7 +18,7 @@ __author__ = "DataJoint Contributors"
 __date__ = "February 7, 2019"
 __all__ = ['__author__', '__version__',
            'config', 'conn', 'Connection',
-           'schema', 'create_virtual_module', 'list_schemas',
+           'Schema', 'VirtualModule', 'list_schemas',
            'Table', 'FreeTable',
            'Manual', 'Lookup', 'Imported', 'Computed', 'Part',
            'Not', 'AndList', 'U', 'Diagram', 'Di', 'ERD',
@@ -29,8 +29,8 @@ __all__ = ['__author__', '__version__',
 from .version import __version__
 from .settings import config
 from .connection import conn, Connection
-from .schema import Schema as schema
-from .schema import create_virtual_module, list_schemas
+from .schema import Schema
+from .schema import VirtualModule, list_schemas
 from .table import Table, FreeTable
 from .user_tables import Manual, Lookup, Imported, Computed, Part
 from .expression import Not, AndList, U

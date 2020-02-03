@@ -7,7 +7,7 @@ Create a new schema using the ``dj.schema`` function:
 .. code-block:: python
 
     import datajoint as dj
-    schema = dj.schema('alice_experiment')
+    schema = dj.Schema('alice_experiment')
 
 This statement creates the database schema ``alice_experiment`` on the server.
 

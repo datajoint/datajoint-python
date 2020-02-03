@@ -25,7 +25,7 @@ Warning: Ensure the following are completed before proceeding.
 Proceed?
             """, default='no') == 'yes'
     if do_migration:
-        _migrate_dj011_blob(dj.schema(migration_schema), store)
+        _migrate_dj011_blob(dj.Schema(migration_schema), store)
         print('Migration completed for schema: {}, store: {}.'.format(
                 migration_schema, store))
         return

@@ -40,13 +40,13 @@ class TestBlobMigrate:
         dj.config['database.password'] = CONN_INFO['password']
         dj.config['database.user'] = CONN_INFO['user']
         dj.config['database.host'] = CONN_INFO['host']
-        schema = dj.schema('djtest_blob_migrate')
+        schema = dj.Schema('djtest_blob_migrate')
 
         # Test if migration throws unexpected exceptions
         _migrate_dj011_blob(schema, default_store)
 
         # Test Fetch
-        test_mod = dj.create_virtual_module('test_mod', 'djtest_blob_migrate')
+        test_mod = dj.VirtualModule('test_mod', 'djtest_blob_migrate')
         r1 = test_mod.A.fetch('blob_share', order_by='id')
         assert_equal(r1[1][1], 2)
 

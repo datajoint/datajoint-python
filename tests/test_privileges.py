@@ -16,11 +16,11 @@ class TestUnprivileged:
     @raises(dj.DataJointError)
     def test_fail_create_schema(self):
         """creating a schema with no CREATE privilege"""
-        return dj.schema('forbidden_schema', namespace, connection=self.connection)
+        return dj.Schema('forbidden_schema', namespace, connection=self.connection)
 
     @raises(dj.DataJointError)
     def test_insert_failure(self):
-        unprivileged = dj.schema(schema.schema.database, namespace, connection=self.connection)
+        unprivileged = dj.Schema(schema.schema.database, namespace, connection=self.connection)
         unprivileged.spawn_missing_classes()
         assert_true(issubclass(Language, dj.Lookup) and len(Language()) == len(schema.Language()),
                     'failed to spawn missing classes')
@@ -28,7 +28,7 @@ class TestUnprivileged:
 
     @raises(dj.DataJointError)
     def test_failure_to_create_table(self):
-        unprivileged = dj.schema(schema.schema.database, namespace, connection=self.connection)
+        unprivileged = dj.Schema(schema.schema.database, namespace, connection=self.connection)
 
         @unprivileged
         class Try(dj.Manual):

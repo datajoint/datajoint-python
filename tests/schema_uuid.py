@@ -2,7 +2,7 @@ import uuid
 import datajoint as dj
 from . import PREFIX, CONN_INFO
 
-schema = dj.schema(PREFIX + '_test1', connection=dj.conn(**CONN_INFO))
+schema = dj.Schema(PREFIX + '_test1', connection=dj.conn(**CONN_INFO))
 
 top_level_namespace_id = uuid.UUID('00000000-0000-0000-0000-000000000000')
 

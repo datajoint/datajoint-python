@@ -67,7 +67,7 @@ class TestDeclare:
     @staticmethod
     def test_part():
         # Lookup and part with the same name.  See issue #365
-        local_schema = dj.schema(schema.database)
+        local_schema = dj.Schema(schema.database)
 
         @local_schema
         class Type(dj.Lookup):

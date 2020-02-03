@@ -8,7 +8,7 @@ try:
 except:
     import datajoint as dj
 
-schema = dj.schema(PREFIX + '_fetch_same', connection=dj.conn(**CONN_INFO))
+schema = dj.Schema(PREFIX + '_fetch_same', connection=dj.conn(**CONN_INFO))
 
 
 @schema
