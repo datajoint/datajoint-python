@@ -3,8 +3,6 @@ import os
 from .errors import DataJointError, _support_adapted_types
 from .plugin import override
 
-override('attribute_adapter', globals())
-
 
 class AttributeAdapter:
     """
@@ -32,6 +30,9 @@ class AttributeAdapter:
         :return: value to store in the database
         """
         raise NotImplementedError('Undefined attribute adapter')
+
+
+override('attribute_adapter', globals())
 
 
 def get_adapter(context, adapter_name):
