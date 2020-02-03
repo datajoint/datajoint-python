@@ -291,9 +291,6 @@ class Schema:
                 f.write(python_code)
 
 
-override('schema', globals())
-
-
 def create_virtual_module(module_name, schema_name, *,
                           create_schema=False, create_tables=False, connection=None, add_objects=None):
     """
@@ -314,6 +311,9 @@ def create_virtual_module(module_name, schema_name, *,
     module.__dict__['schema'] = _schema
     _schema.spawn_missing_classes(context=module.__dict__)
     return module
+
+
+override('schema', globals())
 
 
 def list_schemas(connection=None):
