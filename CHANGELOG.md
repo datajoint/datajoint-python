@@ -1,6 +1,8 @@
 ## Release notes
 
 ### 0.12.5 -- Feb TBA, 2020
+* `dj.schema` is now called `dj.Schema` (#731) PR #732
+* `dj.create_virtual_module` is now called `dj.VirtualModule` (#731) PR #732
 * Bugfix - SSL `KeyError` on failed connection (#716) PR #725
 * Bugfix - Unable to run unit tests using nosetests (#723) PR #724
 * Bugfix - `suppress_errors` does not suppress loss of connection error (#720) PR #721
