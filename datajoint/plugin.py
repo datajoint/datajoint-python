@@ -2,11 +2,14 @@ import pkg_resources
 from pathlib import Path
 from cryptography.exceptions import InvalidSignature
 from setuptools_certificate import hash_pkg, verify
+from .settings import config
 
 discovered_plugins = {
     entry_point.module_name: dict(plugon=entry_point.name, verified=False)
     for entry_point
     in pkg_resources.iter_entry_points('datajoint.plugins')
+    if 'plugin' not in config or entry_point.name not in config['plugin'] or
+    config['plugin'][entry_point.name] == entry_point.module_name
 }
 
 
