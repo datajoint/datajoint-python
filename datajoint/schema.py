@@ -18,7 +18,6 @@ from .table import lookup_class_name, Log, FreeTable
 import types
 from .plugin import override
 
-override('schema', globals())
 logger = logging.getLogger(__name__)
 
 
@@ -290,6 +289,9 @@ class Schema:
         else:
             with open(python_filename, 'wt') as f:
                 f.write(python_code)
+
+
+override('schema', globals())
 
 
 def create_virtual_module(module_name, schema_name, *,
