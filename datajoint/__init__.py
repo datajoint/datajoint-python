@@ -29,6 +29,7 @@ __all__ = ['__author__', '__version__',
 from .version import __version__
 from .settings import config
 from .connection import conn, Connection
+from .attribute_adapter import AttributeAdapter
 from .schema import Schema as schema
 from .schema import create_virtual_module, list_schemas
 from .table import Table, FreeTable
@@ -38,7 +39,6 @@ from .diagram import Diagram
 from .admin import set_password, kill
 from .blob import MatCell, MatStruct
 from .fetch import key
-from .attribute_adapter import AttributeAdapter
 from . import errors
 from .errors import DataJointError
 from .migrate import migrate_dj011_external_blob_storage_to_dj012
