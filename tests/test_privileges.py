@@ -11,7 +11,8 @@ class TestUnprivileged:
     @classmethod
     def setup_class(cls):
         """A connection with only SELECT privilege to djtest schemas"""
-        cls.connection = dj.Connection(host=CONN_INFO['host'], user='djview', password='djview')
+        cls.connection = dj.conn(host=CONN_INFO['host'], user='djview', password='djview',
+                                    reset=True)
 
     @raises(dj.DataJointError)
     def test_fail_create_schema(self):
