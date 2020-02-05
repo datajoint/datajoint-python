@@ -46,7 +46,7 @@ class TestBlobMigrate:
         _migrate_dj011_blob(schema, default_store)
 
         # Test Fetch
-        test_mod = dj.VirtualModule('test_mod', 'djtest_blob_migrate')
+        test_mod = dj.create_virtual_module('test_mod', 'djtest_blob_migrate')
         r1 = test_mod.A.fetch('blob_share', order_by='id')
         assert_equal(r1[1][1], 2)
 

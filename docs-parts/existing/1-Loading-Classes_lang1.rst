@@ -91,7 +91,7 @@ the chosen database schema:
 
     schema = dj.Schema('dimitri_university')
 
-If the schema already exists, dj.schema is initialized as usual and you may plot
+If the schema already exists, dj.Schema is initialized as usual and you may plot
 the schema diagram. But instead of seeing class names, you will see the raw
 table names as they appear in the database.
 

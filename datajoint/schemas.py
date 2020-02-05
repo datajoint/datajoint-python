@@ -290,26 +290,30 @@ class Schema:
                 f.write(python_code)
 
 
-def VirtualModule(module_name, schema_name, *,
-                          create_schema=False, create_tables=False, connection=None, add_objects=None):
+class VirtualModule(types.ModuleType):
     """
-    Creates a python module with the given name from the name of a schema on the server and
-    automatically adds classes to it corresponding to the tables in the schema.
-    :param module_name: displayed module name
-    :param schema_name: name of the database in mysql
-    :param create_schema: if True, create the schema on the database server
-    :param create_tables: if True, module.schema can be used as the decorator for declaring new
-    :param connection: a dj.Connection object to pass into the schema
-    :param add_objects: additional objects to add to the module
-    :return: the python module containing classes from the schema object and the table classes
+    A virtual module which will contain context for schema.
     """
-    module = types.ModuleType(module_name)
-    _schema = Schema(schema_name, create_schema=create_schema, create_tables=create_tables, connection=connection)
-    if add_objects:
-        module.__dict__.update(add_objects)
-    module.__dict__['schema'] = _schema
-    _schema.spawn_missing_classes(context=module.__dict__)
-    return module
+    def __init__(self, module_name, schema_name, *, create_schema=False, 
+                    create_tables=False, connection=None, add_objects=None):
+        """
+        Creates a python module with the given name from the name of a schema on the server and
+        automatically adds classes to it corresponding to the tables in the schema.
+        :param module_name: displayed module name
+        :param schema_name: name of the database in mysql
+        :param create_schema: if True, create the schema on the database server
+        :param create_tables: if True, module.schema can be used as the decorator for declaring new
+        :param connection: a dj.Connection object to pass into the schema
+        :param add_objects: additional objects to add to the module
+        :return: the python module containing classes from the schema object and the table classes
+        """
+        super(VirtualModule, self).__init__(name=module_name)
+        _schema = Schema(schema_name, create_schema=create_schema, create_tables=create_tables,
+                            connection=connection)
+        if add_objects:
+            self.__dict__.update(add_objects)
+        self.__dict__['schema'] = _schema
+        _schema.spawn_missing_classes(context=self.__dict__)
 
 
 def list_schemas(connection=None):

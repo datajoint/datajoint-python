@@ -17,7 +17,7 @@ stores_config = {
 dj.config['stores'] = stores_config
 
 schema_name = PREFIX + '_test_custom_datatype'
-schema = dj.Schema(schema_name, connection=dj.conn(**CONN_INFO))
+schema = dj.schema(schema_name, connection=dj.conn(**CONN_INFO))
 
 
 errors._switch_adapted_types(True)  # enable adapted types for testing only
