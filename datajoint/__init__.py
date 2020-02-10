@@ -18,8 +18,8 @@ __author__ = "DataJoint Contributors"
 __date__ = "February 7, 2019"
 __all__ = ['__author__', '__version__',
            'config', 'conn', 'Connection',
-           'Schema', 'VirtualModule', 'list_schemas',
-           'Table', 'FreeTable',
+           'Schema', 'schema', 'VirtualModule', 'create_virtual_module',
+           'list_schemas', 'Table', 'FreeTable',
            'Manual', 'Lookup', 'Imported', 'Computed', 'Part',
            'Not', 'AndList', 'U', 'Diagram', 'Di', 'ERD',
            'set_password', 'kill',
