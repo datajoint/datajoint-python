@@ -8,3 +8,5 @@ networkx
 pydot
 minio
 matplotlib
+cryptography
+setuptools_certificate

@@ -260,7 +260,7 @@ class Table(QueryExpression):
                                 value = uuid.UUID(value)
                             except (AttributeError, ValueError):
                                 raise DataJointError(
-                                    'badly formed UUID value {v} for attribute `{n}`'.format(v=value, n=name)) from None
+                                    'badly formed UUID value {v} for attribute `{n}`'.format(v=value, n=name))
                         value = value.bytes
                     elif attr.is_blob:
                         value = blob.pack(value)
@@ -341,9 +341,9 @@ class Table(QueryExpression):
                 self.connection.query(query, args=list(
                     itertools.chain.from_iterable((v for v in r['values'] if v is not None) for r in rows)))
             except UnknownAttributeError as err:
-                raise err.suggest('To ignore extra fields in insert, set ignore_extra_fields=True') from None
+                raise err.suggest('To ignore extra fields in insert, set ignore_extra_fields=True')
             except DuplicateError as err:
-                raise err.suggest('To ignore duplicate entries in insert, set skip_duplicates=True') from None
+                raise err.suggest('To ignore duplicate entries in insert, set skip_duplicates=True')
 
     def delete_quick(self, get_count=False):
         """
