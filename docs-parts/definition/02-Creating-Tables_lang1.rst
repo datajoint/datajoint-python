@@ -12,7 +12,7 @@ For example, the following code defines the table ``Person``:
 .. code-block:: python
 
 	import datajoint as dj
-	schema = dj.schema('alice_experiment')
+	schema = dj.Schema('alice_experiment')
 
 	@schema
 	class Person(dj.Manual):

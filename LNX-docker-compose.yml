@@ -14,10 +14,10 @@ services:
       fakeservices.datajoint.io:
         condition: service_healthy
     environment:
-      - DJ_HOST=db
+      - DJ_HOST=fakeservices.datajoint.io
       - DJ_USER=root
       - DJ_PASS=simple
-      - DJ_TEST_HOST=db
+      - DJ_TEST_HOST=fakeservices.datajoint.io
       - DJ_TEST_USER=datajoint
       - DJ_TEST_PASSWORD=datajoint
       - S3_ENDPOINT=fakeservices.datajoint.io:9000
@@ -57,10 +57,10 @@ services:
     #   - ./mysql/data:/var/lib/mysql
   minio:
     <<: *net
+    image: minio/minio:$MINIO_VER
     environment:
       - MINIO_ACCESS_KEY=datajoint
       - MINIO_SECRET_KEY=datajoint
-    image: minio/minio:$MINIO_VER
     # ports:
     #   - "9000:9000"
     # volumes:
@@ -79,6 +79,7 @@ services:
       - URL=datajoint.io
       - SUBDOMAINS=fakeservices
       - MINIO_SERVER=http://minio:9000
+      - MYSQL_SERVER=db:3306
     entrypoint: /entrypoint.sh
     healthcheck:
       test: wget --quiet --tries=1 --spider https://fakeservices.datajoint.io:443/minio/health/live || exit 1
@@ -88,8 +89,10 @@ services:
     # ports:
     #   - "9000:9000"
     #   - "443:443"
+    #   - "3306:3306"
     volumes:
       - ./tests/nginx/base.conf:/base.conf
+      - ./tests/nginx/nginx.conf:/nginx.conf
       - ./tests/nginx/entrypoint.sh:/entrypoint.sh
       - ./tests/nginx/fullchain.pem:/certs/fullchain.pem
       - ./tests/nginx/privkey.pem:/certs/privkey.pem
