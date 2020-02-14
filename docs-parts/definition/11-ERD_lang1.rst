@@ -4,7 +4,7 @@ To plot the ERD for an entire schema, an ERD object can be initialized with the 
 .. code-block:: python
 
     import datajoint as dj
-    schema = dj.schema('my_database')
+    schema = dj.Schema('my_database')
     dj.ERD(schema).draw()
 
 or alternatively an object that has the schema object as an attribute, such as the module defining a schema:

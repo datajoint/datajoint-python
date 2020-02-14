@@ -45,7 +45,7 @@ def test_adapted_filepath_type():
     dj.errors._switch_adapted_types(False)
 
 # test spawned classes
-local_schema = dj.schema(adapted.schema_name)
+local_schema = dj.Schema(adapted.schema_name)
 local_schema.spawn_missing_classes()
 
 
@@ -64,7 +64,7 @@ def test_adapted_spawned():
 
 
 # test with virtual module
-virtual_module = dj.create_virtual_module('virtual_module', adapted.schema_name, add_objects={'graph': graph})
+virtual_module = dj.VirtualModule('virtual_module', adapted.schema_name, add_objects={'graph': graph})
 
 
 def test_adapted_virtual():

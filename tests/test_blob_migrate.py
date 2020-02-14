@@ -40,7 +40,7 @@ class TestBlobMigrate:
         dj.config['database.password'] = CONN_INFO['password']
         dj.config['database.user'] = CONN_INFO['user']
         dj.config['database.host'] = CONN_INFO['host']
-        schema = dj.schema('djtest_blob_migrate')
+        schema = dj.Schema('djtest_blob_migrate')
 
         # Test if migration throws unexpected exceptions
         _migrate_dj011_blob(schema, default_store)

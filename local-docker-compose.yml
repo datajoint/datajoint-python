@@ -14,10 +14,10 @@ services:
       fakeservices.datajoint.io:
         condition: service_healthy
     environment:
-      - DJ_HOST=db
+      - DJ_HOST=fakeservices.datajoint.io
       - DJ_USER=root
       - DJ_PASS=simple
-      - DJ_TEST_HOST=db
+      - DJ_TEST_HOST=fakeservices.datajoint.io
       - DJ_TEST_USER=datajoint
       - DJ_TEST_PASSWORD=datajoint
       # If running tests locally, make sure to add entry in /etc/hosts for 127.0.0.1 fakeservices.datajoint.io
@@ -35,7 +35,7 @@ services:
         pip install --user nose nose-cov coveralls ptvsd .;
         pip freeze | grep datajoint;
         ## You may run the below tests once sh'ed into container i.e. docker exec -it datajoint-python_app_1 sh
-        # nosetests -vsw tests --with-coverage --cover-package=datajoint; #run all tests
+        # nosetests -vsw tests; #run all tests
         # nosetests -vs --tests=tests.test_external_class:test_insert_and_fetch; #run specific basic test
         # nosetests -vs --tests=tests.test_fetch:TestFetch.test_getattribute_for_fetch1; #run specific Class test
         ## Interactive Jupyter Notebook environment
@@ -61,17 +61,19 @@ services:
     image: datajoint/mysql:$MYSQL_VER
     environment:
       - MYSQL_ROOT_PASSWORD=simple
-    ports:
-      - "3306:3306"
+    # ports:
+    #   - "3306:3306"
     # To persist MySQL data
     # volumes:
     #   - ./mysql/data:/var/lib/mysql
   minio:
     <<: *net
+    image: minio/minio:$MINIO_VER
     environment:
       - MINIO_ACCESS_KEY=datajoint
       - MINIO_SECRET_KEY=datajoint
-    image: minio/minio:$MINIO_VER
+    # ports:
+    #   - "9000:9000"
     # To persist MinIO data and config
     # volumes:
     #   - ./minio/data:/data
@@ -89,6 +91,7 @@ services:
       - URL=datajoint.io
       - SUBDOMAINS=fakeservices
       - MINIO_SERVER=http://minio:9000
+      - MYSQL_SERVER=db:3306
     entrypoint: /entrypoint.sh
     healthcheck:
       test: wget --quiet --tries=1 --spider https://fakeservices.datajoint.io:443/minio/health/live || exit 1
@@ -98,8 +101,10 @@ services:
     ports:
       - "9000:9000"
       - "443:443"
+      - "3306:3306"
     volumes:
       - ./tests/nginx/base.conf:/base.conf
+      - ./tests/nginx/nginx.conf:/nginx.conf
       - ./tests/nginx/entrypoint.sh:/entrypoint.sh
       - ./tests/nginx/fullchain.pem:/certs/fullchain.pem
       - ./tests/nginx/privkey.pem:/certs/privkey.pem
