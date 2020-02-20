@@ -7,10 +7,10 @@ from nose.tools import assert_true
 
 
 
-schema_in = dj.schema(PREFIX + '_test_bypass_serialization_in',
+schema_in = dj.Schema(PREFIX + '_test_bypass_serialization_in',
                       connection=dj.conn(**CONN_INFO))
 
-schema_out = dj.schema(PREFIX + '_test_blob_bypass_serialization_out',
+schema_out = dj.Schema(PREFIX + '_test_blob_bypass_serialization_out',
                        connection=dj.conn(**CONN_INFO))
 
 
