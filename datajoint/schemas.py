@@ -16,7 +16,6 @@ from .utils import user_choice, to_camel_case
 from .user_tables import Part, Computed, Imported, Manual, Lookup
 from .table import lookup_class_name, Log, FreeTable
 import types
-from .plugin import override
 
 logger = logging.getLogger(__name__)
 
@@ -315,9 +314,6 @@ class VirtualModule(types.ModuleType):
             self.__dict__.update(add_objects)
         self.__dict__['schema'] = _schema
         _schema.spawn_missing_classes(context=self.__dict__)
-
-
-override('schema', globals())
 
 
 def list_schemas(connection=None):

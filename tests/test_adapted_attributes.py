@@ -82,17 +82,3 @@ def test_adapted_virtual():
             assert_true(0 == len(nx.symmetric_difference(g1, g2).edges))
     c.delete()
     dj.errors._switch_adapted_types(False)
-
-
-def test_adapted_exeternal_ref():
-    # currently does not support aliased modules
-    dj.errors._switch_adapted_types(True)
-    @adapted.schema
-    class Connectivity2(dj.Manual):
-        definition = """
-        connid : int
-        ---
-        conn_graph = null : <tests.schema_adapted.graph>
-        """
-    dj.errors._switch_adapted_types(False)
-    test_adapted_type(c=Connectivity2())

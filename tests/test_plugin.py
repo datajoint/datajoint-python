@@ -21,21 +21,39 @@ def test_normal_djerror():
         assert(e.__cause__ is None)
 
 
-def test_verified_djerror():
+def test_verified_djerror(category='connection'):
     try:
-        curr_plugins = p.discovered_plugins
-        p.discovered_plugins = dict(test_plugin_module=dict(verified=True, plugon='example'))
+        curr_plugins = getattr(p, '{}_plugins'.format(category))
+        setattr(p, '{}_plugins'.format(category), dict(test_plugin_id=dict(
+                                                        verified=True, object='example')))
         raise djerr.DataJointError
     except djerr.DataJointError as e:
-        p.discovered_plugins = curr_plugins
+        setattr(p, '{}_plugins'.format(category), curr_plugins)
         assert(e.__cause__ is None)
 
 
-def test_unverified_djerror():
+def test_verified_djerror_schema():
+    test_verified_djerror(category='schema')
+
+
+def test_verified_djerror_type():
+    test_verified_djerror(category='type')
+
+
+def test_unverified_djerror(category='connection'):
     try:
-        curr_plugins = p.discovered_plugins
-        p.discovered_plugins = dict(test_plugin_module=dict(verified=False, plugon='example'))
+        curr_plugins = getattr(p, '{}_plugins'.format(category))
+        setattr(p, '{}_plugins'.format(category), dict(test_plugin_id=dict(
+                                                        verified=False, object='example')))
         raise djerr.DataJointError("hello")
     except djerr.DataJointError as e:
-        p.discovered_plugins = curr_plugins
+        setattr(p, '{}_plugins'.format(category), curr_plugins)
         assert(isinstance(e.__cause__, djerr.PluginWarning))
+
+
+def test_unverified_djerror_schema():
+    test_unverified_djerror(category='schema')
+
+
+def test_unverified_djerror_type():
+    test_unverified_djerror(category='type')
