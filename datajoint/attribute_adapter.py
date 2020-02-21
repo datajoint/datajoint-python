@@ -40,7 +40,7 @@ def get_adapter(context, adapter_name):
     adapter_name = adapter_name.lstrip('<').rstrip('>')
     try:
         adapter = (context[adapter_name] if adapter_name in context
-                    else type_plugins[adapter_name]['object'])
+                    else type_plugins[adapter_name]['object'].load())
     except KeyError:
         raise DataJointError(
             "Attribute adapter '{adapter_name}' is not defined.".format(adapter_name=adapter_name))
