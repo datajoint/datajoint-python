@@ -16,6 +16,7 @@ from .utils import user_choice, to_camel_case
 from .user_tables import Part, Computed, Imported, Manual, Lookup
 from .table import lookup_class_name, Log, FreeTable
 import types
+from .plugin import schema_plugins
 
 logger = logging.getLogger(__name__)
 
@@ -52,36 +53,39 @@ class Schema:
         :param create_schema: When False, do not create the schema and raise an error if missing.
         :param create_tables: When False, do not create tables and raise errors when accessing missing tables.
         """
-        if connection is None:
-            connection = conn()
-        self._log = None
+        if not schema_name in schema_plugins:
+            if connection is None:
+                connection = conn()
+            self._log = None
 
-        self.database = schema_name
-        self.connection = connection
-        self.context = context
-        self.create_tables = create_tables
-        self._jobs = None
-        self.external = ExternalMapping(self)
+            self.database = schema_name
+            self.connection = connection
+            self.context = context
+            self.create_tables = create_tables
+            self._jobs = None
+            self.external = ExternalMapping(self)
 
-        if not self.exists:
-            if not create_schema:
-                raise DataJointError(
-                    "Database named `{name}` was not defined. "
-                    "Set argument create_schema=True to create it.".format(name=schema_name))
-            else:
-                # create database
-                logger.info("Creating schema `{name}`.".format(name=schema_name))
-                try:
-                    connection.query("CREATE DATABASE `{name}`".format(name=schema_name))
-                    logger.info('Creating schema `{name}`.'.format(name=schema_name))
-                except pymysql.OperationalError:
+            if not self.exists:
+                if not create_schema:
                     raise DataJointError(
-                        "Schema `{name}` does not exist and could not be created. "
-                        "Check permissions.".format(name=schema_name))
+                        "Database named `{name}` was not defined. "
+                        "Set argument create_schema=True to create it.".format(name=schema_name))
                 else:
-                    self.log('created')
-        self.log('connect')
-        connection.register(self)
+                    # create database
+                    logger.info("Creating schema `{name}`.".format(name=schema_name))
+                    try:
+                        connection.query("CREATE DATABASE `{name}`".format(name=schema_name))
+                        logger.info('Creating schema `{name}`.'.format(name=schema_name))
+                    except pymysql.OperationalError:
+                        raise DataJointError(
+                            "Schema `{name}` does not exist and could not be created. "
+                            "Check permissions.".format(name=schema_name))
+                    else:
+                        self.log('created')
+            self.log('connect')
+            connection.register(self)
+        else:
+            self = schema_plugins[schema_name]['object'].load()
 
     @property
     def log(self):
