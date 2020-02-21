@@ -19,22 +19,24 @@ client_errors = (client.err.InterfaceError, client.err.DatabaseError)
 
 def get_host_hook(host_input):
     if '://' in host_input:
+        plugin_name = host_input.split('://')[0]
         try:
-            return connection_plugins[host_input.split('://')[0]]['object'].load().get_host(host_input)
+            return connection_plugins[plugin_name]['object'].load().get_host(host_input)
         except KeyError:
             raise DataJointError(
-                "Connection plugin '{plugin_name}' not found.".format(plugin_name=host_input.split('://')[0]))
+                "Connection plugin '{}' not found.".format(plugin_name))
     else:
         return host_input
 
 
 def connect_host_hook(connection_obj):
     if '://' in connection_obj.conn_info['host_input']:
+        plugin_name = connection_obj.conn_info['host_input'].split('://')[0]
         try:
-            connection_plugins[connection_obj.conn_info['host_input'].split('://')[0]]['object'].load().connect_host(connection_obj)
+            connection_plugins[plugin_name]['object'].load().connect_host(connection_obj)
         except KeyError:
             raise DataJointError(
-                "Connection plugin '{plugin_name}' not found.".format(plugin_name=connection_obj.conn_info['host_input']))
+                "Connection plugin '{}' not found.".format(plugin_name))
     else:
         connection_obj.connect()
 
