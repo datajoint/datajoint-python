@@ -85,7 +85,9 @@ class Schema:
         connection.register(self)
 
     def __new__(self, schema_name, context=None, *, connection=None, create_schema=True, create_tables=True):
-        if schema_name not in schema_plugins:
+        if (schema_name not in schema_plugins or
+                schema_plugins[schema_name]['object'].module_name != inspect.getmodule(
+                inspect.currentframe().f_back).__name__):
             return object.__new__(self)
         else:
             return schema_plugins[schema_name]['object'].load()
