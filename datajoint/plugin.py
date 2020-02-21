@@ -33,6 +33,10 @@ def _import_plugins(category):
             entry_point.module_name.split('.')[0] in config['plugin'][category]
         }
 
+
+connection_plugins = {}
+schema_plugins = {}
+type_plugins = {}
 connection_plugins = _import_plugins('connection')
 schema_plugins = _import_plugins('schema')
 type_plugins = _import_plugins('type')
