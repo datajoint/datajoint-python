@@ -43,7 +43,7 @@ from . import errors
 from .errors import DataJointError
 from .migrate import migrate_dj011_external_blob_storage_to_dj012
 import importlib
-importlib.reload(.plugin)
+importlib.reload(plugin)
 
 ERD = Di = Diagram                      # Aliases for Diagram
 schema = Schema                         # Aliases for Schema
