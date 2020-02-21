@@ -26,7 +26,7 @@ def _import_plugins(category):
     return {
             entry_point.name: dict(object=entry_point.load(),
                                     verified=_update_error_stack(
-                                        entry_point.module_name.split(':')[0]))
+                                        entry_point.module_name.split('.')[0]))
             for entry_point
             in pkg_resources.iter_entry_points('datajoint_plugins.{}'.format(category))
             if 'plugin' not in config or category not in config['plugin'] or
