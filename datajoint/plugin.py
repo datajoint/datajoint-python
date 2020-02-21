@@ -30,7 +30,7 @@ def _import_plugins(category):
             for entry_point
             in pkg_resources.iter_entry_points('datajoint_plugins.{}'.format(category))
             if 'plugin' not in config or category not in config['plugin'] or
-            entry_point.module_name.split(':')[0] in config['plugin'][category]
+            entry_point.module_name.split('.')[0] in config['plugin'][category]
         }
 
 connection_plugins = _import_plugins('connection')
