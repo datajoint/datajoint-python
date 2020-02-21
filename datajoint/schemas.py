@@ -88,7 +88,7 @@ class Schema:
         caller_module = inspect.getmodule(inspect.currentframe().f_back)
         if (schema_name not in schema_plugins or
                 caller_module is not None and
-                schema_plugins[schema_name]['object'].module_name == caller_module.__name__:
+                schema_plugins[schema_name]['object'].module_name == caller_module.__name__):
             return object.__new__(self)
         else:
             return schema_plugins[schema_name]['object'].load()
