@@ -1,6 +1,6 @@
 ## Release notes
 
-### 0.12.5 -- Feb TBA, 2020
+### 0.12.5 -- Feb 24, 2020
 * Rename module `dj.schema` into `dj.schemas`. `dj.schema` remains an alias for class `dj.Schema`. (#731) PR #732
 * `dj.create_virtual_module` is now called `dj.VirtualModule` (#731) PR #732
 * Bugfix - SSL `KeyError` on failed connection (#716) PR #725
