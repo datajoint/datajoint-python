@@ -32,10 +32,6 @@ def test_verified_djerror(category='connection'):
         assert(e.__cause__ is None)
 
 
-def test_verified_djerror_schema():
-    test_verified_djerror(category='schema')
-
-
 def test_verified_djerror_type():
     test_verified_djerror(category='type')
 
@@ -49,10 +45,6 @@ def test_unverified_djerror(category='connection'):
     except djerr.DataJointError as e:
         setattr(p, '{}_plugins'.format(category), curr_plugins)
         assert(isinstance(e.__cause__, djerr.PluginWarning))
-
-
-def test_unverified_djerror_schema():
-    test_unverified_djerror(category='schema')
 
 
 def test_unverified_djerror_type():
