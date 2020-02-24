@@ -1,3 +1,7 @@
+0.12.5plug -- Feb 24, 2020
+----------------------
+* Support DataJoint datatype and connection plugins (#715, #729) PR 730, #735
+
 0.12.5 -- Feb 24, 2020
 ----------------------
 * Rename module `dj.schema` into `dj.schemas`. `dj.schema` remains an alias for class `dj.Schema`. (#731) PR #732
