@@ -16,7 +16,6 @@ from .utils import user_choice, to_camel_case
 from .user_tables import Part, Computed, Imported, Manual, Lookup
 from .table import lookup_class_name, Log, FreeTable
 import types
-from .plugin import schema_plugins
 
 logger = logging.getLogger(__name__)
 
@@ -83,15 +82,6 @@ class Schema:
                     self.log('created')
         self.log('connect')
         connection.register(self)
-
-    def __new__(self, schema_name, context=None, *, connection=None, create_schema=True, create_tables=True):
-        caller_module = inspect.getmodule(inspect.currentframe().f_back)
-        if (schema_name not in schema_plugins or
-                caller_module is not None and
-                schema_plugins[schema_name]['object'].module_name == caller_module.__name__):
-            return object.__new__(self)
-        else:
-            return schema_plugins[schema_name]['object'].load()
 
     @property
     def log(self):
