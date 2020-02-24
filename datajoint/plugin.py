@@ -35,5 +35,4 @@ def _import_plugins(category):
 
 
 connection_plugins = _import_plugins('connection')
-schema_plugins = _import_plugins('schema')
-type_plugins = _import_plugins('type')
+type_plugins = _import_plugins('datatype')
