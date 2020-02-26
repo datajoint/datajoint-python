@@ -8,7 +8,7 @@ import itertools
 from . import PREFIX, CONN_INFO
 import numpy as np
 
-schema = dj.schema(PREFIX + '_relational', locals(), connection=dj.conn(**CONN_INFO))
+schema = dj.Schema(PREFIX + '_relational', locals(), connection=dj.conn(**CONN_INFO))
 
 
 @schema

@@ -11,21 +11,34 @@ from getpass import getpass
 from .settings import config
 from . import errors
 from .dependencies import Dependencies
-from .plugin import override
+from .plugin import connection_plugins
 
 # client errors to catch
 client_errors = (client.err.InterfaceError, client.err.DatabaseError)
 
 
 def get_host_hook(host_input):
-    return host_input
+    if '://' in host_input:
+        plugin_name = host_input.split('://')[0]
+        try:
+            return connection_plugins[plugin_name]['object'].load().get_host(host_input)
+        except KeyError:
+            raise DataJointError(
+                "Connection plugin '{}' not found.".format(plugin_name))
+    else:
+        return host_input
 
 
 def connect_host_hook(connection_obj):
-    connection_obj.connect()
-
-
-override('connection', globals(), ['get_host_hook', 'connect_host_hook'])
+    if '://' in connection_obj.conn_info['host_input']:
+        plugin_name = connection_obj.conn_info['host_input'].split('://')[0]
+        try:
+            connection_plugins[plugin_name]['object'].load().connect_host(connection_obj)
+        except KeyError:
+            raise DataJointError(
+                "Connection plugin '{}' not found.".format(plugin_name))
+    else:
+        connection_obj.connect()
 
 
 def translate_query_error(client_error, query):

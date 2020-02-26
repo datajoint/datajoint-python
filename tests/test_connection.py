@@ -43,7 +43,7 @@ class TestTransactions:
     test transaction management
     """
 
-    schema = dj.schema(PREFIX + '_transactions', locals(), connection=dj.conn(**CONN_INFO))
+    schema = dj.Schema(PREFIX + '_transactions', locals(), connection=dj.conn(**CONN_INFO))
 
     @schema
     class Subjects(dj.Manual):

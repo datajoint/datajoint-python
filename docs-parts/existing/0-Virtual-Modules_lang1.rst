@@ -1,4 +1,4 @@
-The function ``create_virtual_module`` of the ``dj.schema`` class provides access to virtual modules.
+The class object ``VirtualModule`` of the ``dj.Schema`` class provides access to virtual modules.
 It creates a python module with the given name from the name of a schema on the server, automatically adds classes to it corresponding to the tables in the schema.
 
 The function can take several parameters:

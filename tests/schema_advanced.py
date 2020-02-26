@@ -1,7 +1,7 @@
 import datajoint as dj
 from . import PREFIX, CONN_INFO
 
-schema = dj.schema(PREFIX + '_advanced', locals(), connection=dj.conn(**CONN_INFO))
+schema = dj.Schema(PREFIX + '_advanced', locals(), connection=dj.conn(**CONN_INFO))
 
 
 @schema

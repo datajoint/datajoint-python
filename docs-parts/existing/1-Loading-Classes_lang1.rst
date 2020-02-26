@@ -89,9 +89,9 @@ the chosen database schema:
 
 .. code-block:: python
 
-    schema = dj.schema('dimitri_university')
+    schema = dj.Schema('dimitri_university')
 
-If the schema already exists, dj.schema is initialized as usual and you may plot
+If the schema already exists, dj.Schema is initialized as usual and you may plot
 the schema diagram. But instead of seeing class names, you will see the raw
 table names as they appear in the database.
 
@@ -150,13 +150,13 @@ equivalent to the Python command
     import university as uni
 
 We can mimick this import without having access to ``university.py`` using the
-``create_virtual_module`` function:
+``VirtualModule`` class object:
 
 .. code-block:: python
 
     import datajoint as dj
 
-    uni = dj.create_virtual_module('university.py', 'dimitri_university')
+    uni = dj.VirtualModule('university.py', 'dimitri_university')
 
 *Connecting dimitri@localhost:3306*
 
@@ -182,14 +182,14 @@ the table classes.
    :align: center
    :alt: query object preview
 
-``dj.create_virtual_module`` takes optional arguments.
+``dj.VirtualModule`` takes optional arguments.
 
 First, ``create_schema=False`` assures that an error is raised when the schema
 does not already exist. Set it to ``True`` if you want to create an empty schema.
 
 .. code-block:: python
 
-    dj.create_virtual_module('what', 'nonexistent')
+    dj.VirtualModule('what', 'nonexistent')
 
 .. code-block:: python
 
@@ -215,7 +215,7 @@ decorator for declaring new tables:
 
 .. code-block:: python
 
-    uni = dj.create_virtual_module('university.py', 'dimitri_university', create_tables=True)
+    uni = dj.VirtualModule('university.py', 'dimitri_university', create_tables=True)
 
 .. code-block:: python
 

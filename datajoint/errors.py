@@ -16,10 +16,12 @@ class DataJointError(Exception):
     Base class for errors specific to DataJoint internal operation.
     """
     def __init__(self, *args):
-        from .plugin import discovered_plugins
+        from .plugin import connection_plugins, type_plugins
         self.__cause__ = PluginWarning(
-            'Unverified DataJoint plugin detected.') if discovered_plugins and any(
-            [not discovered_plugins[k]['verified'] for k in discovered_plugins]) else None
+            'Unverified DataJoint plugin detected.') if any([any(
+            [not plugins[k]['verified'] for k in plugins])
+            for plugins in [connection_plugins, type_plugins]
+            if plugins]) else None
 
     def suggest(self, *args):
         """
