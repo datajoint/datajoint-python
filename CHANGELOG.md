@@ -1,6 +1,6 @@
 ## Release notes
 
-### 0.12.5.b1 -- Feb 27, 2020
+### 0.12.5b1 -- Feb 27, 2020
 * Support DataJoint datatype and connection plugins (#715, #729) PR 730, #735
 
 ### 0.12.5 -- Feb 24, 2020
