@@ -1,4 +1,4 @@
-0.12.5dev1 -- Feb 27, 2020
+0.12.5.b1 -- Feb 27, 2020
 ----------------------
 * Support DataJoint datatype and connection plugins (#715, #729) PR 730, #735
 
