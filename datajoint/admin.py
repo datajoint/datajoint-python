@@ -21,11 +21,13 @@ def set_password(new_password=None, connection=None, update_config=None):   # pr
         config.save_local(verbose=True)
 
 
-def kill(restriction=None, connection=None):  # pragma: no cover
+def kill(restriction=None, connection=None, safemode=None):  # pragma: no cover
     """
     view and kill database connections.
     :param restriction: restriction to be applied to processlist
     :param connection: a datajoint.Connection object. Default calls datajoint.conn()
+    :param safemode: use interactive menu or programmatically terminate processes
+      default: current dj.config safemode value, itself defaulting to True
 
     Restrictions are specified as strings and can involve any of the attributes of
     information_schema.processlist: ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.
@@ -41,13 +43,23 @@ def kill(restriction=None, connection=None):  # pragma: no cover
     query = 'SELECT * FROM information_schema.processlist WHERE id <> CONNECTION_ID()' + (
         "" if restriction is None else ' AND (%s)' % restriction)
 
+    safemode = config.get('safemode', True) if safemode is None else True
+
+    if not safemode:
+        cur = connection.query(query, as_dict=True)
+        nkill = 0
+        for process in cur:
+            connection.query('kill %d' % process['ID'])
+            nkill += 1
+        return nkill
+
     while True:
-        print('  ID USER         STATE         TIME  INFO')
-        print('+--+ +----------+ +-----------+ +--+')
+        print('  ID USER         HOST          STATE         TIME    INFO')
+        print('+--+ +----------+ +-----------+ +-----------+ +-----+')
         cur = connection.query(query, as_dict=True)
         for process in cur:
             try:
-                print('{ID:>4d} {USER:<12s} {STATE:<12s} {TIME:>5d}  {INFO}'.format(**process))
+                print('{ID:>4d} {USER:<12s} {HOST:<12s} {STATE:<12s} {TIME:>7d}  {INFO}'.format(**process))
             except TypeError:
                 print(process)
         response = input('process to kill or "q" to quit > ')
