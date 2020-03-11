@@ -43,7 +43,7 @@ def kill(restriction=None, connection=None, safemode=None):  # pragma: no cover
     query = 'SELECT * FROM information_schema.processlist WHERE id <> CONNECTION_ID()' + (
         "" if restriction is None else ' AND (%s)' % restriction)
 
-    safemode = config.get('safemode', True) if safemode is None else True
+    safemode = config.get('safemode', True) if safemode is None else safemode
 
     if not safemode:
         cur = connection.query(query, as_dict=True)
