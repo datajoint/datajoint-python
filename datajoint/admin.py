@@ -32,7 +32,7 @@ def kill(restriction=None, connection=None):  # pragma: no cover
 
     Examples:
         dj.kill('HOST LIKE "%compute%"') lists only connections from hosts containing "compute".
-        dj.kill('TIME > 600') lists only connections older than 10 minutes.
+        dj.kill('TIME > 600') lists only connections in their current state for more than 10 minutes
     """
 
     if connection is None:
@@ -42,12 +42,12 @@ def kill(restriction=None, connection=None):  # pragma: no cover
         "" if restriction is None else ' AND (%s)' % restriction)
 
     while True:
-        print('  ID USER         STATE         TIME  INFO')
-        print('+--+ +----------+ +-----------+ +--+')
+        print('  ID USER         HOST          STATE         TIME    INFO')
+        print('+--+ +----------+ +-----------+ +-----------+ +-----+')
         cur = connection.query(query, as_dict=True)
         for process in cur:
             try:
-                print('{ID:>4d} {USER:<12s} {STATE:<12s} {TIME:>5d}  {INFO}'.format(**process))
+                print('{ID:>4d} {USER:<12s} {HOST:<12s} {STATE:<12s} {TIME:>7d}  {INFO}'.format(**process))
             except TypeError:
                 print(process)
         response = input('process to kill or "q" to quit > ')
@@ -63,3 +63,29 @@ def kill(restriction=None, connection=None):  # pragma: no cover
                     connection.query('kill %d' % pid)
                 except pymysql.err.InternalError:
                     print('Process not found')
+
+
+def kill_quick(restriction=None, connection=None):
+    """
+    Kill database connections without prompting. Returns number of terminated connections.
+    :param restriction: restriction to be applied to processlist
+    :param connection: a datajoint.Connection object. Default calls datajoint.conn()
+
+    Restrictions are specified as strings and can involve any of the attributes of
+    information_schema.processlist: ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.
+
+    Examples:
+        dj.kill('HOST LIKE "%compute%"') terminates connections from hosts containing "compute".
+    """
+    if connection is None:
+        connection = conn()
+
+    query = 'SELECT * FROM information_schema.processlist WHERE id <> CONNECTION_ID()' + (
+        "" if restriction is None else ' AND (%s)' % restriction)
+
+    cur = connection.query(query, as_dict=True)
+    nkill = 0
+    for process in cur:
+        connection.query('kill %d' % process['ID'])
+        nkill += 1
+    return nkill
