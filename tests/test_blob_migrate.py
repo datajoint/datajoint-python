@@ -1,5 +1,4 @@
-from nose.tools import assert_true, assert_false, assert_equal, \
-                        assert_list_equal, raises
+from nose.tools import assert_equal, raises
 
 import datajoint as dj
 import os
