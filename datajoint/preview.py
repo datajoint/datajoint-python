@@ -73,7 +73,6 @@ def repr_html(query_expression):
             font-weight: bold;
             color: black;
         }
-
         #nonprimary {
             font-weight: normal;
             color: white;

@@ -2,6 +2,7 @@
 
 import inspect
 import collections
+import re
 import uuid
 import datetime
 import decimal
@@ -31,6 +32,7 @@ class AndList(list):
 
 class Not:
     """ invert restriction """
+
     def __init__(self, restriction):
         self.restriction = restriction
 
@@ -147,3 +149,37 @@ def make_condition(query_expression, condition):
         if any(item is True for item in or_list):  # if any item is True, the whole thing is True
             return not negate
         return template % ('(%s)' % ' OR '.join(or_list)) if or_list else negate  # an empty or list is False
+
+
+def get_attribute_names_from_condition(condition):
+    """
+    extract all column names from a WHERE clause condition
+    :param condition: SQL condition
+    :return: list of inferred column names
+    This may be MySQL-specific
+    """
+
+    # remove escaped quotes
+    condition = re.sub(r'(\\\")|(\\\')', '', condition)
+
+    # remove quoted text
+    condition = re.sub(r"'[^']*'", "", condition)
+    condition = re.sub(r'"[^"]*"', '', condition)
+
+    result = set()
+
+    # find all tokens in back quotes and remove them
+    result.update(re.findall(r"`([a-z][a-z_0-9]*)`", condition))
+    condition = re.sub(r"`[a-z][a-z_0-9]*`", '', condition)
+
+    # remove space before parentheses
+    condition = re.sub(r"\s*\(", "(", condition)
+
+    # remove tokens followed by ( since they must be functions
+    condition = re.sub(r"(\b[a-z][a-z_0-9]*)\(", "(", condition)
+    remaining_tokens = set(re.findall(r"`\b[a-z][a-z_0-9]*\b", condition))
+
+    # update result removing reserved words
+    result.update(remaining_tokens - {"in", "between", "like", "and", "or"})
+
+    return result
