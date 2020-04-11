@@ -26,18 +26,6 @@ class ExternalTable(Table):
     Declare as ExternalTable(connection, database)
     """
     def __init__(self, connection, store=None, database=None):
-
-        # copy constructor -- all QueryExpressions must provide
-        if isinstance(connection, ExternalTable):
-            other = connection   # the first argument is interpreted as the other object
-            super().__init__(other)
-            self.store = other.store
-            self.spec = other.spec
-            self.database = other.database
-            self._connection = other._connection
-            return
-
-        # nominal constructor
         super().__init__()
         self.store = store
         self.spec = config.get_store_spec(store)

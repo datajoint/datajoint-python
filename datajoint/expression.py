@@ -7,8 +7,8 @@ import re
 import datetime
 import decimal
 import pandas
+import copy
 import uuid
-import binascii   # for Python 3.4 compatibility
 from .settings import config
 from .errors import DataJointError
 from .fetch import Fetch, Fetch1
@@ -37,9 +37,8 @@ def assert_join_compatibility(rel1, rel2):
 
 class AndList(list):
     """
-    A list of restrictions to by applied to a query expression.  The restrictions are AND-ed.
-    Each restriction can be a list or set or a query expression whose elements are OR-ed.
-    But the elements that are lists can contain other AndLists.
+    A list of conditions to by applied to a query expression by logical conjunction: the conditions are AND-ed.
+    All other collections (lists, sets, other entity sets, etc) are applied by logical disjunction (OR).
 
     Example:
     rel2 = rel & dj.AndList((cond1, cond2, cond3))
@@ -66,22 +65,21 @@ class QueryExpression:
     QueryExpression operators are restrict, join, proj, aggr, and union.
     """
 
-    def __init__(self, arg=None):
-        if arg is None:  # initialize
-            # initialize
-            self._restriction = AndList()
-            self._distinct = False
-            self._heading = None
-        else:  # copy
-            assert isinstance(arg, QueryExpression), 'Cannot make QueryExpression from %s' % arg.__class__.__name__
-            self._restriction = AndList(arg._restriction)
-            self._distinct = arg.distinct
-            self._heading = arg._heading
+    def __init__(self):
+        # initialize
+        self._restriction = AndList()
+        self._distinct = False
+        self._heading = None
 
     @classmethod
     def create(cls):  # pragma: no cover
         """abstract method for creating an instance"""
         assert False, "Abstract method `create` must be overridden in subclass."
+
+    def copy(self):
+        result = copy.copy(self)
+        result._restriction = AndList(self._restriction)
+        return result
 
     @property
     def connection(self):
@@ -130,7 +128,7 @@ class QueryExpression:
                         v = uuid.UUID(v)
                     except (AttributeError, ValueError):
                         raise DataJointError('Badly formed UUID {v} in restriction by `{k}`'.format(k=k, v=v)) from None
-                return "X'%s'" % binascii.hexlify(v.bytes).decode()
+                return "X'%s'" % v.bytes.hex()
             if isinstance(v, (datetime.date, datetime.datetime, datetime.time, decimal.Decimal)):
                 return '"%s"' % v
             return '%r' % v
@@ -282,9 +280,12 @@ class QueryExpression:
         :return: a restricted copy of the input argument
         See QueryExpression.restrict for more detail.
         """
-        return (Subquery.create(self)  # the HAVING clause in GroupBy can handle renamed attributes but WHERE cannot
-                if not(is_true(restriction)) and self.heading.expressions and not isinstance(self, GroupBy)
-                else self.__class__(self)).restrict(restriction)
+        if not is_true(restriction) and self.heading.expressions and not isinstance(self, GroupBy):
+            # the HAVING clause in GroupBy can handle renamed attributes but WHERE cannot
+            result = Subquery.create(self)
+        else:
+            result = self.copy()
+        return result.restrict(restriction)
 
     def __isub__(self, restriction):
         """
@@ -588,16 +589,6 @@ class Join(QueryExpression):
     Join is a private DataJoint class not exposed to users.  See QueryExpression.__mul__ for details.
     """
 
-    def __init__(self, arg=None):
-        super().__init__(arg)
-        if arg is not None:
-            assert isinstance(arg, Join), "Join copy constructor requires a Join object"
-            self._connection = arg.connection
-            self._heading = arg.heading
-            self._arg1 = arg._arg1
-            self._arg2 = arg._arg2
-            self._left = arg._left
-
     @classmethod
     def create(cls, arg1, arg2, keep_all_rows=False):
         obj = cls()
@@ -637,15 +628,6 @@ class Union(QueryExpression):
     """
 
     __count = count()
-
-    def __init__(self, arg=None):
-        super().__init__(arg)
-        if arg is not None:
-            assert isinstance(arg, Union), "Union copy constructore requires a Union object"
-            self._connection = arg.connection
-            self._heading = arg.heading
-            self._arg1 = arg._arg1
-            self._arg2 = arg._arg2
 
     @classmethod
     def create(cls, arg1, arg2):
@@ -687,14 +669,6 @@ class Projection(QueryExpression):
     Projection is a private DataJoint class that implements the projection operator.
     See QueryExpression.proj() for user interface.
     """
-
-    def __init__(self, arg=None):
-        super().__init__(arg)
-        if arg is not None:
-            assert isinstance(arg, Projection), "Projection copy constructor requires a Projection object."
-            self._connection = arg.connection
-            self._heading = arg.heading
-            self._arg = arg._arg
 
     @staticmethod
     def prepare_attribute_lists(arg, attributes, named_attributes):
@@ -775,16 +749,6 @@ class GroupBy(QueryExpression):
     GroupBy is a private class in DataJoint, not exposed to users.
     """
 
-    def __init__(self, arg=None):
-        super().__init__(arg)
-        if arg is not None:
-            # copy constructor
-            assert isinstance(arg, GroupBy), "GroupBy copy constructor requires a GroupBy object"
-            self._connection = arg.connection
-            self._heading = arg.heading
-            self._arg = arg._arg
-            self._keep_all_rows = arg._keep_all_rows
-
     @classmethod
     def create(cls, arg, group, attributes, named_attributes, keep_all_rows=False):
         if inspect.isclass(group) and issubclass(group, QueryExpression):
@@ -822,15 +786,6 @@ class Subquery(QueryExpression):
     A subquery of a subquery is a just a copy of the subquery with no change in SQL.
     """
     __count = count()
-
-    def __init__(self, arg=None):
-        super().__init__(arg)
-        if arg is not None:
-            # copy constructor
-            assert isinstance(arg, Subquery)
-            self._connection = arg.connection
-            self._heading = arg.heading
-            self._arg = arg._arg
 
     @classmethod
     def create(cls, arg):
@@ -928,9 +883,9 @@ class U:
             query_expression = query_expression()   # instantiate if a class
         if not isinstance(query_expression, QueryExpression):
             raise DataJointError('Set U can only be joined with a QueryExpression.')
-        copy = query_expression.__class__(query_expression)  # invoke copy constructor
-        copy._heading = copy.heading.extend_primary_key(self.primary_key)
-        return copy
+        result = query_expression.copy()
+        result._heading = result.heading.extend_primary_key(self.primary_key)
+        return result
 
     def aggr(self, group, **named_attributes):
         """
