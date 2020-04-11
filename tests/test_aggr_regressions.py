@@ -4,20 +4,16 @@ Regression tests for issues 386, 449, 484, and 558 — all related to processing
 
 import itertools
 from nose.tools import assert_equal, raises
-
-
 import datajoint as dj
 from . import PREFIX, CONN_INFO
 
 schema = dj.Schema(PREFIX + '_aggr_regress', connection=dj.conn(**CONN_INFO))
 
-schema = dj.schema('test')
-
-
 # --------------- ISSUE 386 -------------------
 # Issue 386 resulted from the loss of aggregated attributes when the aggregation was used as the restrictor
 #     Q & (R.aggr(S, n='count(*)') & 'n=2')
 #     Error: Unknown column 'n' in HAVING
+
 
 @schema
 class R(dj.Lookup):
@@ -41,8 +37,7 @@ class S(dj.Lookup):
     -> R
     s : int
     """
-
-# S.insert(itertools.product('ABCDF', range(10)))
+    contents = itertools.product('ABCDF', range(10))
 
 
 def test_issue386():
