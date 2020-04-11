@@ -72,9 +72,6 @@ class Heading:
     def __len__(self):
         return 0 if self.attributes is None else len(self.attributes)
 
-    def __bool__(self):
-        return self.attributes is not None
-
     @property
     def names(self):
         return [k for k in self.attributes]
@@ -149,8 +146,11 @@ class Heading:
 
     def init_from_database(self, conn, database, table_name, context):
         """
-        initialize heading from a database table.  The table must exist already.
+        initialize heading from a database table. The table must exist already.
+        Loading is lazy: if already loaded, nothing happens.
         """
+        if self.attributes is not None:
+            return
         info = conn.query('SHOW TABLE STATUS FROM `{database}` WHERE name="{table_name}"'.format(
             table_name=table_name, database=database), as_dict=True).fetchone()
         if info is None:

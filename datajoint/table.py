@@ -31,24 +31,25 @@ class Table(QueryExpression):
     table name, database, and definition.
     A Relation implements insert and delete methods in addition to inherited relational operators.
     """
-    _heading = None
-    database = None
-    _log_ = None
-    declaration_context = None
 
-    # -------------- required by QueryExpression ----------------- #
+    table_name = None  # must be defined by subclass
+
+    # These properties must be set by the schema decorator (schemas.py) at class level or by FreeTable at instance level
+    database = None
+    declaration_context = None
+    _connection = None
+    _heading = None
+
+    def __init__(self):
+        assert self.table_name is not None
+        assert self.database is not None
+        assert self._connection is not None
+        assert self._heading is not None
+        super().__init__(self.full_table_name)
+
     @property
-    def heading(self):
-        """
-        Returns the table heading. If the table is not declared, attempts to declare it and return heading.
-        :return: table heading
-        """
-        if self._heading is None:
-            self._heading = Heading()  # instance-level heading
-        if not self._heading and self.connection is not None:  # lazy loading of heading
-            self._heading.init_from_database(
-                self.connection, self.database, self.table_name, self.declaration_context)
-        return self._heading
+    def definition(self):
+        raise NotImplementedError('Subclasses of Table must implement the `definition` property')
 
     def declare(self, context=None):
         """
@@ -103,18 +104,6 @@ class Table(QueryExpression):
                         print('Table altered')
                     self._log('Altered ' + self.full_table_name)
 
-    @property
-    def from_clause(self):
-        """
-        :return: the FROM clause of SQL SELECT statements.
-        """
-        return self.full_table_name
-
-    def get_select_fields(self, select_fields=None):
-        """
-        :return: the selected attributes from the SQL SELECT statement.
-        """
-        return '*' if select_fields is None else self.heading.project(select_fields).as_sql
 
     def parents(self, primary=None):
         """
@@ -566,8 +555,8 @@ class Table(QueryExpression):
                2. the update attribute must not be in primary key
 
             Example:
-            >>> (v2p.Mice() & key).update('mouse_dob', '2011-01-01')
-            >>> (v2p.Mice() & key).update( 'lens')   # set the value to NULL
+            >>> (v2p.Mice() & key)._update('mouse_dob', '2011-01-01')
+            >>> (v2p.Mice() & key)._update( 'lens')   # set the value to NULL
         """
         if len(self) != 1:
             raise DataJointError('Update is only allowed on one tuple at a time')
@@ -671,20 +660,11 @@ class Log(Table):
     """
 
     def __init__(self, arg, database=None, skip_logging=False):
-        super().__init__()
-
-        if isinstance(arg, Log):
-            # copy constructor
-            self.database = arg.database
-            self.skip_logging = arg.skip_logging
-            self._connection = arg._connection
-            self._definition = arg._definition
-            self._user = arg._user
-            return
 
         self.database = database
         self.skip_logging = skip_logging
         self._connection = arg
+        self._heading = Heading()
         self._definition = """    # event logging table for `{database}`
         id       :int unsigned auto_increment     # event order id
         ---
@@ -694,6 +674,8 @@ class Log(Table):
         host=""  :varchar(255)                    # system hostname
         event="" :varchar(255)                    # event message
         """.format(database=database)
+
+        super().__init__()
 
         if not self.is_declared:
             self.declare()
