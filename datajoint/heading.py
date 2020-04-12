@@ -28,16 +28,12 @@ class Attribute(namedtuple('_Attribute', default_attribute_properties)):
 
     @property
     def sql_type(self):
-        """
-        :return: datatype (as string) in database. In most cases, it is the same as self.type
-        """
+        """ :return: datatype (as string) in database. In most cases, it is the same as self.type """
         return UUID_DATA_TYPE if self.uuid else self.type
 
     @property
     def sql_comment(self):
-        """
-        :return: full comment for the SQL declaration. Includes custom type specification
-        """
+        """ :return: full comment for the SQL declaration. Includes custom type specification """
         return (':uuid:' if self.uuid else '') + self.comment
 
     @property

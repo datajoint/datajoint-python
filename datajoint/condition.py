@@ -151,7 +151,7 @@ def make_condition(query_expression, condition):
         return template % ('(%s)' % ' OR '.join(or_list)) if or_list else negate  # an empty or list is False
 
 
-def get_attribute_names_from_condition(condition):
+def get_attribute_names_from_sql_expression(condition):
     """
     extract all column names from a WHERE clause condition
     :param condition: SQL condition

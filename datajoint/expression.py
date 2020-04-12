@@ -7,7 +7,7 @@ from .settings import config
 from .errors import DataJointError
 from .fetch import Fetch, Fetch1
 from .preview import preview, repr_html
-from .condition import AndList, Not, make_condition, assert_join_compatibility, get_attribute_names_from_condition
+from .condition import AndList, Not, make_condition, assert_join_compatibility, get_attribute_names_from_sql_expression
 
 logger = logging.getLogger(__name__)
 
@@ -117,67 +117,6 @@ class QueryExpression:
 
     # --------- query operators -----------
 
-    def __mul__(self, other):
-        """
-        natural join of query expressions `self` and `other`
-        """
-        return other * self if isinstance(other, U) else Join.create(self, other)
-
-    def __add__(self, other):
-        """
-        union of two entity sets `self` and `other`
-        """
-        return Union.create(self, other)
-
-    def proj(self, *attributes, **named_attributes):
-        """
-        Projection operator.
-        :param attributes:  attributes to be included in the result. (The primary key is already included).
-        :param named_attributes: new attributes computed or renamed from existing attributes.
-        :return: the projected expression.
-        Primary key attributes cannot be excluded but may be renamed.
-        Thus self.proj() leaves only the primary key attributes of self.
-        self.proj(a='id') renames the attribute 'id' into 'a' and includes 'a' in the projection.
-        self.proj(a='expr') adds a new field a with the value computed with an SQL expression.
-        self.proj(a='(id)') adds a new computed field named 'a' that has the same value as id
-        Each attribute can only be used once in attributes or named_attributes.
-        If the attribute list contains an Ellipsis ..., then all secondary attributes are included
-        If an entry of the attribute list starts with a dash, e.g. '-attr', then the secondary attribute
-        attr will be excluded, if already present but ignored if not found.
-        """
-        return Projection.create(self, attributes, named_attributes)
-
-    def aggr(self, group, *attributes, keep_all_rows=False, **named_attributes):
-        """
-        Aggregation/projection operator
-        :param group:  an entity set whose entities will be grouped per entity of `self`
-        :param attributes: attributes of self to include in the result
-        :param keep_all_rows: True = preserve the number of elements in the result (equivalent of LEFT JOIN in SQL)
-        :param named_attributes: renamings and computations on attributes of self and group
-        :return: an entity set representing the result of the aggregation/projection operator of entities from `group`
-        per entity of `self`
-        """
-        return GroupBy.create(self, group, keep_all_rows=keep_all_rows,
-                              attributes=attributes, named_attributes=named_attributes)
-
-    aggregate = aggr  # aliased name for aggr
-
-    def __and__(self, restriction):
-        """
-        Restriction operator
-        :return: a restricted copy of the input argument
-        See QueryExpression.restrict for more detail.
-        """
-        return self.restrict(restriction)
-
-    def __sub__(self, restriction):
-        """
-        inverted restriction:
-        :return: a restricted copy of the argument
-        See QueryExpression.restrict for more detail.
-        """
-        return self.restrict(Not(restriction))
-
     def restrict(self, restriction):
         """
         Produces a new expression with the new restriction applied.
@@ -228,7 +167,7 @@ class QueryExpression:
             return self  # restriction has no effect
 
         # check that all attributes in condition are present in the query
-        attributes = get_attribute_names_from_condition(new_condition)
+        attributes = get_attribute_names_from_sql_expression(new_condition)
         try:
             raise DataJointError("Attribute `%s` is not found in query." % next(
                 attr for attr in attributes if attr not in self.heading.names))
@@ -237,10 +176,10 @@ class QueryExpression:
 
         # If the new condition uses any aliased attributes, a subquery is required
         # However, GroupBy's HAVING statement can work find with aliased attributes.
-        subquery_required = not isinstance(self, GroupBy) and any(
+        need_subquery = not isinstance(self, GroupBy) and any(
             self.heading[attr].sql_expression for attr in attributes)
 
-        if subquery_required:
+        if need_subquery:
             result = QueryExpression(self)
         else:
             result = self.copy()
@@ -248,6 +187,122 @@ class QueryExpression:
         result.restriction.append(restriction)
         return result
 
+    def __and__(self, restriction):
+        """
+        Restriction operator
+        :return: a restricted copy of the input argument
+        See QueryExpression.restrict for more detail.
+        """
+        return self.restrict(restriction)
+
+    def __sub__(self, restriction):
+        """
+        inverted restriction:
+        :return: a restricted copy of the argument
+        See QueryExpression.restrict for more detail.
+        """
+        return self.restrict(Not(restriction))
+
+    def __mul__(self, other):
+        """
+        natural join of query expressions `self` and `other`
+        """
+        return other * self if isinstance(other, U) else Join.create(self, other)
+
+    def __add__(self, other):
+        """
+        union of two entity sets `self` and `other`
+        """
+        return Union.create(self, other)
+
+    def proj(self, *attributes, **named_attributes):
+        """
+        Projection operator.
+        :param attributes:  attributes to be included in the result. (The primary key is already included).
+        :param named_attributes: new attributes computed or renamed from existing attributes.
+        :return: the projected expression.
+        Primary key attributes cannot be excluded but may be renamed.
+        Thus self.proj() leaves only the primary key attributes of self.
+        self.proj(...) -- includes all
+        self.proj(a='id') renames the attribute 'id' into 'a' and includes 'a' in the projection.
+        self.proj(a='expr') adds a new field a with the value computed with an SQL expression.
+        self.proj(a='(id)') adds a new computed field named 'a' that has the same value as id
+        Each attribute can only be used once in attributes or named_attributes.
+        If the attribute list contains an Ellipsis ..., then all secondary attributes are included
+        If an entry of the attribute list starts with a dash, e.g. '-attr', then the secondary attribute
+        attr will be excluded, if already present but ignored if not found.
+        """
+
+        duplication_pattern = re.compile(r'\s*\(\s*(?P<name>[a-z][a-z_0-9]*)\s*\)\s*')
+        rename_pattern = re.compile(r'\s*(?P<name>[a-z][a-z_0-9]*)\s*')
+
+        replicate_map = {k: m.group('name')
+                           for k, m in ((k, duplication_pattern.match(v)) for k, v in named_attributes.items()) if m}
+        rename_map = {k: m.group('name')
+                           for k, m in ((k, rename_pattern.match(v)) for k, v in named_attributes.items()) if m}
+        compute_map = {k: v for k, v in named_attributes.items()
+                       if not duplication_pattern.match(v) and not rename_pattern.match(v)}
+
+        # include primary key
+        attributes = set(attributes)
+        attributes.update((k for k in self.primary_key if k not in rename_map.items()))
+
+        # include all secondary attributes with Ellipsis
+        if Ellipsis in attributes:
+            attributes.discard(Ellipsis)
+            attributes.update((a for a in self.heading.secondary_attributes if a not in attributes))
+
+        # exclude attributes
+        excluded_attributes = set(a.lstrip('-').strip() for a in attributes if a.startswith('-'))
+        try:
+            raise DataJointError("Cannot exclude primary key attribute %s", next(
+                a for a in excluded_attributes if a in self.primary_key))
+        except StopIteration:
+            pass  # all ok
+        attributes.difference_update(excluded_attributes)
+
+        # check that all mentioned names are present in heading
+        mentions = attributes.union(excluded_attributes).union(replicate_map.values()).union(rename_map.values())
+        try:
+            raise DataJointError("Attribute '%s' not found." % next(a for a in mentions if not self.heading.names))
+        except StopIteration:
+            pass  # all ok
+
+        # require a subquery if the projection remaps any remapped attributes
+        computation_attributes = set(q for v in compute_map.values() for q in get_attribute_names_from_sql_expression(v))
+        need_subquery = any(self.heading[name].sql_expression is not None
+                               for name in set(rename_map.values()).union(replicate_map.values()))
+
+        if not need_subquery and self.restriction:
+            restriction_attributes = get_attribute_names_from_sql_expression(make_condition(self, self.restriction))
+            # need a subquery if the restriction applies to attributes that have been renamed
+            need_subquery = any(self.heading[name].sql_expression is not None for name in restriction_attributes)
+        result = QueryExpression(self) if need_subquery else self.copy()
+        result.heading.select(attributes, rename_map=rename_map, replicate_map=replicate_map, compute_map=compute_map)
+        return result
+
+    def aggr(self, group, *attributes, keep_all_rows=False, **named_attributes):
+        """
+        Aggregation/projection operator
+        :param group:  an entity set whose entities will be grouped per entity of `self`
+        :param attributes: attributes of self to include in the result
+        :param keep_all_rows: True = preserve the number of elements in the result (equivalent of LEFT JOIN in SQL)
+        :param named_attributes: renamings and computations on attributes of self and group
+        :return: an entity set representing the result of the aggregation/projection operator of entities from `group`
+        per entity of `self`
+        """
+        return GroupBy.create(self, group, keep_all_rows=keep_all_rows,
+                              attributes=attributes, named_attributes=named_attributes)
+
+    aggregate = aggr  # aliased name for aggr
+
+    def make_sql(self, select_fields=None):
+        return 'SELECT {fields} FROM {from_}{where}'.format(
+            fields=("DISTINCT " if self.distinct else "") + self.get_select_fields(select_fields),
+            from_=self.from_clause,
+            where=self.where_clause)
+
+    # ---------- Fetch operators --------------------
     @property
     def fetch1(self):
         return Fetch1(self)
@@ -275,12 +330,6 @@ class QueryExpression:
         :return: query result
         """
         return self.fetch(order_by="KEY DESC", limit=limit, **fetch_kwargs)[::-1]
-
-    def make_sql(self, select_fields=None):
-        return 'SELECT {fields} FROM {from_}{where}'.format(
-            fields=("DISTINCT " if self.distinct else "") + self.get_select_fields(select_fields),
-            from_=self.from_clause,
-            where=self.where_clause)
 
     def __len__(self):
         """
@@ -436,82 +485,6 @@ class Union(QueryExpression):
             from2=self._arg2.from_clause,
             where2=self._arg2.where_clause)) % next(self.__count)
 
-
-class Projection(QueryExpression):
-    """
-    Projection is a private DataJoint class that implements the projection operator.
-    See QueryExpression.proj() for user interface.
-    """
-
-    @staticmethod
-    def prepare_attribute_lists(arg, attributes, named_attributes):
-        # check that all attributes are strings
-        has_ellipsis = Ellipsis in attributes
-        attributes = [a for a in attributes if a is not Ellipsis]
-        try:
-            raise DataJointError("Attribute names must be strings or ..., got %s" % next(
-                type(a) for a in attributes if not isinstance(a, str)))
-        except StopIteration:
-            pass
-        named_attributes = {k: v.strip() for k, v in named_attributes.items()}  # clean up
-        excluded_attributes = set(a.lstrip('-').strip() for a in attributes if a.startswith('-'))
-        if has_ellipsis:
-            included_already = set(named_attributes.values())
-            attributes = [a for a in arg.heading.secondary_attributes if a not in included_already]
-        # process excluded attributes
-        attributes = [a for a in attributes if a not in excluded_attributes]
-        return attributes, named_attributes
-
-    @classmethod
-    def create(cls, arg, attributes, named_attributes, include_primary_key=True):
-        """
-        :param arg: The QueryExpression to be projected
-        :param attributes:  attributes to select
-        :param named_attributes:  new attributes to create by renaming or computing
-        :param include_primary_key:  True if the primary key must be included even if it's not in attributes.
-        :return: the resulting Projection object
-        """
-        obj = cls()
-        obj._connection = arg.connection
-
-        if inspect.isclass(arg) and issubclass(arg, QueryExpression):
-            arg = arg()  # instantiate if a class
-
-        attributes, named_attributes = Projection.prepare_attribute_lists(arg, attributes, named_attributes)
-        obj._distinct = arg.distinct
-
-        if include_primary_key:  # include primary key of the QueryExpression
-            attributes = (list(a for a in arg.primary_key if a not in named_attributes.values()) +
-                          list(a for a in attributes if a not in arg.primary_key))
-        else:
-            # make distinct if the primary key is not completely selected
-            obj._distinct = obj._distinct or not set(arg.primary_key).issubset(
-                set(attributes) | set(named_attributes.values()))
-        if obj._distinct or cls._need_subquery(arg, attributes, named_attributes):
-            obj._arg = Subquery.create(arg)
-            obj._heading = obj._arg.heading.project(attributes, named_attributes)
-            if not include_primary_key:
-                obj._heading = obj._heading.extend_primary_key(attributes)
-        else:
-            obj._arg = arg
-            obj._heading = obj._arg.heading.project(attributes, named_attributes)
-            obj &= arg.restriction  # copy restriction when no subquery
-        return obj
-
-    @staticmethod
-    def _need_subquery(arg, attributes, named_attributes):
-        """
-        Decide whether the projection argument needs to be wrapped in a subquery
-        """
-        if arg.heading.expressions or arg.distinct:  # argument has any renamed (computed) attributes
-            return True
-        restricting_attributes = arg.attributes_in_restriction()
-        return (not restricting_attributes.issubset(attributes) or  # if any restricting attribute is projected out or
-                any(v.strip() in restricting_attributes for v in named_attributes.values()))  # or renamed
-
-    @property
-    def from_clause(self):
-        return self._arg.from_clause
 
 
 class GroupBy(QueryExpression):

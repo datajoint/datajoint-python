@@ -642,7 +642,7 @@ class FreeTable(Table):
             self._connection = arg
 
     def __repr__(self):
-        return "FreeTable(`%s`.`%s`)" % (self.database, self._table_name)
+        return "FreeTable(`%s`.`%s`)\n" % (self.database, self._table_name) + super().__repr__()
 
     @property
     def table_name(self):
