@@ -222,24 +222,28 @@ class QueryExpression:
         :param named_attributes: new attributes computed or renamed from existing attributes.
         :return: the projected expression.
         Primary key attributes cannot be excluded but may be renamed.
-        Thus self.proj() leaves only the primary key attributes of self.
-        self.proj(...) -- includes all
-        self.proj(a='id') renames the attribute 'id' into 'a' and includes 'a' in the projection.
-        self.proj(a='expr') adds a new field a with the value computed with an SQL expression.
-        self.proj(a='(id)') adds a new computed field named 'a' that has the same value as id
-        Each attribute can only be used once in attributes or named_attributes.
-        If the attribute list contains an Ellipsis ..., then all secondary attributes are included
-        If an entry of the attribute list starts with a dash, e.g. '-attr', then the secondary attribute
-        attr will be excluded, if already present but ignored if not found.
+        If the attribute list contains an Ellipsis ..., then all secondary attributes are included too
+        Prefixing an attribute name with a dash '-attr' removes the attribute from the list if present.
+        Keyword arguments can be used to rename attributes as in name='attr', duplicate them as in name='(attr)', or
+        self.proj(...) or self.proj(Ellipsis) -- include all attributes (return self)
+        self.proj() -- include only primary key
+        self.proj('attr1', 'attr2')  -- include primary key and attributes attr1 and attr2
+        self.proj(..., '-attr1', '-attr2')  -- include attributes except attr1 and attr2
+        self.proj(name1='attr1') -- include primary key and 'attr1' renamed as name1
+        self.proj('attr1', dup='(attr1)') -- include primary key and attribute attr1 twice, with the duplicate 'dup'
+        self.proj(k='abs(attr1)') adds the new attribute k with the value computed as an expression (SQL syntax)
+        from other attributes available before the projectin.
+
+        Each attribute name can only be used once.
         """
 
         duplication_pattern = re.compile(r'\s*\(\s*(?P<name>[a-z][a-z_0-9]*)\s*\)\s*')
         rename_pattern = re.compile(r'\s*(?P<name>[a-z][a-z_0-9]*)\s*')
 
         replicate_map = {k: m.group('name')
-                           for k, m in ((k, duplication_pattern.match(v)) for k, v in named_attributes.items()) if m}
+                         for k, m in ((k, duplication_pattern.match(v)) for k, v in named_attributes.items()) if m}
         rename_map = {k: m.group('name')
-                           for k, m in ((k, rename_pattern.match(v)) for k, v in named_attributes.items()) if m}
+                      for k, m in ((k, rename_pattern.match(v)) for k, v in named_attributes.items()) if m}
         compute_map = {k: v for k, v in named_attributes.items()
                        if not duplication_pattern.match(v) and not rename_pattern.match(v)}
 
@@ -262,9 +266,26 @@ class QueryExpression:
         attributes.difference_update(excluded_attributes)
 
         # check that all mentioned names are present in heading
-        mentions = attributes.union(excluded_attributes).union(replicate_map.values()).union(rename_map.values())
+        mentions = attributes.union(replicate_map.values()).union(rename_map.values())
         try:
             raise DataJointError("Attribute '%s' not found." % next(a for a in mentions if not self.heading.names))
+        except StopIteration:
+            pass  # all ok
+
+        # check that newly created attributes do not clash with any other selected attributes
+        try:
+            raise DataJointError("Attribute `%s` already exists" % next(
+                a for a in rename_map if a in attributes.union(compute_map).union(replicate_map)))
+        except StopIteration:
+            pass  # all ok
+        try:
+            raise DataJointError("Attribute `%s` already exists" % next(
+                a for a in compute_map if a in attributes.union(rename_map).union(replicate_map)))
+        except StopIteration:
+            pass  # all ok
+        try:
+            raise DataJointError("Attribute `%s` already exists" % next(
+                a for a in replicate_map if a in attributes.union(rename_map).union(compute_map)))
         except StopIteration:
             pass  # all ok
 
