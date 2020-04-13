@@ -151,12 +151,12 @@ def make_condition(query_expression, condition):
         return template % ('(%s)' % ' OR '.join(or_list)) if or_list else negate  # an empty or list is False
 
 
-def get_attribute_names_from_sql_expression(condition):
+def get_identifiers_from_sql_expression(condition):
     """
-    extract all column names from a WHERE clause condition
+    extract all presumed column names from a WHERE clause condition
     :param condition: SQL condition
     :return: list of inferred column names
-    This may be MySQL-specific
+    This may be MySQL-specific.
     """
 
     # remove escaped quotes

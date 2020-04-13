@@ -129,13 +129,15 @@ class Heading:
             formats=[v.dtype for v in self.attributes.values()]))
 
     @property
-    def as_sql(self):
+    def as_sql(self, fields=None):
         """
         represent heading as SQL field list
         """
+        if fields is None:
+            fields = self.names
         return ','.join('`%s`' % name if self.attributes[name].sql_expression is None
                         else '%s as `%s`' % (self.attributes[name].sql_expression, name)
-                        for name in self.names)
+                        for name in fields)
 
     def __iter__(self):
         return iter(self.attributes)

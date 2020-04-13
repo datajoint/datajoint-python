@@ -7,7 +7,7 @@ from .settings import config
 from .errors import DataJointError
 from .fetch import Fetch, Fetch1
 from .preview import preview, repr_html
-from .condition import AndList, Not, make_condition, assert_join_compatibility, get_attribute_names_from_sql_expression
+from .condition import AndList, Not, make_condition, assert_join_compatibility, get_identifiers_from_sql_expression
 
 logger = logging.getLogger(__name__)
 
@@ -98,17 +98,6 @@ class QueryExpression:
             assert isinstance(self.source, str)
             return self.source
 
-    @property
-    def where_clause(self):
-        """
-         Translate the input arg into the equivalent SQL condition (a string)
-         :param arg: any valid restriction object.
-         :return: an SQL condition string or a boolean value.
-         """
-        cond = make_condition(self, self.restriction)
-
-        return '' if cond is True else ' WHERE %s' % cond
-
     def get_select_fields(self, select_fields=None):
         """
         :return: string specifying the attributes to return
@@ -167,7 +156,7 @@ class QueryExpression:
             return self  # restriction has no effect
 
         # check that all attributes in condition are present in the query
-        attributes = get_attribute_names_from_sql_expression(new_condition)
+        attributes = get_identifiers_from_sql_expression(new_condition)
         try:
             raise DataJointError("Attribute `%s` is not found in query." % next(
                 attr for attr in attributes if attr not in self.heading.names))
@@ -289,15 +278,19 @@ class QueryExpression:
         except StopIteration:
             pass  # all ok
 
-        # require a subquery if the projection remaps any remapped attributes
-        computation_attributes = set(q for v in compute_map.values() for q in get_attribute_names_from_sql_expression(v))
-        need_subquery = any(self.heading[name].sql_expression is not None
-                               for name in set(rename_map.values()).union(replicate_map.values()))
+        # need a subquery if the projection remaps any remapped attributes
+        used = set(q for v in compute_map.values() for q in get_identifiers_from_sql_expression(v))
+        used.update(rename_map.values())
+        used.update(replicate_map.values())
+        used.intersection_update(self.heading.names)
+        need_subquery = any(self.heading[name].sql_expression is not None for name in used)
 
         if not need_subquery and self.restriction:
-            restriction_attributes = get_attribute_names_from_sql_expression(make_condition(self, self.restriction))
+            restriction_attributes = set(
+                get_identifiers_from_sql_expression(make_condition(self, self.restriction)))
             # need a subquery if the restriction applies to attributes that have been renamed
             need_subquery = any(self.heading[name].sql_expression is not None for name in restriction_attributes)
+
         result = QueryExpression(self) if need_subquery else self.copy()
         result.heading.select(attributes, rename_map=rename_map, replicate_map=replicate_map, compute_map=compute_map)
         return result
@@ -317,11 +310,20 @@ class QueryExpression:
 
     aggregate = aggr  # aliased name for aggr
 
-    def make_sql(self, select_fields=None):
+    def make_sql(self, fields=None):
+        if fields is None:
+            fields = self.heading.names
+        else:
+            fields = [f for f in fields if f in self.heading.names]
+
+        from_ =
+
+        where = make_condition(self, self.restriction)  # where clause
+
         return 'SELECT {fields} FROM {from_}{where}'.format(
-            fields=("DISTINCT " if self.distinct else "") + self.get_select_fields(select_fields),
+            fields=("DISTINCT " if self.distinct else "") + self.heading.as_sql(fields),
             from_=self.from_clause,
-            where=self.where_clause)
+            where='' if where is True else ' WHERE %s' % where)
 
     # ---------- Fetch operators --------------------
     @property
