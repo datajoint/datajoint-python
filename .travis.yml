@@ -11,7 +11,7 @@ env:
 services: 
 - docker
 main: &main
-      stage: Alpine
+      stage: "Nosetests: Alpine"
       os: linux
       dist: xenial # precise, trusty, xenial, bionic
       language: shell
@@ -69,7 +69,7 @@ jobs:
       - MYSQL_VER: "5.6"
     - stage: Coverage
       os: linux
-      language: shell
+      language: python
       script:
         - pip install nose nose-cov python-coveralls
         - nosetests -vv --with-coverage --cover-package=datajoint
