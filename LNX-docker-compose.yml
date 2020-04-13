@@ -33,10 +33,9 @@ services:
     command: >
       /bin/sh -c
        "
-        pip install --user nose nose-cov coveralls .;
+        pip install --user nose .;
         pip freeze | grep datajoint;
-        coveralls;
-        nosetests -vsw tests --with-coverage --cover-package=datajoint;
+        nosetests -vsw tests;
         # jupyter notebook;
        "
     # ports:

@@ -67,3 +67,10 @@ jobs:
       env:
       - PY_VER: "3.5"
       - MYSQL_VER: "5.6"
+    - stage: Coverage
+      os: linux
+      language: shell
+      script:
+        - pip install nose nose-cov python-coveralls
+        - nosetests -vv --with-coverage --cover-package=datajoint
+        - coveralls
