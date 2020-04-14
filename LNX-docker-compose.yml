@@ -3,14 +3,54 @@ x-net: &net
   networks:
       - main
 services:
-  app:
+  db:
     <<: *net
-    image: datajoint/pydev:${PY_VER}-alpine${ALPINE_VER}
+    image: datajoint/mysql:$MYSQL_VER
+    environment:
+      - MYSQL_ROOT_PASSWORD=simple
+    # ports:
+    #   - "3306:3306"
+    # volumes:
+    #   - ./mysql/data:/var/lib/mysql
+  minio:
+    <<: *net
+    image: minio/minio:$MINIO_VER
+    environment:
+      - MINIO_ACCESS_KEY=datajoint
+      - MINIO_SECRET_KEY=datajoint
+    # ports:
+    #   - "9000:9000"
+    # volumes:
+    #   - ./minio/config:/root/.minio
+    #   - ./minio/data:/data
+    command: server /data
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://minio:9000/minio/health/live"]
+      timeout: 5s
+      retries: 60
+      interval: 1s
+  fakeservices.datajoint.io:
+    <<: *net
+    image: raphaelguzman/nginx:v0.0.4
+    environment:
+    - ADD_db_TYPE=DATABASE
+    - ADD_db_ENDPOINT=db:3306
+    - ADD_minio_TYPE=MINIO
+    - ADD_minio_ENDPOINT=minio:9000
+    - ADD_minio_PREFIX=/
+    # ports:
+    #   - "9000:9000"
+    #   - "443:443"
+    #   - "3306:3306"
     depends_on:
       db:
         condition: service_healthy
       minio:
         condition: service_healthy
+  app:
+    <<: *net
+    image: datajoint/pydev:${PY_VER}-alpine${ALPINE_VER}
+    depends_on:
       fakeservices.datajoint.io:
         condition: service_healthy
     environment:
@@ -45,55 +85,5 @@ services:
       - .:/src
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       # - ./notebooks:/home/dja/notebooks
-  db:
-    <<: *net
-    image: datajoint/mysql:$MYSQL_VER
-    environment:
-      - MYSQL_ROOT_PASSWORD=simple
-    # ports:
-    #   - "3306:3306"
-    # volumes:
-    #   - ./mysql/data:/var/lib/mysql
-  minio:
-    <<: *net
-    image: minio/minio:$MINIO_VER
-    environment:
-      - MINIO_ACCESS_KEY=datajoint
-      - MINIO_SECRET_KEY=datajoint
-    # ports:
-    #   - "9000:9000"
-    # volumes:
-    #   - ./minio/config:/root/.minio
-    #   - ./minio/data:/data
-    command: server /data
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://minio:9000/minio/health/live"]
-      timeout: 5s
-      retries: 60
-      interval: 1s
-  fakeservices.datajoint.io:
-    <<: *net
-    image: nginx:alpine
-    environment:
-      - URL=datajoint.io
-      - SUBDOMAINS=fakeservices
-      - MINIO_SERVER=http://minio:9000
-      - MYSQL_SERVER=db:3306
-    entrypoint: /entrypoint.sh
-    healthcheck:
-      test: wget --quiet --tries=1 --spider https://fakeservices.datajoint.io:443/minio/health/live || exit 1
-      timeout: 5s
-      retries: 300
-      interval: 1s
-    # ports:
-    #   - "9000:9000"
-    #   - "443:443"
-    #   - "3306:3306"
-    volumes:
-      - ./tests/nginx/base.conf:/base.conf
-      - ./tests/nginx/nginx.conf:/nginx.conf
-      - ./tests/nginx/entrypoint.sh:/entrypoint.sh
-      - ./tests/nginx/fullchain.pem:/certs/fullchain.pem
-      - ./tests/nginx/privkey.pem:/certs/privkey.pem
 networks:
   main:
