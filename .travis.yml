@@ -19,6 +19,12 @@ main: &main
         - docker-compose -f LNX-docker-compose.yml up --build --exit-code-from app
 jobs:
   include:
+    - stage: "Lint: Python Syntax"
+      language: python
+      install:
+        - pip install flake8
+      script:
+        - flake8 datajoint --count --select=E9,F63,F7,F82 --show-source --statistics
     - <<: *main
       env:
       - PY_VER: "3.8"
@@ -67,3 +73,9 @@ jobs:
       env:
       - PY_VER: "3.5"
       - MYSQL_VER: "5.6"
+    - stage: "Lint: Python Style"
+      language: python
+      install:
+        - pip install flake8
+      script:
+        - flake8 datajoint --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
