@@ -183,7 +183,8 @@ class Table(QueryExpression):
         :param replace: If True, replaces the existing tuple.
         :param skip_duplicates: If True, silently skip duplicate inserts.
         :param ignore_extra_fields: If False, fields that are not in the heading raise error.
-        :param allow_direct_insert: applies only in auto-populated tables. If False (default), insert are allowed only from inside the make callback.
+        :param allow_direct_insert: applies only in auto-populated tables.
+                                    If False (default), insert are allowed only from inside the make callback.
 
         Example::
         >>> relation.insert([
@@ -537,7 +538,7 @@ class Table(QueryExpression):
                                 attr_list=', '.join(r[0] for r in lst),
                                 props=index_props,
                                 class_name=lookup_class_name(parent_name, context) or parent_name,
-                                proj_list=','.join('{}="{}"'.format(a,b) for a, b in lst))
+                                proj_list=','.join('{}="{}"'.format(a, b) for a, b in lst))
                             attributes_declared.update(fk_props['attr_map'])
             if do_include:
                 attributes_declared.add(attr.name)

@@ -56,7 +56,7 @@ class ExternalTable(Table):
         size      :bigint unsigned     # size of object in bytes
         attachment_name=null : varchar(255)  # the filename of an attachment
         filepath=null : varchar(1000)  # relative filepath or attachment filename
-        contents_hash=null : uuid      # used for the filepath datatype 
+        contents_hash=null : uuid      # used for the filepath datatype
         timestamp=CURRENT_TIMESTAMP  :timestamp   # automatic timestamp
         """
 
@@ -198,8 +198,8 @@ class ExternalTable(Table):
         self._upload_file(local_path, external_path)
         # insert tracking info
         self.connection.query("""
-        INSERT INTO {tab} (hash, size, attachment_name) 
-        VALUES (%s, {size}, "{attachment_name}") 
+        INSERT INTO {tab} (hash, size, attachment_name)
+        VALUES (%s, {size}, "{attachment_name}")
         ON DUPLICATE KEY UPDATE timestamp=CURRENT_TIMESTAMP""".format(
                 tab=self.full_table_name,
                 size=Path(local_path).stat().st_size,
@@ -338,8 +338,8 @@ class ExternalTable(Table):
             error_list = []
             for uuid, external_path in items:
                 try:
-                   count = (self & {'hash': uuid}).delete_quick(get_count=True)  # optimize
-                except Exception as err:
+                    count = (self & {'hash': uuid}).delete_quick(get_count=True)  # optimize
+                except Exception:
                     pass   # if delete failed, do not remove the external file
                 else:
                     assert count in (0, 1)

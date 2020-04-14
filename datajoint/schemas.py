@@ -294,8 +294,8 @@ class VirtualModule(types.ModuleType):
     """
     A virtual module which will contain context for schema.
     """
-    def __init__(self, module_name, schema_name, *, create_schema=False, 
-                    create_tables=False, connection=None, add_objects=None):
+    def __init__(self, module_name, schema_name, *, create_schema=False,
+                 create_tables=False, connection=None, add_objects=None):
         """
         Creates a python module with the given name from the name of a schema on the server and
         automatically adds classes to it corresponding to the tables in the schema.
@@ -309,7 +309,7 @@ class VirtualModule(types.ModuleType):
         """
         super(VirtualModule, self).__init__(name=module_name)
         _schema = Schema(schema_name, create_schema=create_schema, create_tables=create_tables,
-                            connection=connection)
+                         connection=connection)
         if add_objects:
             self.__dict__.update(add_objects)
         self.__dict__['schema'] = _schema
