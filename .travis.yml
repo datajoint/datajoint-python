@@ -25,57 +25,59 @@ jobs:
         - pip install flake8
       script:
         - flake8 datajoint --count --select=E9,F63,F7,F82 --show-source --statistics
-    # - <<: *main
-    #   env:
-    #   - PY_VER: "3.8"
-    #   - MYSQL_VER: "5.7"
-    # - <<: *main
-    #   env:
-    #   - PY_VER: "3.7"
-    #   - MYSQL_VER: "5.7"
-    # - <<: *main
-    #   env:
-    #   - PY_VER: "3.6"
-    #   - MYSQL_VER: "5.7"
-    # - <<: *main
-    #   env:
-    #   - PY_VER: "3.5"
-    #   - MYSQL_VER: "5.7"
-    # - <<: *main
-    #   env:
-    #   - PY_VER: "3.8"
-    #   - MYSQL_VER: "8.0"
-    # - <<: *main
-    #   env:
-    #   - PY_VER: "3.7"
-    #   - MYSQL_VER: "8.0"
-    # - <<: *main
-    #   env:
-    #   - PY_VER: "3.6"
-    #   - MYSQL_VER: "8.0"
-    # - <<: *main
-    #   env:
-    #   - PY_VER: "3.5"
-    #   - MYSQL_VER: "8.0"
-    # - <<: *main
-    #   env:
-    #   - PY_VER: "3.8"
-    #   - MYSQL_VER: "5.6"
-    # - <<: *main
-    #   env:
-    #   - PY_VER: "3.7"
-    #   - MYSQL_VER: "5.6"
-    # - <<: *main
-    #   env:
-    #   - PY_VER: "3.6"
-    #   - MYSQL_VER: "5.6"
-    # - <<: *main
-    #   env:
-    #   - PY_VER: "3.5"
-    #   - MYSQL_VER: "5.6"
+    - <<: *main
+      env:
+      - PY_VER: "3.8"
+      - MYSQL_VER: "5.7"
+    - <<: *main
+      env:
+      - PY_VER: "3.7"
+      - MYSQL_VER: "5.7"
+    - <<: *main
+      env:
+      - PY_VER: "3.6"
+      - MYSQL_VER: "5.7"
+    - <<: *main
+      env:
+      - PY_VER: "3.5"
+      - MYSQL_VER: "5.7"
+    - <<: *main
+      env:
+      - PY_VER: "3.8"
+      - MYSQL_VER: "8.0"
+    - <<: *main
+      env:
+      - PY_VER: "3.7"
+      - MYSQL_VER: "8.0"
+    - <<: *main
+      env:
+      - PY_VER: "3.6"
+      - MYSQL_VER: "8.0"
+    - <<: *main
+      env:
+      - PY_VER: "3.5"
+      - MYSQL_VER: "8.0"
+    - <<: *main
+      env:
+      - PY_VER: "3.8"
+      - MYSQL_VER: "5.6"
+    - <<: *main
+      env:
+      - PY_VER: "3.7"
+      - MYSQL_VER: "5.6"
+    - <<: *main
+      env:
+      - PY_VER: "3.6"
+      - MYSQL_VER: "5.6"
+    - <<: *main
+      env:
+      - PY_VER: "3.5"
+      - MYSQL_VER: "5.6"
     - stage: "Lint: Style"
       language: python
       install:
         - pip install flake8
       script:
-        - flake8 --ignore=E121,E123,E126,E226,E24,E704,W503,W504,E722,F401 datajoint --count --max-complexity=62 --max-line-length=127 --statistics
+        - |
+          flake8 --ignore=E121,E123,E126,E226,E24,E704,W503,W504,E722,F401,W605 datajoint 
+          --count --max-complexity=62 --max-line-length=127 --statistics

@@ -6,7 +6,6 @@ import random
 import inspect
 from tqdm import tqdm
 from .expression import QueryExpression, AndList
-# , U
 from .errors import DataJointError, LostConnectionError
 from .table import FreeTable
 import signal
