@@ -589,7 +589,7 @@ class Table(QueryExpression):
                 placeholder = '%s'
                 value = str(int(value) if isinstance(value, bool) else value)
         else:
-            placeholder = '%s'
+            placeholder = '%s' if value is not None else 'NULL'
         command = "UPDATE {full_table_name} SET `{attrname}`={placeholder} {where_clause}".format(
             full_table_name=self.from_clause,
             attrname=attrname,
