@@ -12,7 +12,7 @@ def migrate_dj011_external_blob_storage_to_dj012(migration_schema, store):
     """
     if not isinstance(migration_schema, str):
         raise ValueError(
-                'Expected type {} for migration_schema, not {}.'.format(
+            'Expected type {} for migration_schema, not {}.'.format(
                 str, type(migration_schema)))
 
     do_migration = False
@@ -90,16 +90,6 @@ def _migrate_dj011_blob(schema, default_store):
         except:
             print('Column already added')
             pass
-
-        # Copy references into the new external table
-        # No Windows! Backslashes will cause problems
-
-        contents_hash_function = {
-            'file': lambda ext, relative_path: dj.hash.uuid_from_file(
-                str(Path(ext.spec['location'], relative_path))),
-            's3': lambda ext, relative_path: dj.hash.uuid_from_buffer(
-                ext.s3.get(relative_path))
-        }
 
         for _hash, size in zip(*legacy_external.fetch('hash', 'size')):
             if _hash in hashes:

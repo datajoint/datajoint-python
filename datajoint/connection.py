@@ -69,9 +69,9 @@ def conn(host=None, user=None, password=None, *, init_fun=None, reset=False, use
     :param password: mysql password
     :param init_fun: initialization function
     :param reset: whether the connection should be reset or not
-    :param use_tls: TLS encryption option. Valid options are: True (required), 
-                    False (required no TLS), None (TLS prefered, default), 
-                    dict (Manually specify values per 
+    :param use_tls: TLS encryption option. Valid options are: True (required),
+                    False (required no TLS), None (TLS prefered, default),
+                    dict (Manually specify values per
                     https://dev.mysql.com/doc/refman/5.7/en/connection-options.html
                         #encrypted-connection-options).
     """

@@ -120,4 +120,3 @@ class Dependencies(nx.DiGraph):
             nx.algorithms.dag.ancestors(self, full_table_name))
         return [full_table_name] + list(reversed(list(
             nx.algorithms.dag.topological_sort(nodes))))
-
