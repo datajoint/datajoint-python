@@ -27,7 +27,6 @@ class Thing(dj.Manual):
     timestamp = CURRENT_TIMESTAMP :   datetime
     """
 
-
 def test_update1():
     """test normal updates"""
 
@@ -47,19 +46,22 @@ def test_update1():
     buffer2 = Path(check2['picture']).read_bytes()
 
     # CHECK 3
-    Thing.update1(dict(key, timestamp=None, picture=None, params=np.random.randn(3, 3)))  # rest to default
+    Thing.update1(dict(key, number=None, timestamp=None, picture=None, params=np.random.randn(3, 3)))
     check3 = Thing.fetch1()
 
-    assert_true(check1['number'] == 0 and check1['picture'] is None and check1['params'] is None)
-    assert_true(check2['number'] == 0 and check1['picture'] is None and check2['params'] is None)
+    assert_true(check1['number'] == 0 and
+                check1['picture'] is None and
+                check1['params'] is None)
+
+    assert_true(check2['number'] == 3 and
+                check2['frac'] == 30.0 and
+                check2['picture'] is not None and
+                check2['params'] is None)
+
+    assert_true(check3['number'] == 0 and
+                check3['frac'] == 30.0 and
+                check3['picture'] is None and
+                isinstance(check3['params'], np.ndarray))
+
     assert_true(check3['timestamp'] > check2['timestamp'])
     assert_equal(buffer1, buffer2)
-
-    print(check1, check2)
-
-
-
-
-
-
-
