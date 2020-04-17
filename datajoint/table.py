@@ -258,7 +258,7 @@ class Table(QueryExpression):
             self.connection.query(query)
             return
 
-        field_list = []  # collects the field list from first row (passed by reference) 
+        field_list = []  # collects the field list from first row (passed by reference)
         rows = list(self.__make_row_to_insert(row, field_list, ignore_extra_fields) for row in rows)
         if rows:
             try:
