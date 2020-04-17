@@ -123,6 +123,14 @@ class E(dj.Computed):
 
 
 @schema
+class F(dj.Manual):
+    definition = """
+    id: int
+    ----
+    date=null: date
+    """
+
+@schema
 class DataA(dj.Lookup):
     definition = """
     idx     : int

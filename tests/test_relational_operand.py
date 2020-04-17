@@ -1,12 +1,13 @@
 import random
 import string
 import pandas
+import datetime
 
 import numpy as np
 from nose.tools import assert_equal, assert_false, assert_true, raises, assert_set_equal, assert_list_equal
 
 import datajoint as dj
-from .schema_simple import A, B, D, E, L, DataA, DataB, TTestUpdate, IJ, JI, ReservedWord
+from .schema_simple import A, B, D, E, F, L, DataA, DataB, TTestUpdate, IJ, JI, ReservedWord
 from .schema import Experiment, TTest3
 
 
@@ -332,6 +333,23 @@ class TestRelational:
         e1 = Experiment() & dict(experiment_date=str(date))
         e2 = Experiment() & dict(experiment_date=date)
         assert_true(len(e1) == len(e2) > 0, 'Two date restriction do not yield the same result')
+
+    @staticmethod
+    def test_date():
+        """Test date update"""
+        # https://github.com/datajoint/datajoint-python/issues/664
+        F.insert1((2, '2019-09-25'))
+
+        new_value = None
+        (F & 'id=2')._update('date', new_value)
+        assert_equal((F & 'id=2').fetch1('date'), new_value)
+
+        new_value = datetime.date(2019, 10, 25)
+        (F & 'id=2')._update('date', new_value)
+        assert_equal((F & 'id=2').fetch1('date'), new_value)
+
+        (F & 'id=2')._update('date')
+        assert_equal((F & 'id=2').fetch1('date'), None)
 
     @staticmethod
     def test_join_project():

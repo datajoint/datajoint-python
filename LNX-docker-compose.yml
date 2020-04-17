@@ -3,49 +3,6 @@ x-net: &net
   networks:
       - main
 services:
-  app:
-    <<: *net
-    image: datajoint/pydev:${PY_VER}-alpine${ALPINE_VER}
-    depends_on:
-      db:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
-      fakeservices.datajoint.io:
-        condition: service_healthy
-    environment:
-      - DJ_HOST=fakeservices.datajoint.io
-      - DJ_USER=root
-      - DJ_PASS=simple
-      - DJ_TEST_HOST=fakeservices.datajoint.io
-      - DJ_TEST_USER=datajoint
-      - DJ_TEST_PASSWORD=datajoint
-      - S3_ENDPOINT=fakeservices.datajoint.io:9000
-      - S3_ACCESS_KEY=datajoint
-      - S3_SECRET_KEY=datajoint
-      - S3_BUCKET=datajoint-test
-      - PYTHON_USER=dja
-      - JUPYTER_PASSWORD=datajoint
-      - DISPLAY
-      - COVERALLS_SERVICE_NAME
-      - COVERALLS_REPO_TOKEN
-    working_dir: /src
-    command: >
-      /bin/sh -c
-       "
-        pip install --user nose nose-cov coveralls .;
-        pip freeze | grep datajoint;
-        coveralls;
-        nosetests -vsw tests --with-coverage --cover-package=datajoint;
-        # jupyter notebook;
-       "
-    # ports:
-    #   - "8888:8888"
-    user: ${UID}:${GID}
-    volumes:
-      - .:/src
-      - /tmp/.X11-unix:/tmp/.X11-unix:rw
-      # - ./notebooks:/home/dja/notebooks
   db:
     <<: *net
     image: datajoint/mysql:$MYSQL_VER
@@ -74,27 +31,59 @@ services:
       interval: 1s
   fakeservices.datajoint.io:
     <<: *net
-    image: nginx:alpine
+    image: raphaelguzman/nginx:v0.0.4
     environment:
-      - URL=datajoint.io
-      - SUBDOMAINS=fakeservices
-      - MINIO_SERVER=http://minio:9000
-      - MYSQL_SERVER=db:3306
-    entrypoint: /entrypoint.sh
-    healthcheck:
-      test: wget --quiet --tries=1 --spider https://fakeservices.datajoint.io:443/minio/health/live || exit 1
-      timeout: 5s
-      retries: 300
-      interval: 1s
+    - ADD_db_TYPE=DATABASE
+    - ADD_db_ENDPOINT=db:3306
+    - ADD_minio_TYPE=MINIO
+    - ADD_minio_ENDPOINT=minio:9000
+    - ADD_minio_PREFIX=/
     # ports:
     #   - "9000:9000"
     #   - "443:443"
     #   - "3306:3306"
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+  app:
+    <<: *net
+    image: datajoint/pydev:${PY_VER}-alpine${ALPINE_VER}
+    depends_on:
+      fakeservices.datajoint.io:
+        condition: service_healthy
+    environment:
+      - DJ_HOST=fakeservices.datajoint.io
+      - DJ_USER=root
+      - DJ_PASS=simple
+      - DJ_TEST_HOST=fakeservices.datajoint.io
+      - DJ_TEST_USER=datajoint
+      - DJ_TEST_PASSWORD=datajoint
+      - S3_ENDPOINT=fakeservices.datajoint.io:9000
+      - S3_ACCESS_KEY=datajoint
+      - S3_SECRET_KEY=datajoint
+      - S3_BUCKET=datajoint-test
+      - PYTHON_USER=dja
+      - JUPYTER_PASSWORD=datajoint
+      - DISPLAY
+      - COVERALLS_SERVICE_NAME
+      - COVERALLS_REPO_TOKEN
+    working_dir: /src
+    command: >
+      /bin/sh -c
+       "
+        pip install --user nose nose-cov coveralls .;
+        pip freeze | grep datajoint;
+        nosetests -vsw tests --with-coverage --cover-package=datajoint && coveralls;
+        # jupyter notebook;
+       "
+    # ports:
+    #   - "8888:8888"
+    user: ${UID}:${GID}
     volumes:
-      - ./tests/nginx/base.conf:/base.conf
-      - ./tests/nginx/nginx.conf:/nginx.conf
-      - ./tests/nginx/entrypoint.sh:/entrypoint.sh
-      - ./tests/nginx/fullchain.pem:/certs/fullchain.pem
-      - ./tests/nginx/privkey.pem:/certs/privkey.pem
+      - .:/src
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      # - ./notebooks:/home/dja/notebooks
 networks:
   main:
