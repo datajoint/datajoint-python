@@ -5,6 +5,7 @@ from pathlib import Path
 import tempfile
 import datajoint as dj
 from . import PREFIX, CONN_INFO
+from datajoint import DataJointError
 
 schema = dj.Schema(PREFIX + '_update1', connection=dj.conn(**CONN_INFO))
 
@@ -27,10 +28,11 @@ class Thing(dj.Manual):
     timestamp = CURRENT_TIMESTAMP :   datetime
     """
 
+
 def test_update1():
     """test normal updates"""
 
-    # CHECK 1
+    # CHECK 1 -- initial insert
     key = dict(thing=1)
     Thing.insert1(dict(key, frac=0.5))
     check1 = Thing.fetch1()
@@ -45,7 +47,7 @@ def test_update1():
     check2 = Thing.fetch1(download_path=scratch_folder)
     buffer2 = Path(check2['picture']).read_bytes()
 
-    # CHECK 3
+    # CHECK 3 -- reset to default values using None
     Thing.update1(dict(key, number=None, timestamp=None, picture=None, params=np.random.randn(3, 3)))
     check3 = Thing.fetch1()
 
@@ -65,3 +67,20 @@ def test_update1():
 
     assert_true(check3['timestamp'] > check2['timestamp'])
     assert_equal(buffer1, buffer2)
+
+
+@raises(DataJointError)
+def test_update1_nonexistent():
+    Thing.update1(dict(thing=100, frac=0.5))   # updating a non-existent entry
+
+
+@raises(DataJointError)
+def test_update1_noprimary():
+    Thing.update1(dict(number=None))  # missing primary key
+
+
+@raises(DataJointError)
+def test_update1_misspelled_attribute():
+    key = dict(thing=17)
+    Thing.insert1(dict(key, frac=1.5))
+    Thing.update1(dict(key, numer=3))    # misspelled attribute
