@@ -180,9 +180,9 @@ class Table(QueryExpression):
         """
         # argument validations
         if not isinstance(row, collections.abc.Mapping):
-            raise DataJointError('The argument of update must be dict-like')
+            raise DataJointError('The argument of update1 must be dict-like.')
         if not set(row).issuperset(self.primary_key):
-            raise DataJointError('The argument of update must supply all primary key values')
+            raise DataJointError('The argument of update1 must supply all primary key values.')
         try:
             raise DataJointError('Attribute `%s` not found.' % next(k for k in row if k not in self.heading.names))
         except StopIteration:
