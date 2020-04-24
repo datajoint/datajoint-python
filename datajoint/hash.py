@@ -4,6 +4,18 @@ import io
 from pathlib import Path
 
 
+def hash_key_values(mapping):
+    """
+    32-byte hash of the mapping's key values sorted by the key name.
+    This is often used to convert a long primary key value into a shorter hash.
+    For example, the JobTable in datajoint/job.py uses this function to hash the primary key of autopopulated tables.
+    """
+    hashed = hashlib.md5()
+    for k, v in sorted(mapping.items()):
+        hashed.update(str(v).encode())
+    return hashed.hexdigest()
+
+
 def uuid_from_stream(stream, *, init_string=""):
     """
     :return: 16-byte digest of stream data

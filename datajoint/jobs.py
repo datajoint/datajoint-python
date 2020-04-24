@@ -1,5 +1,5 @@
 import os
-import hashlib
+from .hash import hash_key_values
 import platform
 from .table import Table
 from .settings import config
@@ -7,16 +7,6 @@ from .errors import DuplicateError
 
 ERROR_MESSAGE_LENGTH = 2047
 TRUNCATION_APPENDIX = '...truncated'
-
-
-def hash_key_values(key):
-    """
-    32-byte hash for the primary key of the JobTable
-    """
-    hashed = hashlib.md5()
-    for k, v in sorted(key.items()):
-        hashed.update(str(v).encode())
-    return hashed.hexdigest()
 
 
 class JobTable(Table):
