@@ -4,16 +4,6 @@ import io
 from pathlib import Path
 
 
-def key_hash(key):
-    """
-    32-byte hash used for lookup of primary keys of jobs
-    """
-    hashed = hashlib.md5()
-    for k, v in sorted(key.items()):
-        hashed.update(str(v).encode())
-    return hashed.hexdigest()
-
-
 def uuid_from_stream(stream, *, init_string=""):
     """
     :return: 16-byte digest of stream data
