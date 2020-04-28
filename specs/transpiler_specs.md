@@ -1,4 +1,5 @@
-# Notes on the Design of the DataJoint Query Engine
+# Design specifications of the DataJoint-to-SQL Transpiler
+This document contains information and reasoning that went into the design of the DataJoint-to-SQL transpiler for DataJoint for Python version 0.13.
 
 MySQL appears to differ from standard SQL by the sequence of evaluating the clauses of the SELECT statement.
 
@@ -39,6 +40,8 @@ The input object is treated as a subquery in the following cases:
 1. A restriction is applied that uses alias attributes in the heading
 1. A projection uses an alias attribute to create a new alias attribute.
 1. A join is performed on an alias attribute.
+1. An `Aggregation`
+
 
 An error arises if
 1. If a restriction or a projection attempts to use attributes not in the current heading.
@@ -73,10 +76,33 @@ However, `proj` converts the result into a `QueryExpression` object. This may pr
 `Aggregation` is a subclass of `QueryExpression`.
 Its main input is the *aggregating* query expression and it takes an additional second input — the *aggregated* query expression.
 
-The SQL equivalent of aggregation is the NATURAL LEFT JOIN of the two inputs by a GROUP BY on the primary key arguments of the first input.
+The SQL equivalent of aggregation is
+1. the NATURAL LEFT JOIN of the two inputs.
+1. followed by a GROUP BY on the primary key arguments of the first input
+1. followed by a projection.
+
+The projection works the same as `.proj` with respect to the first input.
+With respect to the second input, the projection part of aggregation allows only calculated attributes that use aggregating functions (*eg* `SUM`, `AVG`, `COUNT`)  applied to the attributes of the aggregated (second) input and non-aggregating functions on the attribute of the aggregating (first) input.
 
 `Aggregation` supports all the same operators as `QueryExpression` except:
-1. `restriction` turns into a `HAVING` clause instead of a `WHERE` clause. This allows applying any valid restriction with making a subquery (at least for MySQL)
-2. When joined, aggregation always turns into a subquery.
+1. `restriction` turns into a `HAVING` clause instead of a `WHERE` clause. This allows applying any valid restriction without making a subquery (at least for MySQL). Therefore, restricting an `Aggregation` object never results in a subquery.
+2. In joins, aggregation always turns into a subquery.
 
 All other rules for subqueries remain the same as for `QueryExpression`
+
+## Union
+`Union` is a subclass of `QueryExpression`.
+A `Union` object results from the `+` operator on two `QueryExpression` objects.
+Its `source` property contains the list of expressions (at least two) to unify.
+Thus the `+` operator on unions simply merges their sources, making a bigger union.
+
+Union treats all its inputs as subqueries except for unrestricted Union objects.
+
+## Universal Sets `dj.U`
+`dj.U` is a special operand in query expressions that allows performing special operations.  By itself, it can never form a query and is not a subclass of `QueryExpression`. Other query expressions are modified through participation in operations with `dj.U`.
+
+### Aggegating by `dj.U`
+
+### Resttricting a `dj.U` object with a `QueryExpression` object
+
+### Joining a `dj.U` object
