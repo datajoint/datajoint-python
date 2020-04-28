@@ -22,7 +22,7 @@ Operator `proj` creates a new heading.
 
 Property `restriction` contains the `AndList` of conditions. Operator `&` creates a new restriction appending the new condition to the input's restriction.
 
-Property `source` represents the `FROM` clause and contains a list of either `QueryExpression` objects the name of tables in the case of a base query.
+Property `source` represents the `FROM` clause and contains a list of either `QueryExpression` objects or table names in the case of base queries.
 The joint operator `*` adds new elements to the `source` attribute.
 
 At least one element must be present in `source`. Multiple elements in `source` indicate a join.
@@ -106,3 +106,8 @@ Union treats all its inputs as subqueries except for unrestricted Union objects.
 ### Resttricting a `dj.U` object with a `QueryExpression` object
 
 ### Joining a `dj.U` object
+
+# Query "Backprojection"
+Once a QueryExpression is used in a `fetch` operation or becomes a subquery in another query, it can project out all unnecessary attributes from its own inputs, recursively.
+This is implemented by the `finalize` method.
+This simplification produces much leaner queries resulting in improved query performance in version 0.13, especially on complex queries with blob data, compensating for MySQL's deficiencies in query optimization.
