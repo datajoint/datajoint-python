@@ -50,14 +50,18 @@ A subquery is created by creating a new `QueryExpression` object (or a subclass 
 ### Join compatibility
 The join is always natural (i.e. *equijoin* on the namesake attributes).
 
-**Before version 0.13:** As of version `0.12.*` and earlier, two query expressions were considered join-compatible if their namesake attributes were the primary key of at least one of the input expressions.
+**Before version 0.13:** As of version `0.12.*` and earlier, two query expressions were considered join-compatible if their namesake attributes were the primary key of at least one of the input expressions. This rule was easiest to implement but does not provide best semantics.
 
 **Version 0.13:** In version `0.13.*`, two query expressions are considered join-compatible if their namesake attributes are either in the primary key or in a foreign key in both input expressions.
 
  **Future (potentially version 0.14+):**
  This compatibility requirement will be further restricted to require that the namesake attributes ultimately derive from the same primary key attribute by being passed down through foreign keys.
 
-The same join compatibility rules apply when restricting one query expression with another. 
+The same join compatibility rules apply when restricting one query expression with another.
+
+### Join mechanics
+Any restriction applied to the inputs of a join can be applied to its output.
+Therefore, those inputs that are not turned into queries donate their sources, restrictions, and projections to the join itself.
 
 ## Table
 `Table` is a subclass of `QueryExpression` implementing table manipulation methods such as `insert`, `insert1`, `delete`, `update1`, and `drop`.
@@ -75,4 +79,4 @@ The SQL equivalent of aggregation is the NATURAL LEFT JOIN of the two inputs by 
 1. `restriction` turns into a `HAVING` clause instead of a `WHERE` clause. This allows applying any valid restriction with making a subquery (at least for MySQL)
 2. When joined, aggregation always turns into a subquery.
 
-Other rules for subqueries remain the same as for `QueryExpression`
+All other rules for subqueries remain the same as for `QueryExpression`
