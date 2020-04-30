@@ -193,7 +193,9 @@ class Table(QueryExpression):
         """
 
         if isinstance(rows, pandas.DataFrame):
-            rows = rows.to_records()
+            rows = rows.reset_index(
+                drop=isinstance(rows.index, pandas.RangeIndex)).to_records(
+                    index=False)
 
         # prohibit direct inserts into auto-populated tables
         if not allow_direct_insert and not getattr(self, '_allow_insert', True):  # allow_insert is only used in AutoPopulate
