@@ -41,7 +41,7 @@ def kill(restriction=None, connection=None, order_by=None):  # pragma: no cover
 
     query = 'SELECT * FROM information_schema.processlist WHERE id <> CONNECTION_ID()' + (
         "" if restriction is None else ' AND (%s)' % restriction) + (
-            ' ORDER BY %s' % (order_by if order_by else 'id'))
+            ' ORDER BY %s' % (order_by or 'id'))
 
     while True:
         print('  ID USER         HOST          STATE         TIME    INFO')
