@@ -21,7 +21,7 @@ def set_password(new_password=None, connection=None, update_config=None):   # pr
         config.save_local(verbose=True)
 
 
-def kill(restriction=None, connection=None):  # pragma: no cover
+def kill(restriction=None, connection=None, order_by=None):  # pragma: no cover
     """
     view and kill database connections.
     :param restriction: restriction to be applied to processlist
@@ -39,7 +39,8 @@ def kill(restriction=None, connection=None):  # pragma: no cover
         connection = conn()
 
     query = 'SELECT * FROM information_schema.processlist WHERE id <> CONNECTION_ID()' + (
-        "" if restriction is None else ' AND (%s)' % restriction)
+        "" if restriction is None else ' AND (%s)' % restriction) + (
+            ' ORDER BY %s' % (order_by if order_by else 'id'))
 
     while True:
         print('  ID USER         HOST          STATE         TIME    INFO')
