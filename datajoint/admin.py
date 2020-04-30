@@ -26,6 +26,7 @@ def kill(restriction=None, connection=None, order_by=None):  # pragma: no cover
     view and kill database connections.
     :param restriction: restriction to be applied to processlist
     :param connection: a datajoint.Connection object. Default calls datajoint.conn()
+    :param order_by: order by string clause for output ordering. defaults to 'id'.
 
     Restrictions are specified as strings and can involve any of the attributes of
     information_schema.processlist: ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.
