@@ -33,13 +33,13 @@ class QueryExpression:
         1. A restriction is applied on any computed or renamed attributes
         2. A projection is applied remapping remapped attributes
         3. Subclasses: Join, GroupBy, and Union have additional specific rules.
-
-    A subquery is always of type QueryExpression
     """
 
-    def __init__(self, source):
-        self.source = source
-        self._restriction = AndList()
+    # subclasses or instantiators must provide these
+    _restriction = None
+    _connection = None
+    _heading = None
+    _source = None
 
     def copy(self):
         result = copy.copy(self)
@@ -48,26 +48,20 @@ class QueryExpression:
 
     @property
     def connection(self):
-        return self._connection  # a dj.Connection object
+        """ a dj.Connection object """
+        assert self._connection is not None
+        return self._connection
+
+    @property
+    def source(self):
+        """ A list of table names or subqueries to from the FROM clause """
+        return self._source
 
     @property
     def heading(self):
-        """
-        :return: a dj.Heading object.
-        The proj operator modifies.
-        """
-        assert isinstance(self._heading, Heading)
-        if isinstance(self.source, QueryExpression):
-            if self._heading is None:
-                self._heading = self.source.heading
-        else:
-            # in dj.Table's subclasses self._heading is already defined but may need to be initialized
-            from .table import Table
-            assert isinstance(self, Table)
-            self._heading.init_from_database(self.connection, self.database, self.table_name, self.declaration_context)
-
+        """ a dj.Heading object, reflects the effects of the projection operator .proj """
+        assert self._heading is not None
         return self._heading
-
 
     @property
     def restriction(self):
@@ -80,33 +74,24 @@ class QueryExpression:
 
     __subquery_alias_count = count()    # count for alias names used in from_clause
 
-
     def from_clause(self):
-        if isinstance(self.source, QueryExpression):
-            return '(' + self.source.make_sql() + ') as `_s%x`' % next(self.__subquery_alias_count)
-        else:
-            assert isinstance(self.source, str)
-            return self.source
-
-    def get_select_fields(self, select_fields=None):
-        """
-        :return: string specifying the attributes to return
-        """
-        return self.heading.as_sql if select_fields is None else self.heading.project(select_fields).as_sql
+        return ' NATURAL JOIN '.join(
+            '(' + src.make_sql() + ') as `_s%x`' % next(self.__subquery_alias_count)
+            if isinstance(src, QueryExpression) else src for src in self.source)
 
     # --------- query operators -----------
-
-
-
-
+    def make_subquery(self):
+        result = QueryExpression()
+        result._connection = self.connection
+        result._source = [self]
+        result._heading = self.heading
+        result._restriction = self.restriction
+        return result
 
     def restrict(self, restriction):
-
-
         new_condition = make_condition(self, restriction)
         if new_condition is True:
-            return self  # restriction has no effect
-
+            return self  # restriction has no effect, return the same object
         # check that all attributes in condition are present in the query
         attributes = get_identifiers_from_sql_expression(new_condition)
         try:
@@ -114,17 +99,13 @@ class QueryExpression:
                 attr for attr in attributes if attr not in self.heading.names))
         except StopIteration:
             pass  # all ok
-
-
-        # If the new condition uses any aliased attributes, a subquery is required
-        # However, GroupBy's HAVING statement can work find with aliased attributes.
-        need_subquery = not isinstance(self, GroupBy) and any(
-            self.heading[attr].sql_expression for attr in attributes)
-        if need_subquery:
-            result = QueryExpression()
-            result.restriction.append(restriction)
-            result.source = self
-
+        result = self
+        if not isinstance(self, GroupBy) and self.heading.new_attributes:
+            # If the new condition uses any new attributes, a subquery is required.
+            # However, GroupBy's HAVING statement can work find with aliased attributes.
+            result = result.make_subquery()
+        result._restriction = AndList(self.restriction) # make a copy to preserve the original
+        result._restriction.append(restriction)
         return result
 
     def __and__(self, restriction):
@@ -137,23 +118,21 @@ class QueryExpression:
 
     def __sub__(self, restriction):
         """
-        inverted restriction:
+        Inverted restriction
         :return: a restricted copy of the argument
         See QueryExpression.restrict for more detail.
         """
         return self.restrict(Not(restriction))
 
     def __mul__(self, other):
-        """
-        natural join of query expressions `self` and `other`
-        """
-        return other * self if isinstance(other, U) else Join.create(self, other)
-
-    def __add__(self, other):
-        """
-        union of two entity sets `self` and `other`
-        """
-        return Union.create(self, other)
+        """ join of query expressions `self` and `other` """
+        result = QueryExpression()
+        result._connection = self.connection
+        result._source = self.source + other.source
+        result._heading = self.heading.join(other.heading)
+        result._restriction = AndList(self.restriction)
+        result._restriction.append(other.restriction)
+        return result
 
     def proj(self, *attributes, **named_attributes):
         """
@@ -172,30 +151,24 @@ class QueryExpression:
         self.proj(name1='attr1') -- include primary key and 'attr1' renamed as name1
         self.proj('attr1', dup='(attr1)') -- include primary key and attribute attr1 twice, with the duplicate 'dup'
         self.proj(k='abs(attr1)') adds the new attribute k with the value computed as an expression (SQL syntax)
-        from other attributes available before the projectin.
-
+        from other attributes available before the projection.
         Each attribute name can only be used once.
         """
-
         duplication_pattern = re.compile(r'\s*\(\s*(?P<name>[a-z][a-z_0-9]*)\s*\)\s*')
         rename_pattern = re.compile(r'\s*(?P<name>[a-z][a-z_0-9]*)\s*')
-
         replicate_map = {k: m.group('name')
                          for k, m in ((k, duplication_pattern.match(v)) for k, v in named_attributes.items()) if m}
         rename_map = {k: m.group('name')
                       for k, m in ((k, rename_pattern.match(v)) for k, v in named_attributes.items()) if m}
         compute_map = {k: v for k, v in named_attributes.items()
                        if not duplication_pattern.match(v) and not rename_pattern.match(v)}
-
         # include primary key
         attributes = set(attributes)
         attributes.update((k for k in self.primary_key if k not in rename_map.items()))
-
         # include all secondary attributes with Ellipsis
         if Ellipsis in attributes:
             attributes.discard(Ellipsis)
             attributes.update((a for a in self.heading.secondary_attributes if a not in attributes))
-
         # exclude attributes
         excluded_attributes = set(a.lstrip('-').strip() for a in attributes if a.startswith('-'))
         try:
@@ -246,20 +219,6 @@ class QueryExpression:
         result.heading.select(attributes, rename_map=rename_map, replicate_map=replicate_map, compute_map=compute_map)
         return result
 
-    def aggr(self, group, *attributes, keep_all_rows=False, **named_attributes):
-        """
-        Aggregation/projection operator
-        :param group:  an entity set whose entities will be grouped per entity of `self`
-        :param attributes: attributes of self to include in the result
-        :param keep_all_rows: True = preserve the number of elements in the result (equivalent of LEFT JOIN in SQL)
-        :param named_attributes: renamings and computations on attributes of self and group
-        :return: an entity set representing the result of the aggregation/projection operator of entities from `group`
-        per entity of `self`
-        """
-        return GroupBy.create(self, group, keep_all_rows=keep_all_rows,
-                              attributes=attributes, named_attributes=named_attributes)
-
-    aggregate = aggr  # aliased name for aggr
 
     def make_sql(self, fields=None):
         if fields is None:
@@ -306,9 +265,7 @@ class QueryExpression:
         return self.fetch(order_by="KEY DESC", limit=limit, **fetch_kwargs)[::-1]
 
     def __len__(self):
-        """
-        number of elements in the result set.
-        """
+        """ :return: number of elements in the result set """
         return self.connection.query(
             'SELECT count({count}) FROM {from_}{where}'.format(
                 count='DISTINCT `{pk}`'.format(pk='`,`'.join(self.primary_key)) if self.distinct and self.primary_key else '*',
@@ -378,44 +335,6 @@ class QueryExpression:
         """ :return: HTML to display table in Jupyter notebook. """
         return repr_html(self)
 
-
-class Join(QueryExpression):
-    """
-    Join operator.
-    Join is a private DataJoint class not exposed to users.  See QueryExpression.__mul__ for details.
-    """
-
-    @classmethod
-    def create(cls, arg1, arg2, keep_all_rows=False):
-        obj = cls()
-        if inspect.isclass(arg2) and issubclass(arg2, QueryExpression):
-            arg2 = arg2()   # instantiate if joining with a class
-        assert_join_compatibility(arg1, arg2)
-        if arg1.connection != arg2.connection:
-            raise DataJointError("Cannot join query expressions from different connections.")
-        obj._connection = arg1.connection
-        obj._arg1 = cls.make_argument_subquery(arg1)
-        obj._arg2 = cls.make_argument_subquery(arg2)
-        obj._distinct = obj._arg1.distinct or obj._arg2.distinct
-        obj._left = keep_all_rows
-        obj._heading = obj._arg1.heading.join(obj._arg2.heading)
-        obj.restrict(obj._arg1.restriction)
-        obj.restrict(obj._arg2.restriction)
-        return obj
-
-    @staticmethod
-    def make_argument_subquery(arg):
-        """
-        Decide when a Join argument needs to be wrapped in a subquery
-        """
-        return Subquery.create(arg) if isinstance(arg, (GroupBy, Projection)) or arg.restriction else arg
-
-    @property
-    def from_clause(self):
-        return '{from1} NATURAL{left} JOIN {from2}'.format(
-            from1=self._arg1.from_clause,
-            left=" LEFT" if self._left else "",
-            from2=self._arg2.from_clause)
 
 
 class Union(QueryExpression):

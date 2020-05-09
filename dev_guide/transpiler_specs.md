@@ -8,9 +8,11 @@ Standard SQL: FROM > WHERE > GROUP BY > HAVING > SELECT
 MySQL:		FROM > WHERE > SELECT > GROUP BY > HAVING
 ```
 
-> TODO:  verify with latest SQL standards and postgres / CockroachDB implementations
+> TODO:  verify with latest SQL standards and postgres / CockroachDB implementations and whether this order can be configured
 
 Moving `SELECT` to an earlier phase allows the `GROUP BY` and `HAVING` clauses to use alias column names created by the `SELECT` clause.
+The current implementation targets the MySQL implementation where table column aliases can be used in `HAVING`.
+If postgres or CockroachDB cannot be coerced to work this way, restrictions of aggregations will have to be updated accordingly.
 
 ## QueryExpression
 `QueryExpression` is the main object representing a distinct `SELECT` statement.

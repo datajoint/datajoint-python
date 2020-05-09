@@ -15,7 +15,7 @@ default_attribute_properties = dict(    # these default values are set in comput
     name=None, type='expression', in_key=False, nullable=False, default=None, comment='calculated attribute',
     autoincrement=False, numeric=None, string=None, uuid=False, is_blob=False, is_attachment=False, is_filepath=False,
     is_external=False, adapter=None,
-    store=None, unsupported=False, sql_expression=None, database=None, dtype=object)
+    store=None, unsupported=False, attribute_expression=None, database=None, dtype=object)
 
 
 class Attribute(namedtuple('_Attribute', default_attribute_properties)):
@@ -89,8 +89,8 @@ class Heading:
         return [k for k, v in self.attributes.items() if not v.is_blob and not v.is_attachment and not v.is_filepath]
 
     @property
-    def expressions(self):
-        return [k for k, v in self.attributes.items() if v.sql_expression is not None]
+    def new_attributes(self):
+        return [k for k, v in self.attributes.items() if v.attribute_expression is not None]
 
     def __getitem__(self, name):
         """shortcut to the attribute"""
@@ -135,8 +135,8 @@ class Heading:
         """
         if fields is None:
             fields = self.names
-        return ','.join('`%s`' % name if self.attributes[name].sql_expression is None
-                        else '%s as `%s`' % (self.attributes[name].sql_expression, name)
+        return ','.join('`%s`' % name if self.attributes[name].attribute_expression is None
+                        else '%s as `%s`' % (self.attributes[name].attribute_expression, name)
                         for name in fields)
 
     def __iter__(self):
@@ -211,7 +211,7 @@ class Heading:
                 string=any(TYPE_PATTERN[t].match(attr['type']) for t in ('ENUM', 'TEMPORAL', 'STRING')),
                 is_blob=bool(TYPE_PATTERN['INTERNAL_BLOB'].match(attr['type'])),
                 uuid=False, is_attachment=False, is_filepath=False, adapter=None,
-                store=None, is_external=False, sql_expression=None)
+                store=None, is_external=False, attribute_expression=None)
 
             if any(TYPE_PATTERN[t].match(attr['type']) for t in ('INTEGER', 'FLOAT')):
                 attr['type'] = re.sub(r'\(\d+\)', '', attr['type'], count=1)  # strip size off integers and floats
@@ -327,9 +327,9 @@ class Heading:
             # copied and renamed attributes
             copy_attrs = (dict(self.attributes[k].todict(),
                                in_key=self.attributes[k].in_key or k in force_primary_key,
-                               **({'name': rename_map[k], 'sql_expression': '`%s`' % k} if k in rename_map else {}))
+                               **({'name': rename_map[k], 'attribute_expression': '`%s`' % k} if k in rename_map else {}))
                           for k in self.attributes if k in rename_map or k in attribute_list)
-            compute_attrs = (dict(default_attribute_properties, name=new_name, sql_expression=expr)
+            compute_attrs = (dict(default_attribute_properties, name=new_name, attribute_expression=expr)
                              for new_name, expr in named_attributes.items() if expr not in rename_map)
 
             return Heading(chain(copy_attrs, compute_attrs))
@@ -350,7 +350,7 @@ class Heading:
         Create a new heading with removed attribute sql_expressions.
         Used by subqueries, which resolve the sql_expressions.
         """
-        return Heading(dict(v.todict(), sql_expression=None) for v in self.attributes.values())
+        return Heading(dict(v.todict(), attribute_expression=None) for v in self.attributes.values())
 
     def extend_primary_key(self, new_attributes):
         """
