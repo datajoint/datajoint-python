@@ -2,7 +2,7 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 from collections import Mapping
 from tqdm import tqdm
 from .settings import config
-from .errors import DataJointError, MissingExternalFile
+from .errors import DataJointError, MissingExternalFile, DirectoryInaccessible
 from .hash import uuid_from_buffer, uuid_from_file
 from .table import Table
 from .declare import EXTERNAL_TABLE_ROOT
@@ -46,6 +46,9 @@ class ExternalTable(Table):
         if not self.is_declared:
             self.declare()
         self._s3 = None
+        if self.spec['protocol'] == 'file' and not Path(self.spec['location']).is_dir():
+            raise DirectoryInaccessible('Inaccessible local directory %s' %
+                                        self.spec['location']) from None
 
     @property
     def definition(self):

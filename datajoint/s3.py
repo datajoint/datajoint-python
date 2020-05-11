@@ -14,11 +14,11 @@ class Folder:
     A Folder instance manipulates a flat folder of objects within an S3-compatible object store
     """
     def __init__(self, endpoint, bucket, access_key, secret_key, *, secure=False, **_):
-        self.client = minio.Minio(endpoint, access_key=access_key, secret_key=secret_key, secure=secure)
+        self.client = minio.Minio(endpoint, access_key=access_key, secret_key=secret_key,
+                                  secure=secure)
         self.bucket = bucket
         if not self.client.bucket_exists(bucket):
-            warnings.warn('Creating bucket "%s"' % self.bucket)
-            self.client.make_bucket(self.bucket)
+            raise errors.BucketInaccessible('Inaccessible s3 bucket %s' % bucket) from None
 
     def put(self, name, buffer):
         return self.client.put_object(
@@ -63,6 +63,6 @@ class Folder:
 
     def remove_object(self, name):
         try:
-            self.client.remove_objects(self.bucket, str(name))
+            self.client.remove_object(self.bucket, str(name))
         except minio.ResponseError:
             return errors.DataJointError('Failed to delete %s from s3 storage' % name)
