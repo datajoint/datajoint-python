@@ -81,12 +81,6 @@ class MissingExternalFile(DataJointError):
     """
 
 
-class DirectoryInaccessible(DataJointError):
-    """
-    Error raised when a local directory is inaccessible
-    """
-
-
 class BucketInaccessible(DataJointError):
     """
     Error raised when a S3 bucket is inaccessible
