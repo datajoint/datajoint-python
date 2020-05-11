@@ -3,7 +3,7 @@ import networkx as nx
 from itertools import zip_longest
 from nose.tools import assert_true, assert_equal, assert_dict_equal
 from . import schema_adapted as adapted
-from .schema_adapted import graph, layout_to_filepath
+from .schema_adapted import graph
 
 
 def test_adapted_type():

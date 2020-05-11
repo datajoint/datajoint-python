@@ -32,20 +32,16 @@ class Table(QueryExpression):
     A Relation implements insert and delete methods in addition to inherited relational operators.
     """
 
-    table_name = None  # must be defined by subclass
+    _table_name = None  # must be defined in subclass
+    _log_ = None  # placeholder for the Log table object
 
     # These properties must be set by the schema decorator (schemas.py) at class level or by FreeTable at instance level
     database = None
     declaration_context = None
-    _connection = None
-    _heading = None
 
-    def __init__(self):
-        assert self.table_name is not None
-        assert self.database is not None
-        assert self._connection is not None
-        assert self._heading is not None
-        super().__init__(self.full_table_name)
+    @property
+    def table_name(self):
+        return self._table_name
 
     @property
     def definition(self):
@@ -419,8 +415,8 @@ class Table(QueryExpression):
             self.connection.dependencies.load()
         parents = self.parents()
         in_key = True
-        definition = ('# ' + self.heading.table_info['comment'] + '\n'
-                      if self.heading.table_info['comment'] else '')
+        definition = ('# ' + self.heading.table_status['comment'] + '\n'
+                      if self.heading.table_status['comment'] else '')
         attributes_thus_far = set()
         attributes_declared = set()
         indexes = self.heading.indexes.copy()
@@ -658,29 +654,21 @@ class FreeTable(Table):
     """
     A base relation without a dedicated class. Each instance is associated with a table
     specified by full_table_name.
-    :param arg:  a dj.Connection or a dj.FreeTable
+    :param conn:  a dj.Connection object
+    :param full_table_name: in format `database`.`table_name`
     """
-
-    def __init__(self, arg, full_table_name=None):
-        super().__init__()
-        if isinstance(arg, FreeTable):
-            # copy constructor
-            self.database = arg.database
-            self._table_name = arg._table_name
-            self._connection = arg._connection
-        else:
-            self.database, self._table_name = (s.strip('`') for s in full_table_name.split('.'))
-            self._connection = arg
+    def __init__(self, conn, full_table_name):
+        self.database, self._table_name = (s.strip('`') for s in full_table_name.split('.'))
+        self._connection = conn
+        self._source = [full_table_name]
+        self._heading = Heading(table_info=dict(
+            conn=conn,
+            database=self.database,
+            table_name=self.table_name,
+            context=None))
 
     def __repr__(self):
         return "FreeTable(`%s`.`%s`)\n" % (self.database, self._table_name) + super().__repr__()
-
-    @property
-    def table_name(self):
-        """
-        :return: the table name in the schema
-        """
-        return self._table_name
 
 
 class Log(Table):
@@ -690,12 +678,20 @@ class Log(Table):
     :param skip_logging: if True, then log entry is skipped by default. See __call__
     """
 
-    def __init__(self, arg, database=None, skip_logging=False):
+    _table_name = '~log'
 
+    def __init__(self, conn, database, skip_logging=False):
         self.database = database
         self.skip_logging = skip_logging
-        self._connection = arg
-        self._heading = Heading()
+        self._connection = conn
+        self._heading = Heading(table_info=dict(
+            conn=conn,
+            database=database,
+            table_name=self.table_name,
+            context=None
+        ))
+        self._source = ['`{db}`.{tab}'.format(db=database, tab=self.table_name)]
+
         self._definition = """    # event logging table for `{database}`
         id       :int unsigned auto_increment     # event order id
         ---
@@ -715,10 +711,6 @@ class Log(Table):
     @property
     def definition(self):
         return self._definition
-
-    @property
-    def table_name(self):
-        return '~log'
 
     def __call__(self, event, skip_logging=None):
         """

@@ -5,6 +5,7 @@ from .settings import config
 from .errors import DataJointError, MissingExternalFile
 from .hash import uuid_from_buffer, uuid_from_file
 from .table import Table
+from .heading import Heading
 from .declare import EXTERNAL_TABLE_ROOT
 from . import s3
 from .utils import safe_write, safe_copy
@@ -25,15 +26,20 @@ class ExternalTable(Table):
     The table tracking externally stored objects.
     Declare as ExternalTable(connection, database)
     """
-    def __init__(self, connection, store=None, database=None):
-        super().__init__()
+    def __init__(self, connection, store, database):
         self.store = store
         self.spec = config.get_store_spec(store)
+        self._s3 = None
         self.database = database
         self._connection = connection
+        self._heading = Heading(table_info=dict(
+            conn=connection,
+            database=database,
+            table_name=self.table_name,
+            context=None))
+        self._source = [self.full_table_name]
         if not self.is_declared:
             self.declare()
-        self._s3 = None
 
     @property
     def definition(self):

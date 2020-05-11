@@ -174,11 +174,16 @@ class Schema:
 
     def process_table_class(self, table_class, context, assert_declared=False):
         """
-        assign schema properties to the relation class and declare the table
+        assign schema properties to the table class and declare the table
         """
         table_class.database = self.database
         table_class._connection = self.connection
-        table_class._heading = Heading()
+        table_class._heading = Heading(table_info = dict(
+                conn=self.connection,
+                database=self.database,
+                table_name=table_class.table_name,
+                context=context))
+        table_class._source = [table_class.full_table_name]
         table_class.declaration_context = context
 
         # instantiate the class, declare the table if not already

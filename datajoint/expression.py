@@ -5,7 +5,6 @@ import copy
 import re
 from .settings import config
 from .errors import DataJointError
-from .heading import Heading
 from .fetch import Fetch, Fetch1
 from .preview import preview, repr_html
 from .condition import AndList, Not, make_condition, assert_join_compatibility, get_identifiers_from_sql_expression
@@ -32,19 +31,15 @@ class QueryExpression:
     A subquery is generated when:
         1. A restriction is applied on any computed or renamed attributes
         2. A projection is applied remapping remapped attributes
-        3. Subclasses: Join, GroupBy, and Union have additional specific rules.
+        3. Subclasses: Join, Aggregation, and Union have additional specific rules.
     """
 
-    # subclasses or instantiators must provide these
     _restriction = None
+
+    # subclasses or instantiators must provide values
     _connection = None
     _heading = None
     _source = None
-
-    def copy(self):
-        result = copy.copy(self)
-        result._restriction = AndList(self._restriction)
-        return result
 
     @property
     def connection(self):
@@ -55,17 +50,19 @@ class QueryExpression:
     @property
     def source(self):
         """ A list of table names or subqueries to from the FROM clause """
+        assert self._source is not None
         return self._source
 
     @property
     def heading(self):
         """ a dj.Heading object, reflects the effects of the projection operator .proj """
-        assert self._heading is not None
         return self._heading
 
     @property
     def restriction(self):
-        """ The AndList of restrictions applied to input to produce the result """
+        """ a AndList object of restrictions applied to input to produce the result """
+        if self._restriction is None:
+            self._restriction = AndList()
         return self._restriction
 
     @property
@@ -74,10 +71,26 @@ class QueryExpression:
 
     __subquery_alias_count = count()    # count for alias names used in from_clause
 
+    @property
     def from_clause(self):
         return ' NATURAL JOIN '.join(
             '(' + src.make_sql() + ') as `_s%x`' % next(self.__subquery_alias_count)
             if isinstance(src, QueryExpression) else src for src in self.source)
+
+    @property
+    def where_clause(self):
+        where = make_condition(self, self.restriction)
+        return '' if where is True else ' WHERE ' + where
+
+    def make_sql(self, fields=None):
+        """
+        Make the SQL SELECT statement.
+        :param fields: used to explicitly set the select attributes
+        """
+        return 'SELECT {fields} FROM {from_}{where}'.format(
+            fields=self.heading.as_sql(fields or self.heading.names),
+            from_=self.from_clause,
+            where=self.where_clause)
 
     # --------- query operators -----------
     def make_subquery(self):
@@ -95,16 +108,18 @@ class QueryExpression:
         # check that all attributes in condition are present in the query
         attributes = get_identifiers_from_sql_expression(new_condition)
         try:
-            raise DataJointError("Attribute `%s` is not found in query." % next(
-                attr for attr in attributes if attr not in self.heading.names))
-        except StopIteration:
-            pass  # all ok
-        result = self
-        if not isinstance(self, GroupBy) and self.heading.new_attributes:
-            # If the new condition uses any new attributes, a subquery is required.
-            # However, GroupBy's HAVING statement can work find with aliased attributes.
-            result = result.make_subquery()
-        result._restriction = AndList(self.restriction) # make a copy to preserve the original
+            try:
+                raise DataJointError("Attribute `%s` is not found in query." % next(
+                    attr for attr in attributes if attr not in self.heading.names))
+            except StopIteration:
+                pass  # all ok
+        except DataJointError:
+            raise
+        # If the new condition uses any new attributes, a subquery is required.
+        # However, Aggregation's HAVING statement can work find with aliased attributes.
+        need_suqbquery = not isinstance(self, Aggregation) and self.heading.new_attributes
+        result = self.make_subquery() if need_suqbquery else copy.copy(self)
+        result._restriction = AndList(self.restriction) # make a copy to protect the original
         result._restriction.append(restriction)
         return result
 
@@ -119,13 +134,14 @@ class QueryExpression:
     def __sub__(self, restriction):
         """
         Inverted restriction
-        :return: a restricted copy of the argument
+        :return: a restricted copy of the input argument
         See QueryExpression.restrict for more detail.
         """
         return self.restrict(Not(restriction))
 
     def __mul__(self, other):
         """ join of query expressions `self` and `other` """
+        assert_join_compatibility(self, other)
         result = QueryExpression()
         result._connection = self.connection
         result._source = self.source + other.source
@@ -164,6 +180,11 @@ class QueryExpression:
                        if not duplication_pattern.match(v) and not rename_pattern.match(v)}
         # include primary key
         attributes = set(attributes)
+        try:
+            raise DataJointError(
+                'Attribute `%s` not found.' % next(a for a in attributes if a not in self.heading.names))
+        except StopIteration:
+            pass  # all ok
         attributes.update((k for k in self.primary_key if k not in rename_map.items()))
         # include all secondary attributes with Ellipsis
         if Ellipsis in attributes:
@@ -207,33 +228,32 @@ class QueryExpression:
         used.update(rename_map.values())
         used.update(replicate_map.values())
         used.intersection_update(self.heading.names)
-        need_subquery = any(self.heading[name].sql_expression is not None for name in used)
+        need_subquery = any(self.heading[name].attribute_expression is not None for name in used)
 
         if not need_subquery and self.restriction:
             restriction_attributes = set(
                 get_identifiers_from_sql_expression(make_condition(self, self.restriction)))
             # need a subquery if the restriction applies to attributes that have been renamed
-            need_subquery = any(self.heading[name].sql_expression is not None for name in restriction_attributes)
+            need_subquery = any(self.heading[name].attribute_expression is not None for name in restriction_attributes)
 
-        result = QueryExpression(self) if need_subquery else self.copy()
-        result.heading.select(attributes, rename_map=rename_map, replicate_map=replicate_map, compute_map=compute_map)
+        result = self.make_subquery() if need_subquery else copy.copy(self)
+        result.heading.select(attributes, rename_map=dict(**rename_map, **replicate_map), compute_map=compute_map)
         return result
 
+    def aggr(self, group, *attributes, keep_all_rows=False, **named_attributes):
+        """
+        Aggregation of the type U('attr1','attr2').aggr(group, computation="QueryExpression")
+        has the primary key ('attr1','attr2') and performs aggregation computations for all matching elements of `group`.
+        :param group:  The query expression to be aggregated.
+        :keep_all_rows: True=keep all the rows from self. False=keep only rows that match entries in group.
+        :param named_attributes: computations of the form new_attribute="sql expression on attributes of group"
+        :return: The derived query expression
+        """
+        return Aggregation.create(
+            self, group=group, keep_all_rows=keep_all_rows).proj(*attributes, **named_attributes)
 
-    def make_sql(self, fields=None):
-        if fields is None:
-            fields = self.heading.names
-        else:
-            fields = [f for f in fields if f in self.heading.names]
+    aggregate = aggr  # alias for aggr
 
-        from_ =
-
-        where = make_condition(self, self.restriction)  # where clause
-
-        return 'SELECT {fields} FROM {from_}{where}'.format(
-            fields=("DISTINCT " if self.distinct else "") + self.heading.as_sql(fields),
-            from_=self.from_clause,
-            where='' if where is True else ' WHERE %s' % where)
 
     # ---------- Fetch operators --------------------
     @property
@@ -268,7 +288,7 @@ class QueryExpression:
         """ :return: number of elements in the result set """
         return self.connection.query(
             'SELECT count({count}) FROM {from_}{where}'.format(
-                count='DISTINCT `{pk}`'.format(pk='`,`'.join(self.primary_key)) if self.distinct and self.primary_key else '*',
+                count='DISTINCT `{pk}`'.format(pk='`,`'.join(self.primary_key)) if self.primary_key else '*',
                 from_=self.from_clause,
                 where=self.where_clause)).fetchone()[0]
 
@@ -336,86 +356,56 @@ class QueryExpression:
         return repr_html(self)
 
 
-
-class Union(QueryExpression):
+class Aggregation(QueryExpression):
     """
-    Union is the private DataJoint class that implements the union operator.
+    Aggregation(rel, comp1='expr1', ..., compn='exprn')  yields an entity set with the primary key specified by rel.heading.
+    The computed arguments comp1, ..., compn use aggregation operators on the attributes of rel.
+    Aggregation is used QueryExpression.aggr and U.aggr.
+    Aggregation is a private class in DataJoint, not exposed to users.
     """
-
-    __count = count()
+    initial_restriction = None   # the pre-GROUP BY conditions for the WHERE clause
+    keep_all_rows = False
 
     @classmethod
-    def create(cls, arg1, arg2):
-        obj = cls()
-        if inspect.isclass(arg2) and issubclass(arg2, QueryExpression):
-            arg2 = arg2()  # instantiate if a class
-        if not isinstance(arg1, QueryExpression) or not isinstance(arg2, QueryExpression):
-            raise DataJointError('an QueryExpression can only be unioned with another QueryExpression')
-        if arg1.connection != arg2.connection:
-            raise DataJointError("Cannot operate on QueryExpressions originating from different connections.")
-        if set(arg1.heading.names) != set(arg2.heading.names):
-            raise DataJointError('Union requires the same attributes in both arguments')
-        if any(not v.in_key for v in arg1.heading.attributes.values()) or \
-                all(not v.in_key for v in arg2.heading.attributes.values()):
-            raise DataJointError('Union arguments must not have any secondary attributes.')
-        obj._connection = arg1.connection
-        obj._heading = arg1.heading
-        obj._arg1 = arg1
-        obj._arg2 = arg2
-        return obj
-
-    def make_sql(self, select_fields=None):
-        return "SELECT {_fields} FROM {_from}{_where}".format(
-            _fields=self.get_select_fields(select_fields),
-            _from=self.from_clause,
-            _where=self.where_clause)
+    def create(cls, arg, group, keep_all_rows=False):
+        if inspect.isclass(group) and issubclass(group, QueryExpression):
+            group = group()   # instantiate if a class
+        assert isinstance(group, QueryExpression)
+        if keep_all_rows and len(group.source) > 1:
+            group = group.make_subquery()  # subquery if left joining a join
+        result = Aggregation()
+        join = arg * group  # reuse the join logic
+        result._connection = join.connection
+        result._heading = join.heading.set_primary_key(arg.primary_key)
+        result._source = join.source
+        result.initial_restriction = join.restriction  # before GROUP BY
+        result.keep_all_rows = keep_all_rows
+        return result
 
     @property
     def from_clause(self):
-        return ("(SELECT {fields} FROM {from1}{where1} UNION SELECT {fields} FROM {from2}{where2}) as `_u%x`".format(
-            fields=self.get_select_fields(None), from1=self._arg1.from_clause,
-            where1=self._arg1.where_clause,
-            from2=self._arg2.from_clause,
-            where2=self._arg2.where_clause)) % next(self.__count)
+        if not self.keep_all_rows:
+            return super().from_clause
+        # if keep_all_rows, use LEFT JOIN for the last join
+        result = ' NATURAL JOIN '.join(
+            '(' + src.make_sql() + ') as `_s%x`' % next(self.__subquery_alias_count)
+            if isinstance(src, QueryExpression) else src for src in self.source[:-1])
+        src = self.source[-1]
+        result += ' NATURAL LEFT JOIN ' + (
+            '(' + src.make_sql() + ') as `_s%x`' % next(self.__subquery_alias_count)
+            if isinstance(src, QueryExpression) else src)
 
-
-
-class GroupBy(QueryExpression):
-    """
-    GroupBy(rel, comp1='expr1', ..., compn='exprn')  yields an entity set with the primary key specified by rel.heading.
-    The computed arguments comp1, ..., compn use aggregation operators on the attributes of rel.
-    GroupBy is used QueryExpression.aggr and U.aggr.
-    GroupBy is a private class in DataJoint, not exposed to users.
-    """
-
-    @classmethod
-    def create(cls, arg, group, attributes, named_attributes, keep_all_rows=False):
-        if inspect.isclass(group) and issubclass(group, QueryExpression):
-            group = group()   # instantiate if a class
-        attributes, named_attributes = Projection.prepare_attribute_lists(arg, attributes, named_attributes)
-        assert_join_compatibility(arg, group)
-        obj = cls()
-        obj._keep_all_rows = keep_all_rows
-        obj._arg = (Join.make_argument_subquery(group) if isinstance(arg, U)
-                    else Join.create(arg, group, keep_all_rows=keep_all_rows))
-        obj._connection = obj._arg.connection
-        # always include primary key of arg
-        attributes = (list(a for a in arg.primary_key if a not in named_attributes.values()) +
-                      list(a for a in attributes if a not in arg.primary_key))
-        obj._heading = obj._arg.heading.project(
-            attributes, named_attributes, force_primary_key=arg.primary_key)
-        return obj
-
-    def make_sql(self, select_fields=None):
+    def make_sql(self, fields=None):
+        where = make_condition(self, self.initial_restriction)
+        where = '' if where is True else ' WHERE ' + where
+        having = make_condition(self, self.restriction)
+        having = '' if having is True else ' HAVING ' + having
         return 'SELECT {fields} FROM {from_}{where} GROUP  BY `{group_by}`{having}'.format(
-            fields=self.get_select_fields(select_fields),
-            from_=self._arg.from_clause,
-            where=self._arg.where_clause,
+            fields=self.heading.as_sql(fields or self.heading.names),
+            from_=self.from_clause,
+            where=where,
             group_by='`,`'.join(self.primary_key),
-            having=re.sub(r'^ WHERE', ' HAVING', self.where_clause))
-
-    def __len__(self):
-        return len(Subquery.create(self))
+            having=having)
 
 
 class U:
@@ -476,27 +466,36 @@ class U:
     def primary_key(self):
         return self._primary_key
 
-    def __and__(self, query_expression):
-        if inspect.isclass(query_expression) and issubclass(query_expression, QueryExpression):
-            query_expression = query_expression()   # instantiate if a class
-        if not isinstance(query_expression, QueryExpression):
+    def __and__(self, other):
+        if inspect.isclass(other) and issubclass(other, QueryExpression):
+            other = other()   # instantiate if a class
+        if not isinstance(other, QueryExpression):
             raise DataJointError('Set U can only be restricted with a QueryExpression.')
-        return Projection.create(query_expression, attributes=self.primary_key,
-                                 named_attributes=dict(), include_primary_key=False)
+        result = copy.copy(other)
+        result._heading = result.heading.set_primary_key(self.primary_key)
+        result = result.proj()
+        result._distinct = True
+        return result
 
-    def __mul__(self, query_expression):
+    def __mul__(self, other):
         """
         Joining U with a query expression has the effect of promoting the attributes of U to the primary key of
         the other query expression.
-        :param query_expression: a query expression to join with.
+        :param other: the other query expression to join with.
         :return: a copy of the other query expression with the primary key extended.
         """
-        if inspect.isclass(query_expression) and issubclass(query_expression, QueryExpression):
-            query_expression = query_expression()   # instantiate if a class
-        if not isinstance(query_expression, QueryExpression):
+        if inspect.isclass(other) and issubclass(other, QueryExpression):
+            other = other()   # instantiate if a class
+        if not isinstance(other, QueryExpression):
             raise DataJointError('Set U can only be joined with a QueryExpression.')
-        result = query_expression.copy()
-        result._heading = result.heading.extend_primary_key(self.primary_key)
+        try:
+            raise DataJointError(
+                'Attribute `%s` not found' % next(k for k in self.primary_key if k not in other.heading.names))
+        except StopIteration:
+            pass  # all ok
+        result = copy.copy(other)
+        result._heading = result.heading.set_primary_key(
+            other.primary_key + [k for k in self.primary_key if k not in other.primary_key])
         return result
 
     def aggr(self, group, **named_attributes):
@@ -507,9 +506,9 @@ class U:
         :param named_attributes: computations of the form new_attribute="sql expression on attributes of group"
         :return: The derived query expression
         """
-        if self.primary_key:
-            return GroupBy.create(
-                self, group=group, keep_all_rows=False, attributes=(), named_attributes=named_attributes)
-        return Projection.create(group, attributes=(), named_attributes=named_attributes, include_primary_key=False)
+        if named_attributes.get('keep_all_rows', False):
+            raise DataJointError('Cannot set keep_all_rows=True when aggregating on a universal set.')
+        return Aggregation.create(self, group=group,  keep_all_rows=False).proj()
 
     aggregate = aggr  # alias for aggr
+

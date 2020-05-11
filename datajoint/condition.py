@@ -93,7 +93,7 @@ def make_condition(query_expression, condition):
     # restrict by AndList
     if isinstance(condition, AndList):
         # omit all conditions that evaluate to True
-        items = [item for item in (query_expression._make_condition(i) for i in condition) if item is not True]
+        items = [item for item in (make_condition(query_expression, cond) for cond in condition) if item is not True]
         if any(item is False for item in items):
             return negate  # if any item is False, the whole thing is False
         if not items:
@@ -110,7 +110,8 @@ def make_condition(query_expression, condition):
 
     # restrict by a mapping such as a dict -- convert to an AndList of string equality conditions
     if isinstance(condition, collections.abc.Mapping):
-        return template % query_expression._make_condition(
+        return template % make_condition(
+            query_expression,
             AndList('`%s`=%s' % (k, prep_value(k, v)) for k, v in condition.items() if k in query_expression.heading))
 
     # restrict by a numpy record -- convert to an AndList of string equality conditions
