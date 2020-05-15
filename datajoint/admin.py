@@ -40,8 +40,7 @@ def kill(restriction=None, connection=None, order_by=None):  # pragma: no cover
         connection = conn()
 
     if order_by is not None and not isinstance(order_by, str):
-        # partial order_by parsing - we don't do key manip, etc. like fetch
-        order_by = ','.join(order_by)
+        order_by = ','.join(order_by)  # c.f. Fetch.fetch() order_by
 
     query = 'SELECT * FROM information_schema.processlist WHERE id <> CONNECTION_ID()' + (
         "" if restriction is None else ' AND (%s)' % restriction) + (
