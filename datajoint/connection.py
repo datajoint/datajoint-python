@@ -124,7 +124,6 @@ class Connection:
             self.connection_id = self.query('SELECT connection_id()').fetchone()[0]
         else:
             raise errors.ConnectionError('Connection failed.')
-        self._in_transaction = False
         self.schemas = dict()
         self.dependencies = Dependencies(self)
 
@@ -160,6 +159,8 @@ class Connection:
                        if not(k == 'ssl_input' or
                               k == 'ssl' and self.conn_info['ssl_input'] is None)})
         self._conn.autocommit(True)
+        self._in_transaction = False
+
 
     def close(self):
         self._conn.close()
@@ -185,7 +186,7 @@ class Connection:
         return True
 
     @staticmethod
-    def __execute_query(cursor, query, args, cursor_class, suppress_warnings):
+    def _execute_query(cursor, query, args, cursor_class, suppress_warnings):
         try:
             with warnings.catch_warnings():
                 if suppress_warnings:
@@ -211,7 +212,7 @@ class Connection:
         cursor_class = client.cursors.DictCursor if as_dict else client.cursors.Cursor
         cursor = self._conn.cursor(cursor=cursor_class)
         try:
-            self.__execute_query(cursor, query, args, cursor_class, suppress_warnings)
+            self._execute_query(cursor, query, args, cursor_class, suppress_warnings)
         except errors.LostConnectionError:
             if not reconnect:
                 raise
@@ -222,7 +223,7 @@ class Connection:
                 raise errors.LostConnectionError("Connection was lost during a transaction.") from None
             logger.debug("Re-executing")
             cursor = self._conn.cursor(cursor=cursor_class)
-            self.__execute_query(cursor, query, args, cursor_class, suppress_warnings)
+            self._execute_query(cursor, query, args, cursor_class, suppress_warnings)
         return cursor
 
     def get_user(self):
