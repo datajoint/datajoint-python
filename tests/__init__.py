@@ -39,9 +39,9 @@ S3_CONN_INFO = dict(
     endpoint=environ.get('S3_ENDPOINT', 'localhost:9000'),
     access_key=environ.get('S3_ACCESS_KEY', 'datajoint'),
     secret_key=environ.get('S3_SECRET_KEY', 'datajoint'),
-    bucket=environ.get('S3_BUCKET', 'datajoint-test'))
+    bucket=environ.get('S3_BUCKET', 'datajoint.test'))
 
-S3_MIGRATE_BUCKET = [path.stem for path in Path(
+S3_MIGRATE_BUCKET = [path.name for path in Path(
         Path(__file__).resolve().parent,
         'external-legacy-data', 's3').iterdir()][0]
 
@@ -104,7 +104,7 @@ minioClient = minio.Minio(
     S3_CONN_INFO['endpoint'],
     access_key=S3_CONN_INFO['access_key'],
     secret_key=S3_CONN_INFO['secret_key'],
-    secure=False,
+    secure=True,
     http_client=httpClient)
 
 
