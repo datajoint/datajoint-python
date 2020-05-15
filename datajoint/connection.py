@@ -124,6 +124,7 @@ class Connection:
             self.connection_id = self.query('SELECT connection_id()').fetchone()[0]
         else:
             raise errors.ConnectionError('Connection failed.')
+        self._in_transaction = False
         self.schemas = dict()
         self.dependencies = Dependencies(self)
 
@@ -159,8 +160,6 @@ class Connection:
                        if not(k == 'ssl_input' or
                               k == 'ssl' and self.conn_info['ssl_input'] is None)})
         self._conn.autocommit(True)
-        self._in_transaction = False
-
 
     def close(self):
         self._conn.close()
