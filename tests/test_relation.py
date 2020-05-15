@@ -103,11 +103,26 @@ class TestRelation:
             'real_id', 'date_of_birth', 'subject_notes', subject_id='subject_id+1000', species='"human"'))
         assert_equal(len(self.subject), 2*original_length)
 
-    def test_insert_pandas(self):
+    def test_insert_pandas_roundtrip(self):
+        ''' ensure fetched frames can be inserted '''
         schema.TTest2.delete()
         n = len(schema.TTest())
         assert_true(n > 0)
         df = schema.TTest.fetch(format='frame')
+        assert_true(isinstance(df, pandas.DataFrame))
+        assert_equal(len(df), n)
+        schema.TTest2.insert(df)
+        assert_equal(len(schema.TTest2()), n)
+
+    def test_insert_pandas_userframe(self):
+        '''
+        ensure simple user-created frames (1 field, non-custom index)
+        can be inserted without extra index adjustment
+        '''
+        schema.TTest2.delete()
+        n = len(schema.TTest())
+        assert_true(n > 0)
+        df = pandas.DataFrame(schema.TTest.fetch())
         assert_true(isinstance(df, pandas.DataFrame))
         assert_equal(len(df), n)
         schema.TTest2.insert(df)

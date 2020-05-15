@@ -193,7 +193,11 @@ class Table(QueryExpression):
         """
 
         if isinstance(rows, pandas.DataFrame):
-            rows = rows.to_records()
+            # drop 'extra' synthetic index for 1-field index case -
+            # frames with more advanced indices should be prepared by user.
+            rows = rows.reset_index(
+                drop=len(rows.index.names) == 1 and not rows.index.names[0]
+            ).to_records(index=False)
 
         # prohibit direct inserts into auto-populated tables
         if not allow_direct_insert and not getattr(self, '_allow_insert', True):  # allow_insert is only used in AutoPopulate
