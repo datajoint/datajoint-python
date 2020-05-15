@@ -43,7 +43,6 @@ services:
     #   - "80:80"
     #   - "443:443"
     #   - "3306:3306"
-    #   - "9000:9000"
     depends_on:
       db:
         condition: service_healthy
