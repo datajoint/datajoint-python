@@ -4,7 +4,7 @@ from nose.tools import assert_true, assert_false, assert_equal, \
 import datajoint as dj
 import os
 from pathlib import Path
-from . import S3_CONN_INFO
+from . import S3_CONN_INFO, S3_MIGRATE_BUCKET
 from . import CONN_INFO
 from datajoint.migrate import _migrate_dj011_blob
 dj.config['enable_python_native_blobs'] = True
@@ -20,20 +20,20 @@ class TestBlobMigrate:
             default_store: dict(
                 protocol='s3',
                 endpoint=S3_CONN_INFO['endpoint'],
-                bucket='migrate-test',
+                bucket=S3_MIGRATE_BUCKET,
                 location='store',
                 access_key=S3_CONN_INFO['access_key'],
                 secret_key=S3_CONN_INFO['secret_key']),
             'shared': dict(
                 protocol='s3',
                 endpoint=S3_CONN_INFO['endpoint'],
-                bucket='migrate-test',
+                bucket=S3_MIGRATE_BUCKET,
                 location='maps',
                 access_key=S3_CONN_INFO['access_key'],
                 secret_key=S3_CONN_INFO['secret_key']),
             'local': dict(
                 protocol='file',
-                location=str(Path(os.path.expanduser('~'),'temp','migrate-test')))
+                location=str(Path(os.path.expanduser('~'),'temp',S3_MIGRATE_BUCKET)))
         }
         dj.config['cache'] = str(Path(os.path.expanduser('~'),'temp','dj-cache'))
 
