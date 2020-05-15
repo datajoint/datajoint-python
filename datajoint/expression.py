@@ -7,7 +7,7 @@ from .settings import config
 from .errors import DataJointError
 from .fetch import Fetch, Fetch1
 from .preview import preview, repr_html
-from .condition import AndList, Not, make_condition, assert_join_compatibility, get_identifiers_from_sql_expression
+from .condition import AndList, Not, make_condition, assert_join_compatibility
 
 logger = logging.getLogger(__name__)
 
