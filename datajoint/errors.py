@@ -81,6 +81,12 @@ class MissingExternalFile(DataJointError):
     """
 
 
+class BucketInaccessible(DataJointError):
+    """
+    Error raised when a S3 bucket is inaccessible
+    """
+
+
 # environment variables to control availability of experimental features
 
 ADAPTED_TYPE_SWITCH = "DJ_SUPPORT_ADAPTED_TYPES"

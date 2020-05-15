@@ -46,6 +46,9 @@ class ExternalTable(Table):
         if not self.is_declared:
             self.declare()
         self._s3 = None
+        if self.spec['protocol'] == 'file' and not Path(self.spec['location']).is_dir():
+            raise FileNotFoundError('Inaccessible local directory %s' %
+                                    self.spec['location']) from None
 
     @property
     def definition(self):

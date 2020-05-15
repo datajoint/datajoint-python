@@ -19,27 +19,27 @@ services:
       - MINIO_ACCESS_KEY=datajoint
       - MINIO_SECRET_KEY=datajoint
     # ports:
-    #   - "9000:9000"
+    #   - "80:80"
     # volumes:
     #   - ./minio/config:/root/.minio
     #   - ./minio/data:/data
-    command: server /data
+    command: server --address ":80" /data
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://minio:9000/minio/health/live"]
+      test: ["CMD", "curl", "--fail", "http://minio:80/minio/health/live"]
       timeout: 5s
       retries: 60
       interval: 1s
   fakeservices.datajoint.io:
     <<: *net
-    image: raphaelguzman/nginx:v0.0.4
+    image: raphaelguzman/nginx:v0.0.5
     environment:
     - ADD_db_TYPE=DATABASE
     - ADD_db_ENDPOINT=db:3306
     - ADD_minio_TYPE=MINIO
-    - ADD_minio_ENDPOINT=minio:9000
+    - ADD_minio_ENDPOINT=minio:80
     - ADD_minio_PREFIX=/
     # ports:
-    #   - "9000:9000"
+    #   - "80:80"
     #   - "443:443"
     #   - "3306:3306"
     depends_on:
@@ -60,7 +60,7 @@ services:
       - DJ_TEST_HOST=fakeservices.datajoint.io
       - DJ_TEST_USER=datajoint
       - DJ_TEST_PASSWORD=datajoint
-      - S3_ENDPOINT=fakeservices.datajoint.io:9000
+      - S3_ENDPOINT=fakeservices.datajoint.io
       - S3_ACCESS_KEY=datajoint
       - S3_SECRET_KEY=datajoint
       - S3_BUCKET=datajoint-test
