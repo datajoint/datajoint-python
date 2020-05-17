@@ -1,11 +1,7 @@
 from nose.tools import assert_equal
 from . import PREFIX, CONN_INFO
 import numpy as np
-import importlib
-try:
-    dj = importlib.import_module('datajoint-python.datajoint', None)
-except Exception as e:
-    import datajoint as dj
+import datajoint as dj
 
 schema = dj.Schema(PREFIX + '_fetch_same', connection=dj.conn(**CONN_INFO))
 
