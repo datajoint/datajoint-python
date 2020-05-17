@@ -3,6 +3,7 @@ from . import S3_CONN_INFO
 from minio import Minio
 import urllib3
 import certifi
+from nose.tools import assert_true
 
 
 class TestS3:
@@ -27,7 +28,7 @@ class TestS3:
             secure=False,
             http_client=http_client)
 
-        buckets = minio_client.list_buckets()
+        assert_true(minio_client.bucket_exists(S3_CONN_INFO['bucket']))
 
     @staticmethod
     def test_connection_secure():
@@ -49,4 +50,4 @@ class TestS3:
             secure=True,
             http_client=http_client)
 
-        buckets = minio_client.list_buckets()
+        assert_true(minio_client.bucket_exists(S3_CONN_INFO['bucket']))
