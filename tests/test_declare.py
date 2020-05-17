@@ -63,7 +63,6 @@ class TestDeclare:
         s2 = declare(rel.full_table_name, rel.describe(), context)
         assert_equal(s1, s2)
 
-
     @staticmethod
     def test_part():
         # Lookup and part with the same name.  See issue #365

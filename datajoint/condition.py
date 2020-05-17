@@ -58,11 +58,12 @@ def assert_join_compatibility(expr1, expr2):
             pass
 
 
-def make_condition(query_expression, condition):
+def make_condition(query_expression, condition, columns):
     """
     Translate the input condition into the equivalent SQL condition (a string)
     :param query_expression: a dj.QueryExpression object to apply condition
     :param condition: any valid restriction object.
+    :param columns: a set passed by reference to collect all column names used in the condition.
     :return: an SQL condition string or a boolean value.
     """
     from .expression import QueryExpression, U
@@ -88,12 +89,14 @@ def make_condition(query_expression, condition):
 
     # restrict by string
     if isinstance(condition, str):
+        columns.update(extract_column_names(condition))
         return template % condition.strip().replace("%", "%%")  # escape % in strings, see issue #376
 
     # restrict by AndList
     if isinstance(condition, AndList):
         # omit all conditions that evaluate to True
-        items = [item for item in (make_condition(query_expression, cond) for cond in condition) if item is not True]
+        items = [item for item in (make_condition(query_expression, cond, columns) for cond in condition)
+                 if item is not True]
         if any(item is False for item in items):
             return negate  # if any item is False, the whole thing is False
         if not items:
@@ -110,17 +113,23 @@ def make_condition(query_expression, condition):
 
     # restrict by a mapping such as a dict -- convert to an AndList of string equality conditions
     if isinstance(condition, collections.abc.Mapping):
-        return template % make_condition(
-            query_expression,
-            AndList('`%s`=%s' % (k, prep_value(k, v)) for k, v in condition.items() if k in query_expression.heading))
+        common_attributes = set(condition).intersection(query_expression.heading.names)
+        if not common_attributes:
+            return not negate   # no matching attributes -> evaluates to True        
+        columns.update(common_attributes)
+        return template % ('(' + ') AND ('.join(
+            '`%s`=%s' % (k, prep_value(k, condition[k])) for k in common_attributes) + ')')
 
     # restrict by a numpy record -- convert to an AndList of string equality conditions
     if isinstance(condition, numpy.void):
-        return template % make_condition(query_expression,
-                                         AndList(('`%s`=%s' % (k, prep_value(k, condition[k]))
-                                                  for k in condition.dtype.fields if k in query_expression.heading)))
+        common_attributes = set(condition.dtype.fields).intersection(query_expression.heading.names)
+        if not common_attributes:
+            return not negate   # no matching attributes -> evaluate to True
+        columns.update(common_attributes)
+        return template % ('(' + ') AND ('.join(
+            '`%s`=%s' % (k, prep_value(k, condition[k])) for k in common_attributes) + ')')
 
-    # restrict by a QueryExpression subclass -- triggers instantiation
+    # restrict by a QueryExpression subclass -- trigger instantiation and move on
     if inspect.isclass(condition) and issubclass(condition, QueryExpression):
         condition = condition()
 
@@ -128,6 +137,7 @@ def make_condition(query_expression, condition):
     if isinstance(condition, QueryExpression):
         assert_join_compatibility(query_expression, condition)
         common_attributes = [q for q in condition.heading.names if q in query_expression.heading.names]
+        columns.update(common_attributes)
         return (
             # without common attributes, any non-empty set matches everything
             (not negate if condition else negate) if not common_attributes
@@ -138,11 +148,11 @@ def make_condition(query_expression, condition):
 
     # restrict by pandas.DataFrames
     if isinstance(condition, pandas.DataFrame):
-        condition = condition.to_records()  # convert to numpy.recarray
+        condition = condition.to_records()  # convert to numpy.recarray and move on
 
     # if iterable (but not a string, a QueryExpression, or an AndList), treat as an OrList
     try:
-        or_list = [make_condition(query_expression, q) for q in condition]
+        or_list = [make_condition(query_expression, q, columns) for q in condition]
     except TypeError:
         raise DataJointError('Invalid restriction type %r' % condition)
     else:
@@ -152,37 +162,29 @@ def make_condition(query_expression, condition):
         return template % ('(%s)' % ' OR '.join(or_list)) if or_list else negate  # an empty or list is False
 
 
-def get_identifiers_from_condition(condition):
+def extract_column_names(sql_expression):
     """
-    extract all presumed column names from a WHERE clause condition
-    :param condition: any valid restriction
-    :return: list of inferred column names
-    This may be MySQL-specific.
+    extract all presumed column names from an sql expression such as the WHERE clause, for example.
+    :param sql_expression: a string containing an SQL expression
+    :return: set of extracted column names
+    This may be MySQL-specific for now.
     """
-
-    if isinstance(condition, str):
-
-        # remove escaped quotes
-        condition = re.sub(r'(\\\")|(\\\')', '', condition)
-
-        # remove quoted text
-        condition = re.sub(r"'[^']*'", "", condition)
-        condition = re.sub(r'"[^"]*"', '', condition)
-
-        result = set()
-
-        # find all tokens in back quotes and remove them
-        result.update(re.findall(r"`([a-z][a-z_0-9]*)`", condition))
-        condition = re.sub(r"`[a-z][a-z_0-9]*`", '', condition)
-
-        # remove space before parentheses
-        condition = re.sub(r"\s*\(", "(", condition)
-
-        # remove tokens followed by ( since they must be functions
-        condition = re.sub(r"(\b[a-z][a-z_0-9]*)\(", "(", condition)
-        remaining_tokens = set(re.findall(r"`\b[a-z][a-z_0-9]*\b", condition))
-
-        # update result removing reserved words
-        result.update(remaining_tokens - {"in", "between", "like", "and", "or"})
-
-        return result
+    assert isinstance(sql_expression, str)
+    result = set()
+    s = sql_expression  # for terseness
+    # remove escaped quotes
+    s = re.sub(r'(\\\")|(\\\')', '', s)
+    # remove quoted text
+    s = re.sub(r"'[^']*'", "", s)
+    s = re.sub(r'"[^"]*"', '', s)
+    # find all tokens in back quotes and remove them
+    result.update(re.findall(r"`([a-z][a-z_0-9]*)`", s))
+    s = re.sub(r"`[a-z][a-z_0-9]*`", '', s)
+    # remove space before parentheses
+    s = re.sub(r"\s*\(", "(", s)
+    # remove tokens followed by ( since they must be functions
+    s = re.sub(r"(\b[a-z][a-z_0-9]*)\(", "(", s)
+    remaining_tokens = set(re.findall(r"`\b[a-z][a-z_0-9]*\b", s))
+    # update result removing reserved words
+    result.update(remaining_tokens - {"in", "between", "like", "and", "or"})
+    return result
