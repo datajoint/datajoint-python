@@ -7,7 +7,7 @@ from .settings import config
 from .errors import DataJointError
 from .fetch import Fetch, Fetch1
 from .preview import preview, repr_html
-from .condition import AndList, Not, make_condition, assert_join_compatibility
+from .condition import AndList, Not, make_condition, assert_join_compatibility, extract_column_names
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +79,7 @@ class QueryExpression:
 
     @property
     def where_clause(self):
-        where = make_condition(self, self.restriction)
+        where = make_condition(self, self.restriction, set())
         return '' if where is True else ' WHERE ' + where
 
     def make_sql(self, fields=None):
@@ -102,19 +102,16 @@ class QueryExpression:
         return result
 
     def restrict(self, restriction):
-        new_condition = make_condition(self, restriction)
+        attributes = set()
+        new_condition = make_condition(self, restriction, attributes)
         if new_condition is True:
             return self  # restriction has no effect, return the same object
         # check that all attributes in condition are present in the query
-        attributes = get_identifiers_from_sql_expression(new_condition)
         try:
-            try:
-                raise DataJointError("Attribute `%s` is not found in query." % next(
-                    attr for attr in attributes if attr not in self.heading.names))
-            except StopIteration:
-                pass  # all ok
-        except DataJointError:
-            raise
+            raise DataJointError("Attribute `%s` is not found in query." % next(
+                attr for attr in attributes if attr not in self.heading.names))
+        except StopIteration:
+            pass  # all ok
         # If the new condition uses any new attributes, a subquery is required.
         # However, Aggregation's HAVING statement can work find with aliased attributes.
         need_suqbquery = not isinstance(self, Aggregation) and self.heading.new_attributes
@@ -141,6 +138,8 @@ class QueryExpression:
 
     def __mul__(self, other):
         """ join of query expressions `self` and `other` """
+        if inspect.isclass(other) and issubclass(other, QueryExpression):
+            other = other()  # instantiate
         assert_join_compatibility(self, other)
         result = QueryExpression()
         result._connection = self.connection
@@ -224,15 +223,15 @@ class QueryExpression:
             pass  # all ok
 
         # need a subquery if the projection remaps any remapped attributes
-        used = set(q for v in compute_map.values() for q in get_identifiers_from_sql_expression(v))
+        used = set(q for v in compute_map.values() for q in extract_column_names(v))
         used.update(rename_map.values())
         used.update(replicate_map.values())
         used.intersection_update(self.heading.names)
         need_subquery = any(self.heading[name].attribute_expression is not None for name in used)
 
         if not need_subquery and self.restriction:
-            restriction_attributes = set(
-                get_identifiers_from_sql_expression(make_condition(self, self.restriction)))
+            restriction_attributes = set()
+            make_condition(self, self.restriction, restriction_attributes)
             # need a subquery if the restriction applies to attributes that have been renamed
             need_subquery = any(self.heading[name].attribute_expression is not None for name in restriction_attributes)
 
@@ -396,9 +395,9 @@ class Aggregation(QueryExpression):
             if isinstance(src, QueryExpression) else src)
 
     def make_sql(self, fields=None):
-        where = make_condition(self, self.initial_restriction)
+        where = make_condition(self, self.initial_restriction, set())
         where = '' if where is True else ' WHERE ' + where
-        having = make_condition(self, self.restriction)
+        having = make_condition(self, self.restriction, set())
         having = '' if having is True else ' HAVING ' + having
         return 'SELECT {fields} FROM {from_}{where} GROUP  BY `{group_by}`{having}'.format(
             fields=self.heading.as_sql(fields or self.heading.names),

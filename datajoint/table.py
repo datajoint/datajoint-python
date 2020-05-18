@@ -693,7 +693,7 @@ class Log(Table):
             table_name=self.table_name,
             context=None
         ))
-        self._source = ['`{db}`.{tab}'.format(db=database, tab=self.table_name)]
+        self._source = [self.full_table_name]
 
         self._definition = """    # event logging table for `{database}`
         id       :int unsigned auto_increment     # event order id

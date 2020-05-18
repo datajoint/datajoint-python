@@ -73,6 +73,7 @@ class AutoPopulate:
         """
         :param key:  they key returned for the job from the key source
         :return: the dict to use to generate the job reservation hash
+        This method allows subclasses to control the job reservation granularity.
         """
         return key
 

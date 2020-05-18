@@ -4,7 +4,7 @@ from tqdm import tqdm
 from .settings import config
 from .errors import DataJointError, MissingExternalFile
 from .hash import uuid_from_buffer, uuid_from_file
-from .table import Table
+from .table import Table, FreeTable
 from .heading import Heading
 from .declare import EXTERNAL_TABLE_ROOT
 from . import s3
@@ -303,7 +303,7 @@ class ExternalTable(Table):
         query expression for unused hashes
         :return: self restricted to elements that are not in use by any tables in the schema
         """
-        return self - ["hash IN (SELECT `{column_name}` FROM {referencing_table})".format(**ref)
+        return self - [FreeTable(self.connection, ref['referencing_table']).proj(hash=ref['column_name'])
                        for ref in self.references]
 
     def used(self):
@@ -311,7 +311,7 @@ class ExternalTable(Table):
         query expression for used hashes
         :return: self restricted to elements that in use by tables in the schema
         """
-        return self & ["hash IN (SELECT `{column_name}` FROM {referencing_table})".format(**ref)
+        return self & [FreeTable(self.connection, ref['referencing_table']).proj(hash=ref['column_name'])
                        for ref in self.references]
 
     def delete(self, *, delete_external_files=None, limit=None, display_progress=True):

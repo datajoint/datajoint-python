@@ -69,12 +69,18 @@ class Heading:
         """
         self.indexes = None
         self.table_info = table_info
-        self.table_status = None
+        self._table_status = None
         self._attributes = None if attribute_specs is None else OrderedDict(
             (q['name'], Attribute(**q)) for q in attribute_specs)
 
     def __len__(self):
         return 0 if self.attributes is None else len(self.attributes)
+
+    @property
+    def table_status(self):
+        if self._table_status is None:
+            self._init_from_database()
+        return self._table_status
 
     @property
     def attributes(self):
@@ -164,7 +170,7 @@ class Heading:
                 return
             raise DataJointError('The table `{database}`.`{table_name}` is not defined.'.format(
                 table_name=table_name, database=database))
-        self.table_status = {k.lower(): v for k, v in info.items()}
+        self._table_status = {k.lower(): v for k, v in info.items()}
         cur = conn.query(
             'SHOW FULL COLUMNS FROM `{table_name}` IN `{database}`'.format(
                 table_name=table_name, database=database), as_dict=True)
