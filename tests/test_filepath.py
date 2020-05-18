@@ -59,7 +59,8 @@ def test_filepath(store="repo"):
 
     # put the same file twice to ensure storing once
     uuid1 = ext.upload_filepath(str(managed_file))
-    uuid2 = ext.upload_filepath(str(managed_file))   # no duplication should arise if file is the same
+    # no duplication should arise if file is the same
+    uuid2 = ext.upload_filepath(str(managed_file))
     assert_equal(uuid1, uuid2)
 
     # remove to ensure downloading
@@ -79,6 +80,7 @@ def test_filepath(store="repo"):
 
     # cleanup
     ext.delete(delete_external_files=True)
+    assert_false(ext.exists(ext._make_external_filepath(str(Path(relpath, filename)))))
 
 
 def test_filepath_s3():
@@ -115,7 +117,8 @@ def test_duplicate_error(store="repo"):
     ext.upload_filepath(str(managed_file))
     with managed_file.open('wb') as f:
         f.write(os.urandom(300))
-    ext.upload_filepath(str(managed_file))  # this should raise exception because the file has changed
+    # this should raise exception because the file has changed
+    ext.upload_filepath(str(managed_file))
 
 
 def test_duplicate_error_s3():

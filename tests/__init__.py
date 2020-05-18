@@ -39,7 +39,11 @@ S3_CONN_INFO = dict(
     endpoint=environ.get('S3_ENDPOINT', 'localhost:9000'),
     access_key=environ.get('S3_ACCESS_KEY', 'datajoint'),
     secret_key=environ.get('S3_SECRET_KEY', 'datajoint'),
-    bucket=environ.get('S3_BUCKET', 'datajoint-test'))
+    bucket=environ.get('S3_BUCKET', 'datajoint.test'))
+
+S3_MIGRATE_BUCKET = [path.name for path in Path(
+        Path(__file__).resolve().parent,
+        'external-legacy-data', 's3').iterdir()][0]
 
 # Prefix for all databases used during testing
 PREFIX = environ.get('DJ_TEST_DB_PREFIX', 'djtest')
@@ -62,7 +66,7 @@ minioClient = minio.Minio(
     S3_CONN_INFO['endpoint'],
     access_key=S3_CONN_INFO['access_key'],
     secret_key=S3_CONN_INFO['secret_key'],
-    secure=False,
+    secure=True,
     http_client=httpClient)
 
 
@@ -130,10 +134,9 @@ def setup_package():
     source = Path(
         Path(__file__).resolve().parent,
         'external-legacy-data','s3')
-    bucket = "migrate-test"
     region = "us-east-1"
     try:
-        minioClient.make_bucket(bucket, location=region)
+        minioClient.make_bucket(S3_MIGRATE_BUCKET, location=region)
     except minio.error.BucketAlreadyOwnedByYou:
         pass
 
@@ -141,12 +144,12 @@ def setup_package():
     for path in pathlist:
         if os.path.isfile(str(path)) and ".sql" not in str(path):
             minioClient.fput_object(
-                    bucket, str(Path(
-                        os.path.relpath(str(path),str(Path(source,bucket))))
+                    S3_MIGRATE_BUCKET, str(Path(
+                        os.path.relpath(str(path),str(Path(source,S3_MIGRATE_BUCKET))))
                                 .as_posix()), str(path))
     # Add S3
     try:
-        minioClient.make_bucket("datajoint-test", location=region)
+        minioClient.make_bucket(S3_CONN_INFO['bucket'], location=region)
     except minio.error.BucketAlreadyOwnedByYou:
         pass
 
@@ -181,19 +184,17 @@ def teardown_package():
     conn_root.query('DROP USER `djssl`')
 
     # Remove old S3
-    bucket = "migrate-test"
     objs = list(minioClient.list_objects_v2(
-            bucket, recursive=True))
-    objs = [minioClient.remove_object(bucket,
+            S3_MIGRATE_BUCKET, recursive=True))
+    objs = [minioClient.remove_object(S3_MIGRATE_BUCKET,
             o.object_name.encode('utf-8')) for o in objs]
-    minioClient.remove_bucket(bucket)
+    minioClient.remove_bucket(S3_MIGRATE_BUCKET)
 
     # Remove S3
-    bucket = "datajoint-test"
-    objs = list(minioClient.list_objects_v2(bucket, recursive=True))
-    objs = [minioClient.remove_object(bucket,
+    objs = list(minioClient.list_objects_v2(S3_CONN_INFO['bucket'], recursive=True))
+    objs = [minioClient.remove_object(S3_CONN_INFO['bucket'],
             o.object_name.encode('utf-8')) for o in objs]
-    minioClient.remove_bucket(bucket)
+    minioClient.remove_bucket(S3_CONN_INFO['bucket'])
 
     # Remove old File Content
     shutil.rmtree(str(Path(os.path.expanduser('~'),'temp')))

@@ -73,10 +73,11 @@ class Blob:
 
     def set_dj0(self):
         if not config.get('enable_python_native_blobs'):
-            raise DataJointError('v0.12+ python native blobs disabled. see also: https://github.com/datajoint/datajoint-python#python-native-blobs')
+            raise DataJointError("""v0.12+ python native blobs disabled.
+                See also: https://github.com/datajoint/datajoint-python#python-native-blobs""")
 
         self.protocol = b"dj0\0"  # when using new blob features
-            
+
     def squeeze(self, array, convert_to_scalar=True):
         """
         Simplify the input array - squeeze out all singleton dimensions.
@@ -308,7 +309,7 @@ class Blob:
     def pack_string(s):
         blob = s.encode()
         return b"\5" + len_u64(blob) + blob
-    
+
     def read_bytes(self):
         return self.read_binary(self.read_value())
 
@@ -346,7 +347,7 @@ class Blob:
 
     def read_dict(self):
         return OrderedDict((self.read_blob(self.read_value()), self.read_blob(self.read_value()))
-                    for _ in range(self.read_value()))
+                           for _ in range(self.read_value()))
 
     def pack_dict(self, d):
         return b"\4" + len_u64(d) + b"".join(
@@ -428,7 +429,7 @@ class Blob:
         data = self._blob[self._pos:target].decode()
         self._pos = target + 1
         return data
-        
+
     def read_value(self, dtype='uint64', count=1):
         data = np.frombuffer(self._blob, dtype=dtype, count=count, offset=self._pos)
         self._pos += data.dtype.itemsize * data.size
