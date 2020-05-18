@@ -159,7 +159,7 @@ class Table(QueryExpression):
     @property
     def _log(self):
         if self._log_ is None:
-            self._log_ = Log(self.connection, database=self.database)
+            self._log_ = Log(self.connection, database=self.database, skip_logging=self.table_name.startswith('~'))
         return self._log_
 
     @property
@@ -183,7 +183,8 @@ class Table(QueryExpression):
         :param replace: If True, replaces the existing tuple.
         :param skip_duplicates: If True, silently skip duplicate inserts.
         :param ignore_extra_fields: If False, fields that are not in the heading raise error.
-        :param allow_direct_insert: applies only in auto-populated tables. If False (default), insert are allowed only from inside the make callback.
+        :param allow_direct_insert: applies only in auto-populated tables.
+                                    If False (default), insert are allowed only from inside the make callback.
 
         Example::
         >>> relation.insert([
@@ -192,7 +193,11 @@ class Table(QueryExpression):
         """
 
         if isinstance(rows, pandas.DataFrame):
-            rows = rows.to_records()
+            # drop 'extra' synthetic index for 1-field index case -
+            # frames with more advanced indices should be prepared by user.
+            rows = rows.reset_index(
+                drop=len(rows.index.names) == 1 and not rows.index.names[0]
+            ).to_records(index=False)
 
         # prohibit direct inserts into auto-populated tables
         if not allow_direct_insert and not getattr(self, '_allow_insert', True):  # allow_insert is only used in AutoPopulate
@@ -534,10 +539,9 @@ class Table(QueryExpression):
                             parent_name = list(self.connection.dependencies.in_edges(parent_name))[0][0]
                             lst = [(attr, ref) for attr, ref in fk_props['attr_map'].items() if ref != attr]
                             definition += '->{props} {class_name}.proj({proj_list})\n'.format(
-                                attr_list=', '.join(r[0] for r in lst),
                                 props=index_props,
                                 class_name=lookup_class_name(parent_name, context) or parent_name,
-                                proj_list=','.join('{}="{}"'.format(a,b) for a, b in lst))
+                                proj_list=','.join('{}="{}"'.format(a, b) for a, b in lst))
                             attributes_declared.update(fk_props['attr_map'])
             if do_include:
                 attributes_declared.add(attr.name)
@@ -589,7 +593,7 @@ class Table(QueryExpression):
                 placeholder = '%s'
                 value = str(int(value) if isinstance(value, bool) else value)
         else:
-            placeholder = '%s'
+            placeholder = '%s' if value is not None else 'NULL'
         command = "UPDATE {full_table_name} SET `{attrname}`={placeholder} {where_clause}".format(
             full_table_name=self.from_clause,
             attrname=attrname,
@@ -667,20 +671,23 @@ class Log(Table):
     """
     The log table for each schema.
     Instances are callable.  Calls log the time and identifying information along with the event.
+    :param skip_logging: if True, then log entry is skipped by default. See __call__
     """
 
-    def __init__(self, arg, database=None):
+    def __init__(self, arg, database=None, skip_logging=False):
         super().__init__()
 
         if isinstance(arg, Log):
             # copy constructor
             self.database = arg.database
+            self.skip_logging = arg.skip_logging
             self._connection = arg._connection
             self._definition = arg._definition
             self._user = arg._user
             return
 
         self.database = database
+        self.skip_logging = skip_logging
         self._connection = arg
         self._definition = """    # event logging table for `{database}`
         id       :int unsigned auto_increment     # event order id
@@ -704,15 +711,21 @@ class Log(Table):
     def table_name(self):
         return '~log'
 
-    def __call__(self, event):
-        try:
-            self.insert1(dict(
-                user=self._user,
-                version=version + 'py',
-                host=platform.uname().node,
-                event=event), skip_duplicates=True, ignore_extra_fields=True)
-        except DataJointError:
-            logger.info('could not log event in table ~log')
+    def __call__(self, event, skip_logging=None):
+        """
+        :param event: string to write into the log table
+        :param skip_logging: If True then do not log. If None, then use self.skip_logging
+        """
+        skip_logging = self.skip_logging if skip_logging is None else skip_logging
+        if not skip_logging:
+            try:
+                self.insert1(dict(
+                    user=self._user,
+                    version=version + 'py',
+                    host=platform.uname().node,
+                    event=event), skip_duplicates=True, ignore_extra_fields=True)
+            except DataJointError:
+                logger.info('could not log event in table ~log')
 
     def delete(self):
         """bypass interactive prompts and cascading dependencies"""

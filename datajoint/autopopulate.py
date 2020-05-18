@@ -5,7 +5,7 @@ import traceback
 import random
 import inspect
 from tqdm import tqdm
-from .expression import QueryExpression, AndList, U
+from .expression import QueryExpression, AndList
 from .errors import DataJointError, LostConnectionError
 from .table import FreeTable
 import signal

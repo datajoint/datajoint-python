@@ -94,9 +94,9 @@ def conn(host=None, user=None, password=None, *, init_fun=None, reset=False, use
     :param password: mysql password
     :param init_fun: initialization function
     :param reset: whether the connection should be reset or not
-    :param use_tls: TLS encryption option. Valid options are: True (required), 
-                    False (required no TLS), None (TLS prefered, default), 
-                    dict (Manually specify values per 
+    :param use_tls: TLS encryption option. Valid options are: True (required),
+                    False (required no TLS), None (TLS prefered, default),
+                    dict (Manually specify values per
                     https://dev.mysql.com/doc/refman/5.7/en/connection-options.html
                         #encrypted-connection-options).
     """
@@ -178,7 +178,7 @@ class Connection:
                              "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
                     charset=config['connection.charset'],
                     **{k: v for k, v in self.conn_info.items()
-                    if k not in ['ssl_input', 'host_input']})
+                       if k not in ['ssl_input', 'host_input']})
             except client.err.InternalError:
                 self._conn = client.connect(
                     init_command=self.init_fun,
@@ -186,8 +186,8 @@ class Connection:
                              "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
                     charset=config['connection.charset'],
                     **{k: v for k, v in self.conn_info.items()
-                    if not(k in ['ssl_input', 'host_input'] or
-                    k == 'ssl' and self.conn_info['ssl_input'] is None)})
+                       if not(k in ['ssl_input', 'host_input'] or
+                              k == 'ssl' and self.conn_info['ssl_input'] is None)})
         self._conn.autocommit(True)
 
     def close(self):
@@ -214,7 +214,7 @@ class Connection:
         return True
 
     @staticmethod
-    def __execute_query(cursor, query, args, cursor_class, suppress_warnings):
+    def _execute_query(cursor, query, args, cursor_class, suppress_warnings):
         try:
             with warnings.catch_warnings():
                 if suppress_warnings:
@@ -240,7 +240,7 @@ class Connection:
         cursor_class = client.cursors.DictCursor if as_dict else client.cursors.Cursor
         cursor = self._conn.cursor(cursor=cursor_class)
         try:
-            self.__execute_query(cursor, query, args, cursor_class, suppress_warnings)
+            self._execute_query(cursor, query, args, cursor_class, suppress_warnings)
         except errors.LostConnectionError:
             if not reconnect:
                 raise
@@ -251,7 +251,7 @@ class Connection:
                 raise errors.LostConnectionError("Connection was lost during a transaction.")
             logger.debug("Re-executing")
             cursor = self._conn.cursor(cursor=cursor_class)
-            self.__execute_query(cursor, query, args, cursor_class, suppress_warnings)
+            self._execute_query(cursor, query, args, cursor_class, suppress_warnings)
         return cursor
 
     def get_user(self):

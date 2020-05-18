@@ -13,8 +13,9 @@ from .errors import DataJointError
 
 LOCALCONFIG = 'dj_local_conf.json'
 GLOBALCONFIG = '.datajoint_config.json'
-
-DEFAULT_SUBFOLDING = (2, 2)  # subfolding for external storage in filesystem.  2, 2 means that file abcdef is stored as /ab/cd/abcdef
+# subfolding for external storage in filesystem.
+# 2, 2 means that file abcdef is stored as /ab/cd/abcdef
+DEFAULT_SUBFOLDING = (2, 2)
 
 validators = collections.defaultdict(lambda: lambda value: True)
 validators['database.port'] = lambda a: isinstance(a, int)
@@ -63,10 +64,10 @@ class Config(collections.MutableMapping):
     instance = None
 
     def __init__(self, *args, **kwargs):
-            if not Config.instance:
-                Config.instance = Config.__Config(*args, **kwargs)
-            else:
-                Config.instance._conf.update(dict(*args, **kwargs))
+        if not Config.instance:
+            Config.instance = Config.__Config(*args, **kwargs)
+        else:
+            Config.instance._conf.update(dict(*args, **kwargs))
 
     def __getattr__(self, name):
         return getattr(self.instance, name)

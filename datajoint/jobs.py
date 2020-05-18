@@ -1,5 +1,5 @@
-from .hash import key_hash
 import os
+from .hash import hash_key_values
 import platform
 from .table import Table
 from .settings import config
@@ -69,7 +69,7 @@ class JobTable(Table):
         """
         job = dict(
             table_name=table_name,
-            key_hash=key_hash(key),
+            key_hash=hash_key_values(key),
             status='reserved',
             host=platform.node(),
             pid=os.getpid(),
@@ -89,7 +89,7 @@ class JobTable(Table):
         :param table_name: `database`.`table_name`
         :param key: the dict of the job's primary key
         """
-        job_key = dict(table_name=table_name, key_hash=key_hash(key))
+        job_key = dict(table_name=table_name, key_hash=hash_key_values(key))
         (self & job_key).delete_quick()
 
     def error(self, table_name, key, error_message, error_stack=None):
@@ -107,7 +107,7 @@ class JobTable(Table):
             self.insert1(
                 dict(
                     table_name=table_name,
-                    key_hash=key_hash(key),
+                    key_hash=hash_key_values(key),
                     status="error",
                     host=platform.node(),
                     pid=os.getpid(),

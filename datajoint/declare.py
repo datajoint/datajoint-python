@@ -397,8 +397,8 @@ def substitute_special_type(match, category, foreign_key_sql, context):
     elif category in EXTERNAL_TYPES:
         if category == 'FILEPATH' and not _support_filepath_types():
             raise DataJointError("""
-            The filepath data type is disabled until complete validation. 
-            To turn it on as experimental feature, set the environment variable 
+            The filepath data type is disabled until complete validation.
+            To turn it on as experimental feature, set the environment variable
             {env} = TRUE or upgrade datajoint.
             """.format(env=FILEPATH_FEATURE_SWITCH))
         match['store'] = match['type'].split('@', 1)[1]
@@ -444,7 +444,7 @@ def compile_attribute(line, in_key, foreign_key_sql, context):
     else:
         if match['default']:
             quote = (match['default'].split('(')[0].upper() not in CONSTANT_LITERALS
-                        and match['default'][0] not in '"\'')
+                     and match['default'][0] not in '"\'')
             match['default'] = 'NOT NULL DEFAULT ' + ('"%s"' if quote else "%s") % match['default']
         else:
             match['default'] = 'NOT NULL'
