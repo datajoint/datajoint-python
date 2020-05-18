@@ -112,7 +112,7 @@ def conn(host=None, user=None, password=None, *, init_fun=None, reset=False, use
         init_fun = init_fun if init_fun is not None else config['connection.init_function']
         use_tls = use_tls if use_tls is not None else config['database.use_tls']
         conn.connection = Connection(host, user, password, None, init_fun, use_tls,
-                                        host_input=host_input)
+                                     host_input=host_input)
     return conn.connection
 
 
@@ -132,7 +132,7 @@ class Connection:
     """
 
     def __init__(self, host, user, password, port=None, init_fun=None, use_tls=None,
-                    host_input=None):
+                 host_input=None):
         if ':' in host:
             # the port in the hostname overrides the port argument
             host, port = host.split(':')

@@ -25,7 +25,7 @@ def _update_error_stack(plugin_name):
 def _import_plugins(category):
     return {
             entry_point.name: dict(object=entry_point,
-                                    verified=_update_error_stack(
+                                   verified=_update_error_stack(
                                         entry_point.module_name.split('.')[0]))
             for entry_point
             in pkg_resources.iter_entry_points('datajoint_plugins.{}'.format(category))
