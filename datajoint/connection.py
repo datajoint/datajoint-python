@@ -23,7 +23,7 @@ def get_host_hook(host_input):
         try:
             return connection_plugins[plugin_name]['object'].load().get_host(host_input)
         except KeyError:
-            raise DataJointError(
+            raise errors.DataJointError(
                 "Connection plugin '{}' not found.".format(plugin_name))
     else:
         return host_input
@@ -35,7 +35,7 @@ def connect_host_hook(connection_obj):
         try:
             connection_plugins[plugin_name]['object'].load().connect_host(connection_obj)
         except KeyError:
-            raise DataJointError(
+            raise errors.DataJointError(
                 "Connection plugin '{}' not found.".format(plugin_name))
     else:
         connection_obj.connect()
