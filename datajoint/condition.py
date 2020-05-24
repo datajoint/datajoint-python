@@ -66,7 +66,7 @@ def make_condition(query_expression, condition, columns):
     :param columns: a set passed by reference to collect all column names used in the condition.
     :return: an SQL condition string or a boolean value.
     """
-    from .expression import QueryExpression, U
+    from .expression import QueryExpression, Aggregation, U
 
     def prep_value(k, v):
         """prepare value v for inclusion as a string in an SQL condition"""
@@ -138,6 +138,8 @@ def make_condition(query_expression, condition, columns):
         assert_join_compatibility(query_expression, condition)
         common_attributes = [q for q in condition.heading.names if q in query_expression.heading.names]
         columns.update(common_attributes)
+        if isinstance(condition, Aggregation):
+            condition = condition.make_subquery()
         return (
             # without common attributes, any non-empty set matches everything
             (not negate if condition else negate) if not common_attributes

@@ -1,4 +1,4 @@
-from nose.tools import assert_true, assert_list_equal, raises
+from nose.tools import assert_true, assert_list_equal
 from numpy.testing import assert_almost_equal
 import datajoint as dj
 from . import schema_external as modu

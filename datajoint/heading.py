@@ -51,7 +51,7 @@ class Attribute(namedtuple('_Attribute', default_attribute_properties)):
     def original_name(self):
         if self.attribute_expression is None:
             return self.name
-        assert self.attribute_expression.starts_with('`')
+        assert self.attribute_expression.startswith('`')
         return self.attribute_expression.strip('`')
 
 

@@ -192,8 +192,7 @@ class Schema:
         if not is_declared:
             if not self.create_tables or assert_declared:
                 raise DataJointError('Table `%s` not declared' % instance.table_name)
-            else:
-                instance.declare(context)
+            instance.declare(context)
         is_declared = is_declared or instance.is_declared
 
         # add table definition to the doc string

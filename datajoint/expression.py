@@ -169,26 +169,27 @@ class QueryExpression:
         from other attributes available before the projection.
         Each attribute name can only be used once.
         """
-        duplication_pattern = re.compile(r'\s*\(\s*(?P<name>[a-z][a-z_0-9]*)\s*\)\s*')
-        rename_pattern = re.compile(r'\s*(?P<name>[a-z][a-z_0-9]*)\s*')
+        duplication_pattern = re.compile(r'\s*\(\s*(?P<name>[a-z][a-z_0-9]*)\s*\)\s*$')
+        rename_pattern = re.compile(r'\s*(?P<name>[a-z][a-z_0-9]*)\s*$')
         replicate_map = {k: m.group('name')
                          for k, m in ((k, duplication_pattern.match(v)) for k, v in named_attributes.items()) if m}
         rename_map = {k: m.group('name')
                       for k, m in ((k, rename_pattern.match(v)) for k, v in named_attributes.items()) if m}
         compute_map = {k: v for k, v in named_attributes.items()
                        if not duplication_pattern.match(v) and not rename_pattern.match(v)}
-        # include primary key
         attributes = set(attributes)
         try:
             raise DataJointError(
                 'Attribute `%s` not found.' % next(a for a in attributes if a not in self.heading.names))
         except StopIteration:
             pass  # all ok
-        attributes.update((k for k in self.primary_key if k not in rename_map.items()))
+        # include primary key
+        attributes.update((k for k in self.primary_key if k not in rename_map.values()))
         # include all secondary attributes with Ellipsis
         if Ellipsis in attributes:
             attributes.discard(Ellipsis)
-            attributes.update((a for a in self.heading.secondary_attributes if a not in attributes))
+            attributes.update((a for a in self.heading.secondary_attributes
+                               if a not in attributes and a not in rename_map.values()))
         # exclude attributes
         excluded_attributes = set(a.lstrip('-').strip() for a in attributes if a.startswith('-'))
         try:
@@ -236,7 +237,7 @@ class QueryExpression:
             need_subquery = any(self.heading[name].attribute_expression is not None for name in restriction_attributes)
 
         result = self.make_subquery() if need_subquery else copy.copy(self)
-        result.heading.select(attributes, rename_map=dict(**rename_map, **replicate_map), compute_map=compute_map)
+        result._heading = result.heading.select(attributes, rename_map=dict(**rename_map, **replicate_map), compute_map=compute_map)
         return result
 
     def aggr(self, group, *attributes, keep_all_rows=False, **named_attributes):
@@ -252,7 +253,6 @@ class QueryExpression:
             self, group=group, keep_all_rows=keep_all_rows).proj(*attributes, **named_attributes)
 
     aggregate = aggr  # alias for aggr
-
 
     # ---------- Fetch operators --------------------
     @property
@@ -364,6 +364,7 @@ class Aggregation(QueryExpression):
     """
     initial_restriction = None   # the pre-GROUP BY conditions for the WHERE clause
     keep_all_rows = False
+    _grouping_attributes = ...
 
     @classmethod
     def create(cls, arg, group, keep_all_rows=False):
@@ -378,6 +379,7 @@ class Aggregation(QueryExpression):
         result._heading = join.heading.set_primary_key(arg.primary_key)
         result._source = join.source
         result.initial_restriction = join.restriction  # before GROUP BY
+        result._grouping_attributes = join.primary_key
         result.keep_all_rows = keep_all_rows
         return result
 
@@ -393,6 +395,7 @@ class Aggregation(QueryExpression):
         result += ' NATURAL LEFT JOIN ' + (
             '(' + src.make_sql() + ') as `_s%x`' % next(self.__subquery_alias_count)
             if isinstance(src, QueryExpression) else src)
+        return result
 
     def make_sql(self, fields=None):
         where = make_condition(self, self.initial_restriction, set())
@@ -403,7 +406,7 @@ class Aggregation(QueryExpression):
             fields=self.heading.as_sql(fields or self.heading.names),
             from_=self.from_clause,
             where=where,
-            group_by='`,`'.join(self.primary_key),
+            group_by='`,`'.join(self._grouping_attributes),
             having=having)
 
 

@@ -41,7 +41,8 @@ class S(dj.Lookup):
 
 
 def test_issue386():
-    result = Q & (R.aggr(S, n='count(*)') & 'n=2')
+    result = R.aggr(S, n='count(*)') & 'n=2'
+    result = Q & result
     result.fetch()
 
 # ---------------- ISSUE 449 ------------------
@@ -55,7 +56,6 @@ def test_issue449():
 
 # ---------------- ISSUE 484 -----------------
 # Issue 484
-
 def test_issue484():
     result = dj.U().aggr(R.aggr(S, n='avg(s)'), m='max(n)')
     result.fetch()
@@ -91,7 +91,8 @@ class X(dj.Lookup):
 
 
 def test_issue558_part1():
-    assert_equal(len(A - B), len((A - B).proj(id2='3')))
+    q = (A-B).proj(id2='3')
+    assert_equal(len(A - B), q)
 
 
 def test_issue558_part2():
