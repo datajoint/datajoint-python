@@ -35,6 +35,7 @@ class QueryExpression:
     """
 
     _restriction = None
+    _restriction_attributes = None
 
     # subclasses or instantiators must provide values
     _connection = None
@@ -64,6 +65,13 @@ class QueryExpression:
         if self._restriction is None:
             self._restriction = AndList()
         return self._restriction
+    
+    @property
+    def restriction_attributes(self):
+        """ the set of names invoked in the WHERE clause """
+        if self._restriction_attributes is None:
+            self._restriction_attributes = set()
+        return self._restriction_attributes
 
     @property
     def primary_key(self):
@@ -79,8 +87,7 @@ class QueryExpression:
 
     @property
     def where_clause(self):
-        where = make_condition(self, self.restriction, set())
-        return '' if where is True else ' WHERE ' + where
+        return '' if not self.restriction else ' WHERE(%s)' % ')AND('.join(self.restriction)
 
     def make_sql(self, fields=None):
         """
@@ -117,7 +124,8 @@ class QueryExpression:
         need_suqbquery = not isinstance(self, Aggregation) and self.heading.new_attributes
         result = self.make_subquery() if need_suqbquery else copy.copy(self)
         result._restriction = AndList(self.restriction) # make a copy to protect the original
-        result._restriction.append(restriction)
+        result._restriction.append(new_condition)
+        result.restriction_attributes.update(attributes)
         return result
 
     def __and__(self, restriction):
@@ -231,13 +239,13 @@ class QueryExpression:
         need_subquery = any(self.heading[name].attribute_expression is not None for name in used)
 
         if not need_subquery and self.restriction:
-            restriction_attributes = set()
-            make_condition(self, self.restriction, restriction_attributes)
             # need a subquery if the restriction applies to attributes that have been renamed
-            need_subquery = any(self.heading[name].attribute_expression is not None for name in restriction_attributes)
+            need_subquery = any(
+                self.heading[name].attribute_expression is not None for name in self.restriction_attributes)
 
         result = self.make_subquery() if need_subquery else copy.copy(self)
-        result._heading = result.heading.select(attributes, rename_map=dict(**rename_map, **replicate_map), compute_map=compute_map)
+        result._heading = result.heading.select(
+            attributes, rename_map=dict(**rename_map, **replicate_map), compute_map=compute_map)
         return result
 
     def aggr(self, group, *attributes, keep_all_rows=False, **named_attributes):
@@ -398,10 +406,8 @@ class Aggregation(QueryExpression):
         return result
 
     def make_sql(self, fields=None):
-        where = make_condition(self, self.initial_restriction, set())
-        where = '' if where is True else ' WHERE ' + where
-        having = make_condition(self, self.restriction, set())
-        having = '' if having is True else ' HAVING ' + having
+        where = '' if not self.initial_restriction else ' WHERE (%s)' % ')AND('.join(self.initial_restriction)
+        having = '' if not self.restriction else ' HAVING (%s)' % ')AND('.join(self.restriction)
         return 'SELECT {fields} FROM {from_}{where} GROUP  BY `{group_by}`{having}'.format(
             fields=self.heading.as_sql(fields or self.heading.names),
             from_=self.from_clause,

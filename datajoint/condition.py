@@ -21,7 +21,6 @@ class AndList(list):
     is equivalent to
     expr2 = expr & cond1 & cond2 & cond3
     """
-
     def append(self, restriction):
         if isinstance(restriction, AndList):
             # extend to reduce nesting
@@ -32,7 +31,6 @@ class AndList(list):
 
 class Not:
     """ invert restriction """
-
     def __init__(self, restriction):
         self.restriction = restriction
 
