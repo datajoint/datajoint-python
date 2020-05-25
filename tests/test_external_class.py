@@ -46,8 +46,10 @@ def test_populate():
         assert_list_equal(list(img.shape), list(dimensions))
         assert_almost_equal(img, -neg)
     image.delete()
+    dj.errors._switch_filepath_types(True)
     for external_table in image.external.values():
         external_table.delete(display_progress=False, delete_external_files=True)
+    dj.errors._switch_filepath_types(False)
 
 
 

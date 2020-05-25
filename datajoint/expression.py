@@ -100,11 +100,11 @@ class QueryExpression:
 
     # --------- query operators -----------
     def make_subquery(self):
+        """ create a new SELECT statement where self is the FROM clause """
         result = QueryExpression()
         result._connection = self.connection
         result._source = [self]
-        result._heading = self.heading
-        result._restriction = self.restriction
+        result._heading = self.heading.make_subquery_heading()
         return result
 
     def restrict(self, restriction):
@@ -120,10 +120,15 @@ class QueryExpression:
             pass  # all ok
         # If the new condition uses any new attributes, a subquery is required.
         # However, Aggregation's HAVING statement can work find with aliased attributes.
-        need_suqbquery = not isinstance(self, Aggregation) and self.heading.new_attributes
-        result = self.make_subquery() if need_suqbquery else copy.copy(self)
+        need_subquery = not isinstance(self, Aggregation) and self.heading.new_attributes
+        if need_subquery:
+            result = self.make_subquery()
+        else:
+            result = copy.copy(self)
+            result._restriction = AndList(self.restriction)   # make a copy to protect the original
+        result.restriction.append(new_condition)
         result._restriction = AndList(self.restriction) # make a copy to protect the original
-        result._restriction.append(new_condition)
+        result.restriction.append(new_condition)
         result.restriction_attributes.update(attributes)
         return result
 
@@ -192,20 +197,22 @@ class QueryExpression:
             attributes.discard(Ellipsis)
             attributes.update((a for a in self.heading.secondary_attributes
                                if a not in attributes and a not in rename_map.values()))
+        # remove excluded attributes, specified as `-attr'
+        excluded = set(a for a in attributes if a.strip().startswith('-'))
+        attributes.difference_update((excluded))
+        excluded = set(a.lstrip('-').strip() for a in excluded)
+        attributes.difference_update(excluded)
+        try:
+            raise DataJointError("Cannot exclude primary key attribute %s", next(
+                a for a in excluded if a in self.primary_key))
+        except StopIteration:
+            pass  # all ok
         # check that all attributes exist in heading
         try:
             raise DataJointError(
                 'Attribute `%s` not found.' % next(a for a in attributes if a not in self.heading.names))
         except StopIteration:
             pass  # all ok
-        # exclude attributes
-        excluded_attributes = set(a.lstrip('-').strip() for a in attributes if a.startswith('-'))
-        try:
-            raise DataJointError("Cannot exclude primary key attribute %s", next(
-                a for a in excluded_attributes if a in self.primary_key))
-        except StopIteration:
-            pass  # all ok
-        attributes.difference_update(excluded_attributes)
 
         # check that all mentioned names are present in heading
         mentions = attributes.union(replicate_map.values()).union(rename_map.values())

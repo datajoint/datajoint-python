@@ -358,3 +358,10 @@ class Heading:
         return Heading(chain(
             (dict(self.attributes[name].todict(), in_key=True) for name in primary_key),
             (dict(self.attributes[name].todict(), in_key=False) for name in self.names if name not in primary_key)))
+
+    def make_subquery_heading(self):
+        """
+        Create a new heading with removed attribute sql_expressions.
+        Used by subqueries, which resolve the sql_expressions.
+        """
+        return Heading(dict(v.todict(), attribute_expression=None) for v in self.attributes.values())

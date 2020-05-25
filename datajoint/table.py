@@ -9,6 +9,7 @@ import uuid
 from pathlib import Path
 from .settings import config
 from .declare import declare, alter
+from .condition import make_condition
 from .expression import QueryExpression
 from . import blob
 from .utils import user_choice
@@ -182,7 +183,7 @@ class Table(QueryExpression):
         query = "UPDATE {table} SET {assignments} WHERE {where}".format(
             table=self.full_table_name,
             assignments=",".join('`%s`=%s' % r[:2] for r in row),
-            where=self._make_condition(key))
+            where=make_condition(self, key, set()))
         self.connection.query(query, args=list(r[2] for r in row if r[2] is not None))
 
     def insert1(self, row, **kwargs):

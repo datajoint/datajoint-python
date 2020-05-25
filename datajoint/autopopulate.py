@@ -64,8 +64,8 @@ class AutoPopulate:
     @property
     def target(self):
         """
-        relation to be populated.
-        Typically, AutoPopulate are mixed into a Relation object and the target is self.
+        :return: table to be populated.
+        In the typical case, dj.AutoPopulate is mixed into a dj.Table class by inheritance and the target is self.
         """
         return self
 
