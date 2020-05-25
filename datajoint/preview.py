@@ -30,7 +30,7 @@ def preview(query_expression, limit, width):
 def repr_html(query_expression):
     heading = query_expression.heading
     rel = query_expression.proj(*heading.non_blobs)
-    info = heading.table_info
+    info = heading.table_status
     tuples = rel.fetch(limit=config['display.limit'] + 1, format='array')
     has_more = len(tuples) > config['display.limit']
     tuples = tuples[0:config['display.limit']]

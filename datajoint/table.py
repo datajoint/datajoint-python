@@ -73,8 +73,8 @@ class Table(QueryExpression):
         Alter the table definition from self.definition
         """
         if self.connection.in_transaction:
-            raise DataJointError('Cannot update table declaration inside a transaction, '
-                                 'e.g. from inside a populate/make call')
+            raise DataJointError(
+                'Cannot update table declaration inside a transaction, e.g. from inside a populate/make call')
         if context is None:
             frame = inspect.currentframe().f_back
             context = dict(frame.f_globals, **frame.f_locals)
@@ -96,10 +96,10 @@ class Table(QueryExpression):
                     # skip if no create privilege
                     pass
                 else:
+                    self.__class__._heading = Heading(table_info=self.heading.table_info)  # reset heading
                     if prompt:
                         print('Table altered')
                     self._log('Altered ' + self.full_table_name)
-
 
     def parents(self, primary=None):
         """
@@ -240,7 +240,7 @@ class Table(QueryExpression):
                 command='REPLACE' if replace else 'INSERT',
                 fields='`' + '`,`'.join(fields) + '`',
                 table=self.full_table_name,
-                select=rows.make_sql(select_fields=fields),
+                select=rows.make_sql(fields),
                 duplicate=(' ON DUPLICATE KEY UPDATE `{pk}`={table}.`{pk}`'.format(
                     table=self.full_table_name, pk=self.primary_key[0])
                            if skip_duplicates else ''))

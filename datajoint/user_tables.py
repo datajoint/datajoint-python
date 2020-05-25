@@ -29,7 +29,7 @@ class OrderedClass(type):
     def __prepare__(metacls, name, bases, **kwds):
         return collections.OrderedDict()
 
-    def __new__(cls, name, bases, namespace, **kwds):
+    def __new__(cls, name, bases, namespace, **kwargs):
         result = type.__new__(cls, name, bases, dict(namespace))
         result._ordered_class_members = list(namespace)
         return result
