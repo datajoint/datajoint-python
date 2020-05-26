@@ -25,7 +25,7 @@ services:
     # volumes:
     #   - ./minio/data:/data
     #   - ./minio/config:/root/.minio
-    command: server /data
+    command: server --address ":9000" /data
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://minio:9000/minio/health/live"]
       timeout: 5s
@@ -33,17 +33,22 @@ services:
       interval: 1s
   fakeservices.datajoint.io:
     <<: *net
-    image: raphaelguzman/nginx:v0.0.4
+    image: raphaelguzman/nginx:v0.0.6
     environment:
     - ADD_db_TYPE=DATABASE
     - ADD_db_ENDPOINT=db:3306
     - ADD_minio_TYPE=MINIO
     - ADD_minio_ENDPOINT=minio:9000
-    - ADD_minio_PREFIX=/
+    - ADD_minio_PORT=80 # allow unencrypted connections
+    - ADD_minio_PREFIX=/datajoint
+    - ADD_browser_TYPE=MINIOADMIN
+    - ADD_browser_ENDPOINT=minio:9000
+    - ADD_browser_PORT=80 # allow unencrypted connections
     ports:
-      - "9000:9000"
+      - "80:80"
       - "443:443"
       - "3306:3306"
+      - "9000:9000"
     depends_on:
       db:
         condition: service_healthy
@@ -63,10 +68,10 @@ services:
       - DJ_TEST_USER=datajoint
       - DJ_TEST_PASSWORD=datajoint
       # If running tests locally, make sure to add entry in /etc/hosts for 127.0.0.1 fakeservices.datajoint.io
-      - S3_ENDPOINT=fakeservices.datajoint.io:9000
+      - S3_ENDPOINT=fakeservices.datajoint.io
       - S3_ACCESS_KEY=datajoint
       - S3_SECRET_KEY=datajoint
-      - S3_BUCKET=datajoint-test
+      - S3_BUCKET=datajoint.test
       - PYTHON_USER=dja
       - JUPYTER_PASSWORD=datajoint
       - DISPLAY

@@ -1,5 +1,15 @@
 ## Release notes
 
+### 0.12.6 -- May 15, 2020
+* Add `order_by` to `dj.kill` (#668, #779) PR #775, #783
+* Add explicit S3 bucket and file storage location existence checks (#748) PR #781
+* Modify `_update` to allow nullable updates for strings/date (#664) PR #760
+* Avoid logging events on auxiliary tables (#737) PR #753
+* Add `kill_quick` and expand display to include host (#740) PR #741
+* Bugfix - pandas insert fails due to additional `index` field (#666) PR #776
+* Bugfix - `delete_external_files=True` does not remove from S3 (#686) PR #781
+* Bugfix - pandas fetch throws error when `fetch_format='frame'` PR #774
+
 ### 0.12.5 -- Feb 24, 2020
 * Rename module `dj.schema` into `dj.schemas`. `dj.schema` remains an alias for class `dj.Schema`. (#731) PR #732
 * `dj.create_virtual_module` is now called `dj.VirtualModule` (#731) PR #732

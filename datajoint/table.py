@@ -227,7 +227,11 @@ class Table(QueryExpression):
         """
 
         if isinstance(rows, pandas.DataFrame):
-            rows = rows.to_records()
+            # drop 'extra' synthetic index for 1-field index case -
+            # frames with more advanced indices should be prepared by user.
+            rows = rows.reset_index(
+                drop=len(rows.index.names) == 1 and not rows.index.names[0]
+            ).to_records(index=False)
 
         # prohibit direct inserts into auto-populated tables
         if not allow_direct_insert and not getattr(self, '_allow_insert', True):  # allow_insert is only used in AutoPopulate
@@ -465,7 +469,6 @@ class Table(QueryExpression):
                             parent_name = list(self.connection.dependencies.in_edges(parent_name))[0][0]
                             lst = [(attr, ref) for attr, ref in fk_props['attr_map'].items() if ref != attr]
                             definition += '->{props} {class_name}.proj({proj_list})\n'.format(
-                                attr_list=', '.join(r[0] for r in lst),
                                 props=index_props,
                                 class_name=lookup_class_name(parent_name, context) or parent_name,
                                 proj_list=','.join('{}="{}"'.format(a, b) for a, b in lst))

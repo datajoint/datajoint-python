@@ -21,11 +21,12 @@ def set_password(new_password=None, connection=None, update_config=None):   # pr
         config.save_local(verbose=True)
 
 
-def kill(restriction=None, connection=None):  # pragma: no cover
+def kill(restriction=None, connection=None, order_by=None):  # pragma: no cover
     """
     view and kill database connections.
     :param restriction: restriction to be applied to processlist
     :param connection: a datajoint.Connection object. Default calls datajoint.conn()
+    :param order_by: order by a single attribute or the list of attributes. defaults to 'id'.
 
     Restrictions are specified as strings and can involve any of the attributes of
     information_schema.processlist: ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.
@@ -38,8 +39,12 @@ def kill(restriction=None, connection=None):  # pragma: no cover
     if connection is None:
         connection = conn()
 
+    if order_by is not None and not isinstance(order_by, str):
+        order_by = ','.join(order_by)
+
     query = 'SELECT * FROM information_schema.processlist WHERE id <> CONNECTION_ID()' + (
-        "" if restriction is None else ' AND (%s)' % restriction)
+        "" if restriction is None else ' AND (%s)' % restriction) + (
+            ' ORDER BY %s' % (order_by or 'id'))
 
     while True:
         print('  ID USER         HOST          STATE         TIME    INFO')
