@@ -8,8 +8,8 @@ class Dependencies(nx.DiGraph):
     """
     The graph of dependencies (foreign keys) between loaded tables.
 
-    Note: the 'connnection' argument should normally be supplied;
-    Empty use is permitted to facilliate use of networkx algorithms which
+    Note: the 'connection' argument should normally be supplied;
+    Empty use is permitted to facilitate use of networkx algorithms which
     internally create objects with the expectation of empty constructors.
     See also: https://github.com/datajoint/datajoint-python/pull/443
     """
@@ -107,7 +107,6 @@ class Dependencies(nx.DiGraph):
         """
         nodes = self.subgraph(
             nx.algorithms.dag.descendants(self, full_table_name))
-
         return [full_table_name] + list(
             nx.algorithms.dag.topological_sort(nodes))
 
