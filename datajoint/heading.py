@@ -287,7 +287,7 @@ class Heading:
 
             # fill out dtype. All floats and non-nullable integers are turned into specific dtypes
             attr['dtype'] = object
-            if attr['numeric']:
+            if attr['numeric'] and not attr['adapter']:
                 is_integer = TYPE_PATTERN['INTEGER'].match(attr['type'])
                 is_float = TYPE_PATTERN['FLOAT'].match(attr['type'])
                 if is_integer and not attr['nullable'] or is_float:

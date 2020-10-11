@@ -26,17 +26,17 @@ __all__ = ['__author__', 'PREFIX', 'CONN_INFO']
 
 # Connection for testing
 CONN_INFO = dict(
-    host=environ.get('DJ_TEST_HOST', 'localhost'),
+    host=environ.get('DJ_TEST_HOST', 'fakeservices.datajoint.io'),
     user=environ.get('DJ_TEST_USER', 'datajoint'),
     password=environ.get('DJ_TEST_PASSWORD', 'datajoint'))
 
 CONN_INFO_ROOT = dict(
-    host=environ.get('DJ_HOST', 'localhost'),
+    host=environ.get('DJ_HOST', 'fakeservices.datajoint.io'),
     user=environ.get('DJ_USER', 'root'),
     password=environ.get('DJ_PASS', 'simple'))
 
 S3_CONN_INFO = dict(
-    endpoint=environ.get('S3_ENDPOINT', 'localhost:9000'),
+    endpoint=environ.get('S3_ENDPOINT', 'fakeservices.datajoint.io'),
     access_key=environ.get('S3_ACCESS_KEY', 'datajoint'),
     secret_key=environ.get('S3_SECRET_KEY', 'datajoint'),
     bucket=environ.get('S3_BUCKET', 'datajoint.test'))
@@ -132,7 +132,7 @@ def setup_package():
     # Add old S3
     source = Path(
         Path(__file__).resolve().parent,
-        'external-legacy-data','s3')
+        'external-legacy-data', 's3')
     region = "us-east-1"
     try:
         minioClient.make_bucket(S3_MIGRATE_BUCKET, location=region)
@@ -144,7 +144,7 @@ def setup_package():
         if os.path.isfile(str(path)) and ".sql" not in str(path):
             minioClient.fput_object(
                     S3_MIGRATE_BUCKET, str(Path(
-                        os.path.relpath(str(path),str(Path(source,S3_MIGRATE_BUCKET))))
+                        os.path.relpath(str(path), str(Path(source, S3_MIGRATE_BUCKET))))
                                 .as_posix()), str(path))
     # Add S3
     try:
