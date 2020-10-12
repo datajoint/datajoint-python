@@ -664,7 +664,7 @@ class FreeTable(Table):
     def __init__(self, conn, full_table_name):
         self.database, self._table_name = (s.strip('`') for s in full_table_name.split('.'))
         self._connection = conn
-        self._source = [full_table_name]
+        self._support = [full_table_name]
         self._heading = Heading(table_info=dict(
             conn=conn,
             database=self.database,
@@ -694,7 +694,7 @@ class Log(Table):
             table_name=self.table_name,
             context=None
         ))
-        self._source = [self.full_table_name]
+        self._support = [self.full_table_name]
 
         self._definition = """    # event logging table for `{database}`
         id       :int unsigned auto_increment     # event order id

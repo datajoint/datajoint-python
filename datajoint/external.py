@@ -37,7 +37,7 @@ class ExternalTable(Table):
             database=database,
             table_name=self.table_name,
             context=None))
-        self._source = [self.full_table_name]
+        self._support = [self.full_table_name]
         if not self.is_declared:
             self.declare()
         self._s3 = None

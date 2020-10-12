@@ -23,7 +23,7 @@ class JobTable(Table):
             table_name=self.table_name,
             context=None
         ))
-        self._source = [self.full_table_name]
+        self._support = [self.full_table_name]
 
         self._definition = """    # job reservation table for `{database}`
         table_name  :varchar(255)  # className of the table

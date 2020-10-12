@@ -165,7 +165,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
 
     # check that dependency is of a supported type
     if (not isinstance(ref, QueryExpression) or len(ref.restriction) or
-            len(ref.source) != 1 or not isinstance(ref.source[0], str)):
+            len(ref.support) != 1 or not isinstance(ref.support[0], str)):
         raise DataJointError('Dependency "%s" is not supported (yet). Use a base table or its projection.' %
                              result.ref_table)
 
@@ -219,7 +219,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
         'FOREIGN KEY (`{fk}`) REFERENCES {ref} (`{pk}`) ON UPDATE CASCADE ON DELETE RESTRICT'.format(
             fk='`,`'.join(ref.primary_key),
             pk='`,`'.join(ref.heading[name].original_name for name in ref.primary_key),
-            ref=ref.source[0]))
+            ref=ref.support[0]))
 
     # declare unique index
     if is_unique:

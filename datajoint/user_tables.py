@@ -68,7 +68,7 @@ class UserTable(Table, metaclass=OrderedClass):
     # set by @schema
     _connection = None
     _heading = None
-    _source = None
+    _support = None
 
     # set by subclass
     tier_regexp = None

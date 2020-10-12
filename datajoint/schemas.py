@@ -183,7 +183,7 @@ class Schema:
                 database=self.database,
                 table_name=table_class.table_name,
                 context=context))
-        table_class._source = [table_class.full_table_name]
+        table_class._support = [table_class.full_table_name]
         table_class.declaration_context = context
 
         # instantiate the class, declare the table if not already
