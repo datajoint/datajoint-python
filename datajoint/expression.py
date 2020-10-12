@@ -94,7 +94,9 @@ class QueryExpression:
         Make the SQL SELECT statement.
         :param fields: used to explicitly set the select attributes
         """
-        return 'SELECT {fields} FROM {from_}{where}'.format(
+        distinct = self.heading.names == self.primary_key
+        return 'SELECT {distinct}{fields} FROM {from_}{where}'.format(
+            distinct="DISTINCT " if distinct else "",
             fields=self.heading.as_sql(fields or self.heading.names),
             from_=self.from_clause, where=self.where_clause)
 
@@ -152,6 +154,8 @@ class QueryExpression:
         """ join of query expressions `self` and `other` """
         if inspect.isclass(other) and issubclass(other, QueryExpression):
             other = other()  # instantiate
+        if isinstance(other, U):
+            return other * self
         assert_join_compatibility(self, other)
         result = QueryExpression()
         result._connection = self.connection
@@ -181,7 +185,9 @@ class QueryExpression:
         from other attributes available before the projection.
         Each attribute name can only be used once.
         """
+        # new attributes in parentheses are included again with the new name without removing original
         duplication_pattern = re.compile(r'\s*\(\s*(?P<name>[a-z][a-z_0-9]*)\s*\)\s*$')
+        # attributes without parentheses renamed
         rename_pattern = re.compile(r'\s*(?P<name>[a-z][a-z_0-9]*)\s*$')
         replicate_map = {k: m.group('name')
                          for k, m in ((k, duplication_pattern.match(v)) for k, v in named_attributes.items()) if m}
@@ -197,6 +203,11 @@ class QueryExpression:
             attributes.discard(Ellipsis)
             attributes.update((a for a in self.heading.secondary_attributes
                                if a not in attributes and a not in rename_map.values()))
+        try:
+            raise DataJointError("%s is not a valid data type for an attribute in .proj" % next(
+                a for a in attributes if not isinstance(a, str)))
+        except StopIteration:
+            pass  # normal case
         # remove excluded attributes, specified as `-attr'
         excluded = set(a for a in attributes if a.strip().startswith('-'))
         attributes.difference_update((excluded))
@@ -244,7 +255,6 @@ class QueryExpression:
         used.update(replicate_map.values())
         used.intersection_update(self.heading.names)
         need_subquery = any(self.heading[name].attribute_expression is not None for name in used)
-
         if not need_subquery and self.restriction:
             # need a subquery if the restriction applies to attributes that have been renamed
             need_subquery = any(
@@ -300,9 +310,11 @@ class QueryExpression:
 
     def __len__(self):
         """ :return: number of elements in the result set """
+        what = ('*' if set(self.heading.names) != set(self.primary_key)
+                else 'DISTINCT `%s`' % '`,`'.join(self.primary_key))
         return self.connection.query(
-            'SELECT count({count}) FROM {from_}{where}'.format(
-                count='DISTINCT `{pk}`'.format(pk='`,`'.join(self.primary_key)) if self.primary_key else '*',
+            'SELECT count({what}) FROM {from_}{where}'.format(
+                what=what,
                 from_=self.from_clause, where=self.where_clause)).fetchone()[0]
 
     def __bool__(self):
@@ -378,7 +390,6 @@ class Aggregation(QueryExpression):
     """
     _keep_all_rows = False
     _left_restrict = None   # the pre-GROUP BY conditions for the WHERE clause
-    _grouping_attributes = ...
 
     @classmethod
     def create(cls, arg, group, keep_all_rows=False):
@@ -390,7 +401,7 @@ class Aggregation(QueryExpression):
         result = Aggregation()
         join = arg * group  # reuse the join logic
         result._connection = join.connection
-        result._heading = join.heading.set_primary_key(arg.primary_key)
+        result._heading = join.heading.set_primary_key(arg.primary_key)  # use left operand's primary key
         result._source = join.source
         result.initial_restriction = join.restriction  # before GROUP BY
         result._grouping_attributes = result.primary_key
@@ -416,17 +427,21 @@ class Aggregation(QueryExpression):
 
     def make_sql(self, fields=None):
         where = '' if not self._left_restrict else ' WHERE (%s)' % ')AND('.join(self._left_restrict)
-        having = '' if not self.restriction else ' HAVING (%s)' % ')AND('.join(self.restriction)
-        return 'SELECT {fields} FROM {from_}{where} GROUP  BY {group_by}{having}'.format(
-            fields=self.heading.as_sql(fields or self.heading.names) + ("" if self.primary_key else ", 1 as _a"),
+        fields = self.heading.as_sql(fields or self.heading.names)
+        assert self._grouping_attributes or not self.restriction
+        distinct = set(self.heading.names) == set(self.primary_key)
+        return 'SELECT {distinct}{fields} FROM {from_}{where}{group_by}'.format(
+            distinct="DISTINCT " if distinct else "",
+            fields=fields,
             from_=self.from_clause,
             where=where,
-            group_by='`,`'.join(self._grouping_attributes or ["_a"]),
-            having=having)
+            group_by="" if not self.primary_key else (
+                " GROUP BY `%s`" % '`,`'.join(self._grouping_attributes) +
+                ("" if not self.restriction else ' HAVING (%s)' % ')AND('.join(self.restriction))))
 
     def __len__(self):
         return self.connection.query(
-            'SELECT count(*) FROM ({subquery})'.format(subquery=self.make_sql())).fetchone()[0]
+            'SELECT count({what}) FROM ({subquery})'.format(what=what, subquery=self.make_sql())).fetchone()[0]
 
 
 class U:
@@ -495,7 +510,6 @@ class U:
         result = copy.copy(other)
         result._heading = result.heading.set_primary_key(self.primary_key)
         result = result.proj()
-        result._distinct = True
         return result
 
     def __mul__(self, other):

@@ -163,7 +163,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
     if isinstance(ref, type) and issubclass(ref, Table):
         ref = ref()
 
-    # check that dependency is of supported type
+    # check that dependency is of a supported type
     if (not isinstance(ref, QueryExpression) or len(ref.restriction) or
             len(ref.source) != 1 or not isinstance(ref.source[0], str)):
         raise DataJointError('Dependency "%s" is not supported (yet). Use a base table or its projection.' %

@@ -77,6 +77,8 @@ def make_condition(query_expression, condition, columns):
             return "X'%s'" % v.bytes.hex()
         if isinstance(v, (datetime.date, datetime.datetime, datetime.time, decimal.Decimal)):
             return '"%s"' % v
+        if isinstance(v, str):
+            return '"%s"' % v.replace('%', '%%')
         return '%r' % v
 
     negate = False
@@ -184,7 +186,7 @@ def extract_column_names(sql_expression):
     s = re.sub(r"\s*\(", "(", s)
     # remove tokens followed by ( since they must be functions
     s = re.sub(r"(\b[a-z][a-z_0-9]*)\(", "(", s)
-    remaining_tokens = set(re.findall(r"`\b[a-z][a-z_0-9]*\b", s))
+    remaining_tokens = set(re.findall(r"\b[a-z][a-z_0-9]*\b", s))
     # update result removing reserved words
     result.update(remaining_tokens - {"in", "between", "like", "and", "or"})
     return result

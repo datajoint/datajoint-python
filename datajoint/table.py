@@ -316,9 +316,9 @@ class Table(QueryExpression):
                 restrictions[dep].extend([table] if name in restrict_by_me else restrictions[name])
 
         # apply restrictions
-        for name, table in delete_list.items():
+        for name in delete_list:
             if not name.isdigit() and restrictions[name]:  # do not restrict by an empty list
-                table.restrict([
+                delete_list[name] = delete_list[name].restrict([
                     r.proj() if isinstance(r, FreeTable) else (
                         delete_list[r[0]].proj(**{a: b for a, b in r[1]['attr_map'].items()})
                         if isinstance(r, _RenameMap) else r)

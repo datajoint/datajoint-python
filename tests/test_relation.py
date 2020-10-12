@@ -99,8 +99,9 @@ class TestRelation:
         assert_equal(len(schema.TTest2()), len(schema.TTest()))
 
         original_length = len(self.subject)
-        self.subject.insert(self.subject.proj(..., s='subject_id').proj(
-            'real_id', 'date_of_birth', 'subject_notes', subject_id='s+1000', species='"human"'))
+        elements = self.subject.proj(..., s='subject_id')
+        elements = elements.proj('real_id', 'date_of_birth', 'subject_notes', subject_id='s+1000', species='"human"')
+        self.subject.insert(elements, ignore_extra_fields=True)
         assert_equal(len(self.subject), 2*original_length)
 
     def test_insert_pandas_roundtrip(self):

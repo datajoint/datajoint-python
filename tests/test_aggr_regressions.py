@@ -41,7 +41,7 @@ class S(dj.Lookup):
 
 
 def test_issue386():
-    result = R.aggr(S, n='count(*)') & 'n=2'
+    result = R.aggr(S, n='count(*)') & 'n=10'
     result = Q & result
     result.fetch()
 
@@ -60,7 +60,7 @@ def test_issue484():
     q = dj.U().aggr(S, n='max(s)')
     n = q.fetch('n')
     n = q.fetch1('n')
-    q = dj.U().R.aggr(S, n='avg(s)')
+    q = dj.U().aggr(S, n='avg(s)')
     result = dj.U().aggr(q, m='max(n)')
     result.fetch()
 

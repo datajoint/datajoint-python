@@ -171,7 +171,8 @@ class Fetch:
         get = partial(_get, self._expression.connection, squeeze=squeeze, download_path=download_path)
         if attrs:  # a list of attributes provided
             attributes = [a for a in attrs if not is_key(a)]
-            ret = self._expression.proj(*attributes).fetch(
+            ret = self._expression.proj(*attributes)
+            ret = ret.fetch(
                 offset=offset, limit=limit, order_by=order_by,
                 as_dict=False, squeeze=squeeze, download_path=download_path,
                 format='array')
