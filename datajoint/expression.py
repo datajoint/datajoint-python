@@ -156,6 +156,17 @@ class QueryExpression:
             other = other()  # instantiate
         if isinstance(other, U):
             return other * self
+        # make subqueries if joining on renamed attributes
+        other_clash = set(other.heading.names) | set(
+            (other.heading[n].attribute_expression.strip('`') for n in other.heading.new_attributes))
+        self_clash = set(self.heading.names) | set(
+            (self.heading[n].attribute_expression for n in self.heading.new_attributes))
+        if any(n for n in self.heading.new_attributes if (
+                n in other_clash or self.heading[n].attribute_expression.strip('`') in other_clash)):
+            self = self.make_subquery()
+        if any(n for n in other.heading.new_attributes if (
+                n in self_clash or other.heading[n].attribute_expression.strip('`') in other_clash)):
+            other = other.make_subquery()
         assert_join_compatibility(self, other)
         result = QueryExpression()
         result._connection = self.connection
@@ -310,8 +321,8 @@ class QueryExpression:
 
     def __len__(self):
         """ :return: number of elements in the result set """
-        what = ('*' if set(self.heading.names) != set(self.primary_key)
-                else 'DISTINCT `%s`' % '`,`'.join(self.primary_key))
+        what = '*' if set(self.heading.names) != set(self.primary_key) else 'DISTINCT %s' % ','.join(
+            (self.heading[k].attribute_expression or '`%s`' % k for k in self.primary_key))
         return self.connection.query(
             'SELECT count({what}) FROM {from_}{where}'.format(
                 what=what,
@@ -440,6 +451,7 @@ class Aggregation(QueryExpression):
                 ("" if not self.restriction else ' HAVING (%s)' % ')AND('.join(self.restriction))))
 
     def __len__(self):
+        what = '*' if set(self.heading.names) != set(self.primary_key) else 'DISTINCT `%s`' % '`,`'.join(self.primary_key)
         return self.connection.query(
             'SELECT count({what}) FROM ({subquery})'.format(what=what, subquery=self.make_sql())).fetchone()[0]
 

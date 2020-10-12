@@ -110,8 +110,7 @@ class TestRelational:
         x = B().proj(i='id_a')  # rename the common attribute to achieve full cartesian product
         y = D()
         rel = x * y
-        assert_equal(len(rel), len(x) * len(y),
-                     'incorrect join')
+        assert_equal(len(rel), len(x) * len(y), 'incorrect join')
         assert_equal(set(x.heading.names).union(y.heading.names), set(rel.heading.names),
                      'incorrect join heading')
         assert_equal(set(x.primary_key).union(y.primary_key), set(rel.primary_key),
