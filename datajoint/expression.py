@@ -129,8 +129,6 @@ class QueryExpression:
             result = copy.copy(self)
             result._restriction = AndList(self.restriction)   # make a copy to protect the original
         result.restriction.append(new_condition)
-        result._restriction = AndList(self.restriction) # make a copy to protect the original
-        result.restriction.append(new_condition)
         result.restriction_attributes.update(attributes)
         return result
 

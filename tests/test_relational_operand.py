@@ -57,7 +57,8 @@ class TestRelational:
         y = x.proj(j='i')
         assert_equal(len(y), len(B() & 'id_a in (1,2,3,4)'),
                      'incorrect projection of restriction')
-        assert_equal(len(y & 'j in (3,4,5,6)'), len(B() & 'id_a in (3,4)'),
+        z = y & 'j in (3, 4, 5, 6)'
+        assert_equal(len(z), len(B() & 'id_a in (3,4)'),
                      'incorrect nested subqueries')
 
     @staticmethod
@@ -353,7 +354,8 @@ class TestRelational:
     @staticmethod
     def test_join_project():
         """Test join of projected relations with matching non-primary key"""
-        assert_true(len(DataA.proj() * DataB.proj()) == len(DataA()) == len(DataB()),
+        q = DataA.proj() * DataB.proj()
+        assert_true(len(q) == len(DataA()) == len(DataB()),
                     "Join of projected relations does not work")
 
     @staticmethod
