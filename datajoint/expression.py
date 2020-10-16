@@ -41,6 +41,7 @@ class QueryExpression:
     _connection = None
     _heading = None
     _support = None
+    _join_attributes = []
 
     @property
     def connection(self):
@@ -81,9 +82,14 @@ class QueryExpression:
 
     @property
     def from_clause(self):
-        return ' NATURAL JOIN '.join(
-            '(' + src.make_sql() + ') as `_s%x`' % next(self.__subquery_alias_count)
-            if isinstance(src, QueryExpression) else src for src in self.support)
+        support = ('(' + src.make_sql() + ') as `_s%x`' % next(
+            self.__subquery_alias_count) if isinstance(src, QueryExpression) else src for src in self.support)
+        clause = next(support)
+        for s, a in zip(support, self._join_attributes):
+            clause += ' JOIN {clause}{using}'.format(
+                clause=s,
+                using="" if not a else " USING (%s)" % ",".join('`%s`' % _ for _ in a))
+        return clause
 
     @property
     def where_clause(self):
@@ -173,9 +179,11 @@ class QueryExpression:
         result = QueryExpression()
         result._connection = self.connection
         result._support = self.support + other.support
+        result._join_attributes = self._join_attributes + [[a for a in self.heading.names if a in other.heading.names]]
         result._heading = self.heading.join(other.heading)
         result._restriction = AndList(self.restriction)
         result._restriction.append(other.restriction)
+        assert len(result.support) == len(result._join_attributes) + 1
         return result
 
     def proj(self, *attributes, **named_attributes):
@@ -418,27 +426,23 @@ class Aggregation(QueryExpression):
         result._connection = join.connection
         result._heading = join.heading.set_primary_key(arg.primary_key)  # use left operand's primary key
         result._support = join.support
+        result._join_attributes = join._join_attributes
         result.initial_restriction = join.restriction  # before GROUP BY
         result._grouping_attributes = result.primary_key
         result._keep_all_rows = keep_all_rows
         return result
 
     @property
-    def _left_from_clause(self):
-        return ' NATURAL JOIN '.join(
-            '(' + src.make_sql() + ') as `_s%x`' % next(self.__subquery_alias_count)
-            if isinstance(src, QueryExpression) else src for src in self.support[:-1])
-
-    @property
     def from_clause(self):
-        if not self._keep_all_rows:
-            return super().from_clause
-        # if keep_all_rows, use LEFT JOIN for the last join
-        src = self.support[-1]
-        return '{left} NATURAL LEFT JOIN {right}'.format(
-            left=self._left_from_clause,
-            right=src if not isinstance(src, QueryExpression) else
-            '(%s) as `_s%x`' % (src.make_sql(), next(self.__subquery_alias_count)))
+        support = ('(' + src.make_sql() + ') as `_s%x`' % next(
+            self.__subquery_alias_count) if isinstance(src, QueryExpression) else src for src in self.support)
+        clause = next(support)
+        for s, a, i in zip(support, self._join_attributes, count(2)):
+            clause += '{left} JOIN {clause}{using}'.format(
+                left=" LEFT" if i == len(self.support) and self._keep_all_rows else "",
+                clause=s,
+                using="" if not a else " USING (%s)" % ",".join('`%s`' % _ for _ in a))
+        return clause
 
     def make_sql(self, fields=None):
         where = '' if not self._left_restrict else ' WHERE (%s)' % ')AND('.join(self._left_restrict)
@@ -565,4 +569,3 @@ class U:
         return Aggregation.create(self, group=group,  keep_all_rows=False).proj(**named_attributes)
 
     aggregate = aggr  # alias for aggr
-
