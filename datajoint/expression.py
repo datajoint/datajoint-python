@@ -437,15 +437,9 @@ class Aggregation(QueryExpression):
         support = ('(' + src.make_sql() + ') as `_s%x`' % next(
             self.__subquery_alias_count) if isinstance(src, QueryExpression) else src for src in self.support)
         clause = next(support)
-<<<<<<< HEAD
         for s, a, i in zip(support, self._join_attributes, count(2)):
             clause += '{left} JOIN {clause}{using}'.format(
                 left=" LEFT" if i == len(self.support) and self._keep_all_rows else "",
-=======
-        for s, a, i in zip(support, self._join_attributes, count()):
-            clause += '{left} JOIN {clause}{using}'.format(
-                left=" LEFT" if i == len(self.support)-1 and self._keep_all_rows else "",
->>>>>>> 28d4875f384725f3612674f9a1075503a4ba479f
                 clause=s,
                 using="" if not a else " USING (%s)" % ",".join('`%s`' % _ for _ in a))
         return clause
