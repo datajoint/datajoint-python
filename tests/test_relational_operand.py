@@ -225,7 +225,9 @@ class TestRelational:
     @staticmethod
     def test_aggr():
         x = B.aggr(B.C)
-        assert_equal(len(x), len(B() & B.C()))
+        l1 = len(x)
+        l2 = len(B & B.C)
+        assert_equal(l1, l2)
 
         x = B().aggr(B.C(), keep_all_rows=True)
         assert_equal(len(x), len(B()))  # test LEFT join

@@ -324,7 +324,8 @@ class QueryExpression:
         return self.connection.query(
             'SELECT count({what}) FROM {from_}{where}'.format(
                 what=what,
-                from_=self.from_clause, where=self.where_clause)).fetchone()[0]
+                from_=self.from_clause,
+                where=self.where_clause)).fetchone()[0]
 
     def __bool__(self):
         """
@@ -399,6 +400,7 @@ class Aggregation(QueryExpression):
     """
     _keep_all_rows = False
     _left_restrict = None   # the pre-GROUP BY conditions for the WHERE clause
+    __subquery_alias_count = count()
 
     @classmethod
     def create(cls, arg, group, keep_all_rows=False):
@@ -451,7 +453,10 @@ class Aggregation(QueryExpression):
     def __len__(self):
         what = '*' if set(self.heading.names) != set(self.primary_key) else 'DISTINCT `%s`' % '`,`'.join(self.primary_key)
         return self.connection.query(
-            'SELECT count({what}) FROM ({subquery})'.format(what=what, subquery=self.make_sql())).fetchone()[0]
+            'SELECT count({what}) FROM ({subquery}) as `_r{alias:x}`'.format(
+                what=what,
+                subquery=self.make_sql(),
+                alias=next(self.__subquery_alias_count))).fetchone()[0]
 
 
 class U:
