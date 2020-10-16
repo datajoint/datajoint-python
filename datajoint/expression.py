@@ -87,7 +87,7 @@ class QueryExpression:
 
     @property
     def where_clause(self):
-        return '' if not self.restriction else ' WHERE(%s)' % ')AND('.join(self.restriction)
+        return '' if not self.restriction else ' WHERE(%s)' % ')AND('.join(str(s) for s in self.restriction)
 
     def make_sql(self, fields=None):
         """
@@ -159,11 +159,15 @@ class QueryExpression:
             (other.heading[n].attribute_expression.strip('`') for n in other.heading.new_attributes))
         self_clash = set(self.heading.names) | set(
             (self.heading[n].attribute_expression for n in self.heading.new_attributes))
-        if any(n for n in self.heading.new_attributes if (
-                n in other_clash or self.heading[n].attribute_expression.strip('`') in other_clash)):
+        need_subquery1 = any(
+            n for n in self.heading.new_attributes if (
+                    n in other_clash or self.heading[n].attribute_expression.strip('`') in other_clash))
+        need_subquery2 = any(
+            n for n in other.heading.new_attributes if (
+                    n in self_clash or other.heading[n].attribute_expression.strip('`') in other_clash))
+        if need_subquery1:
             self = self.make_subquery()
-        if any(n for n in other.heading.new_attributes if (
-                n in self_clash or other.heading[n].attribute_expression.strip('`') in other_clash)):
+        if need_subquery2:
             other = other.make_subquery()
         assert_join_compatibility(self, other)
         result = QueryExpression()
@@ -416,7 +420,7 @@ class Aggregation(QueryExpression):
         result._support = join.support
         result.initial_restriction = join.restriction  # before GROUP BY
         result._grouping_attributes = result.primary_key
-        result.keep_all_rows = keep_all_rows
+        result._keep_all_rows = keep_all_rows
         return result
 
     @property

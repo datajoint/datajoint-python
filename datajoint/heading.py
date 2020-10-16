@@ -122,7 +122,7 @@ class Heading:
         """
         in_key = True
         ret = ''
-        if self.table_status:
+        if self._table_status is not None:
             ret += '# ' + self.table_status['comment'] + '\n'
         for v in self.attributes.values():
             if in_key and not v.in_key:

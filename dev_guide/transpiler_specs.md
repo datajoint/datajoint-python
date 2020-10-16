@@ -24,10 +24,10 @@ Operator `proj` creates a new heading.
 
 Property `restriction` contains the `AndList` of conditions. Operator `&` creates a new restriction appending the new condition to the input's restriction.
 
-Property `source` represents the `FROM` clause and contains a list of either `QueryExpression` objects or table names in the case of base queries.
-The joint operator `*` adds new elements to the `source` attribute.
+Property `support` represents the `FROM` clause and contains a list of either `QueryExpression` objects or table names in the case of base queries.
+The joint operator `*` adds new elements to the `support` attribute.
 
-At least one element must be present in `source`. Multiple elements in `source` indicate a join.
+At least one element must be present in `support`. Multiple elements in `support` indicate a join.
 
 From the user's perspective `QueryExpression` objects are immutable: once created they cannot be modified. All operators derive new objects.
 
@@ -36,7 +36,7 @@ From the user's perspective `QueryExpression` objects are immutable: once create
 Alias attributes are the primary reason why subqueries are sometimes required.
 
 ### Subqueries
-Projections, restrictions, and joins do not necessarily trigger new subqueries: the resulting `QueryExpression` object simply merges the properties of its inputs into self: `heading`, `restriction`, and `source`.
+Projections, restrictions, and joins do not necessarily trigger new subqueries: the resulting `QueryExpression` object simply merges the properties of its inputs into self: `heading`, `restriction`, and `support`.
 
 The input object is treated as a subquery in the following cases:
 1. A restriction is applied that uses alias attributes in the heading
@@ -49,7 +49,7 @@ An error arises if
 2. If attempting to join on attributes that are not join-compatible
 3. If attempting to restrict by a non-join-compatible expression
 
-A subquery is created by creating a new `QueryExpression` object (or a subclass object) with its `source` pointing to the input object.
+A subquery is created by creating a new `QueryExpression` object (or a subclass object) with its `support` pointing to the input object.
 
 ### Join compatibility
 The join is always natural (i.e. *equijoin* on the namesake attributes).
@@ -65,7 +65,7 @@ The same join compatibility rules apply when restricting one query expression wi
 
 ### Join mechanics
 Any restriction applied to the inputs of a join can be applied to its output.
-Therefore, those inputs that are not turned into queries donate their sources, restrictions, and projections to the join itself.
+Therefore, those inputs that are not turned into queries donate their supports, restrictions, and projections to the join itself.
 
 ## Table
 `Table` is a subclass of `QueryExpression` implementing table manipulation methods such as `insert`, `insert1`, `delete`, `update1`, and `drop`.
@@ -94,8 +94,8 @@ All other rules for subqueries remain the same as for `QueryExpression`
 ## Union
 `Union` is a subclass of `QueryExpression`.
 A `Union` object results from the `+` operator on two `QueryExpression` objects.
-Its `source` property contains the list of expressions (at least two) to unify.
-Thus the `+` operator on unions simply merges their sources, making a bigger union.
+Its `support` property contains the list of expressions (at least two) to unify.
+Thus the `+` operator on unions simply merges their supports, making a bigger union.
 
 Union treats all its inputs as subqueries except for unrestricted Union objects.
 
