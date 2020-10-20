@@ -1,4 +1,4 @@
-from nose.tools import assert_false, assert_true
+from nose.tools import assert_false, assert_true, assert_equal
 import datajoint as dj
 from .schema_simple import A, B, D, E, L
 
@@ -54,14 +54,12 @@ class TestDelete:
                      (E() & rel) or
                      (E.F() & rel),
                      'incomplete delete')
-        assert_true(
-            len(A()) == rest['A'] and
-            len(B()) == rest['B'] and
-            len(B.C()) == rest['C'] and
-            len(D()) == rest['D'] and
-            len(E()) == rest['E'] and
-            len(E.F()) == rest['F'],
-            'incorrect restricted delete')
+        assert_equal(len(A()), rest['A'], 'invalid delete restriction')
+        assert_equal(len(B()), rest['B'], 'invalid delete restriction')
+        assert_equal(len(B.C()), rest['C'], 'invalid delete restriction')
+        assert_equal(len(D()), rest['D'], 'invalid delete restriction')
+        assert_equal(len(E()), rest['E'], 'invalid delete restriction')
+        assert_equal(len(E.F()), rest['F'], 'invalid delete restriction')
 
     @staticmethod
     def test_delete_lookup():

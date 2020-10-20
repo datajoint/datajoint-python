@@ -186,6 +186,13 @@ class QueryExpression:
         assert len(result.support) == len(result._join_attributes) + 1
         return result
 
+    def __add__(self, other):
+        """
+        union of two entity sets `self` and `other`
+        """
+
+        return Union.create(self, other)
+
     def proj(self, *attributes, **named_attributes):
         """
         Projection operator.
@@ -465,6 +472,57 @@ class Aggregation(QueryExpression):
                 what=what,
                 subquery=self.make_sql(),
                 alias=next(self.__subquery_alias_count))).fetchone()[0]
+
+
+class Union(QueryExpression):
+    """
+    Union is the private DataJoint class that implements the union operator.
+    """
+
+    __count = count()
+
+    def __init__(self, arg=None):
+        super().__init__(arg)
+        if arg is not None:
+            assert isinstance(arg, Union), "Union copy constructore requires a Union object"
+            self._connection = arg.connection
+            self._heading = arg.heading
+            self._arg1 = arg._arg1
+            self._arg2 = arg._arg2
+
+    @classmethod
+    def create(cls, arg1, arg2):
+        obj = cls()
+        if inspect.isclass(arg2) and issubclass(arg2, QueryExpression):
+            arg2 = arg2()  # instantiate if a class
+        if not isinstance(arg1, QueryExpression) or not isinstance(arg2, QueryExpression):
+            raise DataJointError('A QueryExpression can only be unioned with another QueryExpression')
+        if arg1.connection != arg2.connection:
+            raise DataJointError("Cannot operate on QueryExpressions originating from different connections.")
+        if set(arg1.heading.names) != set(arg2.heading.names):
+            raise DataJointError('Union requires the same attributes in both arguments')
+        if any(not v.in_key for v in arg1.heading.attributes.values()) or \
+                all(not v.in_key for v in arg2.heading.attributes.values()):
+            raise DataJointError('Union arguments must not have any secondary attributes.')
+        obj._connection = arg1.connection
+        obj._heading = arg1.heading
+        obj._arg1 = arg1
+        obj._arg2 = arg2
+        return obj
+
+    def make_sql(self, select_fields=None):
+        return "SELECT {_fields} FROM {_from}{_where}".format(
+            _fields=self.get_select_fields(select_fields),
+            _from=self.from_clause,
+            _where=self.where_clause)
+
+    @property
+    def from_clause(self):
+        return ("(SELECT {fields} FROM {from1}{where1} UNION SELECT {fields} FROM {from2}{where2}) as `_u%x`".format(
+            fields=self.get_select_fields(None), from1=self._arg1.from_clause,
+            where1=self._arg1.where_clause,
+            from2=self._arg2.from_clause,
+            where2=self._arg2.where_clause)) % next(self.__count)
 
 
 class U:

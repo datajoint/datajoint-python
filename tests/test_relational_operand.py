@@ -179,7 +179,7 @@ class TestRelational:
         x = set(zip(*IJ.fetch('i','j')))
         y = set(zip(*JI.fetch('i','j')))
         assert_true(len(x) > 0 and len(y) > 0 and len(IJ() * JI()) < len(x))  # ensure the IJ and JI are non-trivial
-        z = set(zip(*(IJ + JI).fetch('i','j')))   # union
+        z = set(zip(*(IJ + JI).fetch('i', 'j')))   # union
         assert_set_equal(x.union(y), z)
 
     @staticmethod

@@ -13,6 +13,7 @@ def setUp(self):
 
 def test_path_match(store="repo"):
     """ test file path matches and empty file"""
+    dj.errors._switch_filepath_types(True)
     ext = schema.external[store]
     stage_path = dj.config['stores'][store]['stage']
 
@@ -41,6 +42,7 @@ def test_path_match(store="repo"):
 
     # cleanup
     ext.delete(delete_external_files=True)
+    dj.errors._switch_filepath_types(False)
 
 
 def test_filepath(store="repo"):
