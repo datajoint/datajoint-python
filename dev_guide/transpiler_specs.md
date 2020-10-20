@@ -97,6 +97,8 @@ A `Union` object results from the `+` operator on two `QueryExpression` objects.
 Its `support` property contains the list of expressions (at least two) to unify.
 Thus the `+` operator on unions simply merges their supports, making a bigger union.
 
+The `Union` operator performs an OUTER JOIN of its inputs provided that the inputs have the same primary key and no secondary attributes in common.  
+
 Union treats all its inputs as subqueries except for unrestricted Union objects.
 
 ## Universal Sets `dj.U`

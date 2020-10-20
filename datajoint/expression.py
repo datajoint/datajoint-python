@@ -474,21 +474,12 @@ class Aggregation(QueryExpression):
                 alias=next(self.__subquery_alias_count))).fetchone()[0]
 
 
-class Union(QueryExpression):
+class Union:
     """
     Union is the private DataJoint class that implements the union operator.
     """
 
     __count = count()
-
-    def __init__(self, arg=None):
-        super().__init__(arg)
-        if arg is not None:
-            assert isinstance(arg, Union), "Union copy constructore requires a Union object"
-            self._connection = arg.connection
-            self._heading = arg.heading
-            self._arg1 = arg._arg1
-            self._arg2 = arg._arg2
 
     @classmethod
     def create(cls, arg1, arg2):
