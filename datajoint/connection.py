@@ -12,6 +12,9 @@ from .settings import config
 from . import errors
 from .dependencies import Dependencies
 
+
+logger = logging.getLogger(__name__)
+
 # client errors to catch
 client_errors = (client.err.InterfaceError, client.err.DatabaseError)
 
@@ -23,8 +26,9 @@ def translate_query_error(client_error, query):
     :param query: sql query with placeholders
     :return: an instance of the corresponding subclass of datajoint.errors.DataJointError
     """
+    logger.debug('type: {}, args: {}'.format(type(client_error), client_error.args))
     # Loss of connection errors
-    if isinstance(client_error, client.err.InterfaceError) and client_error.args[0] == "(0, '')":
+    if isinstance(client_error, client.err.InterfaceError) and client_error.args[0] == 0:
         return errors.LostConnectionError('Server connection lost due to an interface error.', *client_error.args[1:])
     disconnect_codes = {
         2006: "Connection timed out",
@@ -45,15 +49,15 @@ def translate_query_error(client_error, query):
     # Existence errors
     if isinstance(client_error, client.err.ProgrammingError) and client_error.args[0] == 1146:
         return errors.MissingTableError(client_error.args[1], query)
-    if isinstance(client_error, client.err.InternalError) and client_error.args[0] == 1364:
+    if isinstance(client_error, client.err.OperationalError) and client_error.args[0] == 1364:
         return errors.MissingAttributeError(*client_error.args[1:])
-    if isinstance(client_error, client.err.InternalError) and client_error.args[0] == 1054:
+    if isinstance(client_error, client.err.OperationalError) and client_error.args[0] == 1054:
         return errors.UnknownAttributeError(*client_error.args[1:])
     # all the other errors are re-raised in original form
     return client_error
 
 
-logger = logging.getLogger(__name__)
+
 
 
 def conn(host=None, user=None, password=None, *, init_fun=None, reset=False, use_tls=None):
