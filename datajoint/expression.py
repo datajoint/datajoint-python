@@ -139,8 +139,7 @@ class QueryExpression:
         return result
 
     def restrict_in_place(self, restriction):
-        result = self.restrict(restriction)
-        self.__dict__.update(result.__dict__)
+        self.__dict__.update(self.restrict(restriction).__dict__)
 
     def __and__(self, restriction):
         """
@@ -190,10 +189,15 @@ class QueryExpression:
         assert len(result.support) == len(result._join_attributes) + 1
         return result
 
+    def __matmul__(self, other):
+        """natural join"""
+        raise NotImplemented
+
+    def __xor__(self, other):
+        """natural semijoin"""
+
     def __add__(self, other):
-        """
-        union of two entity sets `self` and `other`
-        """
+        """union"""
 
         return Union.create(self, other)
 
@@ -478,7 +482,7 @@ class Aggregation(QueryExpression):
                 alias=next(self.__subquery_alias_count))).fetchone()[0]
 
 
-class Union:
+class Union(QueryExpression):
     """
     Union is the private DataJoint class that implements the union operator.
     """
