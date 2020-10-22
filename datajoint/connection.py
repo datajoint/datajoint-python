@@ -15,9 +15,6 @@ from .dependencies import Dependencies
 
 logger = logging.getLogger(__name__)
 
-# client errors to catch
-client_errors = (client.err.InterfaceError, client.err.DatabaseError)
-
 
 def translate_query_error(client_error, query):
     """
@@ -27,37 +24,36 @@ def translate_query_error(client_error, query):
     :return: an instance of the corresponding subclass of datajoint.errors.DataJointError
     """
     logger.debug('type: {}, args: {}'.format(type(client_error), client_error.args))
+
+    err, *args = client_error.args
+
     # Loss of connection errors
-    if isinstance(client_error, client.err.InterfaceError) and client_error.args[0] == 0:
-        return errors.LostConnectionError('Server connection lost due to an interface error.', *client_error.args[1:])
-    disconnect_codes = {
-        2006: "Connection timed out",
-        2013: "Server connection lost"}
-    if isinstance(client_error, client.err.OperationalError) and client_error.args[0] in disconnect_codes:
-        return errors.LostConnectionError(disconnect_codes[client_error.args[0]], *client_error.args[1:])
+    if err in (0, "(0, '')"):
+        return errors.LostConnectionError('Server connection lost due to an interface error.', *args)
+    if err == 2006:
+        return errors.LostConnectionError("Connection timed out", *args)
+    if err == 2013:
+        return errors.LostConnectionError("Server connection lost", *args)
     # Access errors
-    if isinstance(client_error, client.err.OperationalError) and client_error.args[0] in (1044, 1142):
-        return errors.AccessError('Insufficient privileges.', client_error.args[1],  query)
+    if err in (1044, 1142):
+        return errors.AccessError('Insufficient privileges.', args[0],  query)
     # Integrity errors
-    if isinstance(client_error, client.err.IntegrityError) and client_error.args[0] == 1062:
-        return errors.DuplicateError(*client_error.args[1:])
-    if isinstance(client_error, client.err.IntegrityError) and client_error.args[0] == 1452:
-        return errors.IntegrityError(*client_error.args[1:])
+    if err == 1062:
+        return errors.DuplicateError(*args)
+    if err == 1452:
+        return errors.IntegrityError(*args)
     # Syntax errors
-    if isinstance(client_error, client.err.ProgrammingError) and client_error.args[0] == 1064:
-        return errors.QuerySyntaxError(client_error.args[1], query)
+    if err == 1064:
+        return errors.QuerySyntaxError(args[0], query)
     # Existence errors
-    if isinstance(client_error, client.err.ProgrammingError) and client_error.args[0] == 1146:
-        return errors.MissingTableError(client_error.args[1], query)
-    if isinstance(client_error, client.err.OperationalError) and client_error.args[0] == 1364:
-        return errors.MissingAttributeError(*client_error.args[1:])
-    if isinstance(client_error, client.err.OperationalError) and client_error.args[0] == 1054:
-        return errors.UnknownAttributeError(*client_error.args[1:])
+    if err == 1146:
+        return errors.MissingTableError(args[0], query)
+    if err == 1364:
+        return errors.MissingAttributeError(*args)
+    if err == 1054:
+        return errors.UnknownAttributeError(*args)
     # all the other errors are re-raised in original form
     return client_error
-
-
-
 
 
 def conn(host=None, user=None, password=None, *, init_fun=None, reset=False, use_tls=None):
@@ -196,7 +192,7 @@ class Connection:
                     # suppress all warnings arising from underlying SQL library
                     warnings.simplefilter("ignore")
                 cursor.execute(query, args)
-        except client_errors as err:
+        except client.err.Error as err:
             raise translate_query_error(err, query) from None
 
     def query(self, query, args=(), *, as_dict=False, suppress_warnings=True, reconnect=None):
