@@ -13,7 +13,9 @@ from . import errors
 from .dependencies import Dependencies
 
 
+
 logger = logging.getLogger(__name__)
+query_log_max_length = 300
 
 
 def translate_query_error(client_error, query):
@@ -207,7 +209,7 @@ class Connection:
         """
         if reconnect is None:
             reconnect = config['database.reconnect']
-        logger.debug("Executing SQL:" + query[0:300])
+        logger.debug("Executing SQL:" + query[:query_log_max_length])
         cursor_class = client.cursors.DictCursor if as_dict else client.cursors.Cursor
         cursor = self._conn.cursor(cursor=cursor_class)
         try:
