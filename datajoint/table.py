@@ -154,7 +154,7 @@ class Table(QueryExpression):
 
     def update1(self, row):
         """
-        Update an existing entry in the table.
+        update1 updates one existing entry in the table.
         Caution: Updates are not part of the DataJoint data manipulation model. For strict data integrity,
         use delete and insert.
         :param row: a dict containing the primary key and the attributes to update.
@@ -318,7 +318,7 @@ class Table(QueryExpression):
         # apply restrictions
         for name in delete_list:
             if not name.isdigit() and restrictions[name]:  # do not restrict by an empty list
-                delete_list[name] = delete_list[name].restrict([
+                delete_list[name].restrict_in_place([
                     r.proj() if isinstance(r, FreeTable) else (
                         delete_list[r[0]].proj(**{a: b for a, b in r[1]['attr_map'].items()})
                         if isinstance(r, _RenameMap) else r)
@@ -476,6 +476,8 @@ class Table(QueryExpression):
 
     def _update(self, attrname, value=None):
         """
+            This is a deprecated function to be removed in datajoint 0.14. Use .update1 instead.
+
             Updates a field in an existing tuple. This is not a datajoyous operation and should not be used
             routinely. Relational database maintain referential integrity on the level of a tuple. Therefore,
             the UPDATE operator can violate referential integrity. The datajoyous way to update information is

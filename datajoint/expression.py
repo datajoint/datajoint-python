@@ -127,7 +127,7 @@ class QueryExpression:
         except StopIteration:
             pass  # all ok
         # If the new condition uses any new attributes, a subquery is required.
-        # However, Aggregation's HAVING statement can work find with aliased attributes.
+        # However, Aggregation's HAVING statement works fine with aliased attributes.
         need_subquery = not isinstance(self, Aggregation) and self.heading.new_attributes
         if need_subquery:
             result = self.make_subquery()
@@ -137,6 +137,10 @@ class QueryExpression:
         result.restriction.append(new_condition)
         result.restriction_attributes.update(attributes)
         return result
+
+    def restrict_in_place(self, restriction):
+        result = self.restrict(restriction)
+        self.__dict__.update(result.__dict__)
 
     def __and__(self, restriction):
         """
