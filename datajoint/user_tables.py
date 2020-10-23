@@ -47,11 +47,20 @@ class OrderedClass(type):
     def __and__(cls, arg):
         return cls() & arg
 
+    def __xor__(cls, arg):
+        return cls() ^ arg
+
     def __sub__(cls, arg):
         return cls() - arg
 
+    def __neg__(cls):
+        return -cls()
+
     def __mul__(cls, arg):
         return cls() * arg
+
+    def __matmul__(cls, arg):
+        return cls() @ arg
 
     def __add__(cls, arg):
         return cls() + arg

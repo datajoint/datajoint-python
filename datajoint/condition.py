@@ -11,6 +11,14 @@ import pandas
 from .errors import DataJointError
 
 
+class PromiscuousOperand:
+    """
+    A container for an operand to ignore join compatibility
+    """
+    def __init__(self, operand):
+        self.operand = operand
+
+
 class AndList(list):
     """
     A list of conditions to by applied to a query expression by logical conjunction: the conditions are AND-ed.
@@ -134,8 +142,14 @@ def make_condition(query_expression, condition, columns):
         condition = condition()
 
     # restrict by another expression (aka semijoin and antijoin)
+    check_compatibility = True
+    if isinstance(condition, PromiscuousOperand):
+        condition = condition.operand
+        check_compatibility = False
+
     if isinstance(condition, QueryExpression):
-        assert_join_compatibility(query_expression, condition)
+        if check_compatibility:
+            assert_join_compatibility(query_expression, condition)
         common_attributes = [q for q in condition.heading.names if q in query_expression.heading.names]
         columns.update(common_attributes)
         if isinstance(condition, Aggregation):

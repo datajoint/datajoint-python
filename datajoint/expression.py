@@ -7,7 +7,8 @@ from .settings import config
 from .errors import DataJointError
 from .fetch import Fetch, Fetch1
 from .preview import preview, repr_html
-from .condition import AndList, Not, make_condition, assert_join_compatibility, extract_column_names
+from .condition import AndList, Not, \
+    make_condition, assert_join_compatibility, extract_column_names, PromiscuousOperand
 
 logger = logging.getLogger(__name__)
 
@@ -149,6 +150,16 @@ class QueryExpression:
         """
         return self.restrict(restriction)
 
+    def __xor__(self, restriction):
+        """
+        Restriction operator ignoring compatibility check.
+        """
+        if inspect.isclass(restriction) and issubclass(restriction, QueryExpression):
+            restriction = restriction()
+        if isinstance(restriction, Not):
+            return self.restrict(Not(PromiscuousOperand(restriction.restriction)))
+        return self.restriction(PromiscuousOperand(restriction))
+
     def __sub__(self, restriction):
         """
         Inverted restriction
@@ -157,13 +168,29 @@ class QueryExpression:
         """
         return self.restrict(Not(restriction))
 
+    def __neg__(self, restriction):
+        if isinstance(restriction, Not):
+            return restriction.restriction
+        return Not(restriction)
+
     def __mul__(self, other):
         """ join of query expressions `self` and `other` """
         if inspect.isclass(other) and issubclass(other, QueryExpression):
             other = other()  # instantiate
         if isinstance(other, U):
             return other * self
-        # make subqueries if joining on renamed attributes
+        return self._join(other)
+
+    def __matmul__(self, other):
+        if inspect.isclass(other) and issubclass(other, QueryExpression):
+            other = other()  # instantiate
+        if not isinstance(other, QueryExpression):
+            raise DataJointError("The argument of join must be a QueryExpression")
+        return self._join(other, semantic_check=False)
+
+    def _join(self, other, semantic_check=True):
+        """create the joined QueryExpression"""
+        # trigger subqueries if joining on renamed attributes
         other_clash = set(other.heading.names) | set(
             (other.heading[n].attribute_expression.strip('`') for n in other.heading.new_attributes))
         self_clash = set(self.heading.names) | set(
@@ -178,7 +205,8 @@ class QueryExpression:
             self = self.make_subquery()
         if need_subquery2:
             other = other.make_subquery()
-        assert_join_compatibility(self, other)
+        if semantic_check:
+            assert_join_compatibility(self, other)
         result = QueryExpression()
         result._connection = self.connection
         result._support = self.support + other.support
@@ -189,16 +217,8 @@ class QueryExpression:
         assert len(result.support) == len(result._join_attributes) + 1
         return result
 
-    def __matmul__(self, other):
-        """natural join"""
-        raise NotImplemented
-
-    def __xor__(self, other):
-        """natural semijoin"""
-
     def __add__(self, other):
         """union"""
-
         return Union.create(self, other)
 
     def proj(self, *attributes, **named_attributes):
