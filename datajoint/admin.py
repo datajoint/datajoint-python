@@ -49,7 +49,8 @@ def kill(restriction=None, connection=None, order_by=None):  # pragma: no cover
     while True:
         print('  ID USER         HOST          STATE         TIME    INFO')
         print('+--+ +----------+ +-----------+ +-----------+ +-----+')
-        cur = connection.query(query, as_dict=True)
+        cur = [{k.upper(): v for k, v in elem.items()}
+               for elem in connection.query(query, as_dict=True)]
         for process in cur:
             try:
                 print('{ID:>4d} {USER:<12s} {HOST:<12s} {STATE:<12s} {TIME:>7d}  {INFO}'.format(**process))
@@ -88,7 +89,8 @@ def kill_quick(restriction=None, connection=None):
     query = 'SELECT * FROM information_schema.processlist WHERE id <> CONNECTION_ID()' + (
         "" if restriction is None else ' AND (%s)' % restriction)
 
-    cur = connection.query(query, as_dict=True)
+    cur = [{k.upper(): v for k, v in elem.items()}
+           for elem in connection.query(query, as_dict=True)]
     nkill = 0
     for process in cur:
         connection.query('kill %d' % process['ID'])
