@@ -514,12 +514,16 @@ class Union(QueryExpression):
         obj = cls()
         if inspect.isclass(arg2) and issubclass(arg2, QueryExpression):
             arg2 = arg2()  # instantiate if a class
-        if not isinstance(arg1, QueryExpression) or not isinstance(arg2, QueryExpression):
+        if not isinstance(arg2, QueryExpression):
             raise DataJointError('A QueryExpression can only be unioned with another QueryExpression')
         if arg1.connection != arg2.connection:
             raise DataJointError("Cannot operate on QueryExpressions originating from different connections.")
-        if set(arg1.heading.names) != set(arg2.heading.names):
-            raise DataJointError('Union requires the same attributes in both arguments')
+        if set(arg1.primary_key) != set(arg2.primary_key):
+            raise DataJointError("The operands of a union must share the same primary key.")
+        if set(arg1.heading.secondary_attributes) != set(arg2.heading.secondary_attributes):
+            raise DataJointError("The operands of a union must share the same primary key.")
+        if not (set(arg1.heading.names) & set(arg2.heading.names)):
+            raise DataJointError('The operands of a union must not have shared secondary attributes')
         if any(not v.in_key for v in arg1.heading.attributes.values()) or \
                 all(not v.in_key for v in arg2.heading.attributes.values()):
             raise DataJointError('Union arguments must not have any secondary attributes.')
