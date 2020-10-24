@@ -42,14 +42,14 @@ def _migrate_dj011_blob(schema, default_store):
         '`{db}`.`~external`'.format(db=schema.database))
 
     # get referencing tables
-    refs = query("""
+    refs = [{k.lower(): v for k, v in elem.items()} for elem in query("""
     SELECT concat('`', table_schema, '`.`', table_name, '`')
             as referencing_table, column_name, constraint_name
     FROM information_schema.key_column_usage
     WHERE referenced_table_name="{tab}" and referenced_table_schema="{db}"
     """.format(
         tab=legacy_external.table_name,
-        db=legacy_external.database), as_dict=True).fetchall()
+        db=legacy_external.database), as_dict=True).fetchall()]
 
     for ref in refs:
         # get comment
@@ -142,14 +142,14 @@ def _migrate_dj011_blob(schema, default_store):
 
     # Drop the old external table but make sure it's no longer referenced
     # get referencing tables
-    refs = query("""
+    refs = [{k.lower(): v for k, v in elem.items()} for elem in query("""
     SELECT concat('`', table_schema, '`.`', table_name, '`') as
         referencing_table, column_name, constraint_name
     FROM information_schema.key_column_usage
     WHERE referenced_table_name="{tab}" and referenced_table_schema="{db}"
     """.format(
         tab=legacy_external.table_name,
-        db=legacy_external.database), as_dict=True).fetchall()
+        db=legacy_external.database), as_dict=True).fetchall()]
 
     assert not refs, 'Some references still exist'
 
