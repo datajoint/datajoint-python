@@ -12,8 +12,6 @@ from .settings import config
 from . import errors
 from .dependencies import Dependencies
 
-
-
 logger = logging.getLogger(__name__)
 query_log_max_length = 300
 
