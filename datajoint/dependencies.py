@@ -43,7 +43,7 @@ class Dependencies(nx.DiGraph):
             self.add_node(n, primary_key=pk)
 
         # load foreign keys
-        keys = self._conn.query("""
+        keys = ({k.lower(): v for k, v in elem.items()} for elem in self._conn.query("""
         SELECT constraint_name,
             concat('`', table_schema, '`.`', table_name, '`') as referencing_table,
             concat('`', referenced_table_schema, '`.`',  referenced_table_name, '`') as referenced_table,
@@ -51,7 +51,7 @@ class Dependencies(nx.DiGraph):
         FROM information_schema.key_column_usage
         WHERE referenced_table_name NOT LIKE "~%%" AND (referenced_table_schema in ('{schemas}') OR
             referenced_table_schema is not NULL AND table_schema in ('{schemas}'))
-        """.format(schemas="','".join(self._conn.schemas)), as_dict=True)
+        """.format(schemas="','".join(self._conn.schemas)), as_dict=True))
         fks = defaultdict(lambda: dict(attr_map=OrderedDict()))
         for key in keys:
             d = fks[(key['constraint_name'], key['referencing_table'], key['referenced_table'])]

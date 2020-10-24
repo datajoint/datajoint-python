@@ -1,3 +1,4 @@
+# docker-compose -f local-docker-compose.yml --env-file LNX.env up --build
 version: '2.2'
 x-net: &net
   networks:
