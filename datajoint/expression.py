@@ -129,7 +129,8 @@ class QueryExpression:
             pass  # all ok
         # If the new condition uses any new attributes, a subquery is required.
         # However, Aggregation's HAVING statement works fine with aliased attributes.
-        need_subquery = not isinstance(self, Aggregation) and self.heading.new_attributes
+        need_subquery = isinstance(self, Union) or (
+                not isinstance(self, Aggregation) and self.heading.new_attributes)
         if need_subquery:
             result = self.make_subquery()
         else:
@@ -195,10 +196,10 @@ class QueryExpression:
             (other.heading[n].attribute_expression.strip('`') for n in other.heading.new_attributes))
         self_clash = set(self.heading.names) | set(
             (self.heading[n].attribute_expression for n in self.heading.new_attributes))
-        need_subquery1 = any(
+        need_subquery1 = isinstance(self, Union) or any(
             n for n in self.heading.new_attributes if (
                     n in other_clash or self.heading[n].attribute_expression.strip('`') in other_clash))
-        need_subquery2 = any(
+        need_subquery2 = isinstance(self, Union) or any(
             n for n in other.heading.new_attributes if (
                     n in self_clash or other.heading[n].attribute_expression.strip('`') in other_clash))
         if need_subquery1:
@@ -310,7 +311,8 @@ class QueryExpression:
         used.update(rename_map.values())
         used.update(replicate_map.values())
         used.intersection_update(self.heading.names)
-        need_subquery = any(self.heading[name].attribute_expression is not None for name in used)
+        need_subquery = isinstance(self, Union) or any(
+            self.heading[name].attribute_expression is not None for name in used)
         if not need_subquery and self.restriction:
             # need a subquery if the restriction applies to attributes that have been renamed
             need_subquery = any(
@@ -456,8 +458,8 @@ class Aggregation(QueryExpression):
         assert isinstance(group, QueryExpression)
         if keep_all_rows and len(group.support) > 1:
             group = group.make_subquery()  # subquery if left joining a join
-        result = Aggregation()
         join = arg * group  # reuse the join logic
+        result = cls()
         result._connection = join.connection
         result._heading = join.heading.set_primary_key(arg.primary_key)  # use left operand's primary key
         result._support = join.support
@@ -506,12 +508,8 @@ class Union(QueryExpression):
     """
     Union is the private DataJoint class that implements the union operator.
     """
-
-    __count = count()
-
     @classmethod
     def create(cls, arg1, arg2):
-        obj = cls()
         if inspect.isclass(arg2) and issubclass(arg2, QueryExpression):
             arg2 = arg2()  # instantiate if a class
         if not isinstance(arg2, QueryExpression):
@@ -520,32 +518,19 @@ class Union(QueryExpression):
             raise DataJointError("Cannot operate on QueryExpressions originating from different connections.")
         if set(arg1.primary_key) != set(arg2.primary_key):
             raise DataJointError("The operands of a union must share the same primary key.")
-        if set(arg1.heading.secondary_attributes) != set(arg2.heading.secondary_attributes):
-            raise DataJointError("The operands of a union must share the same primary key.")
-        if not (set(arg1.heading.names) & set(arg2.heading.names)):
-            raise DataJointError('The operands of a union must not have shared secondary attributes')
-        if any(not v.in_key for v in arg1.heading.attributes.values()) or \
-                all(not v.in_key for v in arg2.heading.attributes.values()):
-            raise DataJointError('Union arguments must not have any secondary attributes.')
-        obj._connection = arg1.connection
-        obj._heading = arg1.heading
-        obj._arg1 = arg1
-        obj._arg2 = arg2
-        return obj
+        if set(arg1.heading.secondary_attributes) & set(arg2.heading.secondary_attributes):
+            raise DataJointError("The operands of a union must not share any secondary attributes.")
+        result = cls()
+        result._connection = arg1.connection
+        result._heading = arg1.heading
+        result._support = [arg1, arg2]
+        return result
 
     def make_sql(self, select_fields=None):
-        return "SELECT {_fields} FROM {_from}{_where}".format(
-            _fields=self.get_select_fields(select_fields),
-            _from=self.from_clause,
-            _where=self.where_clause)
-
-    @property
-    def from_clause(self):
-        return ("(SELECT {fields} FROM {from1}{where1} UNION SELECT {fields} FROM {from2}{where2}) as `_u%x`".format(
-            fields=self.get_select_fields(None), from1=self._arg1.from_clause,
-            where1=self._arg1.where_clause,
-            from2=self._arg2.from_clause,
-            where2=self._arg2.where_clause)) % next(self.__count)
+        arg1, arg2 = self._support
+        if not arg1.heading.secondary_attributes and not arg2.heading.secondary_attributes:  # use UNION DISTINCT
+            fields = arg1.primary_key
+            return "({sql1}) UNION ({sql2})".format(sql1=arg1.make_sql(fields), sql2=arg2.make_sql(fields))
 
 
 class U:
