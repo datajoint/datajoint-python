@@ -1,5 +1,10 @@
 ## Release notes
 
+### 0.12.7 -- Oct 27, 2020
+* Fix case sensitivity issues to adapt to MySQL 8+.  PR #819
+* Fix pymysql regression bug (#814) PR #816
+* Adapted attribute types now have dtype=object in all recarray results. PR #811 
+
 ### 0.12.6 -- May 15, 2020
 * Add `order_by` to `dj.kill` (#668, #779) PR #775, #783
 * Add explicit S3 bucket and file storage location existence checks (#748) PR #781
