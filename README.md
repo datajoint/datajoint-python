@@ -114,6 +114,7 @@ GID=1000
 * `cp local-docker-compose.yml docker-compose.yml`
 * `docker-compose up -d` (Note configured `JUPYTER_PASSWORD`)
 * Select a means of running Tests e.g. Docker Terminal, or Local Terminal (see bottom)
+* Add entry in `/etc/hosts` for `127.0.0.1 fakeservices.datajoint.io`
 * Run desired tests. Some examples are as follows:
 
 | Use Case                     | Shell Code                                                                    |
