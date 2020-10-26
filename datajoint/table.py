@@ -254,7 +254,7 @@ class Table(QueryExpression):
             try:
                 query = "{command} INTO {destination}(`{fields}`) VALUES {placeholders}{duplicate}".format(
                     command='REPLACE' if replace else 'INSERT',
-                    destination=self.from_clause,
+                    destination=self.from_clause(),
                     fields='`,`'.join(field_list),
                     placeholders=','.join('(' + ','.join(row['placeholders']) + ')' for row in rows),
                     duplicate=(' ON DUPLICATE KEY UPDATE `{pk}`=`{pk}`'.format(pk=self.primary_key[0])
@@ -513,7 +513,7 @@ class Table(QueryExpression):
         else:
             placeholder = '%s' if value is not None else 'NULL'
         command = "UPDATE {full_table_name} SET `{attrname}`={placeholder} {where_clause}".format(
-            full_table_name=self.from_clause,
+            full_table_name=self.from_clause(),
             attrname=attrname,
             placeholder=placeholder,
             where_clause=self.where_clause)

@@ -176,11 +176,18 @@ class TestRelational:
 
     @staticmethod
     def test_union():
-        x = set(zip(*IJ.fetch('i','j')))
-        y = set(zip(*JI.fetch('i','j')))
+        x = set(zip(*IJ.fetch('i', 'j')))
+        y = set(zip(*JI.fetch('i', 'j')))
         assert_true(len(x) > 0 and len(y) > 0 and len(IJ() * JI()) < len(x))  # ensure the IJ and JI are non-trivial
         z = set(zip(*(IJ + JI).fetch('i', 'j')))   # union
         assert_set_equal(x.union(y), z)
+        assert_equal(len(IJ + JI), len(z))
+
+    @staticmethod
+    @raises(dj.DataJointError)
+    def test_outer_union():
+        """Union of two tables with different primary keys raises an error."""
+        A() + B()
 
     @staticmethod
     def test_preview():

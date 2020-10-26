@@ -81,13 +81,13 @@ class QueryExpression:
 
     __subquery_alias_count = count()    # count for alias names used in from_clause
 
-    @property
-    def from_clause(self):
+    def from_clause(self, left=False):
         support = ('(' + src.make_sql() + ') as `_s%x`' % next(
             self.__subquery_alias_count) if isinstance(src, QueryExpression) else src for src in self.support)
         clause = next(support)
         for s, a in zip(support, self._join_attributes):
-            clause += ' JOIN {clause}{using}'.format(
+            clause += '{left} JOIN {clause}{using}'.format(
+                left=" LEFT" if left else "",
                 clause=s,
                 using="" if not a else " USING (%s)" % ",".join('`%s`' % _ for _ in a))
         return clause
@@ -96,7 +96,7 @@ class QueryExpression:
     def where_clause(self):
         return '' if not self.restriction else ' WHERE(%s)' % ')AND('.join(str(s) for s in self.restriction)
 
-    def make_sql(self, fields=None):
+    def make_sql(self, fields=None, left=False):
         """
         Make the SQL SELECT statement.
         :param fields: used to explicitly set the select attributes
@@ -105,7 +105,7 @@ class QueryExpression:
         return 'SELECT {distinct}{fields} FROM {from_}{where}'.format(
             distinct="DISTINCT " if distinct else "",
             fields=self.heading.as_sql(fields or self.heading.names),
-            from_=self.from_clause, where=self.where_clause)
+            from_=self.from_clause(), where=self.where_clause)
 
     # --------- query operators -----------
     def make_subquery(self):
@@ -373,7 +373,7 @@ class QueryExpression:
         return self.connection.query(
             'SELECT count({what}) FROM {from_}{where}'.format(
                 what=what,
-                from_=self.from_clause,
+                from_=self.from_clause(),
                 where=self.where_clause)).fetchone()[0]
 
     def __bool__(self):
@@ -469,7 +469,6 @@ class Aggregation(QueryExpression):
         result._keep_all_rows = keep_all_rows
         return result
 
-    @property
     def from_clause(self):
         support = ('(' + src.make_sql() + ') as `_s%x`' % next(
             self.__subquery_alias_count) if isinstance(src, QueryExpression) else src for src in self.support)
@@ -489,7 +488,7 @@ class Aggregation(QueryExpression):
         return 'SELECT {distinct}{fields} FROM {from_}{where}{group_by}'.format(
             distinct="DISTINCT " if distinct else "",
             fields=fields,
-            from_=self.from_clause,
+            from_=self.from_clause(),
             where=where,
             group_by="" if not self.primary_key else (
                 " GROUP BY `%s`" % '`,`'.join(self._grouping_attributes) +
@@ -522,15 +521,27 @@ class Union(QueryExpression):
             raise DataJointError("The operands of a union must not share any secondary attributes.")
         result = cls()
         result._connection = arg1.connection
-        result._heading = arg1.heading
+        result._heading = arg1.heading.join(arg2.heading)
         result._support = [arg1, arg2]
         return result
 
     def make_sql(self, select_fields=None):
         arg1, arg2 = self._support
         if not arg1.heading.secondary_attributes and not arg2.heading.secondary_attributes:  # use UNION DISTINCT
-            fields = arg1.primary_key
+            fields = select_fields or arg1.primary_key
             return "({sql1}) UNION ({sql2})".format(sql1=arg1.make_sql(fields), sql2=arg2.make_sql(fields))
+        fields = select_fields or arg1.promary_key + arg1.heading.secondary_attributes + arg2.heading.secondary_attributes
+        sql1 = (arg1 * arg2).make_sql(fields, left=True)
+        sql2 = (arg2 - arg1).proj(**{k: 'NULL' for k in arg1.heading.secondary_attributes}).make_sql(fields)
+        return "({sql1}) UNION ({sql2})".format(sql1=sql1, sql2=sql2)
+
+    def from_clause(self):
+        """In Union, the select clause can be used as the WHERE clause and make_sql() does not call from_clause"""
+        return self.make_sql()
+
+    def __len__(self):
+        return self.connection.query(
+            'SELECT count(*) FROM ({sql}) `$sub`'.format(sql=self.make_sql())).fetchone()[0]
 
 
 class U:
