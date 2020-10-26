@@ -530,9 +530,9 @@ class Union(QueryExpression):
         if not arg1.heading.secondary_attributes and not arg2.heading.secondary_attributes:  # use UNION DISTINCT
             fields = select_fields or arg1.primary_key
             return "({sql1}) UNION ({sql2})".format(sql1=arg1.make_sql(fields), sql2=arg2.make_sql(fields))
-        fields = select_fields or arg1.promary_key + arg1.heading.secondary_attributes + arg2.heading.secondary_attributes
+        fields = select_fields or arg1.primary_key + arg1.heading.secondary_attributes + arg2.heading.secondary_attributes
         sql1 = (arg1 * arg2).make_sql(fields, left=True)
-        sql2 = (arg2 - arg1).proj(**{k: 'NULL' for k in arg1.heading.secondary_attributes}).make_sql(fields)
+        sql2 = (arg2 - arg1).proj(..., **{k: 'NULL' for k in arg1.heading.secondary_attributes}).make_sql(fields)
         return "({sql1}) UNION ({sql2})".format(sql1=sql1, sql2=sql2)
 
     def from_clause(self):

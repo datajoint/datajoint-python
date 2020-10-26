@@ -15,7 +15,7 @@ Please cite:
 """
 
 __author__ = "DataJoint Contributors"
-__date__ = "February 7, 2019"
+__date__ = "November 7, 2020"
 __all__ = ['__author__', '__version__',
            'config', 'conn', 'Connection',
            'Schema', 'schema', 'VirtualModule', 'create_virtual_module',

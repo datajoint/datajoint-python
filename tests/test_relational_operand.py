@@ -8,7 +8,7 @@ from nose.tools import assert_equal, assert_false, assert_true, raises, assert_s
 
 import datajoint as dj
 from .schema_simple import A, B, D, E, F, L, DataA, DataB, TTestUpdate, IJ, JI, ReservedWord
-from .schema import Experiment, TTest3
+from .schema import Experiment, TTest3, Trial, Ephys
 
 
 def setup():
@@ -185,9 +185,17 @@ class TestRelational:
 
     @staticmethod
     @raises(dj.DataJointError)
-    def test_outer_union():
+    def test_outer_union_fail():
         """Union of two tables with different primary keys raises an error."""
         A() + B()
+
+    @staticmethod
+    def test_outer_union_fail():
+        """Union of two tables with different primary keys raises an error."""
+        t = Trial + Ephys
+        t.fetch()
+        assert_set_equal(set(t.heading.names), set(Trial.heading.names) | set(Ephys.heading.names))
+        len(t)
 
     @staticmethod
     def test_preview():

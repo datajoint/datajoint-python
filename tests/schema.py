@@ -320,6 +320,7 @@ class IndexRich(dj.Manual):
     index (first_date, value)
     """
 
+
 #  Schema for issue 656
 @schema
 class ThingA(dj.Manual):
@@ -345,4 +346,3 @@ class ThingC(dj.Manual):
     ---
     -> [unique, nullable] ThingB
     """
-
