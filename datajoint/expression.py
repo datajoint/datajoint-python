@@ -105,7 +105,7 @@ class QueryExpression:
         return 'SELECT {distinct}{fields} FROM {from_}{where}'.format(
             distinct="DISTINCT " if distinct else "",
             fields=self.heading.as_sql(fields or self.heading.names),
-            from_=self.from_clause(), where=self.where_clause)
+            from_=self.from_clause(left=left), where=self.where_clause)
 
     # --------- query operators -----------
     def make_subquery(self):
