@@ -78,6 +78,8 @@ class Heading:
 
     @property
     def table_status(self):
+        if self.table_info is None:
+            return None
         if self._table_status is None:
             self._init_from_database()
         return self._table_status
@@ -159,7 +161,6 @@ class Heading:
 
     def _init_from_database(self):
         """ initialize heading from an existing database table. """
-        assert self.table_info is not None
         conn, database, table_name, context = (
             self.table_info[k] for k in ('conn', 'database', 'table_name', 'context'))
         info = conn.query('SHOW TABLE STATUS FROM `{database}` WHERE name="{table_name}"'.format(

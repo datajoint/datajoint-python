@@ -315,8 +315,7 @@ class QueryExpression:
             self.heading[name].attribute_expression is not None for name in used)
         if not need_subquery and self.restriction:
             # need a subquery if the restriction applies to attributes that have been renamed
-            need_subquery = any(
-                self.heading[name].attribute_expression is not None for name in self.restriction_attributes)
+            need_subquery = any(name in self.restriction_attributes for name in self.heading.new_attributes)
 
         result = self.make_subquery() if need_subquery else copy.copy(self)
         result._heading = result.heading.select(
@@ -328,7 +327,7 @@ class QueryExpression:
         Aggregation of the type U('attr1','attr2').aggr(group, computation="QueryExpression")
         has the primary key ('attr1','attr2') and performs aggregation computations for all matching elements of `group`.
         :param group:  The query expression to be aggregated.
-        :keep_all_rows: True=keep all the rows from self. False=keep only rows that match entries in group.
+        :param keep_all_rows: True=keep all the rows from self. False=keep only rows that match entries in group.
         :param named_attributes: computations of the form new_attribute="sql expression on attributes of group"
         :return: The derived query expression
         """
