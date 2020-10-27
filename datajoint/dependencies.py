@@ -8,8 +8,8 @@ class Dependencies(nx.DiGraph):
     """
     The graph of dependencies (foreign keys) between loaded tables.
 
-    Note: the 'connnection' argument should normally be supplied;
-    Empty use is permitted to facilliate use of networkx algorithms which
+    Note: the 'connection' argument should normally be supplied;
+    Empty use is permitted to facilitate use of networkx algorithms which
     internally create objects with the expectation of empty constructors.
     See also: https://github.com/datajoint/datajoint-python/pull/443
     """
@@ -43,7 +43,7 @@ class Dependencies(nx.DiGraph):
             self.add_node(n, primary_key=pk)
 
         # load foreign keys
-        keys = self._conn.query("""
+        keys = ({k.lower(): v for k, v in elem.items()} for elem in self._conn.query("""
         SELECT constraint_name,
             concat('`', table_schema, '`.`', table_name, '`') as referencing_table,
             concat('`', referenced_table_schema, '`.`',  referenced_table_name, '`') as referenced_table,
@@ -51,7 +51,7 @@ class Dependencies(nx.DiGraph):
         FROM information_schema.key_column_usage
         WHERE referenced_table_name NOT LIKE "~%%" AND (referenced_table_schema in ('{schemas}') OR
             referenced_table_schema is not NULL AND table_schema in ('{schemas}'))
-        """.format(schemas="','".join(self._conn.schemas)), as_dict=True)
+        """.format(schemas="','".join(self._conn.schemas)), as_dict=True))
         fks = defaultdict(lambda: dict(attr_map=OrderedDict()))
         for key in keys:
             d = fks[(key['constraint_name'], key['referencing_table'], key['referenced_table'])]
@@ -107,7 +107,6 @@ class Dependencies(nx.DiGraph):
         """
         nodes = self.subgraph(
             nx.algorithms.dag.descendants(self, full_table_name))
-
         return [full_table_name] + list(
             nx.algorithms.dag.topological_sort(nodes))
 

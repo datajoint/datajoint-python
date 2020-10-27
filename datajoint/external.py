@@ -276,11 +276,11 @@ class ExternalTable(Table):
         """
         :return: generator of referencing table names and their referencing columns
         """
-        return self.connection.query("""
+        return ({k.lower(): v for k, v in elem.items()} for elem in self.connection.query("""
         SELECT concat('`', table_schema, '`.`', table_name, '`') as referencing_table, column_name
         FROM information_schema.key_column_usage
         WHERE referenced_table_name="{tab}" and referenced_table_schema="{db}"
-        """.format(tab=self.table_name, db=self.database), as_dict=True)
+        """.format(tab=self.table_name, db=self.database), as_dict=True))
 
     def fetch_external_paths(self, **fetch_kwargs):
         """

@@ -25,7 +25,7 @@ class AttributeAdapter:
     def put(self, obj):
         """
         convert an object of the adapted type into a value that DataJoint can store in a table attribute
-        :param object: an object of the adapted type
+        :param obj: an object of the adapted type
         :return: value to store in the database
         """
         raise NotImplementedError('Undefined attribute adapter')

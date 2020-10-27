@@ -1,3 +1,4 @@
+# docker-compose -f LNX-docker-compose.yml --env-file LNX.env up --build --exit-code-from app
 version: '2.2'
 x-net: &net
   networks:
@@ -31,7 +32,7 @@ services:
       interval: 1s
   fakeservices.datajoint.io:
     <<: *net
-    image: raphaelguzman/nginx:v0.0.6
+    image: raphaelguzman/nginx:v0.0.10
     environment:
     - ADD_db_TYPE=DATABASE
     - ADD_db_ENDPOINT=db:3306
