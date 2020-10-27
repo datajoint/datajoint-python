@@ -177,7 +177,7 @@ class Schema:
         """
         table_class.database = self.database
         table_class._connection = self.connection
-        table_class._heading = Heading(table_info = dict(
+        table_class._heading = Heading(table_info=dict(
                 conn=self.connection,
                 database=self.database,
                 table_name=table_class.table_name,

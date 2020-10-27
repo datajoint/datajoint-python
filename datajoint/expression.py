@@ -67,7 +67,7 @@ class QueryExpression:
         if self._restriction is None:
             self._restriction = AndList()
         return self._restriction
-    
+
     @property
     def restriction_attributes(self):
         """ the set of names invoked in the WHERE clause """
