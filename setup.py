@@ -6,13 +6,13 @@ import sys
 min_py_version = (3, 5)
 
 if sys.version_info <  min_py_version:
-    sys.exit('DataJoint is only supported on Python {}.{} or higher'.format(*min_py_version))
+    sys.exit('DataJoint is only supported for Python {}.{} or higher'.format(*min_py_version))
 
 here = path.abspath(path.dirname(__file__))
 
 long_description = "A relational data framework for scientific data pipelines with MySQL backend."
 
-# read in version number
+# read in version number into __version__
 with open(path.join(here, 'datajoint', 'version.py')) as f:
     exec(f.read())
 
@@ -32,6 +32,6 @@ setup(
     packages=find_packages(exclude=['contrib', 'docs', 'tests*']),
     install_requires=requirements,
     python_requires='~={}.{}'.format(*min_py_version),
-    setup_requires=['setuptools_certificate'],
+    setup_requires=['setuptools_certificate'], # maybe remove due to conflicts?
     pubkey_path='./datajoint.pub'
 )

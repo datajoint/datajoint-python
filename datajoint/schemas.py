@@ -73,7 +73,6 @@ class Schema:
                 logger.info("Creating schema `{name}`.".format(name=schema_name))
                 try:
                     connection.query("CREATE DATABASE `{name}`".format(name=schema_name))
-                    logger.info('Creating schema `{name}`.'.format(name=schema_name))
                 except pymysql.OperationalError:
                     raise DataJointError(
                         "Schema `{name}` does not exist and could not be created. "
