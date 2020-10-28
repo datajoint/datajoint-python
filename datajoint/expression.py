@@ -159,7 +159,7 @@ class QueryExpression:
             restriction = restriction()
         if isinstance(restriction, Not):
             return self.restrict(Not(PromiscuousOperand(restriction.restriction)))
-        return self.restriction(PromiscuousOperand(restriction))
+        return self.restrict(PromiscuousOperand(restriction))
 
     def __sub__(self, restriction):
         """
@@ -169,10 +169,10 @@ class QueryExpression:
         """
         return self.restrict(Not(restriction))
 
-    def __neg__(self, restriction):
-        if isinstance(restriction, Not):
-            return restriction.restriction
-        return Not(restriction)
+    def __neg__(self):
+        if isinstance(self, Not):
+            return self.restriction
+        return Not(self)
 
     def __mul__(self, other):
         """ join of query expressions `self` and `other` """

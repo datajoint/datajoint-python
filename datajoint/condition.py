@@ -123,7 +123,7 @@ def make_condition(query_expression, condition, columns):
     if isinstance(condition, collections.abc.Mapping):
         common_attributes = set(condition).intersection(query_expression.heading.names)
         if not common_attributes:
-            return not negate   # no matching attributes -> evaluates to True        
+            return not negate  # no matching attributes -> evaluates to True
         columns.update(common_attributes)
         return template % ('(' + ') AND ('.join(
             '`%s`=%s' % (k, prep_value(k, condition[k])) for k in common_attributes) + ')')
