@@ -123,7 +123,7 @@ class Connection:
             logger.info("Connected {user}@{host}:{port}".format(**self.conn_info))
             self.connection_id = self.query('SELECT connection_id()').fetchone()[0]
         else:
-            raise errors.ConnectionError('Connection failed.')
+            raise errors.LostConnectionError('Connection failed.')
         self._in_transaction = False
         self.schemas = dict()
         self.dependencies = Dependencies(self)

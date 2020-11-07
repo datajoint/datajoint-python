@@ -37,12 +37,13 @@ class QueryExpression:
 
     _restriction = None
     _restriction_attributes = None
+    _left = []  # True for left joins, False for inner joins
+    _join_attributes = []
 
     # subclasses or instantiators must provide values
     _connection = None
     _heading = None
     _support = None
-    _join_attributes = []
 
     @property
     def connection(self):
@@ -70,7 +71,7 @@ class QueryExpression:
 
     @property
     def restriction_attributes(self):
-        """ the set of names invoked in the WHERE clause """
+        """ the set of attribute names invoked in the WHERE clause """
         if self._restriction_attributes is None:
             self._restriction_attributes = set()
         return self._restriction_attributes
@@ -81,11 +82,11 @@ class QueryExpression:
 
     __subquery_alias_count = count()    # count for alias names used in from_clause
 
-    def from_clause(self, left=False):
+    def from_clause(self):
         support = ('(' + src.make_sql() + ') as `_s%x`' % next(
             self.__subquery_alias_count) if isinstance(src, QueryExpression) else src for src in self.support)
         clause = next(support)
-        for s, a in zip(support, self._join_attributes):
+        for s, a, left in zip(support, self._join_attributes, self._left):
             clause += '{left} JOIN {clause}{using}'.format(
                 left=" LEFT" if left else "",
                 clause=s,
@@ -96,7 +97,7 @@ class QueryExpression:
     def where_clause(self):
         return '' if not self.restriction else ' WHERE(%s)' % ')AND('.join(str(s) for s in self.restriction)
 
-    def make_sql(self, fields=None, left=False):
+    def make_sql(self, fields=None):
         """
         Make the SQL SELECT statement.
         :param fields: used to explicitly set the select attributes
@@ -105,7 +106,7 @@ class QueryExpression:
         return 'SELECT {distinct}{fields} FROM {from_}{where}'.format(
             distinct="DISTINCT " if distinct else "",
             fields=self.heading.as_sql(fields or self.heading.names),
-            from_=self.from_clause(left=left), where=self.where_clause)
+            from_=self.from_clause(), where=self.where_clause)
 
     # --------- query operators -----------
     def make_subquery(self):
@@ -176,22 +177,27 @@ class QueryExpression:
 
     def __mul__(self, other):
         """ join of query expressions `self` and `other` """
-        if inspect.isclass(other) and issubclass(other, QueryExpression):
-            other = other()  # instantiate
-        if isinstance(other, U):
-            return other * self
-        return self._join(other)
+        return self.join(other)
 
     def __matmul__(self, other):
         if inspect.isclass(other) and issubclass(other, QueryExpression):
             other = other()  # instantiate
+        return self.join(other, semantic_check=False)
+
+    def join(self, other, semantic_check=True, left=False):
+        """
+        create the joined QueryExpression.
+        a * b  is short for A.join(B)
+        a @ b  is short for A.join(B, semantic_check=False)
+        Additionally, left=True will retain the rows of self, effectively performing a left join.
+        """
+        # trigger subqueries if joining on renamed attributes
+        if isinstance(other, U):
+            return other * self
+        if inspect.isclass(other) and issubclass(other, QueryExpression):
+            other = other()  # instantiate
         if not isinstance(other, QueryExpression):
             raise DataJointError("The argument of join must be a QueryExpression")
-        return self._join(other, semantic_check=False)
-
-    def _join(self, other, semantic_check=True):
-        """create the joined QueryExpression"""
-        # trigger subqueries if joining on renamed attributes
         other_clash = set(other.heading.names) | set(
             (other.heading[n].attribute_expression.strip('`') for n in other.heading.new_attributes))
         self_clash = set(self.heading.names) | set(
@@ -199,9 +205,10 @@ class QueryExpression:
         need_subquery1 = isinstance(self, Union) or any(
             n for n in self.heading.new_attributes if (
                     n in other_clash or self.heading[n].attribute_expression.strip('`') in other_clash))
-        need_subquery2 = isinstance(self, Union) or any(
+        need_subquery2 = (left and len(other.support) > 1 or
+                          isinstance(self, Union) or any(
             n for n in other.heading.new_attributes if (
-                    n in self_clash or other.heading[n].attribute_expression.strip('`') in other_clash))
+                    n in self_clash or other.heading[n].attribute_expression.strip('`') in other_clash)))
         if need_subquery1:
             self = self.make_subquery()
         if need_subquery2:
@@ -211,11 +218,14 @@ class QueryExpression:
         result = QueryExpression()
         result._connection = self.connection
         result._support = self.support + other.support
-        result._join_attributes = self._join_attributes + [[a for a in self.heading.names if a in other.heading.names]]
+        result._join_attributes = (
+                self._join_attributes + [[a for a in self.heading.names if a in other.heading.names]] +
+                other._join_attributes)
+        result._left = self._join_attributes + [left] + other._left
         result._heading = self.heading.join(other.heading)
         result._restriction = AndList(self.restriction)
         result._restriction.append(other.restriction)
-        assert len(result.support) == len(result._join_attributes) + 1
+        assert len(result.support) == len(result._join_attributes) + 1 == len(result._left) + 1
         return result
 
     def __add__(self, other):
@@ -267,7 +277,7 @@ class QueryExpression:
             pass  # normal case
         # remove excluded attributes, specified as `-attr'
         excluded = set(a for a in attributes if a.strip().startswith('-'))
-        attributes.difference_update((excluded))
+        attributes.difference_update(excluded)
         excluded = set(a.lstrip('-').strip() for a in excluded)
         attributes.difference_update(excluded)
         try:
@@ -446,7 +456,6 @@ class Aggregation(QueryExpression):
     Aggregation is used QueryExpression.aggr and U.aggr.
     Aggregation is a private class in DataJoint, not exposed to users.
     """
-    _keep_all_rows = False
     _left_restrict = None   # the pre-GROUP BY conditions for the WHERE clause
     __subquery_alias_count = count()
 
@@ -457,27 +466,16 @@ class Aggregation(QueryExpression):
         assert isinstance(group, QueryExpression)
         if keep_all_rows and len(group.support) > 1:
             group = group.make_subquery()  # subquery if left joining a join
-        join = arg * group  # reuse the join logic
+        join = arg.join(group, left=keep_all_rows)  # reuse the join logic
         result = cls()
         result._connection = join.connection
         result._heading = join.heading.set_primary_key(arg.primary_key)  # use left operand's primary key
         result._support = join.support
         result._join_attributes = join._join_attributes
-        result.initial_restriction = join.restriction  # before GROUP BY
+        result._left = join._left
+        result.initial_restriction = join.restriction  # WHERE clause applied before GROUP BY
         result._grouping_attributes = result.primary_key
-        result._keep_all_rows = keep_all_rows
         return result
-
-    def from_clause(self):
-        support = ('(' + src.make_sql() + ') as `_s%x`' % next(
-            self.__subquery_alias_count) if isinstance(src, QueryExpression) else src for src in self.support)
-        clause = next(support)
-        for s, a, i in zip(support, self._join_attributes, count(2)):
-            clause += '{left} JOIN {clause}{using}'.format(
-                left=" LEFT" if i == len(self.support) and self._keep_all_rows else "",
-                clause=s,
-                using="" if not a else " USING (%s)" % ",".join('`%s`' % _ for _ in a))
-        return clause
 
     def make_sql(self, fields=None):
         where = '' if not self._left_restrict else ' WHERE (%s)' % ')AND('.join(self._left_restrict)
@@ -530,9 +528,9 @@ class Union(QueryExpression):
             fields = select_fields or arg1.primary_key
             return "({sql1}) UNION ({sql2})".format(sql1=arg1.make_sql(fields), sql2=arg2.make_sql(fields))
         fields = select_fields or arg1.primary_key + arg1.heading.secondary_attributes + arg2.heading.secondary_attributes
-        sql1 = (arg1 * arg2).make_sql(fields, left=True)
+        sql1 = arg1.join(arg2, left=True).make_sql(fields)
         sql2 = (arg2 - arg1).proj(..., **{k: 'NULL' for k in arg1.heading.secondary_attributes}).make_sql(fields)
-        return "({sql1}) UNION ({sql2})".format(sql1=sql1, sql2=sql2)
+        return "({sql1})  UNION ({sql2})".format(sql1=sql1, sql2=sql2)
 
     def from_clause(self):
         """In Union, the select clause can be used as the WHERE clause and make_sql() does not call from_clause"""
@@ -611,11 +609,12 @@ class U:
         result = result.proj()
         return result
 
-    def __mul__(self, other):
+    def join(self, other, left=False):
         """
         Joining U with a query expression has the effect of promoting the attributes of U to the primary key of
         the other query expression.
         :param other: the other query expression to join with.
+        :param left: ignored. dj.U always acts as if left=False
         :return: a copy of the other query expression with the primary key extended.
         """
         if inspect.isclass(other) and issubclass(other, QueryExpression):
@@ -631,6 +630,10 @@ class U:
         result._heading = result.heading.set_primary_key(
             other.primary_key + [k for k in self.primary_key if k not in other.primary_key])
         return result
+
+    def __mul__(self, other):
+        """ shorthand for join """
+        return self.join(other)
 
     def aggr(self, group, **named_attributes):
         """
