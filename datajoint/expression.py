@@ -205,7 +205,7 @@ class QueryExpression:
         need_subquery1 = isinstance(self, Union) or any(
             n for n in self.heading.new_attributes if (
                     n in other_clash or self.heading[n].attribute_expression.strip('`') in other_clash))
-        need_subquery2 = (left and len(other.support) > 1 or
+        need_subquery2 = (len(other.support) > 1 or
                           isinstance(self, Union) or any(
             n for n in other.heading.new_attributes if (
                     n in self_clash or other.heading[n].attribute_expression.strip('`') in other_clash)))
@@ -221,7 +221,7 @@ class QueryExpression:
         result._join_attributes = (
                 self._join_attributes + [[a for a in self.heading.names if a in other.heading.names]] +
                 other._join_attributes)
-        result._left = self._join_attributes + [left] + other._left
+        result._left = self._left + [left] + other._left
         result._heading = self.heading.join(other.heading)
         result._restriction = AndList(self.restriction)
         result._restriction.append(other.restriction)
@@ -527,7 +527,7 @@ class Union(QueryExpression):
         if not arg1.heading.secondary_attributes and not arg2.heading.secondary_attributes:  # use UNION DISTINCT
             fields = select_fields or arg1.primary_key
             return "({sql1}) UNION ({sql2})".format(sql1=arg1.make_sql(fields), sql2=arg2.make_sql(fields))
-        fields = select_fields or arg1.primary_key + arg1.heading.secondary_attributes + arg2.heading.secondary_attributes
+        fields = select_fields or self.heading.names
         sql1 = arg1.join(arg2, left=True).make_sql(fields)
         sql2 = (arg2 - arg1).proj(..., **{k: 'NULL' for k in arg1.heading.secondary_attributes}).make_sql(fields)
         return "({sql1})  UNION ({sql2})".format(sql1=sql1, sql2=sql2)

@@ -1,4 +1,4 @@
-from nose.tools import assert_true, assert_equal, assert_list_equal
+from nose.tools import assert_true, assert_list_equal, assert_set_equal, assert_equal
 from .schema_university import *
 
 
@@ -41,15 +41,28 @@ def test_restrict():
 def test_advanced_join():
     """test advanced joins"""
     # Students with ungraded courses in current term
-    ungraded = Student & (Enroll * CurrentTerm - Grade)
-    assert_true(len(ungraded) == 29)
+    ungraded = Enroll * CurrentTerm - Grade
+    assert_true(len(ungraded) == 32)
+
+    # add major
+    major = StudentMajor.proj(..., major='dept')
+    assert_true(len(ungraded.join(major, left=True)) == len(ungraded) == 32)
+    assert_true(len(ungraded.join(major)) == len(ungraded & major) == 23)
 
 
 def test_union():
     # effective left join Enroll with Major
-    q = Enroll() * StudentMajor + Enroll()
-    q.make_sql()
+    q1 = (Enroll & 'student_id=101') + (Enroll & 'student_id=102')
+    q2 = (Enroll & 'student_id in (101, 102)')
+    assert_true(len(q1) == len(q2) == 37)
 
 
 def test_aggr():
-    avg_grade_per_course = Course.aggr(Grade*LetterGrade, avg_grade='avg(points)')
+    avg_grade_per_course = Course.aggr(Grade*LetterGrade, avg_grade='round(avg(points), 2)')
+    assert_true(len(avg_grade_per_course) == 45)
+
+    # GPA
+    student_gpa = Student.aggr(Course * Grade * LetterGrade, gpa='round(sum(points*credits)/sum(credits), 2)')
+    gpa = student_gpa.fetch('gpa')
+    assert_true(len(gpa) == 261)
+    assert_true(2 < gpa.mean() < 3)
