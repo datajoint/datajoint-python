@@ -118,6 +118,50 @@ class QueryExpression:
         return result
 
     def restrict(self, restriction):
+        """
+        Produces a new expression with the new restriction applied.
+        rel.restrict(restriction)  is equivalent to  rel & restriction.
+        rel.restrict(Not(restriction))  is equivalent to  rel - restriction
+        The primary key of the result is unaffected.
+        Successive restrictions are combined as logical AND:   r & a & b  is equivalent to r & AndList((a, b))
+        Any QueryExpression, collection, or sequence other than an AndList are treated as OrLists
+        (logical disjunction of conditions)
+        Inverse restriction is accomplished by either using the subtraction operator or the Not class.
+
+        The expressions in each row equivalent:
+
+        rel & True                          rel
+        rel & False                         the empty entity set
+        rel & 'TRUE'                        rel
+        rel & 'FALSE'                       the empty entity set
+        rel - cond                          rel & Not(cond)
+        rel - 'TRUE'                        rel & False
+        rel - 'FALSE'                       rel
+        rel & AndList((cond1,cond2))        rel & cond1 & cond2
+        rel & AndList()                     rel
+        rel & [cond1, cond2]                rel & OrList((cond1, cond2))
+        rel & []                            rel & False
+        rel & None                          rel & False
+        rel & any_empty_entity_set          rel & False
+        rel - AndList((cond1,cond2))        rel & [Not(cond1), Not(cond2)]
+        rel - [cond1, cond2]                rel & Not(cond1) & Not(cond2)
+        rel - AndList()                     rel & False
+        rel - []                            rel
+        rel - None                          rel
+        rel - any_empty_entity_set          rel
+
+        When arg is another QueryExpression, the restriction  rel & arg  restricts rel to elements that match at least
+        one element in arg (hence arg is treated as an OrList).
+        Conversely,  rel - arg  restricts rel to elements that do not match any elements in arg.
+        Two elements match when their common attributes have equal values or when they have no common attributes.
+        All shared attributes must be in the primary key of either rel or arg or both or an error will be raised.
+
+        QueryExpression.restrict is the only access point that modifies restrictions. All other operators must
+        ultimately call restrict()
+
+        :param restriction: a sequence or an array (treated as OR list), another QueryExpression, an SQL condition
+        string, or an AndList.
+        """
         attributes = set()
         new_condition = make_condition(self, restriction, attributes)
         if new_condition is True:
