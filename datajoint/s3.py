@@ -5,8 +5,11 @@ from io import BytesIO
 import minio   # https://docs.minio.io/docs/python-client-api-reference
 import warnings
 import uuid
+import logging
 from pathlib import Path
 from . import errors
+
+logger = logging.getLogger(__name__)
 
 
 class Folder:
@@ -21,14 +24,17 @@ class Folder:
             raise errors.BucketInaccessible('Inaccessible s3 bucket %s' % bucket) from None
 
     def put(self, name, buffer):
+        logger.debug('put: {}:{}'.format(self.bucket, name))
         return self.client.put_object(
             self.bucket, str(name), BytesIO(buffer), length=len(buffer))
 
     def fput(self, local_file, name, metadata=None):
+        logger.debug('fput: {} -> {}:{}'.format(self.bucket, local_file, name))
         return self.client.fput_object(
             self.bucket, str(name), str(local_file), metadata=metadata)
 
     def get(self, name):
+        logger.debug('get: {}:{}'.format(self.bucket, name))
         try:
             return self.client.get_object(self.bucket, str(name)).data
         except minio.error.NoSuchKey:
@@ -36,6 +42,7 @@ class Folder:
 
     def fget(self, name, local_filepath):
         """get file from object name to local filepath"""
+        logger.debug('fget: {}:{}'.format(self.bucket, name))
         name = str(name)
         stat = self.client.stat_object(self.bucket, name)
         meta = {k.lower().lstrip('x-amz-meta'): v for k, v in stat.metadata.items()}
@@ -49,6 +56,7 @@ class Folder:
             return uuid.UUID(meta['contents_hash'])
 
     def exists(self, name):
+        logger.debug('exists: {}:{}'.format(self.bucket, name))
         try:
             self.client.stat_object(self.bucket, str(name))
         except minio.error.NoSuchKey:
@@ -56,12 +64,14 @@ class Folder:
         return True
 
     def get_size(self, name):
+        logger.debug('get_size: {}:{}'.format(self.bucket, name))
         try:
             return self.client.stat_object(self.bucket, str(name)).size
         except minio.error.NoSuchKey:
             raise errors.MissingExternalFile from None
 
     def remove_object(self, name):
+        logger.debug('remove_object: {}:{}'.format(self.bucket, name))
         try:
             self.client.remove_object(self.bucket, str(name))
         except minio.ResponseError:
