@@ -124,10 +124,10 @@ class Table(QueryExpression):
         :param as_objects: if False (default), the output is a dict describing the foreign keys. If True, return table objects.
         :return: dict of tables referenced with self's foreign keys  or list of table objects if as_objects=True
         """
-        children = self.connection.dependencies.parents(self.full_table_name, primary)
+        parents = self.connection.dependencies.parents(self.full_table_name, primary)
         if as_objects:
-            children = [FreeTable(self.connection, c) for c in children]
-        return children
+            parents = [FreeTable(self.connection, c) for c in parents]
+        return parents
 
     def children(self, primary=None, as_objects=False):
         """
@@ -137,16 +137,33 @@ class Table(QueryExpression):
         :param as_objects: if False (default), the output is a dict describing the foreign keys. If True, return table objects.
         :return: dict of tables with foreign keys referencing self or list of table objects if as_objects=True
         """
-        children = self.connection.dependencies.children(self.full_table_name, primary)
+        nodes = self.connection.dependencies.children(self.full_table_name, primary)
         if as_objects:
-            children = [FreeTable(self.connection, c) for c in children]
-        return children
+            nodes = [FreeTable(self.connection, c) for c in nodes]
+        return nodes
 
-    def descendants(self):
-        return self.connection.dependencies.descendants(self.full_table_name)
+    def descendants(self, as_objects=False):
+        nodes = self.connection.dependencies.descendants(self.full_table_name)
+        if as_objects:
+            nodes = [FreeTable(self.connection, c) for c in nodes]
+        return nodes
 
-    def ancestors(self):
-        return self.connection.dependencies.ancestors(self.full_table_name)
+    def parts(self, as_objects=False):
+        """
+        return part tables either as entries in a dict with foreign key informaiton or a list of objects
+        :param as_objects: if False (default), the output is a dict describing the foreign keys. If True, return table objects.
+        """
+        nodes = self.connection.dependencies.descendants(self.full_table_name).items()
+        nodes = {k: v for k, v in nodes.items() if k.startswith(self.full_table_name[:-2] + '__')}
+        if as_objects:
+            nodes = [FreeTable(self.connection, c) for c in nodes]
+        return nodes
+
+    def ancestors(self, as_objects=False):
+        nodes = self.connection.dependencies.ancestors(self.full_table_name)
+        if as_objects:
+            nodes = [FreeTable(self.connection, c) for c in nodes]
+        return nodes
 
     @property
     def is_declared(self):
