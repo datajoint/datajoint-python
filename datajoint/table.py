@@ -153,7 +153,7 @@ class Table(QueryExpression):
         return part tables either as entries in a dict with foreign key informaiton or a list of objects
         :param as_objects: if False (default), the output is a dict describing the foreign keys. If True, return table objects.
         """
-        nodes = self.connection.dependencies.descendants(self.full_table_name).items()
+        nodes = self.connection.dependencies.descendants(self.full_table_name)
         nodes = {k: v for k, v in nodes.items() if k.startswith(self.full_table_name[:-2] + '__')}
         if as_objects:
             nodes = [FreeTable(self.connection, c) for c in nodes]
