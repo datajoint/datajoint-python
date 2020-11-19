@@ -116,23 +116,31 @@ class Table(QueryExpression):
         """
         return '*' if select_fields is None else self.heading.project(select_fields).as_sql
 
-    def parents(self, primary=None):
+    def parents(self, primary=None, as_objects=False):
         """
         :param primary: if None, then all parents are returned. If True, then only foreign keys composed of
             primary key attributes are considered.  If False, the only foreign keys including at least one non-primary
             attribute are considered.
-        :return: dict of tables referenced with self's foreign keys
+        :param as_objects: if False (default), the output is a dict describing the foreign keys. If True, return table objects.
+        :return: dict of tables referenced with self's foreign keys  or list of table objects if as_objects=True
         """
-        return self.connection.dependencies.parents(self.full_table_name, primary)
+        children = self.connection.dependencies.parents(self.full_table_name, primary)
+        if as_objects:
+            children = [FreeTable(self.connection, c) for c in children]
+        return children
 
-    def children(self, primary=None):
+    def children(self, primary=None, as_objects=False):
         """
         :param primary: if None, then all children are returned. If True, then only foreign keys composed of
             primary key attributes are considered.  If False, the only foreign keys including at least one non-primary
             attribute are considered.
-        :return: dict of tables with foreign keys referencing self
+        :param as_objects: if False (default), the output is a dict describing the foreign keys. If True, return table objects.
+        :return: dict of tables with foreign keys referencing self or list of table objects if as_objects=True
         """
-        return self.connection.dependencies.children(self.full_table_name, primary)
+        children = self.connection.dependencies.children(self.full_table_name, primary)
+        if as_objects:
+            children = [FreeTable(self.connection, c) for c in children]
+        return children
 
     def descendants(self):
         return self.connection.dependencies.descendants(self.full_table_name)
