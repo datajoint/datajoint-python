@@ -35,7 +35,7 @@ def test_restrict():
 
     # Females who are active or major in non-math
     special = Student & [Enroll, StudentMajor - {'dept': "MATH"}] & {'sex': "F"}
-    assert_true(len(special) == 156)
+    assert_true(len(special) == 158)
 
 
 def test_advanced_join():
