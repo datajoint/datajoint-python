@@ -137,13 +137,14 @@ class Table(QueryExpression):
         :param as_objects: if False (default), the output is a dict describing the foreign keys. If True, return table objects.
         :return: dict of tables with foreign keys referencing self or list of table objects if as_objects=True
         """
-        nodes = self.connection.dependencies.children(self.full_table_name, primary)
+        nodes = dict((next(iter(self.connection.dependencies.children(k).items())) if k.isdigit() else (k, v))
+                     for k, v in self.connection.dependencies.children(self.full_table_name, primary).items())
         if as_objects:
             nodes = [FreeTable(self.connection, c) for c in nodes]
         return nodes
 
     def descendants(self, as_objects=False):
-        nodes = self.connection.dependencies.descendants(self.full_table_name)
+        nodes = [node for node in self.connection.dependencies.descendants(self.full_table_name) if not node.isdigit()]
         if as_objects:
             nodes = [FreeTable(self.connection, c) for c in nodes]
         return nodes
@@ -153,14 +154,14 @@ class Table(QueryExpression):
         return part tables either as entries in a dict with foreign key informaiton or a list of objects
         :param as_objects: if False (default), the output is a dict describing the foreign keys. If True, return table objects.
         """
-        nodes = self.connection.dependencies.descendants(self.full_table_name)
-        nodes = {k: v for k, v in nodes.items() if k.startswith(self.full_table_name[:-2] + '__')}
+        nodes = [node for node in self.connection.dependencies.nodes
+                 if not node.isdigit() and node.startswith(self.full_table_name[:-1] + '__')]
         if as_objects:
             nodes = [FreeTable(self.connection, c) for c in nodes]
         return nodes
 
     def ancestors(self, as_objects=False):
-        nodes = self.connection.dependencies.ancestors(self.full_table_name)
+        nodes = [node for node in self.connection.dependencies.ancestors(self.full_table_name) if not node.isdigit()]
         if as_objects:
             nodes = [FreeTable(self.connection, c) for c in nodes]
         return nodes
@@ -726,6 +727,7 @@ class Log(Table):
 
         if not self.is_declared:
             self.declare()
+            self.connection.dependencies.clear()
         self._user = self.connection.get_user()
 
     @property

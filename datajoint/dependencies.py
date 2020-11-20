@@ -16,15 +16,22 @@ class Dependencies(nx.DiGraph):
     def __init__(self, connection=None):
         self._conn = connection
         self._node_alias_count = itertools.count()
+        self._loaded = False
         super().__init__(self)
 
-    def load(self):
+    def clear(self):
+        self._loaded = False
+        super().clear()
+
+    def load(self, force=True):
         """
         Load dependencies for all loaded schemas.
         This method gets called before any operation that requires dependencies: delete, drop, populate, progress.
         """
-
         # reload from scratch to prevent duplication of renamed edges
+        if self._loaded and not force:
+            return
+
         self.clear()
 
         # load primary key info
@@ -77,6 +84,7 @@ class Dependencies(nx.DiGraph):
 
         if not nx.is_directed_acyclic_graph(self):  # pragma: no cover
             raise DataJointError('DataJoint can only work with acyclic dependencies')
+        self._loaded = True
 
     def parents(self, table_name, primary=None):
         """
@@ -86,6 +94,7 @@ class Dependencies(nx.DiGraph):
             attribute are considered.
         :return: dict of tables referenced by the foreign keys of table
         """
+        self.load(force=False)
         return {p[0]: p[2] for p in self.in_edges(table_name, data=True)
                 if primary is None or p[2]['primary'] == primary}
 
@@ -97,6 +106,7 @@ class Dependencies(nx.DiGraph):
             attribute are considered.
         :return: dict of tables referencing the table through foreign keys
         """
+        self.load(force=False)
         return {p[1]: p[2] for p in self.out_edges(table_name, data=True)
                 if primary is None or p[2]['primary'] == primary}
 
@@ -105,6 +115,7 @@ class Dependencies(nx.DiGraph):
         :param full_table_name:  In form `schema`.`table_name`
         :return: all dependent tables sorted in topological order.  Self is included.
         """
+        self.load(force=False)
         nodes = self.subgraph(
             nx.algorithms.dag.descendants(self, full_table_name))
         return [full_table_name] + list(
@@ -115,6 +126,7 @@ class Dependencies(nx.DiGraph):
         :param full_table_name:  In form `schema`.`table_name`
         :return: all dependent tables sorted in topological order.  Self is included.
         """
+        self.load(force=False)
         nodes = self.subgraph(
             nx.algorithms.dag.ancestors(self, full_table_name))
         return [full_table_name] + list(reversed(list(
