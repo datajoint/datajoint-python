@@ -167,10 +167,17 @@ Department().insert(
         ["PHYS", "Physics"],
         ["MATH", "Mathematics"]])
 
+
+def choices(seq, k):
+    """necessary because Python3.5 does not provide random.choices"""
+    yield from (random.choice(seq) for _ in range(k))
+
+
 StudentMajor().insert({**s, **d,
                        'declare_date': fake.date_between(start_date=datetime.date(1999, 1, 1))}
-                      for s, d in zip(Student.fetch('KEY'), random.choices(Department.fetch('KEY'), k=len(Student())))
+                      for s, d in zip(Student.fetch('KEY'), choices(Department.fetch('KEY'), k=len(Student())))
                       if random.random() < 0.75)
+
 
 # from https://www.utah.edu/
 Course().insert([

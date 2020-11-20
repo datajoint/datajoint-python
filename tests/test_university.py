@@ -26,12 +26,12 @@ def test_restrict():
     assert_list_equal(s1, s2)
 
     millenials = Student & 'date_of_birth between "1981-01-01" and "1996-12-31"'
-    assert_true(len(millenials) == 172)
+    assert_true(len(millenials) == 171)
     millenials_no_math = millenials - (Enroll & 'dept="MATH"')
-    assert_true(len(millenials_no_math) == 43)
+    assert_true(len(millenials_no_math) == 54)
 
     inactive_students = Student - (Enroll & CurrentTerm)
-    assert_true(len(inactive_students) == 195)
+    assert_true(len(inactive_students) == 204)
 
     # Females who are active or major in non-math
     special = Student & [Enroll, StudentMajor - {'dept': "MATH"}] & {'sex': "F"}
@@ -42,19 +42,19 @@ def test_advanced_join():
     """test advanced joins"""
     # Students with ungraded courses in current term
     ungraded = Enroll * CurrentTerm - Grade
-    assert_true(len(ungraded) == 32)
+    assert_true(len(ungraded) == 21)
 
     # add major
     major = StudentMajor.proj(..., major='dept')
-    assert_true(len(ungraded.join(major, left=True)) == len(ungraded) == 32)
-    assert_true(len(ungraded.join(major)) == len(ungraded & major) == 23)
+    assert_true(len(ungraded.join(major, left=True)) == len(ungraded) == 21)
+    assert_true(len(ungraded.join(major)) == len(ungraded & major) == 14)
 
 
 def test_union():
     # effective left join Enroll with Major
     q1 = (Enroll & 'student_id=101') + (Enroll & 'student_id=102')
     q2 = (Enroll & 'student_id in (101, 102)')
-    assert_true(len(q1) == len(q2) == 37)
+    assert_true(len(q1) == len(q2) == 41)
 
 
 def test_aggr():
@@ -64,5 +64,5 @@ def test_aggr():
     # GPA
     student_gpa = Student.aggr(Course * Grade * LetterGrade, gpa='round(sum(points*credits)/sum(credits), 2)')
     gpa = student_gpa.fetch('gpa')
-    assert_true(len(gpa) == 261)
+    assert_true(len(gpa) == 258)
     assert_true(2 < gpa.mean() < 3)
