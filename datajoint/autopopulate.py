@@ -143,7 +143,7 @@ class AutoPopulate:
 
         make = self._make_tuples if hasattr(self, '_make_tuples') else self.make
 
-        for key in (tqdm(keys) if display_progress else keys):
+        for key in (tqdm(keys, desc=self.__class__.__name__) if display_progress else keys):
             if max_calls is not None and call_count >= max_calls:
                 break
             if not reserve_jobs or jobs.reserve(self.target.table_name, self._job_key(key)):
