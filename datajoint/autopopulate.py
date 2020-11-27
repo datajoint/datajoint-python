@@ -27,12 +27,12 @@ class AutoPopulate:
     @property
     def key_source(self):
         """
-        :return: the relation whose primary key values are passed, sequentially, to the
-                ``make`` method when populate() is called.
+        :return: the query whose primary key values are passed, sequentially, to the
+                `make` method when populate() is called.
                 The default value is the join of the parent relations.
                 Users may override to change the granularity or the scope of populate() calls.
         """
-        def parent_gen(self):
+        def parent_gen():
             if self.target.full_table_name not in self.connection.dependencies:
                 self.connection.dependencies.load()
             for parent_name, fk_props in self.target.parents(primary=True).items():
@@ -44,7 +44,7 @@ class AutoPopulate:
                         attr: ref for attr, ref in fk_props['attr_map'].items() if ref != attr})
 
         if self._key_source is None:
-            parents = parent_gen(self)
+            parents = parent_gen()
             try:
                 self._key_source = next(parents)
             except StopIteration:

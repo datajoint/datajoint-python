@@ -220,7 +220,7 @@ class Schema:
             raise DataJointError('The schema decorator should not be applied to Part relations')
         self.process_table_class(cls, context=dict(context, self=cls, **{cls.__name__: cls}))
 
-        # Process part relations
+        # Process part tables
         for part in ordered_dir(cls):
             if part[0].isupper():
                 part = getattr(cls, part)
