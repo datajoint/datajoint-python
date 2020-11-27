@@ -6,6 +6,9 @@
 * Python datatypes are now enabled by default in blobs (#761). PR #785
 * Added permissive join and restriction operators `@` and `^` (#785) PR #754
 
+### 0.12.8 -- Nov 30, 2020
+* table.children, .parents, .descendents, and ancestors can return queryable objects. PR #833
+ 
 ### 0.12.7 -- Oct 27, 2020
 * Fix case sensitivity issues to adapt to MySQL 8+.  PR #819
 * Fix pymysql regression bug (#814) PR #816
