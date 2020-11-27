@@ -42,29 +42,58 @@ class Schema:
     It also specifies the namespace `context` in which other UserTable classes are defined.
     """
 
-    def __init__(self, schema_name, context=None, *, connection=None, create_schema=True, create_tables=True):
+    def __init__(self, schema_name=None, context=None, *, connection=None, create_schema=True,
+                 create_tables=True, add_objects=None):
         """
         Associate database schema `schema_name`. If the schema does not exist, attempt to create it on the server.
+
+        If the schema_name is omitted, then schema.activate(..) must be called later to associate with the database.
 
         :param schema_name: the database schema to associate.
         :param context: dictionary for looking up foreign key references, leave None to use local context.
         :param connection: Connection object. Defaults to datajoint.conn().
         :param create_schema: When False, do not create the schema and raise an error if missing.
         :param create_tables: When False, do not create tables and raise errors when accessing missing tables.
+        :param add_objects: a mapping with additional objects to make available to the context in which table classes
+        are declared.
         """
-        if connection is None:
-            connection = conn()
         self._log = None
-
-        self.database = schema_name
         self.connection = connection
+        self.database = None
         self.context = context
+        self.create_schema = create_schema
         self.create_tables = create_tables
         self._jobs = None
         self.external = ExternalMapping(self)
+        self.add_objects = add_objects
+        if schema_name:
+            self.activate(schema_name)
 
+    def activate(self, schema_name, *, connection=None, create_schema=True,
+                 create_tables=None, add_objects=None):
+        """
+        Associate database schema `schema_name`. If the schema does not exist, attempt to create it on the server.
+
+        :param schema_name: the database schema to associate.
+        :param connection: Connection object. Defaults to datajoint.conn().
+        :param create_schema: When False, do not create the schema and raise an error if missing.
+        :param create_tables: When False, do not create tables and raise errors when accessing missing tables.
+        :param add_objects: a mapping with additional objects to make available to the context in which table classes
+        are declared.
+        """
+        if connection is not None:
+            self.connection = connection
+        if self.connection is None:
+            self.connection = conn()
+        self.database = schema_name
+        if create_schema is not None:
+            self.create_schema = create_schema
+        if create_tables is not None:
+            self.create_tables = create_tables
+        if add_objects:
+            self.add_objects = add_objects
         if not self.exists:
-            if not create_schema:
+            if not create_schema or not self.database:
                 raise DataJointError(
                     "Database named `{name}` was not defined. "
                     "Set argument create_schema=True to create it.".format(name=schema_name))
@@ -72,7 +101,7 @@ class Schema:
                 # create database
                 logger.info("Creating schema `{name}`.".format(name=schema_name))
                 try:
-                    connection.query("CREATE DATABASE `{name}`".format(name=schema_name))
+                    self.connection.query("CREATE DATABASE `{name}`".format(name=schema_name))
                 except pymysql.OperationalError:
                     raise DataJointError(
                         "Schema `{name}` does not exist and could not be created. "
@@ -80,7 +109,9 @@ class Schema:
                 else:
                     self.log('created')
         self.log('connect')
-        connection.register(self)
+        self.connection.register(self)
+        # declare objects decorated before activation
+        ...
 
     @property
     def log(self):
