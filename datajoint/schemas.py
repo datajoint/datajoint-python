@@ -66,6 +66,7 @@ class Schema:
         self._jobs = None
         self.external = ExternalMapping(self)
         self.add_objects = add_objects
+        self.declare_list = []
         if schema_name:
             self.activate(schema_name)
 
@@ -110,8 +111,81 @@ class Schema:
                     self.log('created')
         self.log('connect')
         self.connection.register(self)
-        # declare objects decorated before activation
-        ...
+
+        # decorate all tables
+        for cls, context in self.declare_list:
+            if self.add_objects:
+                context = dict(context, **self.add_objects)
+            self._decorate_master(cls, context)
+
+    def __call__(self, cls, *, context=None):
+        """
+        Binds the supplied class to a schema. This is intended to be used as a decorator.
+        :param cls: class to decorate.
+        :param context: supplied when called from spawn_missing_classes
+        """
+        context = context or self.context or inspect.currentframe().f_back.f_locals
+        if issubclass(cls, Part):
+            raise DataJointError('The schema decorator should not be applied to Part relations')
+        if self.database is None:
+            self.declare_list.append((cls, context))
+        else:
+            self._decorate_master(cls, context)
+        return cls
+
+    def _decorate_master(self, cls, context):
+        """
+        :param cls: the master class to process
+        :param context: the class' declaration context
+        """
+        self._decorate_table(cls, context=dict(context, self=cls, **{cls.__name__: cls}))
+        # Process part tables
+        for part in ordered_dir(cls):
+            if part[0].isupper():
+                part = getattr(cls, part)
+                if inspect.isclass(part) and issubclass(part, Part):
+                    part._master = cls
+                    # allow addressing master by name or keyword 'master'
+                    self._decorate_table(part, context=dict(
+                        context, master=cls, self=part, **{cls.__name__: cls}))
+
+    def _decorate_table(self, table_class, context, assert_declared=False):
+        """
+        assign schema properties to the table class and declare the table
+        """
+        table_class.database = self.database
+        table_class._connection = self.connection
+        table_class._heading = Heading(table_info=dict(
+            conn=self.connection,
+            database=self.database,
+            table_name=table_class.table_name,
+            context=context))
+        table_class._support = [table_class.full_table_name]
+        table_class.declaration_context = context
+
+        # instantiate the class, declare the table if not already
+        instance = table_class()
+        is_declared = instance.is_declared
+        if not is_declared:
+            if not self.create_tables or assert_declared:
+                raise DataJointError('Table `%s` not declared' % instance.table_name)
+            instance.declare(context)
+        is_declared = is_declared or instance.is_declared
+
+        # add table definition to the doc string
+        if isinstance(table_class.definition, str):
+            table_class.__doc__ = (table_class.__doc__ or "") + "\nTable definition:\n\n" + table_class.definition
+
+        # fill values in Lookup tables from their contents property
+        if isinstance(instance, Lookup) and hasattr(instance, 'contents') and is_declared:
+            contents = list(instance.contents)
+            if len(contents) > len(instance):
+                if instance.heading.has_autoincrement:
+                    warnings.warn(
+                        'Contents has changed but cannot be inserted because {table} has autoincrement.'.format(
+                            table=instance.__class__.__name__))
+                else:
+                    instance.insert(contents, skip_duplicates=True)
 
     @property
     def log(self):
@@ -174,7 +248,7 @@ class Schema:
                 raise DataJointError('The table %s does not follow DataJoint naming conventions' % table_name)
             part_class = type(class_name, (Part,), dict(definition=...))
             part_class._master = master_class
-            self.process_table_class(part_class, context=context, assert_declared=True)
+            self._decorate_table(part_class, context=context, assert_declared=True)
             setattr(master_class, class_name, part_class)
 
     def drop(self, force=False):
@@ -202,66 +276,6 @@ class Schema:
         cur = self.connection.query("SHOW DATABASES LIKE '{database}'".format(database=self.database))
         return cur.rowcount > 0
 
-    def process_table_class(self, table_class, context, assert_declared=False):
-        """
-        assign schema properties to the table class and declare the table
-        """
-        table_class.database = self.database
-        table_class._connection = self.connection
-        table_class._heading = Heading(table_info=dict(
-                conn=self.connection,
-                database=self.database,
-                table_name=table_class.table_name,
-                context=context))
-        table_class._support = [table_class.full_table_name]
-        table_class.declaration_context = context
-
-        # instantiate the class, declare the table if not already
-        instance = table_class()
-        is_declared = instance.is_declared
-        if not is_declared:
-            if not self.create_tables or assert_declared:
-                raise DataJointError('Table `%s` not declared' % instance.table_name)
-            instance.declare(context)
-        is_declared = is_declared or instance.is_declared
-
-        # add table definition to the doc string
-        if isinstance(table_class.definition, str):
-            table_class.__doc__ = (table_class.__doc__ or "") + "\nTable definition:\n\n" + table_class.definition
-
-        # fill values in Lookup tables from their contents property
-        if isinstance(instance, Lookup) and hasattr(instance, 'contents') and is_declared:
-            contents = list(instance.contents)
-            if len(contents) > len(instance):
-                if instance.heading.has_autoincrement:
-                    warnings.warn(
-                        'Contents has changed but cannot be inserted because {table} has autoincrement.'.format(
-                            table=instance.__class__.__name__))
-                else:
-                    instance.insert(contents, skip_duplicates=True)
-
-    def __call__(self, cls, *, context=None):
-        """
-        Binds the supplied class to a schema. This is intended to be used as a decorator.
-        :param cls: class to decorate.
-        :param context: supplied when called from spawn_missing_classes
-        """
-        context = context or self.context or inspect.currentframe().f_back.f_locals
-        if issubclass(cls, Part):
-            raise DataJointError('The schema decorator should not be applied to Part relations')
-        self.process_table_class(cls, context=dict(context, self=cls, **{cls.__name__: cls}))
-
-        # Process part tables
-        for part in ordered_dir(cls):
-            if part[0].isupper():
-                part = getattr(cls, part)
-                if inspect.isclass(part) and issubclass(part, Part):
-                    part._master = cls
-                    # allow addressing master by name or keyword 'master'
-                    self.process_table_class(part, context=dict(
-                        context, master=cls, self=part, **{cls.__name__: cls}))
-        return cls
-
     @property
     def jobs(self):
         """
@@ -282,7 +296,6 @@ class Schema:
         This method is in preparation for a future release and is not officially supported.
         :return: a string containing the body of a complete Python module defining this schema.
         """
-
         module_count = itertools.count()
         # add virtual modules for referenced modules with names vmod0, vmod1, ...
         module_lookup = collections.defaultdict(lambda: 'vmod' + str(next(module_count)))
@@ -297,7 +310,7 @@ class Schema:
                 indent += '    '
             class_name = to_camel_case(class_name)
 
-            def repl(s):
+            def replace(s):
                 d, tab = s.group(1), s.group(2)
                 return ('' if d == db else (module_lookup[d]+'.')) + to_camel_case(tab)
 
@@ -307,7 +320,7 @@ class Schema:
                     indent=indent,
                     tier=tier,
                     defi=re.sub(
-                        r'`([^`]+)`.`([^`]+)`', repl,
+                        r'`([^`]+)`.`([^`]+)`', replace,
                         FreeTable(self.connection, table).describe(printout=False).replace('\n', '\n    ' + indent)))
 
         diagram = Diagram(self)
