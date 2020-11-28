@@ -268,4 +268,4 @@ random.shuffle(grade_keys)
 grade_keys = grade_keys[:len(grade_keys)*9//10]
 
 Grade().insert({**key, 'grade': grade}
-               for key, grade in zip(grade_keys, random.choices(grades, k=len(grade_keys))))
+               for key, grade in zip(grade_keys, choices(grades, k=len(grade_keys))))
