@@ -339,7 +339,8 @@ class Schema:
 
 class VirtualModule(types.ModuleType):
     """
-    A virtual module which will contain context for schema.
+    A virtual module imitates a Python module representing a DataJoint schema from table definitions in the database.
+    It declares the schema objects and a class for each table.  
     """
     def __init__(self, module_name, schema_name, *, create_schema=False,
                  create_tables=False, connection=None, add_objects=None):

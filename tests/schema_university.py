@@ -1,10 +1,7 @@
 import datajoint as dj
 from . import PREFIX, CONN_INFO
 
-schema = dj.Schema(PREFIX + '_university', connection=dj.conn(**CONN_INFO))
-schema.drop(force=True)
-schema = dj.Schema(PREFIX + '_university', connection=dj.conn(**CONN_INFO))
-
+schema = dj.Schema(connection=dj.conn(**CONN_INFO))
 
 @schema
 class Student(dj.Manual):
@@ -109,6 +106,12 @@ class Grade(dj.Manual):
     """
 
 
+# ------------- Deferred activation -----------
+schema.activate(PREFIX + '_university')
+schema.drop(force=True)
+schema.activate(PREFIX + '_university')
+
+
 # ---------------  Fill University -------------------
 
 import faker
@@ -119,7 +122,6 @@ random.seed(42)
 faker.Faker.seed(42)
 
 fake = faker.Faker()
-
 
 LetterGrade().insert([
     ['A',  4.00], ['A-', 3.67],
@@ -226,6 +228,7 @@ Course().insert([
     ['CS', 4500, 'Senior Capstone Project', 3],
     ['CS', 4940, 'Undergraduate Research', 3],
     ['CS', 4970, 'Computer Science Bachelor''s Thesis', 3]])
+
 
 Term().insert(dict(term_year=year, term=term)
               for year in range(2015, 2021)
