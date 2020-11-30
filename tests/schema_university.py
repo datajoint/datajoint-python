@@ -2,8 +2,6 @@ import datajoint as dj
 from . import PREFIX, CONN_INFO
 
 schema = dj.Schema(PREFIX + '_university', connection=dj.conn(**CONN_INFO))
-schema.drop(force=True)
-schema = dj.Schema(PREFIX + '_university', connection=dj.conn(**CONN_INFO))
 
 
 @schema
@@ -120,7 +118,6 @@ faker.Faker.seed(42)
 
 fake = faker.Faker()
 
-
 LetterGrade().insert([
     ['A',  4.00], ['A-', 3.67],
     ['B+', 3.33], ['B',  3.00], ['B-', 2.67],
@@ -175,7 +172,8 @@ def choices(seq, k):
 
 StudentMajor().insert({**s, **d,
                        'declare_date': fake.date_between(start_date=datetime.date(1999, 1, 1))}
-                      for s, d in zip(Student.fetch('KEY'), choices(Department.fetch('KEY'), k=len(Student())))
+                      for s, d in zip(Student.fetch('KEY', order_by="KEY"),
+                                      choices(Department.fetch('KEY', order_by="KEY"), k=len(Student())))
                       if random.random() < 0.75)
 
 
@@ -227,6 +225,7 @@ Course().insert([
     ['CS', 4940, 'Undergraduate Research', 3],
     ['CS', 4970, 'Computer Science Bachelor''s Thesis', 3]])
 
+
 Term().insert(dict(term_year=year, term=term)
               for year in range(2015, 2021)
               for term in ['Spring', 'Summer', 'Fall'])
@@ -248,22 +247,22 @@ def make_section(prob):
 # random enrollment
 Section().insert(make_section(0.5))
 
-terms = Term().fetch('KEY')
+terms = Term().fetch('KEY', order_by="KEY")
 quit_prob = 0.1
-for student in Student.fetch('KEY'):
+for student in Student.fetch('KEY', order_by="KEY"):
     start_term = random.randrange(len(terms))
     for term in terms[start_term:]:
         if random.random() < quit_prob:
             break
-        sections = ((Section & term) - (Course & (Enroll & student))).fetch('KEY')
+        sections = ((Section & term) - (Course & (Enroll & student))).fetch('KEY', order_by="KEY")
         if sections:
             Enroll().insert({**student, **section} for section in
                             random.sample(sections, random.randrange(min(5, len(sections)))))
 
 # assign random grades
-grades = LetterGrade().fetch('grade')
+grades = LetterGrade().fetch('grade', order_by="KEY")
 
-grade_keys = Enroll().fetch('KEY')
+grade_keys = Enroll().fetch('KEY', order_by="KEY")
 random.shuffle(grade_keys)
 grade_keys = grade_keys[:len(grade_keys)*9//10]
 

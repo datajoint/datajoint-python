@@ -2,11 +2,23 @@ from nose.tools import assert_true, assert_list_equal, assert_set_equal, assert_
 from .schema_university import *
 
 
+def test_fill():
+    """
+    check that the randomized tables are consistently defined
+    """
+    # check randomized tables
+    assert_true(len(StudentMajor()) == 226)
+    assert_true(len(Section()) == 756)
+    assert_true(len(Enroll()) == 3093)
+    assert_true(len(Grade()) == 2783)
+
+
 def test_restrict():
     """
     test diverse restrictions from the university database.
     This test relies on a specific instantiation of the database.
     """
+
     utahns1 = Student & {'home_state': 'UT'}
     utahns2 = Student & 'home_state="UT"'
     assert_true(len(utahns1) == len(utahns2.fetch('KEY')) == 7)
@@ -28,33 +40,33 @@ def test_restrict():
     millenials = Student & 'date_of_birth between "1981-01-01" and "1996-12-31"'
     assert_true(len(millenials) == 170)
     millenials_no_math = millenials - (Enroll & 'dept="MATH"')
-    assert_true(len(millenials_no_math) == 53)
+    assert_true(len(millenials_no_math) == 52)
 
     inactive_students = Student - (Enroll & CurrentTerm)
-    assert_true(len(inactive_students) == 204)
+    assert_true(len(inactive_students) == 202)
 
     # Females who are active or major in non-math
     special = Student & [Enroll, StudentMajor - {'dept': "MATH"}] & {'sex': "F"}
-    assert_true(len(special) == 158)
+    assert_true(len(special) == 163)
 
 
 def test_advanced_join():
     """test advanced joins"""
     # Students with ungraded courses in current term
     ungraded = Enroll * CurrentTerm - Grade
-    assert_true(len(ungraded) == 21)
+    assert_true(len(ungraded) == 29)
 
     # add major
     major = StudentMajor.proj(..., major='dept')
-    assert_true(len(ungraded.join(major, left=True)) == len(ungraded) == 21)
-    assert_true(len(ungraded.join(major)) == len(ungraded & major) == 14)
+    assert_true(len(ungraded.join(major, left=True)) == len(ungraded) == 29)
+    assert_true(len(ungraded.join(major)) == len(ungraded & major) == 27)
 
 
 def test_union():
     # effective left join Enroll with Major
     q1 = (Enroll & 'student_id=101') + (Enroll & 'student_id=102')
     q2 = (Enroll & 'student_id in (101, 102)')
-    assert_true(len(q1) == len(q2) == 41)
+    assert_true(len(q1) == len(q2) == 8)
 
 
 def test_aggr():
@@ -64,5 +76,5 @@ def test_aggr():
     # GPA
     student_gpa = Student.aggr(Course * Grade * LetterGrade, gpa='round(sum(points*credits)/sum(credits), 2)')
     gpa = student_gpa.fetch('gpa')
-    assert_true(len(gpa) == 258)
+    assert_true(len(gpa) == 263)
     assert_true(2 < gpa.mean() < 3)
