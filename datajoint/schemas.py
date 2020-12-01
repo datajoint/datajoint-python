@@ -118,6 +118,10 @@ class Schema:
                 context = dict(context, **self.add_objects)
             self._decorate_master(cls, context)
 
+    @property
+    def is_activated(self):
+        return self.database is not None
+
     def __call__(self, cls, *, context=None):
         """
         Binds the supplied class to a schema. This is intended to be used as a decorator.
@@ -127,10 +131,10 @@ class Schema:
         context = context or self.context or inspect.currentframe().f_back.f_locals
         if issubclass(cls, Part):
             raise DataJointError('The schema decorator should not be applied to Part relations')
-        if self.database is None:
-            self.declare_list.append((cls, context))
-        else:
+        if self.is_activated:
             self._decorate_master(cls, context)
+        else:
+            self.declare_list.append((cls, context))
         return cls
 
     def _decorate_master(self, cls, context):
