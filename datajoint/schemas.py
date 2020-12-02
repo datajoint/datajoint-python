@@ -82,6 +82,8 @@ class Schema:
         :param add_objects: a mapping with additional objects to make available to the context in which table classes
         are declared.
         """
+        if self.is_activated:
+            raise DataJointError("The schema is already activated.")
         if connection is not None:
             self.connection = connection
         if self.connection is None:
@@ -121,6 +123,10 @@ class Schema:
     @property
     def is_activated(self):
         return self.database is not None
+
+    def _assert_activation(self, message="The schema must be activated first"):
+        if not self.is_activated:
+            raise DataJointError(message)
 
     def __call__(self, cls, *, context=None):
         """
@@ -193,6 +199,7 @@ class Schema:
 
     @property
     def log(self):
+        self._assert_activation()
         if self._log is None:
             self._log = Log(self.connection, self.database)
         return self._log
@@ -205,6 +212,7 @@ class Schema:
         """
         :return: size of the entire schema in bytes
         """
+        self._assert_activation()
         return int(self.connection.query(
             """
             SELECT SUM(data_length + index_length)
@@ -217,6 +225,7 @@ class Schema:
         in the context.
         :param context: alternative context to place the missing classes into, e.g. locals()
         """
+        self._assert_activation()
         if context is None:
             if self.context is not None:
                 context = self.context
@@ -259,6 +268,7 @@ class Schema:
         """
         Drop the associated schema if it exists
         """
+        self._assert_activation()
         if not self.exists:
             logger.info("Schema named `{database}` does not exist. Doing nothing.".format(database=self.database))
         elif (not config['safemode'] or
@@ -277,6 +287,7 @@ class Schema:
         """
         :return: true if the associated schema exists on the server
         """
+        self._assert_activation()
         cur = self.connection.query("SHOW DATABASES LIKE '{database}'".format(database=self.database))
         return cur.rowcount > 0
 
@@ -286,12 +297,14 @@ class Schema:
         schema.jobs provides a view of the job reservation table for the schema
         :return: jobs table
         """
+        self._assert_activation()
         if self._jobs is None:
             self._jobs = JobTable(self.connection, self.database)
         return self._jobs
 
     @property
     def code(self):
+        self._assert_activation()
         return self.save()
 
     def save(self, python_filename=None):
@@ -300,6 +313,7 @@ class Schema:
         This method is in preparation for a future release and is not officially supported.
         :return: a string containing the body of a complete Python module defining this schema.
         """
+        self._assert_activation()
         module_count = itertools.count()
         # add virtual modules for referenced modules with names vmod0, vmod1, ...
         module_lookup = collections.defaultdict(lambda: 'vmod' + str(next(module_count)))
@@ -344,7 +358,7 @@ class Schema:
 class VirtualModule(types.ModuleType):
     """
     A virtual module imitates a Python module representing a DataJoint schema from table definitions in the database.
-    It declares the schema objects and a class for each table.  
+    It declares the schema objects and a class for each table.
     """
     def __init__(self, module_name, schema_name, *, create_schema=False,
                  create_tables=False, connection=None, add_objects=None):
