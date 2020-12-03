@@ -250,3 +250,5 @@ class Fetch1:
                 for attribute in attrs)
             ret = return_values[0] if len(attrs) == 1 else return_values
         return ret
+
+
