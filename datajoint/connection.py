@@ -210,7 +210,6 @@ class Connection:
         except client.err.Error as err:
             raise translate_query_error(err, query) from None
 
-
     def query(self, query, args=(), *, as_dict=False, suppress_warnings=True, reconnect=None):
         """
         Execute the specified query and return the tuple generator (cursor).
