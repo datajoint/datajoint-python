@@ -222,8 +222,8 @@ class Connection:
         :param reconnect: when None, get from config, when True, attempt to reconnect if disconnected
         """
         # check cache first:
-        use_cache = self._cache
-        if not query.startswith("SELECT"):
+        use_cache = bool(self._cache)
+        if use_cache and not query.startswith("SELECT"):
             raise errors.DataJointError("Only SELECT query are allowed when query caching is on.")
         if use_cache:
             if not config['query_cache']:
