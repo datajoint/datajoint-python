@@ -4,7 +4,7 @@ import io
 from pathlib import Path
 
 
-def hash_key_values(mapping):
+def key_hash(mapping):
     """
     32-byte hash of the mapping's key values sorted by the key name.
     This is often used to convert a long primary key value into a shorter hash.
