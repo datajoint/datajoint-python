@@ -5,7 +5,7 @@ a schema for testing external attributes
 import tempfile
 import datajoint as dj
 
-from . import PREFIX, CONN_INFO, S3_CONN_INFO
+from . import PREFIX, CONN_INFO, S3_CONN_INFO, GCS_CONN_INFO
 import numpy as np
 
 schema = dj.Schema(PREFIX + '_extern', connection=dj.conn(**CONN_INFO))
@@ -27,6 +27,12 @@ stores_config = {
         S3_CONN_INFO,
         protocol='s3',
         location='dj/repo',
+        stage=tempfile.mkdtemp()),
+    
+    'repo_gcs': dict(
+        GCS_CONN_INFO,
+        protocol='gcs',
+        location='datajoint/repo',  # gs:// will be prepended
         stage=tempfile.mkdtemp()),
 
     'local': dict(
@@ -132,6 +138,16 @@ class FilepathS3(dj.Manual):
     fnum : int 
     ---
     img : filepath@repo_s3  # managed files 
+    """
+
+
+@schema
+class FilepathGcs(dj.Manual):
+    definition = """
+    # table for file management 
+    fnum : int 
+    ---
+    img : filepath@repo_gcs  # managed files 
     """
 
 dj.errors._switch_filepath_types(False)

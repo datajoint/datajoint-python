@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 import random
 
-from .schema_external import schema, Filepath, FilepathS3, stores_config
+from .schema_external import schema, Filepath, FilepathS3, FilepathGcs, stores_config
 
 
 def setUp(self):
@@ -88,6 +88,11 @@ def test_filepath_s3():
     test_filepath(store="repo_s3")
 
 
+def test_filepath_gcs():
+    """ test file management with gcs """
+    test_filepath(store="repo_gcs")
+
+
 def test_duplicate_upload(store="repo"):
     ext = schema.external[store]
     stage_path = dj.config['stores'][store]['stage']
@@ -102,6 +107,10 @@ def test_duplicate_upload(store="repo"):
 
 def test_duplicate_upload_s3():
     test_duplicate_upload(store="repo_s3")
+
+
+def test_duplicate_upload_gcs():
+    test_duplicate_upload(store="repo_gcs")
 
 
 @raises(dj.DataJointError)
@@ -123,6 +132,10 @@ def test_duplicate_error(store="repo"):
 
 def test_duplicate_error_s3():
     test_duplicate_error(store="repo_s3")
+
+
+def test_duplicate_error_gcs():
+    test_duplicate_error(store="repo_gcs")
 
 
 def test_filepath_class(table=Filepath(), store="repo"):
@@ -176,6 +189,15 @@ def test_filepath_class_s3():
 def test_filepath_class_s3_again():
     """test_filepath_class_s3 again to deal with existing remote files"""
     test_filepath_class(FilepathS3(), "repo_s3")
+    
+    
+def test_filepath_class_gcs():
+    test_filepath_class(FilepathGcs(), "repo_gcs")
+
+
+def test_filepath_class_gcs_again():
+    """test_filepath_class_gcs again to deal with existing remote files"""
+    test_filepath_class(FilepathGcs(), "repo_gcs")
 
 
 def test_filepath_cleanup(table=Filepath(), store="repo"):
@@ -211,9 +233,15 @@ def test_filepath_cleanup(table=Filepath(), store="repo"):
 
 
 def test_filepath_cleanup_s3():
-    """test deletion of filepath entries from external table """
+    """test deletion of s3 filepath entries from external table """
     store = "repo_s3"
     test_filepath_cleanup(FilepathS3(), store)
+
+
+def test_filepath_cleanup_gcs():
+    """test deletion of gcs filepath entries from external table """
+    store = "repo_gcs"
+    test_filepath_cleanup(FilepathGcs(), store)
 
 
 def test_delete_without_files(store="repo"):

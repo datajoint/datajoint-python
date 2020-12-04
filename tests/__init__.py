@@ -45,6 +45,8 @@ S3_MIGRATE_BUCKET = [path.name for path in Path(
         Path(__file__).resolve().parent,
         'external-legacy-data', 's3').iterdir()][0]
 
+GCS_CONN_INFO = dict(token=environ.get('GOOGLE_APPLICATION_CREDENTIALS'))
+
 # Prefix for all databases used during testing
 PREFIX = environ.get('DJ_TEST_DB_PREFIX', 'djtest')
 conn_root = dj.conn(**CONN_INFO_ROOT)

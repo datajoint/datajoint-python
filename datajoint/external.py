@@ -73,6 +73,12 @@ class ExternalTable(Table):
             self._s3 = s3.Folder(**self.spec)
         return self._s3
 
+    @property
+    def gcs(self):
+        # TODO: Add gcsfs dependency?
+        import gcsfs
+        return gcsfs.GCSFileSystem(token=self.spec['token'])
+
     # - low-level operations - private
 
     def _make_external_filepath(self, relative_filepath):
@@ -86,6 +92,10 @@ class ExternalTable(Table):
                     case in posix_path.parts[0] for case in (
                         '\\', ':')) else Path(posix_path)
             return PurePosixPath(location_path, relative_filepath)
+        elif self.spec['protocol'] == 'gcs':
+            location_path = Path(PurePosixPath(PureWindowsPath(self.spec['location'])))
+            # TODO: Use gcspath or similar?
+            return 'gs://' + str(PurePosixPath(location_path, relative_filepath))
         # Preserve root
         elif self.spec['protocol'] == 'file':
             return PurePosixPath(Path(self.spec['location']), relative_filepath)
@@ -100,6 +110,8 @@ class ExternalTable(Table):
     def _upload_file(self, local_path, external_path, metadata=None):
         if self.spec['protocol'] == 's3':
             self.s3.fput(local_path, external_path, metadata)
+        elif self.spec['protocol'] == 'gcs':
+            self.gcs.put_file(local_path, external_path)
         elif self.spec['protocol'] == 'file':
             safe_copy(local_path, external_path, overwrite=True)
         else:
@@ -108,6 +120,8 @@ class ExternalTable(Table):
     def _download_file(self, external_path, download_path):
         if self.spec['protocol'] == 's3':
             self.s3.fget(external_path, download_path)
+        elif self.spec['protocol'] == 'gcs':
+            self.gcs.get_file(external_path, download_path)
         elif self.spec['protocol'] == 'file':
             safe_copy(external_path, download_path)
         else:
@@ -116,6 +130,8 @@ class ExternalTable(Table):
     def _upload_buffer(self, buffer, external_path):
         if self.spec['protocol'] == 's3':
             self.s3.put(external_path, buffer)
+        elif self.spec['protocol'] == 'gcs':
+            self.gcs.pipe_file(external_path, buffer)
         elif self.spec['protocol'] == 'file':
             safe_write(external_path, buffer)
         else:
@@ -124,6 +140,8 @@ class ExternalTable(Table):
     def _download_buffer(self, external_path):
         if self.spec['protocol'] == 's3':
             return self.s3.get(external_path)
+        if self.spec['protocol'] == 'gcs':
+            return self.gcs.cat_file(external_path)
         if self.spec['protocol'] == 'file':
             return Path(external_path).read_bytes()
         assert False
@@ -131,6 +149,8 @@ class ExternalTable(Table):
     def _remove_external_file(self, external_path):
         if self.spec['protocol'] == 's3':
             self.s3.remove_object(external_path)
+        elif self.spec['protocol'] == 'gcs':
+            self.gcs.rm(external_path)  # rm_file is preferred, but broken
         elif self.spec['protocol'] == 'file':
             Path(external_path).unlink()
 
@@ -140,6 +160,8 @@ class ExternalTable(Table):
         """
         if self.spec['protocol'] == 's3':
             return self.s3.exists(external_filepath)
+        if self.spec['protocol'] == 'gcs':
+            return self.gcs.exists(external_filepath)
         if self.spec['protocol'] == 'file':
             return Path(external_filepath).is_file()
         assert False
