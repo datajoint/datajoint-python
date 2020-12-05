@@ -74,7 +74,6 @@ class Schema:
                  create_tables=None, add_objects=None):
         """
         Associate database schema `schema_name`. If the schema does not exist, attempt to create it on the server.
-
         :param schema_name: the database schema to associate.
         :param connection: Connection object. Defaults to datajoint.conn().
         :param create_schema: When False, do not create the schema and raise an error if missing.
@@ -82,8 +81,14 @@ class Schema:
         :param add_objects: a mapping with additional objects to make available to the context in which table classes
         are declared.
         """
+        if self.schema_name is None:
+            if self.is_activated:
+                return
+            raise DataJointError("Please provide a schema_name to activate the schema.")
         if self.is_activated:
-            raise DataJointError("The schema is already activated.")
+            if self.database == schema_name:  # already activated
+                return
+            raise DataJointError("The schema is already activated for schema {db}.".format(db=self.database))
         if connection is not None:
             self.connection = connection
         if self.connection is None:
