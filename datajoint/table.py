@@ -323,17 +323,19 @@ class Table(QueryExpression):
         return count
 
     def _delete_cascade(self):
+        """service function to perform cascading deletes recursively."""
         max_attempts = 50
+        delete_count = 0
         for _ in range(max_attempts):
             try:
-                delete_count = self.delete_quick(get_count=True)
+                delete_count += self.delete_quick(get_count=True)
             except IntegrityError as error:
                 match = foregn_key_error_regexp.match(error.args[0])
                 assert match is not None, "foreign key parsing error"
                 # restrict child by self if
                 # 1. if self's restriction attributes are not in child's primary key
                 # 2. if child renames any attributes
-                # otherwise restrict by self's restriction.
+                # otherwise restrict child by self's restriction.
                 child = match.group('child')
                 if "`.`" not in child:  # if schema name is not included, take it from self
                     child = self.full_table_name.split("`.")[0] + child
@@ -347,7 +349,7 @@ class Table(QueryExpression):
                     child &= self.proj(**dict(zip(fk_attrs, pk_attrs)))
                 else:
                     child &= self.proj()
-                child._delete_cascade()
+                delete_count += child._delete_cascade()
             else:
                 print("Deleting {count} rows from {table}".format(
                     count=delete_count, table=self.full_table_name))
@@ -359,7 +361,8 @@ class Table(QueryExpression):
     def delete(self, transaction=True, safemode=None):
         """
         Deletes the contents of the table and its dependent tables, recursively.
-        User is prompted for confirmation if config['safemode'] is set to True.
+        :param transaction: if True, use the entire delete becomes an atomic transaction.
+        :param safemode: If True, prohibit nested transactions and prompt to confirm. Default is dj.config['safemode'].
         """
         safemode = safemode or config['safemode']
 
@@ -374,6 +377,7 @@ class Table(QueryExpression):
                     raise DataJointError(
                         "Delete cannot use a transaction within an ongoing transaction. "
                         "Set transaction=False or safemode=False).")
+
         # Cascading delete
         try:
             delete_count = self._delete_cascade()
@@ -381,11 +385,14 @@ class Table(QueryExpression):
             if transaction:
                 self.connection.cancel_transaction()
             raise
-        if delete_count == 0 and safemode:
-            print('Nothing to delete.')
 
         # Confirm and commit
-        if transaction:
+        if delete_count == 0:
+            if safemode:
+                print('Nothing to delete.')
+            if transaction:
+                self.connection.cancel_transaction()
+        else:
             if not safemode or user_choice("Commit deletes?", default='no') == 'yes':
                 self.connection.commit_transaction()
                 if safemode:
