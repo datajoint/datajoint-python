@@ -6,6 +6,7 @@ import numpy as np
 import pandas
 import logging
 import uuid
+import re
 from pathlib import Path
 from .settings import config
 from .declare import declare, alter
@@ -14,10 +15,16 @@ from .expression import QueryExpression
 from . import blob
 from .utils import user_choice
 from .heading import Heading
-from .errors import DuplicateError, AccessError, DataJointError, UnknownAttributeError
+from .errors import DuplicateError, AccessError, DataJointError, UnknownAttributeError, IntegrityError
 from .version import __version__ as version
 
 logger = logging.getLogger(__name__)
+
+foregn_key_error_regexp = re.compile(
+    r"[\w\s:]*\((?P<child>`[^`]+`.`[^`]+`), "
+    r"CONSTRAINT (?P<name>`[^`]+`) "
+    r"FOREIGN KEY \((?P<fk_attrs>[^)]+)\) "
+    r"REFERENCES (?P<parent>`[^`]+`(\.`[^`]+`)?) \((?P<pk_attrs>[^)]+)\)")
 
 
 class _RenameMap(tuple):
@@ -315,89 +322,78 @@ class Table(QueryExpression):
         self._log(query[:255])
         return count
 
-    def delete(self, verbose=True):
+    def _delete_cascade(self):
+        max_attempts = 50
+        for _ in range(max_attempts):
+            try:
+                delete_count = self.delete_quick(get_count=True)
+            except IntegrityError as error:
+                match = foregn_key_error_regexp.match(error.args[0])
+                assert match is not None, "foreign key parsing error"
+                # restrict child by self if
+                # 1. if self's restriction attributes are not in child's primary key
+                # 2. if child renames any attributes
+                # otherwise restrict by self's restriction.
+                child = match.group('child')
+                if "`.`" not in child:  # if schema name is not included, take it from self
+                    child = self.full_table_name.split("`.")[0] + child
+                child = FreeTable(self.connection, child)
+                if set(self.restriction_attributes) <= set(child.primary_key) and \
+                        match.group('fk_attrs') == match.group('pk_attrs'):
+                    child._restriction = self._restriction
+                elif match.group('fk_attrs') != match.group('pk_attrs'):
+                    fk_attrs = [k.strip('`') for k in match.group('fk_attrs').split(',')]
+                    pk_attrs = [k.strip('`') for k in match.group('pk_attrs').split(',')]
+                    child &= self.proj(**dict(zip(fk_attrs, pk_attrs)))
+                else:
+                    child &= self.proj()
+                child._delete_cascade()
+            else:
+                print("Deleting {count} rows from {table}".format(
+                    count=delete_count, table=self.full_table_name))
+                break
+        else:
+            raise DataJointError('Exceeded maximum number of delete attempts.')
+        return delete_count
+
+    def delete(self, transaction=True, safemode=None):
         """
         Deletes the contents of the table and its dependent tables, recursively.
         User is prompted for confirmation if config['safemode'] is set to True.
         """
-        conn = self.connection
-        already_in_transaction = conn.in_transaction
-        safe = config['safemode']
-        if already_in_transaction and safe:
-            raise DataJointError('Cannot delete within a transaction in safemode. '
-                                 'Set dj.config["safemode"] = False or complete the ongoing transaction first.')
-        graph = conn.dependencies
-        graph.load()
-        delete_list = collections.OrderedDict(
-            (name, _RenameMap(next(iter(graph.parents(name).items()))) if name.isdigit() else FreeTable(conn, name))
-            for name in graph.descendants(self.full_table_name))
+        safemode = safemode or config['safemode']
 
-        # construct restrictions for each relation
-        restrict_by_me = set()
-        # restrictions: Or-Lists of restriction conditions for each table.
-        # Uncharacteristically of Or-Lists, an empty entry denotes "delete everything".
-        restrictions = collections.defaultdict(list)
-        # restrict by self
-        if self.restriction:
-            restrict_by_me.add(self.full_table_name)
-            restrictions[self.full_table_name].append(self.restriction)  # copy own restrictions
-        # restrict by renamed nodes
-        restrict_by_me.update(table for table in delete_list if table.isdigit())  # restrict by all renamed nodes
-        # restrict by secondary dependencies
-        for table in delete_list:
-            restrict_by_me.update(graph.children(table, primary=False))   # restrict by any non-primary dependents
-
-        # compile restriction lists
-        for name, table in delete_list.items():
-            for dep in graph.children(name):
-                # if restrict by me, then restrict by the entire relation otherwise copy restrictions
-                restrictions[dep].extend([table] if name in restrict_by_me else restrictions[name])
-
-        # apply restrictions
-        for name in delete_list:
-            if not name.isdigit() and restrictions[name]:  # do not restrict by an empty list
-                delete_list[name].restrict_in_place([
-                    r.proj() if isinstance(r, FreeTable) else (
-                        delete_list[r[0]].proj(**{a: b for a, b in r[1]['attr_map'].items()})
-                        if isinstance(r, _RenameMap) else r)
-                    for r in restrictions[name]])
-        if safe:
-            print('About to delete:')
-
-        if not already_in_transaction:
-            conn.start_transaction()
-        total = 0
-        try:
-            for name, table in reversed(list(delete_list.items())):
-                if not name.isdigit():
-                    count = table.delete_quick(get_count=True)
-                    total += count
-                    if (verbose or safe) and count:
-                        print('{table}: {count} items'.format(table=name, count=count))
-        except:
-            # Delete failed, perhaps due to insufficient privileges. Cancel transaction.
-            if not already_in_transaction:
-                conn.cancel_transaction()
-            raise
-        else:
-            assert not (already_in_transaction and safe)
-            if not total:
-                print('Nothing to delete')
-                if not already_in_transaction:
-                    conn.cancel_transaction()
+        # Start transaction
+        if transaction:
+            if not self.connection.in_transaction:
+                self.connection.start_transaction()
             else:
-                if already_in_transaction:
-                    if verbose:
-                        print('The delete is pending within the ongoing transaction.')
+                if not safemode:
+                    transaction = False
                 else:
-                    if not safe or user_choice("Proceed?", default='no') == 'yes':
-                        conn.commit_transaction()
-                        if verbose or safe:
-                            print('Committed.')
-                    else:
-                        conn.cancel_transaction()
-                        if verbose or safe:
-                            print('Cancelled deletes.')
+                    raise DataJointError(
+                        "Delete cannot use a transaction within an ongoing transaction. "
+                        "Set transaction=False or safemode=False).")
+        # Cascading delete
+        try:
+            delete_count = self._delete_cascade()
+        except:
+            if transaction:
+                self.connection.cancel_transaction()
+            raise
+        if delete_count == 0 and safemode:
+            print('Nothing to delete.')
+
+        # Confirm and commit
+        if transaction:
+            if not safemode or user_choice("Commit deletes?", default='no') == 'yes':
+                self.connection.commit_transaction()
+                if safemode:
+                    print('Deletes committed.')
+            else:
+                self.connection.cancel_transaction()
+                if safemode:
+                    print('Deletes cancelled')
 
     def drop_quick(self):
         """
