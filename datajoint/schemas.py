@@ -81,7 +81,7 @@ class Schema:
         :param add_objects: a mapping with additional objects to make available to the context in which table classes
         are declared.
         """
-        if self.schema_name is None:
+        if schema_name is None:
             if self.is_activated:
                 return
             raise DataJointError("Please provide a schema_name to activate the schema.")
