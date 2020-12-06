@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 
 
 def build_foreign_key_parser_old():
-    # old-style foreign key parser. Superceded by expression-based syntax. See issue #436
+    # old-style foreign key parser. Superseded by expression-based syntax. See issue #436
     # This will be deprecated in a future release.
     left = pp.Literal('(').suppress()
     right = pp.Literal(')').suppress()
