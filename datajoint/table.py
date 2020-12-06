@@ -335,7 +335,7 @@ class Table(QueryExpression):
                 # restrict child by self if
                 # 1. if self's restriction attributes are not in child's primary key
                 # 2. if child renames any attributes
-                # otherwise restrict by self's restriction.
+                # otherwise restrict child by self's restriction.
                 child = match.group('child')
                 if "`.`" not in child:  # if schema name is not included, take it from self
                     child = self.full_table_name.split("`.")[0] + child
@@ -377,6 +377,7 @@ class Table(QueryExpression):
                     raise DataJointError(
                         "Delete cannot use a transaction within an ongoing transaction. "
                         "Set transaction=False or safemode=False).")
+
         # Cascading delete
         try:
             delete_count = self._delete_cascade()
@@ -384,11 +385,14 @@ class Table(QueryExpression):
             if transaction:
                 self.connection.cancel_transaction()
             raise
-        if delete_count == 0 and safemode:
-            print('Nothing to delete.')
 
         # Confirm and commit
-        if transaction:
+        if delete_count == 0:
+            if safemode:
+                print('Nothing to delete.')
+            if transaction:
+                self.connection.cancel_transaction()
+        else:
             if not safemode or user_choice("Commit deletes?", default='no') == 'yes':
                 self.connection.commit_transaction()
                 if safemode:
