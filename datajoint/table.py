@@ -374,7 +374,6 @@ class Table(QueryExpression):
                     raise DataJointError(
                         "Delete cannot use a transaction within an ongoing transaction. "
                         "Set transaction=False or safemode=False).")
-
         # Cascading delete
         try:
             delete_count = self._delete_cascade()
@@ -385,7 +384,7 @@ class Table(QueryExpression):
         if delete_count == 0 and safemode:
             print('Nothing to delete.')
 
-        # Commit transaction
+        # Confirm and commit
         if transaction:
             if not safemode or user_choice("Commit deletes?", default='no') == 'yes':
                 self.connection.commit_transaction()
