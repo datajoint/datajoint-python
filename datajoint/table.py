@@ -323,7 +323,7 @@ class Table(QueryExpression):
         return count
 
     def _delete_cascade(self):
-        max_attempts = 30
+        max_attempts = 50
         for _ in range(max_attempts):
             try:
                 delete_count = self.delete_quick(get_count=True)
@@ -346,14 +346,14 @@ class Table(QueryExpression):
                     pk_attrs = [k.strip('`') for k in match.group('pk_attrs').split(',')]
                     child &= self.proj(**dict(zip(fk_attrs, pk_attrs)))
                 else:
-                    child &= self
+                    child &= self.proj()
                 child._delete_cascade()
             else:
                 print("Deleting {count} rows from {table}".format(
                     count=delete_count, table=self.full_table_name))
                 break
         else:
-            raise(DataJointError('Something went wrong'))
+            raise DataJointError('Exceeded maximum number of delete attempts.')
         return delete_count
 
     def delete(self, transaction=True, safemode=None):
@@ -363,8 +363,9 @@ class Table(QueryExpression):
         """
         safemode = safemode or config['safemode']
 
+        # Start transaction
         if transaction:
-            if not self.connect.in_transaction:
+            if not self.connection.in_transaction:
                 self.connection.start_transaction()
             else:
                 if not safemode:
@@ -374,10 +375,17 @@ class Table(QueryExpression):
                         "Delete cannot use a transaction within an ongoing transaction. "
                         "Set transaction=False or safemode=False).")
 
-        delete_count = self._delete_cascade()
+        # Cascading delete
+        try:
+            delete_count = self._delete_cascade()
+        except:
+            if transaction:
+                self.connection.cancel_transaction()
+            raise
         if delete_count == 0 and safemode:
             print('Nothing to delete.')
 
+        # Commit transaction
         if transaction:
             if not safemode or user_choice("Commit deletes?", default='no') == 'yes':
                 self.connection.commit_transaction()
