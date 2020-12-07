@@ -1,36 +1,49 @@
-# This is a basic workflow to help you get started with Actions
-
-name: CI
-
-# Controls when the action will run. 
+name: Development
 on:
-  # Triggers the workflow on push or pull request events but only for the master branch
   push:
-    branches: [ master ]
+    branches:
+      - '**' # every branch
+      - '!stage*' # exclude branches beginning with stage
   pull_request:
-    branches: [ master ]
-
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
-
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+    branches:
+      - '**' # every branch
+      - '!stage*' # exclude branches beginning with stage
 jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
+  test:
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
+    strategy:
+      matrix:
+        py_ver: ["3.8"]
+        mysql_ver: ["8.0", "5.7", "5.6"]
+        include:
+          - py_ver: "3.7"
+            mysql_ver: "5.7"
+          - py_ver: "3.6"
+            mysql_ver: "5.7"
+          - py_ver: "3.5"
+            mysql_ver: "5.7"
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
-
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
-
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
+      - name: Install dependencies
         run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
+          python -m pip install --upgrade pip
+          pip install flake8
+      - name: Run syntax tests
+        run: flake8 datajoint --count --select=E9,F63,F7,F82 --show-source --statistics
+      - name: Run primary tests
+        env:
+          UID: "1001"
+          GID: "116"
+          PY_VER: ${{matrix.py_ver}}
+          MYSQL_VER: ${{matrix.mysql_ver}}
+          ALPINE_VER: "3.10"
+          MINIO_VER: RELEASE.2019-09-26T19-42-35Z
+          COMPOSE_HTTP_TIMEOUT: "120"
+          COVERALLS_SERVICE_NAME: travis-ci
+          COVERALLS_REPO_TOKEN: fd0BoXG46TPReEem0uMy7BJO5j0w1MQiY
+        run: docker-compose -f LNX-docker-compose.yml up --build --exit-code-from app
+      - name: Run style tests
+        run: |
+          flake8 --ignore=E121,E123,E126,E226,E24,E704,W503,W504,E722,F401,W605 datajoint \
+                 --count --max-complexity=62 --max-line-length=127 --statistics
