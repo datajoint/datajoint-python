@@ -174,9 +174,7 @@ class Trial(dj.Imported):
         """
 
     def make(self, key):
-        """
-        populate with random data (pretend reading from raw files)
-        """
+        """ populate with random data (pretend reading from raw files) """
         random.seed('Amazing Seed')
         trial = self.Condition()
         for trial_id in range(10):
@@ -322,6 +320,7 @@ class IndexRich(dj.Manual):
     index (first_date, value)
     """
 
+
 #  Schema for issue 656
 @schema
 class ThingA(dj.Manual):
@@ -347,4 +346,3 @@ class ThingC(dj.Manual):
     ---
     -> [unique, nullable] ThingB
     """
-

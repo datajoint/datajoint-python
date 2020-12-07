@@ -1,9 +1,10 @@
 import os
-from .hash import hash_key_values
+from .hash import key_hash
 import platform
 from .table import Table
 from .settings import config
 from .errors import DuplicateError
+from .heading import Heading
 
 ERROR_MESSAGE_LENGTH = 2047
 TRUNCATION_APPENDIX = '...truncated'
@@ -13,18 +14,17 @@ class JobTable(Table):
     """
     A base relation with no definition. Allows reserving jobs
     """
-    def __init__(self, arg, database=None):
-        if isinstance(arg, JobTable):
-            super().__init__(arg)
-            # copy constructor
-            self.database = arg.database
-            self._connection = arg._connection
-            self._definition = arg._definition
-            self._user = arg._user
-            return
-        super().__init__()
+    def __init__(self, conn, database):
         self.database = database
-        self._connection = arg
+        self._connection = conn
+        self._heading = Heading(table_info=dict(
+            conn=conn,
+            database=database,
+            table_name=self.table_name,
+            context=None
+        ))
+        self._support = [self.full_table_name]
+
         self._definition = """    # job reservation table for `{database}`
         table_name  :varchar(255)  # className of the table
         key_hash  :char(32)  # key hash
@@ -69,7 +69,7 @@ class JobTable(Table):
         """
         job = dict(
             table_name=table_name,
-            key_hash=hash_key_values(key),
+            key_hash=key_hash(key),
             status='reserved',
             host=platform.node(),
             pid=os.getpid(),
@@ -89,7 +89,7 @@ class JobTable(Table):
         :param table_name: `database`.`table_name`
         :param key: the dict of the job's primary key
         """
-        job_key = dict(table_name=table_name, key_hash=hash_key_values(key))
+        job_key = dict(table_name=table_name, key_hash=key_hash(key))
         (self & job_key).delete_quick()
 
     def error(self, table_name, key, error_message, error_stack=None):
@@ -107,7 +107,7 @@ class JobTable(Table):
             self.insert1(
                 dict(
                     table_name=table_name,
-                    key_hash=hash_key_values(key),
+                    key_hash=key_hash(key),
                     status="error",
                     host=platform.node(),
                     pid=os.getpid(),

@@ -15,7 +15,7 @@ default_attribute_properties = dict(    # these default values are set in comput
     name=None, type='expression', in_key=False, nullable=False, default=None, comment='calculated attribute',
     autoincrement=False, numeric=None, string=None, uuid=False, is_blob=False, is_attachment=False, is_filepath=False,
     is_external=False, adapter=None,
-    store=None, unsupported=False, sql_expression=None, database=None, dtype=object)
+    store=None, unsupported=False, attribute_expression=None, database=None, dtype=object)
 
 
 class Attribute(namedtuple('_Attribute', default_attribute_properties)):
@@ -28,16 +28,12 @@ class Attribute(namedtuple('_Attribute', default_attribute_properties)):
 
     @property
     def sql_type(self):
-        """
-        :return: datatype (as string) in database. In most cases, it is the same as self.type
-        """
+        """ :return: datatype (as string) in database. In most cases, it is the same as self.type """
         return UUID_DATA_TYPE if self.uuid else self.type
 
     @property
     def sql_comment(self):
-        """
-        :return: full comment for the SQL declaration. Includes custom type specification
-        """
+        """ :return: full comment for the SQL declaration. Includes custom type specification """
         return (':uuid:' if self.uuid else '') + self.comment
 
     @property
@@ -51,6 +47,13 @@ class Attribute(namedtuple('_Attribute', default_attribute_properties)):
         return '`{name}` {type} NOT NULL COMMENT "{comment}"'.format(
             name=self.name, type=self.sql_type, comment=self.sql_comment)
 
+    @property
+    def original_name(self):
+        if self.attribute_expression is None:
+            return self.name
+        assert self.attribute_expression.startswith('`')
+        return self.attribute_expression.strip('`')
+
 
 class Heading:
     """
@@ -59,21 +62,33 @@ class Heading:
     the attribute names and the values are Attributes.
     """
 
-    def __init__(self, arg=None):
+    def __init__(self, attribute_specs=None, table_info=None):
         """
-        :param arg: a list of dicts with the same keys as Attribute
+        :param attribute_specs: a list of dicts with the same keys as Attribute
+        :param table_info: a dict with information to load the heading from the database
         """
-        assert not isinstance(arg, Heading), 'Headings cannot be copied'
         self.indexes = None
-        self.table_info = None
-        self.attributes = None if arg is None else OrderedDict(
-            (q['name'], Attribute(**q)) for q in arg)
+        self.table_info = table_info
+        self._table_status = None
+        self._attributes = None if attribute_specs is None else OrderedDict(
+            (q['name'], Attribute(**q)) for q in attribute_specs)
 
     def __len__(self):
         return 0 if self.attributes is None else len(self.attributes)
 
-    def __bool__(self):
-        return self.attributes is not None
+    @property
+    def table_status(self):
+        if self.table_info is None:
+            return None
+        if self._table_status is None:
+            self._init_from_database()
+        return self._table_status
+
+    @property
+    def attributes(self):
+        if self._attributes is None:
+            self._init_from_database()   # lazy loading from database
+        return self._attributes
 
     @property
     def names(self):
@@ -96,8 +111,8 @@ class Heading:
         return [k for k, v in self.attributes.items() if not v.is_blob and not v.is_attachment and not v.is_filepath]
 
     @property
-    def expressions(self):
-        return [k for k, v in self.attributes.items() if v.sql_expression is not None]
+    def new_attributes(self):
+        return [k for k, v in self.attributes.items() if v.attribute_expression is not None]
 
     def __getitem__(self, name):
         """shortcut to the attribute"""
@@ -107,12 +122,10 @@ class Heading:
         """
         :return:  heading representation in DataJoint declaration format but without foreign key expansion
         """
-        if self.attributes is None:
-            return 'heading not loaded'
         in_key = True
         ret = ''
-        if self.table_info:
-            ret += '# ' + self.table_info['comment'] + '\n'
+        if self._table_status is not None:
+            ret += '# ' + self.table_status['comment'] + '\n'
         for v in self.attributes.values():
             if in_key and not v.in_key:
                 ret += '---\n'
@@ -135,33 +148,30 @@ class Heading:
             names=self.names,
             formats=[v.dtype for v in self.attributes.values()]))
 
-    @property
-    def as_sql(self):
+    def as_sql(self, fields):
         """
-        represent heading as SQL field list
+        represent heading as the SQL SELECT clause.
         """
-        return ','.join('`%s`' % name if self.attributes[name].sql_expression is None
-                        else '%s as `%s`' % (self.attributes[name].sql_expression, name)
-                        for name in self.names)
+        return ','.join('`%s`' % name if self.attributes[name].attribute_expression is None
+                        else '%s as `%s`' % (self.attributes[name].attribute_expression, name)
+                        for name in fields)
 
     def __iter__(self):
         return iter(self.attributes)
 
-    def init_from_database(self, conn, database, table_name, context):
-        """
-        initialize heading from a database table.  The table must exist already.
-        """
+    def _init_from_database(self):
+        """ initialize heading from an existing database table. """
+        conn, database, table_name, context = (
+            self.table_info[k] for k in ('conn', 'database', 'table_name', 'context'))
         info = conn.query('SHOW TABLE STATUS FROM `{database}` WHERE name="{table_name}"'.format(
             table_name=table_name, database=database), as_dict=True).fetchone()
         if info is None:
             if table_name == '~log':
                 logger.warning('Could not create the ~log table')
                 return
-            else:
-                raise DataJointError('The table `{database}`.`{table_name}` is not defined.'.format(
-                    table_name=table_name, database=database))
-        self.table_info = {k.lower(): v for k, v in info.items()}
-
+            raise DataJointError('The table `{database}`.`{table_name}` is not defined.'.format(
+                table_name=table_name, database=database))
+        self._table_status = {k.lower(): v for k, v in info.items()}
         cur = conn.query(
             'SHOW FULL COLUMNS FROM `{table_name}` IN `{database}`'.format(
                 table_name=table_name, database=database), as_dict=True)
@@ -182,7 +192,6 @@ class Heading:
         attributes = [{rename_map[k] if k in rename_map else k: v
                        for k, v in x.items() if k not in fields_to_drop}
                       for x in attributes]
-
         numeric_types = {
             ('float', False): np.float64,
             ('float', True): np.float64,
@@ -213,7 +222,7 @@ class Heading:
                 string=any(TYPE_PATTERN[t].match(attr['type']) for t in ('ENUM', 'TEMPORAL', 'STRING')),
                 is_blob=bool(TYPE_PATTERN['INTERNAL_BLOB'].match(attr['type'])),
                 uuid=False, is_attachment=False, is_filepath=False, adapter=None,
-                store=None, is_external=False, sql_expression=None)
+                store=None, is_external=False, attribute_expression=None)
 
             if any(TYPE_PATTERN[t].match(attr['type']) for t in ('INTEGER', 'FLOAT')):
                 attr['type'] = re.sub(r'\(\d+\)', '', attr['type'], count=1)  # strip size off integers and floats
@@ -293,7 +302,7 @@ class Heading:
                 # restore adapted type name
                 attr['type'] = adapter_name
 
-        self.attributes = OrderedDict(((q['name'], Attribute(**q)) for q in attributes))
+        self._attributes = OrderedDict(((q['name'], Attribute(**q)) for q in attributes))
 
         # Read and tabulate secondary indexes
         keys = defaultdict(dict)
@@ -309,32 +318,27 @@ class Heading:
                      nullable=any(v['nullable'] for v in item.values()))
             for item in keys.values()}
 
-    def project(self, attribute_list, named_attributes=None, force_primary_key=None):
+    def select(self, select_list, rename_map=None, compute_map=None):
         """
         derive a new heading by selecting, renaming, or computing attributes.
         In relational algebra these operators are known as project, rename, and extend.
-        :param attribute_list:  the full list of existing attributes to include
-        :param force_primary_key:  attributes to force to be converted to primary
-        :param named_attributes:  dictionary of renamed attributes
+        :param select_list:  the full list of existing attributes to include
+        :param rename_map:  dictionary of renamed attributes: keys=new names, values=old names
+        :param compute_map: a direction of computed attributes
+        This low-level method performs no error checking.
         """
-        try:  # check for missing attributes
-            raise DataJointError('Attribute `%s` is not found' % next(a for a in attribute_list if a not in self.names))
-        except StopIteration:
-            if named_attributes is None:
-                named_attributes = {}
-            if force_primary_key is None:
-                force_primary_key = set()
-            rename_map = {v: k for k, v in named_attributes.items() if v in self.attributes}
-
-            # copied and renamed attributes
-            copy_attrs = (dict(self.attributes[k].todict(),
-                               in_key=self.attributes[k].in_key or k in force_primary_key,
-                               **({'name': rename_map[k], 'sql_expression': '`%s`' % k} if k in rename_map else {}))
-                          for k in self.attributes if k in rename_map or k in attribute_list)
-            compute_attrs = (dict(default_attribute_properties, name=new_name, sql_expression=expr)
-                             for new_name, expr in named_attributes.items() if expr not in rename_map)
-
-            return Heading(chain(copy_attrs, compute_attrs))
+        rename_map = rename_map or {}
+        compute_map = compute_map or {}
+        copy_attrs = list()
+        for name in self.attributes:
+            if name in select_list:
+                copy_attrs.append(self.attributes[name].todict())
+            copy_attrs.extend((
+                dict(self.attributes[old_name].todict(), name=new_name, attribute_expression='`%s`' % old_name)
+                for new_name, old_name in rename_map.items() if old_name == name))
+        compute_attrs = (dict(default_attribute_properties, name=new_name, attribute_expression=expr)
+                         for new_name, expr in compute_map.items())
+        return Heading(chain(copy_attrs, compute_attrs))
 
     def join(self, other):
         """
@@ -347,20 +351,18 @@ class Heading:
             [self.attributes[name].todict() for name in self.secondary_attributes if name not in other.primary_key] +
             [other.attributes[name].todict() for name in other.secondary_attributes if name not in self.primary_key])
 
+    def set_primary_key(self, primary_key):
+        """
+        Create a new heading with the specified primary key.
+        This low-level method performs no error checking.
+        """
+        return Heading(chain(
+            (dict(self.attributes[name].todict(), in_key=True) for name in primary_key),
+            (dict(self.attributes[name].todict(), in_key=False) for name in self.names if name not in primary_key)))
+
     def make_subquery_heading(self):
         """
         Create a new heading with removed attribute sql_expressions.
         Used by subqueries, which resolve the sql_expressions.
         """
-        return Heading(dict(v.todict(), sql_expression=None) for v in self.attributes.values())
-
-    def extend_primary_key(self, new_attributes):
-        """
-        Create a new heading in which the primary key also includes new_attributes.
-        :param new_attributes: new attributes to be added to the primary key.
-        """
-        try:  # check for missing attributes
-            raise DataJointError('Attribute `%s` is not found' % next(a for a in new_attributes if a not in self.names))
-        except StopIteration:
-            return Heading(dict(v.todict(), in_key=v.in_key or v.name in new_attributes)
-                           for v in self.attributes.values())
+        return Heading(dict(v.todict(), attribute_expression=None) for v in self.attributes.values())

@@ -6,17 +6,25 @@ import numpy as np
 import pandas
 import logging
 import uuid
+import re
 from pathlib import Path
 from .settings import config
 from .declare import declare, alter
+from .condition import make_condition
 from .expression import QueryExpression
 from . import blob
 from .utils import user_choice
 from .heading import Heading
-from .errors import DuplicateError, AccessError, DataJointError, UnknownAttributeError
+from .errors import DuplicateError, AccessError, DataJointError, UnknownAttributeError, IntegrityError
 from .version import __version__ as version
 
 logger = logging.getLogger(__name__)
+
+foregn_key_error_regexp = re.compile(
+    r"[\w\s:]*\((?P<child>`[^`]+`.`[^`]+`), "
+    r"CONSTRAINT (?P<name>`[^`]+`) "
+    r"FOREIGN KEY \((?P<fk_attrs>[^)]+)\) "
+    r"REFERENCES (?P<parent>`[^`]+`(\.`[^`]+`)?) \((?P<pk_attrs>[^)]+)\)")
 
 
 class _RenameMap(tuple):
@@ -31,24 +39,21 @@ class Table(QueryExpression):
     table name, database, and definition.
     A Relation implements insert and delete methods in addition to inherited relational operators.
     """
-    _heading = None
+
+    _table_name = None  # must be defined in subclass
+    _log_ = None  # placeholder for the Log table object
+
+    # These properties must be set by the schema decorator (schemas.py) at class level or by FreeTable at instance level
     database = None
-    _log_ = None
     declaration_context = None
 
-    # -------------- required by QueryExpression ----------------- #
     @property
-    def heading(self):
-        """
-        Returns the table heading. If the table is not declared, attempts to declare it and return heading.
-        :return: table heading
-        """
-        if self._heading is None:
-            self._heading = Heading()  # instance-level heading
-        if not self._heading and self.connection is not None:  # lazy loading of heading
-            self._heading.init_from_database(
-                self.connection, self.database, self.table_name, self.declaration_context)
-        return self._heading
+    def table_name(self):
+        return self._table_name
+
+    @property
+    def definition(self):
+        raise NotImplementedError('Subclasses of Table must implement the `definition` property')
 
     def declare(self, context=None):
         """
@@ -76,8 +81,8 @@ class Table(QueryExpression):
         Alter the table definition from self.definition
         """
         if self.connection.in_transaction:
-            raise DataJointError('Cannot update table declaration inside a transaction, '
-                                 'e.g. from inside a populate/make call')
+            raise DataJointError(
+                'Cannot update table declaration inside a transaction, e.g. from inside a populate/make call')
         if context is None:
             frame = inspect.currentframe().f_back
             context = dict(frame.f_globals, **frame.f_locals)
@@ -99,11 +104,11 @@ class Table(QueryExpression):
                     # skip if no create privilege
                     pass
                 else:
+                    self.__class__._heading = Heading(table_info=self.heading.table_info)  # reset heading
                     if prompt:
                         print('Table altered')
                     self._log('Altered ' + self.full_table_name)
 
-    @property
     def from_clause(self):
         """
         :return: the FROM clause of SQL SELECT statements.
@@ -116,29 +121,55 @@ class Table(QueryExpression):
         """
         return '*' if select_fields is None else self.heading.project(select_fields).as_sql
 
-    def parents(self, primary=None):
+    def parents(self, primary=None, as_objects=False):
         """
         :param primary: if None, then all parents are returned. If True, then only foreign keys composed of
             primary key attributes are considered.  If False, the only foreign keys including at least one non-primary
             attribute are considered.
-        :return: dict of tables referenced with self's foreign keys
+        :param as_objects: if False (default), the output is a dict describing the foreign keys. If True, return table objects.
+        :return: dict of tables referenced with self's foreign keys  or list of table objects if as_objects=True
         """
-        return self.connection.dependencies.parents(self.full_table_name, primary)
+        parents = self.connection.dependencies.parents(self.full_table_name, primary)
+        if as_objects:
+            parents = [FreeTable(self.connection, c) for c in parents]
+        return parents
 
-    def children(self, primary=None):
+    def children(self, primary=None, as_objects=False):
         """
         :param primary: if None, then all children are returned. If True, then only foreign keys composed of
             primary key attributes are considered.  If False, the only foreign keys including at least one non-primary
             attribute are considered.
-        :return: dict of tables with foreign keys referencing self
+        :param as_objects: if False (default), the output is a dict describing the foreign keys. If True, return table objects.
+        :return: dict of tables with foreign keys referencing self or list of table objects if as_objects=True
         """
-        return self.connection.dependencies.children(self.full_table_name, primary)
+        nodes = dict((next(iter(self.connection.dependencies.children(k).items())) if k.isdigit() else (k, v))
+                     for k, v in self.connection.dependencies.children(self.full_table_name, primary).items())
+        if as_objects:
+            nodes = [FreeTable(self.connection, c) for c in nodes]
+        return nodes
 
-    def descendants(self):
-        return self.connection.dependencies.descendants(self.full_table_name)
+    def descendants(self, as_objects=False):
+        nodes = [node for node in self.connection.dependencies.descendants(self.full_table_name) if not node.isdigit()]
+        if as_objects:
+            nodes = [FreeTable(self.connection, c) for c in nodes]
+        return nodes
 
-    def ancestors(self):
-        return self.connection.dependencies.ancestors(self.full_table_name)
+    def parts(self, as_objects=False):
+        """
+        return part tables either as entries in a dict with foreign key informaiton or a list of objects
+        :param as_objects: if False (default), the output is a dict describing the foreign keys. If True, return table objects.
+        """
+        nodes = [node for node in self.connection.dependencies.nodes
+                 if not node.isdigit() and node.startswith(self.full_table_name[:-1] + '__')]
+        if as_objects:
+            nodes = [FreeTable(self.connection, c) for c in nodes]
+        return nodes
+
+    def ancestors(self, as_objects=False):
+        nodes = [node for node in self.connection.dependencies.ancestors(self.full_table_name) if not node.isdigit()]
+        if as_objects:
+            nodes = [FreeTable(self.connection, c) for c in nodes]
+        return nodes
 
     @property
     def is_declared(self):
@@ -168,7 +199,7 @@ class Table(QueryExpression):
 
     def update1(self, row):
         """
-        Update an existing entry in the table.
+        update1 updates one existing entry in the table.
         Caution: Updates are not part of the DataJoint data manipulation model. For strict data integrity,
         use delete and insert.
         :param row: a dict containing the primary key and the attributes to update.
@@ -197,7 +228,7 @@ class Table(QueryExpression):
         query = "UPDATE {table} SET {assignments} WHERE {where}".format(
             table=self.full_table_name,
             assignments=",".join('`%s`=%s' % r[:2] for r in row),
-            where=self._make_condition(key))
+            where=make_condition(self, key, set()))
         self.connection.query(query, args=list(r[2] for r in row if r[2] is not None))
 
     def insert1(self, row, **kwargs):
@@ -255,7 +286,7 @@ class Table(QueryExpression):
                 command='REPLACE' if replace else 'INSERT',
                 fields='`' + '`,`'.join(fields) + '`',
                 table=self.full_table_name,
-                select=rows.make_sql(select_fields=fields),
+                select=rows.make_sql(fields),
                 duplicate=(' ON DUPLICATE KEY UPDATE `{pk}`={table}.`{pk}`'.format(
                     table=self.full_table_name, pk=self.primary_key[0])
                            if skip_duplicates else ''))
@@ -268,7 +299,7 @@ class Table(QueryExpression):
             try:
                 query = "{command} INTO {destination}(`{fields}`) VALUES {placeholders}{duplicate}".format(
                     command='REPLACE' if replace else 'INSERT',
-                    destination=self.from_clause,
+                    destination=self.from_clause(),
                     fields='`,`'.join(field_list),
                     placeholders=','.join('(' + ','.join(row['placeholders']) + ')' for row in rows),
                     duplicate=(' ON DUPLICATE KEY UPDATE `{pk}`=`{pk}`'.format(pk=self.primary_key[0])
@@ -291,89 +322,81 @@ class Table(QueryExpression):
         self._log(query[:255])
         return count
 
-    def delete(self, verbose=True):
+    def _delete_cascade(self):
+        """service function to perform cascading deletes recursively."""
+        max_attempts = 50
+        delete_count = 0
+        for _ in range(max_attempts):
+            try:
+                delete_count += self.delete_quick(get_count=True)
+            except IntegrityError as error:
+                match = foregn_key_error_regexp.match(error.args[0])
+                assert match is not None, "foreign key parsing error"
+                # restrict child by self if
+                # 1. if self's restriction attributes are not in child's primary key
+                # 2. if child renames any attributes
+                # otherwise restrict by self's restriction.
+                child = match.group('child')
+                if "`.`" not in child:  # if schema name is not included, take it from self
+                    child = self.full_table_name.split("`.")[0] + child
+                child = FreeTable(self.connection, child)
+                if set(self.restriction_attributes) <= set(child.primary_key) and \
+                        match.group('fk_attrs') == match.group('pk_attrs'):
+                    child._restriction = self._restriction
+                elif match.group('fk_attrs') != match.group('pk_attrs'):
+                    fk_attrs = [k.strip('`') for k in match.group('fk_attrs').split(',')]
+                    pk_attrs = [k.strip('`') for k in match.group('pk_attrs').split(',')]
+                    child &= self.proj(**dict(zip(fk_attrs, pk_attrs)))
+                else:
+                    child &= self.proj()
+                delete_count += child._delete_cascade()
+            else:
+                print("Deleting {count} rows from {table}".format(
+                    count=delete_count, table=self.full_table_name))
+                break
+        else:
+            raise DataJointError('Exceeded maximum number of delete attempts.')
+        return delete_count
+
+    def delete(self, transaction=True, safemode=None):
         """
         Deletes the contents of the table and its dependent tables, recursively.
-        User is prompted for confirmation if config['safemode'] is set to True.
+        :param transaction: if True, use the entire delete becomes an atomic transaction.
+        :param safemode: If True, prohibit nested transactions and prompt to confirm. Default is dj.config['safemode'].
         """
-        conn = self.connection
-        already_in_transaction = conn.in_transaction
-        safe = config['safemode']
-        if already_in_transaction and safe:
-            raise DataJointError('Cannot delete within a transaction in safemode. '
-                                 'Set dj.config["safemode"] = False or complete the ongoing transaction first.')
-        graph = conn.dependencies
-        graph.load()
-        delete_list = collections.OrderedDict(
-            (name, _RenameMap(next(iter(graph.parents(name).items()))) if name.isdigit() else FreeTable(conn, name))
-            for name in graph.descendants(self.full_table_name))
+        safemode = safemode or config['safemode']
 
-        # construct restrictions for each relation
-        restrict_by_me = set()
-        # restrictions: Or-Lists of restriction conditions for each table.
-        # Uncharacteristically of Or-Lists, an empty entry denotes "delete everything".
-        restrictions = collections.defaultdict(list)
-        # restrict by self
-        if self.restriction:
-            restrict_by_me.add(self.full_table_name)
-            restrictions[self.full_table_name].append(self.restriction)  # copy own restrictions
-        # restrict by renamed nodes
-        restrict_by_me.update(table for table in delete_list if table.isdigit())  # restrict by all renamed nodes
-        # restrict by secondary dependencies
-        for table in delete_list:
-            restrict_by_me.update(graph.children(table, primary=False))   # restrict by any non-primary dependents
-
-        # compile restriction lists
-        for name, table in delete_list.items():
-            for dep in graph.children(name):
-                # if restrict by me, then restrict by the entire relation otherwise copy restrictions
-                restrictions[dep].extend([table] if name in restrict_by_me else restrictions[name])
-
-        # apply restrictions
-        for name, table in delete_list.items():
-            if not name.isdigit() and restrictions[name]:  # do not restrict by an empty list
-                table.restrict([
-                    r.proj() if isinstance(r, FreeTable) else (
-                        delete_list[r[0]].proj(**{a: b for a, b in r[1]['attr_map'].items()})
-                        if isinstance(r, _RenameMap) else r)
-                    for r in restrictions[name]])
-        if safe:
-            print('About to delete:')
-
-        if not already_in_transaction:
-            conn.start_transaction()
-        total = 0
-        try:
-            for name, table in reversed(list(delete_list.items())):
-                if not name.isdigit():
-                    count = table.delete_quick(get_count=True)
-                    total += count
-                    if (verbose or safe) and count:
-                        print('{table}: {count} items'.format(table=name, count=count))
-        except:
-            # Delete failed, perhaps due to insufficient privileges. Cancel transaction.
-            if not already_in_transaction:
-                conn.cancel_transaction()
-            raise
-        else:
-            assert not (already_in_transaction and safe)
-            if not total:
-                print('Nothing to delete')
-                if not already_in_transaction:
-                    conn.cancel_transaction()
+        # Start transaction
+        if transaction:
+            if not self.connection.in_transaction:
+                self.connection.start_transaction()
             else:
-                if already_in_transaction:
-                    if verbose:
-                        print('The delete is pending within the ongoing transaction.')
+                if not safemode:
+                    transaction = False
                 else:
-                    if not safe or user_choice("Proceed?", default='no') == 'yes':
-                        conn.commit_transaction()
-                        if verbose or safe:
-                            print('Committed.')
-                    else:
-                        conn.cancel_transaction()
-                        if verbose or safe:
-                            print('Cancelled deletes.')
+                    raise DataJointError(
+                        "Delete cannot use a transaction within an ongoing transaction. "
+                        "Set transaction=False or safemode=False).")
+        # Cascading delete
+        try:
+            delete_count = self._delete_cascade()
+        except:
+            if transaction:
+                self.connection.cancel_transaction()
+            raise
+        if delete_count == 0 and safemode:
+            print('Nothing to delete.')
+
+        # Confirm and commit
+        if transaction:
+            if not safemode or user_choice("Commit deletes?", default='no') == 'yes':
+                self.connection.commit_transaction()
+                if safemode:
+                    print('Deletes committed.')
+            else:
+                self.connection.cancel_transaction()
+                if safemode:
+                    print('Deletes cancelled')
 
     def drop_quick(self):
         """
@@ -434,8 +457,8 @@ class Table(QueryExpression):
             self.connection.dependencies.load()
         parents = self.parents()
         in_key = True
-        definition = ('# ' + self.heading.table_info['comment'] + '\n'
-                      if self.heading.table_info['comment'] else '')
+        definition = ('# ' + self.heading.table_status['comment'] + '\n'
+                      if self.heading.table_status['comment'] else '')
         attributes_thus_far = set()
         attributes_declared = set()
         indexes = self.heading.indexes.copy()
@@ -490,6 +513,8 @@ class Table(QueryExpression):
 
     def _update(self, attrname, value=None):
         """
+            This is a deprecated function to be removed in datajoint 0.14. Use .update1 instead.
+
             Updates a field in an existing tuple. This is not a datajoyous operation and should not be used
             routinely. Relational database maintain referential integrity on the level of a tuple. Therefore,
             the UPDATE operator can violate referential integrity. The datajoyous way to update information is
@@ -500,8 +525,8 @@ class Table(QueryExpression):
                2. the update attribute must not be in primary key
 
             Example:
-            >>> (v2p.Mice() & key).update('mouse_dob', '2011-01-01')
-            >>> (v2p.Mice() & key).update( 'lens')   # set the value to NULL
+            >>> (v2p.Mice() & key)._update('mouse_dob', '2011-01-01')
+            >>> (v2p.Mice() & key)._update( 'lens')   # set the value to NULL
         """
         if len(self) != 1:
             raise DataJointError('Update is only allowed on one tuple at a time')
@@ -525,7 +550,7 @@ class Table(QueryExpression):
         else:
             placeholder = '%s' if value is not None else 'NULL'
         command = "UPDATE {full_table_name} SET `{attrname}`={placeholder} {where_clause}".format(
-            full_table_name=self.from_clause,
+            full_table_name=self.from_clause(),
             attrname=attrname,
             placeholder=placeholder,
             where_clause=self.where_clause)
@@ -672,29 +697,21 @@ class FreeTable(Table):
     """
     A base relation without a dedicated class. Each instance is associated with a table
     specified by full_table_name.
-    :param arg:  a dj.Connection or a dj.FreeTable
+    :param conn:  a dj.Connection object
+    :param full_table_name: in format `database`.`table_name`
     """
-
-    def __init__(self, arg, full_table_name=None):
-        super().__init__()
-        if isinstance(arg, FreeTable):
-            # copy constructor
-            self.database = arg.database
-            self._table_name = arg._table_name
-            self._connection = arg._connection
-        else:
-            self.database, self._table_name = (s.strip('`') for s in full_table_name.split('.'))
-            self._connection = arg
+    def __init__(self, conn, full_table_name):
+        self.database, self._table_name = (s.strip('`') for s in full_table_name.split('.'))
+        self._connection = conn
+        self._support = [full_table_name]
+        self._heading = Heading(table_info=dict(
+            conn=conn,
+            database=self.database,
+            table_name=self.table_name,
+            context=None))
 
     def __repr__(self):
-        return "FreeTable(`%s`.`%s`)" % (self.database, self._table_name)
-
-    @property
-    def table_name(self):
-        """
-        :return: the table name in the schema
-        """
-        return self._table_name
+        return "FreeTable(`%s`.`%s`)\n" % (self.database, self._table_name) + super().__repr__()
 
 
 class Log(Table):
@@ -704,21 +721,20 @@ class Log(Table):
     :param skip_logging: if True, then log entry is skipped by default. See __call__
     """
 
-    def __init__(self, arg, database=None, skip_logging=False):
-        super().__init__()
+    _table_name = '~log'
 
-        if isinstance(arg, Log):
-            # copy constructor
-            self.database = arg.database
-            self.skip_logging = arg.skip_logging
-            self._connection = arg._connection
-            self._definition = arg._definition
-            self._user = arg._user
-            return
-
+    def __init__(self, conn, database, skip_logging=False):
         self.database = database
         self.skip_logging = skip_logging
-        self._connection = arg
+        self._connection = conn
+        self._heading = Heading(table_info=dict(
+            conn=conn,
+            database=database,
+            table_name=self.table_name,
+            context=None
+        ))
+        self._support = [self.full_table_name]
+
         self._definition = """    # event logging table for `{database}`
         id       :int unsigned auto_increment     # event order id
         ---
@@ -729,17 +745,16 @@ class Log(Table):
         event="" :varchar(255)                    # event message
         """.format(database=database)
 
+        super().__init__()
+
         if not self.is_declared:
             self.declare()
+            self.connection.dependencies.clear()
         self._user = self.connection.get_user()
 
     @property
     def definition(self):
         return self._definition
-
-    @property
-    def table_name(self):
-        return '~log'
 
     def __call__(self, event, skip_logging=None):
         """

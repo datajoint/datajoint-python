@@ -13,6 +13,7 @@ def setUp(self):
 
 def test_path_match(store="repo"):
     """ test file path matches and empty file"""
+    dj.errors._switch_filepath_types(True)
     ext = schema.external[store]
     stage_path = dj.config['stores'][store]['stage']
 
@@ -25,11 +26,11 @@ def test_path_match(store="repo"):
     # put the file
     uuid = ext.upload_filepath(str(managed_file))
 
-    #remove
+    # remove
     managed_file.unlink()
     assert_false(managed_file.exists())
 
-    #check filepath
+    # check filepath
     assert_equal(
         (ext & {'hash': uuid}).fetch1('filepath'),
         str(managed_file.relative_to(stage_path).as_posix()))
@@ -41,10 +42,13 @@ def test_path_match(store="repo"):
 
     # cleanup
     ext.delete(delete_external_files=True)
+    dj.errors._switch_filepath_types(False)
 
 
 def test_filepath(store="repo"):
     """ test file management """
+    dj.errors._switch_filepath_types(True)
+
     ext = schema.external[store]
     stage_path = dj.config['stores'][store]['stage']
     filename = 'picture.dat'
@@ -81,6 +85,8 @@ def test_filepath(store="repo"):
     # cleanup
     ext.delete(delete_external_files=True)
     assert_false(ext.exists(ext._make_external_filepath(str(Path(relpath, filename)))))
+
+    dj.errors._switch_filepath_types(False)
 
 
 def test_filepath_s3():

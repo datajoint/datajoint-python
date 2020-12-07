@@ -75,7 +75,8 @@ services:
     command: >
       /bin/sh -c
        "
-        pip install --user nose nose-cov coveralls .;
+        pip install --user -r test_requirements.txt;
+        pip install --user .;
         pip freeze | grep datajoint;
         nosetests -vsw tests --with-coverage --cover-package=datajoint && coveralls;
         # jupyter notebook;

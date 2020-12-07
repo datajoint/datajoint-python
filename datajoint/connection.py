@@ -40,6 +40,8 @@ def translate_query_error(client_error, query):
     # Integrity errors
     if err == 1062:
         return errors.DuplicateError(*args)
+    if err == 1451:
+        return errors.IntegrityError(*args)
     if err == 1452:
         return errors.IntegrityError(*args)
     # Syntax errors
@@ -123,7 +125,7 @@ class Connection:
             logger.info("Connected {user}@{host}:{port}".format(**self.conn_info))
             self.connection_id = self.query('SELECT connection_id()').fetchone()[0]
         else:
-            raise errors.ConnectionError('Connection failed.')
+            raise errors.LostConnectionError('Connection failed.')
         self._in_transaction = False
         self.schemas = dict()
         self.dependencies = Dependencies(self)
@@ -166,6 +168,7 @@ class Connection:
 
     def register(self, schema):
         self.schemas[schema.database] = schema
+        self.dependencies.clear()
 
     def ping(self):
         """
