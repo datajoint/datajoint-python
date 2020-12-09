@@ -290,7 +290,8 @@ class Schema:
 
     def list_tables(self):
         """
-        Return a list of all tables in the schema except tables with ~ in first character such as ~logs
+        Return a list of all tables in the schema except tables with ~ in first character such
+        as ~logs and ~job
         :return: A list of table names in their raw datajoint naming convection form
         """
 
