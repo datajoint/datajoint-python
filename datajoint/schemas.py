@@ -294,8 +294,9 @@ class Schema:
         :return: A list of table names in their raw datajoint naming convection form
         """
 
-        query_result = self.connection.query('SELECT table_name FROM information_schema.tables WHERE table_schema = \'' + self.database + '\'').fetchall()
-        return [table_name_tuple[0] for table_name_tuple in query_result if '~' != table_name_tuple[0][0]]
+        return [table_name for (table_name,) in self.connection.query("""
+            SELECT table_name FROM information_schema.tables
+            WHERE table_schema = %s and table_name NOT LIKE '~%%'""", args=(self.database))]
         
 
 class VirtualModule(types.ModuleType):
