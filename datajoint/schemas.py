@@ -288,6 +288,15 @@ class Schema:
             with open(python_filename, 'wt') as f:
                 f.write(python_code)
 
+    def list_tables(self):
+        """
+        Return a list of all tables in the schema except tables with ~ in first character such as ~logs
+        :return: A list of table names in their raw datajoint naming convection form
+        """
+
+        query_result = self.connection.query('SELECT table_name FROM information_schema.tables WHERE table_schema = \'' + self.database + '\'').fetchall()
+        return [table_name_tuple[0] for table_name_tuple in query_result if '~' != table_name_tuple[0][0]]
+        
 
 class VirtualModule(types.ModuleType):
     """
