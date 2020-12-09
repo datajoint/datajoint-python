@@ -101,6 +101,12 @@ class EmulatedCursor:
         self._data = data
         self._iter = iter(self._data)
 
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return next(self._iter)
+
     def fetchall(self):
         return self._data
 
@@ -136,7 +142,7 @@ class Connection:
         self.init_fun = init_fun
         print("Connecting {user}@{host}:{port}".format(**self.conn_info))
         self._conn = None
-        self._cache = None
+        self._query_cache = None
         self.connect()
         if self.is_connected:
             logger.info("Connected {user}@{host}:{port}".format(**self.conn_info))
@@ -178,8 +184,15 @@ class Connection:
                               k == 'ssl' and self.conn_info['ssl_input'] is None)})
         self._conn.autocommit(True)
 
-    def set_cache(self, cache):
-        self._cache = cache
+    def set_query_cache(self, query_cache):
+        """
+        When query_cache is not None, the connection switches into the query caching mode, which entails:
+        1. Only SELECT queries are allowed.
+        2. The results of queries are cached under the path indicated by dj.config['query_cache']
+        3. query_cache is a string that differentiates different cache states.
+        :param query_cache: a string to initialize the hash for query results
+        """
+        self._query_cache = query_cache
 
     def close(self):
         self._conn.close()
@@ -223,13 +236,13 @@ class Connection:
         :param reconnect: when None, get from config, when True, attempt to reconnect if disconnected
         """
         # check cache first:
-        use_cache = bool(self._cache)
-        if use_cache and not query.startswith("SELECT"):
+        use_query_cache = bool(self._query_cache)
+        if use_query_cache and not re.match(r"\s*(SELECT|SHOW)", query):
             raise errors.DataJointError("Only SELECT query are allowed when query caching is on.")
-        if use_cache:
+        if use_query_cache:
             if not config['query_cache']:
                 raise errors.DataJointError("Provide filepath dj.config['query_cache'] when using query caching.")
-            hash_ = uuid_from_buffer((str(self._cache) + re.sub(r'`\$\w+`', '', query)).encode() + pack(args))
+            hash_ = uuid_from_buffer((str(self._query_cache) + re.sub(r'`\$\w+`', '', query)).encode() + pack(args))
             cache_path = pathlib.Path(config['query_cache']) / str(hash_)
             try:
                 buffer = cache_path.read_bytes()
@@ -257,7 +270,7 @@ class Connection:
             cursor = self._conn.cursor(cursor=cursor_class)
             self._execute_query(cursor, query, args, suppress_warnings)
 
-        if use_cache:
+        if use_query_cache:
             data = cursor.fetchall()
             cache_path.write_bytes(pack(data))
             return EmulatedCursor(data)
