@@ -136,8 +136,9 @@ def setup_package():
     region = "us-east-1"
     try:
         minioClient.make_bucket(S3_MIGRATE_BUCKET, location=region)
-    except minio.error.S3Error:
-        pass
+    except minio.error.S3Error as e:
+        if e.code != 'BucketAlreadyOwnedByYou':
+            raise e
 
     pathlist = Path(source).glob('**/*')
     for path in pathlist:
@@ -149,8 +150,9 @@ def setup_package():
     # Add S3
     try:
         minioClient.make_bucket(S3_CONN_INFO['bucket'], location=region)
-    except minio.error.S3Error:
-        pass
+    except minio.error.S3Error as e:
+        if e.code != 'BucketAlreadyOwnedByYou':
+            raise e
 
     # Add old File Content
     try:
