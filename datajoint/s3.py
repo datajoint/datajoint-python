@@ -37,8 +37,11 @@ class Folder:
         logger.debug('get: {}:{}'.format(self.bucket, name))
         try:
             return self.client.get_object(self.bucket, str(name)).data
-        except minio.error.NoSuchKey:
-            raise errors.MissingExternalFile('Missing s3 key %s' % name) from None
+        except minio.error.S3Error as e:
+            if e.code == 'NoSuchKey':
+                raise errors.MissingExternalFile('Missing s3 key %s' % name) from None
+            else:
+                raise e
 
     def fget(self, name, local_filepath):
         """get file from object name to local filepath"""
@@ -59,16 +62,22 @@ class Folder:
         logger.debug('exists: {}:{}'.format(self.bucket, name))
         try:
             self.client.stat_object(self.bucket, str(name))
-        except minio.error.NoSuchKey:
-            return False
+        except minio.error.S3Error as e:
+            if e.code == 'NoSuchKey':
+                return False
+            else:
+                raise e
         return True
 
     def get_size(self, name):
         logger.debug('get_size: {}:{}'.format(self.bucket, name))
         try:
             return self.client.stat_object(self.bucket, str(name)).size
-        except minio.error.NoSuchKey:
-            raise errors.MissingExternalFile from None
+        except minio.error.S3Error as e:
+            if e.code == 'NoSuchKey':
+                raise errors.MissingExternalFile from None
+            else:
+                raise e
 
     def remove_object(self, name):
         logger.debug('remove_object: {}:{}'.format(self.bucket, name))
