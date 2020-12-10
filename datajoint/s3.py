@@ -78,7 +78,7 @@ class Folder:
                 raise errors.MissingExternalFile from None
             else:
                 raise e
-            
+  
     def remove_object(self, name):
         logger.debug('remove_object: {}:{}'.format(self.bucket, name))
         try:
