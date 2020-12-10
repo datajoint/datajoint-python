@@ -136,8 +136,7 @@ def setup_package():
     region = "us-east-1"
     try:
         minioClient.make_bucket(S3_MIGRATE_BUCKET, location=region)
-    except Exception as e:
-        print(e)
+    except minio.error.S3Error:
         pass
 
     pathlist = Path(source).glob('**/*')
@@ -150,8 +149,7 @@ def setup_package():
     # Add S3
     try:
         minioClient.make_bucket(S3_CONN_INFO['bucket'], location=region)
-    except Exception as e:
-        print(e)
+    except minio.error.S3Error:
         pass
 
     # Add old File Content
