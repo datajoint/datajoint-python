@@ -37,8 +37,7 @@ class Folder:
         logger.debug('get: {}:{}'.format(self.bucket, name))
         try:
             return self.client.get_object(self.bucket, str(name)).data
-        except Exception as e:
-            print(e)
+        except minio.error.S3Error:
             raise errors.MissingExternalFile('Missing s3 key %s' % name) from None
 
     def fget(self, name, local_filepath):
@@ -60,8 +59,7 @@ class Folder:
         logger.debug('exists: {}:{}'.format(self.bucket, name))
         try:
             self.client.stat_object(self.bucket, str(name))
-        except Exception as e:
-            print(e)
+        except minio.error.S3Error:
             return False
         return True
 
@@ -69,8 +67,7 @@ class Folder:
         logger.debug('get_size: {}:{}'.format(self.bucket, name))
         try:
             return self.client.stat_object(self.bucket, str(name)).size
-        except Exception as e:
-            print(e)
+        except minio.error.S3Error:
             raise errors.MissingExternalFile from None
 
     def remove_object(self, name):
