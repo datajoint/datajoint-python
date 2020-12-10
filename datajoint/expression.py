@@ -538,7 +538,7 @@ class Aggregation(QueryExpression):
     def __len__(self):
         what = '*' if set(self.heading.names) != set(self.primary_key) else 'DISTINCT `%s`' % '`,`'.join(self.primary_key)
         return self.connection.query(
-            'SELECT count({what}) FROM ({subquery}) as `_r{alias:x}`'.format(
+            'SELECT count({what}) FROM ({subquery}) as `${alias:x}`'.format(
                 what=what,
                 subquery=self.make_sql(),
                 alias=next(self.__subquery_alias_count))).fetchone()[0]
