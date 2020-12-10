@@ -138,7 +138,6 @@ def setup_package():
         minioClient.make_bucket(S3_MIGRATE_BUCKET, location=region)
     except Exception as e:
         print(e)
-        print('Minio make_bucket failed')
         pass
 
     pathlist = Path(source).glob('**/*')
@@ -153,7 +152,6 @@ def setup_package():
         minioClient.make_bucket(S3_CONN_INFO['bucket'], location=region)
     except Exception as e:
         print(e)
-        print('Minio make_bucket failed')
         pass
 
     # Add old File Content

@@ -38,6 +38,7 @@ class Folder:
         try:
             return self.client.get_object(self.bucket, str(name)).data
         except Exception as e:
+            print(e)
             raise errors.MissingExternalFile('Missing s3 key %s' % name) from None
 
     def fget(self, name, local_filepath):
@@ -69,6 +70,7 @@ class Folder:
         try:
             return self.client.stat_object(self.bucket, str(name)).size
         except Exception as e:
+            print(e)
             raise errors.MissingExternalFile from None
 
     def remove_object(self, name):
