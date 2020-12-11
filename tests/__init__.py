@@ -136,8 +136,9 @@ def setup_package():
     region = "us-east-1"
     try:
         minioClient.make_bucket(S3_MIGRATE_BUCKET, location=region)
-    except minio.error.BucketAlreadyOwnedByYou:
-        pass
+    except minio.error.S3Error as e:
+        if e.code != 'BucketAlreadyOwnedByYou':
+            raise e
 
     pathlist = Path(source).glob('**/*')
     for path in pathlist:
@@ -149,8 +150,9 @@ def setup_package():
     # Add S3
     try:
         minioClient.make_bucket(S3_CONN_INFO['bucket'], location=region)
-    except minio.error.BucketAlreadyOwnedByYou:
-        pass
+    except minio.error.S3Error as e:
+        if e.code != 'BucketAlreadyOwnedByYou':
+            raise e
 
     # Add old File Content
     try:
@@ -179,14 +181,14 @@ def teardown_package():
         remove("dj_local_conf.json")
 
     # Remove old S3
-    objs = list(minioClient.list_objects_v2(
+    objs = list(minioClient.list_objects(
             S3_MIGRATE_BUCKET, recursive=True))
     objs = [minioClient.remove_object(S3_MIGRATE_BUCKET,
             o.object_name.encode('utf-8')) for o in objs]
     minioClient.remove_bucket(S3_MIGRATE_BUCKET)
 
     # Remove S3
-    objs = list(minioClient.list_objects_v2(S3_CONN_INFO['bucket'], recursive=True))
+    objs = list(minioClient.list_objects(S3_CONN_INFO['bucket'], recursive=True))
     objs = [minioClient.remove_object(S3_CONN_INFO['bucket'],
             o.object_name.encode('utf-8')) for o in objs]
     minioClient.remove_bucket(S3_CONN_INFO['bucket'])

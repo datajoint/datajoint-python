@@ -235,7 +235,6 @@ class Table(QueryExpression):
     def insert(self, rows, replace=False, skip_duplicates=False, ignore_extra_fields=False, allow_direct_insert=None):
         """
         Insert a collection of rows.
-
         :param rows: An iterable where an element is a numpy record, a dict-like object, a pandas.DataFrame, a sequence,
             or a query expression with the same heading as table self.
         :param replace: If True, replaces the existing tuple.
@@ -243,13 +242,11 @@ class Table(QueryExpression):
         :param ignore_extra_fields: If False, fields that are not in the heading raise error.
         :param allow_direct_insert: applies only in auto-populated tables.
                                     If False (default), insert are allowed only from inside the make callback.
-
         Example::
         >>> relation.insert([
         >>>     dict(subject_id=7, species="mouse", date_of_birth="2014-09-01"),
         >>>     dict(subject_id=8, species="mouse", date_of_birth="2014-09-02")])
         """
-
         if isinstance(rows, pandas.DataFrame):
             # drop 'extra' synthetic index for 1-field index case -
             # frames with more advanced indices should be prepared by user.

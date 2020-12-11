@@ -6,5 +6,10 @@ pandas
 tqdm
 networkx
 pydot
+<<<<<<< HEAD
 minio
 matplotlib
+=======
+minio>=7.0.0
+matplotlib
+>>>>>>> master

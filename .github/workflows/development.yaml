@@ -1,0 +1,53 @@
+name: Development
+on:
+  push:
+    branches:
+      - '**' # every branch
+      - '!stage*' # exclude branches beginning with stage
+  pull_request:
+    branches:
+      - '**' # every branch
+      - '!stage*' # exclude branches beginning with stage
+jobs:
+  test:
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        py_ver: ["3.8"]
+        mysql_ver: ["8.0", "5.7", "5.6"]
+        include:
+          - py_ver: "3.7"
+            mysql_ver: "5.7"
+          - py_ver: "3.6"
+            mysql_ver: "5.7"
+          - py_ver: "3.5"
+            mysql_ver: "5.7"
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{matrix.py_ver}}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{matrix.py_ver}}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8
+      - name: Run syntax tests
+        run: flake8 datajoint --count --select=E9,F63,F7,F82 --show-source --statistics
+      - name: Run primary tests
+        env:
+          UID: "1001"
+          GID: "116"
+          PY_VER: ${{matrix.py_ver}}
+          MYSQL_VER: ${{matrix.mysql_ver}}
+          ALPINE_VER: "3.10"
+          MINIO_VER: RELEASE.2019-09-26T19-42-35Z
+          COMPOSE_HTTP_TIMEOUT: "120"
+          COVERALLS_SERVICE_NAME: travis-ci
+          COVERALLS_REPO_TOKEN: fd0BoXG46TPReEem0uMy7BJO5j0w1MQiY
+        run: docker-compose -f LNX-docker-compose.yml up --build --exit-code-from app
+      - name: Run style tests
+        run: |
+          flake8 --ignore=E121,E123,E126,E226,E24,E704,W503,W504,E722,F401,W605 datajoint \
+                 --count --max-complexity=62 --max-line-length=127 --statistics
