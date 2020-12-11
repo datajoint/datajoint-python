@@ -266,7 +266,6 @@ class Table(QueryExpression):
             :param row:  A tuple to insert
             :return: a dict with fields 'names', 'placeholders', 'values'
             """
-
             def make_placeholder(name, value):
                 """
                 For a given attribute `name` with `value`, return its processed value or value placeholder

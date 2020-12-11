@@ -258,7 +258,7 @@ class Schema:
             class_name = table.split('.')[1].strip('`')
             indent = ''
             if tier == 'Part':
-                class_name = class_name.split('__')[1]
+                class_name = class_name.split('__')[-1]
                 indent += '    '
             class_name = to_camel_case(class_name)
 
