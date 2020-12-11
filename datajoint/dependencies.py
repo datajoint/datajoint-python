@@ -1,7 +1,29 @@
 import networkx as nx
 import itertools
+import re
 from collections import defaultdict, OrderedDict
 from .errors import DataJointError
+
+
+def unite_master_parts(lst):
+    """
+    reorder a list of tables names so that part tables immediately follow their master tables without breaking
+    the topological order.
+    Without this correction, a simple topological sort may insert other descendants between master and parts
+    :example:
+    _unite(['`s`.`a`', '`s`.`a__q`', '`s`.`b`', '`s`.`c`', '`s`.`c__q`', '`s`.`b__q`', '`s`.`d`', '`s`.`a__r`'])
+    -> ['`s`.`a`', '`s`.`a__q`', '`s`.`a__r`', '`s`.`b`', '`s`.`b__q`', '`s`.`c`', '`s`.`c__q`', '`s`.`d`']
+    """
+    if len(lst) <= 2:
+        return lst
+    el = lst.pop()
+    lst = unite_master_parts(lst)
+    match = re.match(r'(?P<master>`\w+`.`\w+)__\w+`', el)
+    if match:
+        master = match.group('master')
+        if not lst[-1].startswith(master):
+            return unite_master_parts(lst[:-1] + [el, lst[-1]])
+    return lst + [el]
 
 
 class Dependencies(nx.DiGraph):
@@ -118,8 +140,8 @@ class Dependencies(nx.DiGraph):
         self.load(force=False)
         nodes = self.subgraph(
             nx.algorithms.dag.descendants(self, full_table_name))
-        return [full_table_name] + list(
-            nx.algorithms.dag.topological_sort(nodes))
+        return unite_master_parts([full_table_name] + list(
+            nx.algorithms.dag.topological_sort(nodes)))
 
     def ancestors(self, full_table_name):
         """
@@ -129,5 +151,5 @@ class Dependencies(nx.DiGraph):
         self.load(force=False)
         nodes = self.subgraph(
             nx.algorithms.dag.ancestors(self, full_table_name))
-        return [full_table_name] + list(reversed(list(
-            nx.algorithms.dag.topological_sort(nodes))))
+        return unite_master_parts(list(reversed(list(
+            nx.algorithms.dag.topological_sort(nodes)))) + [full_table_name])
