@@ -1,7 +1,10 @@
 ## Release notes
 
-### 0.12.8 -- Nov 30, 2020
+### 0.12.8 -- Dec 14, 2020
 * table.children, .parents, .descendents, and ancestors can return queryable objects. PR #833
+* Fix display of part tables in `schema.save` (#821). PR #833
+* Add `schema.list_tables` (
+* Fix minio new version regression.  PR #847
  
 ### 0.12.7 -- Oct 27, 2020
 * Fix case sensitivity issues to adapt to MySQL 8+.  PR #819
