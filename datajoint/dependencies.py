@@ -11,19 +11,24 @@ def unite_master_parts(lst):
     the topological order.
     Without this correction, a simple topological sort may insert other descendants between master and parts
     :example:
-    _unite(['`s`.`a`', '`s`.`a__q`', '`s`.`b`', '`s`.`c`', '`s`.`c__q`', '`s`.`b__q`', '`s`.`d`', '`s`.`a__r`'])
-    -> ['`s`.`a`', '`s`.`a__q`', '`s`.`a__r`', '`s`.`b`', '`s`.`b__q`', '`s`.`c`', '`s`.`c__q`', '`s`.`d`']
+    unit_master_parts(
+        ['`s`.`a`', '`s`.`a__q`', '`s`.`b`', '`s`.`c`', '`s`.`c__q`', '`s`.`b__q`', '`s`.`d`', '`s`.`a__r`']) ->
+        ['`s`.`a`', '`s`.`a__q`', '`s`.`a__r`', '`s`.`b`', '`s`.`b__q`', '`s`.`c`', '`s`.`c__q`', '`s`.`d`']
     """
-    if len(lst) <= 2:
-        return lst
-    el = lst.pop()
-    lst = unite_master_parts(lst)
-    match = re.match(r'(?P<master>`\w+`.`\w+)__\w+`', el)
-    if match:
-        master = match.group('master')
-        if not lst[-1].startswith(master):
-            return unite_master_parts(lst[:-1] + [el, lst[-1]])
-    return lst + [el]
+    for i in range(2, len(lst)):
+        name = lst[i]
+        match = re.match(r'(?P<master>`\w+`.`\w+)__\w+`', name)
+        if match:  # name is a part table
+            master = match.group('master')
+            for j in range(i-1, -1, -1):
+                if lst[j] == master + '`' or lst[j].startswith(master + '__'):
+                    # move from the ith position to the (j+1)th position
+                    del lst[i]
+                    lst = lst[:j+1] + [name] + lst[j+1:]
+                    break
+            else:
+                raise DataJointError("Found a part table {name} without its master table.".format(name=name))
+    return lst
 
 
 class Dependencies(nx.DiGraph):
@@ -151,5 +156,5 @@ class Dependencies(nx.DiGraph):
         self.load(force=False)
         nodes = self.subgraph(
             nx.algorithms.dag.ancestors(self, full_table_name))
-        return unite_master_parts(list(reversed(list(
-            nx.algorithms.dag.topological_sort(nodes)))) + [full_table_name])
+        return list(reversed(unite_master_parts(list(
+            nx.algorithms.dag.topological_sort(nodes)) + [full_table_name])))
