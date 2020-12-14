@@ -7,11 +7,12 @@ from .errors import DataJointError
 
 def unite_master_parts(lst):
     """
-    reorder a list of tables names so that part tables immediately follow their master tables without breaking
+    re-order a list of table names so that part tables immediately follow their master tables without breaking
     the topological order.
-    Without this correction, a simple topological sort may insert other descendants between master and parts
+    Without this correction, a simple topological sort may insert other descendants between master and parts.
+    The input list must be topologically sorted.
     :example:
-    unit_master_parts(
+    unite_master_parts(
         ['`s`.`a`', '`s`.`a__q`', '`s`.`b`', '`s`.`c`', '`s`.`c__q`', '`s`.`b__q`', '`s`.`d`', '`s`.`a__r`']) ->
         ['`s`.`a`', '`s`.`a__q`', '`s`.`a__r`', '`s`.`b`', '`s`.`b__q`', '`s`.`c`', '`s`.`c__q`', '`s`.`d`']
     """
