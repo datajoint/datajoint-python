@@ -25,10 +25,10 @@ Include:
 ### Expected Behavior
 A clear and concise description of what you expected to happen.
 
-### Screenshots (Optional)
+### Screenshots
 If applicable, add screenshots to help explain your problem.
 
-### Additional Research and Context (Optional)
+### Additional Research and Context
 Add any additional research or context that was conducted in creating this report.
 
 For example:

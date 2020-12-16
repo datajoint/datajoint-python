@@ -21,7 +21,7 @@ Provide the key benefits in making this a supported feature. Ex. Adding support 
 ### Alternative Considerations
 Do you currently have a work-around for this? Provide any alternative solutions or features you've considered.
 
-### Related Errors (Optional)
+### Related Errors
 Add any errors as a direct result of not exposing this feature.
 
 Please include steps to reproduce provided errors as follows:
@@ -33,10 +33,10 @@ Please include steps to reproduce provided errors as follows:
 - Minimum number of steps to reliably reproduce the issue
 - Complete error stack as a result of evaluating the above steps
 
-### Screenshots (Optional)
+### Screenshots
 If applicable, add screenshots to help explain your feature.
 
-### Additional Research and Context (Optional)
+### Additional Research and Context
 Add any additional research or context that was conducted in creating this feature request.
 
 For example:
