@@ -6,6 +6,8 @@
 * Fix display of part tables in `schema.save`. (#821) PR #833
 * Add `schema.list_tables`. (#838) PR #844
 * Fix minio new version regression.  PR #847
+ * Add more S3 logging for debugging. (#831) PR #832 
+ * Convert testing framework from TravisCI to GitHub Actions (#841) PR #840
  
 ### 0.12.7 -- Oct 27, 2020
 * Fix case sensitivity issues to adapt to MySQL 8+.  PR #819
