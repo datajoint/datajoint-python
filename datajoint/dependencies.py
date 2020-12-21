@@ -24,8 +24,7 @@ def unite_master_parts(lst):
             for j in range(i-1, -1, -1):
                 if lst[j] == master + '`' or lst[j].startswith(master + '__'):
                     # move from the ith position to the (j+1)th position
-                    del lst[i]
-                    lst = lst[:j+1] + [name] + lst[j+1:]
+                    lst[j+1:i+1] = [name] + lst[j+1:i]
                     break
             else:
                 raise DataJointError("Found a part table {name} without its master table.".format(name=name))
