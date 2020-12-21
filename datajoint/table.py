@@ -159,10 +159,8 @@ class Table(QueryExpression):
         return nodes
 
     def ancestors(self, as_objects=False):
-        nodes = [node for node in self.connection.dependencies.ancestors(self.full_table_name) if not node.isdigit()]
-        if as_objects:
-            nodes = [FreeTable(self.connection, c) for c in nodes]
-        return nodes
+        return [FreeTable(self.connection, node) if as_objects else node
+                for node in self.connection.dependencies.ancestors(self.full_table_name) if not node.isdigit()]
 
     @property
     def is_declared(self):

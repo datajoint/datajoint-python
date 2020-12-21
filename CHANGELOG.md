@@ -1,20 +1,19 @@
 ## Release notes
 
-<<<<<<< HEAD
-### 0.13.0 -- Nov 7, 2020
+### 0.13.0 -- January 11, 2020
 * Reimplement query parsing, fixing issues (#386, #449, #450, #484). PR #754
 * Add table method `.update1` to update a row in the table with new values
 * Python datatypes are now enabled by default in blobs (#761). PR #785
 * Added permissive join and restriction operators `@` and `^` (#785) PR #754
 
-### 0.12.8 -- Nov 30, 2020
-=======
-### 0.12.8 -- Dec 14, 2020
->>>>>>> master
+### 0.12.8 -- Dec 22, 2020
 * table.children, .parents, .descendents, and ancestors can return queryable objects. PR #833
-* Fix display of part tables in `schema.save` (#821). PR #833
-* Add `schema.list_tables`. PR #844
+* Load dependencies before querying dependencies. (#179) PR #833
+* Fix display of part tables in `schema.save`. (#821) PR #833
+* Add `schema.list_tables`. (#838) PR #844
 * Fix minio new version regression.  PR #847
+* Add more S3 logging for debugging. (#831) PR #832 
+* Convert testing framework from TravisCI to GitHub Actions (#841) PR #840
  
 ### 0.12.7 -- Oct 27, 2020
 * Fix case sensitivity issues to adapt to MySQL 8+.  PR #819
