@@ -1,9 +1,12 @@
-0.12.8 -- Dec 14, 2020
+0.12.8 -- Dec 22, 2020
 ---------------------
 * table.children, .parents, .descendents, and ancestors can return queryable objects. PR #833
-* Fix display of part tables in `schema.save` (#821). PR #833
-* Add `schema.list_tables`. PR #844
+* Load dependencies before querying dependencies. (#179) PR #833
+* Fix display of part tables in `schema.save`. (#821) PR #833
+* Add `schema.list_tables`. (#838) PR #844
 * Fix minio new version regression.  PR #847
+* Add more S3 logging for debugging. (#831) PR #832 
+* Convert testing framework from TravisCI to GitHub Actions (#841) PR #840
 
 0.12.7 -- Oct 27, 2020
 ----------------------
