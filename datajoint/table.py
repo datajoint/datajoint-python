@@ -11,7 +11,7 @@ from .settings import config
 from .declare import declare, alter
 from .expression import QueryExpression
 from . import blob
-from .utils import user_choice
+from .utils import user_choice, OrderedDict
 from .heading import Heading
 from .errors import DuplicateError, AccessError, DataJointError, UnknownAttributeError
 from .version import __version__ as version
@@ -40,8 +40,7 @@ class Table(QueryExpression):
     @property
     def heading(self):
         """
-        Returns the table heading. If the table is not declared, attempts to declare it and return heading.
-        :return: table heading
+        :return: table heading. If the table is not declared, attempts to declare it first.
         """
         if self._heading is None:
             self._heading = Heading()  # instance-level heading
@@ -53,7 +52,8 @@ class Table(QueryExpression):
     def declare(self, context=None):
         """
         Declare the table in the schema based on self.definition.
-        :param context: the context for foreign key resolution. If None, foreign keys are not allowed.
+        :param context: the context for foreign key resolution. If None, foreign keys are
+            not allowed.
         """
         if self.connection.in_transaction:
             raise DataJointError('Cannot declare new tables inside a transaction, '
@@ -116,38 +116,59 @@ class Table(QueryExpression):
         """
         return '*' if select_fields is None else self.heading.project(select_fields).as_sql
 
-    def parents(self, primary=None, as_objects=False):
+    def parents(self, primary=None, as_objects=False, foreign_key_info=False):
         """
         :param primary: if None, then all parents are returned. If True, then only foreign keys composed of
-            primary key attributes are considered.  If False, the only foreign keys including at least one non-primary
-            attribute are considered.
-        :param as_objects: if False (default), the output is a dict describing the foreign keys. If True, return table objects.
-        :return: dict of tables referenced with self's foreign keys  or list of table objects if as_objects=True
+            primary key attributes are considered.  If False, return foreign keys including at least one
+            secondary attribute.
+        :param as_objects: if False, return table names. If True, return table objects.
+        :param foreign_key_info: if True, each element in result also includes foreign key info.
+        :return: list of parents as table names or table objects
+            with (optional) foreign key information.
         """
-        parents = self.connection.dependencies.parents(self.full_table_name, primary)
+        get_edge = self.connection.dependencies.parents
+        nodes = [next(iter(get_edge(name).items())) if name.isdigit() else (name, props)
+                 for name, props in get_edge(self.full_table_name, primary).items()]
         if as_objects:
-            parents = [FreeTable(self.connection, c) for c in parents]
-        return parents
+            nodes = [(FreeTable(self.connection, name), props) for name, props in nodes]
+        if not foreign_key_info:
+            nodes = [name for name, props in nodes]
+        return nodes
 
-    def children(self, primary=None, as_objects=False):
+    def children(self, primary=None, as_objects=False, foreign_key_info=False):
         """
         :param primary: if None, then all children are returned. If True, then only foreign keys composed of
-            primary key attributes are considered.  If False, the only foreign keys including at least one non-primary
-            attribute are considered.
-        :param as_objects: if False (default), the output is a dict describing the foreign keys. If True, return table objects.
-        :return: dict of tables with foreign keys referencing self or list of table objects if as_objects=True
+            primary key attributes are considered.  If False, return foreign keys including at least one
+            secondary attribute.
+        :param as_objects: if False, return table names. If True, return table objects.
+        :param foreign_key_info: if True, each element in result also includes foreign key info.
+        :return: list of children as table names or table objects
+            with (optional) foreign key information.
         """
-        nodes = dict((next(iter(self.connection.dependencies.children(k).items())) if k.isdigit() else (k, v))
-                     for k, v in self.connection.dependencies.children(self.full_table_name, primary).items())
+        get_edge = self.connection.dependencies.children
+        nodes = [next(iter(get_edge(name).items())) if name.isdigit() else (name, props)
+                 for name, props in get_edge(self.full_table_name, primary).items()]
         if as_objects:
-            nodes = [FreeTable(self.connection, c) for c in nodes]
+            nodes = [(FreeTable(self.connection, name), props) for name, props in nodes]
+        if not foreign_key_info:
+            nodes = [name for name, props in nodes]
         return nodes
 
     def descendants(self, as_objects=False):
-        nodes = [node for node in self.connection.dependencies.descendants(self.full_table_name) if not node.isdigit()]
-        if as_objects:
-            nodes = [FreeTable(self.connection, c) for c in nodes]
-        return nodes
+        """
+        :param as_objects: False - a list of table names; True - a list of table objects.
+        :return: list of tables descendants in topological order.
+        """
+        return [FreeTable(self.connection, node) if as_objects else node
+                for node in self.connection.dependencies.descendants(self.full_table_name) if not node.isdigit()]
+
+    def ancestors(self, as_objects=False):
+        """
+        :param as_objects: False - a list of table names; True - a list of table objects.
+        :return: list of tables ancestors in topological order.
+        """
+        return [FreeTable(self.connection, node) if as_objects else node
+                for node in self.connection.dependencies.ancestors(self.full_table_name) if not node.isdigit()]
 
     def parts(self, as_objects=False):
         """
@@ -156,13 +177,7 @@ class Table(QueryExpression):
         """
         nodes = [node for node in self.connection.dependencies.nodes
                  if not node.isdigit() and node.startswith(self.full_table_name[:-1] + '__')]
-        if as_objects:
-            nodes = [FreeTable(self.connection, c) for c in nodes]
-        return nodes
-
-    def ancestors(self, as_objects=False):
-        return [FreeTable(self.connection, node) if as_objects else node
-                for node in self.connection.dependencies.ancestors(self.full_table_name) if not node.isdigit()]
+        return [FreeTable(self.connection, c) for c in nodes] if as_objects else nodes
 
     @property
     def is_declared(self):
@@ -525,7 +540,7 @@ class Table(QueryExpression):
             del frame
         if self.full_table_name not in self.connection.dependencies:
             self.connection.dependencies.load()
-        parents = self.parents()
+        parents = self.parents(foreign_key_info=True)
         in_key = True
         definition = ('# ' + self.heading.table_info['comment'] + '\n'
                       if self.heading.table_info['comment'] else '')
@@ -538,11 +553,10 @@ class Table(QueryExpression):
                 in_key = False
             attributes_thus_far.add(attr.name)
             do_include = True
-            for parent_name, fk_props in list(parents.items()):  # need list() to force a copy
+            for parent_name, fk_props in parents:
                 if attr.name in fk_props['attr_map']:
                     do_include = False
                     if attributes_thus_far.issuperset(fk_props['attr_map']):
-                        parents.pop(parent_name)
                         # foreign key properties
                         try:
                             index_props = indexes.pop(tuple(fk_props['attr_map']))
@@ -552,19 +566,19 @@ class Table(QueryExpression):
                             index_props = [k for k, v in index_props.items() if v]
                             index_props = ' [{}]'.format(', '.join(index_props)) if index_props else ''
 
-                        if not parent_name.isdigit():
+                        if not fk_props['aliased']:
                             # simple foreign key
                             definition += '->{props} {class_name}\n'.format(
                                 props=index_props,
                                 class_name=lookup_class_name(parent_name, context) or parent_name)
                         else:
                             # projected foreign key
-                            parent_name = list(self.connection.dependencies.in_edges(parent_name))[0][0]
-                            lst = [(attr, ref) for attr, ref in fk_props['attr_map'].items() if ref != attr]
                             definition += '->{props} {class_name}.proj({proj_list})\n'.format(
                                 props=index_props,
                                 class_name=lookup_class_name(parent_name, context) or parent_name,
-                                proj_list=','.join('{}="{}"'.format(a, b) for a, b in lst))
+                                proj_list=','.join(
+                                    '{}="{}"'.format(attr, ref)
+                                    for attr, ref in fk_props['attr_map'].items() if ref != attr))
                             attributes_declared.update(fk_props['attr_map'])
             if do_include:
                 attributes_declared.add(attr.name)
