@@ -196,9 +196,9 @@ class Schema:
             contents = list(instance.contents)
             if len(contents) > len(instance):
                 if instance.heading.has_autoincrement:
-                    warnings.warn(
-                        'Contents has changed but cannot be inserted because {table} has autoincrement.'.format(
-                            table=instance.__class__.__name__))
+                    warnings.warn(('Contents has changed but cannot be inserted because '
+                                  '{table} has autoincrement.').format(
+                        table=instance.__class__.__name__))
                 else:
                     instance.insert(contents, skip_duplicates=True)
 
@@ -338,15 +338,16 @@ class Schema:
                 return ('' if d == db else (module_lookup[d]+'.')) + '.'.join(
                     to_camel_case(tab) for tab in tabs.lstrip('__').split('__'))
 
-            return ('' if tier == 'Part' else '\n@schema\n') + \
-                   '{indent}class {class_name}(dj.{tier}):\n{indent}    definition = """\n{indent}    {defi}"""'.format(
+            return ('' if tier == 'Part' else '\n@schema\n') + (
+                '{indent}class {class_name}(dj.{tier}):\n'
+                '{indent}    definition = """\n'
+                '{indent}    {defi}"""').format(
                     class_name=class_name,
                     indent=indent,
                     tier=tier,
-                    defi=re.sub(
-                        r'`([^`]+)`.`([^`]+)`', replace,
-                        FreeTable(self.connection, table).describe(printout=False).replace(
-                            '\n', '\n    ' + indent)))
+                    defi=re.sub(r'`([^`]+)`.`([^`]+)`', replace,
+                                FreeTable(self.connection, table).describe(printout=False)
+                                ).replace('\n', '\n    ' + indent))
 
         diagram = Diagram(self)
         body = '\n\n'.join(make_class_definition(table) for table in diagram.topological_sort())
