@@ -5,6 +5,7 @@ import io
 import warnings
 import inspect
 from .table import Table
+from .dependencies import unite_master_parts
 
 try:
     from matplotlib import pyplot as plt
@@ -155,29 +156,8 @@ else:
             return self
 
         def topological_sort(self):
-            """
-            :return:  list of nodes in topological order
-            """
-
-            def _unite(lst):
-                """
-                reorder list so that parts immediately follow their masters without breaking the topological order.
-                Without this correction, simple topological sort may insert other descendants between master and parts
-                :example:
-                _unite(['a', 'a__q', 'b', 'c', 'c__q', 'b__q', 'd', 'a__r'])
-                -> ['a', 'a__q', 'a__r', 'b', 'b__q', 'c', 'c__q', 'd']
-                """
-                if len(lst) <= 2:
-                    return lst
-                el = lst.pop()
-                lst = _unite(lst)
-                if '__' in el:
-                    master = el.split('__')[0]
-                    if not lst[-1].startswith(master):
-                        return _unite(lst[:-1] + [el, lst[-1]])
-                return lst + [el]
-
-            return _unite(list(nx.algorithms.dag.topological_sort(
+            """ :return:  list of nodes in topological order """
+            return unite_master_parts(list(nx.algorithms.dag.topological_sort(
                 nx.DiGraph(self).subgraph(self.nodes_to_show))))
 
         def __add__(self, arg):

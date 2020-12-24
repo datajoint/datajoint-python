@@ -45,13 +45,13 @@ def to_camel_case(s):
     :param s: string in under_score notation
     :returns: string in CamelCase notation
     Example:
-    >>> to_camel_case("table_name") # yields "TableName"
+    >>> to_camel_case("table_name")  # returns "TableName"
     """
 
     def to_upper(match):
         return match.group(0)[-1].upper()
 
-    return re.sub('(^|[_\W])+[a-zA-Z]', to_upper, s)
+    return re.sub(r'(^|[_\W])+[a-zA-Z]', to_upper, s)
 
 
 def from_camel_case(s):
