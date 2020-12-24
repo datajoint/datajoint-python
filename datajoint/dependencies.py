@@ -1,7 +1,34 @@
 import networkx as nx
 import itertools
+import re
 from collections import defaultdict, OrderedDict
 from .errors import DataJointError
+
+
+def unite_master_parts(lst):
+    """
+    re-order a list of table names so that part tables immediately follow their master tables without breaking
+    the topological order.
+    Without this correction, a simple topological sort may insert other descendants between master and parts.
+    The input list must be topologically sorted.
+    :example:
+    unite_master_parts(
+        ['`s`.`a`', '`s`.`a__q`', '`s`.`b`', '`s`.`c`', '`s`.`c__q`', '`s`.`b__q`', '`s`.`d`', '`s`.`a__r`']) ->
+        ['`s`.`a`', '`s`.`a__q`', '`s`.`a__r`', '`s`.`b`', '`s`.`b__q`', '`s`.`c`', '`s`.`c__q`', '`s`.`d`']
+    """
+    for i in range(2, len(lst)):
+        name = lst[i]
+        match = re.match(r'(?P<master>`\w+`.`\w+)__\w+`', name)
+        if match:  # name is a part table
+            master = match.group('master')
+            for j in range(i-1, -1, -1):
+                if lst[j] == master + '`' or lst[j].startswith(master + '__'):
+                    # move from the ith position to the (j+1)th position
+                    lst[j+1:i+1] = [name] + lst[j+1:i]
+                    break
+            else:
+                raise DataJointError("Found a part table {name} without its master table.".format(name=name))
+    return lst
 
 
 class Dependencies(nx.DiGraph):
@@ -118,8 +145,8 @@ class Dependencies(nx.DiGraph):
         self.load(force=False)
         nodes = self.subgraph(
             nx.algorithms.dag.descendants(self, full_table_name))
-        return [full_table_name] + list(
-            nx.algorithms.dag.topological_sort(nodes))
+        return unite_master_parts([full_table_name] + list(
+            nx.algorithms.dag.topological_sort(nodes)))
 
     def ancestors(self, full_table_name):
         """
@@ -129,5 +156,5 @@ class Dependencies(nx.DiGraph):
         self.load(force=False)
         nodes = self.subgraph(
             nx.algorithms.dag.ancestors(self, full_table_name))
-        return [full_table_name] + list(reversed(list(
-            nx.algorithms.dag.topological_sort(nodes))))
+        return list(reversed(unite_master_parts(list(
+            nx.algorithms.dag.topological_sort(nodes)) + [full_table_name])))

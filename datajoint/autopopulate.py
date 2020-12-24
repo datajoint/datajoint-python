@@ -7,7 +7,6 @@ import inspect
 from tqdm import tqdm
 from .expression import QueryExpression, AndList
 from .errors import DataJointError, LostConnectionError
-from .table import FreeTable
 import signal
 
 # noinspection PyExceptionInherit,PyCallingNonCallable
@@ -27,30 +26,24 @@ class AutoPopulate:
     @property
     def key_source(self):
         """
-        :return: the query whose primary key values are passed, sequentially, to the
-                `make` method when populate() is called.
+        :return: the relation whose primary key values are passed, sequentially, to the
+                ``make`` method when populate() is called.
                 The default value is the join of the parent relations.
                 Users may override to change the granularity or the scope of populate() calls.
         """
-        def parent_gen():
-            if self.target.full_table_name not in self.connection.dependencies:
-                self.connection.dependencies.load()
-            for parent_name, fk_props in self.target.parents(primary=True).items():
-                if not parent_name.isdigit():  # simple foreign key
-                    yield FreeTable(self.connection, parent_name).proj()
-                else:
-                    grandparent = list(self.connection.dependencies.in_edges(parent_name))[0][0]
-                    yield FreeTable(self.connection, grandparent).proj(**{
-                        attr: ref for attr, ref in fk_props['attr_map'].items() if ref != attr})
+        def _rename_attributes(table, props):
+            return (table.proj(
+                **{attr: ref for attr, ref in props['attr_map'].items() if attr != ref})
+                if props['aliased'] else table)
 
         if self._key_source is None:
-            parents = parent_gen()
-            try:
-                self._key_source = next(parents)
-            except StopIteration:
-                raise DataJointError('A relation must have primary dependencies for auto-populate to work') from None
-            for q in parents:
-                self._key_source *= q
+            parents = self.target.parents(primary=True, as_objects=True, foreign_key_info=True)
+            if not parents:
+                raise DataJointError(
+                    'A relation must have primary dependencies for auto-populate to work') from None
+            self._key_source = _rename_attributes(*parents[0])
+            for q in parents[1:]:
+                self._key_source *= _rename_attributes(*q)
         return self._key_source
 
     def make(self, key):
