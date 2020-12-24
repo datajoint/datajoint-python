@@ -201,7 +201,7 @@ class TestFetch:
         self.lang.fetch1('name')
 
     def test_decimal(self):
-        """Tests that decimal fields are correctly fetched and used in restrictions, see issue #334"""
+        """ Tests that decimal fields are correctly fetched and used in restrictions, see issue #334"""
         rel = schema.DecimalPrimaryKey()
         rel.insert1([decimal.Decimal('3.1415926')])
         keys = rel.fetch()

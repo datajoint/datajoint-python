@@ -1,4 +1,4 @@
-from nose.tools import assert_equal, assert_false, assert_true, raises
+from nose.tools import assert_equal, assert_false, assert_true
 from datajoint.declare import declare
 
 from . import schema_advanced

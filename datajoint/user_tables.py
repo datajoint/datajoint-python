@@ -14,13 +14,8 @@ _base_regexp = r'[a-z][a-z0-9]*(_[a-z][a-z0-9]*)*'
 supported_class_attrs = {
     'key_source', 'describe', 'alter', 'heading', 'populate', 'progress', 'primary_key', 'proj', 'aggr', 'join',
     'fetch', 'fetch1', 'head', 'tail',
-<<<<<<< HEAD
-    'descendants', 'ancestors', 'parents', 'children',
+    'descendants', 'ancestors', 'parts', 'parents', 'children',
     'insert', 'insert1', 'update1', 'drop', 'drop_quick', 'delete', 'delete_quick'}
-=======
-    'descendants', 'parts', 'ancestors', 'parents', 'children',
-    'insert', 'insert1', 'drop', 'drop_quick', 'delete', 'delete_quick'}
->>>>>>> master
 
 
 class OrderedClass(type):
