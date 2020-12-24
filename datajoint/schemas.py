@@ -129,7 +129,7 @@ class Schema:
     def is_activated(self):
         return self.database is not None
 
-    def _assert_activation(self, message="The schema must be activated first"):
+    def _assert_activation(self, message="The schema must be activated first."):
         if not self.is_activated:
             raise DataJointError(message)
 
