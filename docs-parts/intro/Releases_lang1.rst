@@ -1,26 +1,8 @@
-<<<<<<< HEAD
-0.13.0 -- Dec 15, 2020
+0.13.0 -- Jan 11, 2020
 ----------------------
 * Re-implement query transpilation into SQL, fixing issues (#386, #449, #450, #484). PR #754
 * Re-implement cascading deletes for better performance. PR #839.
 * Add table method `.update1` to update an existing row in its table.
-* Python datatypes are now enabled by default in blobs (#761). PR #785
-* Added permissive join and restriction operators `@` and `^` (#785) PR #754
-
-0.12.8 -- Nov 30, 2020
-----------------------
-* table.children, .parents, .descendents, and ancestors optionally return queryable objects. PR #833
-
-0.12.7 -- Oct 27, 2020
-----------------------
-* Fix case sensitivity issues to adapt to MySQL 8+.  PR #819
-* Fix pymysql regression bug (#814) PR #816
-* Adapted attribute types now have dtype=object in all recarray results. PR #811
-=======
-0.13.0 -- Jan 11, 2021
----------------------
-* Reimplement query parsing, fixing issues (#386, #449, #450, #484). PR #754
-* Add table method `.update1` to update a row in the table with new values
 * Python datatypes are now enabled by default in blobs (#761). PR #785
 * Added permissive join and restriction operators `@` and `^` (#785) PR #754
 
@@ -33,7 +15,6 @@
 * Fix minio new version regression.  PR #847
 * Add more S3 logging for debugging. (#831) PR #832 
 * Convert testing framework from TravisCI to GitHub Actions (#841) PR #840
->>>>>>> aggr_fix
 
 0.12.7 -- Oct 27, 2020
 ----------------------
