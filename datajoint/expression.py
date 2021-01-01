@@ -80,11 +80,11 @@ class QueryExpression:
     def primary_key(self):
         return self.heading.primary_key
 
-    __subquery_alias_count = count()    # count for alias names used in from_clause
+    _subquery_alias_count = count()    # count for alias names used in from_clause
 
     def from_clause(self):
         support = ('(' + src.make_sql() + ') as `_s%x`' % next(
-            self.__subquery_alias_count) if isinstance(src, QueryExpression) else src for src in self.support)
+            self._subquery_alias_count) if isinstance(src, QueryExpression) else src for src in self.support)
         clause = next(support)
         for s, a, left in zip(support, self._join_attributes, self._left):
             clause += '{left} JOIN {clause}{using}'.format(
@@ -507,7 +507,7 @@ class Aggregation(QueryExpression):
     Aggregation is a private class in DataJoint, not exposed to users.
     """
     _left_restrict = None   # the pre-GROUP BY conditions for the WHERE clause
-    __subquery_alias_count = count()
+    _subquery_alias_count = count()
 
     @classmethod
     def create(cls, arg, group, keep_all_rows=False):
@@ -546,7 +546,9 @@ class Aggregation(QueryExpression):
 
     def __len__(self):
         return self.connection.query(
-            'SELECT count(1) FROM ({sql}) `$sub`'.format(sql=self.make_sql())).fetchone()[0]
+            'SELECT count(1) FROM ({subquery}) `${alias:x}`'.format(
+                subquery=self.make_sql(),
+                alias=next(self._subquery_alias_count))).fetchone()[0]
 
     def __bool__(self):
         return bool(self.connection.query(
@@ -602,8 +604,10 @@ class Union(QueryExpression):
         assert False
 
     def __len__(self):
-        return self.connection.query('SELECT count(1) FROM ({sql}) as `$sub`'.format(
-            sql=self.make_sql())).fetchone()[0]
+        return self.connection.query(
+            'SELECT count(1) FROM ({subquery}) `${alias:x}`'.format(
+                subquery=self.make_sql(),
+                alias=next(QueryExpression._subquery_alias_count))).fetchone()[0]
 
     def __bool__(self):
         return bool(self.connection.query(
