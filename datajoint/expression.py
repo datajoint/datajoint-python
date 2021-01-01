@@ -34,7 +34,6 @@ class QueryExpression:
         2. A projection is applied remapping remapped attributes
         3. Subclasses: Join, Aggregation, and Union have additional specific rules.
     """
-
     _restriction = None
     _restriction_attributes = None
     _left = []  # True for left joins, False for inner joins
@@ -385,6 +384,11 @@ class QueryExpression:
         :param named_attributes: computations of the form new_attribute="sql expression on attributes of group"
         :return: The derived query expression
         """
+        if Ellipsis in attributes:
+            # expand ellipsis to include only attributes from the left table
+            attributes = set(attributes)
+            attributes.discard(Ellipsis)
+            attributes.update(self.heading.secondary_attributes)
         return Aggregation.create(
             self, group=group, keep_all_rows=keep_all_rows).proj(*attributes, **named_attributes)
 
@@ -525,6 +529,7 @@ class Aggregation(QueryExpression):
         result._left = join._left
         result._left_restrict = join.restriction  # WHERE clause applied before GROUP BY
         result._grouping_attributes = result.primary_key
+
         return result
 
     def where_clause(self):

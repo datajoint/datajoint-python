@@ -1,4 +1,4 @@
-from nose.tools import assert_true, assert_list_equal, assert_set_equal, assert_equal
+from nose.tools import assert_true, assert_list_equal, assert_false
 from .schema_university import *
 import hashlib
 
@@ -93,6 +93,14 @@ def test_aggr():
     # Sections in biology department with zero students in them
     section = (Section & {"dept": "BIOL"}).aggr(
         Enroll, n='count(student_id)', keep_all_rows=True) & 'n=0'
+    assert_true(len(set(section.fetch('dept'))) == 1)
+    assert_true(len(section) == 17)
+    assert_true(bool(section))
+
+    # Test correct use of ellipses in a similar query
+    section = (Section & {"dept": "BIOL"}).aggr(
+        Grade, ..., n='count(student_id)', keep_all_rows=True)
+    assert_false('grade' in section.heading.names)
     assert_true(len(set(section.fetch('dept'))) == 1)
     assert_true(len(section) == 17)
     assert_true(bool(section))
