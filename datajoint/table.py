@@ -320,7 +320,7 @@ class Table(QueryExpression):
         Deletes the table without cascading and without user prompt.
         If this table has populated dependent tables, this will fail.
         """
-        query = 'DELETE FROM ' + self.full_table_name + self.where_clause
+        query = 'DELETE FROM ' + self.full_table_name + self.where_clause()
         self.connection.query(query)
         count = self.connection.query("SELECT ROW_COUNT()").fetchone()[0] if get_count else None
         self._log(query[:255])
@@ -564,7 +564,7 @@ class Table(QueryExpression):
             full_table_name=self.from_clause(),
             attrname=attrname,
             placeholder=placeholder,
-            where_clause=self.where_clause)
+            where_clause=self.where_clause())
         self.connection.query(command, args=(value, ) if value is not None else ())
 
     # --- private helper functions ----
