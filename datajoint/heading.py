@@ -148,13 +148,14 @@ class Heading:
             names=self.names,
             formats=[v.dtype for v in self.attributes.values()]))
 
-    def as_sql(self, fields):
+    def as_sql(self, fields, include_aliases=True):
         """
         represent heading as the SQL SELECT clause.
         """
-        return ','.join('`%s`' % name if self.attributes[name].attribute_expression is None
-                        else '%s as `%s`' % (self.attributes[name].attribute_expression, name)
-                        for name in fields)
+        return ','.join(
+            '`%s`' % name if self.attributes[name].attribute_expression is None
+            else self.attributes[name].attribute_expression + (' as `%s`' % name if include_aliases else '')
+            for name in fields)
 
     def __iter__(self):
         return iter(self.attributes)

@@ -83,7 +83,16 @@ def test_aggr():
     assert_true(len(avg_grade_per_course) == 45)
 
     # GPA
-    student_gpa = Student.aggr(Course * Grade * LetterGrade, gpa='round(sum(points*credits)/sum(credits), 2)')
+    student_gpa = Student.aggr(
+        Course * Grade * LetterGrade,
+        gpa='round(sum(points*credits)/sum(credits), 2)')
     gpa = student_gpa.fetch('gpa')
     assert_true(len(gpa) == 261)
     assert_true(2 < gpa.mean() < 3)
+
+    # Sections in biology department with zero students in them
+    section = (Section & {"dept": "BIOL"}).aggr(
+        Enroll, n='count(student_id)', keep_all_rows=True) & 'n=0'
+    assert_true(len(set(section.fetch('dept'))) == 1)
+    assert_true(len(section) == 17)
+    assert_true(bool(section))
