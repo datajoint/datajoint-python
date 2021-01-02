@@ -99,8 +99,9 @@ def test_aggr():
 
     # Test correct use of ellipses in a similar query
     section = (Section & {"dept": "BIOL"}).aggr(
-        Grade, ..., n='count(student_id)', keep_all_rows=True)
-    assert_false('grade' in section.heading.names)
+        Grade, ..., n='count(student_id)', keep_all_rows=True) & 'n>1'
+    assert_false(
+        any(name in section.heading.names for name in Grade.heading.secondary_attributes))
     assert_true(len(set(section.fetch('dept'))) == 1)
-    assert_true(len(section) == 17)
+    assert_true(len(section) == 168)
     assert_true(bool(section))
