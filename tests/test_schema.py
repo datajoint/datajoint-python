@@ -4,6 +4,7 @@ from inspect import getmembers
 from . import schema
 from . import schema_empty
 from . import PREFIX, CONN_INFO
+from .schema_simple import schema as schema_simple
 
 
 def relation_selector(attr):
@@ -104,6 +105,11 @@ def test_overlapping_name():
             """
 
     test_schema.drop()
+
+def test_list_tables():
+    assert(['#a', '#argmax_test', '#data_a', '#data_b', '#i_j', '#j_i', '#l',\
+    '#t_test_update', '__b', '__b__c', '__d', '__e', '__e__f', 'f',\
+    'reserved_word'] == schema_simple.list_tables())
 
 
 def test_schema_save():

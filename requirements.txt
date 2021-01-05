@@ -6,5 +6,5 @@ pandas
 tqdm
 networkx
 pydot
-minio<7.0.0
+minio>=7.0.0
 matplotlib
