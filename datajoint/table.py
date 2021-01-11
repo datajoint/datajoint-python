@@ -412,7 +412,7 @@ class Table(QueryExpression):
                                  'Set dj.config["safemode"] = False or complete the ongoing transaction first.')
         graph = conn.dependencies
         graph.load()
-        delete_list = collections.OrderedDict(
+        delete_list = OrderedDict(
             (name, _RenameMap(next(iter(graph.parents(name).items()))) if name.isdigit() else FreeTable(conn, name))
             for name in graph.descendants(self.full_table_name))
 
