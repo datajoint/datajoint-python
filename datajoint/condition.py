@@ -202,5 +202,5 @@ def extract_column_names(sql_expression):
     s = re.sub(r"(\b[a-z][a-z_0-9]*)\(", "(", s)
     remaining_tokens = set(re.findall(r"\b[a-z][a-z_0-9]*\b", s))
     # update result removing reserved words
-    result.update(remaining_tokens - {"in", "between", "like", "and", "or"})
+    result.update(remaining_tokens - {"is", "in", "between", "like", "and", "or", "null", "not"})
     return result
