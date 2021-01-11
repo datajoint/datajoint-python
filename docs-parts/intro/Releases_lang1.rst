@@ -1,4 +1,4 @@
-0.12.8 -- Dec 22, 2020
+0.12.8 -- Jan 12, 2021
 ---------------------
 * table.children, .parents, .descendents, and ancestors can return queryable objects. PR #833
 * Load dependencies before querying dependencies. (#179) PR #833
