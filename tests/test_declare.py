@@ -1,4 +1,4 @@
-from nose.tools import assert_true, assert_false, assert_equal, assert_list_equal, raises
+from nose.tools import assert_true, assert_false, assert_equal, assert_list_equal, raises, assert_set_equal
 from .schema import *
 import datajoint as dj
 import inspect
@@ -63,7 +63,6 @@ class TestDeclare:
         s2 = declare(rel.full_table_name, rel.describe(), context)
         assert_equal(s1, s2)
 
-
     @staticmethod
     def test_part():
         # Lookup and part with the same name.  See issue #365
@@ -81,6 +80,7 @@ class TestDeclare:
             definition = """
             master_id : int
             """
+
             class Type(dj.Part):
                 definition = """
                 -> TypeMaster
@@ -126,21 +126,39 @@ class TestDeclare:
 
     @staticmethod
     def test_dependencies():
-        assert_true(experiment.full_table_name in set(user.children(primary=False)))
+        assert_true(experiment.full_table_name in user.children(primary=False))
         assert_equal(set(experiment.parents(primary=False)), {user.full_table_name})
+        assert_true(experiment.full_table_name in user.children(primary=False))
+        assert_set_equal(set(experiment.parents(primary=False)), {user.full_table_name})
+        assert_set_equal(set(s.full_table_name for s in experiment.parents(primary=False, as_objects=True)),
+                         {user.full_table_name})
 
         assert_true(experiment.full_table_name in subject.descendants())
+        assert_true(experiment.full_table_name in {s.full_table_name for s in subject.descendants(as_objects=True)})
         assert_true(subject.full_table_name in experiment.ancestors())
+        assert_true(subject.full_table_name in {s.full_table_name for s in experiment.ancestors(as_objects=True)})
 
         assert_true(trial.full_table_name in experiment.descendants())
+        assert_true(trial.full_table_name in {s.full_table_name for s in experiment.descendants(as_objects=True)})
         assert_true(experiment.full_table_name in trial.ancestors())
+        assert_true(experiment.full_table_name in {s.full_table_name for s in trial.ancestors(as_objects=True)})
 
-        assert_equal(set(trial.children(primary=True)),
-                     {ephys.full_table_name, trial.Condition.full_table_name})
-        assert_equal(set(ephys.parents(primary=True)), {trial.full_table_name})
-
-        assert_equal(set(ephys.children(primary=True)), {channel.full_table_name})
-        assert_equal(set(channel.parents(primary=True)), {ephys.full_table_name})
+        assert_set_equal(set(trial.children(primary=True)), {ephys.full_table_name, trial.Condition.full_table_name})
+        assert_set_equal(set(trial.parts()), {trial.Condition.full_table_name})
+        assert_set_equal(set(s.full_table_name for s in trial.parts(as_objects=True)),
+                         {trial.Condition.full_table_name})
+        assert_set_equal(set(ephys.parents(primary=True)),
+                         {trial.full_table_name})
+        assert_set_equal(set(s.full_table_name for s in ephys.parents(primary=True, as_objects=True)),
+                         {trial.full_table_name})
+        assert_set_equal(set(ephys.children(primary=True)),
+                         {channel.full_table_name})
+        assert_set_equal(set(s.full_table_name for s in ephys.children(primary=True, as_objects=True)),
+                         {channel.full_table_name})
+        assert_set_equal(set(channel.parents(primary=True)),
+                         {ephys.full_table_name})
+        assert_set_equal(set(s.full_table_name for s in channel.parents(primary=True, as_objects=True)),
+                         {ephys.full_table_name})
 
     @staticmethod
     @raises(dj.DataJointError)
