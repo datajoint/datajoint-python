@@ -195,6 +195,7 @@ class Connection:
 
     def register(self, schema):
         self.schemas[schema.database] = schema
+        self.dependencies.clear()
 
     def ping(self):
         """
