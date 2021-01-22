@@ -1,5 +1,5 @@
 
-.. code-block:: text
+.. code-block:: python
 
     In [1]: schema.jobs
     Out[1]:
