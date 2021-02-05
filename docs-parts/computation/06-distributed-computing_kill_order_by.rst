@@ -1,7 +1,7 @@
 
 For example, to sort the output by hostname in descending order:
 
-.. code-block:: text
+.. code-block:: python
 
     In [3]: dj.kill(None, None, 'host desc')
     Out[3]:

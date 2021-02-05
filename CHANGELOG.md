@@ -1,10 +1,9 @@
 ## Release notes
 
-### Current
-=======
 ### 0.13.0 -- TBD
 * Support DataJoint datatype and connection plugins (#715, #729) PR 730, #735
 * Allow updating specified secondary attributes using `update1` PR #763
+* add dj.key_hash reference to dj.hash.key_hash, treat as 'public api'
 * Remove python 3.5 support
 
 ### 0.12.8 -- Jan 12, 2021
