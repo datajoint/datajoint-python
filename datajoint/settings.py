@@ -133,7 +133,7 @@ class Config(collections.MutableMapping):
         try:
             spec = self['stores'][store]
         except KeyError:
-            raise DataJointError('Storage {store} is requested but not configured'.format(store=store)) from None
+            raise DataJointError('Storage {store} is requested but not configured'.format(store=store))
 
         spec['subfolding'] = spec.get('subfolding', DEFAULT_SUBFOLDING)
         spec_keys = {  # REQUIRED in uppercase and allowed in lowercase
@@ -144,7 +144,7 @@ class Config(collections.MutableMapping):
             spec_keys = spec_keys[spec.get('protocol', '').lower()]
         except KeyError:
             raise DataJointError(
-                'Missing or invalid protocol in dj.config["stores"]["{store}"]'.format(store=store)) from None
+                'Missing or invalid protocol in dj.config["stores"]["{store}"]'.format(store=store))
 
         # check that all required keys are present in spec
         try:

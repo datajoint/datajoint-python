@@ -11,9 +11,34 @@ from getpass import getpass
 from .settings import config
 from . import errors
 from .dependencies import Dependencies
+from .plugin import connection_plugins
 
 logger = logging.getLogger(__name__)
 query_log_max_length = 300
+
+
+def get_host_hook(host_input):
+    if '://' in host_input:
+        plugin_name = host_input.split('://')[0]
+        try:
+            return connection_plugins[plugin_name]['object'].load().get_host(host_input)
+        except KeyError:
+            raise errors.DataJointError(
+                "Connection plugin '{}' not found.".format(plugin_name))
+    else:
+        return host_input
+
+
+def connect_host_hook(connection_obj):
+    if '://' in connection_obj.conn_info['host_input']:
+        plugin_name = connection_obj.conn_info['host_input'].split('://')[0]
+        try:
+            connection_plugins[plugin_name]['object'].load().connect_host(connection_obj)
+        except KeyError:
+            raise errors.DataJointError(
+                "Connection plugin '{}' not found.".format(plugin_name))
+    else:
+        connection_obj.connect()
 
 
 def translate_query_error(client_error, query):
@@ -76,7 +101,8 @@ def conn(host=None, user=None, password=None, *, init_fun=None, reset=False, use
                         #encrypted-connection-options).
     """
     if not hasattr(conn, 'connection') or reset:
-        host = host if host is not None else config['database.host']
+        host_input = host if host is not None else config['database.host']
+        host = get_host_hook(host_input)
         user = user if user is not None else config['database.user']
         password = password if password is not None else config['database.password']
         if user is None:  # pragma: no cover
@@ -85,7 +111,8 @@ def conn(host=None, user=None, password=None, *, init_fun=None, reset=False, use
             password = getpass(prompt="Please enter DataJoint password: ")
         init_fun = init_fun if init_fun is not None else config['connection.init_function']
         use_tls = use_tls if use_tls is not None else config['database.use_tls']
-        conn.connection = Connection(host, user, password, None, init_fun, use_tls)
+        conn.connection = Connection(host, user, password, None, init_fun, use_tls,
+                                     host_input=host_input)
     return conn.connection
 
 
@@ -104,7 +131,8 @@ class Connection:
     :param use_tls: TLS encryption option
     """
 
-    def __init__(self, host, user, password, port=None, init_fun=None, use_tls=None):
+    def __init__(self, host, user, password, port=None, init_fun=None, use_tls=None,
+                 host_input=None):
         if ':' in host:
             # the port in the hostname overrides the port argument
             host, port = host.split(':')
@@ -115,10 +143,11 @@ class Connection:
         if use_tls is not False:
             self.conn_info['ssl'] = use_tls if isinstance(use_tls, dict) else {'ssl': {}}
         self.conn_info['ssl_input'] = use_tls
+        self.conn_info['host_input'] = host_input
         self.init_fun = init_fun
         print("Connecting {user}@{host}:{port}".format(**self.conn_info))
         self._conn = None
-        self.connect()
+        connect_host_hook(self)
         if self.is_connected:
             logger.info("Connected {user}@{host}:{port}".format(**self.conn_info))
             self.connection_id = self.query('SELECT connection_id()').fetchone()[0]
@@ -149,7 +178,7 @@ class Connection:
                              "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
                     charset=config['connection.charset'],
                     **{k: v for k, v in self.conn_info.items()
-                       if k != 'ssl_input'})
+                       if k not in ['ssl_input', 'host_input']})
             except client.err.InternalError:
                 self._conn = client.connect(
                     init_command=self.init_fun,
@@ -157,7 +186,7 @@ class Connection:
                              "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
                     charset=config['connection.charset'],
                     **{k: v for k, v in self.conn_info.items()
-                       if not(k == 'ssl_input' or
+                       if not(k in ['ssl_input', 'host_input'] or
                               k == 'ssl' and self.conn_info['ssl_input'] is None)})
         self._conn.autocommit(True)
 
@@ -194,7 +223,7 @@ class Connection:
                     warnings.simplefilter("ignore")
                 cursor.execute(query, args)
         except client.err.Error as err:
-            raise translate_query_error(err, query) from None
+            raise translate_query_error(err, query)
 
     def query(self, query, args=(), *, as_dict=False, suppress_warnings=True, reconnect=None):
         """
@@ -217,10 +246,10 @@ class Connection:
             if not reconnect:
                 raise
             warnings.warn("MySQL server has gone away. Reconnecting to the server.")
-            self.connect()
+            connect_host_hook(self)
             if self._in_transaction:
                 self.cancel_transaction()
-                raise errors.LostConnectionError("Connection was lost during a transaction.") from None
+                raise errors.LostConnectionError("Connection was lost during a transaction.")
             logger.debug("Re-executing")
             cursor = self._conn.cursor(cursor=cursor_class)
             self._execute_query(cursor, query, args, cursor_class, suppress_warnings)
