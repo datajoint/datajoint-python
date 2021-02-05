@@ -69,7 +69,7 @@ as structured arrays, whereas new record inserted in DataJoint 0.12 with
 appropriate native python type (dict, etc).  
 Furthermore, DataJoint for MATLAB does not yet support unpacking native Python datatypes.
 
-With `dj.config["enable_python_native_blobs"]` set to `False` (default), 
+With `dj.config["enable_python_native_blobs"]` set to `False`, 
 any attempt to insert any datatype other than a numpy array will result in an exception.
 This is meant to get users to read this message in order to allow proper testing
 and migration of pre-0.12 pipelines to 0.12 in a safe manner.
