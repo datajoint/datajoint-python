@@ -291,6 +291,15 @@ class TestRelational:
         assert_equal(len(E & q), len(E & df))
 
     @staticmethod
+    def test_restriction_by_null():
+        assert_true(len(Experiment & 'username is null') > 0)
+        assert_true(len(Experiment & 'username is not null') > 0)
+
+    @staticmethod
+    def test_restriction_between():   # see issue
+        assert_true(len(Experiment & 'username between "S" and "Z"') < len(Experiment()))
+
+    @staticmethod
     def test_restrictions_by_lists():
         x = D()
         y = L() & 'cond_in_l'
