@@ -146,7 +146,7 @@ class Experiment(dj.Imported):
         populate with random data
         """
         from datetime import date, timedelta
-        users = User().fetch()['username']
+        users = [None, None] + list(User().fetch()['username'])
         random.seed('Amazing Seed')
         self.insert(
             dict(key,
@@ -154,7 +154,6 @@ class Experiment(dj.Imported):
                  experiment_date=(date.today() - timedelta(random.expovariate(1 / 30))).isoformat(),
                  username=random.choice(users))
             for experiment_id in range(self.fake_experiments_per_subject))
-
 
 @schema
 class Trial(dj.Imported):
