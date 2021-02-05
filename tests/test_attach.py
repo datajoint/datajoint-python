@@ -1,5 +1,4 @@
 from nose.tools import assert_true, assert_equal, assert_not_equal
-from numpy.testing import assert_array_equal
 import tempfile
 from pathlib import Path
 import os

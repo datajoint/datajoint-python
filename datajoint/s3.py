@@ -21,7 +21,7 @@ class Folder:
                                   secure=secure)
         self.bucket = bucket
         if not self.client.bucket_exists(bucket):
-            raise errors.BucketInaccessible('Inaccessible s3 bucket %s' % bucket) from None
+            raise errors.BucketInaccessible('Inaccessible s3 bucket %s' % bucket)
 
     def put(self, name, buffer):
         logger.debug('put: {}:{}'.format(self.bucket, name))
@@ -39,7 +39,7 @@ class Folder:
             return self.client.get_object(self.bucket, str(name)).data
         except minio.error.S3Error as e:
             if e.code == 'NoSuchKey':
-                raise errors.MissingExternalFile('Missing s3 key %s' % name) from None
+                raise errors.MissingExternalFile('Missing s3 key %s' % name)
             else:
                 raise e
 
@@ -75,7 +75,7 @@ class Folder:
             return self.client.stat_object(self.bucket, str(name)).size
         except minio.error.S3Error as e:
             if e.code == 'NoSuchKey':
-                raise errors.MissingExternalFile from None
+                raise errors.MissingExternalFile
             else:
                 raise e
 

@@ -129,7 +129,7 @@ class QueryExpression:
                     try:
                         v = uuid.UUID(v)
                     except (AttributeError, ValueError):
-                        raise DataJointError('Badly formed UUID {v} in restriction by `{k}`'.format(k=k, v=v)) from None
+                        raise DataJointError('Badly formed UUID {v} in restriction by `{k}`'.format(k=k, v=v))
                 return "X'%s'" % binascii.hexlify(v.bytes).decode()
             if isinstance(v, (datetime.date, datetime.datetime, datetime.time, decimal.Decimal)):
                 return '"%s"' % v
