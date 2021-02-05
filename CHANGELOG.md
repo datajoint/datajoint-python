@@ -1,6 +1,8 @@
 ## Release notes
 
-### Current
+### 0.13.0 -- TBD
+* Support DataJoint datatype and connection plugins (#715, #729) PR 730, #735
+* Allow updating specified secondary attributes using `update1` PR #763
 * default enable_python_native_blobs to True
 
 ### 0.12.8 -- Jan 12, 2021

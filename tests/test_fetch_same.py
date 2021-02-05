@@ -4,6 +4,7 @@ import numpy as np
 import datajoint as dj
 
 schema = dj.Schema(PREFIX + '_fetch_same', connection=dj.conn(**CONN_INFO))
+dj.config['enable_python_native_blobs'] = True
 
 
 @schema
