@@ -41,7 +41,7 @@ class AutoPopulate:
             parents = self.target.parents(primary=True, as_objects=True, foreign_key_info=True)
             if not parents:
                 raise DataJointError(
-                    'A relation must have primary dependencies for auto-populate to work') from None
+                    'A relation must have primary dependencies for auto-populate to work')
             self._key_source = _rename_attributes(*parents[0])
             for q in parents[1:]:
                 self._key_source *= _rename_attributes(*q)
