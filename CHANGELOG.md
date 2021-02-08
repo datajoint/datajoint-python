@@ -1,6 +1,6 @@
 ## Release notes
 
-### 0.13.0 -- February 15, 2021
+### 0.13.0 -- Feb 15, 2021
 * Reimplement query parsing, fixing issues (#386, #449, #450, #484). PR #754
 * Add table method `.update1` to update a row in the table with new values
 * Python datatypes are now enabled by default in blobs (#761). PR #785
@@ -9,7 +9,7 @@
 * Allow updating specified secondary attributes using `update1` PR #763
 * add dj.key_hash reference to dj.hash.key_hash, treat as 'public api'
 * default enable_python_native_blobs to True
-* Remove python 3.5 support
+* Drop support for Python 3.5
 
 ### 0.12.8 -- Jan 12, 2021
 * table.children, .parents, .descendents, and ancestors can return queryable objects. PR #833
