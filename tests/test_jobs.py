@@ -4,7 +4,6 @@ from datajoint.jobs import ERROR_MESSAGE_LENGTH, TRUNCATION_APPENDIX
 import random
 import string
 import datajoint as dj
-dj.config['enable_python_native_blobs'] = True
 
 subjects = schema.Subject()
 

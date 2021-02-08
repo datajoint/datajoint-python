@@ -1,13 +1,17 @@
 ## Release notes
 
-### 0.13.0 -- Jan 11, 2020
+### 0.13.0 -- Feb 15, 2021
 * Re-implement query transpilation into SQL, fixing issues (#386, #449, #450, #484). PR #754
 * Re-implement cascading deletes for better performance. PR #839.
-* Add table method `.update1` to update an existing row in its table.
+* Add table method `.update1` to update a row in the table with new values PR #763
 * Python datatypes are now enabled by default in blobs (#761). PR #785
 * Added permissive join and restriction operators `@` and `^` (#785) PR #754
+* Support DataJoint datatype and connection plugins (#715, #729) PR 730, #735
+* add `dj.key_hash` alias to `dj.hash.key_hash`
+* default enable_python_native_blobs to True
+* Drop support for Python 3.5
 
-### 0.12.8 -- Dec 22, 2020
+### 0.12.8 -- Jan 12, 2021
 * table.children, .parents, .descendents, and ancestors can return queryable objects. PR #833
 * Load dependencies before querying dependencies. (#179) PR #833
 * Fix display of part tables in `schema.save`. (#821) PR #833

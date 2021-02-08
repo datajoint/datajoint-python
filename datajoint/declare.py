@@ -9,8 +9,6 @@ import warnings
 from .errors import DataJointError, _support_filepath_types, FILEPATH_FEATURE_SWITCH
 from .attribute_adapter import get_adapter
 
-from .utils import OrderedDict
-
 UUID_DATA_TYPE = 'binary(16)'
 MAX_TABLE_NAME_LENGTH = 64
 CONSTANT_LITERALS = {'CURRENT_TIMESTAMP'}  # SQL literals to be used without quotes (case insensitive)
@@ -46,7 +44,7 @@ def match_type(attribute_type):
     try:
         return next(category for category, pattern in TYPE_PATTERN.items() if pattern.match(attribute_type))
     except StopIteration:
-        raise DataJointError("Unsupported attribute type {type}".format(type=attribute_type)) from None
+        raise DataJointError("Unsupported attribute type {type}".format(type=attribute_type))
 
 
 logger = logging.getLogger(__name__)
@@ -136,7 +134,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
         try:
             result = foreign_key_parser_old.parseString(line)
         except pp.ParseBaseException as err:
-            raise DataJointError('Parsing error in line "%s". %s.' % (line, err)) from None
+            raise DataJointError('Parsing error in line "%s". %s.' % (line, err))
         else:
             obsolete = True
     try:
@@ -303,7 +301,7 @@ def _make_attribute_alter(new, old, primary_key):
     name_regexp = re.compile(r"^`(?P<name>\w+)`")
     original_regexp = re.compile(r'COMMENT "{\s*(?P<name>\w+)\s*}')
     matched = ((name_regexp.match(d), original_regexp.search(d)) for d in new)
-    new_names = OrderedDict((d.group('name'), n and n.group('name')) for d, n in matched)
+    new_names = dict((d.group('name'), n and n.group('name')) for d, n in matched)
     old_names = [name_regexp.search(d).group('name') for d in old]
 
     # verify that original names are only used once
@@ -433,7 +431,7 @@ def compile_attribute(line, in_key, foreign_key_sql, context):
         match = attribute_parser.parseString(line + '#', parseAll=True)
     except pp.ParseException as err:
         raise DataJointError('Declaration error in position {pos} in line:\n  {line}\n{msg}'.format(
-            line=err.args[0], pos=err.args[1], msg=err.args[2])) from None
+            line=err.args[0], pos=err.args[1], msg=err.args[2]))
     match['comment'] = match['comment'].rstrip('#')
     if 'default' not in match:
         match['default'] = ''

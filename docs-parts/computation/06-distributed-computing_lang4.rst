@@ -1,7 +1,7 @@
 
 For example, given the above table, errors can be inspected as follows:
 
-.. code-block:: text
+.. code-block:: python
 
     In [3]: (schema.jobs & 'status="error"' ).fetch(as_dict=True)
     Out[3]:

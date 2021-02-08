@@ -13,7 +13,7 @@ from .declare import declare, alter
 from .condition import make_condition
 from .expression import QueryExpression
 from . import blob
-from .utils import user_choice, OrderedDict
+from .utils import user_choice
 from .heading import Heading
 from .errors import DuplicateError, AccessError, DataJointError, UnknownAttributeError, IntegrityError
 from .version import __version__ as version
@@ -316,11 +316,14 @@ class Table(QueryExpression):
                     duplicate=(' ON DUPLICATE KEY UPDATE `{pk}`=`{pk}`'.format(pk=self.primary_key[0])
                                if skip_duplicates else ''))
                 self.connection.query(query, args=list(
-                    itertools.chain.from_iterable((v for v in r['values'] if v is not None) for r in rows)))
+                    itertools.chain.from_iterable(
+                        (v for v in r['values'] if v is not None) for r in rows)))
             except UnknownAttributeError as err:
-                raise err.suggest('To ignore extra fields in insert, set ignore_extra_fields=True') from None
+                raise err.suggest(
+                    'To ignore extra fields in insert, set ignore_extra_fields=True')
             except DuplicateError as err:
-                raise err.suggest('To ignore duplicate entries in insert, set skip_duplicates=True') from None
+                raise err.suggest(
+                    'To ignore duplicate entries in insert, set skip_duplicates=True')
 
     def delete_quick(self, get_count=False):
         """
@@ -595,7 +598,8 @@ class Table(QueryExpression):
                         value = uuid.UUID(value)
                     except (AttributeError, ValueError):
                         raise DataJointError(
-                            'badly formed UUID value {v} for attribute `{n}`'.format(v=value, n=name)) from None
+                            'badly formed UUID value {v} for attribute `{n}`'.format(v=value,
+                                                                                     n=name))
                 value = value.bytes
             elif attr.is_blob:
                 value = blob.pack(value)

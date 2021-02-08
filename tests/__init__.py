@@ -49,44 +49,6 @@ S3_MIGRATE_BUCKET = [path.name for path in Path(
 PREFIX = environ.get('DJ_TEST_DB_PREFIX', 'djtest')
 conn_root = dj.conn(**CONN_INFO_ROOT)
 
-if LooseVersion(conn_root.query(
-        "select @@version;").fetchone()[0]) >= LooseVersion('8.0.0'):
-    # create user if necessary on mysql8
-    conn_root.query("""
-            CREATE USER IF NOT EXISTS 'datajoint'@'%%'
-            IDENTIFIED BY 'datajoint';
-            """)
-    conn_root.query("""
-            CREATE USER IF NOT EXISTS 'djview'@'%%'
-            IDENTIFIED BY 'djview';
-            """)
-    conn_root.query("""
-            CREATE USER IF NOT EXISTS 'djssl'@'%%'
-            IDENTIFIED BY 'djssl'
-            REQUIRE SSL;
-            """)
-    conn_root.query(
-        "GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%';")
-    conn_root.query(
-        "GRANT SELECT ON `djtest%%`.* TO 'djview'@'%%';")
-    conn_root.query(
-        "GRANT SELECT ON `djtest%%`.* TO 'djssl'@'%%';")
-else:
-    # grant permissions. For mysql5.6/5.7 this also automatically creates user
-    # if not exists
-    conn_root.query("""
-        GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%'
-        IDENTIFIED BY 'datajoint';
-        """)
-    conn_root.query(
-        "GRANT SELECT ON `djtest%%`.* TO 'djview'@'%%' IDENTIFIED BY 'djview';"
-        )
-    conn_root.query("""
-        GRANT SELECT ON `djtest%%`.* TO 'djssl'@'%%'
-        IDENTIFIED BY 'djssl'
-        REQUIRE SSL;
-        """)
-
 # Initialize httpClient with relevant timeout.
 httpClient = urllib3.PoolManager(
             timeout=30,
@@ -114,6 +76,45 @@ def setup_package():
     Turns off safemode
     """
     dj.config['safemode'] = False
+
+    # Create MySQL users
+    if LooseVersion(conn_root.query(
+            "select @@version;").fetchone()[0]) >= LooseVersion('8.0.0'):
+        # create user if necessary on mysql8
+        conn_root.query("""
+                CREATE USER IF NOT EXISTS 'datajoint'@'%%'
+                IDENTIFIED BY 'datajoint';
+                """)
+        conn_root.query("""
+                CREATE USER IF NOT EXISTS 'djview'@'%%'
+                IDENTIFIED BY 'djview';
+                """)
+        conn_root.query("""
+                CREATE USER IF NOT EXISTS 'djssl'@'%%'
+                IDENTIFIED BY 'djssl'
+                REQUIRE SSL;
+                """)
+        conn_root.query(
+            "GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%';")
+        conn_root.query(
+            "GRANT SELECT ON `djtest%%`.* TO 'djview'@'%%';")
+        conn_root.query(
+            "GRANT SELECT ON `djtest%%`.* TO 'djssl'@'%%';")
+    else:
+        # grant permissions. For mysql5.6/5.7 this also automatically creates user
+        # if not exists
+        conn_root.query("""
+            GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%'
+            IDENTIFIED BY 'datajoint';
+            """)
+        conn_root.query(
+            "GRANT SELECT ON `djtest%%`.* TO 'djview'@'%%' IDENTIFIED BY 'djview';"
+            )
+        conn_root.query("""
+            GRANT SELECT ON `djtest%%`.* TO 'djssl'@'%%'
+            IDENTIFIED BY 'djssl'
+            REQUIRE SSL;
+            """)
 
     # Add old MySQL
     source = Path(
@@ -171,14 +172,18 @@ def teardown_package():
     To deal with possible foreign key constraints, it will unset
     and then later reset FOREIGN_KEY_CHECKS flag
     """
-    conn = dj.conn(**CONN_INFO)
-    conn.query('SET FOREIGN_KEY_CHECKS=0')
-    cur = conn.query('SHOW DATABASES LIKE "{}\_%%"'.format(PREFIX))
+    conn_root.query('SET FOREIGN_KEY_CHECKS=0')
+    cur = conn_root.query('SHOW DATABASES LIKE "{}\_%%"'.format(PREFIX))
     for db in cur.fetchall():
-        conn.query('DROP DATABASE `{}`'.format(db[0]))
-    conn.query('SET FOREIGN_KEY_CHECKS=1')
+        conn_root.query('DROP DATABASE `{}`'.format(db[0]))
+    conn_root.query('SET FOREIGN_KEY_CHECKS=1')
     if os.path.exists("dj_local_conf.json"):
         remove("dj_local_conf.json")
+
+    # Remove created users
+    conn_root.query('DROP USER `datajoint`')
+    conn_root.query('DROP USER `djview`')
+    conn_root.query('DROP USER `djssl`')
 
     # Remove old S3
     objs = list(minioClient.list_objects(
