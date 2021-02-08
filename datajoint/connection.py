@@ -140,6 +140,10 @@ class EmulatedCursor:
     def fetchone(self):
         return next(self._iter)
 
+    @property
+    def rowcount(self):
+        return len(self._data)
+
 
 class Connection:
     """
@@ -277,7 +281,7 @@ class Connection:
             try:
                 buffer = cache_path.read_bytes()
             except FileNotFoundError:
-                pass   # proceed to the normal query
+                pass   # proceed to query the database
             else:
                 return EmulatedCursor(unpack(buffer))
 
