@@ -1,9 +1,16 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 0.13.0 -- Jan 11, 2020
 ----------------------
 * Re-implement query transpilation into SQL, fixing issues (#386, #449, #450, #484). PR #754
 * Re-implement cascading deletes for better performance. PR #839.
 * Add table method `.update1` to update an existing row in its table.
+=======
+0.13.0 -- Jan 11, 2021
+---------------------
+* Reimplement query parsing, fixing issues (#386, #449, #450, #484). PR #754
+* Add table method `.update1` to update a row in the table with new values
+>>>>>>> aggr_fix
 * Python datatypes are now enabled by default in blobs (#761). PR #785
 * Added permissive join and restriction operators `@` and `^` (#785) PR #754
 
