@@ -346,7 +346,7 @@ class Blob:
 
     def read_dict(self):
         return dict((self.read_blob(self.read_value()), self.read_blob(self.read_value()))
-                           for _ in range(self.read_value()))
+                    for _ in range(self.read_value()))
 
     def pack_dict(self, d):
         return b"\4" + len_u64(d) + b"".join(

@@ -238,8 +238,8 @@ class Fetch1:
             if not ret or cur.fetchone():
                 raise DataJointError('fetch1 should only be used for relations with exactly one tuple')
             ret = dict((name, _get(self._expression.connection, heading[name], ret[name],
-                                          squeeze=squeeze, download_path=download_path))
-                              for name in heading.names)
+                                   squeeze=squeeze, download_path=download_path))
+                       for name in heading.names)
         else:  # fetch some attributes, return as tuple
             attributes = [a for a in attrs if not is_key(a)]
             result = self._expression.proj(*attributes).fetch(squeeze=squeeze, download_path=download_path)
