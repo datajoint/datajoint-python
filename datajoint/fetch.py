@@ -10,7 +10,7 @@ import numbers
 from . import blob, hash
 from .errors import DataJointError
 from .settings import config
-from .utils import OrderedDict, safe_write
+from .utils import safe_write
 
 
 class key:
@@ -28,7 +28,7 @@ def is_key(attr):
 def to_dicts(recarray):
     """convert record array to a dictionaries"""
     for rec in recarray:
-        yield OrderedDict(zip(recarray.dtype.names, rec.tolist()))
+        yield dict(zip(recarray.dtype.names, rec.tolist()))
 
 
 def _get(connection, attr, data, squeeze, download_path):
@@ -187,7 +187,7 @@ class Fetch:
             cur = self._expression.cursor(as_dict=as_dict, limit=limit, offset=offset, order_by=order_by)
             heading = self._expression.heading
             if as_dict:
-                ret = [OrderedDict((name, get(heading[name], d[name])) for name in heading.names) for d in cur]
+                ret = [dict((name, get(heading[name], d[name])) for name in heading.names) for d in cur]
             else:
                 ret = list(cur.fetchall())
                 record_type = (heading.as_dtype if not ret else np.dtype(
@@ -237,7 +237,7 @@ class Fetch1:
             ret = cur.fetchone()
             if not ret or cur.fetchone():
                 raise DataJointError('fetch1 should only be used for relations with exactly one tuple')
-            ret = OrderedDict((name, _get(self._expression.connection, heading[name], ret[name],
+            ret = dict((name, _get(self._expression.connection, heading[name], ret[name],
                                           squeeze=squeeze, download_path=download_path))
                               for name in heading.names)
         else:  # fetch some attributes, return as tuple

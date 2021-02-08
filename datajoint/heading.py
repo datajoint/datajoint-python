@@ -5,7 +5,6 @@ import re
 import logging
 from .errors import DataJointError, _support_filepath_types, FILEPATH_FEATURE_SWITCH
 from .declare import UUID_DATA_TYPE, SPECIAL_TYPES, TYPE_PATTERN, EXTERNAL_TYPES, NATIVE_TYPES
-from .utils import OrderedDict
 from .attribute_adapter import get_adapter, AttributeAdapter
 
 
@@ -24,7 +23,7 @@ class Attribute(namedtuple('_Attribute', default_attribute_properties)):
     """
     def todict(self):
         """Convert namedtuple to dict."""
-        return OrderedDict((name, self[i]) for i, name in enumerate(self._fields))
+        return dict((name, self[i]) for i, name in enumerate(self._fields))
 
     @property
     def sql_type(self):
@@ -58,7 +57,7 @@ class Attribute(namedtuple('_Attribute', default_attribute_properties)):
 class Heading:
     """
     Local class for relations' headings.
-    Heading contains the property attributes, which is an OrderedDict in which the keys are
+    Heading contains the property attributes, which is an dict in which the keys are
     the attribute names and the values are Attributes.
     """
 
@@ -70,7 +69,7 @@ class Heading:
         self.indexes = None
         self.table_info = table_info
         self._table_status = None
-        self._attributes = None if attribute_specs is None else OrderedDict(
+        self._attributes = None if attribute_specs is None else dict(
             (q['name'], Attribute(**q)) for q in attribute_specs)
 
     def __len__(self):
@@ -303,7 +302,7 @@ class Heading:
                 # restore adapted type name
                 attr['type'] = adapter_name
 
-        self._attributes = OrderedDict(((q['name'], Attribute(**q)) for q in attributes))
+        self._attributes = dict(((q['name'], Attribute(**q)) for q in attributes))
 
         # Read and tabulate secondary indexes
         keys = defaultdict(dict)
