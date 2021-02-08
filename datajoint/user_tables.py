@@ -12,8 +12,8 @@ _base_regexp = r'[a-z][a-z0-9]*(_[a-z][a-z0-9]*)*'
 
 # attributes that trigger instantiation of user classes
 supported_class_attrs = {
-    'key_source', 'describe', 'alter', 'heading', 'populate', 'progress', 'primary_key', 'proj', 'aggr', 'join',
-    'fetch', 'fetch1', 'head', 'tail',
+    'key_source', 'describe', 'alter', 'heading', 'populate', 'progress', 'primary_key',
+    'proj', 'aggr', 'join', 'fetch', 'fetch1', 'head', 'tail',
     'descendants', 'ancestors', 'parts', 'parents', 'children',
     'insert', 'insert1', 'update1', 'drop', 'drop_quick', 'delete', 'delete_quick'}
 

@@ -260,8 +260,8 @@ class Heading:
                         url = "https://docs.datajoint.io/python/admin/5-blob-config.html" \
                               "#migration-between-datajoint-v0-11-and-v0-12"
                         raise DataJointError('Legacy datatype `{type}`. Migrate your external stores to '
-                                             'datajoint 0.12: {url}'.format(url=url, **attr)) from None
-                    raise DataJointError('Unknown attribute type `{type}`'.format(**attr)) from None
+                                             'datajoint 0.12: {url}'.format(url=url, **attr))
+                    raise DataJointError('Unknown attribute type `{type}`'.format(**attr))
                 if category == 'FILEPATH' and not _support_filepath_types():
                     raise DataJointError("""
                         The filepath data type is disabled until complete validation.
