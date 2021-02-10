@@ -413,7 +413,8 @@ class Table(QueryExpression):
                 if safemode:
                     print('Deletes committed.')
             else:
-                self.connection.cancel_transaction()
+                if transaction:
+                    self.connection.cancel_transaction()
                 if safemode:
                     print('Deletes cancelled')
 
