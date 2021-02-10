@@ -378,7 +378,7 @@ class Table(QueryExpression):
         :param transaction: if True, use the entire delete becomes an atomic transaction.
         :param safemode: If True, prohibit nested transactions and prompt to confirm. Default is dj.config['safemode'].
         """
-        safemode = safemode or config['safemode']
+        safemode = config['safemode'] if safemode is None else safemode
 
         # Start transaction
         if transaction:
