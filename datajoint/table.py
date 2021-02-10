@@ -378,7 +378,7 @@ class Table(QueryExpression):
         :param transaction: if True, use the entire delete becomes an atomic transaction.
         :param safemode: If True, prohibit nested transactions and prompt to confirm. Default is dj.config['safemode'].
         """
-        safemode = safemode or config['safemode']
+        safemode = config['safemode'] if safemode is None else safemode
 
         # Start transaction
         if transaction:
@@ -408,11 +408,13 @@ class Table(QueryExpression):
                 self.connection.cancel_transaction()
         else:
             if not safemode or user_choice("Commit deletes?", default='no') == 'yes':
-                self.connection.commit_transaction()
+                if transaction:
+                    self.connection.commit_transaction()
                 if safemode:
                     print('Deletes committed.')
             else:
-                self.connection.cancel_transaction()
+                if transaction:
+                    self.connection.cancel_transaction()
                 if safemode:
                     print('Deletes cancelled')
 
