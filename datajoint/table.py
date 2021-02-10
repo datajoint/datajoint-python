@@ -408,7 +408,8 @@ class Table(QueryExpression):
                 self.connection.cancel_transaction()
         else:
             if not safemode or user_choice("Commit deletes?", default='no') == 'yes':
-                self.connection.commit_transaction()
+                if transaction:
+                    self.connection.commit_transaction()
                 if safemode:
                     print('Deletes committed.')
             else:
