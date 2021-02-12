@@ -345,3 +345,12 @@ class ThingC(dj.Manual):
     ---
     -> [unique, nullable] ThingB
     """
+
+
+@schema
+class Room(dj.Lookup):
+    definition = """
+    name: varchar(20)
+    ---
+    light: bool
+    """

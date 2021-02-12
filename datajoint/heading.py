@@ -225,7 +225,9 @@ class Heading:
                 store=None, is_external=False, attribute_expression=None)
 
             if any(TYPE_PATTERN[t].match(attr['type']) for t in ('INTEGER', 'FLOAT')):
-                attr['type'] = re.sub(r'\(\d+\)', '', attr['type'], count=1)  # strip size off integers and floats
+                # strip size off integers and floats
+                attr['type'] = ('bool' if attr['type'] == 'tinyint(1)'
+                                else re.sub(r'\(\d+\)', '', attr['type'], count=1))
             attr['unsupported'] = not any((attr['is_blob'], attr['numeric'], attr['numeric']))
             attr.pop('Extra')
 
