@@ -9,6 +9,7 @@
 * add `dj.key_hash` alias to `dj.hash.key_hash`
 * default enable_python_native_blobs to True
 * Drop support for Python 3.5
+* bool type now show in `.describe()`
 
 0.12.8 -- Jan 12, 2021
 ----------------------
