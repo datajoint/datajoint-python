@@ -44,6 +44,7 @@ class TestDeclare:
         s1 = declare(rel.full_table_name, rel.definition, context)
         s2 = declare(rel.full_table_name, rel.describe(), context)
         assert_equal(s1, s2)
+        assert_equal(Room.heading.attributes['light'].type, 'bool')
         assert_true('bool' in Room.describe())
 
     @staticmethod
