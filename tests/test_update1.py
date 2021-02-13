@@ -23,6 +23,7 @@ scratch_folder = tempfile.mkdtemp()
 
 dj.errors._switch_filepath_types(True)
 
+
 @schema
 class Thing(dj.Manual):
     definition = """

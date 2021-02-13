@@ -31,14 +31,22 @@ def test_schema_list():
     assert_true(schema.schema.database in schemas)
 
 
+@raises(dj.errors.AccessError)
+def test_drop_unauthorized():
+    info_schema = dj.schema('information_schema')
+    info_schema.drop()
+
+
 def test_namespace_population():
     for name, rel in getmembers(schema, relation_selector):
         assert_true(hasattr(schema_empty, name), '{name} not found in schema_empty'.format(name=name))
-        assert_true(rel.__base__ is getattr(schema_empty, name).__base__, 'Wrong tier for {name}'.format(name=name))
+        assert_true(rel.__base__ is getattr(schema_empty, name).__base__,
+                    'Wrong tier for {name}'.format(name=name))
 
         for name_part in dir(rel):
             if name_part[0].isupper() and part_selector(getattr(rel, name_part)):
-                assert_true(getattr(rel, name_part).__base__ is dj.Part, 'Wrong tier for {name}'.format(name=name_part))
+                assert_true(getattr(rel, name_part).__base__ is dj.Part,
+                            'Wrong tier for {name}'.format(name=name_part))
 
 
 @raises(dj.DataJointError)
