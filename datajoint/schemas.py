@@ -406,4 +406,7 @@ def list_schemas(connection=None):
     :param connection: a dj.Connection object
     :return: list of all accessible schemas on the server
     """
-    return [r[0] for r in (connection or conn()).query('SHOW SCHEMAS') if r[0] not in {'information_schema'}]
+    return [r[0] for r in (connection or conn()).query(
+        'SELECT schema_name '
+        'FROM information_schema.schemata '
+        'WHERE schema_name <> "information_schema"')]

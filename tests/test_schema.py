@@ -26,6 +26,11 @@ def test_schema_size_on_disk():
     assert_true(isinstance(number_of_bytes, int))
 
 
+def test_schema_list():
+    schemas = dj.list_schemas()
+    assert_true(schema.schema.database in schemas)
+
+
 def test_namespace_population():
     for name, rel in getmembers(schema, relation_selector):
         assert_true(hasattr(schema_empty, name), '{name} not found in schema_empty'.format(name=name))
