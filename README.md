@@ -32,9 +32,10 @@ Some Python datatypes such as dicts were coerced into numpy recarrays and then f
 However, since some Python types were coerced into MATLAB types, old blobs and new blobs may now be fetched as different types of objects even if they were inserted the same way. 
 For example, new `dict` objects will be returned as `dict` while the same types of objects inserted with `datajoint 0.11` will be recarrays.
 
-Since this is a big change, we chose to disable full blob support by default as a temporary precaution, which will be removed in version 0.13.
+Since this is a big change, we chose to temporarily disable this feature by default in DataJoint for Python 0.12.x, allowing users to adjust their code if necessary. 
+From 13.x, the flag will default to True (on), and will ultimately be removed when corresponding decode support for the new format is added to datajoint-matlab (see: datajoint-matlab #222, datajoint-python #765).
 
-You may enable it by setting the `enable_python_native_blobs` flag in `dj.config`. 
+The flag is configured by setting the `enable_python_native_blobs` flag in `dj.config`. 
 
 ```python
 import datajoint as dj
@@ -68,7 +69,7 @@ as structured arrays, whereas new record inserted in DataJoint 0.12 with
 appropriate native python type (dict, etc).  
 Furthermore, DataJoint for MATLAB does not yet support unpacking native Python datatypes.
 
-With `dj.config["enable_python_native_blobs"]` set to `False` (default), 
+With `dj.config["enable_python_native_blobs"]` set to `False`, 
 any attempt to insert any datatype other than a numpy array will result in an exception.
 This is meant to get users to read this message in order to allow proper testing
 and migration of pre-0.12 pipelines to 0.12 in a safe manner.

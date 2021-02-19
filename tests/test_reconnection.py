@@ -2,7 +2,7 @@
 Collection of test cases to test connection module.
 """
 
-from nose.tools import assert_true, assert_false, assert_equal, raises
+from nose.tools import assert_true, assert_false, raises
 import datajoint as dj
 from datajoint import DataJointError
 from . import CONN_INFO
