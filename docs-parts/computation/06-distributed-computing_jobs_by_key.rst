@@ -3,7 +3,7 @@ This can be done by using `dj.key_hash` to convert the key as follows:
 
 .. code-block:: python
 
-    In [4]: jk = {'table_name': '__job_results', 'key_hash' : dj.key_hash({'id': 2})}
+    In [4]: jk = {'table_name': JobResults.table_name, 'key_hash' : dj.key_hash({'id': 2})}
     In [5]: schema.jobs & jk
     Out[5]: 
     *table_name    *key_hash      status     key        error_message  error_stac user           host      pid        connection_id  timestamp     
