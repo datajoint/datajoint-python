@@ -299,7 +299,10 @@ class Schema:
         if self.database is None:
             raise DataJointError("Schema must be activated first.")
         return self.database is not None and (
-            self.connection.query("SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE '{database}'".format(
+            self.connection.query(
+                "SELECT schema_name "
+                "FROM information_schema.schemata "
+                "WHERE schema_name = '{database}'".format(
                 database=self.database)).rowcount > 0)
 
     @property
