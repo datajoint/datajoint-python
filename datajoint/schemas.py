@@ -1,5 +1,4 @@
 import warnings
-import pymysql
 import logging
 import inspect
 import re
@@ -8,7 +7,7 @@ import collections
 from .connection import conn
 from .diagram import Diagram, _get_tier
 from .settings import config
-from .errors import DataJointError
+from .errors import DataJointError, AccessError
 from .jobs import JobTable
 from .external import ExternalMapping
 from .heading import Heading
@@ -45,9 +44,11 @@ class Schema:
     def __init__(self, schema_name=None, context=None, *, connection=None, create_schema=True,
                  create_tables=True, add_objects=None):
         """
-        Associate database schema `schema_name`. If the schema does not exist, attempt to create it on the server.
+        Associate database schema `schema_name`. If the schema does not exist, attempt to
+        create it on the server.
 
-        If the schema_name is omitted, then schema.activate(..) must be called later to associate with the database.
+        If the schema_name is omitted, then schema.activate(..) must be called later
+        to associate with the database.
 
         :param schema_name: the database schema to associate.
         :param context: dictionary for looking up foreign key references, leave None to use local context.
@@ -70,25 +71,32 @@ class Schema:
         if schema_name:
             self.activate(schema_name)
 
-    def activate(self, schema_name, *, connection=None, create_schema=True,
+    def is_activated(self):
+        return self.database is not None
+
+    def activate(self, schema_name=None, *, connection=None, create_schema=None,
                  create_tables=None, add_objects=None):
         """
-        Associate database schema `schema_name`. If the schema does not exist, attempt to create it on the server.
+        Associate database schema `schema_name`. If the schema does not exist, attempt to
+        create it on the server.
         :param schema_name: the database schema to associate.
+            schema_name=None is used to assert that the schema has already been activated.
         :param connection: Connection object. Defaults to datajoint.conn().
-        :param create_schema: When False, do not create the schema and raise an error if missing.
-        :param create_tables: When False, do not create tables and raise errors when accessing missing tables.
-        :param add_objects: a mapping with additional objects to make available to the context in which table classes
-        are declared.
+        :param create_schema: If False, do not create the schema and raise an error if missing.
+        :param create_tables: If False, do not create tables and raise errors when attempting
+            to access missing tables.
+        :param add_objects: a mapping with additional objects to make available to the context
+            in which table classes are declared.
         """
         if schema_name is None:
-            if self.is_activated:
+            if self.exists:
                 return
             raise DataJointError("Please provide a schema_name to activate the schema.")
-        if self.is_activated:
+        if self.database is not None and self.exists:
             if self.database == schema_name:  # already activated
                 return
-            raise DataJointError("The schema is already activated for schema {db}.".format(db=self.database))
+            raise DataJointError(
+                "The schema is already activated for schema {db}.".format(db=self.database))
         if connection is not None:
             self.connection = connection
         if self.connection is None:
@@ -101,37 +109,32 @@ class Schema:
         if add_objects:
             self.add_objects = add_objects
         if not self.exists:
-            if not create_schema or not self.database:
+            if not self.create_schema or not self.database:
                 raise DataJointError(
-                    "Database named `{name}` was not defined. "
+                    "Database `{name}` has not yet been declared. "
                     "Set argument create_schema=True to create it.".format(name=schema_name))
+            # create database
+            logger.info("Creating schema `{name}`.".format(name=schema_name))
+            try:
+                self.connection.query("CREATE DATABASE `{name}`".format(name=schema_name))
+            except AccessError:
+                raise DataJointError(
+                    "Schema `{name}` does not exist and could not be created. "
+                    "Check permissions.".format(name=schema_name))
             else:
-                # create database
-                logger.info("Creating schema `{name}`.".format(name=schema_name))
-                try:
-                    self.connection.query("CREATE DATABASE `{name}`".format(name=schema_name))
-                except pymysql.OperationalError:
-                    raise DataJointError(
-                        "Schema `{name}` does not exist and could not be created. "
-                        "Check permissions.".format(name=schema_name))
-                else:
-                    self.log('created')
-        self.log('connect')
+                self.log('created')
         self.connection.register(self)
 
-        # decorate all tables
+        # decorate all tables already decorated
         for cls, context in self.declare_list:
             if self.add_objects:
                 context = dict(context, **self.add_objects)
             self._decorate_master(cls, context)
 
-    @property
-    def is_activated(self):
-        return self.database is not None
-
-    def _assert_activation(self, message="The schema must be activated first."):
-        if not self.is_activated:
-            raise DataJointError(message)
+    def _assert_exists(self, message=None):
+        if not self.exists:
+            raise DataJointError(
+                message or "Schema `{db}` has not been created.".format(db=self.database))
 
     def __call__(self, cls, *, context=None):
         """
@@ -142,7 +145,7 @@ class Schema:
         context = context or self.context or inspect.currentframe().f_back.f_locals
         if issubclass(cls, Part):
             raise DataJointError('The schema decorator should not be applied to Part relations')
-        if self.is_activated:
+        if self.is_activated():
             self._decorate_master(cls, context)
         else:
             self.declare_list.append((cls, context))
@@ -204,7 +207,7 @@ class Schema:
 
     @property
     def log(self):
-        self._assert_activation()
+        self._assert_exists()
         if self._log is None:
             self._log = Log(self.connection, self.database)
         return self._log
@@ -217,7 +220,7 @@ class Schema:
         """
         :return: size of the entire schema in bytes
         """
-        self._assert_activation()
+        self._assert_exists()
         return int(self.connection.query(
             """
             SELECT SUM(data_length + index_length)
@@ -230,7 +233,7 @@ class Schema:
         in the context.
         :param context: alternative context to place the missing classes into, e.g. locals()
         """
-        self._assert_activation()
+        self._assert_exists()
         if context is None:
             if self.context is not None:
                 context = self.context
@@ -273,9 +276,9 @@ class Schema:
         """
         Drop the associated schema if it exists
         """
-        self._assert_activation()
         if not self.exists:
-            logger.info("Schema named `{database}` does not exist. Doing nothing.".format(database=self.database))
+            logger.info("Schema named `{database}` does not exist. Doing nothing.".format(
+                database=self.database))
         elif (not config['safemode'] or
               force or
               user_choice("Proceed to delete entire schema `%s`?" % self.database, default='no') == 'yes'):
@@ -283,18 +286,24 @@ class Schema:
             try:
                 self.connection.query("DROP DATABASE `{database}`".format(database=self.database))
                 logger.info("Schema `{database}` was dropped successfully.".format(database=self.database))
-            except pymysql.OperationalError:
-                raise DataJointError("An attempt to drop schema `{database}` "
-                                     "has failed. Check permissions.".format(database=self.database))
+            except AccessError:
+                raise AccessError(
+                    "An attempt to drop schema `{database}` "
+                    "has failed. Check permissions.".format(database=self.database))
 
     @property
     def exists(self):
         """
         :return: true if the associated schema exists on the server
         """
-        self._assert_activation()
-        cur = self.connection.query("SHOW DATABASES LIKE '{database}'".format(database=self.database))
-        return cur.rowcount > 0
+        if self.database is None:
+            raise DataJointError("Schema must be activated first.")
+        return self.database is not None and (
+            self.connection.query(
+                "SELECT schema_name "
+                "FROM information_schema.schemata "
+                "WHERE schema_name = '{database}'".format(
+                    database=self.database)).rowcount > 0)
 
     @property
     def jobs(self):
@@ -302,14 +311,14 @@ class Schema:
         schema.jobs provides a view of the job reservation table for the schema
         :return: jobs table
         """
-        self._assert_activation()
+        self._assert_exists()
         if self._jobs is None:
             self._jobs = JobTable(self.connection, self.database)
         return self._jobs
 
     @property
     def code(self):
-        self._assert_activation()
+        self._assert_exists()
         return self.save()
 
     def save(self, python_filename=None):
@@ -318,7 +327,7 @@ class Schema:
         This method is in preparation for a future release and is not officially supported.
         :return: a string containing the body of a complete Python module defining this schema.
         """
-        self._assert_activation()
+        self._assert_exists()
         module_count = itertools.count()
         # add virtual modules for referenced modules with names vmod0, vmod1, ...
         module_lookup = collections.defaultdict(lambda: 'vmod' + str(next(module_count)))
@@ -358,20 +367,18 @@ class Schema:
                       for k, v in module_lookup.items()), body))
         if python_filename is None:
             return python_code
-        else:
-            with open(python_filename, 'wt') as f:
-                f.write(python_code)
+        with open(python_filename, 'wt') as f:
+            f.write(python_code)
 
     def list_tables(self):
         """
         Return a list of all tables in the schema except tables with ~ in first character such
         as ~logs and ~job
-        :return: A list of table names in their raw datajoint naming convection form
+        :return: A list of table names from the database schema.
         """
-
         return [table_name for (table_name,) in self.connection.query("""
             SELECT table_name FROM information_schema.tables
-            WHERE table_schema = %s and table_name NOT LIKE '~%%'""", args=(self.database))]
+            WHERE table_schema = %s and table_name NOT LIKE '~%%'""", args=(self.database,))]
 
 
 class VirtualModule(types.ModuleType):
@@ -393,8 +400,8 @@ class VirtualModule(types.ModuleType):
         :return: the python module containing classes from the schema object and the table classes
         """
         super(VirtualModule, self).__init__(name=module_name)
-        _schema = Schema(schema_name, create_schema=create_schema, create_tables=create_tables,
-                         connection=connection)
+        _schema = Schema(schema_name, create_schema=create_schema,
+                         create_tables=create_tables, connection=connection)
         if add_objects:
             self.__dict__.update(add_objects)
         self.__dict__['schema'] = _schema
@@ -406,4 +413,7 @@ def list_schemas(connection=None):
     :param connection: a dj.Connection object
     :return: list of all accessible schemas on the server
     """
-    return [r[0] for r in (connection or conn()).query('SHOW SCHEMAS') if r[0] not in {'information_schema'}]
+    return [r[0] for r in (connection or conn()).query(
+        'SELECT schema_name '
+        'FROM information_schema.schemata '
+        'WHERE schema_name <> "information_schema"')]

@@ -1,7 +1,6 @@
 import datajoint as dj
-from . import PREFIX, CONN_INFO
 
-schema = dj.Schema(connection=dj.conn(**CONN_INFO))
+schema = dj.Schema()
 
 
 @schema
@@ -110,14 +109,3 @@ class Grade(dj.Manual):
     ---
     -> LetterGrade
     """
-
-
-schema.activate(PREFIX + '_university')  # deferred activation
-
-# ---------------  Fill University -------------------
-
-for table in Student, Department, StudentMajor, Course, Term, CurrentTerm, Section, Enroll, Grade:
-    import csv
-    with open('./data/' + table.__name__ + '.csv') as f:
-        reader = csv.DictReader(f)
-        table().insert(reader)
