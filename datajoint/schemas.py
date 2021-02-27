@@ -303,7 +303,7 @@ class Schema:
                 "SELECT schema_name "
                 "FROM information_schema.schemata "
                 "WHERE schema_name = '{database}'".format(
-                database=self.database)).rowcount > 0)
+                    database=self.database)).rowcount > 0)
 
     @property
     def jobs(self):
