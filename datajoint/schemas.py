@@ -367,20 +367,18 @@ class Schema:
                       for k, v in module_lookup.items()), body))
         if python_filename is None:
             return python_code
-        else:
-            with open(python_filename, 'wt') as f:
-                f.write(python_code)
+        with open(python_filename, 'wt') as f:
+            f.write(python_code)
 
     def list_tables(self):
         """
         Return a list of all tables in the schema except tables with ~ in first character such
         as ~logs and ~job
-        :return: A list of table names in their raw datajoint naming convection form
+        :return: A list of table names from the database schema.
         """
-
         return [table_name for (table_name,) in self.connection.query("""
             SELECT table_name FROM information_schema.tables
-            WHERE table_schema = %s and table_name NOT LIKE '~%%'""", args=(self.database))]
+            WHERE table_schema = %s and table_name NOT LIKE '~%%'""", args=(self.database,))]
 
 
 class VirtualModule(types.ModuleType):
