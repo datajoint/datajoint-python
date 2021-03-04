@@ -47,7 +47,7 @@ For example:
     import pandas as pd
     frame = pd.DataFrame(tab.fetch())
 
-Calling ``fetch()`` with the argument ``format="frame"`` returns results as ``pandas.DataFrame`` objects with no need for conversion.
+Calling ``fetch()`` with the argument ``format="frame"`` returns results as ``pandas.DataFrame`` objects indexed by the table's primary key attributes.
 
 .. code-block:: python
 
