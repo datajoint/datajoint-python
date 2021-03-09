@@ -243,3 +243,6 @@ class TestFetch:
             assert_dict_equal(l1, l2, 'Primary key is not returned correctly')
         # revert configuration of fetch format
         dj.config['fetch_format'] = 'array'
+
+    def test_same_secondary_attribute(self):
+        print(schema.Child * schema.Parent().proj())
