@@ -241,5 +241,9 @@ class TestFetch:
         list1 = sorted(key, key=itemgetter('subject_id'))
         for l1, l2 in zip(list1, list2):
             assert_dict_equal(l1, l2, 'Primary key is not returned correctly')
+
+        # test pandas with fetch1
+        k = (self.subject & 'subject_id=10').fetch1('KEY')
+
         # revert configuration of fetch format
         dj.config['fetch_format'] = 'array'
