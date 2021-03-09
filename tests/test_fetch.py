@@ -247,3 +247,6 @@ class TestFetch:
 
         # revert configuration of fetch format
         dj.config['fetch_format'] = 'array'
+
+    def test_same_secondary_attribute(self):
+        print(schema.Child * schema.Parent().proj())
