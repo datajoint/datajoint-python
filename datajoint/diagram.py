@@ -145,7 +145,7 @@ else:
                 """
                 :param part:  `database`.`table_name`
                 :param master:   `database`.`table_name`
-                :return: True if part is part of master,
+                :return: True if part is part of master.
                 """
                 part = [s.strip('`') for s in part.split('.')]
                 master = [s.strip('`') for s in master.split('.')]
