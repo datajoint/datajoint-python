@@ -243,7 +243,7 @@ class TestFetch:
             assert_dict_equal(l1, l2, 'Primary key is not returned correctly')
 
         # test pandas with fetch1
-        k = (self.subject & 'subject_id=10').fetch1('KEY')
+        # k = (self.subject & 'subject_id=10').fetch1('KEY')
 
         # revert configuration of fetch format
         dj.config['fetch_format'] = 'array'
