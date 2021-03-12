@@ -1,6 +1,8 @@
-from nose.tools import assert_true, assert_list_equal, assert_false
-from .schema_university import *
+from nose.tools import assert_true, assert_list_equal, assert_false, raises
 import hashlib
+from datajoint import DataJointError
+from .schema_university import *
+from . import PREFIX, CONN_INFO
 
 
 def _hash4(table):
@@ -10,10 +12,23 @@ def _hash4(table):
     return hashlib.md5(blob).digest().hex()[:4]
 
 
+@raises(DataJointError)
+def test_activate_unauthorized():
+    schema.activate('unauthorized', connection=dj.conn(**CONN_INFO))
+
+
+def test_activate():
+    schema.activate(PREFIX + '_university',  connection=dj.conn(**CONN_INFO))  # deferred activation
+    # ---------------  Fill University -------------------
+    for table in Student, Department, StudentMajor, Course, Term, CurrentTerm, Section, Enroll, Grade:
+        import csv
+        with open('./data/' + table.__name__ + '.csv') as f:
+            reader = csv.DictReader(f)
+            table().insert(reader)
+
+
 def test_fill():
-    """
-    check that the randomized tables are consistently defined
-    """
+    """ check that the randomized tables are consistently defined """
     # check randomized tables
     assert_true(len(Student()) == 300 and _hash4(Student) == '1e1a')
     assert_true(len(StudentMajor()) == 226 and _hash4(StudentMajor) == '3129')
@@ -27,7 +42,6 @@ def test_restrict():
     test diverse restrictions from the university database.
     This test relies on a specific instantiation of the database.
     """
-
     utahns1 = Student & {'home_state': 'UT'}
     utahns2 = Student & 'home_state="UT"'
     assert_true(len(utahns1) == len(utahns2.fetch('KEY')) == 7)
@@ -41,7 +55,8 @@ def test_restrict():
     assert_true(set(sex1).pop() == set(sex2).pop() == "M")
 
     # students from OK, NM, TX
-    s1 = (Student & [{'home_state': s} for s in ('OK', 'NM', 'TX')]).fetch("KEY", order_by="student_id")
+    s1 = (Student & [{'home_state': s} for s in ('OK', 'NM', 'TX')]).fetch(
+        "KEY", order_by="student_id")
     s2 = (Student & 'home_state in ("OK", "NM", "TX")').fetch('KEY', order_by="student_id")
     assert_true(len(s1) == 11)
     assert_list_equal(s1, s2)

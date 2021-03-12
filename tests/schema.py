@@ -345,3 +345,22 @@ class ThingC(dj.Manual):
     ---
     -> [unique, nullable] ThingB
     """
+
+
+@schema
+class Parent(dj.Manual):
+    definition = """
+    parent_id: int
+    ---
+    name: varchar(30)
+    """
+
+
+@schema
+class Child(dj.Manual):
+    definition = """
+    -> Parent
+    child_id: int
+    ---
+    name: varchar(30)
+    """
