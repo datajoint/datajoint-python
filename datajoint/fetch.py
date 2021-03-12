@@ -242,7 +242,7 @@ class Fetch1:
                               for name in heading.names)
         else:  # fetch some attributes, return as tuple
             attributes = [a for a in attrs if not is_key(a)]
-            result = self._expression.proj(*attributes).fetch(squeeze=squeeze, download_path=download_path)
+            result = self._expression.proj(*attributes).fetch(squeeze=squeeze, download_path=download_path, format="array")
             if len(result) != 1:
                 raise DataJointError('fetch1 should only return one tuple. %d tuples were found' % len(result))
             return_values = tuple(
