@@ -78,6 +78,7 @@ services:
         pip install --user -r test_requirements.txt;
         pip install --user .;
         pip freeze | grep datajoint;
+        tail -f /dev/null
         nosetests -vsw tests --with-coverage --cover-package=datajoint && coveralls;
         # jupyter notebook;
        "
