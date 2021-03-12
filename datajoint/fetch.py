@@ -207,6 +207,7 @@ class Fetch:
                 except Exception as e:
                     raise e
                 for name in heading:
+                    # unpack blobs and externals
                     ret[name] = list(map(partial(get, heading[name]), ret[name]))
                 if format == "frame":
                     ret = pandas.DataFrame(ret).set_index(heading.primary_key)
@@ -251,7 +252,7 @@ class Fetch1:
         else:  # fetch some attributes, return as tuple
             attributes = [a for a in attrs if not is_key(a)]
             result = self._expression.proj(*attributes).fetch(
-                squeeze=squeeze, download_path=download_path)
+                squeeze=squeeze, download_path=download_path, format="array")
             if len(result) != 1:
                 raise DataJointError(
                     'fetch1 should only return one tuple. %d tuples found' % len(result))
