@@ -1,5 +1,5 @@
-### 0.12.9 -- Mar 12, 2021
---------------------------
+0.12.9 -- Mar 12, 2021
+----------------------
 * Fix bug with fetch1 with `dj.config['fetch_format']="frame"`. Issue #876 (PR #880)
 
 0.12.8 -- Jan 12, 2021
