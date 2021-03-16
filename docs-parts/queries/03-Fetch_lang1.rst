@@ -35,6 +35,25 @@ Primary key values
 
 ``KEY`` can also used when returning attribute values as separate variables, such that one of the returned variables contains the entire primary keys.
 
+Sorting and limiting the results
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To sort the result, add the additional ``order_by`` argument to ``fetch`` .
+
+.. code-block:: python
+
+    data = query.fetch(order_by='name')
+
+The ``order_by`` argument is passed directly to SQL and follows the same syntax as the `ORDER BY clause <https://dev.mysql.com/doc/refman/5.7/en/order-by-optimization.html>`_
+
+Similarly, the LIMIT and OFFSET clauses can be used to limit the result to a subset of entities.
+
+For example, one could do the following:
+
+.. code-block:: python
+
+    data = query.fetch(order_by='name', limit=10, offset=5)
+
 Usage with Pandas
 ~~~~~~~~~~~~~~~~~
 
