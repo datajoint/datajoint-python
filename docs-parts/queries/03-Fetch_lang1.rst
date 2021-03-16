@@ -46,7 +46,7 @@ To sort the result, add the additional ``order_by`` argument to ``fetch`` .
 
 The ``order_by`` argument is passed directly to SQL and follows the same syntax as the `ORDER BY clause <https://dev.mysql.com/doc/refman/5.7/en/order-by-optimization.html>`_
 
-Similarly, the LIMIT and OFFSET clauses can be used to limit the result to a subset of entities.
+Similarly, the ``limit`` and ``offset`` arguments can be used to limit the result to a subset of entities.
 
 For example, one could do the following:
 
