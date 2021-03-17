@@ -348,19 +348,21 @@ class ThingC(dj.Manual):
 
 
 @schema
-class Parent(dj.Manual):
+class Parent(dj.Lookup):
     definition = """
     parent_id: int
     ---
     name: varchar(30)
     """
+    contents = [(1, 'Joe')]
 
 
 @schema
-class Child(dj.Manual):
+class Child(dj.Lookup):
     definition = """
     -> Parent
     child_id: int
     ---
     name: varchar(30)
     """
+    contents = [(1, 12, 'Dan')]
