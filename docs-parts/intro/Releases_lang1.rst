@@ -1,4 +1,4 @@
-0.13.0 -- Feb 15, 2021
+0.13.0 -- Mar 19, 2021
 ----------------------
 * Re-implement query transpilation into SQL, fixing issues (#386, #449, #450, #484). PR #754
 * Re-implement cascading deletes for better performance. PR #839.
@@ -6,8 +6,10 @@
 * Python datatypes are now enabled by default in blobs (#761). PR #785
 * Added permissive join and restriction operators `@` and `^` (#785) PR #754
 * Support DataJoint datatype and connection plugins (#715, #729) PR 730, #735
-* add `dj.key_hash` alias to `dj.hash.key_hash`
-* default enable_python_native_blobs to True
+* Add `dj.key_hash` alias to `dj.hash.key_hash`
+* Default enable_python_native_blobs to True
+* Bugfix - Regression error on joins with same attribute name (#857) PR #878
+* Bugfix - Error when `fetch1('KEY')` when `dj.config['fetch_format']='frame'` set (#876) PR #880, #878
 * Drop support for Python 3.5
 
 0.12.8 -- Jan 12, 2021

@@ -251,4 +251,6 @@ class TestFetch:
         assert_equal(k1, k2)
 
     def test_same_secondary_attribute(self):
-        print(schema.Child * schema.Parent().proj())
+        children = (schema.Child * schema.Parent().proj()).fetch()['name']
+        assert len(children) == 1
+        assert children[0] == 'Dan'
