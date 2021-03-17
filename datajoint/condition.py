@@ -45,8 +45,9 @@ class Not:
 
 def assert_join_compatibility(expr1, expr2):
     """
-    Determine if expressions expr1 and expr2 are join-compatible.  To be join-compatible, the matching attributes
-    in the two expressions must be in the primary key of one or the other expression.
+    Determine if expressions expr1 and expr2 are join-compatible.  To be join-compatible,
+    the matching attributes in the two expressions must be in the primary key of one or the
+    other expression.
     Raises an exception if not compatible.
     :param expr1: A QueryExpression object
     :param expr2: A QueryExpression object
@@ -58,10 +59,12 @@ def assert_join_compatibility(expr1, expr2):
             raise DataJointError('Object %r is not a QueryExpression and cannot be joined.' % rel)
     if not isinstance(expr1, U) and not isinstance(expr2, U):  # dj.U is always compatible
         try:
-            raise DataJointError("Cannot join query expressions on dependent attribute `%s`" % next(r for r in set(
-                expr1.heading.secondary_attributes).intersection(expr2.heading.secondary_attributes)))
+            raise DataJointError(
+                "Cannot join query expressions on dependent attribute `%s`" % next(
+                    r for r in set(expr1.heading.secondary_attributes).intersection(
+                        expr2.heading.secondary_attributes)))
         except StopIteration:
-            pass
+            pass  # all ok
 
 
 def make_condition(query_expression, condition, columns):
