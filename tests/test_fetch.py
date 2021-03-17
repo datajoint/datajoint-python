@@ -6,7 +6,6 @@ import decimal
 import pandas
 import warnings
 from . import schema
-from .schema_simple import DataA, DataB
 import datajoint as dj
 
 
@@ -246,9 +245,6 @@ class TestFetch:
         dj.config['fetch_format'] = 'array'
 
     def test_same_secondary_attribute(self):
-        q = print(schema.Child * schema.Parent().proj())
-        print(q.make_sql())
-        print(q)
-        # print(DataA())
-        # print(DataB())
-        # print(DataB.proj() * DataA().proj())
+        children = (schema.Child * schema.Parent().proj()).fetch()['name']
+        assert len(children) == 1
+        assert children[0] == (1, 12, 'Dan')
