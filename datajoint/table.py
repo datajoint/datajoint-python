@@ -351,7 +351,7 @@ class Table(QueryExpression):
                 try:
                     # try to parse error for child info
                     match = foreign_key_full_error_regexp.match(error.args[0]).groupdict()
-                    if "`.`" not in match['child']:  # if schema name is not included, use self
+                    if "`.`" not in match['child']:  # if schema name missing, use self
                         match['child'] = '{}.{}'.format(self.full_table_name.split(".")[0],
                                                         match['child'])
                     match['fk_attrs'] = [k.strip('`') for k in match['fk_attrs'].split(',')]
@@ -359,24 +359,26 @@ class Table(QueryExpression):
                 except AttributeError:
                     # additional query required due to truncated error, trying partial regex
                     match = foreign_key_partial_error_regexp.match(error.args[0]).groupdict()
-                    if "`.`" not in match['child']:  # if schema name is not included, use self
+                    if "`.`" not in match['child']:  # if schema name missing, use self
                         match['child'] = '{}.{}'.format(self.full_table_name.split(".")[0],
                                                         match['child'])
-                    match['fk_attrs'], match['parent'], match['pk_attrs'] = list(map(list, zip(
-                        *self.connection.query(
-                            """
-                            SELECT
-                                COLUMN_NAME as fk_attrs,
-                                CONCAT('`', REFERENCED_TABLE_SCHEMA, '`.`',
-                                       REFERENCED_TABLE_NAME, '`') as parent,
-                                REFERENCED_COLUMN_NAME as pk_attrs
-                            FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
-                            WHERE
-                                CONSTRAINT_NAME = %s AND TABLE_SCHEMA = %s AND TABLE_NAME = %s;
-                            """,
-                            args=(match['name'].strip('`'),
-                                  *[_.strip('`') for _ in match['child'].split('`.`')])
-                            ).fetchall())))
+                    match['fk_attrs'], match['parent'], match['pk_attrs'] = list(map(
+                        list, zip(
+                            *self.connection.query(
+                                """
+                                SELECT
+                                    COLUMN_NAME as fk_attrs,
+                                    CONCAT('`', REFERENCED_TABLE_SCHEMA, '`.`',
+                                           REFERENCED_TABLE_NAME, '`') as parent,
+                                    REFERENCED_COLUMN_NAME as pk_attrs
+                                FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+                                WHERE
+                                    CONSTRAINT_NAME = %s AND TABLE_SCHEMA = %s
+                                    AND TABLE_NAME = %s;
+                                """,
+                                args=(match['name'].strip('`'),
+                                      *[_.strip('`') for _ in match['child'].split('`.`')])
+                                ).fetchall())))
                     match['parent'] = match['parent'][0]
                 # restrict child by self if
                 # 1. if self's restriction attributes are not in child's primary key
@@ -403,8 +405,10 @@ class Table(QueryExpression):
     def delete(self, transaction=True, safemode=None):
         """
         Deletes the contents of the table and its dependent tables, recursively.
+
         :param transaction: if True, use the entire delete becomes an atomic transaction.
-        :param safemode: If True, prohibit nested transactions and prompt to confirm. Default is dj.config['safemode'].
+        :param safemode: If True, prohibit nested transactions and prompt to confirm. Default
+            is dj.config['safemode'].
         """
         safemode = config['safemode'] if safemode is None else safemode
 
