@@ -20,11 +20,15 @@ from .version import __version__ as version
 
 logger = logging.getLogger(__name__)
 
-foregn_key_error_regexp = re.compile(
+foreign_key_full_error_regexp = re.compile(
     r"[\w\s:]*\((?P<child>`[^`]+`.`[^`]+`), "
     r"CONSTRAINT (?P<name>`[^`]+`) "
     r"FOREIGN KEY \((?P<fk_attrs>[^)]+)\) "
-    r"REFERENCES (?P<parent>`[^`]+`(\.`[^`]+`)?) \((?P<pk_attrs>[^)]+)\)")
+    r"REFERENCES (?P<parent>`[^`]+`(\.`[^`]+`)?) \((?P<pk_attrs>[^)]+)\)[\s\w]+\)")
+
+foreign_key_partial_error_regexp = re.compile(
+    r"[\w\s:]*\((?P<child>`[^`]+?`.`[^`]+?`), "
+    r"CONSTRAINT (?P<name>`[^`]+?`) ")
 
 
 class _RenameMap(tuple):
@@ -344,23 +348,47 @@ class Table(QueryExpression):
             try:
                 delete_count += self.delete_quick(get_count=True)
             except IntegrityError as error:
-                match = foregn_key_error_regexp.match(error.args[0])
-                assert match is not None, "foreign key parsing error"
+                try:
+                    # try to parse error for child info
+                    match = foreign_key_full_error_regexp.match(error.args[0]).groupdict()
+                    if "`.`" not in match['child']:  # if schema name is not included, use self
+                        match['child'] = '{}.{}'.format(self.full_table_name.split(".")[0],
+                                                        match['child'])
+                    match['fk_attrs'] = [k.strip('`') for k in match['fk_attrs'].split(',')]
+                    match['pk_attrs'] = [k.strip('`') for k in match['pk_attrs'].split(',')]
+                except AttributeError:
+                    # additional query required due to truncated error, trying partial regex
+                    match = foreign_key_partial_error_regexp.match(error.args[0]).groupdict()
+                    if "`.`" not in match['child']:  # if schema name is not included, use self
+                        match['child'] = '{}.{}'.format(self.full_table_name.split(".")[0],
+                                                        match['child'])
+                    match['fk_attrs'], match['parent'], match['pk_attrs'] = list(map(list, zip(
+                        *self.connection.query(
+                            """
+                            SELECT
+                                COLUMN_NAME as fk_attrs,
+                                CONCAT('`', REFERENCED_TABLE_SCHEMA, '`.`',
+                                       REFERENCED_TABLE_NAME, '`') as parent,
+                                REFERENCED_COLUMN_NAME as pk_attrs
+                            FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+                            WHERE
+                                CONSTRAINT_NAME = %s AND TABLE_SCHEMA = %s AND TABLE_NAME = %s;
+                            """,
+                            args=(match['name'].strip('`'),
+                                  *[_.strip('`') for _ in match['child'].split('`.`')])
+                            ).fetchall())))
+                    match['parent'] = match['parent'][0]
                 # restrict child by self if
                 # 1. if self's restriction attributes are not in child's primary key
                 # 2. if child renames any attributes
                 # otherwise restrict child by self's restriction.
-                child = match.group('child')
-                if "`.`" not in child:  # if schema name is not included, take it from self
-                    child = self.full_table_name.split("`.")[0] + child
-                child = FreeTable(self.connection, child)
+                child = FreeTable(self.connection, match['child'])
                 if set(self.restriction_attributes) <= set(child.primary_key) and \
-                        match.group('fk_attrs') == match.group('pk_attrs'):
+                        match['fk_attrs'] == match['pk_attrs']:
                     child._restriction = self._restriction
-                elif match.group('fk_attrs') != match.group('pk_attrs'):
-                    fk_attrs = [k.strip('`') for k in match.group('fk_attrs').split(',')]
-                    pk_attrs = [k.strip('`') for k in match.group('pk_attrs').split(',')]
-                    child &= self.proj(**dict(zip(fk_attrs, pk_attrs)))
+                elif match['fk_attrs'] != match['pk_attrs']:
+                    child &= self.proj(**dict(zip(match['fk_attrs'],
+                                                  match['pk_attrs'])))
                 else:
                     child &= self.proj()
                 delete_count += child._delete_cascade()
