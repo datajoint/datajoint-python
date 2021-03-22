@@ -15,20 +15,27 @@ from .expression import QueryExpression
 from . import blob
 from .utils import user_choice
 from .heading import Heading
-from .errors import DuplicateError, AccessError, DataJointError, UnknownAttributeError, IntegrityError
+from .errors import (DuplicateError, AccessError, DataJointError, UnknownAttributeError,
+                     IntegrityError)
 from .version import __version__ as version
 
 logger = logging.getLogger(__name__)
 
-foreign_key_full_error_regexp = re.compile(
+foreign_key_error_regexp = re.compile(
     r"[\w\s:]*\((?P<child>`[^`]+`.`[^`]+`), "
     r"CONSTRAINT (?P<name>`[^`]+`) "
-    r"FOREIGN KEY \((?P<fk_attrs>[^)]+)\) "
-    r"REFERENCES (?P<parent>`[^`]+`(\.`[^`]+`)?) \((?P<pk_attrs>[^)]+)\)[\s\w]+\)")
+    r"(FOREIGN KEY \((?P<fk_attrs>[^)]+)\) "
+    r"REFERENCES (?P<parent>`[^`]+`(\.`[^`]+`)?) \((?P<pk_attrs>[^)]+)\)[\s\w]+\))?")
 
-foreign_key_partial_error_regexp = re.compile(
-    r"[\w\s:]*\((?P<child>`[^`]+?`.`[^`]+?`), "
-    r"CONSTRAINT (?P<name>`[^`]+?`) ")
+constraint_info_query = ' '.join("""
+    SELECT
+        COLUMN_NAME as fk_attrs,
+        CONCAT('`', REFERENCED_TABLE_SCHEMA, '`.`', REFERENCED_TABLE_NAME, '`') as parent,
+        REFERENCED_COLUMN_NAME as pk_attrs
+    FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+    WHERE
+        CONSTRAINT_NAME = %s AND TABLE_SCHEMA = %s AND TABLE_NAME = %s;
+    """.split())
 
 
 class _RenameMap(tuple):
@@ -348,31 +355,19 @@ class Table(QueryExpression):
             try:
                 delete_count += self.delete_quick(get_count=True)
             except IntegrityError as error:
-                match = (foreign_key_full_error_regexp.match(error.args[0]) or
-                         foreign_key_partial_error_regexp.match(error.args[0])).groupdict()
+                match = foreign_key_error_regexp.match(error.args[0]).groupdict()
                 if "`.`" not in match['child']:  # if schema name missing, use self
                     match['child'] = '{}.{}'.format(self.full_table_name.split(".")[0],
                                                     match['child'])
-                if 'pk_attrs' in match:  # fullly matched, adjusting the keys
+                if match['pk_attrs'] is not None:  # fully matched, adjusting the keys
                     match['fk_attrs'] = [k.strip('`') for k in match['fk_attrs'].split(',')]
                     match['pk_attrs'] = [k.strip('`') for k in match['pk_attrs'].split(',')]
                 else:  # only partially matched, querying with constraint to determine keys
                     match['fk_attrs'], match['parent'], match['pk_attrs'] = list(map(
-                        list, zip(*self.connection.query(
-                            """
-                            SELECT
-                                COLUMN_NAME as fk_attrs,
-                                CONCAT('`', REFERENCED_TABLE_SCHEMA, '`.`',
-                                        REFERENCED_TABLE_NAME, '`') as parent,
-                                REFERENCED_COLUMN_NAME as pk_attrs
-                            FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
-                            WHERE
-                                CONSTRAINT_NAME = %s AND TABLE_SCHEMA = %s
-                                AND TABLE_NAME = %s;
-                            """,
-                            args=(match['name'].strip('`'),
-                                  *[_.strip('`') for _ in match['child'].split('`.`')])
-                            ).fetchall())))
+                        list, zip(*self.connection.query(constraint_info_query, args=(
+                            match['name'].strip('`'),
+                            *[_.strip('`') for _ in match['child'].split('`.`')]
+                            )).fetchall())))
                     match['parent'] = match['parent'][0]
                 # restrict child by self if
                 # 1. if self's restriction attributes are not in child's primary key
