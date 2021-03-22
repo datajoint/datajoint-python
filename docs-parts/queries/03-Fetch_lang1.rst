@@ -38,7 +38,7 @@ Primary key values
 Sorting and limiting the results
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To sort the result, add the additional ``order_by`` argument to ``fetch`` .
+To sort the result, use the ``order_by`` keyword argument.
 
 .. code-block:: python
 
