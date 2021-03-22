@@ -61,6 +61,10 @@ For example, one could do the following:
 .. code-block:: python
 
     data = query.fetch(order_by='name', limit=10, offset=5)
+    data = query.fetch(order_by='name desc')  # sort in descending order
+    data = query.fetch(order_by=('name desc', 'year'))  # by name first, year second 
+    data = query.fetch(order_by='KEY')  # sort by the primary key
+    data = query.fetch(order_by=('name', 'KEY desc'))  # sort by name but for same names order by primary key
 
 Usage with Pandas
 ~~~~~~~~~~~~~~~~~
