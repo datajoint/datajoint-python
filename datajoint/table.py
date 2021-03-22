@@ -348,37 +348,31 @@ class Table(QueryExpression):
             try:
                 delete_count += self.delete_quick(get_count=True)
             except IntegrityError as error:
-                try:
-                    # try to parse error for child info
-                    match = foreign_key_full_error_regexp.match(error.args[0]).groupdict()
-                    if "`.`" not in match['child']:  # if schema name missing, use self
-                        match['child'] = '{}.{}'.format(self.full_table_name.split(".")[0],
-                                                        match['child'])
+                match = (foreign_key_full_error_regexp.match(error.args[0]) or
+                         foreign_key_partial_error_regexp.match(error.args[0])).groupdict()
+                if "`.`" not in match['child']:  # if schema name missing, use self
+                    match['child'] = '{}.{}'.format(self.full_table_name.split(".")[0],
+                                                    match['child'])
+                if 'pk_attrs' in match:  # fullly matched, adjusting the keys
                     match['fk_attrs'] = [k.strip('`') for k in match['fk_attrs'].split(',')]
                     match['pk_attrs'] = [k.strip('`') for k in match['pk_attrs'].split(',')]
-                except AttributeError:
-                    # additional query required due to truncated error, trying partial regex
-                    match = foreign_key_partial_error_regexp.match(error.args[0]).groupdict()
-                    if "`.`" not in match['child']:  # if schema name missing, use self
-                        match['child'] = '{}.{}'.format(self.full_table_name.split(".")[0],
-                                                        match['child'])
+                else:  # only partially matched, querying with constraint to determine keys
                     match['fk_attrs'], match['parent'], match['pk_attrs'] = list(map(
-                        list, zip(
-                            *self.connection.query(
-                                """
-                                SELECT
-                                    COLUMN_NAME as fk_attrs,
-                                    CONCAT('`', REFERENCED_TABLE_SCHEMA, '`.`',
-                                           REFERENCED_TABLE_NAME, '`') as parent,
-                                    REFERENCED_COLUMN_NAME as pk_attrs
-                                FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
-                                WHERE
-                                    CONSTRAINT_NAME = %s AND TABLE_SCHEMA = %s
-                                    AND TABLE_NAME = %s;
-                                """,
-                                args=(match['name'].strip('`'),
-                                      *[_.strip('`') for _ in match['child'].split('`.`')])
-                                ).fetchall())))
+                        list, zip(*self.connection.query(
+                            """
+                            SELECT
+                                COLUMN_NAME as fk_attrs,
+                                CONCAT('`', REFERENCED_TABLE_SCHEMA, '`.`',
+                                        REFERENCED_TABLE_NAME, '`') as parent,
+                                REFERENCED_COLUMN_NAME as pk_attrs
+                            FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+                            WHERE
+                                CONSTRAINT_NAME = %s AND TABLE_SCHEMA = %s
+                                AND TABLE_NAME = %s;
+                            """,
+                            args=(match['name'].strip('`'),
+                                  *[_.strip('`') for _ in match['child'].split('`.`')])
+                            ).fetchall())))
                     match['parent'] = match['parent'][0]
                 # restrict child by self if
                 # 1. if self's restriction attributes are not in child's primary key
