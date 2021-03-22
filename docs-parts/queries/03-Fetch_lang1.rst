@@ -42,7 +42,16 @@ To sort the result, use the ``order_by`` keyword argument.
 
 .. code-block:: python
 
+    # ascending order:
     data = query.fetch(order_by='name')
+    # descending order:
+    data = query.fetch(order_by='name desc')  
+    # by name first, year second:
+    data = query.fetch(order_by=('name desc', 'year'))
+    # sort by the primary key:
+    data = query.fetch(order_by='KEY')
+    # sort by name but for same names order by primary key:
+    data = query.fetch(order_by=('name', 'KEY desc'))
 
 The ``order_by`` argument can be a string specifying the attribute to sort by. By default the sort is in ascending order. Use ``'attr desc'`` to sort in descending order by attribute ``attr``.  The value can also be a sequence of strings, in which case, the sort performed on all the attributes jointly in the order specified.
 
@@ -61,10 +70,6 @@ For example, one could do the following:
 .. code-block:: python
 
     data = query.fetch(order_by='name', limit=10, offset=5)
-    data = query.fetch(order_by='name desc')  # sort in descending order
-    data = query.fetch(order_by=('name desc', 'year'))  # by name first, year second 
-    data = query.fetch(order_by='KEY')  # sort by the primary key
-    data = query.fetch(order_by=('name', 'KEY desc'))  # sort by name but for same names order by primary key
 
 Usage with Pandas
 ~~~~~~~~~~~~~~~~~
