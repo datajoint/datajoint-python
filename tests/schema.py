@@ -366,3 +366,16 @@ class Child(dj.Lookup):
     name: varchar(30)
     """
     contents = [(1, 12, 'Dan')]
+
+# Related to issue #886 (8), #883 (5)
+@schema
+class ComplexParent(dj.Lookup):
+    definition = '\n'.join(['parent_id_{}: int'.format(i+1) for i in range(8)])
+    contents = [tuple(i for i in range(8))]
+
+
+@schema
+class ComplexChild(dj.Lookup):
+    definition = '\n'.join(['-> ComplexParent'] + ['child_id_{}: int'.format(i+1)
+                                                   for i in range(1)])
+    contents = [tuple(i for i in range(9))]

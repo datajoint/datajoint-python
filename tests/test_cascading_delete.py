@@ -1,6 +1,7 @@
 from nose.tools import assert_false, assert_true, assert_equal
 import datajoint as dj
 from .schema_simple import A, B, D, E, L
+from .schema import ComplexChild, ComplexParent
 
 
 class TestDelete:
@@ -78,3 +79,20 @@ class TestDelete:
         deleted_count = len(rel)
         rel.delete()
         assert_true(len(L()) == original_count - deleted_count)
+
+    @staticmethod
+    def test_delete_complex_keys():
+        # https://github.com/datajoint/datajoint-python/issues/883
+        # https://github.com/datajoint/datajoint-python/issues/886
+        assert_false(dj.config['safemode'], 'safemode must be off for testing')
+        parent_key_count = 8
+        child_key_count = 1
+        restriction = dict({'parent_id_{}'.format(i+1): i
+                            for i in range(parent_key_count)},
+                           **{'child_id_{}'.format(i+1): (i + parent_key_count)
+                              for i in range(child_key_count)})
+        assert len(ComplexParent & restriction) == 1, 'Parent record missing'
+        assert len(ComplexChild & restriction) == 1, 'Child record missing'
+        (ComplexParent & restriction).delete()
+        assert len(ComplexParent & restriction) == 0, 'Parent record was not deleted'
+        assert len(ComplexChild & restriction) == 0, 'Child record was not deleted'
