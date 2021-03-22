@@ -1,6 +1,6 @@
 ## Release notes
 
-### 0.13.0 -- Mar 19, 2021
+### 0.13.0 -- Mar 24, 2021
 * Re-implement query transpilation into SQL, fixing issues (#386, #449, #450, #484). PR #754
 * Re-implement cascading deletes for better performance. PR #839.
 * Add table method `.update1` to update a row in the table with new values PR #763
@@ -11,6 +11,7 @@
 * Default enable_python_native_blobs to True
 * Bugfix - Regression error on joins with same attribute name (#857) PR #878
 * Bugfix - Error when `fetch1('KEY')` when `dj.config['fetch_format']='frame'` set (#876) PR #880, #878
+* Bugfix - Error when cascading deletes in tables with many, complex keys (#883, #886) PR #839
 * Drop support for Python 3.5
 
 ### 0.12.8 -- Jan 12, 2021
