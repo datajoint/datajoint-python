@@ -44,7 +44,15 @@ To sort the result, add the additional ``order_by`` argument to ``fetch`` .
 
     data = query.fetch(order_by='name')
 
-The ``order_by`` argument is passed directly to SQL and follows the same syntax as the `ORDER BY clause <https://dev.mysql.com/doc/refman/5.7/en/order-by-optimization.html>`_
+The ``order_by`` argument can be a string specifying the attribute to sort by. By default the sort is in ascending order. Use ``'attr desc'`` to sort in descending order by attribute ``attr``.  The value can also be a sequence of strings, in which case, the sort performed on all the attributes jointly in the order specified.
+
+The special attribute name ``"KEY"`` represents the primary key attributes in order that they appear in the index. Otherwise, this name can be use as any other argument.
+
+If an attribute happens to be an SQL reserved word, it needs to be enclosed in backquotes.  For example
+...code: python
+    data = query.fetch(order_by='`select` desc')
+
+The `order_by` value is eventually passed  to the ``ORDER BY`` clause <https://dev.mysql.com/doc/refman/5.7/en/order-by-optimization.html>`_
 
 Similarly, the ``limit`` and ``offset`` arguments can be used to limit the result to a subset of entities.
 
