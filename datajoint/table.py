@@ -7,6 +7,7 @@ import pandas
 import logging
 import uuid
 import re
+import warnings
 from pathlib import Path
 from .settings import config
 from .declare import declare, alter
