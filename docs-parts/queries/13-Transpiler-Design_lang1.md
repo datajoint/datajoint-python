@@ -11,7 +11,7 @@ Moving `SELECT` to an earlier phase allows the `GROUP BY` and `HAVING` clauses t
 The current implementation targets the MySQL implementation where table column aliases can be used in `HAVING`.
 If postgres or CockroachDB cannot be coerced to work this way, restrictions of aggregations will have to be updated accordingly.
 
-## QueryExpression
+### QueryExpression
 `QueryExpression` is the main object representing a distinct `SELECT` statement.
 It implements operators `&`, `*`, and `proj`  — restriction, join, and projection.
 
@@ -28,11 +28,11 @@ At least one element must be present in `support`. Multiple elements in `support
 
 From the user's perspective `QueryExpression` objects are immutable: once created they cannot be modified. All operators derive new objects.
 
-### Alias attributes
+#### Alias attributes
 `proj` can create an alias attribute by renaming an existing attribute or calculating a new attribute.
 Alias attributes are the primary reason why subqueries are sometimes required.
 
-### Subqueries
+#### Subqueries
 Projections, restrictions, and joins do not necessarily trigger new subqueries: the resulting `QueryExpression` object simply merges the properties of its inputs into self: `heading`, `restriction`, and `support`.
 
 The input object is treated as a subquery in the following cases:
@@ -48,7 +48,7 @@ An error arises if
 
 A subquery is created by creating a new `QueryExpression` object (or a subclass object) with its `support` pointing to the input object.
 
-### Join compatibility
+#### Join compatibility
 The join is always natural (i.e. *equijoin* on the namesake attributes).
 
 **Before version 0.13:** As of version `0.12.*` and earlier, two query expressions were considered join-compatible if their namesake attributes were the primary key of at least one of the input expressions. This rule was easiest to implement but does not provide best semantics.
@@ -60,17 +60,17 @@ The join is always natural (i.e. *equijoin* on the namesake attributes).
 
 The same join compatibility rules apply when restricting one query expression with another.
 
-### Join mechanics
+#### Join mechanics
 Any restriction applied to the inputs of a join can be applied to its output.
 Therefore, those inputs that are not turned into queries donate their supports, restrictions, and projections to the join itself.
 
-## Table
+### Table
 `Table` is a subclass of `QueryExpression` implementing table manipulation methods such as `insert`, `insert1`, `delete`, `update1`, and `drop`.
 
 The restriction operator `&` applied to a `Table` preserves its class identity so that the result remains of type `Table`.
 However, `proj` converts the result into a `QueryExpression` object. This may produce a base query that is not an instance of Table.
 
-## Aggregation
+### Aggregation
 `Aggregation` is a subclass of `QueryExpression`.
 Its main input is the *aggregating* query expression and it takes an additional second input — the *aggregated* query expression.
 
@@ -88,7 +88,7 @@ With respect to the second input, the projection part of aggregation allows only
 
 All other rules for subqueries remain the same as for `QueryExpression`
 
-## Union
+### Union
 `Union` is a subclass of `QueryExpression`.
 A `Union` object results from the `+` operator on two `QueryExpression` objects.
 Its `support` property contains the list of expressions (at least two) to unify.
@@ -98,16 +98,16 @@ The `Union` operator performs an OUTER JOIN of its inputs provided that the inpu
 
 Union treats all its inputs as subqueries except for unrestricted Union objects.
 
-## Universal Sets `dj.U`
+### Universal Sets `dj.U`
 `dj.U` is a special operand in query expressions that allows performing special operations.  By itself, it can never form a query and is not a subclass of `QueryExpression`. Other query expressions are modified through participation in operations with `dj.U`.
 
-### Aggegating by `dj.U`
+#### Aggegating by `dj.U`
 
-### Resttricting a `dj.U` object with a `QueryExpression` object
+#### Resttricting a `dj.U` object with a `QueryExpression` object
 
-### Joining a `dj.U` object
+#### Joining a `dj.U` object
 
-# Query "Backprojection"
+### Query "Backprojection"
 Once a QueryExpression is used in a `fetch` operation or becomes a subquery in another query, it can project out all unnecessary attributes from its own inputs, recursively.
 This is implemented by the `finalize` method.
 This simplification produces much leaner queries resulting in improved query performance in version 0.13, especially on complex queries with blob data, compensating for MySQL's deficiencies in query optimization.
