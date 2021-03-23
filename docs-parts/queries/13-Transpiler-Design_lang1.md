@@ -1,6 +1,3 @@
-# Design specifications of the DataJoint-to-SQL Transpiler
-This document contains information and reasoning that went into the design of the DataJoint-to-SQL transpiler for DataJoint for Python version 0.13.
-
 MySQL appears to differ from standard SQL by the sequence of evaluating the clauses of the SELECT statement.
 
 ```
