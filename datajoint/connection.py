@@ -218,7 +218,7 @@ class Connection:
                               k == 'ssl' and self.conn_info['ssl_input'] is None)})
         self._conn.autocommit(True)
 
-    def set_query_cache(self, query_cache):
+    def set_query_cache(self, query_cache=None):
         """
         When query_cache is not None, the connection switches into the query caching mode, which entails:
         1. Only SELECT queries are allowed.
@@ -227,6 +227,14 @@ class Connection:
         :param query_cache: a string to initialize the hash for query results
         """
         self._query_cache = query_cache
+
+    def purge_query_cache(self, query_cache):
+        """
+        Purges if query cache is available with the provided reference.
+
+        :param query_cache: a string associated with the hash for query results
+        """
+        pass  # wip
 
     def close(self):
         self._conn.close()

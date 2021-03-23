@@ -78,11 +78,10 @@ services:
       - |
         set -e
         pip install --user -r test_requirements.txt
-        pip install --user .
+        pip install -e .
         pip freeze | grep datajoint
-        nosetests -vs --tests=tests.test_relation:TestRelation.test_missing_definition --with-coverage --cover-package=datajoint.table
-        # nosetests -vsw tests --with-coverage --cover-package=datajoint
-        # coveralls
+        nosetests -vsw tests --with-coverage --cover-package=datajoint
+        coveralls
         # jupyter notebook
     # ports:
     #   - "8888:8888"
