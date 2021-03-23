@@ -228,13 +228,14 @@ class Connection:
         """
         self._query_cache = query_cache
 
-    def purge_query_cache(self, query_cache):
-        """
-        Purges if query cache is available with the provided reference.
-
-        :param query_cache: a string associated with the hash for query results
-        """
-        pass  # wip
+    def purge_query_cache(self):
+        """ Purges all query cache. """
+        if 'query_cache' in config and isinstance(config['query_cache'], str) and \
+                pathlib.Path(config['query_cache']).is_dir():
+            path_iter = pathlib.Path(config['query_cache']).glob('**/*')
+            for path in path_iter:
+                path.unlink()
+        self._query_cache = None
 
     def close(self):
         self._conn.close()
