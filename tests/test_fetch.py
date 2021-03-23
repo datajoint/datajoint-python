@@ -187,7 +187,7 @@ class TestFetch:
 
     def test_len(self):
         """Tests __len__"""
-        assert_true(len(self.lang.fetch()) == len(self.lang), '__len__ is not behaving properly')
+        assert_equal(len(self.lang.fetch()), len(self.lang), '__len__ is not behaving properly')
 
     @raises(dj.DataJointError)
     def test_fetch1_step2(self):
@@ -222,24 +222,35 @@ class TestFetch:
 
     def test_fetch_format(self):
         """test fetch_format='frame'"""
-        dj.config['fetch_format'] = 'frame'
-        # test if lists are both dicts
-        list1 = sorted(self.subject.proj().fetch(as_dict=True), key=itemgetter('subject_id'))
-        list2 = sorted(self.subject.fetch(dj.key), key=itemgetter('subject_id'))
-        for l1, l2 in zip(list1, list2):
-            assert_dict_equal(l1, l2, 'Primary key is not returned correctly')
+        with dj.config(fetch_format='frame'):
+            # test if lists are both dicts
+            list1 = sorted(self.subject.proj().fetch(as_dict=True), key=itemgetter('subject_id'))
+            list2 = sorted(self.subject.fetch(dj.key), key=itemgetter('subject_id'))
+            for l1, l2 in zip(list1, list2):
+                assert_dict_equal(l1, l2, 'Primary key is not returned correctly')
 
-        # tests if pandas dataframe
-        tmp = self.subject.fetch(order_by='subject_id')
-        assert_true(isinstance(tmp, pandas.DataFrame))
-        tmp = tmp.to_records()
+            # tests if pandas dataframe
+            tmp = self.subject.fetch(order_by='subject_id')
+            assert_true(isinstance(tmp, pandas.DataFrame))
+            tmp = tmp.to_records()
 
-        subject_notes, key, real_id = self.subject.fetch('subject_notes', dj.key, 'real_id')
+            subject_notes, key, real_id = self.subject.fetch('subject_notes', dj.key, 'real_id')
 
-        np.testing.assert_array_equal(sorted(subject_notes), sorted(tmp['subject_notes']))
-        np.testing.assert_array_equal(sorted(real_id), sorted(tmp['real_id']))
-        list1 = sorted(key, key=itemgetter('subject_id'))
-        for l1, l2 in zip(list1, list2):
-            assert_dict_equal(l1, l2, 'Primary key is not returned correctly')
-        # revert configuration of fetch format
-        dj.config['fetch_format'] = 'array'
+            np.testing.assert_array_equal(sorted(subject_notes), sorted(tmp['subject_notes']))
+            np.testing.assert_array_equal(sorted(real_id), sorted(tmp['real_id']))
+            list1 = sorted(key, key=itemgetter('subject_id'))
+            for l1, l2 in zip(list1, list2):
+                assert_dict_equal(l1, l2, 'Primary key is not returned correctly')
+
+    def test_key_fetch1(self):
+        """test KEY fetch1 - issue #976"""
+        with dj.config(fetch_format="array"):
+            k1 = (self.subject & 'subject_id=10').fetch1('KEY')
+        with dj.config(fetch_format="frame"):
+            k2 = (self.subject & 'subject_id=10').fetch1('KEY')
+        assert_equal(k1, k2)
+
+    def test_same_secondary_attribute(self):
+        children = (schema.Child * schema.Parent().proj()).fetch()['name']
+        assert len(children) == 1
+        assert children[0] == 'Dan'

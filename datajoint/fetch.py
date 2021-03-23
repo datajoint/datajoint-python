@@ -10,7 +10,7 @@ import numbers
 from . import blob, hash
 from .errors import DataJointError
 from .settings import config
-from .utils import OrderedDict, safe_write
+from .utils import safe_write
 
 
 class key:
@@ -28,7 +28,7 @@ def is_key(attr):
 def to_dicts(recarray):
     """convert record array to a dictionaries"""
     for rec in recarray:
-        yield OrderedDict(zip(recarray.dtype.names, rec.tolist()))
+        yield dict(zip(recarray.dtype.names, rec.tolist()))
 
 
 def _get(connection, attr, data, squeeze, download_path):
@@ -149,49 +149,56 @@ class Fetch:
                 attrs = list(self._expression.primary_key) + [
                     a for a in attrs if a not in self._expression.primary_key]
         if as_dict is None:
-            as_dict = bool(attrs)  # default to True for "KEY" and False when fetching entire result
+            as_dict = bool(attrs)  # default to True for "KEY" and False otherwise
         # format should not be specified with attrs or is_dict=True
         if format is not None and (as_dict or attrs):
             raise DataJointError('Cannot specify output format when as_dict=True or '
                                  'when attributes are selected to be fetched separately.')
         if format not in {None, "array", "frame"}:
-            raise DataJointError('Fetch output format must be in {{"array", "frame"}} but "{}" was given'.format(format))
+            raise DataJointError(
+                'Fetch output format must be in '
+                '{{"array", "frame"}} but "{}" was given'.format(format))
 
         if not (attrs or as_dict) and format is None:
             format = config['fetch_format']  # default to array
             if format not in {"array", "frame"}:
-                raise DataJointError('Invalid entry "{}" in datajoint.config["fetch_format"]: use "array" or "frame"'.format(
-                    format))
+                raise DataJointError(
+                    'Invalid entry "{}" in datajoint.config["fetch_format"]: '
+                    'use "array" or "frame"'.format(format))
 
         if limit is None and offset is not None:
             warnings.warn('Offset set, but no limit. Setting limit to a large number. '
                           'Consider setting a limit explicitly.')
             limit = 8000000000  # just a very large number to effect no limit
 
-        get = partial(_get, self._expression.connection, squeeze=squeeze, download_path=download_path)
+        get = partial(_get, self._expression.connection,
+                      squeeze=squeeze, download_path=download_path)
         if attrs:  # a list of attributes provided
             attributes = [a for a in attrs if not is_key(a)]
-            ret = self._expression.proj(*attributes).fetch(
+            ret = self._expression.proj(*attributes)
+            ret = ret.fetch(
                 offset=offset, limit=limit, order_by=order_by,
                 as_dict=False, squeeze=squeeze, download_path=download_path,
-                format='array'
-            )
+                format='array')
             if attrs_as_dict:
                 ret = [{k: v for k, v in zip(ret.dtype.names, x) if k in attrs} for x in ret]
             else:
-                return_values = [
-                    list((to_dicts if as_dict else lambda x: x)(ret[self._expression.primary_key])) if is_key(attribute)
-                    else ret[attribute] for attribute in attrs]
+                return_values = [list(
+                    (to_dicts if as_dict else lambda x: x)(ret[self._expression.primary_key]))
+                                 if is_key(attribute) else ret[attribute]
+                                 for attribute in attrs]
                 ret = return_values[0] if len(attrs) == 1 else return_values
         else:  # fetch all attributes as a numpy.record_array or pandas.DataFrame
-            cur = self._expression.cursor(as_dict=as_dict, limit=limit, offset=offset, order_by=order_by)
+            cur = self._expression.cursor(
+                as_dict=as_dict, limit=limit, offset=offset, order_by=order_by)
             heading = self._expression.heading
             if as_dict:
-                ret = [OrderedDict((name, get(heading[name], d[name])) for name in heading.names) for d in cur]
+                ret = [dict((name, get(heading[name], d[name]))
+                            for name in heading.names) for d in cur]
             else:
                 ret = list(cur.fetchall())
                 record_type = (heading.as_dtype if not ret else np.dtype(
-                    [(name, type(value))   # use the first element to determine the type for blobs
+                    [(name, type(value))   # use the first element to determine blob type
                         if heading[name].is_blob and isinstance(value, numbers.Number)
                         else (name, heading.as_dtype[name])
                         for value, name in zip(ret[0], heading.as_dtype.names)]))
@@ -200,6 +207,7 @@ class Fetch:
                 except Exception as e:
                     raise e
                 for name in heading:
+                    # unpack blobs and externals
                     ret[name] = list(map(partial(get, heading[name]), ret[name]))
                 if format == "frame":
                     ret = pandas.DataFrame(ret).set_index(heading.primary_key)
@@ -208,15 +216,15 @@ class Fetch:
 
 class Fetch1:
     """
-    Fetch object for fetching exactly one row.
-    :param relation: relation the fetch object fetches data from
+    Fetch object for fetching the result of a query yielding one row.
+    :param expression: a query expression to fetch from.
     """
-    def __init__(self, relation):
-        self._expression = relation
+    def __init__(self, expression):
+        self._expression = expression
 
     def __call__(self, *attrs, squeeze=False, download_path='.'):
         """
-        Fetches the expression results from the database when the expression is known to yield only one entry.
+        Fetches the result of a query expression that yields one entry.
 
         If no attributes are specified, returns the result as a dict.
         If attributes are specified returns the corresponding results as a tuple.
@@ -225,7 +233,8 @@ class Fetch1:
         d = rel.fetch1()   # as a dictionary
         a, b = rel.fetch1('a', 'b')   # as a tuple
 
-        :params *attrs: attributes to return when expanding into a tuple. If empty, the return result is a dict
+        :params *attrs: attributes to return when expanding into a tuple.
+                 If attrs is empty, the return result is a dict
         :param squeeze:  When true, remove extra dimensions from arrays in attributes
         :param download_path: for fetches that download data, e.g. attachments
         :return: the one tuple in the relation in the form of a dict
@@ -236,17 +245,20 @@ class Fetch1:
             cur = self._expression.cursor(as_dict=True)
             ret = cur.fetchone()
             if not ret or cur.fetchone():
-                raise DataJointError('fetch1 should only be used for relations with exactly one tuple')
-            ret = OrderedDict((name, _get(self._expression.connection, heading[name], ret[name],
-                                          squeeze=squeeze, download_path=download_path))
-                              for name in heading.names)
+                raise DataJointError('fetch1 requires exactly one tuple in the input set.')
+            ret = dict((name, _get(self._expression.connection, heading[name], ret[name],
+                                   squeeze=squeeze, download_path=download_path))
+                       for name in heading.names)
         else:  # fetch some attributes, return as tuple
             attributes = [a for a in attrs if not is_key(a)]
-            result = self._expression.proj(*attributes).fetch(squeeze=squeeze, download_path=download_path)
+            result = self._expression.proj(*attributes).fetch(
+                squeeze=squeeze, download_path=download_path, format="array")
             if len(result) != 1:
-                raise DataJointError('fetch1 should only return one tuple. %d tuples were found' % len(result))
+                raise DataJointError(
+                    'fetch1 should only return one tuple. %d tuples found' % len(result))
             return_values = tuple(
-                next(to_dicts(result[self._expression.primary_key])) if is_key(attribute) else result[attribute][0]
+                next(to_dicts(result[self._expression.primary_key]))
+                if is_key(attribute) else result[attribute][0]
                 for attribute in attrs)
             ret = return_values[0] if len(attrs) == 1 else return_values
         return ret
