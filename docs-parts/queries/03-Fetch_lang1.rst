@@ -57,8 +57,10 @@ The ``order_by`` argument can be a string specifying the attribute to sort by. B
 
 The special attribute name ``"KEY"`` represents the primary key attributes in order that they appear in the index. Otherwise, this name can be used as any other argument.
 
-If an attribute happens to be an SQL reserved word, it needs to be enclosed in backquotes.  For example
-...code: python
+If an attribute happens to be a SQL reserved word, it needs to be enclosed in backquotes.  For example:
+
+.. code-block:: python
+
     data = query.fetch(order_by='`select` desc')
 
 The `order_by` value is eventually passed  to the ``ORDER BY`` clause <https://dev.mysql.com/doc/refman/5.7/en/order-by-optimization.html>`_
