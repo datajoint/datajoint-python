@@ -5,7 +5,6 @@ from contextlib import contextmanager
 import json
 import os
 import pprint
-from collections import OrderedDict
 import logging
 import collections
 from enum import Enum
@@ -30,7 +29,7 @@ role_to_prefix = {
 }
 prefix_to_role = dict(zip(role_to_prefix.values(), role_to_prefix))
 
-default = OrderedDict({
+default = dict({
     'database.host': 'localhost',
     'database.password': None,
     'database.user': None,
@@ -45,7 +44,7 @@ default = OrderedDict({
     'display.width': 14,
     'display.show_tuple_count': True,
     'database.use_tls': None,
-    'enable_python_native_blobs': False,  # python-native/dj0 encoding support
+    'enable_python_native_blobs': True,  # python-native/dj0 encoding support
 })
 
 logger = logging.getLogger(__name__)
@@ -133,7 +132,7 @@ class Config(collections.MutableMapping):
         try:
             spec = self['stores'][store]
         except KeyError:
-            raise DataJointError('Storage {store} is requested but not configured'.format(store=store)) from None
+            raise DataJointError('Storage {store} is requested but not configured'.format(store=store))
 
         spec['subfolding'] = spec.get('subfolding', DEFAULT_SUBFOLDING)
         spec_keys = {  # REQUIRED in uppercase and allowed in lowercase
@@ -144,7 +143,7 @@ class Config(collections.MutableMapping):
             spec_keys = spec_keys[spec.get('protocol', '').lower()]
         except KeyError:
             raise DataJointError(
-                'Missing or invalid protocol in dj.config["stores"]["{store}"]'.format(store=store)) from None
+                'Missing or invalid protocol in dj.config["stores"]["{store}"]'.format(store=store))
 
         # check that all required keys are present in spec
         try:

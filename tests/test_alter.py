@@ -1,5 +1,4 @@
 from nose.tools import assert_equal, assert_not_equal
-
 from .schema import *
 
 
@@ -30,14 +29,13 @@ class Experiment(dj.Imported):
 
 
 def test_alter():
-
     original = schema.connection.query("SHOW CREATE TABLE " + Experiment.full_table_name).fetchone()[1]
     Experiment.definition = Experiment.definition1
     Experiment.alter(prompt=False)
     altered = schema.connection.query("SHOW CREATE TABLE " + Experiment.full_table_name).fetchone()[1]
+    assert_not_equal(original, altered)
     Experiment.definition = Experiment.original_definition
     Experiment().alter(prompt=False)
     restored = schema.connection.query("SHOW CREATE TABLE " + Experiment.full_table_name).fetchone()[1]
+    assert_not_equal(altered, restored)
     assert_equal(original, restored)
-    assert_not_equal(original, altered)
-

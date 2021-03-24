@@ -7,7 +7,6 @@ import inspect
 from tqdm import tqdm
 from .expression import QueryExpression, AndList
 from .errors import DataJointError, LostConnectionError
-from .table import FreeTable
 import signal
 
 # noinspection PyExceptionInherit,PyCallingNonCallable
@@ -41,7 +40,7 @@ class AutoPopulate:
             parents = self.target.parents(primary=True, as_objects=True, foreign_key_info=True)
             if not parents:
                 raise DataJointError(
-                    'A relation must have primary dependencies for auto-populate to work') from None
+                    'A relation must have primary dependencies for auto-populate to work')
             self._key_source = _rename_attributes(*parents[0])
             for q in parents[1:]:
                 self._key_source *= _rename_attributes(*q)
@@ -58,8 +57,8 @@ class AutoPopulate:
     @property
     def target(self):
         """
-        relation to be populated.
-        Typically, AutoPopulate are mixed into a Relation object and the target is self.
+        :return: table to be populated.
+        In the typical case, dj.AutoPopulate is mixed into a dj.Table class by inheritance and the target is self.
         """
         return self
 
@@ -67,6 +66,7 @@ class AutoPopulate:
         """
         :param key:  they key returned for the job from the key source
         :return: the dict to use to generate the job reservation hash
+        This method allows subclasses to control the job reservation granularity.
         """
         return key
 
@@ -136,7 +136,7 @@ class AutoPopulate:
 
         make = self._make_tuples if hasattr(self, '_make_tuples') else self.make
 
-        for key in (tqdm(keys) if display_progress else keys):
+        for key in (tqdm(keys, desc=self.__class__.__name__) if display_progress else keys):
             if max_calls is not None and call_count >= max_calls:
                 break
             if not reserve_jobs or jobs.reserve(self.target.table_name, self._job_key(key)):

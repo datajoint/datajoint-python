@@ -15,7 +15,7 @@ Please cite:
 """
 
 __author__ = "DataJoint Contributors"
-__date__ = "February 7, 2019"
+__date__ = "November 7, 2020"
 __all__ = ['__author__', '__version__',
            'config', 'conn', 'Connection',
            'Schema', 'schema', 'VirtualModule', 'create_virtual_module',
@@ -24,7 +24,7 @@ __all__ = ['__author__', '__version__',
            'Not', 'AndList', 'U', 'Diagram', 'Di', 'ERD',
            'set_password', 'kill',
            'MatCell', 'MatStruct', 'AttributeAdapter',
-           'errors', 'DataJointError', 'key']
+           'errors', 'DataJointError', 'key', 'key_hash']
 
 from .version import __version__
 from .settings import config
@@ -38,6 +38,7 @@ from .diagram import Diagram
 from .admin import set_password, kill
 from .blob import MatCell, MatStruct
 from .fetch import key
+from .hash import key_hash
 from .attribute_adapter import AttributeAdapter
 from . import errors
 from .errors import DataJointError
