@@ -193,7 +193,7 @@ class QueryExpression:
 
     def __and__(self, restriction):
         """
-        Restriction operator e.g. q1 & q2.
+        Restriction operator e.g. ``q1 & q2``.
         :return: a restricted copy of the input argument
         See QueryExpression.restrict for more detail.
         """
@@ -201,7 +201,7 @@ class QueryExpression:
 
     def __xor__(self, restriction):
         """
-        Permissive restriction operator ignoring compatibility check  e.g. q1 ^ q2.
+        Permissive restriction operator ignoring compatibility check  e.g. ``q1 ^ q2``.
         """
         if inspect.isclass(restriction) and issubclass(restriction, QueryExpression):
             restriction = restriction()
@@ -211,7 +211,7 @@ class QueryExpression:
 
     def __sub__(self, restriction):
         """
-        Inverted restriction e.g. q1 - q2.
+        Inverted restriction e.g. ``q1 - q2``.
         :return: a restricted copy of the input argument
         See QueryExpression.restrict for more detail.
         """
@@ -219,7 +219,7 @@ class QueryExpression:
 
     def __neg__(self):
         """
-        Convert between restriction and inverted restriction e.g. -q1.
+        Convert between restriction and inverted restriction e.g. ``-q1``.
         :return: target restriction
         See QueryExpression.restrict for more detail.
         """
@@ -229,14 +229,14 @@ class QueryExpression:
 
     def __mul__(self, other):
         """
-        join of query expressions `self` and `other` e.g. q1 * q2.
+        join of query expressions `self` and `other` e.g. ``q1 * q2``.
         """
         return self.join(other)
 
     def __matmul__(self, other):
         """
         Permissive join of query expressions `self` and `other` ignoring compatibility check
-            e.g. q1 @ q2.
+            e.g. ``q1 @ q2``.
         """
         if inspect.isclass(other) and issubclass(other, QueryExpression):
             other = other()  # instantiate
@@ -282,7 +282,7 @@ class QueryExpression:
         return result
 
     def __add__(self, other):
-        """union e.g. q1 + q2."""
+        """union e.g. ``q1 + q2``."""
         return Union.create(self, other)
 
     def proj(self, *attributes, **named_attributes):
@@ -435,7 +435,7 @@ class QueryExpression:
         return self.fetch(order_by="KEY DESC", limit=limit, **fetch_kwargs)[::-1]
 
     def __len__(self):
-        """:return: number of elements in the result set e.g. len(q1)."""
+        """:return: number of elements in the result set e.g. ``len(q1)``."""
         return self.connection.query(
             'SELECT count(DISTINCT {fields}) FROM {from_}{where}'.format(
                 fields=self.heading.as_sql(self.primary_key, include_aliases=False),
@@ -445,7 +445,7 @@ class QueryExpression:
     def __bool__(self):
         """
         :return: True if the result is not empty. Equivalent to len(self) > 0 but often
-            faster e.g. bool(q1).
+            faster e.g. ``bool(q1)``.
         """
         return bool(self.connection.query(
             'SELECT EXISTS(SELECT 1 FROM {from_}{where})'.format(
@@ -454,7 +454,8 @@ class QueryExpression:
 
     def __contains__(self, item):
         """
-        returns True if a restriction results with any records e.g. restriction in q1.
+        returns True if the restriction in item matches any entries in self
+            e.g. ``restriction in q1``.
         :param item: any restriction
         (item in query_expression) is equivalent to bool(query_expression & item) but may be
         executed more efficiently.
@@ -463,7 +464,7 @@ class QueryExpression:
 
     def __iter__(self):
         """
-        returns an iterator-compatible QueryExpression object e.g. iter(q1).
+        returns an iterator-compatible QueryExpression object e.g. ``iter(q1)``.
 
         :param self: iterator-compatible QueryExpression object
         """
@@ -474,9 +475,11 @@ class QueryExpression:
     def __next__(self):
         """
         returns the next record on an iterator-compatible QueryExpression object
-            e.g. next(q1).
+            e.g. ``next(q1)``.
 
-        :param self: fetch1 record
+        :param self: A query expression
+        :type self: :class:`QueryExpression`
+        :rtype: dict
         """
         try:
             key = self._iter_keys.pop(0)
@@ -514,9 +517,11 @@ class QueryExpression:
 
     def __repr__(self):
         """
-        returns the string representation of a QueryExpression object e.g. str(q1).
+        returns the string representation of a QueryExpression object e.g. ``str(q1)``.
 
-        :param self: String version of query result
+        :param self: A query expression
+        :type self: :class:`QueryExpression`
+        :rtype: str
         """
         return super().__repr__() if config['loglevel'].lower() == 'debug' else self.preview()
 
