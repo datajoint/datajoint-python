@@ -99,12 +99,13 @@ class TestRelation:
         assert_equal(len(schema.TTest2()), len(schema.TTest()))
 
         original_length = len(self.subject)
-        self.subject.insert(self.subject.proj(
-            'real_id', 'date_of_birth', 'subject_notes', subject_id='subject_id+1000', species='"human"'))
+        elements = self.subject.proj(..., s='subject_id')
+        elements = elements.proj('real_id', 'date_of_birth', 'subject_notes', subject_id='s+1000', species='"human"')
+        self.subject.insert(elements, ignore_extra_fields=True)
         assert_equal(len(self.subject), 2*original_length)
 
     def test_insert_pandas_roundtrip(self):
-        ''' ensure fetched frames can be inserted '''
+        """ ensure fetched frames can be inserted """
         schema.TTest2.delete()
         n = len(schema.TTest())
         assert_true(n > 0)
@@ -115,10 +116,10 @@ class TestRelation:
         assert_equal(len(schema.TTest2()), n)
 
     def test_insert_pandas_userframe(self):
-        '''
+        """
         ensure simple user-created frames (1 field, non-custom index)
         can be inserted without extra index adjustment
-        '''
+        """
         schema.TTest2.delete()
         n = len(schema.TTest())
         assert_true(n > 0)

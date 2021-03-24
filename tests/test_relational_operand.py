@@ -8,7 +8,7 @@ from nose.tools import assert_equal, assert_false, assert_true, raises, assert_s
 
 import datajoint as dj
 from .schema_simple import A, B, D, E, F, L, DataA, DataB, TTestUpdate, IJ, JI, ReservedWord
-from .schema import Experiment, TTest3
+from .schema import Experiment, TTest3, Trial, Ephys, Child, Parent
 
 
 def setup():
@@ -57,7 +57,8 @@ class TestRelational:
         y = x.proj(j='i')
         assert_equal(len(y), len(B() & 'id_a in (1,2,3,4)'),
                      'incorrect projection of restriction')
-        assert_equal(len(y & 'j in (3,4,5,6)'), len(B() & 'id_a in (3,4)'),
+        z = y & 'j in (3, 4, 5, 6)'
+        assert_equal(len(z), len(B() & 'id_a in (3,4)'),
                      'incorrect nested subqueries')
 
     @staticmethod
@@ -110,8 +111,7 @@ class TestRelational:
         x = B().proj(i='id_a')  # rename the common attribute to achieve full cartesian product
         y = D()
         rel = x * y
-        assert_equal(len(rel), len(x) * len(y),
-                     'incorrect join')
+        assert_equal(len(rel), len(x) * len(y), 'incorrect join')
         assert_equal(set(x.heading.names).union(y.heading.names), set(rel.heading.names),
                      'incorrect join heading')
         assert_equal(set(x.primary_key).union(y.primary_key), set(rel.primary_key),
@@ -176,11 +176,26 @@ class TestRelational:
 
     @staticmethod
     def test_union():
-        x = set(zip(*IJ.fetch('i','j')))
-        y = set(zip(*JI.fetch('i','j')))
+        x = set(zip(*IJ.fetch('i', 'j')))
+        y = set(zip(*JI.fetch('i', 'j')))
         assert_true(len(x) > 0 and len(y) > 0 and len(IJ() * JI()) < len(x))  # ensure the IJ and JI are non-trivial
-        z = set(zip(*(IJ + JI).fetch('i','j')))   # union
+        z = set(zip(*(IJ + JI).fetch('i', 'j')))   # union
         assert_set_equal(x.union(y), z)
+        assert_equal(len(IJ + JI), len(z))
+
+    @staticmethod
+    @raises(dj.DataJointError)
+    def test_outer_union_fail():
+        """Union of two tables with different primary keys raises an error."""
+        A() + B()
+
+    @staticmethod
+    def test_outer_union_fail():
+        """Union of two tables with different primary keys raises an error."""
+        t = Trial + Ephys
+        t.fetch()
+        assert_set_equal(set(t.heading.names), set(Trial.heading.names) | set(Ephys.heading.names))
+        len(t)
 
     @staticmethod
     def test_preview():
@@ -225,7 +240,9 @@ class TestRelational:
     @staticmethod
     def test_aggr():
         x = B.aggr(B.C)
-        assert_equal(len(x), len(B() & B.C()))
+        l1 = len(x)
+        l2 = len(B & B.C)
+        assert_equal(l1, l2)
 
         x = B().aggr(B.C(), keep_all_rows=True)
         assert_equal(len(x), len(B()))  # test LEFT join
@@ -272,6 +289,15 @@ class TestRelational:
         df = q.fetch(format='frame')   # pandas dataframe
         assert_true(isinstance(df, pandas.DataFrame))
         assert_equal(len(E & q), len(E & df))
+
+    @staticmethod
+    def test_restriction_by_null():
+        assert_true(len(Experiment & 'username is null') > 0)
+        assert_true(len(Experiment & 'username is not null') > 0)
+
+    @staticmethod
+    def test_restriction_between():   # see issue
+        assert_true(len(Experiment & 'username between "S" and "Z"') < len(Experiment()))
 
     @staticmethod
     def test_restrictions_by_lists():
@@ -354,7 +380,8 @@ class TestRelational:
     @staticmethod
     def test_join_project():
         """Test join of projected relations with matching non-primary key"""
-        assert_true(len(DataA.proj() * DataB.proj()) == len(DataA()) == len(DataB()),
+        q = DataA.proj() * DataB.proj()
+        assert_true(len(q) == len(DataA()) == len(DataB()),
                     "Join of projected relations does not work")
 
     @staticmethod
@@ -422,3 +449,13 @@ class TestRelational:
         rel = ReservedWord()
         rel.insert1({'key': 1, 'in': 'ouch', 'from': 'bummer', 'int': 3, 'select': 'major pain'})
         (rel & 'key=1').fetch('in')  # error because reserved word `key` is not in backquotes. See issue #249
+
+    @staticmethod
+    def test_permissive_join_basic():
+        """Verify join compatibility check is skipped for join"""
+        Child @ Parent
+
+    @staticmethod
+    def test_permissive_restriction_basic():
+        """Verify join compatibility check is skipped for restriction"""
+        Child ^ Parent

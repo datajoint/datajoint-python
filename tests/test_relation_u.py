@@ -5,7 +5,7 @@ import datajoint as dj
 
 class TestU:
     """
-    Test base relations: insert, delete
+    Test tables: insert, delete
     """
 
     @classmethod

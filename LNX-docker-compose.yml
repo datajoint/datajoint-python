@@ -1,4 +1,4 @@
-# docker-compose -f LNX-docker-compose.yml --env-file LNX.env up --build --exit-code-from app
+# docker-compose -f LNX-docker-compose.yml --env-file LNX.env up --exit-code-from app --build
 version: '2.2'
 x-net: &net
   networks:
@@ -32,7 +32,7 @@ services:
       interval: 1s
   fakeservices.datajoint.io:
     <<: *net
-    image: raphaelguzman/nginx:v0.0.13
+    image: datajoint/nginx:v0.0.16
     environment:
     - ADD_db_TYPE=DATABASE
     - ADD_db_ENDPOINT=db:3306
@@ -72,14 +72,17 @@ services:
       - COVERALLS_SERVICE_NAME
       - COVERALLS_REPO_TOKEN
     working_dir: /src
-    command: >
-      /bin/sh -c
-       "
-        pip install --user nose nose-cov coveralls .;
-        pip freeze | grep datajoint;
-        nosetests -vsw tests --with-coverage --cover-package=datajoint && coveralls;
-        # jupyter notebook;
-       "
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        pip install --user -r test_requirements.txt
+        pip install -e .
+        pip freeze | grep datajoint
+        nosetests -vsw tests --with-coverage --cover-package=datajoint
+        coveralls
+        # jupyter notebook
     # ports:
     #   - "8888:8888"
     user: ${UID}:${GID}

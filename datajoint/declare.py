@@ -5,10 +5,9 @@ declare the corresponding mysql tables.
 import re
 import pyparsing as pp
 import logging
+import warnings
 from .errors import DataJointError, _support_filepath_types, FILEPATH_FEATURE_SWITCH
 from .attribute_adapter import get_adapter
-
-from .utils import OrderedDict
 
 UUID_DATA_TYPE = 'binary(16)'
 MAX_TABLE_NAME_LENGTH = 64
@@ -45,14 +44,14 @@ def match_type(attribute_type):
     try:
         return next(category for category, pattern in TYPE_PATTERN.items() if pattern.match(attribute_type))
     except StopIteration:
-        raise DataJointError("Unsupported attribute type {type}".format(type=attribute_type)) from None
+        raise DataJointError("Unsupported attribute type {type}".format(type=attribute_type))
 
 
 logger = logging.getLogger(__name__)
 
 
 def build_foreign_key_parser_old():
-    # old-style foreign key parser. Superceded by expression-based syntax. See issue #436
+    # old-style foreign key parser. Superseded by expression-based syntax. See issue #436
     # This will be deprecated in a future release.
     left = pp.Literal('(').suppress()
     right = pp.Literal(')').suppress()
@@ -126,7 +125,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
     """
     # Parse and validate
     from .table import Table
-    from .expression import Projection
+    from .expression import QueryExpression
 
     obsolete = False   # See issue #436.  Old style to be deprecated in a future release
     try:
@@ -135,7 +134,7 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
         try:
             result = foreign_key_parser_old.parseString(line)
         except pp.ParseBaseException as err:
-            raise DataJointError('Parsing error in line "%s". %s.' % (line, err)) from None
+            raise DataJointError('Parsing error in line "%s". %s.' % (line, err))
         else:
             obsolete = True
     try:
@@ -153,15 +152,18 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
         raise DataJointError('Primary dependencies cannot be nullable in line "{line}"'.format(line=line))
 
     if obsolete:
+        warnings.warn(
+            'Line "{line}" uses obsolete syntax that will no longer be supported in datajoint 0.14. '
+            'For details, see issue #780 https://github.com/datajoint/datajoint-python/issues/780'.format(line=line))
         if not isinstance(ref, type) or not issubclass(ref, Table):
             raise DataJointError('Foreign key reference %r must be a valid query' % result.ref_table)
 
     if isinstance(ref, type) and issubclass(ref, Table):
         ref = ref()
 
-    # check that dependency is of supported type
-    if (not isinstance(ref, (Table, Projection)) or len(ref.restriction) or
-            (isinstance(ref, Projection) and (not isinstance(ref._arg, Table) or len(ref._arg.restriction)))):
+    # check that dependency is of a supported type
+    if (not isinstance(ref, QueryExpression) or len(ref.restriction) or
+            len(ref.support) != 1 or not isinstance(ref.support[0], str)):
         raise DataJointError('Dependency "%s" is not supported (yet). Use a base table or its projection.' %
                              result.ref_table)
 
@@ -202,21 +204,20 @@ def compile_foreign_key(line, context, attributes, primary_key, attr_sql, foreig
             ref = ref.proj(**dict(zip(new_attrs, ref_attrs)))
 
     # declare new foreign key attributes
-    base = ref._arg if isinstance(ref, Projection) else ref   # base reference table
-    for attr, ref_attr in zip(ref.primary_key, base.primary_key):
+    for attr in ref.primary_key:
         if attr not in attributes:
             attributes.append(attr)
             if primary_key is not None:
                 primary_key.append(attr)
             attr_sql.append(
-                base.heading[ref_attr].sql.replace(ref_attr, attr, 1).replace('NOT NULL ', '', int(is_nullable)))
+                ref.heading[attr].sql.replace('NOT NULL ', '', int(is_nullable)))
 
     # declare the foreign key
     foreign_key_sql.append(
         'FOREIGN KEY (`{fk}`) REFERENCES {ref} (`{pk}`) ON UPDATE CASCADE ON DELETE RESTRICT'.format(
             fk='`,`'.join(ref.primary_key),
-            pk='`,`'.join(base.primary_key),
-            ref=base.full_table_name))
+            pk='`,`'.join(ref.heading[name].original_name for name in ref.primary_key),
+            ref=ref.support[0]))
 
     # declare unique index
     if is_unique:
@@ -300,7 +301,7 @@ def _make_attribute_alter(new, old, primary_key):
     name_regexp = re.compile(r"^`(?P<name>\w+)`")
     original_regexp = re.compile(r'COMMENT "{\s*(?P<name>\w+)\s*}')
     matched = ((name_regexp.match(d), original_regexp.search(d)) for d in new)
-    new_names = OrderedDict((d.group('name'), n and n.group('name')) for d, n in matched)
+    new_names = dict((d.group('name'), n and n.group('name')) for d, n in matched)
     old_names = [name_regexp.search(d).group('name') for d in old]
 
     # verify that original names are only used once
@@ -430,7 +431,7 @@ def compile_attribute(line, in_key, foreign_key_sql, context):
         match = attribute_parser.parseString(line + '#', parseAll=True)
     except pp.ParseException as err:
         raise DataJointError('Declaration error in position {pos} in line:\n  {line}\n{msg}'.format(
-            line=err.args[0], pos=err.args[1], msg=err.args[2])) from None
+            line=err.args[0], pos=err.args[1], msg=err.args[2]))
     match['comment'] = match['comment'].rstrip('#')
     if 'default' not in match:
         match['default'] = ''

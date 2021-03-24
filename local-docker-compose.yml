@@ -34,7 +34,7 @@ services:
       interval: 1s
   fakeservices.datajoint.io:
     <<: *net
-    image: raphaelguzman/nginx:v0.0.13
+    image: datajoint/nginx:v0.0.16
     environment:
     - ADD_db_TYPE=DATABASE
     - ADD_db_ENDPOINT=db:3306
@@ -77,11 +77,14 @@ services:
       - JUPYTER_PASSWORD=datajoint
       - DISPLAY
     working_dir: /src
-    command: >
-      /bin/sh -c
-       "
-        pip install --user nose nose-cov coveralls flake8 ptvsd .;
-        pip freeze | grep datajoint;
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        pip install --user nose nose-cov coveralls flake8 ptvsd
+        pip install -e .
+        pip freeze | grep datajoint
         ## You may run the below tests once sh'ed into container i.e. docker exec -it datajoint-python_app_1 sh
         # nosetests -vsw tests; #run all tests
         # nosetests -vs --tests=tests.test_external_class:test_insert_and_fetch; #run specific basic test
@@ -91,11 +94,11 @@ services:
         ## Interactive Jupyter Notebook environment
         jupyter notebook &
         ## Remote debugger
-        while true;
-        do python -m ptvsd --host 0.0.0.0 --port 5678 --wait .;
-        sleep 2;
-        done;
-       "
+        while true
+        do
+          python -m ptvsd --host 0.0.0.0 --port 5678 --wait .
+          sleep 2
+        done
     ports:
       - "8888:8888"
       - "5678:5678"

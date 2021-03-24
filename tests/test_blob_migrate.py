@@ -1,5 +1,4 @@
-from nose.tools import assert_true, assert_false, assert_equal, \
-                        assert_list_equal, raises
+from nose.tools import assert_equal, raises
 
 import datajoint as dj
 import os
@@ -7,7 +6,6 @@ from pathlib import Path
 from . import S3_CONN_INFO, S3_MIGRATE_BUCKET
 from . import CONN_INFO
 from datajoint.migrate import _migrate_dj011_blob
-dj.config['enable_python_native_blobs'] = True
 
 
 class TestBlobMigrate:

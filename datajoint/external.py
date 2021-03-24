@@ -4,7 +4,8 @@ from tqdm import tqdm
 from .settings import config
 from .errors import DataJointError, MissingExternalFile
 from .hash import uuid_from_buffer, uuid_from_file
-from .table import Table
+from .table import Table, FreeTable
+from .heading import Heading
 from .declare import EXTERNAL_TABLE_ROOT
 from . import s3
 from .utils import safe_write, safe_copy
@@ -25,24 +26,18 @@ class ExternalTable(Table):
     The table tracking externally stored objects.
     Declare as ExternalTable(connection, database)
     """
-    def __init__(self, connection, store=None, database=None):
-
-        # copy constructor -- all QueryExpressions must provide
-        if isinstance(connection, ExternalTable):
-            other = connection   # the first argument is interpreted as the other object
-            super().__init__(other)
-            self.store = other.store
-            self.spec = other.spec
-            self.database = other.database
-            self._connection = other._connection
-            return
-
-        # nominal constructor
-        super().__init__()
+    def __init__(self, connection, store, database):
         self.store = store
         self.spec = config.get_store_spec(store)
+        self._s3 = None
         self.database = database
         self._connection = connection
+        self._heading = Heading(table_info=dict(
+            conn=connection,
+            database=database,
+            table_name=self.table_name,
+            context=None))
+        self._support = [self.full_table_name]
         if not self.is_declared:
             self.declare()
         self._s3 = None
@@ -230,7 +225,7 @@ class ExternalTable(Table):
             relative_filepath = str(local_filepath.relative_to(self.spec['stage']).as_posix())
         except ValueError:
             raise DataJointError('The path {path} is not in stage {stage}'.format(
-                path=local_filepath.parent, **self.spec)) from None
+                path=local_filepath.parent, **self.spec))
         uuid = uuid_from_buffer(init_string=relative_filepath)  # hash relative path, not contents
         contents_hash = uuid_from_file(local_filepath)
 
@@ -308,7 +303,7 @@ class ExternalTable(Table):
         query expression for unused hashes
         :return: self restricted to elements that are not in use by any tables in the schema
         """
-        return self - ["hash IN (SELECT `{column_name}` FROM {referencing_table})".format(**ref)
+        return self - [FreeTable(self.connection, ref['referencing_table']).proj(hash=ref['column_name'])
                        for ref in self.references]
 
     def used(self):
@@ -316,7 +311,7 @@ class ExternalTable(Table):
         query expression for used hashes
         :return: self restricted to elements that in use by tables in the schema
         """
-        return self & ["hash IN (SELECT `{column_name}` FROM {referencing_table})".format(**ref)
+        return self & [FreeTable(self.connection, ref['referencing_table']).proj(hash=ref['column_name'])
                        for ref in self.references]
 
     def delete(self, *, delete_external_files=None, limit=None, display_progress=True):

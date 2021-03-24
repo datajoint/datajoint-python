@@ -21,8 +21,6 @@ jobs:
             mysql_ver: "5.7"
           - py_ver: "3.6"
             mysql_ver: "5.7"
-          - py_ver: "3.5"
-            mysql_ver: "5.7"
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{matrix.py_ver}}
@@ -38,7 +36,7 @@ jobs:
       - name: Run primary tests
         env:
           UID: "1001"
-          GID: "116"
+          GID: "121"
           PY_VER: ${{matrix.py_ver}}
           MYSQL_VER: ${{matrix.mysql_ver}}
           ALPINE_VER: "3.10"
