@@ -261,28 +261,29 @@ class TestFetch:
         os.mkdir(os.path.expanduser('~/dj_query_cache'))
 
         with dj.config(query_cache=os.path.expanduser('~/dj_query_cache')):
+            conn = schema.TTest3.connection
             # insert sample data and load cache
             schema.TTest3.insert([dict(key=100+i, value=200+i) for i in range(2)])
-            dj.conn().set_query_cache(query_cache='main')
+            conn.set_query_cache(query_cache='main')
             cached_res = schema.TTest3().fetch()
             # attempt to insert while caching enabled
             try:
                 schema.TTest3.insert([dict(key=200+i, value=400+i) for i in range(2)])
-                assert False, 'Insert allowed which query caching enabled'
+                assert False, 'Insert allowed while query caching enabled'
             except dj.DataJointError:
-                dj.conn().set_query_cache()
+                conn.set_query_cache()
             # insert new data
             schema.TTest3.insert([dict(key=600+i, value=800+i) for i in range(2)])
             # re-enable cache to access old results
-            dj.conn().set_query_cache(query_cache='main')
+            conn.set_query_cache(query_cache='main')
             previous_cache = schema.TTest3().fetch()
             # verify properly cached and how to refresh results
             assert all([c == p for c, p in zip(cached_res, previous_cache)])
-            dj.conn().set_query_cache()
+            conn.set_query_cache()
             uncached_res = schema.TTest3().fetch()
             assert len(uncached_res) > len(cached_res)
             # purge query cache
-            dj.conn().purge_query_cache()
+            conn.purge_query_cache()
 
         # reset cache directory state (will fail if purge was unsuccessful)
         os.rmdir(os.path.expanduser('~/dj_query_cache'))

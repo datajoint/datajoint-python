@@ -235,7 +235,6 @@ class Connection:
             path_iter = pathlib.Path(config['query_cache']).glob('**/*')
             for path in path_iter:
                 path.unlink()
-        self._query_cache = None
 
     def close(self):
         self._conn.close()
