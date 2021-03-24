@@ -63,7 +63,7 @@ If an attribute happens to be a SQL reserved word, it needs to be enclosed in ba
 
     data = query.fetch(order_by='`select` desc')
 
-The `order_by` value is eventually passed  to the ``ORDER BY`` clause <https://dev.mysql.com/doc/refman/5.7/en/order-by-optimization.html>`_
+The ``order_by`` value is eventually passed  to the ``ORDER BY`` `clause <https://dev.mysql.com/doc/refman/5.7/en/order-by-optimization.html>`_.
 
 Similarly, the ``limit`` and ``offset`` arguments can be used to limit the result to a subset of entities.
 
