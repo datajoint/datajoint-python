@@ -70,7 +70,9 @@ For example, one could do the following:
 .. code-block:: python
 
     data = query.fetch(order_by='name', limit=10, offset=5)
+
 Note that an ``offset`` cannot be used without specifying a ``limit`` as well. 
+
 Usage with Pandas
 ~~~~~~~~~~~~~~~~~
 
