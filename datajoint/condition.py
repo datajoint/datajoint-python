@@ -84,7 +84,8 @@ def make_condition(query_expression, condition, columns):
                 try:
                     v = uuid.UUID(v)
                 except (AttributeError, ValueError):
-                    raise DataJointError('Badly formed UUID {v} in restriction by `{k}`'.format(k=k, v=v)) from None
+                    raise DataJointError(
+                        'Badly formed UUID {v} in restriction by `{k}`'.format(k=k, v=v))
             return "X'%s'" % v.bytes.hex()
         if isinstance(v, (datetime.date, datetime.datetime, datetime.time, decimal.Decimal)):
             return '"%s"' % v

@@ -36,7 +36,7 @@ jobs:
       - name: Run primary tests
         env:
           UID: "1001"
-          GID: "116"
+          GID: "121"
           PY_VER: ${{matrix.py_ver}}
           MYSQL_VER: ${{matrix.mysql_ver}}
           ALPINE_VER: "3.10"

@@ -1,6 +1,3 @@
-# Design specifications of the DataJoint-to-SQL Transpiler
-This document contains information and reasoning that went into the design of the DataJoint-to-SQL transpiler for DataJoint for Python version 0.13.
-
 MySQL appears to differ from standard SQL by the sequence of evaluating the clauses of the SELECT statement.
 
 ```
@@ -110,7 +107,7 @@ Union treats all its inputs as subqueries except for unrestricted Union objects.
 
 ### Joining a `dj.U` object
 
-# Query "Backprojection"
+## Query "Backprojection"
 Once a QueryExpression is used in a `fetch` operation or becomes a subquery in another query, it can project out all unnecessary attributes from its own inputs, recursively.
 This is implemented by the `finalize` method.
 This simplification produces much leaner queries resulting in improved query performance in version 0.13, especially on complex queries with blob data, compensating for MySQL's deficiencies in query optimization.

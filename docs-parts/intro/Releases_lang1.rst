@@ -11,7 +11,14 @@
 * Bugfix - Regression error on joins with same attribute name (#857) PR #878
 * Bugfix - Error when `fetch1('KEY')` when `dj.config['fetch_format']='frame'` set (#876) PR #880, #878
 * Bugfix - Error when cascading deletes in tables with many, complex keys (#883, #886) PR #839
+* Add deprecation warning for `_update`. PR #889
+* Add `purge_query_cache` utility. PR #889
+* Add tests for query caching and permissive join and restriction. PR #889
 * Drop support for Python 3.5
+
+0.12.9 -- Mar 12, 2021
+----------------------
+* Fix bug with fetch1 with `dj.config['fetch_format']="frame"`. Issue #876 (PR #880)
 
 0.12.8 -- Jan 12, 2021
 ----------------------
