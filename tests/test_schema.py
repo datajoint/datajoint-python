@@ -121,6 +121,7 @@ def test_overlapping_name():
 
 
 def test_list_tables():
+    # https://github.com/datajoint/datajoint-python/issues/838
     assert(set(['reserved_word', '#l', '#a', '__d', '__b', '__b__c', '__e', '__e__f',
                 '#outfit_launch', '#outfit_launch__outfit_piece', '#i_j', '#j_i',
                 '#t_test_update', '#data_a', '#data_b', 'f', '#argmax_test'
@@ -130,3 +131,28 @@ def test_list_tables():
 def test_schema_save():
     assert_true("class Experiment(dj.Imported)" in schema.schema.code)
     assert_true("class Experiment(dj.Imported)" in schema_empty.schema.code)
+
+
+def test_uppercase_schema():
+    # https://github.com/datajoint/datajoint-python/issues/564
+    schema1 = dj.schema('Upper_Schema')
+
+    @schema1
+    class Subject(dj.Manual):
+        definition = """
+        name: varchar(32)
+        """
+
+    Upper_Schema = dj.VirtualModule('Upper_Schema', 'Upper_Schema')
+
+    schema2 = dj.schema('schema_b')
+
+    @schema2
+    class Recording(dj.Manual):
+        definition = """
+        -> Upper_Schema.Subject
+        id: smallint
+        """
+
+    schema2.drop()
+    schema1.drop()
