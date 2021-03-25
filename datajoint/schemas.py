@@ -19,6 +19,20 @@ import types
 logger = logging.getLogger(__name__)
 
 
+def ordered_dir(class_):
+    """
+    List (most) attributes of the class including inherited ones, similar to `dir` build-in function,
+    but respects order of attribute declaration as much as possible.
+    This becomes unnecessary in Python 3.6+ as dicts became ordered.
+    :param class_: class to list members for
+    :return: a list of attributes declared in class_ and its superclasses
+    """
+    attr_list = list()
+    for c in reversed(class_.mro()):
+        attr_list.extend(e for e in c.__dict__ if e not in attr_list)
+    return attr_list
+
+
 class Schema:
     """
     A schema object is a decorator for UserTable classes that binds them to their database.
@@ -142,7 +156,7 @@ class Schema:
         """
         self._decorate_table(cls, context=dict(context, self=cls, **{cls.__name__: cls}))
         # Process part tables
-        for part in dir(cls.__dict__):
+        for part in ordered_dir(cls):
             if part[0].isupper():
                 part = getattr(cls, part)
                 if inspect.isclass(part) and issubclass(part, Part):

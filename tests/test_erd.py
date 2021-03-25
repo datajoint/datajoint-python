@@ -69,7 +69,5 @@ class TestERD:
         # https://github.com/datajoint/datajoint-python/issues/882
         erd = dj.Di(schema)
         graph = erd._make_graph()
-        # print(f'nodes: {erd.nodes_to_show}')
-        # print(f'graph nodes: {graph.nodes()}')
         assert 'OutfitLaunch' in graph.nodes()
         assert 'OutfitLaunch.OutfitPiece' in graph.nodes()
