@@ -135,7 +135,7 @@ def test_schema_save():
 
 def test_uppercase_schema():
     # https://github.com/datajoint/datajoint-python/issues/564
-    schema1 = dj.schema('Upper_Schema')
+    schema1 = dj.Schema('Schema_A')
 
     @schema1
     class Subject(dj.Manual):
@@ -143,14 +143,14 @@ def test_uppercase_schema():
         name: varchar(32)
         """
 
-    Upper_Schema = dj.VirtualModule('Upper_Schema', 'Upper_Schema')
+    Schema_A = dj.VirtualModule('Schema_A', 'Schema_A')
 
-    schema2 = dj.schema('schema_b')
+    schema2 = dj.Schema('schema_b')
 
     @schema2
     class Recording(dj.Manual):
         definition = """
-        -> Upper_Schema.Subject
+        -> Schema_A.Subject
         id: smallint
         """
 
