@@ -720,7 +720,7 @@ def lookup_class_name(name, context, depth=3):
                     if member.full_table_name == name:   # found it!
                         return '.'.join([node['context_name'],  member_name]).lstrip('.')
                     try:  # look for part tables
-                        parts = member._ordered_class_members
+                        parts = member.__dict__
                         print(f'parts: {parts}')
                     except AttributeError:
                         pass  # not a UserTable -- cannot have part tables.
