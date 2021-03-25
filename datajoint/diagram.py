@@ -234,6 +234,7 @@ else:
             graph = nx.DiGraph(nx.DiGraph(self).subgraph(nodes))
             nx.set_node_attributes(graph, name='node_type', values={n: _get_tier(n) for n in graph})
             # relabel nodes to class names
+            # print(f'context: {self.context}')
             mapping = {node: lookup_class_name(node, self.context) or node for node in graph.nodes()}
             print(f'mapping: {json.dumps(mapping, indent=4)}')
             new_names = [mapping.values()]

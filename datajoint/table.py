@@ -721,6 +721,7 @@ def lookup_class_name(name, context, depth=3):
                         return '.'.join([node['context_name'],  member_name]).lstrip('.')
                     try:  # look for part tables
                         parts = member._ordered_class_members
+                        print(f'parts: {parts}')
                     except AttributeError:
                         pass  # not a UserTable -- cannot have part tables.
                     else:
