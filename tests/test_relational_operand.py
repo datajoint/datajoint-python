@@ -459,3 +459,13 @@ class TestRelational:
     def test_permissive_restriction_basic():
         """Verify join compatibility check is skipped for restriction"""
         Child ^ Parent
+
+    @staticmethod
+    def test_complex_date_restriction():
+        # https://github.com/datajoint/datajoint-python/issues/892
+        """Test a complex date restriction"""
+        date1 = datetime.date.today() - datetime.timedelta(days=15)
+        F.insert([dict(id=100, date=date1)])
+        q = F & 'date between curdate() - interval 30 day and curdate()'
+        assert len(q) == 1
+        q.delete()
