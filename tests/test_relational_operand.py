@@ -7,7 +7,8 @@ import numpy as np
 from nose.tools import assert_equal, assert_false, assert_true, raises, assert_set_equal, assert_list_equal
 
 import datajoint as dj
-from .schema_simple import A, B, D, E, F, L, DataA, DataB, TTestUpdate, IJ, JI, ReservedWord
+from .schema_simple import (A, B, D, E, F, L, DataA, DataB, TTestUpdate, IJ, JI,
+                            ReservedWord, OutfitLaunch)
 from .schema import Experiment, TTest3, Trial, Ephys, Child, Parent
 
 
@@ -464,8 +465,8 @@ class TestRelational:
     def test_complex_date_restriction():
         # https://github.com/datajoint/datajoint-python/issues/892
         """Test a complex date restriction"""
-        date1 = datetime.date.today() - datetime.timedelta(days=15)
-        F.insert([dict(id=100, date=date1)])
-        q = F & 'date between curdate() - interval 30 day and curdate()'
+        q = OutfitLaunch & 'day between curdate() - interval 30 day and curdate()'
+        assert len(q) == 1
+        q = OutfitLaunch & '`day` between curdate() - interval 30 day and curdate()'
         assert len(q) == 1
         q.delete()
