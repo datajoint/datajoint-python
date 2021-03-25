@@ -372,9 +372,9 @@ class Schema:
         as ~logs and ~job
         :return: A list of table names from the database schema.
         """
-        return [table_name for (table_name,) in self.connection.query("""
-            SELECT table_name FROM information_schema.tables
-            WHERE table_schema = %s and table_name NOT LIKE '~%%'""", args=(self.database,))]
+        return [t for d, t in (full_t.replace('`', '').split('.')
+                               for full_t in Diagram(self).topological_sort())
+                if d == self.database]
 
 
 class VirtualModule(types.ModuleType):

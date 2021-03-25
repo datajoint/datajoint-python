@@ -121,11 +121,10 @@ def test_overlapping_name():
 
 
 def test_list_tables():
-    print(schema_simple.list_tables())
-    assert(['#a', '#argmax_test', '#data_a', '#data_b', '#i_j', '#j_i', '#l',
-            '#outfit_launch', '#outfit_launch__outfit_piece', '#t_test_update', '__b',
-            '__b__c', '__d', '__e', '__e__f', 'f', 'reserved_word'
-            ] == schema_simple.list_tables())
+    assert(set(['reserved_word', '#l', '#a', '__d', '__b', '__b__c', '__e', '__e__f',
+                '#outfit_launch', '#outfit_launch__outfit_piece', '#i_j', '#j_i',
+                '#t_test_update', '#data_a', '#data_b', 'f', '#argmax_test'
+                ]) == set(schema_simple.list_tables()))
 
 
 def test_schema_save():

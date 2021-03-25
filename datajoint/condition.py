@@ -207,6 +207,7 @@ def extract_column_names(sql_expression):
     remaining_tokens = set(re.findall(r"\b[a-z][a-z_0-9]*\b", s))
     # update result removing reserved words
     result.update(remaining_tokens - {"is", "in", "between", "like", "and", "or", "null",
-                                      "not", "interval", "day"
+                                      "not", "interval", "second", "minute", "hour", "day",
+                                      "month", "week", "year"
                                       })
     return result
