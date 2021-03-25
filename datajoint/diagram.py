@@ -219,6 +219,7 @@ else:
             """
             Make the self.graph - a graph object ready for drawing
             """
+            import json
             # mark "distinguished" tables, i.e. those that introduce new primary key attributes
             for name in self.nodes_to_show:
                 foreign_attributes = set(
@@ -234,6 +235,7 @@ else:
             nx.set_node_attributes(graph, name='node_type', values={n: _get_tier(n) for n in graph})
             # relabel nodes to class names
             mapping = {node: lookup_class_name(node, self.context) or node for node in graph.nodes()}
+            print(f'mapping: {json.dumps(mapping, indent=4)}')
             new_names = [mapping.values()]
             if len(new_names) > len(set(new_names)):
                 raise DataJointError('Some classes have identical names. The Diagram cannot be plotted.')
