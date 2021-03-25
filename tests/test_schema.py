@@ -3,7 +3,7 @@ import datajoint as dj
 from inspect import getmembers
 from . import schema
 from . import schema_empty
-from . import PREFIX, CONN_INFO
+from . import PREFIX, CONN_INFO, CONN_INFO_ROOT
 from .schema_simple import schema as schema_simple
 
 
@@ -135,6 +135,7 @@ def test_schema_save():
 
 def test_uppercase_schema():
     # https://github.com/datajoint/datajoint-python/issues/564
+    dj.conn(**CONN_INFO_ROOT, reset=True)
     schema1 = dj.Schema('Schema_A')
 
     @schema1
