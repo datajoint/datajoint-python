@@ -476,7 +476,7 @@ class TestRelational:
         # https://github.com/datajoint/datajoint-python/issues/824
         """Test a restriction for null using dict"""
         F.insert([dict(id=5)])
-        q = F & 'date is NULL'
+        q = F & dj.AndList([dict(id=5), 'date is NULL'])
         assert len(q) == 1
-        q = F & dict(date=None)
+        q = F & dict(id=5, date=None)
         assert len(q) == 1
