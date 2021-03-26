@@ -470,3 +470,13 @@ class TestRelational:
         q = OutfitLaunch & '`day` between curdate() - interval 30 day and curdate()'
         assert len(q) == 1
         q.delete()
+
+    @staticmethod
+    def test_null_dict_restriction():
+        # https://github.com/datajoint/datajoint-python/issues/824
+        """Test a restriction for null using dict"""
+        F.insert([dict(id=5)])
+        q = F & 'date is NULL'
+        assert len(q) == 1
+        q = F & dict(date=None)
+        assert len(q) == 1
