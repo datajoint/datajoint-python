@@ -219,7 +219,8 @@ else:
             """
             Make the self.graph - a graph object ready for drawing
             """
-            # mark "distinguished" tables i.e. ones introduce new primary key attributes
+            # mark "distinguished" tables, i.e. those that introduce new primary key
+            # attributes
             for name in self.nodes_to_show:
                 foreign_attributes = set(
                     attr for p in self.in_edges(name, data=True)

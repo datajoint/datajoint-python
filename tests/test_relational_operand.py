@@ -4,7 +4,8 @@ import pandas
 import datetime
 
 import numpy as np
-from nose.tools import assert_equal, assert_false, assert_true, raises, assert_set_equal, assert_list_equal
+from nose.tools import (assert_equal, assert_false, assert_true, raises, assert_set_equal,
+                        assert_list_equal)
 
 import datajoint as dj
 from .schema_simple import (A, B, D, E, F, L, DataA, DataB, TTestUpdate, IJ, JI,
@@ -158,6 +159,76 @@ class TestRelational:
     @staticmethod
     def test_issue_463():
         assert_equal(((A & B) * B).fetch().size, len(A * B))
+
+    @staticmethod
+    def test_issue_898():
+        # https://github.com/datajoint/datajoint-python/issues/898
+        schema = dj.schema('djtest_raphael')
+
+        @schema
+        class Subject(dj.Lookup):
+            definition = """
+            subject_id: varchar(32)
+            ---
+            dob : date
+            sex : enum('M', 'F', 'U')
+            """
+            contents = [
+                ('mouse1', '2020-09-01', 'M'),
+                ('mouse2', '2020-03-19', 'F'),
+                ('mouse3', '2020-08-23', 'F')
+            ]
+
+        @schema
+        class Session(dj.Lookup):
+            definition = """
+            -> Subject
+            session_start_time: datetime
+            ---
+            session_dir=''  : varchar(32)
+            """
+            contents = [
+                ('mouse1', '2020-12-01 12:32:34', ''),
+                ('mouse1', '2020-12-02 12:32:34', ''),
+                ('mouse1', '2020-12-03 12:32:34', ''),
+                ('mouse1', '2020-12-04 12:32:34', '')
+            ]
+
+        @schema
+        class SessionStatus(dj.Lookup):
+            definition = """
+            -> Session
+            ---
+            status: enum('in_training', 'trained_1a', 'trained_1b', 'ready4ephys')
+            """
+            contents = [
+                ('mouse1', '2020-12-01 12:32:34', 'in_training'),
+                ('mouse1', '2020-12-02 12:32:34', 'trained_1a'),
+                ('mouse1', '2020-12-03 12:32:34', 'trained_1b'),
+                ('mouse1', '2020-12-04 12:32:34', 'ready4ephys'),
+            ]
+
+        @schema
+        class SessionDate(dj.Lookup):
+            definition = """
+            -> Subject
+            session_date:  date
+            """
+            contents = [
+                ('mouse1', '2020-12-01'),
+                ('mouse1', '2020-12-02'),
+                ('mouse1', '2020-12-03'),
+                ('mouse1', '2020-12-04')
+            ]
+
+        subjects = Subject.aggr(
+            SessionStatus & 'status="trained_1a" or status="trained_1b"',
+            date_trained='min(date(session_start_time))')
+
+        print(f'subjects: {subjects}')
+        print(f'SessionDate: {SessionDate()}')
+        print(f'join: {SessionDate * subjects}')
+        print(f'join query: {(SessionDate * subjects).make_sql()}')
 
     @staticmethod
     def test_project():
@@ -466,6 +537,12 @@ class TestRelational:
         # https://github.com/datajoint/datajoint-python/issues/892
         """Test a complex date restriction"""
         q = OutfitLaunch & 'day between curdate() - interval 30 day and curdate()'
+        assert len(q) == 1
+        q = OutfitLaunch & 'day between curdate() - interval 4 week and curdate()'
+        assert len(q) == 1
+        q = OutfitLaunch & 'day between curdate() - interval 1 month and curdate()'
+        assert len(q) == 1
+        q = OutfitLaunch & 'day between curdate() - interval 1 year and curdate()'
         assert len(q) == 1
         q = OutfitLaunch & '`day` between curdate() - interval 30 day and curdate()'
         assert len(q) == 1
