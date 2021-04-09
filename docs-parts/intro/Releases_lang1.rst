@@ -4,6 +4,7 @@
 * Bugfix - `schema.list_tables()` is not topologically sorted (#838) PR #893
 * Bugfix - Diagram part tables do not show proper class name (#882) PR #893
 * Bugfix - Error in complex restrictions (#892) PR #893
+* Bugfix - WHERE and GROUP BY clases are dropped on joins with aggregation (#898, #899) PR #893
 
 0.13.0 -- Mar 24, 2021
 ----------------------
