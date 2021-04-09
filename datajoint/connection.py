@@ -203,7 +203,7 @@ class Connection:
                 self._conn = client.connect(
                     init_command=self.init_fun,
                     sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
-                             "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
+                             "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
                     charset=config['connection.charset'],
                     **{k: v for k, v in self.conn_info.items()
                        if k not in ['ssl_input', 'host_input']})
@@ -211,7 +211,7 @@ class Connection:
                 self._conn = client.connect(
                     init_command=self.init_fun,
                     sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
-                             "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
+                             "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
                     charset=config['connection.charset'],
                     **{k: v for k, v in self.conn_info.items()
                        if not(k in ['ssl_input', 'host_input'] or

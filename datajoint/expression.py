@@ -84,14 +84,15 @@ class QueryExpression:
     def primary_key(self):
         return self.heading.primary_key
 
-    _subquery_alias_count = count()    # count for alias names used in from_clause
+    _subquery_alias_count = count()    # count for alias names used in the FROM clause
 
     def from_clause(self):
-        support = ('(' + src.make_sql() + ') as `_s%x`' % next(
-            self._subquery_alias_count) if isinstance(src, QueryExpression) else src for src in self.support)
+        support = ('(' + src.make_sql() + ') as `$%x`' % next(
+            self._subquery_alias_count) if isinstance(src, QueryExpression)
+            else src for src in self.support)
         clause = next(support)
         for s, left in zip(support, self._left):
-            clause += 'NATURAL{left} JOIN {clause}'.format(
+            clause += ' NATURAL{left} JOIN {clause}'.format(
                 left=" LEFT" if left else "",
                 clause=s)
         return clause
@@ -264,8 +265,10 @@ class QueryExpression:
             (set(self.original_heading.names) & set(other.original_heading.names))
             - join_attributes)
         # need subquery if any of the join attributes are derived
-        need_subquery1 = need_subquery1 or any(n in self.heading.new_attributes for n in join_attributes)
-        need_subquery2 = need_subquery2 or any(n in other.heading.new_attributes for n in join_attributes)
+        need_subquery1 = (need_subquery1 or isinstance(self, Aggregation) or
+                          any(n in self.heading.new_attributes for n in join_attributes))
+        need_subquery2 = (need_subquery2 or isinstance(other, Aggregation) or
+                          any(n in other.heading.new_attributes for n in join_attributes))
         if need_subquery1:
             self = self.make_subquery()
         if need_subquery2:
@@ -721,8 +724,9 @@ class U:
 
     def join(self, other, left=False):
         """
-        Joining U with a query expression has the effect of promoting the attributes of U to the primary key of
-        the other query expression.
+        Joining U with a query expression has the effect of promoting the attributes of U to
+        the primary key of the other query expression.
+
         :param other: the other query expression to join with.
         :param left: ignored. dj.U always acts as if left=False
         :return: a copy of the other query expression with the primary key extended.
@@ -733,12 +737,14 @@ class U:
             raise DataJointError('Set U can only be joined with a QueryExpression.')
         try:
             raise DataJointError(
-                'Attribute `%s` not found' % next(k for k in self.primary_key if k not in other.heading.names))
+                'Attribute `%s` not found' % next(k for k in self.primary_key
+                                                  if k not in other.heading.names))
         except StopIteration:
             pass  # all ok
         result = copy.copy(other)
         result._heading = result.heading.set_primary_key(
-            other.primary_key + [k for k in self.primary_key if k not in other.primary_key])
+            other.primary_key + [k for k in self.primary_key
+                                 if k not in other.primary_key])
         return result
 
     def __mul__(self, other):
