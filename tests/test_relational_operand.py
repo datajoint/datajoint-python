@@ -503,5 +503,5 @@ class TestRelational:
             SessionA * SessionStatusA & 'status="trained_1a" or status="trained_1b"',
             date_trained='min(date(session_start_time))')
         session_dates = ((SessionDateA * (subj_query & 'date_trained<"2020-12-21"')) &
-                         'session_date<"date_trained"')
-        assert len(session_dates) == 4
+                         'session_date<date_trained')
+        assert len(session_dates) == 1
