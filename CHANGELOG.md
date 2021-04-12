@@ -2,6 +2,7 @@
 
 ### 0.13.1 -- TBD
 * Add `None` as an alias for `NULL` in `dict` restrictions (#824) PR #893
+* Drop support for MySQL 5.6 since it has reached EOL PR #893
 * Bugfix - `schema.list_tables()` is not topologically sorted (#838) PR #893
 * Bugfix - Diagram part tables do not show proper class name (#882) PR #893
 * Bugfix - Error in complex restrictions (#892) PR #893
