@@ -101,7 +101,7 @@ def setup_package():
         conn_root.query(
             "GRANT SELECT ON `djtest%%`.* TO 'djssl'@'%%';")
     else:
-        # grant permissions. For mysql5.6/5.7 this also automatically creates user
+        # grant permissions. For MySQL 5.7 this also automatically creates user
         # if not exists
         conn_root.query("""
             GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%'
