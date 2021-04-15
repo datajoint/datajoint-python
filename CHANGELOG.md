@@ -1,13 +1,23 @@
 ## Release notes
 
+### 0.13.1 -- TBD
+* Add `None` as an alias for `IS NULL` comparison in `dict` restrictions (#824) PR #893
+* Drop support for MySQL 5.6 since it has reached EOL PR #893
+* Bugfix - `schema.list_tables()` is not topologically sorted (#838) PR #893
+* Bugfix - Diagram part tables do not show proper class name (#882) PR #893
+* Bugfix - Error in complex restrictions (#892) PR #893
+* Bugfix - WHERE and GROUP BY clases are dropped on joins with aggregation (#898, #899) PR #893
+
 ### 0.13.0 -- Mar 24, 2021
-* Re-implement query transpilation into SQL, fixing issues (#386, #449, #450, #484). PR #754
-* Re-implement cascading deletes for better performance. PR #839.
-* Add table method `.update1` to update a row in the table with new values PR #763
-* Python datatypes are now enabled by default in blobs (#761). PR #785
+* Re-implement query transpilation into SQL, fixing issues (#386, #449, #450, #484, #558). PR #754
+* Re-implement cascading deletes for better performance. PR #839
+* Add support for deferred schema activation to allow for greater modularity. (#834) PR #839
+* Add query caching mechanism for offline development (#550) PR #839
+* Add table method `.update1` to update a row in the table with new values (#867) PR #763, #889
+* Python datatypes are now enabled by default in blobs (#761). PR #859
 * Added permissive join and restriction operators `@` and `^` (#785) PR #754
 * Support DataJoint datatype and connection plugins (#715, #729) PR 730, #735
-* Add `dj.key_hash` alias to `dj.hash.key_hash`
+* Add `dj.key_hash` alias to `dj.hash.key_hash` (#804) PR #862
 * Default enable_python_native_blobs to True
 * Bugfix - Regression error on joins with same attribute name (#857) PR #878
 * Bugfix - Error when `fetch1('KEY')` when `dj.config['fetch_format']='frame'` set (#876) PR #880, #878
@@ -15,7 +25,7 @@
 * Add deprecation warning for `_update`. PR #889
 * Add `purge_query_cache` utility. PR #889
 * Add tests for query caching and permissive join and restriction. PR #889
-* Drop support for Python 3.5
+* Drop support for Python 3.5 (#829) PR #861
 
 ### 0.12.9 -- Mar 12, 2021
 * Fix bug with fetch1 with `dj.config['fetch_format']="frame"`. (#876) PR #880

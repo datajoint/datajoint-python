@@ -3,7 +3,7 @@ import datajoint as dj
 from inspect import getmembers
 from . import schema
 from . import schema_empty
-from . import PREFIX, CONN_INFO
+from . import PREFIX, CONN_INFO, CONN_INFO_ROOT
 from .schema_simple import schema as schema_simple
 
 
@@ -119,12 +119,41 @@ def test_overlapping_name():
 
     test_schema.drop()
 
+
 def test_list_tables():
-    assert(['#a', '#argmax_test', '#data_a', '#data_b', '#i_j', '#j_i', '#l',\
-    '#t_test_update', '__b', '__b__c', '__d', '__e', '__e__f', 'f',\
-    'reserved_word'] == schema_simple.list_tables())
+    # https://github.com/datajoint/datajoint-python/issues/838
+    assert(set(['reserved_word', '#l', '#a', '__d', '__b', '__b__c', '__e', '__e__f',
+                '#outfit_launch', '#outfit_launch__outfit_piece', '#i_j', '#j_i',
+                '#t_test_update', '#data_a', '#data_b', 'f', '#argmax_test'
+                ]) == set(schema_simple.list_tables()))
 
 
 def test_schema_save():
     assert_true("class Experiment(dj.Imported)" in schema.schema.code)
     assert_true("class Experiment(dj.Imported)" in schema_empty.schema.code)
+
+
+def test_uppercase_schema():
+    # https://github.com/datajoint/datajoint-python/issues/564
+    dj.conn(**CONN_INFO_ROOT, reset=True)
+    schema1 = dj.Schema('Schema_A')
+
+    @schema1
+    class Subject(dj.Manual):
+        definition = """
+        name: varchar(32)
+        """
+
+    Schema_A = dj.VirtualModule('Schema_A', 'Schema_A')
+
+    schema2 = dj.Schema('schema_b')
+
+    @schema2
+    class Recording(dj.Manual):
+        definition = """
+        -> Schema_A.Subject
+        id: smallint
+        """
+
+    schema2.drop()
+    schema1.drop()

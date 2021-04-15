@@ -7,6 +7,7 @@ import itertools
 
 from . import PREFIX, CONN_INFO
 import numpy as np
+from datetime import date, timedelta
 
 schema = dj.Schema(PREFIX + '_relational', locals(), connection=dj.conn(**CONN_INFO))
 
@@ -195,3 +196,22 @@ class ReservedWord(dj.Manual):
     int   :  int
     select : varchar(25)
     """
+
+
+@schema
+class OutfitLaunch(dj.Lookup):
+    definition = """
+    # Monthly released designer outfits
+    release_id: int
+    ---
+    day: date
+    """
+    contents = [(0, date.today() - timedelta(days=15))]
+
+    class OutfitPiece(dj.Part, dj.Lookup):
+        definition = """
+        # Outfit piece associated with outfit
+        -> OutfitLaunch
+        piece: varchar(20)
+        """
+        contents = [(0, 'jeans'), (0, 'sneakers'), (0, 'polo')]

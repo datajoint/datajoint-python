@@ -379,3 +379,63 @@ class ComplexChild(dj.Lookup):
     definition = '\n'.join(['-> ComplexParent'] + ['child_id_{}: int'.format(i+1)
                                                    for i in range(1)])
     contents = [tuple(i for i in range(9))]
+
+
+@schema
+class SubjectA(dj.Lookup):
+    definition = """
+    subject_id: varchar(32)
+    ---
+    dob : date
+    sex : enum('M', 'F', 'U')
+    """
+    contents = [
+        ('mouse1', '2020-09-01', 'M'),
+        ('mouse2', '2020-03-19', 'F'),
+        ('mouse3', '2020-08-23', 'F')
+    ]
+
+
+@schema
+class SessionA(dj.Lookup):
+    definition = """
+    -> SubjectA
+    session_start_time: datetime
+    ---
+    session_dir=''  : varchar(32)
+    """
+    contents = [
+        ('mouse1', '2020-12-01 12:32:34', ''),
+        ('mouse1', '2020-12-02 12:32:34', ''),
+        ('mouse1', '2020-12-03 12:32:34', ''),
+        ('mouse1', '2020-12-04 12:32:34', '')
+    ]
+
+
+@schema
+class SessionStatusA(dj.Lookup):
+    definition = """
+    -> SessionA
+    ---
+    status: enum('in_training', 'trained_1a', 'trained_1b', 'ready4ephys')
+    """
+    contents = [
+        ('mouse1', '2020-12-01 12:32:34', 'in_training'),
+        ('mouse1', '2020-12-02 12:32:34', 'trained_1a'),
+        ('mouse1', '2020-12-03 12:32:34', 'trained_1b'),
+        ('mouse1', '2020-12-04 12:32:34', 'ready4ephys'),
+    ]
+
+
+@schema
+class SessionDateA(dj.Lookup):
+    definition = """
+    -> SubjectA
+    session_date:  date
+    """
+    contents = [
+        ('mouse1', '2020-12-01'),
+        ('mouse1', '2020-12-02'),
+        ('mouse1', '2020-12-03'),
+        ('mouse1', '2020-12-04')
+    ]

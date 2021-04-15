@@ -720,14 +720,18 @@ def lookup_class_name(name, context, depth=3):
                     if member.full_table_name == name:   # found it!
                         return '.'.join([node['context_name'],  member_name]).lstrip('.')
                     try:  # look for part tables
-                        parts = member._ordered_class_members
+                        parts = member.__dict__
                     except AttributeError:
                         pass  # not a UserTable -- cannot have part tables.
                     else:
-                        for part in (getattr(member, p) for p in parts if p[0].isupper() and hasattr(member, p)):
-                            if inspect.isclass(part) and issubclass(part, Table) and part.full_table_name == name:
-                                return '.'.join([node['context_name'], member_name, part.__name__]).lstrip('.')
-                elif node['depth'] > 0 and inspect.ismodule(member) and member.__name__ != 'datajoint':
+                        for part in (getattr(member, p) for p in parts
+                                     if p[0].isupper() and hasattr(member, p)):
+                            if inspect.isclass(part) and issubclass(part, Table) and \
+                                    part.full_table_name == name:
+                                return '.'.join([node['context_name'],
+                                                 member_name, part.__name__]).lstrip('.')
+                elif node['depth'] > 0 and inspect.ismodule(member) and \
+                        member.__name__ != 'datajoint':
                     try:
                         nodes.append(
                             dict(context=dict(inspect.getmembers(member)),

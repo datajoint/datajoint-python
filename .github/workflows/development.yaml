@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         py_ver: ["3.8"]
-        mysql_ver: ["8.0", "5.7", "5.6"]
+        mysql_ver: ["8.0", "5.7"]
         include:
           - py_ver: "3.7"
             mysql_ver: "5.7"
