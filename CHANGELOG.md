@@ -1,6 +1,6 @@
 ## Release notes
 
-### 0.13.1 -- TBD
+### 0.13.1 -- Apr 16, 2021
 * Add `None` as an alias for `IS NULL` comparison in `dict` restrictions (#824) PR #893
 * Drop support for MySQL 5.6 since it has reached EOL PR #893
 * Bugfix - `schema.list_tables()` is not topologically sorted (#838) PR #893
