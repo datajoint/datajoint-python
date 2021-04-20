@@ -107,8 +107,7 @@ def conn(host=None, user=None, password=None, *, init_fun=None, reset=False, use
                         #encrypted-connection-options).
     """
     if not hasattr(conn, 'connection') or reset:
-        host_input = host if host is not None else config['database.host']
-        host = get_host_hook(host_input)
+        host = host if host is not None else config['database.host']
         user = user if user is not None else config['database.user']
         password = password if password is not None else config['database.password']
         if user is None:  # pragma: no cover
@@ -117,8 +116,7 @@ def conn(host=None, user=None, password=None, *, init_fun=None, reset=False, use
             password = getpass(prompt="Please enter DataJoint password: ")
         init_fun = init_fun if init_fun is not None else config['connection.init_function']
         use_tls = use_tls if use_tls is not None else config['database.use_tls']
-        conn.connection = Connection(host, user, password, None, init_fun, use_tls,
-                                     host_input=host_input)
+        conn.connection = Connection(host, user, password, None, init_fun, use_tls)
     return conn.connection
 
 
@@ -160,8 +158,8 @@ class Connection:
     :param use_tls: TLS encryption option
     """
 
-    def __init__(self, host, user, password, port=None, init_fun=None, use_tls=None,
-                 host_input=None):
+    def __init__(self, host, user, password, port=None, init_fun=None, use_tls=None):
+        host_input, host = (host, get_host_hook(host))
         if ':' in host:
             # the port in the hostname overrides the port argument
             host, port = host.split(':')
