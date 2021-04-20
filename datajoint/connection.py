@@ -172,7 +172,7 @@ class Connection:
         if use_tls is not False:
             self.conn_info['ssl'] = use_tls if isinstance(use_tls, dict) else {'ssl': {}}
         self.conn_info['ssl_input'] = use_tls
-        self.conn_info['host_input'] = host_input
+        self.conn_info['host_input'] = host_input if host_input else ''
         self.init_fun = init_fun
         print("Connecting {user}@{host}:{port}".format(**self.conn_info))
         self._conn = None
