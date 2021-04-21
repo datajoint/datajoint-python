@@ -1,3 +1,7 @@
+0.13.2 -- TBD
+-------------
+* Bugfix - Explicit calls to `dj.Connection` throw error due to missing `host_input` (#895) PR #907
+
 0.13.1 -- Apr 16, 2021
 ----------------------
 * Add `None` as an alias for `IS NULL` comparison in `dict` restrictions (#824) PR #893
