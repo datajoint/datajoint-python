@@ -2,7 +2,7 @@ from .settings import config
 import pkg_resources
 from pathlib import Path
 from cryptography.exceptions import InvalidSignature
-from setuptools_certificate import hash_pkg, verify
+from otumat import hash_pkg, verify
 
 
 def _update_error_stack(plugin_name):

@@ -1,5 +1,6 @@
-0.13.2 -- TBD
--------------
+0.13.2 -- Apr 23, 2021
+----------------------
+* Update `setuptools_certificate` dependency to new name `otumat`
 * Bugfix - Explicit calls to `dj.Connection` throw error due to missing `host_input` (#895) PR #907
 
 0.13.1 -- Apr 16, 2021
