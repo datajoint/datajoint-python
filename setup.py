@@ -2,6 +2,7 @@
 from setuptools import setup, find_packages
 from os import path
 import sys
+import re
 
 min_py_version = (3, 6)
 
@@ -17,7 +18,9 @@ with open(path.join(here, 'datajoint', 'version.py')) as f:
     exec(f.read())
 
 with open(path.join(here, 'requirements.txt')) as f:
-    requirements = f.read().split()
+    requirements = ['{pkg} @ {target}#egg={pkg}'.format(
+        pkg=re.search(r'/([A-Za-z0-9\-]+)\.git', r).group(1),
+        target=r) if '+' in r else r for r in f.read().splitlines() if '#' not in r]
 
 setup(
     name='datajoint',
@@ -32,6 +35,6 @@ setup(
     packages=find_packages(exclude=['contrib', 'docs', 'tests*']),
     install_requires=requirements,
     python_requires='~={}.{}'.format(*min_py_version),
-    setup_requires=['otumat'],  # maybe remove due to conflicts?
+    setup_requires=[p for p in requirements if 'otumat' in p],  # maybe remove due to conflicts?
     pubkey_path='./datajoint.pub'
 )

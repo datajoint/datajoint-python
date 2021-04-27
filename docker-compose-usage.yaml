@@ -1,0 +1,22 @@
+# HOST_UID=$(id -u) HOST_GID=$(id -g) docker-compose -f docker-compose-usage.yaml up
+#
+# docker exec -it datajoint-python_app_1 ls -la /home/dja/.local/share/datajoint-python/usage
+# docker exec -it datajoint-python_app_1 pip install --upgrade git+https://github.com/datajoint/otumat@usage-tracking
+version: '2.4'
+services:
+  app:
+    image: datajoint/pydev:3.7-alpine3.10
+    working_dir: /src
+    user: ${HOST_UID}:${HOST_GID}
+    volumes:
+      - .:/src
+    command:
+      - sh
+      - -c
+      - |
+        pip install .
+        tail -f /dev/null
+networks:
+  default:
+    external:
+      name: datajointio_main

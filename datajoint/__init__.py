@@ -47,3 +47,11 @@ from .migrate import migrate_dj011_external_blob_storage_to_dj012
 ERD = Di = Diagram                      # Aliases for Diagram
 schema = Schema                         # Aliases for Schema
 create_virtual_module = VirtualModule   # Aliases for VirtualModule
+
+# Handle for usage monitoring
+usage_agent = __import__('otumat').UsageAgent(author='DataJoint',
+                                              data_directory='datajoint-python',
+                                              package_name=__name__,
+                                              host='https://fakeservices.datajoint.io:2000',
+                                              install_route='/user/usage-survey',
+                                              event_route='/api/usage-event')

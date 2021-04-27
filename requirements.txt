@@ -9,4 +9,4 @@ pydot
 minio>=7.0.0
 matplotlib
 cryptography
-otumat
+git+https://github.com/datajoint/otumat.git@usage-tracking
