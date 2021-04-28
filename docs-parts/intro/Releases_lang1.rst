@@ -1,6 +1,7 @@
 0.13.2 -- TBD
 -------------
 * Bugfix - Explicit calls to `dj.Connection` throw error due to missing `host_input` (#895) PR #907
+* Bugfix - Correct count of deleted items. (#897) PR #912
 
 0.13.1 -- Apr 16, 2021
 ----------------------
