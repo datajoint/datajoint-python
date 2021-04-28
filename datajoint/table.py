@@ -398,6 +398,7 @@ class Table(QueryExpression):
         :param transaction: if True, use the entire delete becomes an atomic transaction.
         :param safemode: If True, prohibit nested transactions and prompt to confirm. Default
             is dj.config['safemode'].
+        :return: number of deleted rows (excluding those from dependent tables)
         """
         safemode = config['safemode'] if safemode is None else safemode
 
@@ -438,6 +439,7 @@ class Table(QueryExpression):
                     self.connection.cancel_transaction()
                 if safemode:
                     print('Deletes cancelled')
+        return delete_count
 
     def drop_quick(self):
         """
@@ -821,8 +823,11 @@ class Log(Table):
                 logger.info('could not log event in table ~log')
 
     def delete(self):
-        """bypass interactive prompts and cascading dependencies"""
-        self.delete_quick()
+        """
+        bypass interactive prompts and cascading dependencies
+        :return: number of deleted items
+        """
+        return self.delete_quick(get_count=True)
 
     def drop(self):
         """bypass interactive prompts and cascading dependencies"""
