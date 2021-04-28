@@ -12,6 +12,14 @@
 # docker run --rm -it datajoint/mysql:5.7 mysql -htutorial-db.datajoint.io -udbadmin -pdevelop-path-area-agree -e "select * from usage_data.event;"
 # Windows
 # pip install --user git+https://github.com/guzman-raphael/datajoint-python@usage-tracking
+# pip install --user --upgrade --force-reinstall git+https://github.com/datajoint/otumat@usage-tracking
+# python -c "import datajoint"
+# python -c "print(__import__('otumat').UsageAgent(author='DataJoint', data_directory='datajoint-python', package_name='datajoint', host='https://fakeservices.datajoint.io:2000', install_route='/user/usage-install', event_route='/api/usage-event').show_logs())"
+# python -c "__import__('otumat').UsageAgent(author='DataJoint', data_directory='datajoint-python', package_name='datajoint', host='https://fakeservices.datajoint.io:2000', install_route='/user/usage-install', event_route='/api/usage-event').uninstall()"
+# MACOS
+# pip3 install git+https://github.com/guzman-raphael/datajoint-python@usage-tracking
+# python3 -c "import datajoint"
+# python3 -c "__import__('otumat').UsageAgent(author='DataJoint', data_directory='datajoint-python', package_name='datajoint', host='https://fakeservices.datajoint.io:2000', install_route='/user/usage-install', event_route='/api/usage-event').uninstall()"
 version: '2.4'
 services:
   app:
