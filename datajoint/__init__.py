@@ -53,5 +53,7 @@ usage_agent = __import__('otumat').UsageAgent(author='DataJoint',
                                               data_directory='datajoint-python',
                                               package_name=__name__,
                                               host='https://fakeservices.datajoint.io:2000',
-                                              install_route='/user/usage-survey',
-                                              event_route='/api/usage-event')
+                                              install_route='/user/usage-install',
+                                              event_route='/api/usage-event',
+                                              refresh_route='/auth/token')
+usage_agent.log('import')
