@@ -8,5 +8,5 @@ networkx
 pydot
 minio>=7.0.0
 matplotlib
-cryptography
+cryptography==3.3.2
 git+https://github.com/datajoint/otumat.git@usage-tracking

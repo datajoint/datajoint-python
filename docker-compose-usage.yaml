@@ -11,7 +11,7 @@
 # docker run --rm -it datajoint/mysql:5.7 mysql -htutorial-db.datajoint.io -udbadmin -pdevelop-path-area-agree -e "select * from usage_data.install;"
 # docker run --rm -it datajoint/mysql:5.7 mysql -htutorial-db.datajoint.io -udbadmin -pdevelop-path-area-agree -e "select * from usage_data.event;"
 # Windows
-# pip install git+https://github.com/guzman-raphael/datajoint-python@usage-tracking
+# pip install --user git+https://github.com/guzman-raphael/datajoint-python@usage-tracking
 version: '2.4'
 services:
   app:
