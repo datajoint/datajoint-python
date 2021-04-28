@@ -1,5 +1,5 @@
 # HOST_UID=$(id -u) HOST_GID=$(id -g) docker-compose -f docker-compose-usage.yaml up
-#
+# Linux
 # docker exec -it datajoint-python_app_1 ls -la /home/dja/.local/share/datajoint-python/usage
 # docker exec -it datajoint-python_app1 cat /home/dja/.local/share/datajoint-python/usage/config.json
 # docker exec -it datajoint-python_app_1 pip install --upgrade git+https://github.com/datajoint/otumat@usage-tracking
@@ -10,6 +10,8 @@
 # docker exec -it datajoint-python_app_1 python -c "print(__import__('otumat').UsageAgent(author='DataJoint', data_directory='datajoint-python', package_name='datajoint', host='https://fakeservices.datajoint.io:2000', install_route='/user/usage-install', event_route='/api/usage-event').show_logs())"
 # docker run --rm -it datajoint/mysql:5.7 mysql -htutorial-db.datajoint.io -udbadmin -pdevelop-path-area-agree -e "select * from usage_data.install;"
 # docker run --rm -it datajoint/mysql:5.7 mysql -htutorial-db.datajoint.io -udbadmin -pdevelop-path-area-agree -e "select * from usage_data.event;"
+# Windows
+# pip install git+https://github.com/guzman-raphael/datajoint-python@usage-tracking
 version: '2.4'
 services:
   app:
