@@ -35,7 +35,7 @@ services:
       - |
         pip install .
         tail -f /dev/null
-networks:
-  default:
-    external:
-      name: datajointio_main
+# networks:
+#   default:
+#     external:
+#       name: datajointio_main

@@ -35,6 +35,6 @@ setup(
     packages=find_packages(exclude=['contrib', 'docs', 'tests*']),
     install_requires=requirements,
     python_requires='~={}.{}'.format(*min_py_version),
-    setup_requires=[p for p in requirements if 'otumat' in p],  # maybe remove due to conflicts?
+    setup_requires=['otumat>=0.2.0'],  # maybe remove due to conflicts?
     pubkey_path='./datajoint.pub'
 )

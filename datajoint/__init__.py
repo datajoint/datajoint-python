@@ -52,10 +52,10 @@ create_virtual_module = VirtualModule   # Aliases for VirtualModule
 usage_agent = __import__('otumat').UsageAgent(author='DataJoint',
                                               data_directory='datajoint-python',
                                               package_name=__name__,
-                                              host='https://fakeservices.datajoint.io:2000',
+                                              host='https://datajoint.io',
                                               install_route='/user/usage-install',
                                               event_route='/api/usage-event',
                                               refresh_route='/auth/token',
-                                              response_timeout=60,
-                                              upload_frequency='5s')
-usage_agent.log('import')
+                                              response_timeout=300,
+                                              upload_frequency='12h')
+usage_agent.log(event_type='import')
