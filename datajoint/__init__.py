@@ -43,19 +43,20 @@ from .attribute_adapter import AttributeAdapter
 from . import errors
 from .errors import DataJointError
 from .migrate import migrate_dj011_external_blob_storage_to_dj012
+from otumat.usage import UsageAgent as _UsageAgent
 
 ERD = Di = Diagram                      # Aliases for Diagram
 schema = Schema                         # Aliases for Schema
 create_virtual_module = VirtualModule   # Aliases for VirtualModule
 
 # Handle for usage monitoring
-usage_agent = __import__('otumat').UsageAgent(author='DataJoint',
-                                              data_directory='datajoint-python',
-                                              package_name=__name__,
-                                              host='https://datajoint.io',
-                                              install_route='/user/usage-install',
-                                              event_route='/api/usage-event',
-                                              refresh_route='/auth/token',
-                                              response_timeout=300,
-                                              upload_frequency='12h')
+usage_agent = _UsageAgent(author='DataJoint',
+                          data_directory='datajoint-python',
+                          package_name=__name__,
+                          host='https://datajoint.io',
+                          install_route='/user/usage-install',
+                          event_route='/api/usage-event',
+                          refresh_route='/auth/token',
+                          response_timeout=300,
+                          upload_frequency='12h')
 usage_agent.log(event_type='import')
