@@ -321,10 +321,12 @@ class ExternalTable(Table):
         themselves are deleted too.
         :param limit: (integer) limit the number of items to delete
         :param display_progress: if True, display progress as files are cleaned up
-        :return: yields
+        :return: if deleting external files, returns errors
         """
         if delete_external_files not in (True, False):
-            raise DataJointError("The delete_external_files argument must be set to either True or False in delete()")
+            raise DataJointError(
+                "The delete_external_files argument must be set to either "
+                "True or False in delete()")
 
         if not delete_external_files:
             self.unused().delete_quick()
