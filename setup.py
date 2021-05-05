@@ -32,6 +32,6 @@ setup(
     packages=find_packages(exclude=['contrib', 'docs', 'tests*']),
     install_requires=requirements,
     python_requires='~={}.{}'.format(*min_py_version),
-    setup_requires=['setuptools_certificate'], # maybe remove due to conflicts?
+    setup_requires=['otumat'],  # maybe remove due to conflicts?
     pubkey_path='./datajoint.pub'
 )
