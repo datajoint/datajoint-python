@@ -26,6 +26,7 @@ class TestERD:
     @staticmethod
     def test_dependencies():
         deps = schema.connection.dependencies
+        deps.load()
         assert_true(all(cls.full_table_name in deps for cls in (A, B, B.C, D, E, E.F, L)))
         assert_true(set(A().children()) == set([B.full_table_name, D.full_table_name]))
         assert_true(set(D().parents(primary=True)) == set([A.full_table_name]))
