@@ -23,7 +23,6 @@ def ordered_dir(class_):
     """
     List (most) attributes of the class including inherited ones, similar to `dir` build-in function,
     but respects order of attribute declaration as much as possible.
-    This becomes unnecessary in Python 3.6+ as dicts became ordered.
     :param class_: class to list members for
     :return: a list of attributes declared in class_ and its superclasses
     """
@@ -186,6 +185,7 @@ class Schema:
             if not self.create_tables or assert_declared:
                 raise DataJointError('Table `%s` not declared' % instance.table_name)
             instance.declare(context)
+            self.connection.dependencies.clear()
         is_declared = is_declared or instance.is_declared
 
         # add table definition to the doc string

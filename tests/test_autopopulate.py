@@ -86,6 +86,7 @@ class TestPopulate:
 
             def make(self, key):
                 self.insert1(dict(key, image_data=dict()))
+
         Image.populate()
 
         @schema
@@ -98,4 +99,5 @@ class TestPopulate:
 
             def make(self, key):
                 self.insert1(dict(key, crop_image=dict()))
+
         Crop.populate()

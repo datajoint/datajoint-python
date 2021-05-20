@@ -3,7 +3,7 @@ import datajoint as dj
 from nose.tools import assert_true
 
 
-schema = dj.Schema(PREFIX + '_keywords', locals(), connection=dj.conn(**CONN_INFO))
+schema = dj.Schema(PREFIX + '_keywords', connection=dj.conn(**CONN_INFO))
 
 
 @schema
