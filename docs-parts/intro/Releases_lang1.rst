@@ -1,3 +1,7 @@
+0.13.3 -- May 28, 2021
+----------------------
+* Bugfix - Dependencies not properly loaded on populate. (#902) PR #919
+
 0.13.2 -- May 7, 2021
 ----------------------
 * Update `setuptools_certificate` dependency to new name `otumat`
