@@ -3,7 +3,6 @@ AWS S3 operations
 """
 from io import BytesIO
 import minio   # https://docs.minio.io/docs/python-client-api-reference
-import warnings
 import uuid
 import logging
 from pathlib import Path

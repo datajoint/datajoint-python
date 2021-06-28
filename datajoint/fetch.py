@@ -63,9 +63,15 @@ def _get(connection, attr, data, squeeze, download_path):
         attachment_name = (extern.get_attachment_name(_uuid) if attr.is_external
                            else data.split(b"\0", 1)[0].decode())
         local_filepath = Path(download_path) / attachment_name
+
         if local_filepath.is_file():
             attachment_checksum = _uuid if attr.is_external else hash.uuid_from_buffer(data)
             if attachment_checksum == hash.uuid_from_file(local_filepath, init_string=attachment_name + '\0'):
+                return adapt(str(local_filepath))  # checksum passed, no need to download again
+            if attachment_checksum == hash.uuid_from_file(local_filepath, init_string=attachment_name + '\0', chunk_count=None):
+                warnings.warn("Attachment (uuid = '{uuid}') using old checksum strategy and "
+                              "requires migration. Legacy checksum strategy slated for "
+                              "deprecation on '0.15.0'.".format(uuid=attachment_checksum.hex))
                 return adapt(str(local_filepath))  # checksum passed, no need to download again
             # generate the next available alias filename
             for n in itertools.count():
@@ -75,13 +81,108 @@ def _get(connection, attr, data, squeeze, download_path):
                     break
                 if attachment_checksum == hash.uuid_from_file(f, init_string=attachment_name + '\0'):
                     return adapt(str(f))  # checksum passed, no need to download again
-        # Save attachment
-        if attr.is_external:
-            extern.download_attachment(_uuid, attachment_name, local_filepath)
-        else:
-            # write from buffer
-            safe_write(local_filepath, data.split(b"\0", 1)[1])
-        return adapt(str(local_filepath))  # download file from remote store
+                if attachment_checksum == hash.uuid_from_file(f, init_string=attachment_name + '\0', chunk_count=None):
+                    warnings.warn("Attachment (uuid = '{uuid}') using old checksum strategy and "
+                                  "requires migration. Legacy checksum strategy slated for "
+                                  "deprecation on '0.15.0'.".format(uuid=attachment_checksum.hex))
+                    return adapt(str(f))  # checksum passed, no need to download again
+
+        # Steps:
+        # 1. get the attachment filename
+        # 2. check if the file already exists at download_path, verify checksum
+        # 3. if exists and checksum passes then return the local filepath
+        # 4. Otherwise, download the remote file and return the new filepath
+
+        # if attr.is_external:
+        #     checksum = uuid.UUID(bytes=data)
+        #     attachment_name = extern.get_attachment_name(checksum)
+        #     local_filepath = Path(download_path) / attachment_name
+        #     if local_filepath.is_file():
+        #         if checksum == hash.uuid_from_file(local_filepath, init_string=attachment_name + '\0'):
+        #             return adapt(str(local_filepath))
+        #         for n in itertools.count():
+        #             f = local_filepath.parent / (local_filepath.stem + '_%04x' % n + local_filepath.suffix)
+        #             if not f.is_file():
+        #                 local_filepath = f
+        #                 break
+        #             if checksum == hash.uuid_from_file(f, init_string=attachment_name + '\0'):
+        #                 return adapt(str(f))  # checksum passed, no need to download again
+        #     extern.download_attachment(_uuid, attachment_name, local_filepath)
+        #     return adapt(str(local_filepath))
+        # else:
+        #     attachment_name = data.split(b"\0", 1)[0].decode()
+        #     local_filepath = Path(download_path) / attachment_name
+        #     if local_filepath.is_file():
+        #         checksum = hash.uuid_from_buffer(data)
+        #         if checksum == hash.uuid_from_file(local_filepath, init_string=attachment_name + '\0'):
+        #             return adapt(str(local_filepath))
+        #         for n in itertools.count():
+        #             f = local_filepath.parent / (local_filepath.stem + '_%04x' % n + local_filepath.suffix)
+        #             if not f.is_file():
+        #                 local_filepath = f
+        #                 break
+        #             if checksum == hash.uuid_from_file(f, init_string=attachment_name + '\0'):
+        #                 return adapt(str(f))  # checksum passed, no need to download again
+        #     safe_write(local_filepath, data.split(b"\0", 1)[1])
+        #     return adapt(str(local_filepath))
+
+        # # Steps:
+        # # 1. get the attachment filename
+        # # 2. check if the file already exists at download_path, verify checksum
+        # # 3. if exists and checksum passes then return the local filepath
+        # # 4. Otherwise, download the remote file and return the new filepath
+        # _uuid = uuid.UUID(bytes=data) if attr.is_external else None
+        # attachment_name = (extern.get_attachment_name(_uuid) if attr.is_external
+        #                    else data.split(b"\0", 1)[0].decode())
+        # local_filepath = Path(download_path) / attachment_name
+        # if local_filepath.is_file():
+        #     attachment_checksum = _uuid if attr.is_external else hash.uuid_from_buffer(data)
+        #     if attachment_checksum == hash.uuid_from_file(local_filepath, init_string=attachment_name + '\0'):
+        #         return adapt(str(local_filepath))  # checksum passed, no need to download again
+        #     # generate the next available alias filename
+        #     for n in itertools.count():
+        #         f = local_filepath.parent / (local_filepath.stem + '_%04x' % n + local_filepath.suffix)
+        #         if not f.is_file():
+        #             local_filepath = f
+        #             break
+        #         if attachment_checksum == hash.uuid_from_file(f, init_string=attachment_name + '\0'):
+        #             return adapt(str(f))  # checksum passed, no need to download again
+        # # Save attachment
+        # if attr.is_external:
+        #     extern.download_attachment(_uuid, attachment_name, local_filepath)
+        # else:
+        #     # write from buffer
+        #     safe_write(local_filepath, data.split(b"\0", 1)[1])
+        # return adapt(str(local_filepath))  # download file from remote store
+
+        # # Steps:
+        # # 1. get the attachment filename
+        # # 2. check if the file already exists at download_path, verify checksum
+        # # 3. if exists and checksum passes then return the local filepath
+        # # 4. Otherwise, download the remote file and return the new filepath
+        # _uuid = uuid.UUID(bytes=data) if attr.is_external else None
+        # attachment_name = (extern.get_attachment_name(_uuid) if attr.is_external
+        #                    else data.split(b"\0", 1)[0].decode())
+        # local_filepath = Path(download_path) / attachment_name
+        # if local_filepath.is_file():
+        #     attachment_checksum = _uuid if attr.is_external else hash.uuid_from_buffer(data)
+        #     if attachment_checksum == hash.uuid_from_file(local_filepath, init_string=attachment_name + '\0'):
+        #         return adapt(str(local_filepath))  # checksum passed, no need to download again
+        #     # generate the next available alias filename
+        #     for n in itertools.count():
+        #         f = local_filepath.parent / (local_filepath.stem + '_%04x' % n + local_filepath.suffix)
+        #         if not f.is_file():
+        #             local_filepath = f
+        #             break
+        #         if attachment_checksum == hash.uuid_from_file(f, init_string=attachment_name + '\0'):
+        #             return adapt(str(f))  # checksum passed, no need to download again
+        # # Save attachment
+        # if attr.is_external:
+        #     extern.download_attachment(_uuid, attachment_name, local_filepath)
+        # else:
+        #     # write from buffer
+        #     safe_write(local_filepath, data.split(b"\0", 1)[1])
+        # return adapt(str(local_filepath))  # download file from remote store
 
     return adapt(uuid.UUID(bytes=data) if attr.uuid else (
             blob.unpack(extern.get(uuid.UUID(bytes=data)) if attr.is_external else data, squeeze=squeeze)

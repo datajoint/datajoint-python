@@ -20,7 +20,7 @@ from datajoint.utils import parse_sql
 __author__ = 'Edgar Walker, Fabian Sinz, Dimitri Yatsenko, Raphael Guzman'
 
 # turn on verbose logging
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 
 __all__ = ['__author__', 'PREFIX', 'CONN_INFO']
 
@@ -36,7 +36,7 @@ CONN_INFO_ROOT = dict(
     password=environ.get('DJ_PASS', 'simple'))
 
 S3_CONN_INFO = dict(
-    endpoint=environ.get('S3_ENDPOINT', 'fakeservices.datajoint.io'),
+    endpoint='minio:9000',
     access_key=environ.get('S3_ACCESS_KEY', 'datajoint'),
     secret_key=environ.get('S3_SECRET_KEY', 'datajoint'),
     bucket=environ.get('S3_BUCKET', 'datajoint.test'))
@@ -63,10 +63,10 @@ httpClient = urllib3.PoolManager(
 
 # Initialize minioClient with an endpoint and access/secret keys.
 minioClient = minio.Minio(
-    S3_CONN_INFO['endpoint'],
+    'minio:9000',
     access_key=S3_CONN_INFO['access_key'],
     secret_key=S3_CONN_INFO['secret_key'],
-    secure=True,
+    secure=False,
     http_client=httpClient)
 
 

@@ -106,7 +106,7 @@ class Attach(dj.Manual):
     # table for storing attachments
     attach : int
     ----
-    img : attach@share    #  attachments are stored as specified by: dj.config['stores']['raw']
+    img : attach@share    #  attachments are stored as specified by: dj.config['stores']['share']
     txt : attach      #  attachments are stored directly in the database
     """
 
@@ -131,6 +131,16 @@ class FilepathS3(dj.Manual):
     fnum : int 
     ---
     img : filepath@repo_s3  # managed files 
+    """
+
+
+@schema
+class AttachLocal(dj.Manual):
+    definition = """
+    # table for storing remote attachments
+    fnum : int
+    ---
+    img : attach@repo  #  attachments are stored as specified by: dj.config['stores']['repo']
     """
 
 dj.errors._switch_filepath_types(False)

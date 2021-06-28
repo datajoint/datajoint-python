@@ -3,7 +3,10 @@ import datajoint as dj
 import os
 from pathlib import Path
 import random
-
+import time
+import sys
+import shutil
+import cProfile
 from .schema_external import schema, Filepath, FilepathS3, stores_config
 
 
@@ -34,7 +37,7 @@ def test_path_match(store="repo"):
     assert_equal(
         (ext & {'hash': uuid}).fetch1('filepath'),
         str(managed_file.relative_to(stage_path).as_posix()))
-    
+
     # # Download the file and check its contents.
     restored_path, checksum = ext.download_filepath(uuid)
     assert_equal(restored_path, str(managed_file))
@@ -256,3 +259,54 @@ def test_return_string(table=Filepath(), store="repo"):
     filepath = (table & {'fnum': 138}).fetch1('img')
     assert_true(isinstance(filepath, str))
     dj.errors._switch_filepath_types(False)
+
+
+class TestFilepathPerformance:
+    """ test file path upload/download performance"""
+
+    def setup(self):
+        store = 'repo'
+        self.table = Filepath()
+        self.id_no = 200
+        self.ext = schema.external[store]
+        self.stage_path = dj.config['stores'][store]['stage']
+        dj.errors._switch_filepath_types(True)
+
+        # create a mock file
+        self.relative_path = 'path/to/performance/files'
+        self.managed_file = Path(self.stage_path, self.relative_path, 'test.dat')
+        self.managed_file.parent.mkdir(parents=True, exist_ok=True)
+
+    def teardown(self):
+        (self.table & {'fnum': self.id_no}).delete()
+        self.ext.delete(delete_external_files=True)
+        shutil.rmtree(Path(self.stage_path, self.relative_path.split('/')[0]))
+        dj.errors._switch_filepath_types(False)
+
+    def test_performance(self):
+        size = 250 * 1024**2  # ~250[MB]
+        n = 2 * 4  # ~2[GB]
+        # n = 5 * 4  # ~5[GB]
+        # n = 10 * 4  # ~10[GB]
+        with open(self.managed_file, 'wb') as f:
+            [f.write(random.getrandbits(size * 8).to_bytes(length=size,
+                                                           byteorder=sys.byteorder))
+             for _ in range(n)]
+
+        # upload file into shared repo
+        t_insert_start = time.time()
+        self.table.insert1((self.id_no, str(self.managed_file)))
+        # cProfile.runctx('table.insert1((id_no, str(managed_file)))', globals(), locals())
+        insert_delta = time.time() - t_insert_start
+        print(f'insert time: {insert_delta}', flush=True)
+        assert insert_delta < 12
+
+        # remove file locally
+        self.managed_file.unlink()
+
+        # fetch file from remote
+        t_fetch_start = time.time()
+        filepath = (self.table & {'fnum': self.id_no}).fetch1('img')
+        fetch_delta = time.time() - t_fetch_start
+        print(f'fetch time: {fetch_delta}', flush=True)
+        assert fetch_delta < 9

@@ -9,6 +9,7 @@ from .heading import Heading
 from .declare import EXTERNAL_TABLE_ROOT
 from . import s3
 from .utils import safe_write, safe_copy
+import warnings
 
 CACHE_SUBFOLDING = (2, 2)   # (2, 2) means  "0123456789abcd" will be saved as "01/23/0123456789abcd"
 SUPPORT_MIGRATED_BLOBS = True   # support blobs migrated from datajoint 0.11.*
@@ -226,7 +227,8 @@ class ExternalTable(Table):
         except ValueError:
             raise DataJointError('The path {path} is not in stage {stage}'.format(
                 path=local_filepath.parent, **self.spec))
-        uuid = uuid_from_buffer(init_string=relative_filepath)  # hash relative path, not contents
+        # hash relative path, not contents
+        uuid = uuid_from_buffer(init_string=relative_filepath, chunk_count=None)
         contents_hash = uuid_from_file(local_filepath)
 
         # check if the remote file already exists and verify that it matches
@@ -249,19 +251,42 @@ class ExternalTable(Table):
     def download_filepath(self, filepath_hash):
         """
         sync a file from external store to the local stage
+
         :param filepath_hash: The hash (UUID) of the relative_path
-        :return: hash (UUID) of the contents of the downloaded file or Nones
+        :return: tuple containing path to file and hash (UUID) of the contents of the
+            downloaded file or Nones
         """
         if filepath_hash is not None:
-            relative_filepath, contents_hash = (self & {'hash': filepath_hash}).fetch1('filepath', 'contents_hash')
+            relative_filepath, contents_hash, size = (self & {'hash': filepath_hash}).fetch1(
+                'filepath', 'contents_hash', 'size')
             external_path = self._make_external_filepath(relative_filepath)
             local_filepath = Path(self.spec['stage']).absolute() / relative_filepath
-            file_exists = Path(local_filepath).is_file() and uuid_from_file(local_filepath) == contents_hash
-            if not file_exists:
+
+            def _validate_local_file(filepath, expected_checksum, expected_size):
+                if Path(filepath).stat().st_size != expected_size:
+                    raise DataJointError(
+                        "'{file}' exists but is not the same size as expected".format(
+                            file=local_filepath))
+                if uuid_from_file(filepath) != expected_checksum:
+                    if uuid_from_file(filepath, chunk_count=None) != expected_checksum:
+                        raise DataJointError(
+                            "'{file}' exists but did not pass checksum".format(
+                                file=local_filepath))
+                    else:
+                        warnings.warn("'{file}' using old checksum strategy and requires "
+                                      "migration. Legacy checksum strategy slated for "
+                                      "deprecation on '0.15.0'.".format(file=filepath))
+
+            if Path(local_filepath).is_file():
+                try:
+                    _validate_local_file(local_filepath, contents_hash, size)
+                except DataJointError:
+                    self._download_file(external_path, local_filepath)
+                    _validate_local_file(local_filepath, contents_hash, size)
+            else:
                 self._download_file(external_path, local_filepath)
-                checksum = uuid_from_file(local_filepath)
-                if checksum != contents_hash:  # this should never happen without outside interference
-                    raise DataJointError("'{file}' downloaded but did not pass checksum'".format(file=local_filepath))
+                _validate_local_file(local_filepath, contents_hash, size)
+
             return str(local_filepath), contents_hash
 
     # --- UTILITIES ---

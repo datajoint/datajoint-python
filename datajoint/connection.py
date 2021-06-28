@@ -282,7 +282,9 @@ class Connection:
         if use_query_cache:
             if not config['query_cache']:
                 raise errors.DataJointError("Provide filepath dj.config['query_cache'] when using query caching.")
-            hash_ = uuid_from_buffer((str(self._query_cache) + re.sub(r'`\$\w+`', '', query)).encode() + pack(args))
+            hash_ = uuid_from_buffer(buffer=(str(self._query_cache) + re.sub(
+                                        r'`\$\w+`', '', query)).encode() + pack(args),
+                                     chunk_count=None)
             cache_path = pathlib.Path(config['query_cache']) / str(hash_)
             try:
                 buffer = cache_path.read_bytes()
