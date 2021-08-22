@@ -1,5 +1,6 @@
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from collections import Mapping
+from fsspec.core import url_to_fs
 from tqdm import tqdm
 from .settings import config
 from .errors import DataJointError, MissingExternalFile
@@ -44,6 +45,8 @@ class ExternalTable(Table):
         if self.spec['protocol'] == 'file' and not Path(self.spec['location']).is_dir():
             raise FileNotFoundError('Inaccessible local directory %s' %
                                     self.spec['location']) from None
+        if self.spec['protocol'] == 'fsspec':
+            self._fs, _ = url_to_fs(self.spec['location'])
 
     @property
     def definition(self):
@@ -84,6 +87,11 @@ class ExternalTable(Table):
         # Preserve root
         elif self.spec['protocol'] == 'file':
             return PurePosixPath(Path(self.spec['location']), relative_filepath)
+        elif self.spec['protocol'] == 'fsspec':
+            # The pathlib library strips the double slashes used in uris.  For now,
+            # just assume linux slash directory separator.
+            # TODO: Make this work on all systems, including Windows.
+            return self.spec['location'] + "/" + str(relative_filepath)
         else:
             assert False
 
@@ -97,6 +105,10 @@ class ExternalTable(Table):
             self.s3.fput(local_path, external_path, metadata)
         elif self.spec['protocol'] == 'file':
             safe_copy(local_path, external_path, overwrite=True)
+        elif self.spec['protocol'] == 'fsspec':
+            parent = self._fs._parent(external_path)
+            self._fs.makedirs(parent)
+            self._fs.put_file(local_path, external_path)
         else:
             assert False
 
@@ -105,6 +117,8 @@ class ExternalTable(Table):
             self.s3.fget(external_path, download_path)
         elif self.spec['protocol'] == 'file':
             safe_copy(external_path, download_path)
+        elif self.spec['protocol'] == 'fsspec':
+            self._fs.get_file(external_path, download_path)
         else:
             assert False
 
@@ -113,6 +127,10 @@ class ExternalTable(Table):
             self.s3.put(external_path, buffer)
         elif self.spec['protocol'] == 'file':
             safe_write(external_path, buffer)
+        elif self.spec['protocol'] == 'fsspec':
+            parent = self._fs._parent(external_path)
+            self._fs.makedirs(parent)
+            self._fs.pipe_file(external_path, buffer)
         else:
             assert False
 
@@ -121,6 +139,8 @@ class ExternalTable(Table):
             return self.s3.get(external_path)
         if self.spec['protocol'] == 'file':
             return Path(external_path).read_bytes()
+        if self.spec['protocol'] == 'fsspec':
+            return self._fs.cat_file(external_path)
         assert False
 
     def _remove_external_file(self, external_path):
@@ -128,6 +148,10 @@ class ExternalTable(Table):
             self.s3.remove_object(external_path)
         elif self.spec['protocol'] == 'file':
             Path(external_path).unlink()
+        elif self.spec['protocol'] == 'fsspec':
+            self._fs.rm(external_path)
+        else:
+            assert False
 
     def exists(self, external_filepath):
         """
@@ -137,6 +161,8 @@ class ExternalTable(Table):
             return self.s3.exists(external_filepath)
         if self.spec['protocol'] == 'file':
             return Path(external_filepath).is_file()
+        if self.spec['protocol'] == 'fsspec':
+            return self._fs.exists(external_filepath)
         assert False
 
     # --- BLOBS ----

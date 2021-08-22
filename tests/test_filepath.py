@@ -94,6 +94,16 @@ def test_filepath_s3():
     test_filepath(store="repo_s3")
 
 
+def test_filepath_fsspec():
+    """ test file management with fsspec """
+    test_filepath(store="fsspec")
+
+
+def test_filepath_fsspec_s3():
+    """ test file management with fsspec """
+    test_filepath(store="fsspec_s3")
+
+
 def test_duplicate_upload(store="repo"):
     ext = schema.external[store]
     stage_path = dj.config['stores'][store]['stage']
