@@ -8,6 +8,8 @@ from .schema_external import schema
 import datajoint as dj
 from .schema_external import stores_config
 from .schema_external import SimpleRemote
+from .schema_external import SimpleFsSpec
+from .schema_external import SimpleFsSpecS3
 current_location_s3 = dj.config['stores']['share']['location']
 current_location_local = dj.config['stores']['local']['location']
 
@@ -103,3 +105,15 @@ def test_file_leading_slash():
     file external storage configured with leading slash
     """
     test_s3_leading_slash(index=200, store='local')
+
+
+def test_fsspec():
+    value = np.array([1, 2, 3])
+
+    SimpleFsSpec.insert([{'simple': 0, 'item': value}])
+    assert_true(np.array_equal(
+        value, (SimpleFsSpec & 'simple=0').fetch1('item')))
+
+    SimpleFsSpecS3.insert([{'simple': 0, 'item': value}])
+    assert_true(np.array_equal(
+        value, (SimpleFsSpecS3 & 'simple=0').fetch1('item')))

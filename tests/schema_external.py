@@ -37,7 +37,18 @@ stores_config = {
         S3_CONN_INFO,
         protocol='s3',
         location='dj/store/repo',
-        subfolding=(2, 4))
+        subfolding=(2, 4)),
+    
+    'fsspec': dict(
+        protocol='fsspec',
+        location=tempfile.mkdtemp(),
+        stage=tempfile.mkdtemp()),
+
+    'fsspec_s3': dict(
+        protocol='fsspec',
+        location='s3://datajoint.test/dj/store/fsspec',
+        stage=tempfile.mkdtemp())
+    
 }
 
 dj.config['stores'] = stores_config
@@ -62,6 +73,23 @@ class SimpleRemote(dj.Manual):
     item  : blob@share
     """
 
+
+@schema
+class SimpleFsSpec(dj.Manual):
+    definition = """
+    simple  : int
+    ---
+    item  : blob@fsspec
+    """
+
+
+@schema
+class SimpleFsSpecS3(dj.Manual):
+    definition = """
+    simple  : int
+    ---
+    item  : blob@fsspec_s3
+    """
 
 @schema
 class Seed(dj.Lookup):
