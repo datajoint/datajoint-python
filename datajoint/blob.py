@@ -3,6 +3,7 @@
 compatibility with Matlab-based serialization implemented by mYm.
 """
 
+import io
 import zlib
 from itertools import repeat
 import collections
@@ -10,6 +11,7 @@ from decimal import Decimal
 import datetime
 import uuid
 import numpy as np
+import pandas as pd
 from .errors import DataJointError
 from .settings import config
 
@@ -131,6 +133,7 @@ class Blob:
                 "d": self.read_decimal,      # a decimal
                 "t": self.read_datetime,     # date, time, or datetime
                 "u": self.read_uuid,         # UUID
+                "p": self.read_pandas,       # Pandas DataFrame or Series
             }[data_structure_code]
         except KeyError:
             raise DataJointError('Unknown data structure code "%s". Upgrade datajoint.' % data_structure_code)
@@ -184,6 +187,8 @@ class Blob:
             return self.pack_tuple(obj)
         if isinstance(obj, collections.Set):
             return self.pack_set(obj)
+        if isinstance(obj, (pd.DataFrame, pd.Series)):
+            return self.pack_pandas(obj)
         if obj is None:
             return self.pack_none()
         raise DataJointError("Packing object of type %s currently not supported!" % type(obj))
@@ -343,6 +348,16 @@ class Blob:
     def pack_set(self, t):
         return b"\3" + len_u64(t) + b"".join(
             len_u64(it) + it for it in (self.pack_blob(i) for i in t))
+
+    def read_pandas(self):
+        return pd.read_pickle(io.BytesIO(self.read_blob()))
+
+    def pack_pandas(self, t):
+        buffer = io.BytesIO()
+        # t.to_pickle(buffer)  # bug in pandas 1.0.3, use pickle instead:
+        import pickle
+        pickle.dump(t, buffer)
+        return b"p" + self.pack_blob(buffer.getvalue())
 
     def read_dict(self):
         return dict((self.read_blob(self.read_value()), self.read_blob(self.read_value()))

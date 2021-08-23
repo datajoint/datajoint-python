@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import uuid
 from decimal import Decimal
 from datetime import datetime
@@ -6,6 +7,7 @@ from datajoint.blob import pack, unpack
 from numpy.testing import assert_array_equal
 from nose.tools import assert_equal, assert_true, assert_false, \
     assert_list_equal, assert_set_equal, assert_tuple_equal, assert_dict_equal
+from pandas.testing import assert_frame_equal, assert_series_equal
 
 
 def test_pack():
@@ -126,3 +128,20 @@ def test_complex():
 
     x = np.int16(np.random.randn(1, 2, 3)) + 1j*np.int16(np.random.randn(1, 2, 3))
     assert_array_equal(x, unpack(pack(x)), "Arrays do not match!")
+
+def test_pandas():
+    data_int = [1, 2, 3]
+    data_float = [4.2, 5.7, 6.9]
+    data_str = ["foo", "bar", "baz"]
+    data_arr = [np.array(data_int), np.array(data_float), np.array(data_str)]
+    
+    data = {'int': data_int, 'float': data_float, 'str': data_str, 'arr': data_arr}
+    
+    # Test as individual series
+    for kind, series in data.items():
+        s = pd.Series(series, index=[0, 10, 20], name=kind)
+        assert_series_equal(s, unpack(pack(s)), "Series %s does not match!" % kind)
+    
+    df = pd.DataFrame(data, index=[0, 10, 20])
+    assert_frame_equal(df, unpack(pack(df)), "DataFrame does not match!")
+    
