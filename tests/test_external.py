@@ -103,3 +103,8 @@ def test_file_leading_slash():
     file external storage configured with leading slash
     """
     test_s3_leading_slash(index=200, store='local')
+
+def test_remove_fail():
+    #https://github.com/datajoint/datajoint-python/issues/953
+
+    raise Exception('error removing')

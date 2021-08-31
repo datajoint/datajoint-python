@@ -20,7 +20,7 @@ from datajoint.utils import parse_sql
 __author__ = 'Edgar Walker, Fabian Sinz, Dimitri Yatsenko, Raphael Guzman'
 
 # turn on verbose logging
-logging.basicConfig(level=logging.DEBUG)
+#logging.basicConfig(level=logging.DEBUG)
 
 __all__ = ['__author__', 'PREFIX', 'CONN_INFO']
 
