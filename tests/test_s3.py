@@ -51,3 +51,7 @@ class TestS3:
             http_client=http_client)
 
         assert_true(minio_client.bucket_exists(S3_CONN_INFO['bucket']))
+    @staticmethod
+    def test_remove_object():
+        #https://github.com/datajoint/datajoint-python/issues/952
+        raise Exception("test")
