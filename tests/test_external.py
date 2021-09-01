@@ -4,10 +4,15 @@ from nose.tools import assert_true, assert_equal
 from datajoint.external import ExternalTable
 from datajoint.blob import pack, unpack
 
-from .schema_external import schema
+
 import datajoint as dj
-from .schema_external import stores_config
-from .schema_external import SimpleRemote
+from .schema_external import stores_config, SimpleRemote, Simple, schema
+
+import json
+import os 
+from os import stat
+import pwd
+from pwd import getpwuid
 current_location_s3 = dj.config['stores']['share']['location']
 current_location_local = dj.config['stores']['local']['location']
 
@@ -107,4 +112,37 @@ def test_file_leading_slash():
 def test_remove_fail():
     #https://github.com/datajoint/datajoint-python/issues/953
 
+    print(json.dumps(dj.config['stores'], indent=4))
+    print(dj.config['stores']['local']['location'])
+
+    data = dict(simple = 1, item = [1, 2, 3])
+    Simple.insert1(data)
+
+    print('location')
+    print(os.listdir(dj.config['stores']['local']['location'] + 
+    '/djtest_extern/4/c'))
+
+    path1 = dj.config['stores']['local']['location'] + '/djtest_extern/4/c/'
+
+    path2 = os.listdir(dj.config['stores']['local']['location'] + '/djtest_extern/4/c/')
+
+    print(path1 + path2[0])
+
+    path3 = path1 + path2[0]
+
+    # st = stat(path1 + path2[0])
+    # print(bool(st.st_mode & stat.S_IXUSR))
+
+    print(getpwuid(stat(path3).st_uid).pw_name)
+
+    print(Simple())
+    (Simple & 'simple=1').delete()
+    print(Simple())
+    print(schema.external['local'])
+    schema.external['local'].delete(delete_external_files=True)
+    print(os.listdir(dj.config['stores']['local']['location'] + 
+    '/djtest_extern/4/c'))
+
+
+    print(schema.external['local'])
     raise Exception('error removing')
