@@ -84,4 +84,4 @@ class Folder:
         try:
             self.client.remove_object(self.bucket, str(name))
         except minio.ResponseError:
-            return errors.DataJointError('Failed to delete %s from s3 storage' % name)
+            raise errors.DataJointError('Failed to delete %s from s3 storage' % name)
