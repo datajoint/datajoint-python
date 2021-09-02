@@ -112,15 +112,20 @@ def test_file_leading_slash():
 def test_remove_fail():
     #https://github.com/datajoint/datajoint-python/issues/953
 
-    print(json.dumps(dj.config['stores'], indent=4))
-    print(dj.config['stores']['local']['location'])
+    #print(json.dumps(dj.config['stores'], indent=4))
+    #print(dj.config['stores']['local']['location'])
+
+    dirName = dj.config['stores']['local']['location']
+
+    #print('directory: ' + dirName)
+
+
 
     data = dict(simple = 1, item = [1, 2, 3])
     Simple.insert1(data)
 
-    print('location')
-    print(os.listdir(dj.config['stores']['local']['location'] + 
-    '/djtest_extern/4/c'))
+    #print('location')
+    #print(os.listdir(dj.config['stores']['local']['location'] + '/djtest_extern/4/c'))
 
     path1 = dj.config['stores']['local']['location'] + '/djtest_extern/4/c/'
 
@@ -128,21 +133,30 @@ def test_remove_fail():
 
     print(path1 + path2[0])
 
-    path3 = path1 + path2[0]
+    old_name = path1 + path2[0]
+
+    new_name = "/tmp/newfile"
+
+    os.rename(old_name, new_name)
+
+    print(f'\nis the new file name a file? {os.path.isfile(new_name)}')
+    print(f'\nis the old file name a file? {os.path.isfile(old_name)}')
+
+    print(os.listdir(dj.config['stores']['local']['location'] + '/djtest_extern/4/c/'))
 
     # st = stat(path1 + path2[0])
     # print(bool(st.st_mode & stat.S_IXUSR))
 
-    print(getpwuid(stat(path3).st_uid).pw_name)
+    #print(getpwuid(stat(path3).st_uid).pw_name)
 
-    print(Simple())
+    print(f'simple table before delete {Simple()}')
     (Simple & 'simple=1').delete()
-    print(Simple())
+    print(f'simple table after delete {Simple()}')
+    print('-------------showing external store before delete with flag---------')
     print(schema.external['local'])
-    schema.external['local'].delete(delete_external_files=True)
-    print(os.listdir(dj.config['stores']['local']['location'] + 
-    '/djtest_extern/4/c'))
-
-
+    listOfErrors = schema.external['local'].delete(delete_external_files=True)
+    print(f'list of errors: {listOfErrors}')
+    print(os.listdir(dj.config['stores']['local']['location'] + '/djtest_extern/4/c'))
+    print('-------------showing external store after delete with flag---------')
     print(schema.external['local'])
     raise Exception('error removing')
