@@ -341,7 +341,8 @@ class ExternalTable(Table):
             error_list = []
             for uuid, external_path in items:
                 try:
-                    count = (self & {'hash': uuid}).delete_quick(get_count=True)  # optimize
+                    count = len(self & {'hash': uuid}).delete_quick(get_count=True)  # optimize
+                    print(f'\n\n\nCOUNT IS: {count}')
                 except Exception:
                     pass   # if delete failed, do not remove the external file
                 else:
@@ -350,6 +351,8 @@ class ExternalTable(Table):
                         self._remove_external_file(external_path)
                     except Exception as error:
                         error_list.append((uuid, external_path, str(error)))
+                    else:
+                        #(self & {'hash': uuid}).delete_quick(get_count=True)
             return error_list
 
 

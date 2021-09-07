@@ -162,8 +162,12 @@ def test_remove_fail():
     print('-------------showing external store after delete with flag---------')
     print(schema.external['local'])
 
+    print(f'\n is this the UID or HASH? {listOfErrors[0][0]} ')
+
+    LENGTH_OF_QUERY = len(schema.external['local'] & dict(hash = listOfErrors[0][0]))
+
+    print(f'\nWHAT IS THE LENGTH OF THIS? {LENGTH_OF_QUERY}')
+
     assert len(listOfErrors) == 1, 'unexpected number of errors'
-    assert len(schema.external['local']) == 1, 'unexpected number of rows in external table'
-    listUID = listOfErrors[0][0] 
-    tableUID = schema.external['local']
-    raise Exception('error removing')
+    assert len(schema.external['local'] & dict(hash = listOfErrors[0][0])) == 1, 'unexpected number of rows in external table'
+    
