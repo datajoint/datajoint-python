@@ -125,7 +125,8 @@ def test_remove_fail():
     Simple.insert1(data)
 
     #print('location')
-    #print(os.listdir(dj.config['stores']['local']['location'] + '/djtest_extern/4/c'))
+    print('\n BEFORE DELETE: list of dir stores, local, location')
+    print(os.listdir(dj.config['stores']['local']['location'] + '/djtest_extern/4/c'))
 
     path1 = dj.config['stores']['local']['location'] + '/djtest_extern/4/c/'
 
@@ -156,7 +157,13 @@ def test_remove_fail():
     print(schema.external['local'])
     listOfErrors = schema.external['local'].delete(delete_external_files=True)
     print(f'list of errors: {listOfErrors}')
+    print('list of dir stores, local, location')
     print(os.listdir(dj.config['stores']['local']['location'] + '/djtest_extern/4/c'))
     print('-------------showing external store after delete with flag---------')
     print(schema.external['local'])
+
+    assert len(listOfErrors) == 1, 'unexpected number of errors'
+    assert len(schema.external['local']) == 1, 'unexpected number of rows in external table'
+    listUID = listOfErrors[0][0] 
+    tableUID = schema.external['local']
     raise Exception('error removing')
