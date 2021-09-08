@@ -56,7 +56,8 @@ class TestS3:
     @staticmethod
     @raises(DataJointError)
     def test_remove_object_exception():
-        #https://github.com/datajoint/datajoint-python/issues/952
+        # https://github.com/datajoint/datajoint-python/issues/952
+        
         # Initialize minioClient with an endpoint and access/secret keys.
         minio_client = Minio(
             'minio:9000',
@@ -65,8 +66,11 @@ class TestS3:
             secure=False)
 
         minio_admin = minio.MinioAdmin(target = 'myminio')
+        
+        # Create new user
         minio_admin.user_add(access_key = 'jeffjeff', secret_key = 'jeffjeff')
 
+        # json for test policy for permissionless user
         testpolicy = {
     "Version": "2012-10-17",
     "Statement": [
@@ -98,22 +102,33 @@ class TestS3:
         }
     ]
 }
+
+        # Write test json to tmp directory so we can use it to create a new user policy
         with open('/tmp/policy.json', 'w') as f:
             f.write(json.dumps(testpolicy))
+        
+        # Add the policy and apply it to the user
         minio_admin.policy_add(policy_name = 'test', policy_file = '/tmp/policy.json')
         minio_admin.policy_set(policy_name = 'test', user = 'jeffjeff')
 
-        
+        # Insert some test data and remove it so that the external table is populated
         test = [1,[1,2,3]]
         SimpleRemote.insert1(test)
         SimpleRemote.delete()
-        
+
+        # Save the old external table minio client
+        old_client = schema.external['share'].s3.client
+
+        # Apply our new minio client to the external table that has permissions restrictions
         schema.external['share'].s3.client = minio_client
+        
         # This method returns a list of errors
         error_list = schema.external['share'].delete(delete_external_files = True, errors_as_string = False)
+
+        # Teardown
+        minio_admin.user_remove(access_key = 'jeffjeff')
+        minio_admin.policy_remove('test')
+        schema.external['share'].s3.client = old_client
+
+        # Raise the error we want
         raise error_list[0][2]
-        
-        
-
-        
-
