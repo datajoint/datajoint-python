@@ -85,4 +85,4 @@ class Folder:
         except minio.error.MinioException:
             raise errors.DataJointError('Failed to delete %s from s3 storage' % name)
         except ValueError:
-            raise errors.DataJointError('minIO ValueError')
+            raise errors.DataJointError('minIO ValueError something is wrong with the strings passed')
