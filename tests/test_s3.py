@@ -112,8 +112,7 @@ class TestS3:
         # This method returns a list of errors
         error_list = schema.external['share'].delete(delete_external_files = True, errors_as_string = False)
         raise error_list[0][2]
-        # schema.external['share'].s3.secret_key = ''
-        # schema.external['share'].s3.remove_object('test')
+        
         
 
         
