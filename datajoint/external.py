@@ -314,7 +314,7 @@ class ExternalTable(Table):
         return self & [FreeTable(self.connection, ref['referencing_table']).proj(hash=ref['column_name'])
                        for ref in self.references]
 
-    def delete(self, *, delete_external_files=None, limit=None, display_progress=True, errors_as_string = True):
+    def delete(self, *, delete_external_files=None, limit=None, display_progress=True, errors_as_string=True):
         """
         :param delete_external_files: True or False. If False, only the tracking info is removed from the
         external store table but the external files remain intact. If True, then the external files
