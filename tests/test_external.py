@@ -26,32 +26,14 @@ def tearDown(self):
     dj.config['stores']['local']['location'] = current_location_local
 
 
-def test_external_put():
-    """
-    external storage put and get and remove
-    """
-    ext = ExternalTable(schema.connection, store='raw', database=schema.database)
-    initial_length = len(ext)
-    input_ = np.random.randn(3, 7, 8)
-    count = 7
-    extra = 3
-    for i in range(count):
-        hash1 = ext.put(pack(input_))
-    for i in range(extra):
-        hash2 = ext.put(pack(np.random.randn(4, 3, 2)))
-
-    fetched_hashes = ext.fetch('hash')
-    assert_true(all(hash in fetched_hashes for hash in (hash1, hash2)))
-    assert_equal(len(ext), initial_length + 1 + extra)
-
-    output_ = unpack(ext.get(hash1))
-    assert_array_equal(input_, output_)
-
 
 def test_s3_leading_slash(index=100, store='share'):
     """
     s3 external storage configured with leading slash
     """
+
+    oldConfig = dj.config['stores'][store]['location']
+
     value = np.array([1, 2, 3])
 
     id = index
@@ -102,6 +84,7 @@ def test_s3_leading_slash(index=100, store='share'):
     assert_true(np.array_equal(
         value, (SimpleRemote & 'simple={}'.format(id)).fetch1('item')))
 
+    dj.config['stores'][store]['location'] = oldConfig
 
 def test_file_leading_slash():
     """
@@ -114,6 +97,9 @@ def test_remove_fail():
 
     #print(json.dumps(dj.config['stores'], indent=4))
     #print(dj.config['stores']['local']['location'])
+
+    # oldConfig = dj.config['stores']
+    # dj.config['stores'] = stores_config
 
     dirName = dj.config['stores']['local']['location']
 
@@ -190,3 +176,5 @@ def test_remove_fail():
     listOfErrors = schema.external['local'].delete(delete_external_files=True)
 
     print(len(listOfErrors))
+
+    # dj.config['stores'] = oldConfig
