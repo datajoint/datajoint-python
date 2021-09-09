@@ -127,9 +127,6 @@ class ExternalTable(Table):
         if self.spec['protocol'] == 's3':
             self.s3.remove_object(external_path)
         elif self.spec['protocol'] == 'file':
-            print('we have reached the unlink statement in datajoint')
-            print(external_path)
-            print(Path(external_path).is_file())
             Path(external_path).unlink()
 
     def exists(self, external_filepath):
@@ -342,7 +339,6 @@ class ExternalTable(Table):
             for uuid, external_path in items:
                 try:
                     count = len(self & {'hash': uuid})  # optimize
-                    print(f'\n\n\nCOUNT IS: {count}')
                 except Exception:
                     pass   # if delete failed, do not remove the external file
                 else:
