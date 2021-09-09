@@ -122,15 +122,16 @@ class TestS3:
         schema.external['share'].s3.client = minio_client
 
         # This method returns a list of errors
-        error_list = schema.external['share'].delete(delete_external_files=True, errors_as_string=False)
+        error_list = schema.external['share'].delete(delete_external_files=True,
+                                                     errors_as_string=False)
 
         # Teardown
+        print(error_list[0][0])
         os.system('mc admin policy remove myminio test')
         os.system('mc admin user remove myminio jeffjeff')
-
-        # minio_admin.user_remove(access_key = 'jeffjeff')
-        # minio_admin.policy_remove('test')
         schema.external['share'].s3.client = old_client
-
-        # Raise the error we want
-        raise error_list[0][2]
+        schema.external['share'].delete(delete_external_files=True)
+        os.remove("/tmp/policy.json")
+        # Raise the error we want if the error matches the expected uuid
+        if str(error_list[0][0]) == '4c16e9e1-5b64-474e-4b56-ba22bb17faae':
+            raise error_list[0][2]
