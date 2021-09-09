@@ -351,9 +351,8 @@ class ExternalTable(Table):
                         self._remove_external_file(external_path)
                     except Exception as error:
                         error_list.append((uuid, external_path, str(error)))
-                    else: 
+                    else:
                         (self & {'hash': uuid}).delete_quick(get_count=True)
-                    
             return error_list
 
 
