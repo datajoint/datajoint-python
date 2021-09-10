@@ -34,7 +34,7 @@ services:
       interval: 1s
   fakeservices.datajoint.io:
     <<: *net
-    image: datajoint/nginx:v0.0.17
+    image: datajoint/nginx:v0.0.18
     environment:
     - ADD_db_TYPE=DATABASE
     - ADD_db_ENDPOINT=db:3306
@@ -82,6 +82,9 @@ services:
       - -c
       - |
         set -e
+        wget -P /home/dja/.local/bin/ https://dl.min.io/client/mc/release/linux-amd64/mc
+        chmod +x /home/dja/.local/bin/mc
+        mc alias set myminio/ http://minio:9000 datajoint datajoint
         pip install --user nose nose-cov coveralls flake8 ptvsd
         pip install -e .
         pip freeze | grep datajoint

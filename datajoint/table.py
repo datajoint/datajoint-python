@@ -361,59 +361,7 @@ class Table(QueryExpression):
         self._log(query[:255])
         return count
 
-    def _delete_cascade(self):
-        """service function to perform cascading deletes recursively."""
-        max_attempts = 50
-        for _ in range(max_attempts):
-            try:
-                delete_count = self.delete_quick(get_count=True)
-            except IntegrityError as error:
-                match = foreign_key_error_regexp.match(error.args[0]).groupdict()
-                if "`.`" not in match['child']:  # if schema name missing, use self
-                    match['child'] = '{}.{}'.format(self.full_table_name.split(".")[0],
-                                                    match['child'])
-                if match['pk_attrs'] is not None:  # fully matched, adjusting the keys
-                    match['fk_attrs'] = [k.strip('`') for k in match['fk_attrs'].split(',')]
-                    match['pk_attrs'] = [k.strip('`') for k in match['pk_attrs'].split(',')]
-                else:  # only partially matched, querying with constraint to determine keys
-                    match['fk_attrs'], match['parent'], match['pk_attrs'] = list(map(
-                        list, zip(*self.connection.query(constraint_info_query, args=(
-                            match['name'].strip('`'),
-                            *[_.strip('`') for _ in match['child'].split('`.`')]
-                            )).fetchall())))
-                    match['parent'] = match['parent'][0]
-
-                # Avoid deleting from child before master (See issue #151)
-                master = get_master(match['child'])
-                if master and self.full_table_name != master:
-                    raise DataJointError(
-                        'Attempt to delete from part table {part} before deleting from '
-                        'its master. Delete from {master} first.'.format(
-                            part=match['child'], master=master))
-
-                # Restrict child by self if
-                #   1. if self's restriction attributes are not in child's primary key
-                #   2. if child renames any attributes
-                # Otherwise restrict child by self's restriction.
-                child = FreeTable(self.connection, match['child'])
-                if set(self.restriction_attributes) <= set(child.primary_key) and \
-                        match['fk_attrs'] == match['pk_attrs']:
-                    child._restriction = self._restriction
-                elif match['fk_attrs'] != match['pk_attrs']:
-                    child &= self.proj(**dict(zip(match['fk_attrs'],
-                                                  match['pk_attrs'])))
-                else:
-                    child &= self.proj()
-                child._delete_cascade()
-            else:
-                print("Deleting {count} rows from {table}".format(
-                    count=delete_count, table=self.full_table_name))
-                break
-        else:
-            raise DataJointError('Exceeded maximum number of delete attempts.')
-        return delete_count
-
-    def delete(self, transaction=True, safemode=None):
+    def delete(self, transaction=True, safemode=None, force_parts=False):
         """
         Deletes the contents of the table and its dependent tables, recursively.
 
@@ -422,8 +370,56 @@ class Table(QueryExpression):
             within another transaction.
         :param safemode: If True, prohibit nested transactions and prompt to confirm. Default
             is dj.config['safemode'].
+        :param force_parts: Delete from parts even when not deleting from their masters.
         :return: number of deleted rows (excluding those from dependent tables)
         """
+        deleted = set()
+
+        def cascade(table):
+            """service function to perform cascading deletes recursively."""
+            max_attempts = 50
+            for _ in range(max_attempts):
+                try:
+                    delete_count = table.delete_quick(get_count=True)
+                except IntegrityError as error:
+                    match = foreign_key_error_regexp.match(error.args[0]).groupdict()
+                    if "`.`" not in match['child']:  # if schema name missing, use table
+                        match['child'] = '{}.{}'.format(table.full_table_name.split(".")[0],
+                                                        match['child'])
+                    if match['pk_attrs'] is not None:  # fully matched, adjusting the keys
+                        match['fk_attrs'] = [k.strip('`') for k in match['fk_attrs'].split(',')]
+                        match['pk_attrs'] = [k.strip('`') for k in match['pk_attrs'].split(',')]
+                    else:  # only partially matched, querying with constraint to determine keys
+                        match['fk_attrs'], match['parent'], match['pk_attrs'] = list(map(
+                            list, zip(*table.connection.query(constraint_info_query, args=(
+                                match['name'].strip('`'),
+                                *[_.strip('`') for _ in match['child'].split('`.`')]
+                            )).fetchall())))
+                        match['parent'] = match['parent'][0]
+
+                    # Restrict child by table if
+                    #   1. if table's restriction attributes are not in child's primary key
+                    #   2. if child renames any attributes
+                    # Otherwise restrict child by table's restriction.
+                    child = FreeTable(table.connection, match['child'])
+                    if set(table.restriction_attributes) <= set(child.primary_key) and \
+                            match['fk_attrs'] == match['pk_attrs']:
+                        child._restriction = table._restriction
+                    elif match['fk_attrs'] != match['pk_attrs']:
+                        child &= table.proj(**dict(zip(match['fk_attrs'],
+                                                       match['pk_attrs'])))
+                    else:
+                        child &= table.proj()
+                    cascade(child)
+                else:
+                    deleted.add(table.full_table_name)
+                    print("Deleting {count} rows from {table}".format(
+                        count=delete_count, table=table.full_table_name))
+                    break
+            else:
+                raise DataJointError('Exceeded maximum number of delete attempts.')
+            return delete_count
+
         safemode = config['safemode'] if safemode is None else safemode
 
         # Start transaction
@@ -440,11 +436,22 @@ class Table(QueryExpression):
 
         # Cascading delete
         try:
-            delete_count = self._delete_cascade()
+            delete_count = cascade(self)
         except:
             if transaction:
                 self.connection.cancel_transaction()
             raise
+
+        if not force_parts:
+            # Avoid deleting from child before master (See issue #151)
+            for part in deleted:
+                master = get_master(part)
+                if master and master not in deleted:
+                    if transaction:
+                        self.connection.cancel_transaction()
+                    raise DataJointError(
+                        'Attempt to delete part table {part} before deleting from '
+                        'its master {master} first.'.format(part=part, master=master))
 
         # Confirm and commit
         if delete_count == 0:

@@ -2,7 +2,11 @@
 ----------------------
 * Bugfix - Dependencies not properly loaded on populate. (#902) PR #919
 * Bugfix - Replace use of numpy aliases of built-in types with built-in type. (#938) PR #939
+<<<<<<< HEAD
 * Bugfix - Deletes and drops can cascade to part from master only. (#151 and #374) PR #957
+=======
+* Bugfix - Fix error handling of remove_object function in `s3.py` (#952) PR #955
+>>>>>>> 61dab59fe59a408b018bf2a6330ec0ce07c2ad42
 
 0.13.2 -- May 7, 2021
 ----------------------
