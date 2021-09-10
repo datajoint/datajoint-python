@@ -119,8 +119,8 @@ def test_remove_fail():
     (Simple & 'simple=2').delete()
     listOfErrors = schema.external['local'].delete(delete_external_files=True)
     assert len(listOfErrors) == 1, 'unexpected number of errors'
-    assert len(schema.external['local'] & dict(hash=listOfErrors[0][0])) == 1, 'unexpec' + \
-        'number of rows in external table'
+    assert len(schema.external['local'] & dict(hash=listOfErrors[0][0])) == 1, \
+        'unexpected number of rows in external table'
     # ---------------------CLEAN UP--------------------
     os.chmod(path1, currentMode)
     listOfErrors = schema.external['local'].delete(delete_external_files=True)
