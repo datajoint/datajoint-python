@@ -1,6 +1,6 @@
-from nose.tools import assert_false, assert_true, assert_equal
+from nose.tools import assert_false, assert_true, assert_equal, raises
 import datajoint as dj
-from .schema_simple import A, B, D, E, L
+from .schema_simple import A, B, D, E, L, Website, Profile
 from .schema import ComplexChild, ComplexParent
 
 
@@ -27,8 +27,19 @@ class TestDelete:
 
     @staticmethod
     def test_stepwise_delete():
-        assert_false(dj.config['safemode'], 'safemode must be off for testing') #TODO: just turn it off instead of warning
-        assert_true(L() and A() and B() and B.C(), 'schema population failed as a precondition to test')
+        assert_false(dj.config['safemode'], 'safemode must be off for testing')
+        assert_true(L() and A() and B() and B.C(),
+                    'schema population failed as a precondition to test')
+        B.C().delete(force=True)
+        assert_false(B.C(), 'failed to delete child tables')
+        B().delete()
+        assert_false(B(), 'failed to delete the parent table following child table deletion')
+
+    @staticmethod
+    def test_stepwise_delete():
+        assert_false(dj.config['safemode'], 'safemode must be off for testing')
+        assert_true(L() and A() and B() and B.C(),
+                    'schema population failed as a precondition to test')
         B.C().delete(force=True)
         assert_false(B.C(), 'failed to delete child tables')
         B().delete()
@@ -96,3 +107,18 @@ class TestDelete:
         (ComplexParent & restriction).delete()
         assert len(ComplexParent & restriction) == 0, 'Parent record was not deleted'
         assert len(ComplexChild & restriction) == 0, 'Child record was not deleted'
+
+    def test_delete_master(self):
+        Profile().populate_random()
+        Profile().delete()
+
+    @raises(dj.DataJointError)
+    def test_delete_parts(self):
+        """test issue #151"""
+        Profile().populate_random()
+        Website().delete()
+
+    @raises(dj.DataJointError)
+    def test_drop_part(self):
+        """test issue #374"""
+        Website().drop()
