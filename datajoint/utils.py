@@ -44,8 +44,8 @@ def get_master(full_table_name):
        `ephys`.`session`    -- master
        `ephys`.`session__recording`  -- part
     """
-    master, *part = full_table_name.split('__')
-    return master + '`' if part else ""
+    match = re.match(r'(?P<master>`\w+`.`\w+)__(?P<part>\w+)`', full_table_name)
+    return match['master'] + '`' if match else ''
 
 
 def to_camel_case(s):
