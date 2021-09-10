@@ -353,8 +353,9 @@ class ExternalTable(Table):
                         except Exception as error:
                             # adding row back into table after failed delete
                             self.insert1(row[0])
-                            error_list.append((uuid, external_path, str(error) if errors_as_string else error))))
-            return error_list
+                            error_list.append((uuid, external_path,
+                                               str(error) if errors_as_string else error))
+        return error_list
 
 
 class ExternalMapping(Mapping):
