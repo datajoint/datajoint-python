@@ -127,7 +127,10 @@ class ExternalTable(Table):
         if self.spec['protocol'] == 's3':
             self.s3.remove_object(external_path)
         elif self.spec['protocol'] == 'file':
-            Path(external_path).unlink()
+            try:
+                Path(external_path).unlink()
+            except FileNotFoundError:
+                pass
 
     def exists(self, external_filepath):
         """
@@ -337,18 +340,19 @@ class ExternalTable(Table):
             # delete items one by one, close to transaction-safe
             error_list = []
             for uuid, external_path in items:
-                try:
-                    count = len(self & {'hash': uuid})  # optimize
-                except Exception:
-                    pass   # if delete failed, do not remove the external file
-                else:
-                    assert count in (0, 1)
+                row = (self & {'hash': uuid}).fetch()
+                if row.size:
                     try:
-                        self._remove_external_file(external_path)
-                    except Exception as error:
-                        error_list.append((uuid, external_path, str(error)))
+                        (self & {'hash': uuid}).delete_quick()
+                    except Exception:
+                        pass   # if delete failed, do not remove the external file
                     else:
-                        (self & {'hash': uuid}).delete_quick(get_count=True)
+                        try:
+                            self._remove_external_file(external_path)
+                        except Exception as error:
+                            # adding row back into table after failed delete
+                            self.insert1(row[0])
+                            error_list.append((uuid, external_path, str(error)))
             return error_list
 
 
