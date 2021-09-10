@@ -2,6 +2,7 @@
 ----------------------
 * Bugfix - Dependencies not properly loaded on populate. (#902) PR #919
 * Bugfix - Replace use of numpy aliases of built-in types with built-in type. (#938) PR #939
+* Bugfix - Deletes and drops can cascade to part from master only. (#151 and #374) PR #957
 
 0.13.2 -- May 7, 2021
 ----------------------

@@ -31,6 +31,23 @@ def user_choice(prompt, choices=("yes", "no"), default=None):
     return response
 
 
+def get_master(full_table_name):
+    """
+    If the table name is that of a part table, then return what the master table name would be.
+    :param full_table_name:
+    :return: Supposed master full table name or empty string if not a part table name.
+
+    This follows DataJoint's table naming convention where a master and a part must be in the
+    same schema and the part table is prefixed with the mater table name + '__'.
+
+    Example:
+       `ephys`.`session`    -- master
+       `ephys`.`session__recording`  -- part
+    """
+    master, *part = full_table_name.split('__')
+    return master + '`' if part else ""
+
+
 def to_camel_case(s):
     """
     Convert names with under score (_) separation into camel case names.

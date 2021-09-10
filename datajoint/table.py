@@ -14,7 +14,7 @@ from .declare import declare, alter
 from .condition import make_condition
 from .expression import QueryExpression
 from . import blob
-from .utils import user_choice
+from .utils import user_choice, get_master
 from .heading import Heading
 from .errors import (DuplicateError, AccessError, DataJointError, UnknownAttributeError,
                      IntegrityError)
@@ -383,15 +383,13 @@ class Table(QueryExpression):
                             )).fetchall())))
                     match['parent'] = match['parent'][0]
 
-                # If child is a part table of another table, do not recurse (See issue #151)
-                if '__' in match['child'] and (not match['child'].strip('`').startswith(
-                        self.full_table_name).strip('`') + '__'):
+                # Avoid deleting from child before master (See issue #151)
+                master = get_master(match['child'])
+                if master and self.full_table_name != master:
                     raise DataJointError(
                         'Attempt to delete from part table {part} before deleting from '
                         'its master. Delete from {master} first.'.format(
-                            part=match['child'],
-                            master=match['child'].split('__')[0] + '`'
-                        ))
+                            part=match['child'], master=master))
 
                 # Restrict child by self if
                 #   1. if self's restriction attributes are not in child's primary key
@@ -490,8 +488,17 @@ class Table(QueryExpression):
                                  ' Call drop() on the unrestricted Table.')
         self.connection.dependencies.load()
         do_drop = True
-        tables = [table for table in self.connection.dependencies.descendants(self.full_table_name)
-                  if not table.isdigit()]
+        tables = [table for table in self.connection.dependencies.descendants(
+            self.full_table_name) if not table.isdigit()]
+
+        # avoid dropping part tables without their masters: See issue #374
+        for part in tables:
+            master = get_master(part)
+            if master and master not in tables:
+                raise DataJointError(
+                    'Attempt to drop part table {part} before dropping '
+                    'its master. Drop {master} first.'.format(part=part, master=master))
+
         if config['safemode']:
             for table in tables:
                 print(table, '(%d tuples)' % len(FreeTable(self.connection, table)))
@@ -692,7 +699,7 @@ class Table(QueryExpression):
                         if field not in self.heading:
                             raise KeyError(u'`{0:s}` is not in the table heading'.format(field))
             elif set(field_list) != set(fields).intersection(self.heading.names):
-                raise DataJointError('Attempt to insert rows with different fields')
+                raise DataJointError('Attempt to insert rows with different fields.')
 
         if isinstance(row, np.void):  # np.array
             check_fields(row.dtype.fields)
