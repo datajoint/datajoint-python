@@ -2,6 +2,7 @@
 ----------------------
 * Bugfix - Dependencies not properly loaded on populate. (#902) PR #919
 * Bugfix - Replace use of numpy aliases of built-in types with built-in type. (#938) PR #939
+* Bugfix - `ExternalTable.delete` should not remove row on error (#953) PR #956
 
 0.13.2 -- May 7, 2021
 ----------------------
