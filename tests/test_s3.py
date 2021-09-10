@@ -137,6 +137,7 @@ class TestS3:
         schema.external['share'].delete(delete_external_files=True)
         os.remove("/tmp/policy.json")
         os.system('mc alias remove myminio/')
+        
         # Raise the error we want if the error matches the expected uuid
         if str(error_list[0][0]) == str(uuid_from_buffer(pack(test[1]))):
             raise error_list[0][2]
