@@ -347,9 +347,8 @@ class ExternalTable(Table):
                     try:
                         self._remove_external_file(external_path)
                     except Exception as error:
-                        if errors_as_string:
-                            error = str(error)
-                        error_list.append((uuid, external_path, error))
+                        error_list.append((uuid, external_path,
+                                           str(error) if errors_as_string else error))
             return error_list
 
 

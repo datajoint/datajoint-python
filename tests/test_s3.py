@@ -7,6 +7,8 @@ from nose.tools import assert_true, raises
 from .schema_external import schema, SimpleRemote
 from datajoint.errors import DataJointError
 import os
+from datajoint.hash import uuid_from_buffer
+from datajoint.blob import pack
 
 
 class TestS3:
@@ -126,12 +128,12 @@ class TestS3:
                                                      errors_as_string=False)
 
         # Teardown
-        print(error_list[0][0])
         os.system('mc admin policy remove myminio test')
         os.system('mc admin user remove myminio jeffjeff')
         schema.external['share'].s3.client = old_client
         schema.external['share'].delete(delete_external_files=True)
         os.remove("/tmp/policy.json")
+
         # Raise the error we want if the error matches the expected uuid
-        if str(error_list[0][0]) == '4c16e9e1-5b64-474e-4b56-ba22bb17faae':
+        if str(error_list[0][0]) == str(uuid_from_buffer(pack(test[1]))):
             raise error_list[0][2]
