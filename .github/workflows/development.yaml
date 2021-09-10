@@ -40,7 +40,7 @@ jobs:
           PY_VER: ${{matrix.py_ver}}
           MYSQL_VER: ${{matrix.mysql_ver}}
           ALPINE_VER: "3.10"
-          MINIO_VER: RELEASE.2019-09-26T19-42-35Z
+          MINIO_VER: RELEASE.2021-09-03T03-56-13Z
           COMPOSE_HTTP_TIMEOUT: "120"
           COVERALLS_SERVICE_NAME: travis-ci
           COVERALLS_REPO_TOKEN: fd0BoXG46TPReEem0uMy7BJO5j0w1MQiY
