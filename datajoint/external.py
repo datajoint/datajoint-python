@@ -352,7 +352,7 @@ class ExternalTable(Table):
                             self._remove_external_file(external_path)
                         except Exception as error:
                             # adding row back into table after failed delete
-                            self.insert1(row[0])
+                            self.insert1(row[0], skip_duplicates=True)
                             error_list.append((uuid, external_path,
                                                str(error) if errors_as_string else error))
             return error_list
