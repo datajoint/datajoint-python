@@ -36,19 +36,10 @@ class TestDelete:
         assert_false(B(), 'failed to delete the parent table following child table deletion')
 
     @staticmethod
-    def test_stepwise_delete():
-        assert_false(dj.config['safemode'], 'safemode must be off for testing')
-        assert_true(L() and A() and B() and B.C(),
-                    'schema population failed as a precondition to test')
-        B.C().delete(force=True)
-        assert_false(B.C(), 'failed to delete child tables')
-        B().delete()
-        assert_false(B(), 'failed to delete the parent table following child table deletion')
-
-    @staticmethod
     def test_delete_tree_restricted():
         assert_false(dj.config['safemode'], 'safemode must be off for testing')
-        assert_true(L() and A() and B() and B.C() and D() and E() and E.F(), 'schema is not populated')
+        assert_true(L() and A() and B() and B.C() and D() and E() and E.F(),
+                    'schema is not populated')
         cond = 'cond_in_a'
         rel = A() & cond
         rest = dict(
