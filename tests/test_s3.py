@@ -108,6 +108,10 @@ class TestS3:
         with open('/tmp/policy.json', 'w') as f:
             f.write(json.dumps(testpolicy))
 
+        # Add alias myminio
+        os.system(
+            'mc alias set myminio/ http://fakeservices.datajoint.io datajoint datajoint')
+
         # Add the policy and apply it to the user
         os.system('mc admin policy add myminio test /tmp/policy.json')
         os.system('mc admin policy set myminio test user=jeffjeff')
@@ -133,6 +137,7 @@ class TestS3:
         schema.external['share'].s3.client = old_client
         schema.external['share'].delete(delete_external_files=True)
         os.remove("/tmp/policy.json")
+        os.system('mc alias remove myminio/')
 
         # Raise the error we want if the error matches the expected uuid
         if str(error_list[0][0]) == str(uuid_from_buffer(pack(test[1]))):
