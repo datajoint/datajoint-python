@@ -31,18 +31,20 @@ def user_choice(prompt, choices=("yes", "no"), default=None):
     return response
 
 
-def get_master(full_table_name):
+def get_master(full_table_name: str) -> str:
     """
     If the table name is that of a part table, then return what the master table name would be.
-    :param full_table_name:
-    :return: Supposed master full table name or empty string if not a part table name.
-
     This follows DataJoint's table naming convention where a master and a part must be in the
-    same schema and the part table is prefixed with the mater table name + '__'.
+    same schema and the part table is prefixed with the master table name + ``__``.
 
     Example:
        `ephys`.`session`    -- master
        `ephys`.`session__recording`  -- part
+
+    :param full_table_name: Full table name including part.
+    :type full_table_name: str
+    :return: Supposed master full table name or empty string if not a part table name.
+    :rtype: str
     """
     match = re.match(r'(?P<master>`\w+`.`\w+)__(?P<part>\w+)`', full_table_name)
     return match['master'] + '`' if match else ''
