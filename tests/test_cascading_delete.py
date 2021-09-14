@@ -27,13 +27,12 @@ class TestDelete:
 
     @staticmethod
     def test_stepwise_delete():
-        assert_false(dj.config['safemode'], 'safemode must be off for testing')
-        assert_true(L() and A() and B() and B.C(),
-                    'schema population failed as a precondition to test')
+        assert not dj.config['safemode'], 'safemode must be off for testing'
+        assert L() and A() and B() and B.C(), 'schema population failed'
         B.C().delete(force=True)
-        assert_false(B.C(), 'failed to delete child tables')
+        assert not B.C(), 'failed to delete child tables'
         B().delete()
-        assert_false(B(), 'failed to delete the parent table following child table deletion')
+        assert not B(), 'failed to delete from the parent table following child table deletion'
 
     @staticmethod
     def test_delete_tree_restricted():
