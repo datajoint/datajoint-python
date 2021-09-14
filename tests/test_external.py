@@ -3,11 +3,10 @@ from numpy.testing import assert_array_equal
 from nose.tools import assert_true, assert_equal
 from datajoint.external import ExternalTable
 from datajoint.blob import pack, unpack
-
-from .schema_external import schema
 import datajoint as dj
-from .schema_external import stores_config
-from .schema_external import SimpleRemote
+from .schema_external import stores_config, SimpleRemote, Simple, schema
+import os
+
 current_location_s3 = dj.config['stores']['share']['location']
 current_location_local = dj.config['stores']['local']['location']
 
@@ -47,6 +46,9 @@ def test_s3_leading_slash(index=100, store='share'):
     """
     s3 external storage configured with leading slash
     """
+
+    oldConfig = dj.config['stores'][store]['location']
+
     value = np.array([1, 2, 3])
 
     id = index
@@ -97,9 +99,28 @@ def test_s3_leading_slash(index=100, store='share'):
     assert_true(np.array_equal(
         value, (SimpleRemote & 'simple={}'.format(id)).fetch1('item')))
 
+    dj.config['stores'][store]['location'] = oldConfig
+
 
 def test_file_leading_slash():
     """
     file external storage configured with leading slash
     """
     test_s3_leading_slash(index=200, store='local')
+
+
+def test_remove_fail():
+    # https://github.com/datajoint/datajoint-python/issues/953
+    data = dict(simple=2, item=[1, 2, 3])
+    Simple.insert1(data)
+    path1 = dj.config['stores']['local']['location'] + '/djtest_extern/4/c/'
+    currentMode = int(oct(os.stat(path1).st_mode), 8)
+    os.chmod(path1, 0o40555)
+    (Simple & 'simple=2').delete()
+    listOfErrors = schema.external['local'].delete(delete_external_files=True)
+    assert len(listOfErrors) == 1, 'unexpected number of errors'
+    assert len(schema.external['local'] & dict(hash=listOfErrors[0][0])) == 1, \
+        'unexpected number of rows in external table'
+    # ---------------------CLEAN UP--------------------
+    os.chmod(path1, currentMode)
+    listOfErrors = schema.external['local'].delete(delete_external_files=True)
