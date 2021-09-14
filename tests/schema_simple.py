@@ -15,6 +15,8 @@ from datetime import date, timedelta
 
 schema = dj.Schema(PREFIX + '_relational', locals(), connection=dj.conn(**CONN_INFO))
 
+faker.Faker.seed(0)  # make deterministic
+
 
 @schema
 class IJ(dj.Lookup):
