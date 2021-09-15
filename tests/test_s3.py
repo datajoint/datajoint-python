@@ -60,13 +60,6 @@ class TestS3:
     def test_remove_object_exception():
         # https://github.com/datajoint/datajoint-python/issues/952
 
-        # Initialize minioClient with an endpoint and access/secret keys.
-        minio_client = Minio(
-            'minio:9000',
-            access_key='jeffjeff',
-            secret_key='jeffjeff',
-            secure=False)
-
         # Insert some test data and remove it so that the external table is populated
         test = [1, [1, 2, 3]]
         SimpleRemote.insert1(test)
@@ -76,7 +69,11 @@ class TestS3:
         old_client = schema.external['share'].s3.client
 
         # Apply our new minio client which has a user that does not exist
-        schema.external['share'].s3.client = minio_client
+        schema.external['share'].s3.client = Minio(
+            'minio:9000',
+            access_key='jeffjeff',
+            secret_key='jeffjeff',
+            secure=False)
 
         # This method returns a list of errors
         error_list = schema.external['share'].delete(delete_external_files=True,
