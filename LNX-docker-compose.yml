@@ -77,8 +77,6 @@ services:
       - -c
       - |
         set -e
-        wget -P /home/dja/.local/bin/ https://dl.min.io/client/mc/release/linux-amd64/mc
-        chmod +x /home/dja/.local/bin/mc
         pip install --user -r test_requirements.txt
         pip install -e .
         pip freeze | grep datajoint
