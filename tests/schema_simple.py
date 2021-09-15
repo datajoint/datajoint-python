@@ -15,8 +15,6 @@ from datetime import date, timedelta
 
 schema = dj.Schema(PREFIX + '_relational', locals(), connection=dj.conn(**CONN_INFO))
 
-faker.Faker.seed(0)  # make deterministic
-
 
 @schema
 class IJ(dj.Lookup):
@@ -195,6 +193,7 @@ class Profile(dj.Manual):
 
     def populate_random(self, n=10):
         fake = faker.Faker()
+        faker.Faker.seed(0)  # make tests deterministic
         for _ in range(n):
             profile = fake.profile()
             with self.connection.transaction:
