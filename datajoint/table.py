@@ -267,10 +267,10 @@ class Table(QueryExpression):
 
     def insert1(self, row, **kwargs):
         """
-        Insert one data record into the table..
+        Insert one data record into the table. For ``kwargs``, see ``insert()``.
+
         :param row: a numpy record, a dict-like object, or an ordered sequence to be inserted
         as one row.
-        For kwargs, see insert()
         """
         self.insert((row,), **kwargs)
 
