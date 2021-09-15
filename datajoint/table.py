@@ -230,11 +230,12 @@ class Table(QueryExpression):
     def update1(self, row):
         """
         update1 updates one existing entry in the table.
-        Caution: In DataJoint the primary modes for data manipulation is to insert and delete
+        Caution: In DataJoint the primary modes for data manipulation is to ``insert`` and ``delete``
         entire records since referential integrity works on the level of records, not fields.
         Therefore, updates are reserved for corrective operations outside of main workflow.
         Use UPDATE methods sparingly with full awareness of potential violations of assumptions.
-        :param row: a dict containing the primary key values and the attributes to update.
+
+        :param row: a ``dict`` containing the primary key values and the attributes to update.
         Setting an attribute value to None will reset it to the default value (if any)
         The primary key attributes must always be provided.
         Examples:
@@ -284,8 +285,7 @@ class Table(QueryExpression):
         :param skip_duplicates: If True, silently skip duplicate inserts.
         :param ignore_extra_fields: If False, fields that are not in the heading raise error.
         :param allow_direct_insert: applies only in auto-populated tables.
-                                    If False (default), insert are allowed only from inside
-                                    the make callback.
+    If False (default), insert are allowed only from inside the make callback.
         Example::
         >>> relation.insert([
         >>>     dict(subject_id=7, species="mouse", date_of_birth="2014-09-01"),
@@ -596,7 +596,7 @@ class Table(QueryExpression):
     def _update(self, attrname, value=None):
         """
             This is a deprecated function to be removed in datajoint 0.14.
-            Use .update1 instead.
+            Use ``.update1`` instead.
 
             Updates a field in one existing tuple. self must be restricted to exactly one entry.
             In DataJoint the principal way of updating data is to delete and re-insert the
