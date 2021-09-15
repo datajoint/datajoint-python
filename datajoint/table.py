@@ -301,7 +301,7 @@ class Table(QueryExpression):
         # prohibit direct inserts into auto-populated tables
         if not allow_direct_insert and not getattr(self, '_allow_insert', True):
             raise DataJointError(
-                'Inserts into an auto-populated table can only done inside '
+                'Inserts into an auto-populated table can only be done inside '
                 'its make method during a populate call.'
                 ' To override, set keyword argument allow_direct_insert=True.')
 
