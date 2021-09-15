@@ -134,7 +134,7 @@ GID=1000
 * Launch local terminal
 * `export` environment variables in shell
 * Add entry in `/etc/hosts` for `127.0.0.1 fakeservices.datajoint.io`
-* Install [minio client(mc)](https://min.io/download#/linux) so that you can use it in terminal
+
 
 
 
