@@ -287,3 +287,7 @@ class TestFetch:
 
         # reset cache directory state (will fail if purge was unsuccessful)
         os.rmdir(os.path.expanduser('~/dj_query_cache'))
+    
+    def test_fetch_group_by(self):
+        # nosetests -vs --tests=tests.test_fetch:TestFetch.test_fetch_group_by --nologcapture
+        schema.Parent.fetch('KEY', order_by='name')
