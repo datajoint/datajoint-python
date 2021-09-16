@@ -3,6 +3,7 @@ AWS S3 operations
 """
 from io import BytesIO
 import minio   # https://docs.minio.io/docs/python-client-api-reference
+import urllib3
 import warnings
 import uuid
 from pathlib import Path
@@ -13,9 +14,28 @@ class Folder:
     """
     A Folder instance manipulates a flat folder of objects within an S3-compatible object store
     """
-    def __init__(self, endpoint, bucket, access_key, secret_key, *, secure=False, **_):
-        self.client = minio.Minio(endpoint, access_key=access_key, secret_key=secret_key,
-                                  secure=secure)
+    def __init__(self, endpoint, bucket, access_key, secret_key, *, secure=False, proxy_server=None, **_):
+        # proxy_server: string, like "https://PROXYSERVER:PROXYPORT/"
+        # self.client = minio.Minio(endpoint, access_key=access_key, secret_key=secret_key,
+        #                           secure=secure)
+        # TODO implement proxy_server argument
+        http_client = urllib3.ProxyManager(
+                "http://www-cache.gwdg.de:3128",
+                timeout=urllib3.Timeout.DEFAULT_TIMEOUT,
+                cert_reqs="CERT_REQUIRED",
+                retries=urllib3.Retry(
+                    total=5,
+                    backoff_factor=0.2,
+                    status_forcelist=[500, 502, 503, 504],
+                )
+            )
+        self.client = minio.Minio(
+            endpoint,
+            access_key=access_key,
+            secret_key=secret_key,
+            secure=secure,
+            http_client=http_client,
+            )
         self.bucket = bucket
         if not self.client.bucket_exists(bucket):
             raise errors.BucketInaccessible('Inaccessible s3 bucket %s' % bucket) from None
