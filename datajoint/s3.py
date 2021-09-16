@@ -15,10 +15,8 @@ class Folder:
     A Folder instance manipulates a flat folder of objects within an S3-compatible object store
     """
     def __init__(self, endpoint, bucket, access_key, secret_key, *, secure=False, proxy_server=None, **_):
-        # proxy_server: string, like "https://PROXYSERVER:PROXYPORT/"
-        # self.client = minio.Minio(endpoint, access_key=access_key, secret_key=secret_key,
-        #                           secure=secure)
-        if proxy_server:  # "http://www-cache.gwdg.de:3128"
+        if proxy_server:
+            # from https://docs.min.io/docs/python-client-api-reference
             http_client = urllib3.ProxyManager(
                     proxy_server,
                     timeout=urllib3.Timeout.DEFAULT_TIMEOUT,
