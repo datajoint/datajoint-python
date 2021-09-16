@@ -29,6 +29,7 @@ class Folder:
                     status_forcelist=[500, 502, 503, 504],
                 )
             )
+        print('DEBUG http_client')
         self.client = minio.Minio(
             endpoint,
             access_key=access_key,
