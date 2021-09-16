@@ -18,18 +18,20 @@ class Folder:
         # proxy_server: string, like "https://PROXYSERVER:PROXYPORT/"
         # self.client = minio.Minio(endpoint, access_key=access_key, secret_key=secret_key,
         #                           secure=secure)
-        # TODO implement proxy_server argument
-        http_client = urllib3.ProxyManager(
-                "http://www-cache.gwdg.de:3128",
-                timeout=urllib3.Timeout.DEFAULT_TIMEOUT,
-                cert_reqs="CERT_REQUIRED",
-                retries=urllib3.Retry(
-                    total=5,
-                    backoff_factor=0.2,
-                    status_forcelist=[500, 502, 503, 504],
+        if proxy_server:  # "http://www-cache.gwdg.de:3128"
+            http_client = urllib3.ProxyManager(
+                    proxy_server,
+                    timeout=urllib3.Timeout.DEFAULT_TIMEOUT,
+                    cert_reqs="CERT_REQUIRED",
+                    retries=urllib3.Retry(
+                        total=5,
+                        backoff_factor=0.2,
+                        status_forcelist=[500, 502, 503, 504],
+                    )
                 )
-            )
-        print('DEBUG http_client')
+        else:
+            http_client = None
+
         self.client = minio.Minio(
             endpoint,
             access_key=access_key,
