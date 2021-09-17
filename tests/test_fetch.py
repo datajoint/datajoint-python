@@ -290,9 +290,6 @@ class TestFetch:
         os.rmdir(os.path.expanduser('~/dj_query_cache'))
 
     def test_fetch_group_by(self):
-        # nosetests -vs --tests=tests.test_fetch:TestFetch.test_fetch_group_by --nologcapture
         # https://github.com/datajoint/datajoint-python/issues/914
-
-        # This command is confirmed to work in v0.12.9 but not in v0.13.2
 
         Parent().fetch('KEY', order_by='name')
