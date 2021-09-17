@@ -106,9 +106,7 @@ class QueryExpression:
         Make the SQL SELECT statement.
         :param fields: used to explicitly set the select attributes
         """
-        distinct = self.heading.names == self.primary_key
-        return 'SELECT {distinct}{fields} FROM {from_}{where}'.format(
-            distinct="DISTINCT " if distinct else "",
+        return 'SELECT {fields} FROM {from_}{where}'.format(
             fields=self.heading.as_sql(fields or self.heading.names),
             from_=self.from_clause(), where=self.where_clause())
 

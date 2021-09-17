@@ -296,4 +296,3 @@ class TestFetch:
         # This command is confirmed to work in v0.12.9 but not in v0.13.2
 
         Parent().fetch('KEY', order_by='name')
-
