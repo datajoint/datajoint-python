@@ -9,7 +9,7 @@ from . import schema
 from .schema import Parent
 import datajoint as dj
 import os
-
+from pymysql import err
 
 class TestFetch:
 
@@ -292,4 +292,8 @@ class TestFetch:
     def test_fetch_group_by(self):
         # https://github.com/datajoint/datajoint-python/issues/914
 
-        Parent().fetch('KEY', order_by='name')
+        try:
+            Parent().fetch('KEY', order_by='name')
+            assert True
+        except err.OperationalError:
+            assert False
