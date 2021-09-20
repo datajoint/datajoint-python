@@ -44,6 +44,9 @@ class QueryExpression:
     _heading = None
     _support = None
 
+    # If the query will be using distinct
+    _distinct = False
+
     @property
     def connection(self):
         """ a dj.Connection object """
@@ -107,7 +110,7 @@ class QueryExpression:
         :param fields: used to explicitly set the select attributes
         """
         return 'SELECT {distinct}{fields} FROM {from_}{where}'.format(
-            distinct="DISTINCT " if distinct else "",
+            distinct="DISTINCT " if self._distinct else "",
             fields=self.heading.as_sql(fields or self.heading.names),
             from_=self.from_clause(), where=self.where_clause())
 
@@ -509,11 +512,9 @@ class QueryExpression:
         """
         if offset and limit is None:
             raise DataJointError('limit is required when offset is set')
+        sql = self.make_sql()
         if order_by is not None:
-            sql = self.make_sql(distinct=False)
             sql += ' ORDER BY ' + ', '.join(order_by)
-        else:
-            sql = self.make_sql()
         if limit is not None:
             sql += ' LIMIT %d' % limit + (' OFFSET %d' % offset if offset else "")
         logger.debug(sql)
@@ -719,6 +720,7 @@ class U:
         if not isinstance(other, QueryExpression):
             raise DataJointError('Set U can only be restricted with a QueryExpression.')
         result = copy.copy(other)
+        result._distinct = True
         result._heading = result.heading.set_primary_key(self.primary_key)
         result = result.proj()
         return result
