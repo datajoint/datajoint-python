@@ -291,9 +291,8 @@ class TestFetch:
 
     def test_fetch_group_by(self):
         # https://github.com/datajoint/datajoint-python/issues/914
-
-        try:
-            Parent().fetch('KEY', order_by='name')
-            assert True
-        except err.OperationalError:
-            assert False
+        
+        expectedData = [{'parent_id': 1}]
+        fetchedData = Parent().fetch('KEY', order_by='name')
+        print(fetchedData)
+        assert fetchedData == expectedData
