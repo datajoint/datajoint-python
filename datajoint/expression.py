@@ -101,12 +101,13 @@ class QueryExpression:
         return '' if not self.restriction else ' WHERE(%s)' % ')AND('.join(
             str(s) for s in self.restriction)
 
-    def make_sql(self, fields=None):
+    def make_sql(self, fields=None, distinct=True):
         """
         Make the SQL SELECT statement.
         :param fields: used to explicitly set the select attributes
         """
-        return 'SELECT {fields} FROM {from_}{where}'.format(
+        return 'SELECT {distinct}{fields} FROM {from_}{where}'.format(
+            distinct="DISTINCT " if distinct else "",
             fields=self.heading.as_sql(fields or self.heading.names),
             from_=self.from_clause(), where=self.where_clause())
 
@@ -508,9 +509,11 @@ class QueryExpression:
         """
         if offset and limit is None:
             raise DataJointError('limit is required when offset is set')
-        sql = self.make_sql()
         if order_by is not None:
+            sql = self.make_sql(distinct=False)
             sql += ' ORDER BY ' + ', '.join(order_by)
+        else:
+            sql = self.make_sql()
         if limit is not None:
             sql += ' LIMIT %d' % limit + (' OFFSET %d' % offset if offset else "")
         logger.debug(sql)

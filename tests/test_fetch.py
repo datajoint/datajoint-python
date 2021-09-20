@@ -6,7 +6,7 @@ import decimal
 import pandas
 import warnings
 from . import schema
-from .schema import Parent
+from .schema import Parent, Stimulus
 import datajoint as dj
 import os
 
@@ -296,3 +296,33 @@ class TestFetch:
         fetchedData = Parent().fetch('KEY', order_by='name')
         print(fetchedData)
         assert fetchedData == expectedData
+
+    def test_dj_U_DISTINCT(self):
+        # Test developed to see if removing DISTINCT from the select statement
+        # generation breakes the dj.U universal set imlementation
+
+        # Contents to be inserted
+        contents = [
+            (1,2,3),
+            (2,2,3),
+            (3,3,2),
+            (4,5,5)
+        ]
+        Stimulus.insert(contents)
+
+        # Query the whole table
+        testQuery = Stimulus()
+
+        # Use dj.U to create a list of unique contrast and brightness combinations
+        result = dj.U('contrast', 'brightness') & testQuery
+        expectedResult = [{'contrast': 2, 'brightness': 3},
+                          {'contrast': 3, 'brightness': 2},
+                          {'contrast': 5, 'brightness': 5}]
+
+        fechedResult = result.fetch(as_dict=True)
+
+        # Cleanup table
+        Stimulus.delete()
+        print(result.make_sql())
+        # Test to see if the repeated row was removed in the results
+        assert fechedResult == expectedResult

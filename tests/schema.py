@@ -439,3 +439,13 @@ class SessionDateA(dj.Lookup):
         ('mouse1', '2020-12-03'),
         ('mouse1', '2020-12-04')
     ]
+
+
+@schema
+class Stimulus(dj.Lookup):
+    definition = """
+    id: int
+    ---
+    contrast: int
+    brightness: int
+    """
