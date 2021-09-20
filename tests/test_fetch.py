@@ -292,10 +292,10 @@ class TestFetch:
     def test_fetch_group_by(self):
         # https://github.com/datajoint/datajoint-python/issues/914
 
-        expectedData = [{'parent_id': 1}]
-        fetchedData = Parent().fetch('KEY', order_by='name')
-        print(fetchedData)
-        assert fetchedData == expectedData
+        expected_data = [{'parent_id': 1}]
+        fetched_data = Parent().fetch('KEY', order_by='name')
+        print(fetched_data)
+        assert fetched_data == expected_data
 
     def test_dj_U_DISTINCT(self):
         # Test developed to see if removing DISTINCT from the select statement
@@ -311,18 +311,18 @@ class TestFetch:
         Stimulus.insert(contents)
 
         # Query the whole table
-        testQuery = Stimulus()
+        test_query = Stimulus()
 
         # Use dj.U to create a list of unique contrast and brightness combinations
-        result = dj.U('contrast', 'brightness') & testQuery
-        expectedResult = [{'contrast': 2, 'brightness': 3},
+        result = dj.U('contrast', 'brightness') & test_query
+        expected_result = [{'contrast': 2, 'brightness': 3},
                           {'contrast': 3, 'brightness': 2},
                           {'contrast': 5, 'brightness': 5}]
 
-        fechedResult = result.fetch(as_dict=True)
+        feched_result = result.fetch(as_dict=True)
 
         # Cleanup table
         Stimulus.delete()
 
         # Test to see if the repeated row was removed in the results
-        assert fechedResult == expectedResult
+        assert feched_result == expected_result
