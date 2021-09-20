@@ -323,6 +323,6 @@ class TestFetch:
 
         # Cleanup table
         Stimulus.delete()
-        print(result.make_sql())
+
         # Test to see if the repeated row was removed in the results
         assert fechedResult == expectedResult
