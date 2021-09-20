@@ -9,7 +9,7 @@ from . import schema
 from .schema import Parent
 import datajoint as dj
 import os
-from pymysql import err
+
 
 class TestFetch:
 
