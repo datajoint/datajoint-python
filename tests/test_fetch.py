@@ -291,7 +291,7 @@ class TestFetch:
 
     def test_fetch_group_by(self):
         # https://github.com/datajoint/datajoint-python/issues/914
-        
+
         expectedData = [{'parent_id': 1}]
         fetchedData = Parent().fetch('KEY', order_by='name')
         print(fetchedData)
