@@ -6,7 +6,7 @@ import itertools
 from nose.tools import assert_equal, raises
 import datajoint as dj
 from . import PREFIX, CONN_INFO
-
+from . import schema_simple
 schema = dj.Schema(PREFIX + '_aggr_regress', connection=dj.conn(**CONN_INFO))
 
 # --------------- ISSUE 386 -------------------
@@ -103,3 +103,6 @@ def test_issue558_part2():
     d = dict(id=3, id2=5)
     assert_equal(len(X & d), len((X & d).proj(id2='3')))
 
+
+def test_aggr_with_proj():
+    schema_simple.A.aggr(schema_simple.D.proj(m='id_l'), ..., n='max(m) - min(m)')
