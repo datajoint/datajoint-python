@@ -4,6 +4,7 @@
 * Bugfix - Replace use of numpy aliases of built-in types with built-in type. (#938) PR #939
 * Bugfix - `ExternalTable.delete` should not remove row on error (#953) PR #956
 * Bugfix - Fix error handling of remove_object function in `s3.py` (#952) PR #955
+* Bugfix - Fix __len__() for left join QueryExpressions (#951) PR #966
 
 0.13.2 -- May 7, 2021
 ----------------------
