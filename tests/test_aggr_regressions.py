@@ -6,7 +6,8 @@ import itertools
 from nose.tools import assert_equal, raises
 import datajoint as dj
 from . import PREFIX, CONN_INFO
-
+import datetime
+import numpy as np
 schema = dj.Schema(PREFIX + '_aggr_regress', connection=dj.conn(**CONN_INFO))
 
 # --------------- ISSUE 386 -------------------
@@ -94,6 +95,38 @@ class X(dj.Lookup):
     contents = zip(range(10))
 
 
+@schema
+class Parent(dj.Manual):
+    definition = """
+    # Parent table
+    id: int
+    ---
+    txt = "NA" : varchar(32)
+    """
+
+
+@schema
+class Child(dj.Computed):
+    definition = """
+    # Child table
+    -> Parent
+    start_time: datetime(6)
+    ---
+    timestamps: longblob
+    """
+
+    def make(self, key):
+        t = np.random.poisson(1000, 10)
+        t.sort()
+        self.insert1(
+            {
+                "start_time": datetime.datetime.now(),
+                "timestamps": t,
+                **key,
+            }
+        )
+        print(f"ingested w/ {key}")
+
 def test_issue558_part1():
     q = (A-B).proj(id2='3')
     assert_equal(len(A - B), len(q))
@@ -103,3 +136,11 @@ def test_issue558_part2():
     d = dict(id=3, id2=5)
     assert_equal(len(X & d), len((X & d).proj(id2='3')))
 
+
+def test_left_join_len():
+    Parent.insert1({"id": 1})
+    Child.populate()
+    Parent.insert([{"id": 2}, {"id": 3}, {"id": 4}])
+    q = Parent.join(Child & "id != 1", left=True)
+    qf = q.fetch()
+    assert len(q) == len(qf)
