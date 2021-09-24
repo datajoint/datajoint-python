@@ -93,6 +93,20 @@ class X(dj.Lookup):
     """
     contents = zip(range(10))
 
+@schema
+class TableA(dj.Manual):
+    definition = """
+    table_a: int
+    """
+
+
+@schema
+class TableB(dj.Manual):
+    definition = """
+    -> TableA
+    table_b: int
+    """
+
 
 def test_issue558_part1():
     q = (A-B).proj(id2='3')
@@ -103,3 +117,12 @@ def test_issue558_part2():
     d = dict(id=3, id2=5)
     assert_equal(len(X & d), len((X & d).proj(id2='3')))
 
+
+def test_union_join():
+    # https://github.com/datajoint/datajoint-python/issues/930
+    TableA.insert(zip([1, 2, 3, 4, 5, 6]))
+    TableB.insert([(1, 11), (2, 22), (3, 33), (4, 44)])
+    q1 = TableB & 'table_a < 3'
+    q2 = TableB & 'table_a > 3'
+
+    (q1 + q2) * TableA
