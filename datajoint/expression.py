@@ -84,14 +84,15 @@ class QueryExpression:
     def primary_key(self):
         return self.heading.primary_key
 
-    _subquery_alias_count = count()    # count for alias names used in from_clause
+    _subquery_alias_count = count()    # count for alias names used in the FROM clause
 
     def from_clause(self):
-        support = ('(' + src.make_sql() + ') as `_s%x`' % next(
-            self._subquery_alias_count) if isinstance(src, QueryExpression) else src for src in self.support)
+        support = ('(' + src.make_sql() + ') as `$%x`' % next(
+            self._subquery_alias_count) if isinstance(src, QueryExpression)
+            else src for src in self.support)
         clause = next(support)
         for s, left in zip(support, self._left):
-            clause += 'NATURAL{left} JOIN {clause}'.format(
+            clause += ' NATURAL{left} JOIN {clause}'.format(
                 left=" LEFT" if left else "",
                 clause=s)
         return clause
@@ -193,7 +194,7 @@ class QueryExpression:
 
     def __and__(self, restriction):
         """
-        Restriction operator
+        Restriction operator e.g. ``q1 & q2``.
         :return: a restricted copy of the input argument
         See QueryExpression.restrict for more detail.
         """
@@ -201,7 +202,7 @@ class QueryExpression:
 
     def __xor__(self, restriction):
         """
-        Restriction operator ignoring compatibility check.
+        Permissive restriction operator ignoring compatibility check  e.g. ``q1 ^ q2``.
         """
         if inspect.isclass(restriction) and issubclass(restriction, QueryExpression):
             restriction = restriction()
@@ -211,22 +212,33 @@ class QueryExpression:
 
     def __sub__(self, restriction):
         """
-        Inverted restriction
+        Inverted restriction e.g. ``q1 - q2``.
         :return: a restricted copy of the input argument
         See QueryExpression.restrict for more detail.
         """
         return self.restrict(Not(restriction))
 
     def __neg__(self):
+        """
+        Convert between restriction and inverted restriction e.g. ``-q1``.
+        :return: target restriction
+        See QueryExpression.restrict for more detail.
+        """
         if isinstance(self, Not):
             return self.restriction
         return Not(self)
 
     def __mul__(self, other):
-        """ join of query expressions `self` and `other` """
+        """
+        join of query expressions `self` and `other` e.g. ``q1 * q2``.
+        """
         return self.join(other)
 
     def __matmul__(self, other):
+        """
+        Permissive join of query expressions `self` and `other` ignoring compatibility check
+            e.g. ``q1 @ q2``.
+        """
         if inspect.isclass(other) and issubclass(other, QueryExpression):
             other = other()  # instantiate
         return self.join(other, semantic_check=False)
@@ -253,8 +265,10 @@ class QueryExpression:
             (set(self.original_heading.names) & set(other.original_heading.names))
             - join_attributes)
         # need subquery if any of the join attributes are derived
-        need_subquery1 = need_subquery1 or any(n in self.heading.new_attributes for n in join_attributes)
-        need_subquery2 = need_subquery2 or any(n in other.heading.new_attributes for n in join_attributes)
+        need_subquery1 = (need_subquery1 or isinstance(self, Aggregation) or
+                          any(n in self.heading.new_attributes for n in join_attributes))
+        need_subquery2 = (need_subquery2 or isinstance(other, Aggregation) or
+                          any(n in other.heading.new_attributes for n in join_attributes))
         if need_subquery1:
             self = self.make_subquery()
         if need_subquery2:
@@ -271,7 +285,7 @@ class QueryExpression:
         return result
 
     def __add__(self, other):
-        """union"""
+        """union e.g. ``q1 + q2``."""
         return Union.create(self, other)
 
     def proj(self, *attributes, **named_attributes):
@@ -424,7 +438,7 @@ class QueryExpression:
         return self.fetch(order_by="KEY DESC", limit=limit, **fetch_kwargs)[::-1]
 
     def __len__(self):
-        """ :return: number of elements in the result set """
+        """:return: number of elements in the result set e.g. ``len(q1)``."""
         return self.connection.query(
             'SELECT count(DISTINCT {fields}) FROM {from_}{where}'.format(
                 fields=self.heading.as_sql(self.primary_key, include_aliases=False),
@@ -433,7 +447,8 @@ class QueryExpression:
 
     def __bool__(self):
         """
-        :return: True if the result is not empty. Equivalent to len(self) > 0 but often faster.
+        :return: True if the result is not empty. Equivalent to len(self) > 0 but often
+            faster e.g. ``bool(q1)``.
         """
         return bool(self.connection.query(
             'SELECT EXISTS(SELECT 1 FROM {from_}{where})'.format(
@@ -442,7 +457,8 @@ class QueryExpression:
 
     def __contains__(self, item):
         """
-        returns True if item is found in the .
+        returns True if the restriction in item matches any entries in self
+            e.g. ``restriction in q1``.
         :param item: any restriction
         (item in query_expression) is equivalent to bool(query_expression & item) but may be
         executed more efficiently.
@@ -450,11 +466,24 @@ class QueryExpression:
         return bool(self & item)  # May be optimized e.g. using an EXISTS query
 
     def __iter__(self):
+        """
+        returns an iterator-compatible QueryExpression object e.g. ``iter(q1)``.
+
+        :param self: iterator-compatible QueryExpression object
+        """
         self._iter_only_key = all(v.in_key for v in self.heading.attributes.values())
         self._iter_keys = self.fetch('KEY')
         return self
 
     def __next__(self):
+        """
+        returns the next record on an iterator-compatible QueryExpression object
+            e.g. ``next(q1)``.
+
+        :param self: A query expression
+        :type self: :class:`QueryExpression`
+        :rtype: dict
+        """
         try:
             key = self._iter_keys.pop(0)
         except AttributeError:
@@ -490,6 +519,13 @@ class QueryExpression:
         return self.connection.query(sql, as_dict=as_dict)
 
     def __repr__(self):
+        """
+        returns the string representation of a QueryExpression object e.g. ``str(q1)``.
+
+        :param self: A query expression
+        :type self: :class:`QueryExpression`
+        :rtype: str
+        """
         return super().__repr__() if config['loglevel'].lower() == 'debug' else self.preview()
 
     def preview(self, limit=None, width=None):
@@ -688,8 +724,9 @@ class U:
 
     def join(self, other, left=False):
         """
-        Joining U with a query expression has the effect of promoting the attributes of U to the primary key of
-        the other query expression.
+        Joining U with a query expression has the effect of promoting the attributes of U to
+        the primary key of the other query expression.
+
         :param other: the other query expression to join with.
         :param left: ignored. dj.U always acts as if left=False
         :return: a copy of the other query expression with the primary key extended.
@@ -700,12 +737,14 @@ class U:
             raise DataJointError('Set U can only be joined with a QueryExpression.')
         try:
             raise DataJointError(
-                'Attribute `%s` not found' % next(k for k in self.primary_key if k not in other.heading.names))
+                'Attribute `%s` not found' % next(k for k in self.primary_key
+                                                  if k not in other.heading.names))
         except StopIteration:
             pass  # all ok
         result = copy.copy(other)
         result._heading = result.heading.set_primary_key(
-            other.primary_key + [k for k in self.primary_key if k not in other.primary_key])
+            other.primary_key + [k for k in self.primary_key
+                                 if k not in other.primary_key])
         return result
 
     def __mul__(self, other):

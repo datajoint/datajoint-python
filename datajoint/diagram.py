@@ -219,24 +219,32 @@ else:
             """
             Make the self.graph - a graph object ready for drawing
             """
-            # mark "distinguished" tables, i.e. those that introduce new primary key attributes
+            # mark "distinguished" tables, i.e. those that introduce new primary key
+            # attributes
             for name in self.nodes_to_show:
                 foreign_attributes = set(
-                    attr for p in self.in_edges(name, data=True) for attr in p[2]['attr_map'] if p[2]['primary'])
+                    attr for p in self.in_edges(name, data=True)
+                    for attr in p[2]['attr_map'] if p[2]['primary'])
                 self.nodes[name]['distinguished'] = (
-                        'primary_key' in self.nodes[name] and foreign_attributes < self.nodes[name]['primary_key'])
+                        'primary_key' in self.nodes[name] and
+                        foreign_attributes < self.nodes[name]['primary_key'])
             # include aliased nodes that are sandwiched between two displayed nodes
-            gaps = set(nx.algorithms.boundary.node_boundary(self, self.nodes_to_show)).intersection(
-                nx.algorithms.boundary.node_boundary(nx.DiGraph(self).reverse(), self.nodes_to_show))
+            gaps = set(nx.algorithms.boundary.node_boundary(
+                self, self.nodes_to_show)).intersection(
+                    nx.algorithms.boundary.node_boundary(nx.DiGraph(self).reverse(),
+                                                         self.nodes_to_show))
             nodes = self.nodes_to_show.union(a for a in gaps if a.isdigit)
             # construct subgraph and rename nodes to class names
             graph = nx.DiGraph(nx.DiGraph(self).subgraph(nodes))
-            nx.set_node_attributes(graph, name='node_type', values={n: _get_tier(n) for n in graph})
+            nx.set_node_attributes(graph, name='node_type', values={n: _get_tier(n)
+                                                                    for n in graph})
             # relabel nodes to class names
-            mapping = {node: lookup_class_name(node, self.context) or node for node in graph.nodes()}
+            mapping = {node: lookup_class_name(node, self.context) or node
+                       for node in graph.nodes()}
             new_names = [mapping.values()]
             if len(new_names) > len(set(new_names)):
-                raise DataJointError('Some classes have identical names. The Diagram cannot be plotted.')
+                raise DataJointError(
+                    'Some classes have identical names. The Diagram cannot be plotted.')
             nx.relabel_nodes(graph, mapping, copy=False)
             return graph
 

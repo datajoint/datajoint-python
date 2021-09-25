@@ -2,7 +2,7 @@ from .settings import config
 import pkg_resources
 from pathlib import Path
 from cryptography.exceptions import InvalidSignature
-from setuptools_certificate import hash_pkg, verify
+from otumat import hash_pkg, verify
 
 
 def _update_error_stack(plugin_name):
@@ -11,10 +11,10 @@ def _update_error_stack(plugin_name):
         base_meta = pkg_resources.get_distribution(base_name)
         plugin_meta = pkg_resources.get_distribution(plugin_name)
 
-        data = hash_pkg(str(Path(plugin_meta.module_path, plugin_name)))
+        data = hash_pkg(pkgpath=str(Path(plugin_meta.module_path, plugin_name)))
         signature = plugin_meta.get_metadata('{}.sig'.format(plugin_name))
         pubkey_path = str(Path(base_meta.egg_info, '{}.pub'.format(base_name)))
-        verify(pubkey_path, data, signature)
+        verify(pubkey_path=pubkey_path, data=data, signature=signature)
         print('DataJoint verified plugin `{}` detected.'.format(plugin_name))
         return True
     except (FileNotFoundError, InvalidSignature):

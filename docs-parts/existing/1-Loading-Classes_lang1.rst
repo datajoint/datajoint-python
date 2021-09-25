@@ -70,7 +70,7 @@ not have classes declared to interact with it.
 
 So let's start over in this scenario.
 
-You can may use the ``dj.list_schemas`` function (new in DataJoint 0.12.0) to
+You may use the ``dj.list_schemas`` function (new in DataJoint 0.12.0) to
 list the names of database schemas available to you.
 
 .. code-block:: python
@@ -112,13 +112,13 @@ these tables. A similar situation arises when another developer has added new
 tables to the schema but has not yet shared the updated module code with you.
 Then the diagram will show a mixture of class names and database table names.
 
-Now you may use the ``schema.spawn_missing_classes`` method to spawn classes into
+Now you may use the ``spawn_missing_classes`` method to spawn classes into
 the local namespace for any tables missing their classes:
 
 .. code-block:: python
 
     schema.spawn_missing_classes()
-    dj.Di(schema)
+    dj.Diagram(schema)
 
 .. figure:: spawned-classes-ERD.svg
    :align: center
@@ -165,7 +165,7 @@ the table classes.
 
 .. code-block:: python
 
-    dj.Di(uni)
+    dj.Diagram(uni)
 
 .. figure:: added-example-ERD.svg
    :align: center
@@ -229,7 +229,7 @@ decorator for declaring new tables:
 
 .. code-block:: python
 
-    dj.Di(uni)
+    dj.Diagram(uni)
 
 .. figure:: added-example-ERD.svg
    :align: center

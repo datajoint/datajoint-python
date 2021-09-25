@@ -17,6 +17,14 @@ def test_dj_conn():
     assert_true(c.is_connected)
 
 
+def test_dj_connection_class():
+    """
+    Should be able to establish a connection
+    """
+    c = dj.Connection(**CONN_INFO)
+    assert_true(c.is_connected)
+
+
 def test_persistent_dj_conn():
     """
     conn() method should provide persistent connection across calls.

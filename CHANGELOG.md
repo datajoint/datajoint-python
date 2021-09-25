@@ -1,15 +1,45 @@
 ## Release notes
 
-### 0.13.0 -- Feb 15, 2021
-* Re-implement query transpilation into SQL, fixing issues (#386, #449, #450, #484). PR #754
-* Re-implement cascading deletes for better performance. PR #839.
-* Add table method `.update1` to update a row in the table with new values PR #763
-* Python datatypes are now enabled by default in blobs (#761). PR #785
+### 0.13.3 -- TBD
+* Bugfix - Dependencies not properly loaded on populate. (#902) PR #919
+* Bugfix - Replace use of numpy aliases of built-in types with built-in type. (#938) PR #939
+* Bugfix - `ExternalTable.delete` should not remove row on error (#953) PR #956
+* Bugfix - Fix error handling of remove_object function in `s3.py` (#952) PR #955
+
+### 0.13.2 -- May 7, 2021
+* Update `setuptools_certificate` dependency to new name `otumat`
+* Bugfix - Explicit calls to `dj.Connection` throw error due to missing `host_input` (#895) PR #907
+* Bugfix - Correct count of deleted items. (#897) PR #912
+
+### 0.13.1 -- Apr 16, 2021
+* Add `None` as an alias for `IS NULL` comparison in `dict` restrictions (#824) PR #893
+* Drop support for MySQL 5.6 since it has reached EOL PR #893
+* Bugfix - `schema.list_tables()` is not topologically sorted (#838) PR #893
+* Bugfix - Diagram part tables do not show proper class name (#882) PR #893
+* Bugfix - Error in complex restrictions (#892) PR #893
+* Bugfix - WHERE and GROUP BY clases are dropped on joins with aggregation (#898, #899) PR #893
+
+### 0.13.0 -- Mar 24, 2021
+* Re-implement query transpilation into SQL, fixing issues (#386, #449, #450, #484, #558). PR #754
+* Re-implement cascading deletes for better performance. PR #839
+* Add support for deferred schema activation to allow for greater modularity. (#834) PR #839
+* Add query caching mechanism for offline development (#550) PR #839
+* Add table method `.update1` to update a row in the table with new values (#867) PR #763, #889
+* Python datatypes are now enabled by default in blobs (#761). PR #859
 * Added permissive join and restriction operators `@` and `^` (#785) PR #754
 * Support DataJoint datatype and connection plugins (#715, #729) PR 730, #735
-* add `dj.key_hash` alias to `dj.hash.key_hash`
-* default enable_python_native_blobs to True
-* Drop support for Python 3.5
+* Add `dj.key_hash` alias to `dj.hash.key_hash` (#804) PR #862
+* Default enable_python_native_blobs to True
+* Bugfix - Regression error on joins with same attribute name (#857) PR #878
+* Bugfix - Error when `fetch1('KEY')` when `dj.config['fetch_format']='frame'` set (#876) PR #880, #878
+* Bugfix - Error when cascading deletes in tables with many, complex keys (#883, #886) PR #839
+* Add deprecation warning for `_update`. PR #889
+* Add `purge_query_cache` utility. PR #889
+* Add tests for query caching and permissive join and restriction. PR #889
+* Drop support for Python 3.5 (#829) PR #861
+
+### 0.12.9 -- Mar 12, 2021
+* Fix bug with fetch1 with `dj.config['fetch_format']="frame"`. (#876) PR #880
 
 ### 0.12.8 -- Jan 12, 2021
 * table.children, .parents, .descendents, and ancestors can return queryable objects. PR #833
@@ -17,13 +47,13 @@
 * Fix display of part tables in `schema.save`. (#821) PR #833
 * Add `schema.list_tables`. (#838) PR #844
 * Fix minio new version regression.  PR #847
-* Add more S3 logging for debugging. (#831) PR #832 
+* Add more S3 logging for debugging. (#831) PR #832
 * Convert testing framework from TravisCI to GitHub Actions (#841) PR #840
- 
+
 ### 0.12.7 -- Oct 27, 2020
 * Fix case sensitivity issues to adapt to MySQL 8+.  PR #819
 * Fix pymysql regression bug (#814) PR #816
-* Adapted attribute types now have dtype=object in all recarray results. PR #811 
+* Adapted attribute types now have dtype=object in all recarray results. PR #811
 
 ### 0.12.6 -- May 15, 2020
 * Add `order_by` to `dj.kill` (#668, #779) PR #775, #783
@@ -115,9 +145,9 @@
 * Bugfix in restriction of the form (A & B) * B (#463)
 * Improved error messages (#466)
 
-### 0.10.0 -- Jan 10, 2018 
+### 0.10.0 -- Jan 10, 2018
 * Deletes are more efficient (#424)
-* ERD shows table definition on tooltip hover in Jupyter (#422) 
+* ERD shows table definition on tooltip hover in Jupyter (#422)
 * S3 external storage
 * Garbage collection for external sorage
 * Most operators and methods of tables can be invoked as class methods rather than instance methods (#407)
@@ -131,7 +161,7 @@
 * Implement union operator +
 * Implement file-based external storage
 
-### 0.8.0 -- Jul 26, 2017 
+### 0.8.0 -- Jul 26, 2017
 Documentation and tutorials available at https://docs.datajoint.io and https://tutorials.datajoint.io
 * improved the ERD graphics and features using the graphviz libraries (#207, #333)
 * improved password handling logic (#322, #321)
@@ -150,11 +180,11 @@ Documentation and tutorials available at https://docs.datajoint.io and https://t
 * Added `dj.create_virtual_module`
 
 ### 0.4.10 (#286) -- Feb 6, 2017
-* Removed Vagrant and Readthedocs support 
+* Removed Vagrant and Readthedocs support
 * Explicit saving of configuration (issue #284)
 
 ### 0.4.9 (#285) -- Feb 2, 2017
-* Fixed setup.py for pip install 
+* Fixed setup.py for pip install
 
 ### 0.4.7 (#281) -- Jan 24, 2017
 * Fixed issues related to order of attributes in projection.
@@ -183,10 +213,10 @@ Documentation and tutorials available at https://docs.datajoint.io and https://t
 
 ### 0.3.8  -- Aug 2, 2016
 * added the `_update` method in `base_relation`. It allows updating values in existing tuples.
-* bugfix in reading values of type double.  Previously it was cast as float32. 
+* bugfix in reading values of type double.  Previously it was cast as float32.
 
 ### 0.3.7  -- Jul 31, 2016
-* added parameter `ignore_extra_fields` in `insert` 
+* added parameter `ignore_extra_fields` in `insert`
 * `insert(..., skip_duplicates=True)` now relies on `SELECT IGNORE`.  Previously it explicitly checked if tuple already exists.
 * table previews now include blob attributes displaying the string <BLOB>
 

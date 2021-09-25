@@ -76,12 +76,11 @@ class Folder:
         except minio.error.S3Error as e:
             if e.code == 'NoSuchKey':
                 raise errors.MissingExternalFile
-            else:
-                raise e
+            raise e
 
     def remove_object(self, name):
         logger.debug('remove_object: {}:{}'.format(self.bucket, name))
         try:
             self.client.remove_object(self.bucket, str(name))
-        except minio.ResponseError:
-            return errors.DataJointError('Failed to delete %s from s3 storage' % name)
+        except minio.error.MinioException:
+            raise errors.DataJointError('Failed to delete %s from s3 storage' % name)

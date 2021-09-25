@@ -7,6 +7,7 @@ import pandas
 import logging
 import uuid
 import re
+import warnings
 from pathlib import Path
 from .settings import config
 from .declare import declare, alter
@@ -15,16 +16,27 @@ from .expression import QueryExpression
 from . import blob
 from .utils import user_choice
 from .heading import Heading
-from .errors import DuplicateError, AccessError, DataJointError, UnknownAttributeError, IntegrityError
+from .errors import (DuplicateError, AccessError, DataJointError, UnknownAttributeError,
+                     IntegrityError)
 from .version import __version__ as version
 
 logger = logging.getLogger(__name__)
 
-foregn_key_error_regexp = re.compile(
+foreign_key_error_regexp = re.compile(
     r"[\w\s:]*\((?P<child>`[^`]+`.`[^`]+`), "
     r"CONSTRAINT (?P<name>`[^`]+`) "
-    r"FOREIGN KEY \((?P<fk_attrs>[^)]+)\) "
-    r"REFERENCES (?P<parent>`[^`]+`(\.`[^`]+`)?) \((?P<pk_attrs>[^)]+)\)")
+    r"(FOREIGN KEY \((?P<fk_attrs>[^)]+)\) "
+    r"REFERENCES (?P<parent>`[^`]+`(\.`[^`]+`)?) \((?P<pk_attrs>[^)]+)\)[\s\w]+\))?")
+
+constraint_info_query = ' '.join("""
+    SELECT
+        COLUMN_NAME as fk_attrs,
+        CONCAT('`', REFERENCED_TABLE_SCHEMA, '`.`', REFERENCED_TABLE_NAME, '`') as parent,
+        REFERENCED_COLUMN_NAME as pk_attrs
+    FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+    WHERE
+        CONSTRAINT_NAME = %s AND TABLE_SCHEMA = %s AND TABLE_NAME = %s;
+    """.split())
 
 
 class _RenameMap(tuple):
@@ -339,31 +351,38 @@ class Table(QueryExpression):
     def _delete_cascade(self):
         """service function to perform cascading deletes recursively."""
         max_attempts = 50
-        delete_count = 0
         for _ in range(max_attempts):
             try:
-                delete_count += self.delete_quick(get_count=True)
+                delete_count = self.delete_quick(get_count=True)
             except IntegrityError as error:
-                match = foregn_key_error_regexp.match(error.args[0])
-                assert match is not None, "foreign key parsing error"
+                match = foreign_key_error_regexp.match(error.args[0]).groupdict()
+                if "`.`" not in match['child']:  # if schema name missing, use self
+                    match['child'] = '{}.{}'.format(self.full_table_name.split(".")[0],
+                                                    match['child'])
+                if match['pk_attrs'] is not None:  # fully matched, adjusting the keys
+                    match['fk_attrs'] = [k.strip('`') for k in match['fk_attrs'].split(',')]
+                    match['pk_attrs'] = [k.strip('`') for k in match['pk_attrs'].split(',')]
+                else:  # only partially matched, querying with constraint to determine keys
+                    match['fk_attrs'], match['parent'], match['pk_attrs'] = list(map(
+                        list, zip(*self.connection.query(constraint_info_query, args=(
+                            match['name'].strip('`'),
+                            *[_.strip('`') for _ in match['child'].split('`.`')]
+                            )).fetchall())))
+                    match['parent'] = match['parent'][0]
                 # restrict child by self if
                 # 1. if self's restriction attributes are not in child's primary key
                 # 2. if child renames any attributes
                 # otherwise restrict child by self's restriction.
-                child = match.group('child')
-                if "`.`" not in child:  # if schema name is not included, take it from self
-                    child = self.full_table_name.split("`.")[0] + child
-                child = FreeTable(self.connection, child)
+                child = FreeTable(self.connection, match['child'])
                 if set(self.restriction_attributes) <= set(child.primary_key) and \
-                        match.group('fk_attrs') == match.group('pk_attrs'):
+                        match['fk_attrs'] == match['pk_attrs']:
                     child._restriction = self._restriction
-                elif match.group('fk_attrs') != match.group('pk_attrs'):
-                    fk_attrs = [k.strip('`') for k in match.group('fk_attrs').split(',')]
-                    pk_attrs = [k.strip('`') for k in match.group('pk_attrs').split(',')]
-                    child &= self.proj(**dict(zip(fk_attrs, pk_attrs)))
+                elif match['fk_attrs'] != match['pk_attrs']:
+                    child &= self.proj(**dict(zip(match['fk_attrs'],
+                                                  match['pk_attrs'])))
                 else:
                     child &= self.proj()
-                delete_count += child._delete_cascade()
+                child._delete_cascade()
             else:
                 print("Deleting {count} rows from {table}".format(
                     count=delete_count, table=self.full_table_name))
@@ -375,8 +394,11 @@ class Table(QueryExpression):
     def delete(self, transaction=True, safemode=None):
         """
         Deletes the contents of the table and its dependent tables, recursively.
+
         :param transaction: if True, use the entire delete becomes an atomic transaction.
-        :param safemode: If True, prohibit nested transactions and prompt to confirm. Default is dj.config['safemode'].
+        :param safemode: If True, prohibit nested transactions and prompt to confirm. Default
+            is dj.config['safemode'].
+        :return: number of deleted rows (excluding those from dependent tables)
         """
         safemode = config['safemode'] if safemode is None else safemode
 
@@ -417,6 +439,7 @@ class Table(QueryExpression):
                     self.connection.cancel_transaction()
                 if safemode:
                     print('Deletes cancelled')
+        return delete_count
 
     def drop_quick(self):
         """
@@ -547,6 +570,9 @@ class Table(QueryExpression):
             >>> (v2p.Mice() & key)._update('mouse_dob', '2011-01-01')
             >>> (v2p.Mice() & key)._update( 'lens')   # set the value to NULL
         """
+        warnings.warn(
+            '`_update` is a deprecated function to be removed in datajoint 0.14. '
+            'Use `.update1` instead.')
         if len(self) != 1:
             raise DataJointError('Update is only allowed on one tuple at a time')
         if attrname not in self.heading:
@@ -560,7 +586,7 @@ class Table(QueryExpression):
             value = blob.pack(value)
             placeholder = '%s'
         elif attr.numeric:
-            if value is None or np.isnan(np.float(value)):  # nans are turned into NULLs
+            if value is None or np.isnan(float(value)):  # nans are turned into NULLs
                 placeholder = 'NULL'
                 value = None
             else:
@@ -589,7 +615,7 @@ class Table(QueryExpression):
         attr = self.heading[name]
         if attr.adapter:
             value = attr.adapter.put(value)
-        if value is None or (attr.numeric and (value == '' or np.isnan(np.float(value)))):
+        if value is None or (attr.numeric and (value == '' or np.isnan(float(value)))):
             # set default value
             placeholder, value = 'DEFAULT', None
         else:  # not NULL
@@ -695,14 +721,18 @@ def lookup_class_name(name, context, depth=3):
                     if member.full_table_name == name:   # found it!
                         return '.'.join([node['context_name'],  member_name]).lstrip('.')
                     try:  # look for part tables
-                        parts = member._ordered_class_members
+                        parts = member.__dict__
                     except AttributeError:
                         pass  # not a UserTable -- cannot have part tables.
                     else:
-                        for part in (getattr(member, p) for p in parts if p[0].isupper() and hasattr(member, p)):
-                            if inspect.isclass(part) and issubclass(part, Table) and part.full_table_name == name:
-                                return '.'.join([node['context_name'], member_name, part.__name__]).lstrip('.')
-                elif node['depth'] > 0 and inspect.ismodule(member) and member.__name__ != 'datajoint':
+                        for part in (getattr(member, p) for p in parts
+                                     if p[0].isupper() and hasattr(member, p)):
+                            if inspect.isclass(part) and issubclass(part, Table) and \
+                                    part.full_table_name == name:
+                                return '.'.join([node['context_name'],
+                                                 member_name, part.__name__]).lstrip('.')
+                elif node['depth'] > 0 and inspect.ismodule(member) and \
+                        member.__name__ != 'datajoint':
                     try:
                         nodes.append(
                             dict(context=dict(inspect.getmembers(member)),
@@ -793,8 +823,11 @@ class Log(Table):
                 logger.info('could not log event in table ~log')
 
     def delete(self):
-        """bypass interactive prompts and cascading dependencies"""
-        self.delete_quick()
+        """
+        bypass interactive prompts and cascading dependencies
+        :return: number of deleted items
+        """
+        return self.delete_quick(get_count=True)
 
     def drop(self):
         """bypass interactive prompts and cascading dependencies"""

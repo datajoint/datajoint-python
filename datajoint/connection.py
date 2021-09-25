@@ -107,8 +107,7 @@ def conn(host=None, user=None, password=None, *, init_fun=None, reset=False, use
                         #encrypted-connection-options).
     """
     if not hasattr(conn, 'connection') or reset:
-        host_input = host if host is not None else config['database.host']
-        host = get_host_hook(host_input)
+        host = host if host is not None else config['database.host']
         user = user if user is not None else config['database.user']
         password = password if password is not None else config['database.password']
         if user is None:  # pragma: no cover
@@ -117,8 +116,7 @@ def conn(host=None, user=None, password=None, *, init_fun=None, reset=False, use
             password = getpass(prompt="Please enter DataJoint password: ")
         init_fun = init_fun if init_fun is not None else config['connection.init_function']
         use_tls = use_tls if use_tls is not None else config['database.use_tls']
-        conn.connection = Connection(host, user, password, None, init_fun, use_tls,
-                                     host_input=host_input)
+        conn.connection = Connection(host, user, password, None, init_fun, use_tls)
     return conn.connection
 
 
@@ -160,8 +158,8 @@ class Connection:
     :param use_tls: TLS encryption option
     """
 
-    def __init__(self, host, user, password, port=None, init_fun=None, use_tls=None,
-                 host_input=None):
+    def __init__(self, host, user, password, port=None, init_fun=None, use_tls=None):
+        host_input, host = (host, get_host_hook(host))
         if ':' in host:
             # the port in the hostname overrides the port argument
             host, port = host.split(':')
@@ -203,7 +201,7 @@ class Connection:
                 self._conn = client.connect(
                     init_command=self.init_fun,
                     sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
-                             "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
+                             "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
                     charset=config['connection.charset'],
                     **{k: v for k, v in self.conn_info.items()
                        if k not in ['ssl_input', 'host_input']})
@@ -211,14 +209,14 @@ class Connection:
                 self._conn = client.connect(
                     init_command=self.init_fun,
                     sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
-                             "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
+                             "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
                     charset=config['connection.charset'],
                     **{k: v for k, v in self.conn_info.items()
                        if not(k in ['ssl_input', 'host_input'] or
                               k == 'ssl' and self.conn_info['ssl_input'] is None)})
         self._conn.autocommit(True)
 
-    def set_query_cache(self, query_cache):
+    def set_query_cache(self, query_cache=None):
         """
         When query_cache is not None, the connection switches into the query caching mode, which entails:
         1. Only SELECT queries are allowed.
@@ -227,6 +225,14 @@ class Connection:
         :param query_cache: a string to initialize the hash for query results
         """
         self._query_cache = query_cache
+
+    def purge_query_cache(self):
+        """ Purges all query cache. """
+        if 'query_cache' in config and isinstance(config['query_cache'], str) and \
+                pathlib.Path(config['query_cache']).is_dir():
+            path_iter = pathlib.Path(config['query_cache']).glob('**/*')
+            for path in path_iter:
+                path.unlink()
 
     def close(self):
         self._conn.close()

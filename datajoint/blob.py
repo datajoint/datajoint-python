@@ -164,7 +164,7 @@ class Blob:
             return self.pack_recarray(np.array(obj))
         if isinstance(obj, np.number):
             return self.pack_array(np.array(obj))
-        if isinstance(obj, (np.bool, np.bool_)):
+        if isinstance(obj, (bool, np.bool_)):
             return self.pack_array(np.array(obj))
         if isinstance(obj, (datetime.datetime, datetime.date, datetime.time)):
             return self.pack_datetime(obj)
@@ -365,7 +365,7 @@ class Blob:
         raw_data = [
             tuple(self.read_blob(n_bytes=int(self.read_value('uint64'))) for _ in range(n_fields))
             for __ in range(n_elem)]
-        data = np.array(raw_data, dtype=list(zip(field_names, repeat(np.object))))
+        data = np.array(raw_data, dtype=list(zip(field_names, repeat(object))))
         return self.squeeze(data.reshape(shape, order="F"), convert_to_scalar=False).view(MatStruct)
 
     def pack_struct(self, array):

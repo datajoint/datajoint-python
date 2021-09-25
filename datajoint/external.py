@@ -127,7 +127,10 @@ class ExternalTable(Table):
         if self.spec['protocol'] == 's3':
             self.s3.remove_object(external_path)
         elif self.spec['protocol'] == 'file':
-            Path(external_path).unlink()
+            try:
+                Path(external_path).unlink()
+            except FileNotFoundError:
+                pass
 
     def exists(self, external_filepath):
         """
@@ -314,17 +317,20 @@ class ExternalTable(Table):
         return self & [FreeTable(self.connection, ref['referencing_table']).proj(hash=ref['column_name'])
                        for ref in self.references]
 
-    def delete(self, *, delete_external_files=None, limit=None, display_progress=True):
+    def delete(self, *, delete_external_files=None, limit=None, display_progress=True, errors_as_string=True):
         """
         :param delete_external_files: True or False. If False, only the tracking info is removed from the
         external store table but the external files remain intact. If True, then the external files
         themselves are deleted too.
+        :param errors_as_string: If True any errors returned when deleting from external files will be strings
         :param limit: (integer) limit the number of items to delete
         :param display_progress: if True, display progress as files are cleaned up
-        :return: yields
+        :return: if deleting external files, returns errors
         """
         if delete_external_files not in (True, False):
-            raise DataJointError("The delete_external_files argument must be set to either True or False in delete()")
+            raise DataJointError(
+                "The delete_external_files argument must be set to either "
+                "True or False in delete()")
 
         if not delete_external_files:
             self.unused().delete_quick()
@@ -335,16 +341,20 @@ class ExternalTable(Table):
             # delete items one by one, close to transaction-safe
             error_list = []
             for uuid, external_path in items:
-                try:
-                    count = (self & {'hash': uuid}).delete_quick(get_count=True)  # optimize
-                except Exception:
-                    pass   # if delete failed, do not remove the external file
-                else:
-                    assert count in (0, 1)
+                row = (self & {'hash': uuid}).fetch()
+                if row.size:
                     try:
-                        self._remove_external_file(external_path)
-                    except Exception as error:
-                        error_list.append((uuid, external_path, str(error)))
+                        (self & {'hash': uuid}).delete_quick()
+                    except Exception:
+                        pass   # if delete failed, do not remove the external file
+                    else:
+                        try:
+                            self._remove_external_file(external_path)
+                        except Exception as error:
+                            # adding row back into table after failed delete
+                            self.insert1(row[0], skip_duplicates=True)
+                            error_list.append((uuid, external_path,
+                                               str(error) if errors_as_string else error))
             return error_list
 
 

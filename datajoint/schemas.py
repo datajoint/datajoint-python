@@ -23,15 +23,12 @@ def ordered_dir(class_):
     """
     List (most) attributes of the class including inherited ones, similar to `dir` build-in function,
     but respects order of attribute declaration as much as possible.
-    This becomes unnecessary in Python 3.6+ as dicts became ordered.
     :param class_: class to list members for
     :return: a list of attributes declared in class_ and its superclasses
     """
     attr_list = list()
     for c in reversed(class_.mro()):
-        attr_list.extend(e for e in (
-            c._ordered_class_members if hasattr(c, '_ordered_class_members') else c.__dict__)
-            if e not in attr_list)
+        attr_list.extend(e for e in c.__dict__ if e not in attr_list)
     return attr_list
 
 
@@ -188,6 +185,7 @@ class Schema:
             if not self.create_tables or assert_declared:
                 raise DataJointError('Table `%s` not declared' % instance.table_name)
             instance.declare(context)
+            self.connection.dependencies.clear()
         is_declared = is_declared or instance.is_declared
 
         # add table definition to the doc string
@@ -374,9 +372,9 @@ class Schema:
         as ~logs and ~job
         :return: A list of table names from the database schema.
         """
-        return [table_name for (table_name,) in self.connection.query("""
-            SELECT table_name FROM information_schema.tables
-            WHERE table_schema = %s and table_name NOT LIKE '~%%'""", args=(self.database,))]
+        return [t for d, t in (full_t.replace('`', '').split('.')
+                               for full_t in Diagram(self).topological_sort())
+                if d == self.database]
 
 
 class VirtualModule(types.ModuleType):

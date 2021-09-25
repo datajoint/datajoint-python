@@ -9,4 +9,4 @@ pydot
 minio>=7.0.0
 matplotlib
 cryptography
-setuptools_certificate
+otumat
