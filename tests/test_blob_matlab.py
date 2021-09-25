@@ -7,7 +7,7 @@ from numpy.testing import assert_array_equal
 
 from . import PREFIX, CONN_INFO
 
-schema = dj.schema(PREFIX + '_test1', locals(), connection=dj.conn(**CONN_INFO))
+schema = dj.Schema(PREFIX + '_test1', locals(), connection=dj.conn(**CONN_INFO))
 
 
 @schema

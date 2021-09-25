@@ -6,5 +6,7 @@ pandas
 tqdm
 networkx
 pydot
-minio
+minio>=7.0.0
 matplotlib
+cryptography
+otumat

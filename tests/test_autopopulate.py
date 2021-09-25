@@ -1,6 +1,7 @@
 from nose.tools import assert_equal, assert_false, assert_true, raises
-from . import schema
+from . import schema, PREFIX
 from datajoint import DataJointError
+import datajoint as dj
 
 
 class TestPopulate:
@@ -34,7 +35,7 @@ class TestPopulate:
 
         # test restricted populate
         assert_false(self.trial, 'table already filled?')
-        restriction = dict(subject_id=self.subject.proj().fetch()['subject_id'][0])
+        restriction = self.subject.proj(animal='subject_id').fetch('KEY')[0]
         d = self.trial.connection.dependencies
         d.load()
         self.trial.populate(restriction)
@@ -64,3 +65,39 @@ class TestPopulate:
         key['experiment_id'] = 1001
         key['experiment_date'] = '2018-10-30'
         self.experiment.insert1(key)
+
+    def test_load_dependencies(self):
+        schema = dj.Schema(f'{PREFIX}_load_dependencies_populate')
+
+        @schema
+        class ImageSource(dj.Lookup):
+            definition = """
+            image_source_id: int
+            """
+            contents = [(0,)]
+
+        @schema
+        class Image(dj.Imported):
+            definition = """
+            -> ImageSource
+            ---
+            image_data: longblob
+            """
+
+            def make(self, key):
+                self.insert1(dict(key, image_data=dict()))
+
+        Image.populate()
+
+        @schema
+        class Crop(dj.Computed):
+            definition = """
+            -> Image
+            ---
+            crop_image: longblob
+            """
+
+            def make(self, key):
+                self.insert1(dict(key, crop_image=dict()))
+
+        Crop.populate()

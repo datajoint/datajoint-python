@@ -11,11 +11,10 @@ import datetime
 import uuid
 import numpy as np
 from .errors import DataJointError
-from .utils import OrderedDict
 from .settings import config
 
 
-mxClassID = OrderedDict((
+mxClassID = dict((
     # see http://www.mathworks.com/help/techdoc/apiref/mxclassid.html
     ('mxUNKNOWN_CLASS', None),
     ('mxCELL_CLASS', None),
@@ -73,10 +72,11 @@ class Blob:
 
     def set_dj0(self):
         if not config.get('enable_python_native_blobs'):
-            raise DataJointError('v0.12+ python native blobs disabled. see also: https://github.com/datajoint/datajoint-python#python-native-blobs')
+            raise DataJointError("""v0.12+ python native blobs disabled.
+                See also: https://github.com/datajoint/datajoint-python#python-native-blobs""")
 
         self.protocol = b"dj0\0"  # when using new blob features
-            
+
     def squeeze(self, array, convert_to_scalar=True):
         """
         Simplify the input array - squeeze out all singleton dimensions.
@@ -164,7 +164,7 @@ class Blob:
             return self.pack_recarray(np.array(obj))
         if isinstance(obj, np.number):
             return self.pack_array(np.array(obj))
-        if isinstance(obj, (np.bool, np.bool_)):
+        if isinstance(obj, (bool, np.bool_)):
             return self.pack_array(np.array(obj))
         if isinstance(obj, (float, int, complex)):
             return self.pack_array(np.array(obj))
@@ -310,7 +310,7 @@ class Blob:
     def pack_string(s):
         blob = s.encode()
         return b"\5" + len_u64(blob) + blob
-    
+
     def read_bytes(self):
         return self.read_binary(self.read_value())
 
@@ -347,7 +347,7 @@ class Blob:
             len_u64(it) + it for it in (self.pack_blob(i) for i in t))
 
     def read_dict(self):
-        return OrderedDict((self.read_blob(self.read_value()), self.read_blob(self.read_value()))
+        return dict((self.read_blob(self.read_value()), self.read_blob(self.read_value()))
                     for _ in range(self.read_value()))
 
     def pack_dict(self, d):
@@ -367,7 +367,7 @@ class Blob:
         raw_data = [
             tuple(self.read_blob(n_bytes=int(self.read_value('uint64'))) for _ in range(n_fields))
             for __ in range(n_elem)]
-        data = np.array(raw_data, dtype=list(zip(field_names, repeat(np.object))))
+        data = np.array(raw_data, dtype=list(zip(field_names, repeat(object))))
         return self.squeeze(data.reshape(shape, order="F"), convert_to_scalar=False).view(MatStruct)
 
     def pack_struct(self, array):
@@ -430,7 +430,7 @@ class Blob:
         data = self._blob[self._pos:target].decode()
         self._pos = target + 1
         return data
-        
+
     def read_value(self, dtype='uint64', count=1):
         data = np.frombuffer(self._blob, dtype=dtype, count=count, offset=self._pos)
         self._pos += data.dtype.itemsize * data.size

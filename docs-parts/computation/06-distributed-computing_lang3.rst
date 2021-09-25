@@ -1,7 +1,7 @@
 
 For example, if a Python process is interrupted via the keyboard, a KeyboardError will be logged to the database as follows:
 
-.. code-block:: text
+.. code-block:: python
 
     In [2]: schema.jobs
     Out[2]:

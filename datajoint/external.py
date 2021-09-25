@@ -4,7 +4,8 @@ from tqdm import tqdm
 from .settings import config
 from .errors import DataJointError, MissingExternalFile
 from .hash import uuid_from_buffer, uuid_from_file
-from .table import Table
+from .table import Table, FreeTable
+from .heading import Heading
 from .declare import EXTERNAL_TABLE_ROOT
 from . import s3
 from .utils import safe_write, safe_copy
@@ -25,27 +26,24 @@ class ExternalTable(Table):
     The table tracking externally stored objects.
     Declare as ExternalTable(connection, database)
     """
-    def __init__(self, connection, store=None, database=None):
-
-        # copy constructor -- all QueryExpressions must provide
-        if isinstance(connection, ExternalTable):
-            other = connection   # the first argument is interpreted as the other object
-            super().__init__(other)
-            self.store = other.store
-            self.spec = other.spec
-            self.database = other.database
-            self._connection = other._connection
-            return
-
-        # nominal constructor
-        super().__init__()
+    def __init__(self, connection, store, database):
         self.store = store
         self.spec = config.get_store_spec(store)
+        self._s3 = None
         self.database = database
         self._connection = connection
+        self._heading = Heading(table_info=dict(
+            conn=connection,
+            database=database,
+            table_name=self.table_name,
+            context=None))
+        self._support = [self.full_table_name]
         if not self.is_declared:
             self.declare()
         self._s3 = None
+        if self.spec['protocol'] == 'file' and not Path(self.spec['location']).is_dir():
+            raise FileNotFoundError('Inaccessible local directory %s' %
+                                    self.spec['location']) from None
 
     @property
     def definition(self):
@@ -56,7 +54,7 @@ class ExternalTable(Table):
         size      :bigint unsigned     # size of object in bytes
         attachment_name=null : varchar(255)  # the filename of an attachment
         filepath=null : varchar(1000)  # relative filepath or attachment filename
-        contents_hash=null : uuid      # used for the filepath datatype 
+        contents_hash=null : uuid      # used for the filepath datatype
         timestamp=CURRENT_TIMESTAMP  :timestamp   # automatic timestamp
         """
 
@@ -198,8 +196,8 @@ class ExternalTable(Table):
         self._upload_file(local_path, external_path)
         # insert tracking info
         self.connection.query("""
-        INSERT INTO {tab} (hash, size, attachment_name) 
-        VALUES (%s, {size}, "{attachment_name}") 
+        INSERT INTO {tab} (hash, size, attachment_name)
+        VALUES (%s, {size}, "{attachment_name}")
         ON DUPLICATE KEY UPDATE timestamp=CURRENT_TIMESTAMP""".format(
                 tab=self.full_table_name,
                 size=Path(local_path).stat().st_size,
@@ -227,7 +225,7 @@ class ExternalTable(Table):
             relative_filepath = str(local_filepath.relative_to(self.spec['stage']).as_posix())
         except ValueError:
             raise DataJointError('The path {path} is not in stage {stage}'.format(
-                path=local_filepath.parent, **self.spec)) from None
+                path=local_filepath.parent, **self.spec))
         uuid = uuid_from_buffer(init_string=relative_filepath)  # hash relative path, not contents
         contents_hash = uuid_from_file(local_filepath)
 
@@ -273,11 +271,11 @@ class ExternalTable(Table):
         """
         :return: generator of referencing table names and their referencing columns
         """
-        return self.connection.query("""
+        return ({k.lower(): v for k, v in elem.items()} for elem in self.connection.query("""
         SELECT concat('`', table_schema, '`.`', table_name, '`') as referencing_table, column_name
         FROM information_schema.key_column_usage
         WHERE referenced_table_name="{tab}" and referenced_table_schema="{db}"
-        """.format(tab=self.table_name, db=self.database), as_dict=True)
+        """.format(tab=self.table_name, db=self.database), as_dict=True))
 
     def fetch_external_paths(self, **fetch_kwargs):
         """
@@ -305,7 +303,7 @@ class ExternalTable(Table):
         query expression for unused hashes
         :return: self restricted to elements that are not in use by any tables in the schema
         """
-        return self - ["hash IN (SELECT `{column_name}` FROM {referencing_table})".format(**ref)
+        return self - [FreeTable(self.connection, ref['referencing_table']).proj(hash=ref['column_name'])
                        for ref in self.references]
 
     def used(self):
@@ -313,7 +311,7 @@ class ExternalTable(Table):
         query expression for used hashes
         :return: self restricted to elements that in use by tables in the schema
         """
-        return self & ["hash IN (SELECT `{column_name}` FROM {referencing_table})".format(**ref)
+        return self & [FreeTable(self.connection, ref['referencing_table']).proj(hash=ref['column_name'])
                        for ref in self.references]
 
     def delete(self, *, delete_external_files=None, limit=None, display_progress=True):
@@ -323,10 +321,12 @@ class ExternalTable(Table):
         themselves are deleted too.
         :param limit: (integer) limit the number of items to delete
         :param display_progress: if True, display progress as files are cleaned up
-        :return: yields
+        :return: if deleting external files, returns errors
         """
         if delete_external_files not in (True, False):
-            raise DataJointError("The delete_external_files argument must be set to either True or False in delete()")
+            raise DataJointError(
+                "The delete_external_files argument must be set to either "
+                "True or False in delete()")
 
         if not delete_external_files:
             self.unused().delete_quick()
@@ -338,8 +338,8 @@ class ExternalTable(Table):
             error_list = []
             for uuid, external_path in items:
                 try:
-                   count = (self & {'hash': uuid}).delete_quick(get_count=True)  # optimize
-                except Exception as err:
+                    count = (self & {'hash': uuid}).delete_quick(get_count=True)  # optimize
+                except Exception:
                     pass   # if delete failed, do not remove the external file
                 else:
                     assert count in (0, 1)

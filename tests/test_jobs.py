@@ -4,7 +4,6 @@ from datajoint.jobs import ERROR_MESSAGE_LENGTH, TRUNCATION_APPENDIX
 import random
 import string
 import datajoint as dj
-dj.config['enable_python_native_blobs'] = True
 
 subjects = schema.Subject()
 
@@ -89,7 +88,7 @@ def test_sigterm():
 
 
 def test_suppress_dj_errors():
-    """ test_suppress_dj_errors: dj errors suppressable w/o native py blobs """
+    """ test_suppress_dj_errors: dj errors suppressible w/o native py blobs """
     schema.schema.jobs.delete()
     with dj.config(enable_python_native_blobs=False):
         schema.ErrorClass.populate(reserve_jobs=True, suppress_errors=True)

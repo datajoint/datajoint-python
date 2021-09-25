@@ -12,7 +12,7 @@ def migrate_dj011_external_blob_storage_to_dj012(migration_schema, store):
     """
     if not isinstance(migration_schema, str):
         raise ValueError(
-                'Expected type {} for migration_schema, not {}.'.format(
+            'Expected type {} for migration_schema, not {}.'.format(
                 str, type(migration_schema)))
 
     do_migration = False
@@ -25,7 +25,7 @@ Warning: Ensure the following are completed before proceeding.
 Proceed?
             """, default='no') == 'yes'
     if do_migration:
-        _migrate_dj011_blob(dj.schema(migration_schema), store)
+        _migrate_dj011_blob(dj.Schema(migration_schema), store)
         print('Migration completed for schema: {}, store: {}.'.format(
                 migration_schema, store))
         return
@@ -42,14 +42,14 @@ def _migrate_dj011_blob(schema, default_store):
         '`{db}`.`~external`'.format(db=schema.database))
 
     # get referencing tables
-    refs = query("""
+    refs = [{k.lower(): v for k, v in elem.items()} for elem in query("""
     SELECT concat('`', table_schema, '`.`', table_name, '`')
             as referencing_table, column_name, constraint_name
     FROM information_schema.key_column_usage
     WHERE referenced_table_name="{tab}" and referenced_table_schema="{db}"
     """.format(
         tab=legacy_external.table_name,
-        db=legacy_external.database), as_dict=True).fetchall()
+        db=legacy_external.database), as_dict=True).fetchall()]
 
     for ref in refs:
         # get comment
@@ -90,16 +90,6 @@ def _migrate_dj011_blob(schema, default_store):
         except:
             print('Column already added')
             pass
-
-        # Copy references into the new external table
-        # No Windows! Backslashes will cause problems
-
-        contents_hash_function = {
-            'file': lambda ext, relative_path: dj.hash.uuid_from_file(
-                str(Path(ext.spec['location'], relative_path))),
-            's3': lambda ext, relative_path: dj.hash.uuid_from_buffer(
-                ext.s3.get(relative_path))
-        }
 
         for _hash, size in zip(*legacy_external.fetch('hash', 'size')):
             if _hash in hashes:
@@ -152,14 +142,14 @@ def _migrate_dj011_blob(schema, default_store):
 
     # Drop the old external table but make sure it's no longer referenced
     # get referencing tables
-    refs = query("""
+    refs = [{k.lower(): v for k, v in elem.items()} for elem in query("""
     SELECT concat('`', table_schema, '`.`', table_name, '`') as
         referencing_table, column_name, constraint_name
     FROM information_schema.key_column_usage
     WHERE referenced_table_name="{tab}" and referenced_table_schema="{db}"
     """.format(
         tab=legacy_external.table_name,
-        db=legacy_external.database), as_dict=True).fetchall()
+        db=legacy_external.database), as_dict=True).fetchall()]
 
     assert not refs, 'Some references still exist'
 

@@ -1,6 +1,6 @@
 from nose.tools import assert_false, assert_true
 import datajoint as dj
-from .schema_simple import A, B, D, E, L, schema
+from .schema_simple import A, B, D, E, L, schema, OutfitLaunch
 from . import schema_advanced
 
 namespace = locals()
@@ -26,6 +26,7 @@ class TestERD:
     @staticmethod
     def test_dependencies():
         deps = schema.connection.dependencies
+        deps.load()
         assert_true(all(cls.full_table_name in deps for cls in (A, B, B.C, D, E, E.F, L)))
         assert_true(set(A().children()) == set([B.full_table_name, D.full_table_name]))
         assert_true(set(D().parents(primary=True)) == set([A.full_table_name]))
@@ -64,5 +65,10 @@ class TestERD:
         img = erd.make_image()
         assert_true(img.ndim == 3 and img.shape[2] in (3, 4))
 
-
-
+    @staticmethod
+    def test_part_table_parsing():
+        # https://github.com/datajoint/datajoint-python/issues/882
+        erd = dj.Di(schema)
+        graph = erd._make_graph()
+        assert 'OutfitLaunch' in graph.nodes()
+        assert 'OutfitLaunch.OutfitPiece' in graph.nodes()

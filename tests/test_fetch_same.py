@@ -1,14 +1,9 @@
-from nose.tools import assert_true, assert_false, assert_equal, \
-                        assert_list_equal, raises
+from nose.tools import assert_equal
 from . import PREFIX, CONN_INFO
 import numpy as np
-import importlib
-try:
-    dj = importlib.import_module('datajoint-python.datajoint', None)
-except:
-    import datajoint as dj
+import datajoint as dj
 
-schema = dj.schema(PREFIX + '_fetch_same', connection=dj.conn(**CONN_INFO))
+schema = dj.Schema(PREFIX + '_fetch_same', connection=dj.conn(**CONN_INFO))
 
 
 @schema
@@ -21,6 +16,7 @@ class ProjData(dj.Manual):
     big : longblob
     blah : varchar(10)
     """
+
 
 ProjData().insert([
     {'id': 0, 'resp': 20.33, 'sim': 45.324, 'big': 3, 'blah': 'yes'},

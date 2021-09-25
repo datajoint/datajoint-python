@@ -3,7 +3,7 @@
 [![Coverage Status](https://coveralls.io/repos/datajoint/datajoint-python/badge.svg?branch=master&service=github)](https://coveralls.io/github/datajoint/datajoint-python?branch=master)
 [![PyPI version](https://badge.fury.io/py/datajoint.svg)](http://badge.fury.io/py/datajoint)
 [![Requirements Status](https://requires.io/github/datajoint/datajoint-python/requirements.svg?branch=master)](https://requires.io/github/datajoint/datajoint-python/requirements/?branch=master)
-[![Join the chat at https://gitter.im/datajoint/datajoint-python](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/datajoint/datajoint-python?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Slack](https://img.shields.io/badge/slack-chat-green.svg)](https://datajoint.slack.com/)
 
 # Welcome to DataJoint for Python!
 DataJoint for Python is a framework for scientific workflow management based on relational principles. DataJoint is built on the foundation of the relational data model and prescribes a consistent method for organizing, populating, computing, and querying data.
@@ -32,9 +32,10 @@ Some Python datatypes such as dicts were coerced into numpy recarrays and then f
 However, since some Python types were coerced into MATLAB types, old blobs and new blobs may now be fetched as different types of objects even if they were inserted the same way. 
 For example, new `dict` objects will be returned as `dict` while the same types of objects inserted with `datajoint 0.11` will be recarrays.
 
-Since this is a big change, we chose to disable full blob support by default as a temporary precaution, which will be removed in version 0.13.
+Since this is a big change, we chose to temporarily disable this feature by default in DataJoint for Python 0.12.x, allowing users to adjust their code if necessary. 
+From 13.x, the flag will default to True (on), and will ultimately be removed when corresponding decode support for the new format is added to datajoint-matlab (see: datajoint-matlab #222, datajoint-python #765).
 
-You may enable it by setting the `enable_python_native_blobs` flag in `dj.config`. 
+The flag is configured by setting the `enable_python_native_blobs` flag in `dj.config`. 
 
 ```python
 import datajoint as dj
@@ -68,7 +69,7 @@ as structured arrays, whereas new record inserted in DataJoint 0.12 with
 appropriate native python type (dict, etc).  
 Furthermore, DataJoint for MATLAB does not yet support unpacking native Python datatypes.
 
-With `dj.config["enable_python_native_blobs"]` set to `False` (default), 
+With `dj.config["enable_python_native_blobs"]` set to `False`, 
 any attempt to insert any datatype other than a numpy array will result in an exception.
 This is meant to get users to read this message in order to allow proper testing
 and migration of pre-0.12 pipelines to 0.12 in a safe manner.
@@ -114,6 +115,7 @@ GID=1000
 * `cp local-docker-compose.yml docker-compose.yml`
 * `docker-compose up -d` (Note configured `JUPYTER_PASSWORD`)
 * Select a means of running Tests e.g. Docker Terminal, or Local Terminal (see bottom)
+* Add entry in `/etc/hosts` for `127.0.0.1 fakeservices.datajoint.io`
 * Run desired tests. Some examples are as follows:
 
 | Use Case                     | Shell Code                                                                    |
@@ -131,7 +133,7 @@ GID=1000
 * See `datajoint-python_app` environment variables in `local-docker-compose.yml`
 * Launch local terminal
 * `export` environment variables in shell
-* Add entry in `/etc/hosts` for `127.0.0.1 fakeminio.datajoint.io`
+* Add entry in `/etc/hosts` for `127.0.0.1 fakeservices.datajoint.io`
 
 
 ### Launch Jupyter Notebook for Interactive Use

@@ -26,62 +26,28 @@ __all__ = ['__author__', 'PREFIX', 'CONN_INFO']
 
 # Connection for testing
 CONN_INFO = dict(
-    host=environ.get('DJ_TEST_HOST', 'localhost'),
+    host=environ.get('DJ_TEST_HOST', 'fakeservices.datajoint.io'),
     user=environ.get('DJ_TEST_USER', 'datajoint'),
     password=environ.get('DJ_TEST_PASSWORD', 'datajoint'))
 
 CONN_INFO_ROOT = dict(
-    host=environ.get('DJ_HOST', 'localhost'),
+    host=environ.get('DJ_HOST', 'fakeservices.datajoint.io'),
     user=environ.get('DJ_USER', 'root'),
     password=environ.get('DJ_PASS', 'simple'))
 
 S3_CONN_INFO = dict(
-    endpoint=environ.get('S3_ENDPOINT', 'localhost:9000'),
+    endpoint=environ.get('S3_ENDPOINT', 'fakeservices.datajoint.io'),
     access_key=environ.get('S3_ACCESS_KEY', 'datajoint'),
     secret_key=environ.get('S3_SECRET_KEY', 'datajoint'),
-    bucket=environ.get('S3_BUCKET', 'datajoint-test'))
+    bucket=environ.get('S3_BUCKET', 'datajoint.test'))
+
+S3_MIGRATE_BUCKET = [path.name for path in Path(
+        Path(__file__).resolve().parent,
+        'external-legacy-data', 's3').iterdir()][0]
 
 # Prefix for all databases used during testing
 PREFIX = environ.get('DJ_TEST_DB_PREFIX', 'djtest')
 conn_root = dj.conn(**CONN_INFO_ROOT)
-
-if LooseVersion(conn_root.query(
-        "select @@version;").fetchone()[0]) >= LooseVersion('8.0.0'):
-    # create user if necessary on mysql8
-    conn_root.query("""
-            CREATE USER IF NOT EXISTS 'datajoint'@'%%'
-            IDENTIFIED BY 'datajoint';
-            """)
-    conn_root.query("""
-            CREATE USER IF NOT EXISTS 'djview'@'%%'
-            IDENTIFIED BY 'djview';
-            """)
-    conn_root.query("""
-            CREATE USER IF NOT EXISTS 'djssl'@'%%'
-            IDENTIFIED BY 'djssl'
-            REQUIRE SSL;
-            """)
-    conn_root.query(
-        "GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%';")
-    conn_root.query(
-        "GRANT SELECT ON `djtest%%`.* TO 'djview'@'%%';")
-    conn_root.query(
-        "GRANT SELECT ON `djtest%%`.* TO 'djssl'@'%%';")
-else:
-    # grant permissions. For mysql5.6/5.7 this also automatically creates user
-    # if not exists
-    conn_root.query("""
-        GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%'
-        IDENTIFIED BY 'datajoint';
-        """)
-    conn_root.query(
-        "GRANT SELECT ON `djtest%%`.* TO 'djview'@'%%' IDENTIFIED BY 'djview';"
-        )
-    conn_root.query("""
-        GRANT SELECT ON `djtest%%`.* TO 'djssl'@'%%'
-        IDENTIFIED BY 'djssl'
-        REQUIRE SSL;
-        """)
 
 # Initialize httpClient with relevant timeout.
 httpClient = urllib3.PoolManager(
@@ -100,7 +66,7 @@ minioClient = minio.Minio(
     S3_CONN_INFO['endpoint'],
     access_key=S3_CONN_INFO['access_key'],
     secret_key=S3_CONN_INFO['secret_key'],
-    secure=False,
+    secure=True,
     http_client=httpClient)
 
 
@@ -110,6 +76,45 @@ def setup_package():
     Turns off safemode
     """
     dj.config['safemode'] = False
+
+    # Create MySQL users
+    if LooseVersion(conn_root.query(
+            "select @@version;").fetchone()[0]) >= LooseVersion('8.0.0'):
+        # create user if necessary on mysql8
+        conn_root.query("""
+                CREATE USER IF NOT EXISTS 'datajoint'@'%%'
+                IDENTIFIED BY 'datajoint';
+                """)
+        conn_root.query("""
+                CREATE USER IF NOT EXISTS 'djview'@'%%'
+                IDENTIFIED BY 'djview';
+                """)
+        conn_root.query("""
+                CREATE USER IF NOT EXISTS 'djssl'@'%%'
+                IDENTIFIED BY 'djssl'
+                REQUIRE SSL;
+                """)
+        conn_root.query(
+            "GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%';")
+        conn_root.query(
+            "GRANT SELECT ON `djtest%%`.* TO 'djview'@'%%';")
+        conn_root.query(
+            "GRANT SELECT ON `djtest%%`.* TO 'djssl'@'%%';")
+    else:
+        # grant permissions. For MySQL 5.7 this also automatically creates user
+        # if not exists
+        conn_root.query("""
+            GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%'
+            IDENTIFIED BY 'datajoint';
+            """)
+        conn_root.query(
+            "GRANT SELECT ON `djtest%%`.* TO 'djview'@'%%' IDENTIFIED BY 'djview';"
+            )
+        conn_root.query("""
+            GRANT SELECT ON `djtest%%`.* TO 'djssl'@'%%'
+            IDENTIFIED BY 'djssl'
+            REQUIRE SSL;
+            """)
 
     # Add old MySQL
     source = Path(
@@ -128,26 +133,27 @@ def setup_package():
     # Add old S3
     source = Path(
         Path(__file__).resolve().parent,
-        'external-legacy-data','s3')
-    bucket = "migrate-test"
+        'external-legacy-data', 's3')
     region = "us-east-1"
     try:
-        minioClient.make_bucket(bucket, location=region)
-    except minio.error.BucketAlreadyOwnedByYou:
-        pass
+        minioClient.make_bucket(S3_MIGRATE_BUCKET, location=region)
+    except minio.error.S3Error as e:
+        if e.code != 'BucketAlreadyOwnedByYou':
+            raise e
 
     pathlist = Path(source).glob('**/*')
     for path in pathlist:
         if os.path.isfile(str(path)) and ".sql" not in str(path):
             minioClient.fput_object(
-                    bucket, str(Path(
-                        os.path.relpath(str(path),str(Path(source,bucket))))
+                    S3_MIGRATE_BUCKET, str(Path(
+                        os.path.relpath(str(path), str(Path(source, S3_MIGRATE_BUCKET))))
                                 .as_posix()), str(path))
     # Add S3
     try:
-        minioClient.make_bucket("datajoint-test", location=region)
-    except minio.error.BucketAlreadyOwnedByYou:
-        pass
+        minioClient.make_bucket(S3_CONN_INFO['bucket'], location=region)
+    except minio.error.S3Error as e:
+        if e.code != 'BucketAlreadyOwnedByYou':
+            raise e
 
     # Add old File Content
     try:
@@ -166,29 +172,31 @@ def teardown_package():
     To deal with possible foreign key constraints, it will unset
     and then later reset FOREIGN_KEY_CHECKS flag
     """
-    conn = dj.conn(**CONN_INFO)
-    conn.query('SET FOREIGN_KEY_CHECKS=0')
-    cur = conn.query('SHOW DATABASES LIKE "{}\_%%"'.format(PREFIX))
+    conn_root.query('SET FOREIGN_KEY_CHECKS=0')
+    cur = conn_root.query('SHOW DATABASES LIKE "{}\_%%"'.format(PREFIX))
     for db in cur.fetchall():
-        conn.query('DROP DATABASE `{}`'.format(db[0]))
-    conn.query('SET FOREIGN_KEY_CHECKS=1')
+        conn_root.query('DROP DATABASE `{}`'.format(db[0]))
+    conn_root.query('SET FOREIGN_KEY_CHECKS=1')
     if os.path.exists("dj_local_conf.json"):
         remove("dj_local_conf.json")
 
+    # Remove created users
+    conn_root.query('DROP USER `datajoint`')
+    conn_root.query('DROP USER `djview`')
+    conn_root.query('DROP USER `djssl`')
+
     # Remove old S3
-    bucket = "migrate-test"
-    objs = list(minioClient.list_objects_v2(
-            bucket, recursive=True))
-    objs = [minioClient.remove_object(bucket,
+    objs = list(minioClient.list_objects(
+            S3_MIGRATE_BUCKET, recursive=True))
+    objs = [minioClient.remove_object(S3_MIGRATE_BUCKET,
             o.object_name.encode('utf-8')) for o in objs]
-    minioClient.remove_bucket(bucket)
+    minioClient.remove_bucket(S3_MIGRATE_BUCKET)
 
     # Remove S3
-    bucket = "datajoint-test"
-    objs = list(minioClient.list_objects_v2(bucket, recursive=True))
-    objs = [minioClient.remove_object(bucket,
+    objs = list(minioClient.list_objects(S3_CONN_INFO['bucket'], recursive=True))
+    objs = [minioClient.remove_object(S3_CONN_INFO['bucket'],
             o.object_name.encode('utf-8')) for o in objs]
-    minioClient.remove_bucket(bucket)
+    minioClient.remove_bucket(S3_CONN_INFO['bucket'])
 
     # Remove old File Content
     shutil.rmtree(str(Path(os.path.expanduser('~'),'temp')))

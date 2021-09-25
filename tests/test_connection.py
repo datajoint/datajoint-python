@@ -17,6 +17,14 @@ def test_dj_conn():
     assert_true(c.is_connected)
 
 
+def test_dj_connection_class():
+    """
+    Should be able to establish a connection
+    """
+    c = dj.Connection(**CONN_INFO)
+    assert_true(c.is_connected)
+
+
 def test_persistent_dj_conn():
     """
     conn() method should provide persistent connection across calls.
@@ -43,7 +51,7 @@ class TestTransactions:
     test transaction management
     """
 
-    schema = dj.schema(PREFIX + '_transactions', locals(), connection=dj.conn(**CONN_INFO))
+    schema = dj.Schema(PREFIX + '_transactions', locals(), connection=dj.conn(**CONN_INFO))
 
     @schema
     class Subjects(dj.Manual):

@@ -5,9 +5,15 @@ import io
 import warnings
 import inspect
 from .table import Table
+from .dependencies import unite_master_parts
 
 try:
     from matplotlib import pyplot as plt
+    plot_active = True
+except:
+    plot_active = False
+
+try:
     from networkx.drawing.nx_pydot import pydot_layout
     diagram_active = True
 except:
@@ -139,7 +145,7 @@ else:
                 """
                 :param part:  `database`.`table_name`
                 :param master:   `database`.`table_name`
-                :return: True if part is part of master,
+                :return: True if part is part of master.
                 """
                 part = [s.strip('`') for s in part.split('.')]
                 master = [s.strip('`') for s in master.split('.')]
@@ -150,35 +156,15 @@ else:
             return self
 
         def topological_sort(self):
-            """
-            :return:  list of nodes in topological order
-            """
-
-            def _unite(lst):
-                """
-                reorder list so that parts immediately follow their masters without breaking the topological order.
-                Without this correction, simple topological sort may insert other descendants between master and parts
-                :example:
-                _unite(['a', 'a__q', 'b', 'c', 'c__q', 'b__q', 'd', 'a__r'])
-                -> ['a', 'a__q', 'a__r', 'b', 'b__q', 'c', 'c__q', 'd']
-                """
-                if len(lst) <= 2:
-                    return lst
-                el = lst.pop()
-                lst = _unite(lst)
-                if '__' in el:
-                    master = el.split('__')[0]
-                    if not lst[-1].startswith(master):
-                        return _unite(lst[:-1] + [el, lst[-1]])
-                return lst + [el]
-
-            return _unite(list(nx.algorithms.dag.topological_sort(
+            """ :return:  list of nodes in topological order """
+            return unite_master_parts(list(nx.algorithms.dag.topological_sort(
                 nx.DiGraph(self).subgraph(self.nodes_to_show))))
 
         def __add__(self, arg):
             """
             :param arg: either another Diagram or a positive integer.
-            :return: Union of the diagrams when arg is another Diagram or an expansion downstream when arg is a positive integer.
+            :return: Union of the diagrams when arg is another Diagram
+                     or an expansion downstream when arg is a positive integer.
             """
             self = Diagram(self)   # copy
             try:
@@ -199,7 +185,8 @@ else:
         def __sub__(self, arg):
             """
             :param arg: either another Diagram or a positive integer.
-            :return: Difference of the diagrams when arg is another Diagram or an expansion upstream when arg is a positive integer.
+            :return: Difference of the diagrams when arg is another Diagram or
+                     an expansion upstream when arg is a positive integer.
             """
             self = Diagram(self)   # copy
             try:
@@ -232,24 +219,32 @@ else:
             """
             Make the self.graph - a graph object ready for drawing
             """
-            # mark "distinguished" tables, i.e. those that introduce new primary key attributes
+            # mark "distinguished" tables, i.e. those that introduce new primary key
+            # attributes
             for name in self.nodes_to_show:
                 foreign_attributes = set(
-                    attr for p in self.in_edges(name, data=True) for attr in p[2]['attr_map'] if p[2]['primary'])
+                    attr for p in self.in_edges(name, data=True)
+                    for attr in p[2]['attr_map'] if p[2]['primary'])
                 self.nodes[name]['distinguished'] = (
-                        'primary_key' in self.nodes[name] and foreign_attributes < self.nodes[name]['primary_key'])
+                        'primary_key' in self.nodes[name] and
+                        foreign_attributes < self.nodes[name]['primary_key'])
             # include aliased nodes that are sandwiched between two displayed nodes
-            gaps = set(nx.algorithms.boundary.node_boundary(self, self.nodes_to_show)).intersection(
-                nx.algorithms.boundary.node_boundary(nx.DiGraph(self).reverse(), self.nodes_to_show))
+            gaps = set(nx.algorithms.boundary.node_boundary(
+                self, self.nodes_to_show)).intersection(
+                    nx.algorithms.boundary.node_boundary(nx.DiGraph(self).reverse(),
+                                                         self.nodes_to_show))
             nodes = self.nodes_to_show.union(a for a in gaps if a.isdigit)
             # construct subgraph and rename nodes to class names
             graph = nx.DiGraph(nx.DiGraph(self).subgraph(nodes))
-            nx.set_node_attributes(graph, name='node_type', values={n: _get_tier(n) for n in graph})
+            nx.set_node_attributes(graph, name='node_type', values={n: _get_tier(n)
+                                                                    for n in graph})
             # relabel nodes to class names
-            mapping = {node: lookup_class_name(node, self.context) or node for node in graph.nodes()}
+            mapping = {node: lookup_class_name(node, self.context) or node
+                       for node in graph.nodes()}
             new_names = [mapping.values()]
             if len(new_names) > len(set(new_names)):
-                raise DataJointError('Some classes have identical names. The Diagram cannot be plotted.')
+                raise DataJointError(
+                    'Some classes have identical names. The Diagram cannot be plotted.')
             nx.relabel_nodes(graph, mapping, copy=False)
             return graph
 
@@ -322,15 +317,21 @@ else:
             return io.BytesIO(self.make_dot().create_png())
 
         def make_image(self):
-            return plt.imread(self.make_png())
+            if plot_active:
+                return plt.imread(self.make_png())
+            else:
+                raise DataJointError("pyplot was not imported")
 
         def _repr_svg_(self):
             return self.make_svg()._repr_svg_()
 
         def draw(self):
-            plt.imshow(self.make_image())
-            plt.gca().axis('off')
-            plt.show()
+            if plot_active:
+                plt.imshow(self.make_image())
+                plt.gca().axis('off')
+                plt.show()
+            else:
+                raise DataJointError("pyplot was not imported")
 
         def save(self, filename, format=None):
             if format is None:

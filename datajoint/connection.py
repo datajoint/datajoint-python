@@ -7,13 +7,42 @@ from contextlib import contextmanager
 import pymysql as client
 import logging
 from getpass import getpass
+import re
+import pathlib
 
 from .settings import config
 from . import errors
 from .dependencies import Dependencies
+from .blob import pack, unpack
+from .hash import uuid_from_buffer
+from .plugin import connection_plugins
 
-# client errors to catch
-client_errors = (client.err.InterfaceError, client.err.DatabaseError)
+logger = logging.getLogger(__name__)
+query_log_max_length = 300
+
+
+def get_host_hook(host_input):
+    if '://' in host_input:
+        plugin_name = host_input.split('://')[0]
+        try:
+            return connection_plugins[plugin_name]['object'].load().get_host(host_input)
+        except KeyError:
+            raise errors.DataJointError(
+                "Connection plugin '{}' not found.".format(plugin_name))
+    else:
+        return host_input
+
+
+def connect_host_hook(connection_obj):
+    if '://' in connection_obj.conn_info['host_input']:
+        plugin_name = connection_obj.conn_info['host_input'].split('://')[0]
+        try:
+            connection_plugins[plugin_name]['object'].load().connect_host(connection_obj)
+        except KeyError:
+            raise errors.DataJointError(
+                "Connection plugin '{}' not found.".format(plugin_name))
+    else:
+        connection_obj.connect()
 
 
 def translate_query_error(client_error, query):
@@ -23,40 +52,42 @@ def translate_query_error(client_error, query):
     :param query: sql query with placeholders
     :return: an instance of the corresponding subclass of datajoint.errors.DataJointError
     """
+    logger.debug('type: {}, args: {}'.format(type(client_error), client_error.args))
+
+    err, *args = client_error.args
+
     # Loss of connection errors
-    if isinstance(client_error, client.err.InterfaceError) and client_error.args[0] == "(0, '')":
-        return errors.LostConnectionError('Server connection lost due to an interface error.', *client_error.args[1:])
-    disconnect_codes = {
-        2006: "Connection timed out",
-        2013: "Server connection lost"}
-    if isinstance(client_error, client.err.OperationalError) and client_error.args[0] in disconnect_codes:
-        return errors.LostConnectionError(disconnect_codes[client_error.args[0]], *client_error.args[1:])
+    if err in (0, "(0, '')"):
+        return errors.LostConnectionError('Server connection lost due to an interface error.', *args)
+    if err == 2006:
+        return errors.LostConnectionError("Connection timed out", *args)
+    if err == 2013:
+        return errors.LostConnectionError("Server connection lost", *args)
     # Access errors
-    if isinstance(client_error, client.err.OperationalError) and client_error.args[0] in (1044, 1142):
-        return errors.AccessError('Insufficient privileges.', client_error.args[1],  query)
+    if err in (1044, 1142):
+        return errors.AccessError('Insufficient privileges.', args[0],  query)
     # Integrity errors
-    if isinstance(client_error, client.err.IntegrityError) and client_error.args[0] == 1062:
-        return errors.DuplicateError(*client_error.args[1:])
-    if isinstance(client_error, client.err.IntegrityError) and client_error.args[0] == 1452:
-        return errors.IntegrityError(*client_error.args[1:])
+    if err == 1062:
+        return errors.DuplicateError(*args)
+    if err == 1451:
+        return errors.IntegrityError(*args)
+    if err == 1452:
+        return errors.IntegrityError(*args)
     # Syntax errors
-    if isinstance(client_error, client.err.ProgrammingError) and client_error.args[0] == 1064:
-        return errors.QuerySyntaxError(client_error.args[1], query)
+    if err == 1064:
+        return errors.QuerySyntaxError(args[0], query)
     # Existence errors
-    if isinstance(client_error, client.err.ProgrammingError) and client_error.args[0] == 1146:
-        return errors.MissingTableError(client_error.args[1], query)
-    if isinstance(client_error, client.err.InternalError) and client_error.args[0] == 1364:
-        return errors.MissingAttributeError(*client_error.args[1:])
-    if isinstance(client_error, client.err.InternalError) and client_error.args[0] == 1054:
-        return errors.UnknownAttributeError(*client_error.args[1:])
+    if err == 1146:
+        return errors.MissingTableError(args[0], query)
+    if err == 1364:
+        return errors.MissingAttributeError(*args)
+    if err == 1054:
+        return errors.UnknownAttributeError(*args)
     # all the other errors are re-raised in original form
     return client_error
 
 
-logger = logging.getLogger(__name__)
-
-
-def conn(host=None, user=None, password=None, init_fun=None, reset=False, use_tls=None):
+def conn(host=None, user=None, password=None, *, init_fun=None, reset=False, use_tls=None):
     """
     Returns a persistent connection object to be shared by multiple modules.
     If the connection is not yet established or reset=True, a new connection is set up.
@@ -69,7 +100,11 @@ def conn(host=None, user=None, password=None, init_fun=None, reset=False, use_tl
     :param password: mysql password
     :param init_fun: initialization function
     :param reset: whether the connection should be reset or not
-    :param use_tls: TLS encryption option
+    :param use_tls: TLS encryption option. Valid options are: True (required),
+                    False (required no TLS), None (TLS prefered, default),
+                    dict (Manually specify values per
+                    https://dev.mysql.com/doc/refman/5.7/en/connection-options.html
+                        #encrypted-connection-options).
     """
     if not hasattr(conn, 'connection') or reset:
         host = host if host is not None else config['database.host']
@@ -83,6 +118,29 @@ def conn(host=None, user=None, password=None, init_fun=None, reset=False, use_tl
         use_tls = use_tls if use_tls is not None else config['database.use_tls']
         conn.connection = Connection(host, user, password, None, init_fun, use_tls)
     return conn.connection
+
+
+class EmulatedCursor:
+    """acts like a cursor"""
+    def __init__(self, data):
+        self._data = data
+        self._iter = iter(self._data)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return next(self._iter)
+
+    def fetchall(self):
+        return self._data
+
+    def fetchone(self):
+        return next(self._iter)
+
+    @property
+    def rowcount(self):
+        return len(self._data)
 
 
 class Connection:
@@ -101,6 +159,7 @@ class Connection:
     """
 
     def __init__(self, host, user, password, port=None, init_fun=None, use_tls=None):
+        host_input, host = (host, get_host_hook(host))
         if ':' in host:
             # the port in the hostname overrides the port argument
             host, port = host.split(':')
@@ -111,15 +170,17 @@ class Connection:
         if use_tls is not False:
             self.conn_info['ssl'] = use_tls if isinstance(use_tls, dict) else {'ssl': {}}
         self.conn_info['ssl_input'] = use_tls
+        self.conn_info['host_input'] = host_input
         self.init_fun = init_fun
         print("Connecting {user}@{host}:{port}".format(**self.conn_info))
         self._conn = None
-        self.connect()
+        self._query_cache = None
+        connect_host_hook(self)
         if self.is_connected:
             logger.info("Connected {user}@{host}:{port}".format(**self.conn_info))
             self.connection_id = self.query('SELECT connection_id()').fetchone()[0]
         else:
-            raise errors.ConnectionError('Connection failed.')
+            raise errors.LostConnectionError('Connection failed.')
         self._in_transaction = False
         self.schemas = dict()
         self.dependencies = Dependencies(self)
@@ -133,48 +194,60 @@ class Connection:
             connected=connected, **self.conn_info)
 
     def connect(self):
-        """
-        Connects to the database server.
-        """
-        ssl_input = self.conn_info.pop('ssl_input')
+        """ Connect to the database server."""
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', '.*deprecated.*')
             try:
                 self._conn = client.connect(
                     init_command=self.init_fun,
                     sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
-                             "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
+                             "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
                     charset=config['connection.charset'],
-                    **self.conn_info)
+                    **{k: v for k, v in self.conn_info.items()
+                       if k not in ['ssl_input', 'host_input']})
             except client.err.InternalError:
-                if ssl_input is None:
-                    self.conn_info.pop('ssl')
                 self._conn = client.connect(
                     init_command=self.init_fun,
                     sql_mode="NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,"
-                             "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION",
+                             "STRICT_ALL_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
                     charset=config['connection.charset'],
-                    **self.conn_info)
-        self.conn_info['ssl_input'] = ssl_input
+                    **{k: v for k, v in self.conn_info.items()
+                       if not(k in ['ssl_input', 'host_input'] or
+                              k == 'ssl' and self.conn_info['ssl_input'] is None)})
         self._conn.autocommit(True)
+
+    def set_query_cache(self, query_cache=None):
+        """
+        When query_cache is not None, the connection switches into the query caching mode, which entails:
+        1. Only SELECT queries are allowed.
+        2. The results of queries are cached under the path indicated by dj.config['query_cache']
+        3. query_cache is a string that differentiates different cache states.
+        :param query_cache: a string to initialize the hash for query results
+        """
+        self._query_cache = query_cache
+
+    def purge_query_cache(self):
+        """ Purges all query cache. """
+        if 'query_cache' in config and isinstance(config['query_cache'], str) and \
+                pathlib.Path(config['query_cache']).is_dir():
+            path_iter = pathlib.Path(config['query_cache']).glob('**/*')
+            for path in path_iter:
+                path.unlink()
 
     def close(self):
         self._conn.close()
 
     def register(self, schema):
         self.schemas[schema.database] = schema
+        self.dependencies.clear()
 
     def ping(self):
-        """
-        Pings the connection. Raises an exception if the connection is closed.
-        """
+        """ Ping the connection or raises an exception if the connection is closed. """
         self._conn.ping(reconnect=False)
 
     @property
     def is_connected(self):
-        """
-        Returns true if the object is connected to the database server.
-        """
+        """ Return true if the object is connected to the database server. """
         try:
             self.ping()
         except:
@@ -182,15 +255,15 @@ class Connection:
         return True
 
     @staticmethod
-    def __execute_query(cursor, query, args, cursor_class, suppress_warnings):
+    def _execute_query(cursor, query, args, suppress_warnings):
         try:
             with warnings.catch_warnings():
                 if suppress_warnings:
                     # suppress all warnings arising from underlying SQL library
                     warnings.simplefilter("ignore")
                 cursor.execute(query, args)
-        except client_errors as err:
-            raise translate_query_error(err, query) from None
+        except client.err.Error as err:
+            raise translate_query_error(err, query)
 
     def query(self, query, args=(), *, as_dict=False, suppress_warnings=True, reconnect=None):
         """
@@ -202,24 +275,46 @@ class Connection:
         :param suppress_warnings: If True, suppress all warnings arising from underlying query library
         :param reconnect: when None, get from config, when True, attempt to reconnect if disconnected
         """
+        # check cache first:
+        use_query_cache = bool(self._query_cache)
+        if use_query_cache and not re.match(r"\s*(SELECT|SHOW)", query):
+            raise errors.DataJointError("Only SELECT query are allowed when query caching is on.")
+        if use_query_cache:
+            if not config['query_cache']:
+                raise errors.DataJointError("Provide filepath dj.config['query_cache'] when using query caching.")
+            hash_ = uuid_from_buffer((str(self._query_cache) + re.sub(r'`\$\w+`', '', query)).encode() + pack(args))
+            cache_path = pathlib.Path(config['query_cache']) / str(hash_)
+            try:
+                buffer = cache_path.read_bytes()
+            except FileNotFoundError:
+                pass   # proceed to query the database
+            else:
+                return EmulatedCursor(unpack(buffer))
+
         if reconnect is None:
             reconnect = config['database.reconnect']
-        logger.debug("Executing SQL:" + query[0:300])
+        logger.debug("Executing SQL:" + query[:query_log_max_length])
         cursor_class = client.cursors.DictCursor if as_dict else client.cursors.Cursor
         cursor = self._conn.cursor(cursor=cursor_class)
         try:
-            self.__execute_query(cursor, query, args, cursor_class, suppress_warnings)
+            self._execute_query(cursor, query, args, suppress_warnings)
         except errors.LostConnectionError:
             if not reconnect:
                 raise
             warnings.warn("MySQL server has gone away. Reconnecting to the server.")
-            self.connect()
+            connect_host_hook(self)
             if self._in_transaction:
                 self.cancel_transaction()
-                raise errors.LostConnectionError("Connection was lost during a transaction.") from None
+                raise errors.LostConnectionError("Connection was lost during a transaction.")
             logger.debug("Re-executing")
             cursor = self._conn.cursor(cursor=cursor_class)
-            self.__execute_query(cursor, query, args, cursor_class, suppress_warnings)
+            self._execute_query(cursor, query, args, suppress_warnings)
+
+        if use_query_cache:
+            data = cursor.fetchall()
+            cache_path.write_bytes(pack(data))
+            return EmulatedCursor(data)
+
         return cursor
 
     def get_user(self):

@@ -70,7 +70,7 @@ not have classes declared to interact with it.
 
 So let's start over in this scenario.
 
-You can may use the ``dj.list_schemas`` function (new in DataJoint 0.12.0) to
+You may use the ``dj.list_schemas`` function (new in DataJoint 0.12.0) to
 list the names of database schemas available to you.
 
 .. code-block:: python
@@ -89,9 +89,9 @@ the chosen database schema:
 
 .. code-block:: python
 
-    schema = dj.schema('dimitri_university')
+    schema = dj.Schema('dimitri_university')
 
-If the schema already exists, dj.schema is initialized as usual and you may plot
+If the schema already exists, dj.Schema is initialized as usual and you may plot
 the schema diagram. But instead of seeing class names, you will see the raw
 table names as they appear in the database.
 
@@ -112,13 +112,13 @@ these tables. A similar situation arises when another developer has added new
 tables to the schema but has not yet shared the updated module code with you.
 Then the diagram will show a mixture of class names and database table names.
 
-Now you may use the ``schema.spawn_missing_classes`` method to spawn classes into
+Now you may use the ``spawn_missing_classes`` method to spawn classes into
 the local namespace for any tables missing their classes:
 
 .. code-block:: python
 
     schema.spawn_missing_classes()
-    dj.Di(schema)
+    dj.Diagram(schema)
 
 .. figure:: spawned-classes-ERD.svg
    :align: center
@@ -150,13 +150,13 @@ equivalent to the Python command
     import university as uni
 
 We can mimick this import without having access to ``university.py`` using the
-``create_virtual_module`` function:
+``VirtualModule`` class object:
 
 .. code-block:: python
 
     import datajoint as dj
 
-    uni = dj.create_virtual_module('university.py', 'dimitri_university')
+    uni = dj.VirtualModule('university.py', 'dimitri_university')
 
 *Connecting dimitri@localhost:3306*
 
@@ -165,7 +165,7 @@ the table classes.
 
 .. code-block:: python
 
-    dj.Di(uni)
+    dj.Diagram(uni)
 
 .. figure:: added-example-ERD.svg
    :align: center
@@ -182,14 +182,14 @@ the table classes.
    :align: center
    :alt: query object preview
 
-``dj.create_virtual_module`` takes optional arguments.
+``dj.VirtualModule`` takes optional arguments.
 
 First, ``create_schema=False`` assures that an error is raised when the schema
 does not already exist. Set it to ``True`` if you want to create an empty schema.
 
 .. code-block:: python
 
-    dj.create_virtual_module('what', 'nonexistent')
+    dj.VirtualModule('what', 'nonexistent')
 
 .. code-block:: python
 
@@ -215,7 +215,7 @@ decorator for declaring new tables:
 
 .. code-block:: python
 
-    uni = dj.create_virtual_module('university.py', 'dimitri_university', create_tables=True)
+    uni = dj.VirtualModule('university.py', 'dimitri_university', create_tables=True)
 
 .. code-block:: python
 
@@ -229,7 +229,7 @@ decorator for declaring new tables:
 
 .. code-block:: python
 
-    dj.Di(uni)
+    dj.Diagram(uni)
 
 .. figure:: added-example-ERD.svg
    :align: center

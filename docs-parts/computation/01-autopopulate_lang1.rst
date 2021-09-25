@@ -11,7 +11,7 @@
         """
 
         def make(self, key):
-            img = (test.Image & key).fetch1['image']
+            img = (test.Image & key).fetch1('image')
             key['filtered_image'] = myfilter(img)
             self.insert(key)
 

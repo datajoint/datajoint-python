@@ -21,7 +21,7 @@ The part is subclassed from ``dj.Part`` and does not need the ``@schema`` decora
             """
 
         def make(self, key):
-            image = (Image & key).fetch1['image']
+            image = (Image & key).fetch1('image')
             self.insert1(key)
             count = itertools.count()
             Segmentation.ROI.insert(

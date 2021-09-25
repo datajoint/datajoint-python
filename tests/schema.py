@@ -8,7 +8,7 @@ import datajoint as dj
 import inspect
 from . import PREFIX, CONN_INFO
 
-schema = dj.schema(PREFIX + '_test1', connection=dj.conn(**CONN_INFO))
+schema = dj.Schema(PREFIX + '_test1', connection=dj.conn(**CONN_INFO))
 
 
 @schema
@@ -146,7 +146,7 @@ class Experiment(dj.Imported):
         populate with random data
         """
         from datetime import date, timedelta
-        users = User().fetch()['username']
+        users = [None, None] + list(User().fetch()['username'])
         random.seed('Amazing Seed')
         self.insert(
             dict(key,
@@ -154,7 +154,6 @@ class Experiment(dj.Imported):
                  experiment_date=(date.today() - timedelta(random.expovariate(1 / 30))).isoformat(),
                  username=random.choice(users))
             for experiment_id in range(self.fake_experiments_per_subject))
-
 
 @schema
 class Trial(dj.Imported):
@@ -174,9 +173,7 @@ class Trial(dj.Imported):
         """
 
     def make(self, key):
-        """
-        populate with random data (pretend reading from raw files)
-        """
+        """ populate with random data (pretend reading from raw files) """
         random.seed('Amazing Seed')
         trial = self.Condition()
         for trial_id in range(10):
@@ -322,6 +319,7 @@ class IndexRich(dj.Manual):
     index (first_date, value)
     """
 
+
 #  Schema for issue 656
 @schema
 class ThingA(dj.Manual):
@@ -348,3 +346,96 @@ class ThingC(dj.Manual):
     -> [unique, nullable] ThingB
     """
 
+
+@schema
+class Parent(dj.Lookup):
+    definition = """
+    parent_id: int
+    ---
+    name: varchar(30)
+    """
+    contents = [(1, 'Joe')]
+
+
+@schema
+class Child(dj.Lookup):
+    definition = """
+    -> Parent
+    child_id: int
+    ---
+    name: varchar(30)
+    """
+    contents = [(1, 12, 'Dan')]
+
+# Related to issue #886 (8), #883 (5)
+@schema
+class ComplexParent(dj.Lookup):
+    definition = '\n'.join(['parent_id_{}: int'.format(i+1) for i in range(8)])
+    contents = [tuple(i for i in range(8))]
+
+
+@schema
+class ComplexChild(dj.Lookup):
+    definition = '\n'.join(['-> ComplexParent'] + ['child_id_{}: int'.format(i+1)
+                                                   for i in range(1)])
+    contents = [tuple(i for i in range(9))]
+
+
+@schema
+class SubjectA(dj.Lookup):
+    definition = """
+    subject_id: varchar(32)
+    ---
+    dob : date
+    sex : enum('M', 'F', 'U')
+    """
+    contents = [
+        ('mouse1', '2020-09-01', 'M'),
+        ('mouse2', '2020-03-19', 'F'),
+        ('mouse3', '2020-08-23', 'F')
+    ]
+
+
+@schema
+class SessionA(dj.Lookup):
+    definition = """
+    -> SubjectA
+    session_start_time: datetime
+    ---
+    session_dir=''  : varchar(32)
+    """
+    contents = [
+        ('mouse1', '2020-12-01 12:32:34', ''),
+        ('mouse1', '2020-12-02 12:32:34', ''),
+        ('mouse1', '2020-12-03 12:32:34', ''),
+        ('mouse1', '2020-12-04 12:32:34', '')
+    ]
+
+
+@schema
+class SessionStatusA(dj.Lookup):
+    definition = """
+    -> SessionA
+    ---
+    status: enum('in_training', 'trained_1a', 'trained_1b', 'ready4ephys')
+    """
+    contents = [
+        ('mouse1', '2020-12-01 12:32:34', 'in_training'),
+        ('mouse1', '2020-12-02 12:32:34', 'trained_1a'),
+        ('mouse1', '2020-12-03 12:32:34', 'trained_1b'),
+        ('mouse1', '2020-12-04 12:32:34', 'ready4ephys'),
+    ]
+
+
+@schema
+class SessionDateA(dj.Lookup):
+    definition = """
+    -> SubjectA
+    session_date:  date
+    """
+    contents = [
+        ('mouse1', '2020-12-01'),
+        ('mouse1', '2020-12-02'),
+        ('mouse1', '2020-12-03'),
+        ('mouse1', '2020-12-04')
+    ]

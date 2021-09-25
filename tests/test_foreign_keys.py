@@ -1,4 +1,4 @@
-from nose.tools import assert_equal, assert_false, assert_true, raises
+from nose.tools import assert_equal, assert_false, assert_true
 from datajoint.declare import declare
 
 from . import schema_advanced
@@ -18,7 +18,8 @@ def test_aliased_fk():
     parents = person * parent * link
     parents &= dict(full_name="May K. Hall")
     assert_equal(set(parents.fetch('parent_name')), {'Hanna R. Walters', 'Russel S. James'})
-    person.delete()
+    delete_count = person.delete()
+    assert delete_count == 16
 
 
 def test_describe():

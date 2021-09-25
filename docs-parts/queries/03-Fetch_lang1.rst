@@ -35,6 +35,46 @@ Primary key values
 
 ``KEY`` can also used when returning attribute values as separate variables, such that one of the returned variables contains the entire primary keys.
 
+Sorting and limiting the results
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To sort the result, use the ``order_by`` keyword argument.
+
+.. code-block:: python
+
+    # ascending order:
+    data = query.fetch(order_by='name')
+    # descending order:
+    data = query.fetch(order_by='name desc')  
+    # by name first, year second:
+    data = query.fetch(order_by=('name desc', 'year'))
+    # sort by the primary key:
+    data = query.fetch(order_by='KEY')
+    # sort by name but for same names order by primary key:
+    data = query.fetch(order_by=('name', 'KEY desc'))
+
+The ``order_by`` argument can be a string specifying the attribute to sort by. By default the sort is in ascending order. Use ``'attr desc'`` to sort in descending order by attribute ``attr``.  The value can also be a sequence of strings, in which case, the sort performed on all the attributes jointly in the order specified.
+
+The special attribute name ``'KEY'`` represents the primary key attributes in order that they appear in the index. Otherwise, this name can be used as any other argument.
+
+If an attribute happens to be a SQL reserved word, it needs to be enclosed in backquotes.  For example:
+
+.. code-block:: python
+
+    data = query.fetch(order_by='`select` desc')
+
+The ``order_by`` value is eventually passed  to the ``ORDER BY`` `clause <https://dev.mysql.com/doc/refman/5.7/en/order-by-optimization.html>`_.
+
+Similarly, the ``limit`` and ``offset`` arguments can be used to limit the result to a subset of entities.
+
+For example, one could do the following:
+
+.. code-block:: python
+
+    data = query.fetch(order_by='name', limit=10, offset=5)
+
+Note that an ``offset`` cannot be used without specifying a ``limit`` as well. 
+
 Usage with Pandas
 ~~~~~~~~~~~~~~~~~
 
@@ -47,7 +87,7 @@ For example:
     import pandas as pd
     frame = pd.DataFrame(tab.fetch())
 
-Calling ``fetch()`` with the argument ``format="frame"`` returns results as ``pandas.DataFrame`` objects with no need for conversion.
+Calling ``fetch()`` with the argument ``format="frame"`` returns results as ``pandas.DataFrame`` objects indexed by the table's primary key attributes.
 
 .. code-block:: python
 

@@ -1,10 +1,32 @@
-from nose.tools import assert_true, assert_false, assert_equal, assert_list_equal, raises
+from nose.tools import assert_true, raises, assert_list_equal
 from .schema import *
+from datajoint.dependencies import unite_master_parts
+
+
+def test_unite_master_parts():
+    assert_list_equal(unite_master_parts(
+        ['`s`.`a`', '`s`.`a__q`', '`s`.`b`', '`s`.`c`', '`s`.`c__q`', '`s`.`b__q`', '`s`.`d`', '`s`.`a__r`']),
+        ['`s`.`a`', '`s`.`a__q`', '`s`.`a__r`', '`s`.`b`', '`s`.`b__q`', '`s`.`c`', '`s`.`c__q`', '`s`.`d`'])
+    assert_list_equal(unite_master_parts(
+        [
+            '`cells`.`cell_analysis_method`',
+            '`cells`.`cell_analysis_method_task_type`',
+            '`cells`.`cell_analysis_method_users`',
+            '`cells`.`favorite_selection`',
+            '`cells`.`cell_analysis_method__cell_selection_params`',
+            '`cells`.`cell_analysis_method__field_detect_params`']),
+        [
+            '`cells`.`cell_analysis_method`',
+            '`cells`.`cell_analysis_method__cell_selection_params`',
+            '`cells`.`cell_analysis_method__field_detect_params`',
+            '`cells`.`cell_analysis_method_task_type`',
+            '`cells`.`cell_analysis_method_users`',
+            '`cells`.`favorite_selection`'
+        ])
 
 
 def test_nullable_dependency():
     """test nullable unique foreign key"""
-
     # Thing C has a nullable dependency on B whose primary key is composite
     a = ThingA()
     b = ThingB()
