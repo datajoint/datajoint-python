@@ -52,8 +52,8 @@ class AutoPopulate:
     def key_source(self):
         """
         :return: the relation whose primary key values are passed, sequentially, to the
-                ``make`` method when populate() is called.
-                The default value is the join of the parent relations.
+                .make method when .populate() is called.
+                The default value is the join of the tables references by the primary key.
                 Users may override to change the granularity or the scope of populate() calls.
         """
         def _rename_attributes(table, props):
@@ -123,9 +123,9 @@ class AutoPopulate:
                  reserve_jobs=False, order="original", limit=None, max_calls=None,
                  display_progress=False, processes=1):
         """
-        rel.populate() calls rel.make(key) for every primary key in self.key_source
-        for which there is not already a tuple in rel.
-        :param restrictions: a list of restrictions each restrict (rel.key_source - target.proj())
+        table.populate() calls table.make(key) for every primary key in self.key_source
+        for which there is not already a tuple in table.
+        :param restrictions: a list of restrictions each restrict (table.key_source - target.proj())
         :param suppress_errors: if True, do not terminate execution.
         :param return_exception_objects: return error objects instead of just error messages
         :param reserve_jobs: if True, reserve jobs to populate in asynchronous fashion
