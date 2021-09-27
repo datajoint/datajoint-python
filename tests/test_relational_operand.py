@@ -1,4 +1,3 @@
-from os import stat
 import random
 import string
 import pandas
@@ -512,6 +511,4 @@ class TestRelational:
         # https://github.com/datajoint/datajoint-python/issues/926
         q1 = IJ & dict(j=2)
         q2 = (IJ & dict(j=2, i=0)) + (IJ & dict(j=2, i=1)) + (IJ & dict(j=2, i=2))
-        x = set(zip(*q1.fetch('i', 'j')))
-        y = set(zip(*q2.fetch('i', 'j')))
-        assert_set_equal(x, y)
+        assert q1.fetch() == q2.fetch()

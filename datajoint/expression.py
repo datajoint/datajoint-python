@@ -625,15 +625,10 @@ class Union(QueryExpression):
         if not arg1.heading.secondary_attributes and not arg2.heading.secondary_attributes:
             # no secondary attributes: use UNION DISTINCT
             fields = arg1.primary_key
-            if isinstance(arg1, Union):
-                sql1 = arg1.make_sql()
-            else:
-                sql1 = arg1.make_sql(fields)
-            if isinstance(arg2, Union):
-                sql2 = arg2.make_sql()
-            else:
-                sql2 = arg2.make_sql(fields)
-            return "({sql1}) UNION ({sql2})".format(sql1=sql1, sql2=sql2)
+            return "({sql1}) UNION ({sql2})".format(
+                sql1=arg1.make_sql() if isinstance(arg1, Union) else arg1.make_sql(fields),
+                sql2=arg2.make_sql() if isinstance(arg2, Union) else arg2.make_sql(fields),
+                )
         # with secondary attributes, use union of left join with antijoin
         fields = self.heading.names
         sql1 = arg1.join(arg2, left=True).make_sql(fields)

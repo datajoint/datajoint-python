@@ -4,7 +4,7 @@
 * Bugfix - Replace use of numpy aliases of built-in types with built-in type. (#938) PR #939
 * Bugfix - `ExternalTable.delete` should not remove row on error (#953) PR #956
 * Bugfix - Fix error handling of remove_object function in `s3.py` (#952) PR #955
-* Bugfix - Fix error when unioning multiple tables (#926) PR #964
+* Bugfix - Fix error when performing a union on multiple tables (#926) PR #964
 
 0.13.2 -- May 7, 2021
 ----------------------
