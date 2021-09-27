@@ -17,28 +17,23 @@ class Folder:
     """
     A Folder instance manipulates a flat folder of objects within an S3-compatible object store
     """
-    def __init__(self, endpoint, bucket, access_key, secret_key, *, secure=False, proxy_server=None, **_):
-        if proxy_server:
-            # from https://docs.min.io/docs/python-client-api-reference
-            http_client = urllib3.ProxyManager(
-                    proxy_server,
-                    timeout=urllib3.Timeout.DEFAULT_TIMEOUT,
-                    cert_reqs="CERT_REQUIRED",
-                    retries=urllib3.Retry(
-                        total=5,
-                        backoff_factor=0.2,
-                        status_forcelist=[500, 502, 503, 504],
-                    )
-                )
-        else:
-            http_client = None
-
+    def __init__(self, endpoint, bucket, access_key, secret_key, *, secure=False,
+                 proxy_server=None, **_):
+        # from https://docs.min.io/docs/python-client-api-reference
         self.client = minio.Minio(
             endpoint,
             access_key=access_key,
             secret_key=secret_key,
             secure=secure,
-            http_client=http_client,
+            http_client= (
+                urllib3.ProxyManager(proxy_server,
+                                     timeout=urllib3.Timeout.DEFAULT_TIMEOUT,
+                                     cert_reqs="CERT_REQUIRED",
+                                     retries=urllib3.Retry(total=5,
+                                                           backoff_factor=0.2,
+                                                           status_forcelist=[500, 502, 503,
+                                                                             504]))
+                if proxy_server else None),
             )
         self.bucket = bucket
         if not self.client.bucket_exists(bucket):
