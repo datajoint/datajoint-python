@@ -17,9 +17,9 @@ logger = logging.getLogger(__name__)
 
 # --- helper functions for multiprocessing --
 
-def _initializer(table, jobs, populate_kwargs):
+def _initialize_populate(table, jobs, populate_kwargs):
     """
-    Process initializer for mulitprocessing.
+    Initialize the process for mulitprocessing.
     Saves the unpickled copy of the table to the current process and reconnects.
     """
     process = mp.current_process()
@@ -159,9 +159,9 @@ class AutoPopulate:
 
         logger.info('Found %d keys to populate' % len(keys))
 
-        if max_calls is not None:
-            keys = keys[:max_calls]
+        keys = keys[:max_calls]
         nkeys = len(keys)
+        
         if processes > 1:
             processes = min(processes, nkeys, mp.cpu_count())
 
@@ -179,7 +179,7 @@ class AutoPopulate:
             # spawn multiple processes
             self.connection.close()  # disconnect parent process from MySQL server
             del self.connection._conn.ctx  # SSLContext is not pickleable
-            with mp.Pool(processes, _initializer, (self, populate_kwargs)) as pool:
+            with mp.Pool(processes, _initialize_populate, (self, populate_kwargs)) as pool:
                 if display_progress:
                     with tqdm(desc="Processes: ", total=nkeys) as pbar:
                         for error in pool.imap(_call_populate1, keys, chunksize=1):
@@ -201,12 +201,12 @@ class AutoPopulate:
 
     def _populate1(self, key, jobs, suppress_errors, return_exception_objects):
         """
-        populates table for one key, calling self.make inside a transaction
+        populates table for one source key, calling self.make inside a transaction.
         :param jobs: the jobs table or None if not reserve_jobs
         :param key: dict specifying job to populate
         :param suppress_errors: bool if errors should be suppressed and returned
         :param return_exception_objects: if True, errors must be returned as objects
-        :return: key and error when suppress_errors=True, otherwise None
+        :return: (key, error) when suppress_errors=True, otherwise None
         """
         make = self._make_tuples if hasattr(self, '_make_tuples') else self.make
 
@@ -248,8 +248,8 @@ class AutoPopulate:
 
     def progress(self, *restrictions, display=True):
         """
-        report progress of populating the table
-        :return: remaining, total -- tuples to be populated
+        Report the progress of populating the table.
+        :return: (remaining, total) -- numbers of tuples to be populated
         """
         todo = self._jobs_to_do(restrictions)
         total = len(todo)
