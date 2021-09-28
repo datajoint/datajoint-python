@@ -25,7 +25,7 @@ class Folder:
             access_key=access_key,
             secret_key=secret_key,
             secure=secure,
-            http_client= (
+            http_client=(
                 urllib3.ProxyManager(proxy_server,
                                      timeout=urllib3.Timeout.DEFAULT_TIMEOUT,
                                      cert_reqs="CERT_REQUIRED",
