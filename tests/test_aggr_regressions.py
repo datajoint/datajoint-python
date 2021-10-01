@@ -103,3 +103,16 @@ def test_issue558_part2():
     d = dict(id=3, id2=5)
     assert_equal(len(X & d), len((X & d).proj(id2='3')))
 
+
+def test_union_join():
+    # https://github.com/datajoint/datajoint-python/issues/930
+    A.insert(zip([100, 200, 300, 400, 500, 600]))
+    B.insert([(100, 11), (200, 22), (300, 33), (400, 44)])
+    q1 = B & 'id < 300'
+    q2 = B & 'id > 300'
+
+    expected_data = [{'id': 0, 'id2': 5}, {'id': 1, 'id2': 6}, {'id': 2, 'id2': 7},
+                     {'id': 3, 'id2': 8}, {'id': 4, 'id2': 9}, {'id': 100, 'id2': 11},
+                     {'id': 200, 'id2': 22}, {'id': 400, 'id2': 44}]
+
+    assert ((q1 + q2) * A).fetch(as_dict=True) == expected_data
