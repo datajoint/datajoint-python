@@ -10,3 +10,4 @@ minio>=7.0.0
 matplotlib
 cryptography
 otumat
+urllib3
