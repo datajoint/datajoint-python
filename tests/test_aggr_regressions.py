@@ -6,9 +6,6 @@ import itertools
 from nose.tools import assert_equal, raises
 import datajoint as dj
 from . import PREFIX, CONN_INFO
-import datetime
-import numpy as np
-import uuid
 from .schema_uuid import Topic, Item, top_level_namespace_id
 schema = dj.Schema(PREFIX + '_aggr_regress', connection=dj.conn(**CONN_INFO))
 
