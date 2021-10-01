@@ -292,12 +292,9 @@ class TestFetch:
     def test_fetch_group_by(self):
         # https://github.com/datajoint/datajoint-python/issues/914
 
-        expected_data = [{'parent_id': 1}]
-        fetched_data = Parent().fetch('KEY', order_by='name')
-        print(fetched_data)
-        assert fetched_data == expected_data
+        assert Parent().fetch('KEY', order_by='name') == [{'parent_id': 1}]
 
-    def test_dj_U_DISTINCT(self):
+    def test_dj_u_distinct(self):
         # Test developed to see if removing DISTINCT from the select statement
         # generation breakes the dj.U universal set imlementation
 

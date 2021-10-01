@@ -104,7 +104,7 @@ class QueryExpression:
         return '' if not self.restriction else ' WHERE(%s)' % ')AND('.join(
             str(s) for s in self.restriction)
 
-    def make_sql(self, fields=None, distinct=True):
+    def make_sql(self, fields=None):
         """
         Make the SQL SELECT statement.
         :param fields: used to explicitly set the select attributes
