@@ -443,7 +443,7 @@ class QueryExpression:
         """:return: number of elements in the result set e.g. ``len(q1)``."""
         return self.connection.query(
             'SELECT {select_} FROM {from_}{where}'.format(
-                select_=('DISTINCT count(*)' if any(self._left)
+                select_=('count(*)' if any(self._left)
                          else 'count(DISTINCT {fields})'.format(fields=self.heading.as_sql(
                             self.primary_key, include_aliases=False))),
                 from_=self.from_clause(),
