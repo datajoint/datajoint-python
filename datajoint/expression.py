@@ -439,17 +439,11 @@ class QueryExpression:
 
     def __len__(self):
         """:return: number of elements in the result set e.g. ``len(q1)``."""
-        try:
-            if self._left[0]:
-                return self.connection.query(
-                    'SELECT distinct count(*) FROM {from_}{where}'.format(
-                        from_=self.from_clause(),
-                        where=self.where_clause())).fetchone()[0]
-        except IndexError:
-            pass
         return self.connection.query(
-            'SELECT count(DISTINCT {fields}) FROM {from_}{where}'.format(
-                fields=self.heading.as_sql(self.primary_key, include_aliases=False),
+            'SELECT {select_} FROM {from_}{where}'.format(
+                select_=('DISTINCT count(*)' if any(self._left)
+                         else 'count(DISTINCT {fields})'.format(fields=self.heading.as_sql(
+                            self.primary_key, include_aliases=False))),
                 from_=self.from_clause(),
                 where=self.where_clause())).fetchone()[0]
 
