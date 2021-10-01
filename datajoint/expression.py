@@ -266,9 +266,11 @@ class QueryExpression:
             - join_attributes)
         # need subquery if any of the join attributes are derived
         need_subquery1 = (need_subquery1 or isinstance(self, Aggregation) or
-                          any(n in self.heading.new_attributes for n in join_attributes))
+                          any(n in self.heading.new_attributes for n in join_attributes)
+                          or isinstance(self, Union))
         need_subquery2 = (need_subquery2 or isinstance(other, Aggregation) or
-                          any(n in other.heading.new_attributes for n in join_attributes))
+                          any(n in other.heading.new_attributes for n in join_attributes)
+                          or isinstance(self, Union))
         if need_subquery1:
             self = self.make_subquery()
         if need_subquery2:
