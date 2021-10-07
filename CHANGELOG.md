@@ -7,6 +7,7 @@
 * Bugfix - `ExternalTable.delete` should not remove row on error (#953) PR #956
 * Bugfix - Fix error handling of remove_object function in `s3.py` (#952) PR #955
 * Bugfix - Fix sql code generation to comply with sql mode `ONLY_FULL_GROUP_BY` (#916) PR #965
+* Bugfix - Fix count for left-joined `QueryExpressions` (#951) PR #966
 * Bugfix - Fix assertion error when performing a union into a join (#930) PR #967
 
 ### 0.13.2 -- May 7, 2021
