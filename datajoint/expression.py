@@ -444,8 +444,10 @@ class QueryExpression:
     def __len__(self):
         """:return: number of elements in the result set e.g. ``len(q1)``."""
         return self.connection.query(
-            'SELECT count(DISTINCT {fields}) FROM {from_}{where}'.format(
-                fields=self.heading.as_sql(self.primary_key, include_aliases=False),
+            'SELECT {select_} FROM {from_}{where}'.format(
+                select_=('count(*)' if any(self._left)
+                         else 'count(DISTINCT {fields})'.format(fields=self.heading.as_sql(
+                            self.primary_key, include_aliases=False))),
                 from_=self.from_clause(),
                 where=self.where_clause())).fetchone()[0]
 
@@ -558,7 +560,7 @@ class Aggregation(QueryExpression):
         if inspect.isclass(group) and issubclass(group, QueryExpression):
             group = group()   # instantiate if a class
         assert isinstance(group, QueryExpression)
-        if keep_all_rows and len(group.support) > 1:
+        if keep_all_rows and len(group.support) > 1 or group.heading.new_attributes:
             group = group.make_subquery()  # subquery if left joining a join
         join = arg.join(group, left=keep_all_rows)  # reuse the join logic
         result = cls()

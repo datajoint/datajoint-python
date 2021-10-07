@@ -3,10 +3,11 @@ Regression tests for issues 386, 449, 484, and 558 — all related to processing
 """
 
 import itertools
-from nose.tools import assert_equal, raises
+from nose.tools import assert_equal
 import datajoint as dj
 from . import PREFIX, CONN_INFO
-
+import uuid
+from .schema_uuid import Topic, Item, top_level_namespace_id
 schema = dj.Schema(PREFIX + '_aggr_regress', connection=dj.conn(**CONN_INFO))
 
 # --------------- ISSUE 386 -------------------
@@ -102,6 +103,17 @@ def test_issue558_part1():
 def test_issue558_part2():
     d = dict(id=3, id2=5)
     assert_equal(len(X & d), len((X & d).proj(id2='3')))
+
+
+def test_left_join_len():
+    Topic().add('jeff')
+    Item.populate()
+    Topic().add('jeff2')
+    Topic().add('jeff3')
+    q = Topic.join(Item - dict(topic_id=uuid.uuid5(top_level_namespace_id, 'jeff')),
+                   left=True)
+    qf = q.fetch()
+    assert len(q) == len(qf)
 
 
 def test_union_join():
