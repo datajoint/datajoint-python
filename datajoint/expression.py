@@ -558,7 +558,7 @@ class Aggregation(QueryExpression):
         if inspect.isclass(group) and issubclass(group, QueryExpression):
             group = group()   # instantiate if a class
         assert isinstance(group, QueryExpression)
-        if keep_all_rows and len(group.support) > 1:
+        if keep_all_rows and len(group.support) > 1 or group.heading.new_attributes:
             group = group.make_subquery()  # subquery if left joining a join
         join = arg.join(group, left=keep_all_rows)  # reuse the join logic
         result = cls()

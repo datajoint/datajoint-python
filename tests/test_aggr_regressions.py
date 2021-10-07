@@ -3,7 +3,7 @@ Regression tests for issues 386, 449, 484, and 558 — all related to processing
 """
 
 import itertools
-from nose.tools import assert_equal, raises
+from nose.tools import assert_equal
 import datajoint as dj
 from . import PREFIX, CONN_INFO
 import uuid
