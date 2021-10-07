@@ -313,13 +313,9 @@ class TestFetch:
         # Use dj.U to create a list of unique contrast and brightness combinations
         result = dj.U('contrast', 'brightness') & test_query
         expected_result = [{'contrast': 2, 'brightness': 3},
-                          {'contrast': 3, 'brightness': 2},
-                          {'contrast': 5, 'brightness': 5}]
+                           {'contrast': 3, 'brightness': 2},
+                           {'contrast': 5, 'brightness': 5}]
 
-        feched_result = result.fetch(as_dict=True)
-
-        # Cleanup table
-        Stimulus.delete()
-
-        # Test to see if the repeated row was removed in the results
-        assert feched_result == expected_result
+        fetched_result = result.fetch(as_dict=True, order_by=('contrast', 'brightness'))
+        Stimulus.delete_quick()
+        assert fetched_result == expected_result
