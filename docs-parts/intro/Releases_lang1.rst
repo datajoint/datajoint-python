@@ -8,6 +8,7 @@
 * Bugfix - Fix sql code generation to comply with sql mode ``ONLY_FULL_GROUP_BY`` (#916) PR #965
 * Bugfix - Fix count for left-joined ``QueryExpressions`` (#951) PR #966
 * Bugfix - Fix assertion error when performing a union into a join (#930) PR #967
+* Bugfix - Fix regression issue with `DISTINCT` clause and `GROUP_BY` (#914) PR #963
 
 0.13.2 -- May 7, 2021
 ----------------------
