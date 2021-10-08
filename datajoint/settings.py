@@ -137,7 +137,8 @@ class Config(collections.MutableMapping):
         spec['subfolding'] = spec.get('subfolding', DEFAULT_SUBFOLDING)
         spec_keys = {  # REQUIRED in uppercase and allowed in lowercase
             'file': ('PROTOCOL', 'LOCATION', 'subfolding', 'stage'),
-            's3': ('PROTOCOL', 'ENDPOINT', 'BUCKET', 'ACCESS_KEY', 'SECRET_KEY', 'LOCATION', 'secure', 'subfolding', 'stage')}
+            's3': ('PROTOCOL', 'ENDPOINT', 'BUCKET', 'ACCESS_KEY', 'SECRET_KEY', 'LOCATION',
+                   'secure', 'subfolding', 'stage', 'proxy_server')}
 
         try:
             spec_keys = spec_keys[spec.get('protocol', '').lower()]

@@ -44,6 +44,9 @@ class QueryExpression:
     _heading = None
     _support = None
 
+    # If the query will be using distinct
+    _distinct = False
+
     @property
     def connection(self):
         """ a dj.Connection object """
@@ -106,9 +109,8 @@ class QueryExpression:
         Make the SQL SELECT statement.
         :param fields: used to explicitly set the select attributes
         """
-        distinct = self.heading.names == self.primary_key
         return 'SELECT {distinct}{fields} FROM {from_}{where}'.format(
-            distinct="DISTINCT " if distinct else "",
+            distinct="DISTINCT " if self._distinct else "",
             fields=self.heading.as_sql(fields or self.heading.names),
             from_=self.from_clause(), where=self.where_clause())
 
@@ -266,9 +268,11 @@ class QueryExpression:
             - join_attributes)
         # need subquery if any of the join attributes are derived
         need_subquery1 = (need_subquery1 or isinstance(self, Aggregation) or
-                          any(n in self.heading.new_attributes for n in join_attributes))
+                          any(n in self.heading.new_attributes for n in join_attributes)
+                          or isinstance(self, Union))
         need_subquery2 = (need_subquery2 or isinstance(other, Aggregation) or
-                          any(n in other.heading.new_attributes for n in join_attributes))
+                          any(n in other.heading.new_attributes for n in join_attributes)
+                          or isinstance(self, Union))
         if need_subquery1:
             self = self.make_subquery()
         if need_subquery2:
@@ -440,8 +444,10 @@ class QueryExpression:
     def __len__(self):
         """:return: number of elements in the result set e.g. ``len(q1)``."""
         return self.connection.query(
-            'SELECT count(DISTINCT {fields}) FROM {from_}{where}'.format(
-                fields=self.heading.as_sql(self.primary_key, include_aliases=False),
+            'SELECT {select_} FROM {from_}{where}'.format(
+                select_=('count(*)' if any(self._left)
+                         else 'count(DISTINCT {fields})'.format(fields=self.heading.as_sql(
+                            self.primary_key, include_aliases=False))),
                 from_=self.from_clause(),
                 where=self.where_clause())).fetchone()[0]
 
@@ -554,7 +560,7 @@ class Aggregation(QueryExpression):
         if inspect.isclass(group) and issubclass(group, QueryExpression):
             group = group()   # instantiate if a class
         assert isinstance(group, QueryExpression)
-        if keep_all_rows and len(group.support) > 1:
+        if keep_all_rows and len(group.support) > 1 or group.heading.new_attributes:
             group = group.make_subquery()  # subquery if left joining a join
         join = arg.join(group, left=keep_all_rows)  # reuse the join logic
         result = cls()
@@ -718,6 +724,7 @@ class U:
         if not isinstance(other, QueryExpression):
             raise DataJointError('Set U can only be restricted with a QueryExpression.')
         result = copy.copy(other)
+        result._distinct = True
         result._heading = result.heading.set_primary_key(self.primary_key)
         result = result.proj()
         return result
