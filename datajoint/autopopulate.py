@@ -96,7 +96,7 @@ class AutoPopulate:
 
     def populate(self, *restrictions, suppress_errors=False, return_exception_objects=False,
                  reserve_jobs=False, order="original", limit=None, max_calls=None,
-                 display_progress=False):
+                 display_progress=False, **kwargs):
         """
         rel.populate() calls rel.make(key) for every primary key in self.key_source
         for which there is not already a tuple in rel.
@@ -108,6 +108,7 @@ class AutoPopulate:
         :param display_progress: if True, report progress_bar
         :param limit: if not None, checks at most that many keys
         :param max_calls: if not None, populates at max that many keys
+        :param kwargs: additional custom keyword arguments that will be passed down to each make() call
         """
         if self.connection.in_transaction:
             raise DataJointError('Populate cannot be called during a transaction.')
@@ -150,7 +151,10 @@ class AutoPopulate:
                     call_count += 1
                     self.__class__._allow_insert = True
                     try:
-                        make(dict(key))
+                        if kwargs:
+                            make(dict(key), **kwargs)
+                        else:
+                            make(dict(key))
                     except (KeyboardInterrupt, SystemExit, Exception) as error:
                         try:
                             self.connection.cancel_transaction()
