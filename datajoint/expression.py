@@ -309,9 +309,9 @@ class QueryExpression:
         Each attribute name can only be used once.
         """
         # new attributes in parentheses are included again with the new name without removing original
-        duplication_pattern = re.compile(r'\s*\(\s*(?P<name>[a-z][a-z_0-9]*)\s*\)\s*$')
+        duplication_pattern = re.compile(r'\s*\(\s*(?P<name>\w+)\s*\)\s*$')
         # attributes without parentheses renamed
-        rename_pattern = re.compile(r'\s*(?P<name>[a-z][a-z_0-9]*)\s*$')
+        rename_pattern = re.compile(r'\s*(?P<name>\w+)\s*$')
         replicate_map = {k: m.group('name')
                          for k, m in ((k, duplication_pattern.match(v)) for k, v in named_attributes.items()) if m}
         rename_map = {k: m.group('name')
