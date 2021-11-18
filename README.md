@@ -108,7 +108,7 @@ A number of labs are currently adopting DataJoint and we are quickly getting the
 PY_VER=3.7
 ALPINE_VER=3.10
 MYSQL_VER=5.7
-MINIO_VER=RELEASE.2019-09-26T19-42-35Z
+MINIO_VER=RELEASE.2021-09-03T03-56-13Z
 UID=1000
 GID=1000
 ```
@@ -134,6 +134,8 @@ GID=1000
 * Launch local terminal
 * `export` environment variables in shell
 * Add entry in `/etc/hosts` for `127.0.0.1 fakeservices.datajoint.io`
+
+
 
 
 ### Launch Jupyter Notebook for Interactive Use
