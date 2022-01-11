@@ -15,8 +15,6 @@ from .schema import (Experiment, TTest3, Trial, Ephys, Child, Parent, SubjectA, 
 
 from . import PREFIX, CONN_INFO
 
-from time import sleep
-
 
 def setup():
     """
