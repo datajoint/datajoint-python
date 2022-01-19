@@ -1,5 +1,5 @@
 
 .. code-block:: python
 
-    # plot the ERD with tables Genome and Species from module seq.
-    (dj.ERD(seq.Genome) + dj.ERD(seq.Species)).draw()
+    # plot the Diagram with tables Genome and Species from module seq.
+    (dj.Diagram(seq.Genome) + dj.Diagram(seq.Species)).draw()
