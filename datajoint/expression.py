@@ -9,6 +9,7 @@ from .fetch import Fetch, Fetch1
 from .preview import preview, repr_html
 from .condition import AndList, Not, \
     make_condition, assert_join_compatibility, extract_column_names, PromiscuousOperand
+from .declare import CONSTANT_LITERALS
 
 logger = logging.getLogger(__name__)
 
@@ -313,9 +314,9 @@ class QueryExpression:
         Each attribute name can only be used once.
         """
         # new attributes in parentheses are included again with the new name without removing original
-        duplication_pattern = re.compile(r'\s*\(\s*(?P<name>[a-z][a-z_0-9]*)\s*\)\s*$')
+        duplication_pattern = re.compile(fr'^\s*\(\s*(?!{"|".join(CONSTANT_LITERALS)})(?P<name>[a-zA-Z_]\w*)\s*\)\s*$')
         # attributes without parentheses renamed
-        rename_pattern = re.compile(r'\s*(?P<name>[a-z][a-z_0-9]*)\s*$')
+        rename_pattern = re.compile(fr'^\s*(?!{"|".join(CONSTANT_LITERALS)})(?P<name>[a-zA-Z_]\w*)\s*$')
         replicate_map = {k: m.group('name')
                          for k, m in ((k, duplication_pattern.match(v)) for k, v in named_attributes.items()) if m}
         rename_map = {k: m.group('name')
