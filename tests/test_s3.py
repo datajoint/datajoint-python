@@ -70,7 +70,7 @@ class TestS3:
 
         # Apply our new minio client which has a user that does not exist
         schema.external['share'].s3.client = Minio(
-            'minio:9000',
+            S3_CONN_INFO['endpoint'],
             access_key='jeffjeff',
             secret_key='jeffjeff',
             secure=False)

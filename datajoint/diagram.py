@@ -296,7 +296,7 @@ else:
                 node.set_style('filled')
 
             for edge in dot.get_edges():
-                # see http://www.graphviz.org/content/attrs
+                # see https://graphviz.org/doc/info/attrs.html
                 src = edge.get_source().strip('"')
                 dest = edge.get_destination().strip('"')
                 props = graph.get_edge_data(src, dest)

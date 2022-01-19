@@ -6,6 +6,7 @@ import decimal
 import pandas
 import warnings
 from . import schema
+from .schema import Parent, Stimulus
 import datajoint as dj
 import os
 
@@ -287,3 +288,34 @@ class TestFetch:
 
         # reset cache directory state (will fail if purge was unsuccessful)
         os.rmdir(os.path.expanduser('~/dj_query_cache'))
+
+    def test_fetch_group_by(self):
+        # https://github.com/datajoint/datajoint-python/issues/914
+
+        assert Parent().fetch('KEY', order_by='name') == [{'parent_id': 1}]
+
+    def test_dj_u_distinct(self):
+        # Test developed to see if removing DISTINCT from the select statement
+        # generation breakes the dj.U universal set imlementation
+
+        # Contents to be inserted
+        contents = [
+            (1,2,3),
+            (2,2,3),
+            (3,3,2),
+            (4,5,5)
+        ]
+        Stimulus.insert(contents)
+
+        # Query the whole table
+        test_query = Stimulus()
+
+        # Use dj.U to create a list of unique contrast and brightness combinations
+        result = dj.U('contrast', 'brightness') & test_query
+        expected_result = [{'contrast': 2, 'brightness': 3},
+                           {'contrast': 3, 'brightness': 2},
+                           {'contrast': 5, 'brightness': 5}]
+
+        fetched_result = result.fetch(as_dict=True, order_by=('contrast', 'brightness'))
+        Stimulus.delete_quick()
+        assert fetched_result == expected_result
