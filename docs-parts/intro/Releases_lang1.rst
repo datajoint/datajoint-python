@@ -1,5 +1,6 @@
 0.13.3 -- TBD
 ----------------------
+* Bugfix - Fix `unite_master_parts` not handling `dj.Lookup` tables.
 * Add - Expose proxy feature for S3 external stores (#961) PR #962
 * Bugfix - Dependencies not properly loaded on populate. (#902) PR #919
 * Bugfix - Replace use of numpy aliases of built-in types with built-in type. (#938) PR #939
