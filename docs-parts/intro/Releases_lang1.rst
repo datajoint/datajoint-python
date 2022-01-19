@@ -6,7 +6,7 @@
 * Add - Expose proxy feature for S3 external stores (#961) PR #962
 * Bugfix - Dependencies not properly loaded on populate. (#902) PR #919
 * Bugfix - Replace use of numpy aliases of built-in types with built-in type. (#938) PR #939
-* Bugfix - Deletes and drops must include the master of each part. (#151 and #374) PR #957
+* Bugfix - Deletes and drops must include the master of each part. (#151, #374) PR #957
 * Bugfix - `ExternalTable.delete` should not remove row on error (#953) PR #956
 * Bugfix - Fix error handling of remove_object function in `s3.py` (#952) PR #955
 * Bugfix - Fix sql code generation to comply with sql mode ``ONLY_FULL_GROUP_BY`` (#916) PR #965
@@ -141,7 +141,7 @@
 
 0.11.1 -- Nov 15, 2018
 ----------------------
-* Fix ordering of attributes in proj (#483 and #516)
+* Fix ordering of attributes in proj (#483, #516)
 * Prohibit direct insert into auto-populated tables (#511)
 
 0.11.0 -- Oct 25, 2018
