@@ -18,7 +18,7 @@ def unite_master_parts(lst):
     """
     for i in range(2, len(lst)):
         name = lst[i]
-        match = re.match(r'(?P<master>`\w+`.`\w+)__\w+`', name)
+        match = re.match(r'(?P<master>`\w+`.`#?\w+)__\w+`', name)
         if match:  # name is a part table
             master = match.group('master')
             for j in range(i-1, -1, -1):
