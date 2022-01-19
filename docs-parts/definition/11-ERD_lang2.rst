@@ -1,4 +1,4 @@
 
 .. code-block:: python
 
-    dj.ERD(seq.Genome).draw()
+    dj.Diagram(seq.Genome).draw()
