@@ -1,6 +1,7 @@
 ## Release notes
 
 ### 0.13.3 -- TBD
+* Bugfix - Fix error in listing ancestors, descendants with part tables.
 * Bugfix - Fix Python 3.10 compatibility (#983) PR #972
 * Bugfix - Allow renaming non-conforming attributes in proj (#982) PR #972
 * Add - Expose proxy feature for S3 external stores (#961) PR #962
