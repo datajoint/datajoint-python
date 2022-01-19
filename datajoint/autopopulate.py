@@ -26,10 +26,10 @@ class AutoPopulate:
     @property
     def key_source(self):
         """
-        :return: the query expression whose primary key values are passed, sequentially, to the
-                ``make`` method when populate() is called.
-                The default value is the join of the parent relations.
-                Users may override to change the granularity or the scope of populate() calls.
+        :return: the query expression that yields primary key values to be passed,
+        sequentially, to the ``make`` method when populate() is called.
+        The default value is the join of the parent relations.
+        Users may override to change the granularity or the scope of populate() calls.
         """
         def _rename_attributes(table, props):
             return (table.proj(
