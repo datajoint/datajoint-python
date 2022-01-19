@@ -1,5 +1,5 @@
 from pathlib import Path, PurePosixPath, PureWindowsPath
-from collections import Mapping
+from collections.abc import Mapping
 from tqdm import tqdm
 from .settings import config
 from .errors import DataJointError, MissingExternalFile
