@@ -285,7 +285,7 @@ class Table(QueryExpression):
         :param skip_duplicates: If True, silently skip duplicate inserts.
         :param ignore_extra_fields: If False, fields that are not in the heading raise error.
         :param allow_direct_insert: applies only in auto-populated tables.
-    If False (default), insert are allowed only from inside the make callback.
+        If False (default), insert are allowed only from inside the make callback.
         Example::
         >>> relation.insert([
         >>>     dict(subject_id=7, species="mouse", date_of_birth="2014-09-01"),
