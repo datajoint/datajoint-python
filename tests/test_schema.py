@@ -124,7 +124,8 @@ def test_list_tables():
     # https://github.com/datajoint/datajoint-python/issues/838
     assert(set(['reserved_word', '#l', '#a', '__d', '__b', '__b__c', '__e', '__e__f',
                 '#outfit_launch', '#outfit_launch__outfit_piece', '#i_j', '#j_i',
-                '#t_test_update', '#data_a', '#data_b', 'f', '#argmax_test'
+                '#t_test_update', '#data_a', '#data_b', 'f', '#argmax_test',
+                '#website', 'profile', 'profile__website'
                 ]) == set(schema_simple.list_tables()))
 
 

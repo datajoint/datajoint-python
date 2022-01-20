@@ -173,9 +173,10 @@ class Part(UserTable):
         unless force is True, prohibits direct deletes from parts.
         """
         if force:
-            super().delete()
+            super().delete(force_parts=True)
         else:
-            raise DataJointError('Cannot delete from a Part directly.  Delete from master instead')
+            raise DataJointError(
+                'Cannot delete from a Part directly. Delete from master instead')
 
     def drop(self, force=False):
         """
