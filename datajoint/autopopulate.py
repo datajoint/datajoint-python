@@ -54,7 +54,7 @@ class AutoPopulate:
         :return: the query expression that yields primary key values to be passed,
         sequentially, to the ``make`` method when populate() is called.
         The default value is the join of the parent tables references from the primary key.
-        Subclasses may override they key_source to change the scope or the granularity 
+        Subclasses may override they key_source to change the scope or the granularity
         of the make calls.
         """
         def _rename_attributes(table, props):
