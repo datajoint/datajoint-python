@@ -14,7 +14,7 @@
 * Bugfix - Fix sql code generation to comply with sql mode `ONLY_FULL_GROUP_BY` (#916) PR #965
 * Bugfix - Fix count for left-joined `QueryExpressions` (#951) PR #966
 * Bugfix - Fix assertion error when performing a union into a join (#930) PR #967
-* Update `~jobs.error_stack` from blob to mediumblob
+* Update `~jobs.error_stack` from blob to mediumblob to allow error stacks >64kB in jobs (#984) PR #986
 
 ### 0.13.2 -- May 7, 2021
 * Update `setuptools_certificate` dependency to new name `otumat`
