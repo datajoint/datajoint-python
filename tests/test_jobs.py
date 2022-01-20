@@ -131,7 +131,7 @@ def test_long_error_stack():
     # create long error stack
     STACK_SIZE = 89942  # Does not fit into small blob (should be 64k, but found to be higher)
     long_error_stack = ''.join(random.choice(string.ascii_letters) for _ in range(STACK_SIZE))
-    assert_true(subjects)
+    assert subjects
     table_name = 'fake_table'
 
     key = subjects.fetch('KEY')[0]
