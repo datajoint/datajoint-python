@@ -8,10 +8,35 @@ from tqdm import tqdm
 from .expression import QueryExpression, AndList
 from .errors import DataJointError, LostConnectionError
 import signal
+import multiprocessing as mp
 
 # noinspection PyExceptionInherit,PyCallingNonCallable
 
 logger = logging.getLogger(__name__)
+
+
+# --- helper functions for multiprocessing --
+
+def _initialize_populate(table, jobs, populate_kwargs):
+    """
+    Initialize the process for mulitprocessing.
+    Saves the unpickled copy of the table to the current process and reconnects.
+    """
+    process = mp.current_process()
+    process.table = table
+    process.jobs = jobs
+    process.populate_kwargs = populate_kwargs
+    table.connection.connect()  # reconnect
+
+
+def _call_populate1(key):
+    """
+    Call current process' table._populate1()
+    :key - a dict specifying job to compute
+    :return: key, error if error, otherwise None
+    """
+    process = mp.current_process()
+    return process.table._populate1(key, process.jobs, **process.populate_kwargs)
 
 
 class AutoPopulate:
@@ -28,8 +53,9 @@ class AutoPopulate:
         """
         :return: the query expression that yields primary key values to be passed,
         sequentially, to the ``make`` method when populate() is called.
-        The default value is the join of the parent relations.
-        Users may override to change the granularity or the scope of populate() calls.
+        The default value is the join of the parent tables references from the primary key.
+        Subclasses may override they key_source to change the scope or the granularity
+        of the make calls.
         """
         def _rename_attributes(table, props):
             return (table.proj(
@@ -96,18 +122,20 @@ class AutoPopulate:
 
     def populate(self, *restrictions, suppress_errors=False, return_exception_objects=False,
                  reserve_jobs=False, order="original", limit=None, max_calls=None,
-                 display_progress=False):
+                 display_progress=False, processes=1):
         """
-        rel.populate() calls rel.make(key) for every primary key in self.key_source
-        for which there is not already a tuple in rel.
-        :param restrictions: a list of restrictions each restrict (rel.key_source - target.proj())
+        table.populate() calls table.make(key) for every primary key in self.key_source
+        for which there is not already a tuple in table.
+        :param restrictions: a list of restrictions each restrict (table.key_source - target.proj())
         :param suppress_errors: if True, do not terminate execution.
         :param return_exception_objects: return error objects instead of just error messages
-        :param reserve_jobs: if true, reserves job to populate in asynchronous fashion
+        :param reserve_jobs: if True, reserve jobs to populate in asynchronous fashion
         :param order: "original"|"reverse"|"random"  - the order of execution
+        :param limit: if not None, check at most this many keys
+        :param max_calls: if not None, populate at most this many keys
         :param display_progress: if True, report progress_bar
-        :param limit: if not None, checks at most that many keys
-        :param max_calls: if not None, populates at max that many keys
+        :param processes: number of processes to use. When set to a large number, then
+            uses as many as CPU cores
         """
         if self.connection.in_transaction:
             raise DataJointError('Populate cannot be called during a transaction.')
@@ -115,10 +143,9 @@ class AutoPopulate:
         valid_order = ['original', 'reverse', 'random']
         if order not in valid_order:
             raise DataJointError('The order argument must be one of %s' % str(valid_order))
-        error_list = [] if suppress_errors else None
         jobs = self.connection.schemas[self.target.database].jobs if reserve_jobs else None
 
-        # define and setup signal handler for SIGTERM
+        # define and set up signal handler for SIGTERM:
         if reserve_jobs:
             def handler(signum, frame):
                 logger.info('Populate terminated by SIGTERM')
@@ -131,60 +158,99 @@ class AutoPopulate:
         elif order == "random":
             random.shuffle(keys)
 
-        call_count = 0
         logger.info('Found %d keys to populate' % len(keys))
 
-        make = self._make_tuples if hasattr(self, '_make_tuples') else self.make
+        keys = keys[:max_calls]
+        nkeys = len(keys)
 
-        for key in (tqdm(keys, desc=self.__class__.__name__) if display_progress else keys):
-            if max_calls is not None and call_count >= max_calls:
-                break
-            if not reserve_jobs or jobs.reserve(self.target.table_name, self._job_key(key)):
-                self.connection.start_transaction()
-                if key in self.target:  # already populated
-                    self.connection.cancel_transaction()
-                    if reserve_jobs:
-                        jobs.complete(self.target.table_name, self._job_key(key))
+        if processes > 1:
+            processes = min(processes, nkeys, mp.cpu_count())
+
+        error_list = []
+        populate_kwargs = dict(
+            suppress_errors=suppress_errors,
+            return_exception_objects=return_exception_objects)
+
+        if processes == 1:
+            for key in tqdm(keys, desc=self.__class__.__name__) if display_progress else keys:
+                error = self._populate1(key, jobs, **populate_kwargs)
+                if error is not None:
+                    error_list.append(error)
+        else:
+            # spawn multiple processes
+            self.connection.close()  # disconnect parent process from MySQL server
+            del self.connection._conn.ctx  # SSLContext is not pickleable
+            with mp.Pool(processes, _initialize_populate, (self, populate_kwargs)) as pool:
+                if display_progress:
+                    with tqdm(desc="Processes: ", total=nkeys) as pbar:
+                        for error in pool.imap(_call_populate1, keys, chunksize=1):
+                            if error is not None:
+                                error_list.append(error)
+                            pbar.update()
                 else:
-                    logger.info('Populating: ' + str(key))
-                    call_count += 1
-                    self.__class__._allow_insert = True
-                    try:
-                        make(dict(key))
-                    except (KeyboardInterrupt, SystemExit, Exception) as error:
-                        try:
-                            self.connection.cancel_transaction()
-                        except LostConnectionError:
-                            pass
-                        error_message = '{exception}{msg}'.format(
-                            exception=error.__class__.__name__,
-                            msg=': ' + str(error) if str(error) else '')
-                        if reserve_jobs:
-                            # show error name and error message (if any)
-                            jobs.error(
-                                self.target.table_name, self._job_key(key),
-                                error_message=error_message, error_stack=traceback.format_exc())
-                        if not suppress_errors or isinstance(error, SystemExit):
-                            raise
-                        else:
-                            logger.error(error)
-                            error_list.append((key, error if return_exception_objects else error_message))
-                    else:
-                        self.connection.commit_transaction()
-                        if reserve_jobs:
-                            jobs.complete(self.target.table_name, self._job_key(key))
-                    finally:
-                        self.__class__._allow_insert = False
+                    for error in pool.imap(_call_populate1, keys):
+                        if error is not None:
+                            error_list.append(error)
+            self.connection.connect()  # reconnect parent process to MySQL server
 
-        # place back the original signal handler
+        # restore original signal handler:
         if reserve_jobs:
             signal.signal(signal.SIGTERM, old_handler)
-        return error_list
+
+        if suppress_errors:
+            return error_list
+
+    def _populate1(self, key, jobs, suppress_errors, return_exception_objects):
+        """
+        populates table for one source key, calling self.make inside a transaction.
+        :param jobs: the jobs table or None if not reserve_jobs
+        :param key: dict specifying job to populate
+        :param suppress_errors: bool if errors should be suppressed and returned
+        :param return_exception_objects: if True, errors must be returned as objects
+        :return: (key, error) when suppress_errors=True, otherwise None
+        """
+        make = self._make_tuples if hasattr(self, '_make_tuples') else self.make
+
+        if jobs is None or jobs.reserve(self.target.table_name, self._job_key(key)):
+            self.connection.start_transaction()
+            if key in self.target:  # already populated
+                self.connection.cancel_transaction()
+                if jobs is not None:
+                    jobs.complete(self.target.table_name, self._job_key(key))
+            else:
+                logger.info('Populating: ' + str(key))
+                self.__class__._allow_insert = True
+                try:
+                    make(dict(key))
+                except (KeyboardInterrupt, SystemExit, Exception) as error:
+                    try:
+                        self.connection.cancel_transaction()
+                    except LostConnectionError:
+                        pass
+                    error_message = '{exception}{msg}'.format(
+                        exception=error.__class__.__name__,
+                        msg=': ' + str(error) if str(error) else '')
+                    if jobs is not None:
+                        # show error name and error message (if any)
+                        jobs.error(
+                            self.target.table_name, self._job_key(key),
+                            error_message=error_message, error_stack=traceback.format_exc())
+                    if not suppress_errors or isinstance(error, SystemExit):
+                        raise
+                    else:
+                        logger.error(error)
+                        return key, error if return_exception_objects else error_message
+                else:
+                    self.connection.commit_transaction()
+                    if jobs is not None:
+                        jobs.complete(self.target.table_name, self._job_key(key))
+                finally:
+                    self.__class__._allow_insert = False
 
     def progress(self, *restrictions, display=True):
         """
-        report progress of populating the table
-        :return: remaining, total -- tuples to be populated
+        Report the progress of populating the table.
+        :return: (remaining, total) -- numbers of tuples to be populated
         """
         todo = self._jobs_to_do(restrictions)
         total = len(todo)

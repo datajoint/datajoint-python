@@ -4,6 +4,7 @@
 * Bugfix - Fix Python 3.10 compatibility (#983) PR #972
 * Bugfix - Allow renaming non-conforming attributes in proj (#982) PR #972
 * Add - Expose proxy feature for S3 external stores (#961) PR #962
+* Add - implement multiprocessing in populate (#695) PR #704, #969
 * Bugfix - Dependencies not properly loaded on populate. (#902) PR #919
 * Bugfix - Replace use of numpy aliases of built-in types with built-in type. (#938) PR #939
 * Bugfix - `ExternalTable.delete` should not remove row on error (#953) PR #956
