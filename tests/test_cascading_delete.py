@@ -32,13 +32,14 @@ class TestDelete:
         B.C().delete(force=True)
         assert not B.C(), 'failed to delete child tables'
         B().delete()
-        assert not B(), 'failed to delete from the parent table following child table deletion'
+        assert not B(), \
+            'failed to delete from the parent table following child table deletion'
 
     @staticmethod
     def test_delete_tree_restricted():
-        assert_false(dj.config['safemode'], 'safemode must be off for testing')
-        assert_true(L() and A() and B() and B.C() and D() and E() and E.F(),
-                    'schema is not populated')
+        assert not dj.config['safemode'], 'safemode must be off for testing'
+        assert L() and A() and B() and B.C() and D() and E() and E.F(), \
+            'schema is not populated'
         cond = 'cond_in_a'
         rel = A() & cond
         rest = dict(
@@ -49,19 +50,14 @@ class TestDelete:
             E=len(E()-rel),
             F=len(E.F()-rel))
         rel.delete()
-        assert_false(rel or
-                     (B() & rel) or
-                     (B.C() & rel) or
-                     (D() & rel) or
-                     (E() & rel) or
-                     (E.F() & rel),
-                     'incomplete delete')
-        assert_equal(len(A()), rest['A'], 'invalid delete restriction')
-        assert_equal(len(B()), rest['B'], 'invalid delete restriction')
-        assert_equal(len(B.C()), rest['C'], 'invalid delete restriction')
-        assert_equal(len(D()), rest['D'], 'invalid delete restriction')
-        assert_equal(len(E()), rest['E'], 'invalid delete restriction')
-        assert_equal(len(E.F()), rest['F'], 'invalid delete restriction')
+        assert not (rel or B() & rel or B.C() & rel or D() & rel or E() & rel
+                    or (E.F() & rel)), 'incomplete delete'
+        assert len(A()) == rest['A'], 'invalid delete restriction'
+        assert len(B()) == rest['B'], 'invalid delete restriction'
+        assert len(B.C()) == rest['C'], 'invalid delete restriction'
+        assert len(D()) == rest['D'], 'invalid delete restriction'
+        assert len(E()) == rest['E'], 'invalid delete restriction'
+        assert len(E.F()) == rest['F'], 'invalid delete restriction'
 
     @staticmethod
     def test_delete_lookup():
