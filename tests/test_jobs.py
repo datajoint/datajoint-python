@@ -140,5 +140,5 @@ def test_long_error_stack():
     schema.schema.jobs.reserve(table_name, key)
     schema.schema.jobs.error(table_name, key, 'error message', long_error_stack)
     error_stack = schema.schema.jobs.fetch1('error_stack')
-    assert_true(error_stack == long_error_stack, 'error stacks do not agree')
+    assert error_stack == long_error_stack, 'error stacks do not agree'
     schema.schema.jobs.delete()
