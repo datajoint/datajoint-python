@@ -55,7 +55,8 @@ class Table(QueryExpression):
     _table_name = None  # must be defined in subclass
     _log_ = None  # placeholder for the Log table object
 
-    # These properties must be set by the schema decorator (schemas.py) at class level or by FreeTable at instance level
+    # These properties must be set by the schema decorator (schemas.py) at class level
+    # or by FreeTable at instance level
     database = None
     declaration_context = None
 
