@@ -14,7 +14,7 @@ from .declare import declare, alter
 from .condition import make_condition
 from .expression import QueryExpression
 from . import blob
-from .utils import user_choice
+from .utils import user_choice, get_master
 from .heading import Heading
 from .errors import (DuplicateError, AccessError, DataJointError, UnknownAttributeError,
                      IntegrityError)
@@ -46,10 +46,10 @@ class _RenameMap(tuple):
 
 class Table(QueryExpression):
     """
-    Table is an abstract class that represents a base relation, i.e. a table in the schema.
+    Table is an abstract class that represents a table in the schema.
+    It implements insert and delete methods and inherits query functionality.
     To make it a concrete class, override the abstract properties specifying the connection,
     table name, database, and definition.
-    A Relation implements insert and delete methods in addition to inherited relational operators.
     """
 
     _table_name = None  # must be defined in subclass
@@ -66,7 +66,8 @@ class Table(QueryExpression):
 
     @property
     def definition(self):
-        raise NotImplementedError('Subclasses of Table must implement the `definition` property')
+        raise NotImplementedError(
+            'Subclasses of Table must implement the `definition` property')
 
     def declare(self, context=None):
         """
@@ -96,7 +97,8 @@ class Table(QueryExpression):
         """
         if self.connection.in_transaction:
             raise DataJointError(
-                'Cannot update table declaration inside a transaction, e.g. from inside a populate/make call')
+                'Cannot update table declaration inside a transaction, '
+                'e.g. from inside a populate/make call')
         if context is None:
             frame = inspect.currentframe().f_back
             context = dict(frame.f_globals, **frame.f_locals)
@@ -118,7 +120,8 @@ class Table(QueryExpression):
                     # skip if no create privilege
                     pass
                 else:
-                    self.__class__._heading = Heading(table_info=self.heading.table_info)  # reset heading
+                    # reset heading
+                    self.__class__._heading = Heading(table_info=self.heading.table_info)
                     if prompt:
                         print('Table altered')
                     self._log('Altered ' + self.full_table_name)
@@ -227,9 +230,12 @@ class Table(QueryExpression):
     def update1(self, row):
         """
         update1 updates one existing entry in the table.
-        Caution: Updates are not part of the DataJoint data manipulation model. For strict data integrity,
-        use delete and insert.
-        :param row: a dict containing the primary key and the attributes to update.
+        Caution: In DataJoint the primary modes for data manipulation is to ``insert`` and ``delete``
+        entire records since referential integrity works on the level of records, not fields.
+        Therefore, updates are reserved for corrective operations outside of main workflow.
+        Use UPDATE methods sparingly with full awareness of potential violations of assumptions.
+
+        :param row: a ``dict`` containing the primary key values and the attributes to update.
         Setting an attribute value to None will reset it to the default value (if any)
         The primary key attributes must always be provided.
         Examples:
@@ -242,7 +248,8 @@ class Table(QueryExpression):
         if not set(row).issuperset(self.primary_key):
             raise DataJointError('The argument of update1 must supply all primary key values.')
         try:
-            raise DataJointError('Attribute `%s` not found.' % next(k for k in row if k not in self.heading.names))
+            raise DataJointError('Attribute `%s` not found.' %
+                                 next(k for k in row if k not in self.heading.names))
         except StopIteration:
             pass  # ok
         if len(self.restriction):
@@ -251,7 +258,8 @@ class Table(QueryExpression):
         if len(self & key) != 1:
             raise DataJointError('Update entry must exist.')
         # UPDATE query
-        row = [self.__make_placeholder(k, v) for k, v in row.items() if k not in self.primary_key]
+        row = [self.__make_placeholder(k, v) for k, v in row.items()
+               if k not in self.primary_key]
         query = "UPDATE {table} SET {assignments} WHERE {where}".format(
             table=self.full_table_name,
             assignments=",".join('`%s`=%s' % r[:2] for r in row),
@@ -260,22 +268,24 @@ class Table(QueryExpression):
 
     def insert1(self, row, **kwargs):
         """
-        Insert one data record or one Mapping (like a dict).
-        :param row: a numpy record, a dict-like object, or an ordered sequence to be inserted as one row.
-        For kwargs, see insert()
+        Insert one data record into the table. For ``kwargs``, see ``insert()``.
+
+        :param row: a numpy record, a dict-like object, or an ordered sequence to be inserted
+        as one row.
         """
         self.insert((row,), **kwargs)
 
-    def insert(self, rows, replace=False, skip_duplicates=False, ignore_extra_fields=False, allow_direct_insert=None):
+    def insert(self, rows, replace=False, skip_duplicates=False, ignore_extra_fields=False,
+               allow_direct_insert=None):
         """
         Insert a collection of rows.
-        :param rows: An iterable where an element is a numpy record, a dict-like object, a pandas.DataFrame, a sequence,
-            or a query expression with the same heading as table self.
+        :param rows: An iterable where an element is a numpy record, a dict-like object, a
+            pandas.DataFrame, a sequence, or a query expression with the same heading as self.
         :param replace: If True, replaces the existing tuple.
         :param skip_duplicates: If True, silently skip duplicate inserts.
         :param ignore_extra_fields: If False, fields that are not in the heading raise error.
         :param allow_direct_insert: applies only in auto-populated tables.
-                                    If False (default), insert are allowed only from inside the make callback.
+    If False (default), insert are allowed only from inside the make callback.
         Example::
         >>> relation.insert([
         >>>     dict(subject_id=7, species="mouse", date_of_birth="2014-09-01"),
@@ -289,20 +299,22 @@ class Table(QueryExpression):
             ).to_records(index=False)
 
         # prohibit direct inserts into auto-populated tables
-        if not allow_direct_insert and not getattr(self, '_allow_insert', True):  # allow_insert is only used in AutoPopulate
+        if not allow_direct_insert and not getattr(self, '_allow_insert', True):
             raise DataJointError(
-                'Inserts into an auto-populated table can only done inside its make method during a populate call.'
+                'Inserts into an auto-populated table can only be done inside '
+                'its make method during a populate call.'
                 ' To override, set keyword argument allow_direct_insert=True.')
 
-        if inspect.isclass(rows) and issubclass(rows, QueryExpression):   # instantiate if a class
-            rows = rows()
+        if inspect.isclass(rows) and issubclass(rows, QueryExpression):
+            rows = rows()  # instantiate if a class
         if isinstance(rows, QueryExpression):
             # insert from select
             if not ignore_extra_fields:
                 try:
                     raise DataJointError(
-                        "Attribute %s not found. To ignore extra attributes in insert, set ignore_extra_fields=True." %
-                        next(name for name in rows.heading if name not in self.heading))
+                        "Attribute %s not found. To ignore extra attributes in insert, "
+                        "set ignore_extra_fields=True." % next(
+                            name for name in rows.heading if name not in self.heading))
                 except StopIteration:
                     pass
             fields = list(name for name in rows.heading if name in self.heading)
@@ -349,58 +361,65 @@ class Table(QueryExpression):
         self._log(query[:255])
         return count
 
-    def _delete_cascade(self):
-        """service function to perform cascading deletes recursively."""
-        max_attempts = 50
-        for _ in range(max_attempts):
-            try:
-                delete_count = self.delete_quick(get_count=True)
-            except IntegrityError as error:
-                match = foreign_key_error_regexp.match(error.args[0]).groupdict()
-                if "`.`" not in match['child']:  # if schema name missing, use self
-                    match['child'] = '{}.{}'.format(self.full_table_name.split(".")[0],
-                                                    match['child'])
-                if match['pk_attrs'] is not None:  # fully matched, adjusting the keys
-                    match['fk_attrs'] = [k.strip('`') for k in match['fk_attrs'].split(',')]
-                    match['pk_attrs'] = [k.strip('`') for k in match['pk_attrs'].split(',')]
-                else:  # only partially matched, querying with constraint to determine keys
-                    match['fk_attrs'], match['parent'], match['pk_attrs'] = list(map(
-                        list, zip(*self.connection.query(constraint_info_query, args=(
-                            match['name'].strip('`'),
-                            *[_.strip('`') for _ in match['child'].split('`.`')]
-                            )).fetchall())))
-                    match['parent'] = match['parent'][0]
-                # restrict child by self if
-                # 1. if self's restriction attributes are not in child's primary key
-                # 2. if child renames any attributes
-                # otherwise restrict child by self's restriction.
-                child = FreeTable(self.connection, match['child'])
-                if set(self.restriction_attributes) <= set(child.primary_key) and \
-                        match['fk_attrs'] == match['pk_attrs']:
-                    child._restriction = self._restriction
-                elif match['fk_attrs'] != match['pk_attrs']:
-                    child &= self.proj(**dict(zip(match['fk_attrs'],
-                                                  match['pk_attrs'])))
-                else:
-                    child &= self.proj()
-                child._delete_cascade()
-            else:
-                print("Deleting {count} rows from {table}".format(
-                    count=delete_count, table=self.full_table_name))
-                break
-        else:
-            raise DataJointError('Exceeded maximum number of delete attempts.')
-        return delete_count
-
-    def delete(self, transaction=True, safemode=None):
+    def delete(self, transaction=True, safemode=None, force_parts=False):
         """
         Deletes the contents of the table and its dependent tables, recursively.
 
         :param transaction: if True, use the entire delete becomes an atomic transaction.
+            This is the default and recommended behavior. Set to False if this delete is nested
+            within another transaction.
         :param safemode: If True, prohibit nested transactions and prompt to confirm. Default
             is dj.config['safemode'].
+        :param force_parts: Delete from parts even when not deleting from their masters.
         :return: number of deleted rows (excluding those from dependent tables)
         """
+        deleted = set()
+
+        def cascade(table):
+            """service function to perform cascading deletes recursively."""
+            max_attempts = 50
+            for _ in range(max_attempts):
+                try:
+                    delete_count = table.delete_quick(get_count=True)
+                except IntegrityError as error:
+                    match = foreign_key_error_regexp.match(error.args[0]).groupdict()
+                    if "`.`" not in match['child']:  # if schema name missing, use table
+                        match['child'] = '{}.{}'.format(table.full_table_name.split(".")[0],
+                                                        match['child'])
+                    if match['pk_attrs'] is not None:  # fully matched, adjusting the keys
+                        match['fk_attrs'] = [k.strip('`') for k in match['fk_attrs'].split(',')]
+                        match['pk_attrs'] = [k.strip('`') for k in match['pk_attrs'].split(',')]
+                    else:  # only partially matched, querying with constraint to determine keys
+                        match['fk_attrs'], match['parent'], match['pk_attrs'] = list(map(
+                            list, zip(*table.connection.query(constraint_info_query, args=(
+                                match['name'].strip('`'),
+                                *[_.strip('`') for _ in match['child'].split('`.`')]
+                            )).fetchall())))
+                        match['parent'] = match['parent'][0]
+
+                    # Restrict child by table if
+                    #   1. if table's restriction attributes are not in child's primary key
+                    #   2. if child renames any attributes
+                    # Otherwise restrict child by table's restriction.
+                    child = FreeTable(table.connection, match['child'])
+                    if set(table.restriction_attributes) <= set(child.primary_key) and \
+                            match['fk_attrs'] == match['pk_attrs']:
+                        child._restriction = table._restriction
+                    elif match['fk_attrs'] != match['pk_attrs']:
+                        child &= table.proj(**dict(zip(match['fk_attrs'],
+                                                       match['pk_attrs'])))
+                    else:
+                        child &= table.proj()
+                    cascade(child)
+                else:
+                    deleted.add(table.full_table_name)
+                    print("Deleting {count} rows from {table}".format(
+                        count=delete_count, table=table.full_table_name))
+                    break
+            else:
+                raise DataJointError('Exceeded maximum number of delete attempts.')
+            return delete_count
+
         safemode = config['safemode'] if safemode is None else safemode
 
         # Start transaction
@@ -417,11 +436,22 @@ class Table(QueryExpression):
 
         # Cascading delete
         try:
-            delete_count = self._delete_cascade()
+            delete_count = cascade(self)
         except:
             if transaction:
                 self.connection.cancel_transaction()
             raise
+
+        if not force_parts:
+            # Avoid deleting from child before master (See issue #151)
+            for part in deleted:
+                master = get_master(part)
+                if master and master not in deleted:
+                    if transaction:
+                        self.connection.cancel_transaction()
+                    raise DataJointError(
+                        'Attempt to delete part table {part} before deleting from '
+                        'its master {master} first.'.format(part=part, master=master))
 
         # Confirm and commit
         if delete_count == 0:
@@ -461,12 +491,21 @@ class Table(QueryExpression):
         User is prompted for confirmation if config['safemode'] is set to True.
         """
         if self.restriction:
-            raise DataJointError('A relation with an applied restriction condition cannot be dropped.'
+            raise DataJointError('A table with an applied restriction cannot be dropped.'
                                  ' Call drop() on the unrestricted Table.')
         self.connection.dependencies.load()
         do_drop = True
-        tables = [table for table in self.connection.dependencies.descendants(self.full_table_name)
-                  if not table.isdigit()]
+        tables = [table for table in self.connection.dependencies.descendants(
+            self.full_table_name) if not table.isdigit()]
+
+        # avoid dropping part tables without their masters: See issue #374
+        for part in tables:
+            master = get_master(part)
+            if master and master not in tables:
+                raise DataJointError(
+                    'Attempt to drop part table {part} before dropping '
+                    'its master. Drop {master} first.'.format(part=part, master=master))
+
         if config['safemode']:
             for table in tables:
                 print(table, '(%d tuples)' % len(FreeTable(self.connection, table)))
@@ -556,12 +595,14 @@ class Table(QueryExpression):
 
     def _update(self, attrname, value=None):
         """
-            This is a deprecated function to be removed in datajoint 0.14. Use .update1 instead.
+            This is a deprecated function to be removed in datajoint 0.14.
+            Use ``.update1`` instead.
 
-            Updates a field in an existing tuple. This is not a datajoyous operation and should not be used
-            routinely. Relational database maintain referential integrity on the level of a tuple. Therefore,
-            the UPDATE operator can violate referential integrity. The datajoyous way to update information is
-            to delete the entire tuple and insert the entire update tuple.
+            Updates a field in one existing tuple. self must be restricted to exactly one entry.
+            In DataJoint the principal way of updating data is to delete and re-insert the
+            entire record and updates are reserved for corrective actions.
+            This is because referential integrity is observed on the level of entire
+            records rather than individual attributes.
 
             Safety constraints:
                1. self must be restricted to exactly one tuple
@@ -665,7 +706,7 @@ class Table(QueryExpression):
                         if field not in self.heading:
                             raise KeyError(u'`{0:s}` is not in the table heading'.format(field))
             elif set(field_list) != set(fields).intersection(self.heading.names):
-                raise DataJointError('Attempt to insert rows with different fields')
+                raise DataJointError('Attempt to insert rows with different fields.')
 
         if isinstance(row, np.void):  # np.array
             check_fields(row.dtype.fields)
