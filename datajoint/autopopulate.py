@@ -63,7 +63,8 @@ class AutoPopulate:
                 if props['aliased'] else table.proj())
 
         if self._key_source is None:
-            parents = self.target.parents(primary=True, as_objects=True, foreign_key_info=True)
+            parents = self.target.parents(
+                primary=True, as_objects=True, foreign_key_info=True)
             if not parents:
                 raise DataJointError('A table must have dependencies '
                                      'from its primary key for auto-populate to work')
@@ -74,17 +75,19 @@ class AutoPopulate:
 
     def make(self, key):
         """
-        Derived classes must implement method `make` that fetches data from tables that are
-        above them in the dependency hierarchy, restricting by the given key, computes dependent
-        attributes, and inserts the new tuples into self.
+        Derived classes must implement method `make` that fetches data from tables
+        above them in the dependency hierarchy, restricting by the given key,
+        computes secondary attributes, and inserts the new tuples into self.
         """
-        raise NotImplementedError('Subclasses of AutoPopulate must implement the method `make`')
+        raise NotImplementedError(
+            'Subclasses of AutoPopulate must implement the method `make`')
 
     @property
     def target(self):
         """
         :return: table to be populated.
-        In the typical case, dj.AutoPopulate is mixed into a dj.Table class by inheritance and the target is self.
+        In the typical case, dj.AutoPopulate is mixed into a dj.Table class by
+        inheritance and the target is self.
         """
         return self
 
@@ -111,11 +114,14 @@ class AutoPopulate:
 
         if not isinstance(todo, QueryExpression):
             raise DataJointError('Invalid key_source value')
-        # check if target lacks any attributes from the primary key of key_source
+
         try:
+            # check if target lacks any attributes from the primary key of key_source
             raise DataJointError(
-                'The populate target lacks attribute %s from the primary key of key_source' % next(
-                    name for name in todo.heading.primary_key if name not in self.target.heading))
+                'The populate target lacks attribute %s '
+                'from the primary key of key_source' % next(
+                    name for name in todo.heading.primary_key
+                    if name not in self.target.heading))
         except StopIteration:
             pass
         return (todo & AndList(restrictions)).proj()
@@ -126,7 +132,8 @@ class AutoPopulate:
         """
         table.populate() calls table.make(key) for every primary key in self.key_source
         for which there is not already a tuple in table.
-        :param restrictions: a list of restrictions each restrict (table.key_source - target.proj())
+        :param restrictions: a list of restrictions each restrict
+            (table.key_source - target.proj())
         :param suppress_errors: if True, do not terminate execution.
         :param return_exception_objects: return error objects instead of just error messages
         :param reserve_jobs: if True, reserve jobs to populate in asynchronous fashion
@@ -259,5 +266,6 @@ class AutoPopulate:
             print('%-20s' % self.__class__.__name__,
                   'Completed %d of %d (%2.1f%%)   %s' % (
                       total - remaining, total, 100 - 100 * remaining / (total+1e-12),
-                      datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d %H:%M:%S')), flush=True)
+                      datetime.datetime.strftime(datetime.datetime.now(),
+                                                 '%Y-%m-%d %H:%M:%S')), flush=True)
         return remaining, total
