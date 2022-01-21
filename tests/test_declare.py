@@ -161,6 +161,37 @@ class TestDeclare:
                          {ephys.full_table_name})
 
     @staticmethod
+    def test_descendants_only_contain_part_table():
+        """issue #927"""
+
+        @schema
+        class A(dj.Manual):
+            definition = """
+            a: int
+            """
+
+        @schema
+        class B(dj.Manual):
+            definition = """
+            -> A
+            b: int
+            """
+
+        @schema
+        class Master(dj.Manual):
+            definition = """
+            table_master: int
+            """
+
+            class Part(dj.Part):
+                definition = """
+                -> master
+                -> B
+                """
+
+        assert A.descendants() == ['`djtest_test1`.`a`', '`djtest_test1`.`b`', '`djtest_test1`.`master__part`']
+
+    @staticmethod
     @raises(dj.DataJointError)
     def test_bad_attribute_name():
 
