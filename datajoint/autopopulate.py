@@ -162,8 +162,9 @@ class AutoPopulate:
                 raise SystemExit('SIGTERM received')
             old_handler = signal.signal(signal.SIGTERM, handler)
 
-        keys = keys if keys is not None else \
-            (self._jobs_to_do(restrictions) - self.target).fetch("KEY", limit=limit)
+        if keys is None:
+            keys = (self._jobs_to_do(restrictions) - self.target).fetch(
+                "KEY", limit=limit)
         if order == "reverse":
             keys.reverse()
         elif order == "random":
