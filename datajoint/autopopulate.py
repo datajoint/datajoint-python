@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 def _initialize_populate(table, jobs, populate_kwargs):
     """
-    Initialize the process for mulitprocessing.
+    Initialize the process for multiprocessing.
     Saves the unpickled copy of the table to the current process and reconnects.
     """
     process = mp.current_process()
@@ -126,7 +126,8 @@ class AutoPopulate:
             pass
         return (todo & AndList(restrictions)).proj()
 
-    def populate(self, *restrictions, suppress_errors=False, return_exception_objects=False,
+    def populate(self, *restrictions, keys=None, suppress_errors=False,
+                 return_exception_objects=False,
                  reserve_jobs=False, order="original", limit=None, max_calls=None,
                  display_progress=False, processes=1):
         """
@@ -134,6 +135,8 @@ class AutoPopulate:
         for which there is not already a tuple in table.
         :param restrictions: a list of restrictions each restrict
             (table.key_source - target.proj())
+        :param keys: The list of dicts to populate. When None (default),
+             uses self.key_source to query keys to populate.
         :param suppress_errors: if True, do not terminate execution.
         :param return_exception_objects: return error objects instead of just error messages
         :param reserve_jobs: if True, reserve jobs to populate in asynchronous fashion
@@ -159,7 +162,8 @@ class AutoPopulate:
                 raise SystemExit('SIGTERM received')
             old_handler = signal.signal(signal.SIGTERM, handler)
 
-        keys = (self._jobs_to_do(restrictions) - self.target).fetch("KEY", limit=limit)
+        keys = keys if keys is not None else \
+            (self._jobs_to_do(restrictions) - self.target).fetch("KEY", limit=limit)
         if order == "reverse":
             keys.reverse()
         elif order == "random":
@@ -216,6 +220,7 @@ class AutoPopulate:
         :param return_exception_objects: if True, errors must be returned as objects
         :return: (key, error) when suppress_errors=True, otherwise None
         """
+        # use the legacy `_make_tuples` callback.
         make = self._make_tuples if hasattr(self, '_make_tuples') else self.make
 
         if jobs is None or jobs.reserve(self.target.table_name, self._job_key(key)):
