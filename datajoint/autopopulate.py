@@ -108,7 +108,7 @@ class AutoPopulate:
         :param display_progress: if True, report progress_bar
         :param limit: if not None, checks at most that many keys
         :param max_calls: if not None, populates at max that many keys
-        :param make_kwargs: optional dict containing keyword arguments that will be passed down to each make() call
+        :param kwargs: optional dict containing arguments that will be passed down to each make() call
         """
         if self.connection.in_transaction:
             raise DataJointError('Populate cannot be called during a transaction.')
@@ -151,7 +151,10 @@ class AutoPopulate:
                     call_count += 1
                     self.__class__._allow_insert = True
                     try:
-                        make(dict(key), **(make_kwargs or {}))
+                        if make_kwargs is not None:
+                            make(dict(key), **make_kwargs)
+                        else:
+                            make(dict(key))
                     except (KeyboardInterrupt, SystemExit, Exception) as error:
                         try:
                             self.connection.cancel_transaction()
