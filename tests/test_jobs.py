@@ -122,3 +122,23 @@ def test_long_error_message():
     assert_true(error_message == short_error_message, 'error messages do not agree')
     assert_false(error_message.endswith(TRUNCATION_APPENDIX), 'error message should not be truncated')
     schema.schema.jobs.delete()
+
+
+def test_long_error_stack():
+    # clear out jobs table
+    schema.schema.jobs.delete()
+
+    # create long error stack
+    STACK_SIZE = 89942  # Does not fit into small blob (should be 64k, but found to be higher)
+    long_error_stack = ''.join(random.choice(string.ascii_letters) for _ in range(STACK_SIZE))
+    assert subjects
+    table_name = 'fake_table'
+
+    key = subjects.fetch('KEY')[0]
+
+    # test long error stack
+    schema.schema.jobs.reserve(table_name, key)
+    schema.schema.jobs.error(table_name, key, 'error message', long_error_stack)
+    error_stack = schema.schema.jobs.fetch1('error_stack')
+    assert error_stack == long_error_stack, 'error stacks do not agree'
+    schema.schema.jobs.delete()

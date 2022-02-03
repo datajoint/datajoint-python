@@ -278,7 +278,7 @@ class Connection:
         # check cache first:
         use_query_cache = bool(self._query_cache)
         if use_query_cache and not re.match(r"\s*(SELECT|SHOW)", query):
-            raise errors.DataJointError("Only SELECT query are allowed when query caching is on.")
+            raise errors.DataJointError("Only SELECT queries are allowed when query caching is on.")
         if use_query_cache:
             if not config['query_cache']:
                 raise errors.DataJointError("Provide filepath dj.config['query_cache'] when using query caching.")
