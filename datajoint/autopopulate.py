@@ -130,9 +130,10 @@ class AutoPopulate:
                  reserve_jobs=False, order="original", limit=None, max_calls=None,
                  display_progress=False, processes=1, make_kwargs=None):
         """
-        table.populate() calls table.make(key) for every primary key in self.key_source
-        for which there is not already a tuple in table.
-        :param restrictions: a list of restrictions each restrict
+        ``table.populate()`` calls ``table.make(key)`` for every primary key in 
+        ``self.key_source`` for which there is not already a tuple in table.
+        
+        :param restrictions: a list of restrictions each restrict 
             (table.key_source - target.proj())
         :param suppress_errors: if True, do not terminate execution.
         :param return_exception_objects: return error objects instead of just error messages
@@ -143,8 +144,10 @@ class AutoPopulate:
         :param display_progress: if True, report progress_bar
         :param processes: number of processes to use. When set to a large number, then
             uses as many as CPU cores
-        :param make_kwargs: optional dict containing keyword arguments that will be 
-            passed down to each make() call
+        :param make_kwargs: Keyword arguments which do not affect the result of computation 
+            to be passed down to each ``make()`` call. Computation arguments should be 
+            specified within the pipeline e.g. using a `dj.Lookup` table.
+        :type make_kwargs: dict, optional
         """
         if self.connection.in_transaction:
             raise DataJointError('Populate cannot be called during a transaction.')
@@ -178,7 +181,8 @@ class AutoPopulate:
         error_list = []
         populate_kwargs = dict(
             suppress_errors=suppress_errors,
-            return_exception_objects=return_exception_objects)
+            return_exception_objects=return_exception_objects,
+            make_kwargs=make_kwargs)
 
         if processes == 1:
             for key in tqdm(keys, desc=self.__class__.__name__) if display_progress else keys:
@@ -209,7 +213,7 @@ class AutoPopulate:
         if suppress_errors:
             return error_list
 
-    def _populate1(self, key, jobs, suppress_errors, return_exception_objects):
+    def _populate1(self, key, jobs, suppress_errors, return_exception_objects, make_kwargs=None):
         """
         populates table for one source key, calling self.make inside a transaction.
         :param jobs: the jobs table or None if not reserve_jobs
@@ -230,7 +234,7 @@ class AutoPopulate:
                 logger.info('Populating: ' + str(key))
                 self.__class__._allow_insert = True
                 try:
-                    make(dict(key))
+                    make(dict(key), **(make_kwargs or {}))
                 except (KeyboardInterrupt, SystemExit, Exception) as error:
                     try:
                         self.connection.cancel_transaction()
