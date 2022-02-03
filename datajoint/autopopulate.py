@@ -141,8 +141,6 @@ class AutoPopulate:
         :param limit: if not None, check at most this many keys
         :param max_calls: if not None, populate at most this many keys
         :param display_progress: if True, report progress_bar
-        :param limit: if not None, checks at most that many keys
-        :param max_calls: if not None, populates at max that many keys
         :param processes: number of processes to use. When set to a large number, then
             uses as many as CPU cores
         :param make_kwargs: optional dict containing keyword arguments that will be 
