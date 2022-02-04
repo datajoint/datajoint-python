@@ -130,10 +130,10 @@ class AutoPopulate:
                  reserve_jobs=False, order="original", limit=None, max_calls=None,
                  display_progress=False, processes=1, make_kwargs=None):
         """
-        ``table.populate()`` calls ``table.make(key)`` for every primary key in 
+        ``table.populate()`` calls ``table.make(key)`` for every primary key in
         ``self.key_source`` for which there is not already a tuple in table.
-        
-        :param restrictions: a list of restrictions each restrict 
+
+        :param restrictions: a list of restrictions each restrict
             (table.key_source - target.proj())
         :param suppress_errors: if True, do not terminate execution.
         :param return_exception_objects: return error objects instead of just error messages
@@ -144,8 +144,8 @@ class AutoPopulate:
         :param display_progress: if True, report progress_bar
         :param processes: number of processes to use. When set to a large number, then
             uses as many as CPU cores
-        :param make_kwargs: Keyword arguments which do not affect the result of computation 
-            to be passed down to each ``make()`` call. Computation arguments should be 
+        :param make_kwargs: Keyword arguments which do not affect the result of computation
+            to be passed down to each ``make()`` call. Computation arguments should be
             specified within the pipeline e.g. using a `dj.Lookup` table.
         :type make_kwargs: dict, optional
         """
