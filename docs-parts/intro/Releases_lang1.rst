@@ -15,6 +15,7 @@
 * Bugfix - Fix assertion error when performing a union into a join (#930) PR #967
 * Bugfix - Fix regression issue with `DISTINCT` clause and `GROUP_BY` (#914) PR #963
 * Update `~jobs.error_stack` from blob to mediumblob to allow error stacks >64kB in jobs (#984) PR #986
+* Add - Allow optional keyword arguments for `make()` in `populate()` PR #971
 
 0.13.2 -- May 7, 2021
 ----------------------
