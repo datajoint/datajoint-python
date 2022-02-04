@@ -37,7 +37,7 @@ class QueryExpression:
     """
     _restriction = None
     _restriction_attributes = None
-    _left = []  # True for left joins, False for inner joins
+    _left = []  # list of booleans True for left joins, False for inner joins
     _original_heading = None  # heading before projections
 
     # subclasses or instantiators must provide values
@@ -263,7 +263,7 @@ class QueryExpression:
         if semantic_check:
             assert_join_compatibility(self, other)
         join_attributes = set(n for n in self.heading.names if n in other.heading.names)
-        # needs subquery if FROM class has common attributes with the other's FROM clause
+        # needs subquery if self's FROM clause has common attributes with other's FROM clause
         need_subquery1 = need_subquery2 = bool(
             (set(self.original_heading.names) & set(other.original_heading.names))
             - join_attributes)
@@ -306,7 +306,7 @@ class QueryExpression:
         self.proj(...) or self.proj(Ellipsis) -- include all attributes (return self)
         self.proj() -- include only primary key
         self.proj('attr1', 'attr2')  -- include primary key and attributes attr1 and attr2
-        self.proj(..., '-attr1', '-attr2')  -- include attributes except attr1 and attr2
+        self.proj(..., '-attr1', '-attr2')  -- include all attributes except attr1 and attr2
         self.proj(name1='attr1') -- include primary key and 'attr1' renamed as name1
         self.proj('attr1', dup='(attr1)') -- include primary key and attribute attr1 twice, with the duplicate 'dup'
         self.proj(k='abs(attr1)') adds the new attribute k with the value computed as an expression (SQL syntax)
