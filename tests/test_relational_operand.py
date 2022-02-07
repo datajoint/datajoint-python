@@ -514,4 +514,4 @@ class TestRelational:
         x = set(zip(*q1.fetch('i', 'j')))
         y = set(zip(*q2.fetch('i', 'j')))
         assert x == y
-        assert any(q1.fetch() == q2.fetch())
+        assert q1.fetch(as_dict=True) == q2.fetch(as_dict=True)
