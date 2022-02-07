@@ -1,9 +1,20 @@
 0.13.3 -- TBD
 ----------------------
+* Bugfix - Fix error in listing ancestors, descendants with part tables.
+* Bugfix - Fix Python 3.10 compatibility (#983) PR #972
+* Bugfix - Allow renaming non-conforming attributes in proj (#982) PR #972
+* Add - Expose proxy feature for S3 external stores (#961) PR #962
+* Add - implement multiprocessing in populate (#695) PR #704, #969
 * Bugfix - Dependencies not properly loaded on populate. (#902) PR #919
 * Bugfix - Replace use of numpy aliases of built-in types with built-in type. (#938) PR #939
+* Bugfix - Deletes and drops must include the master of each part. (#151, #374) PR #957
 * Bugfix - `ExternalTable.delete` should not remove row on error (#953) PR #956
 * Bugfix - Fix error handling of remove_object function in `s3.py` (#952) PR #955
+* Bugfix - Fix sql code generation to comply with sql mode ``ONLY_FULL_GROUP_BY`` (#916) PR #965
+* Bugfix - Fix count for left-joined ``QueryExpressions`` (#951) PR #966
+* Bugfix - Fix assertion error when performing a union into a join (#930) PR #967
+* Bugfix - Fix regression issue with `DISTINCT` clause and `GROUP_BY` (#914) PR #963
+* Update `~jobs.error_stack` from blob to mediumblob to allow error stacks >64kB in jobs (#984) PR #986
 * Bugfix - Fix error when performing a union on multiple tables (#926) PR #964
 
 0.13.2 -- May 7, 2021
@@ -133,7 +144,7 @@
 
 0.11.1 -- Nov 15, 2018
 ----------------------
-* Fix ordering of attributes in proj (#483 and #516)
+* Fix ordering of attributes in proj (#483, #516)
 * Prohibit direct insert into auto-populated tables (#511)
 
 0.11.0 -- Oct 25, 2018

@@ -1,11 +1,11 @@
 
-To plot the ERD for an entire schema, an ERD object can be initialized with the schema object (which is normally used to decorate table objects)
+To plot the Diagram for an entire schema, an Diagram object can be initialized with the schema object (which is normally used to decorate table objects)
 
 .. code-block:: python
 
     import datajoint as dj
     schema = dj.Schema('my_database')
-    dj.ERD(schema).draw()
+    dj.Diagram(schema).draw()
 
 or alternatively an object that has the schema object as an attribute, such as the module defining a schema:
 
@@ -13,9 +13,9 @@ or alternatively an object that has the schema object as an attribute, such as t
 
     import datajoint as dj
     import seq    # import the sequence module defining the seq database
-    dj.ERD(seq).draw()   # draw the ERD
+    dj.Diagram(seq).draw()   # draw the Diagram
 
 Note that calling the ``.draw()`` method is not necessary when working in a Jupyter notebook.
-The preferred workflow is to simply let the object display itself, for example by writing ``dj.ERD(seq)``.
-The ERD will then render in the notebook using its ``_repr_html_`` method.
-An ERD displayed without ``.draw()`` will be rendered as an SVG, and hovering the mouse over a table will reveal a compact version of the output of the ``.describe()`` method.
+You can simply let the object display itself, for example by entering ``dj.Diagram(seq)`` in a notebook cell.
+The Diagram will automatically render in the notebook by calling its ``_repr_html_`` method.
+A Diagram displayed without ``.draw()`` will be rendered as an SVG, and hovering the mouse over a table will reveal a compact version of the output of the ``.describe()`` method.

@@ -18,7 +18,7 @@ def unite_master_parts(lst):
     """
     for i in range(2, len(lst)):
         name = lst[i]
-        match = re.match(r'(?P<master>`\w+`.`\w+)__\w+`', name)
+        match = re.match(r'(?P<master>`\w+`.`#?\w+)__\w+`', name)
         if match:  # name is a part table
             master = match.group('master')
             for j in range(i-1, -1, -1):
@@ -26,8 +26,6 @@ def unite_master_parts(lst):
                     # move from the ith position to the (j+1)th position
                     lst[j+1:i+1] = [name] + lst[j+1:i]
                     break
-            else:
-                raise DataJointError("Found a part table {name} without its master table.".format(name=name))
     return lst
 
 
