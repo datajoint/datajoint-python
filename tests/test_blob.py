@@ -1,5 +1,7 @@
+import datajoint as dj
 import numpy as np
 import uuid
+from . import schema
 from decimal import Decimal
 from datetime import datetime
 from datajoint.blob import pack, unpack
@@ -129,3 +131,11 @@ def test_complex():
 
     x = np.int16(np.random.randn(1, 2, 3)) + 1j*np.int16(np.random.randn(1, 2, 3))
     assert_array_equal(x, unpack(pack(x)), "Arrays do not match!")
+
+
+def test_insert_longblob():
+    # schema.Testmym.insert1({'id': 1, 'data': [1,2,3,4,5,6]})
+    dj.conn().query("INSERT INTO djtest_test1.testmym (id, data) VALUES (1, X'6D596D00530200000001000000010000000400000068697473007369646573007461736B73007374616765004D000000410200000001000000070000000600000000000000000000000000F8FF000000000000F03F000000000000F03F0000000000000000000000000000F03F0000000000000000000000000000F8FF230000004102000000010000000700000004000000000000006C006C006C006C00720072006C002300000041020000000100000007000000040000000000000064006400640064006400640064002500000041020000000100000008000000040000000000000053007400610067006500200031003000')").fetchall()
+    print('\n',dj.conn().query("SELECT hex(data) FROM djtest_test1.testmym").fetchall())
+    print((schema.Testmym & 'id=1').fetch1())
+    assert True

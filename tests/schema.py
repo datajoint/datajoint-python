@@ -449,3 +449,12 @@ class Stimulus(dj.Lookup):
     contrast: int
     brightness: int
     """
+
+
+@schema
+class Testmym(dj.Manual):
+    definition = """
+    id: int
+    ---
+    data: longblob
+    """
