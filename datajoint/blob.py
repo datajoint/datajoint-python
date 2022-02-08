@@ -69,6 +69,7 @@ class Blob:
         self._blob = None
         self._pos = 0
         self.protocol = None
+        self.is_32_bit = False
 
     def set_dj0(self):
         if not config.get('enable_python_native_blobs'):
@@ -96,7 +97,7 @@ class Blob:
             pass  # assume uncompressed but could be unrecognized compression
         else:
             self._pos += len(prefix)
-            blob_size = self.read_value('uint64')
+            blob_size = self.read_value()
             blob = compression[prefix](self._blob[self._pos:])
             assert len(blob) == blob_size
             self._blob = blob
@@ -191,8 +192,8 @@ class Blob:
         raise DataJointError("Packing object of type %s currently not supported!" % type(obj))
 
     def read_array(self):
-        n_dims = int(self.read_value('uint64'))
-        shape = self.read_value('uint64', count=n_dims)
+        n_dims = int(self.read_value())
+        shape = self.read_value(count=n_dims)
         n_elem = np.prod(shape, dtype=int)
         dtype_id, is_complex = self.read_value('uint32', 2)
         dtype = dtype_list[dtype_id]
@@ -365,7 +366,7 @@ class Blob:
             return np.array(None)  # empty array
         field_names = [self.read_zero_terminated_string() for _ in range(n_fields)]
         raw_data = [
-            tuple(self.read_blob(n_bytes=int(self.read_value('uint64'))) for _ in range(n_fields))
+            tuple(self.read_blob(n_bytes=int(self.read_value())) for _ in range(n_fields))
             for __ in range(n_elem)]
         data = np.array(raw_data, dtype=list(zip(field_names, repeat(object))))
         return self.squeeze(data.reshape(shape, order="F"), convert_to_scalar=False).view(MatStruct)
@@ -431,7 +432,9 @@ class Blob:
         self._pos = target + 1
         return data
 
-    def read_value(self, dtype='uint64', count=1):
+    def read_value(self, dtype=None, count=1):
+        if dtype is None:
+            dtype = 'uint32' if self.is_32_bit else 'uint64'
         data = np.frombuffer(self._blob, dtype=dtype, count=count, offset=self._pos)
         self._pos += data.dtype.itemsize * data.size
         return data[0] if count == 1 else data
