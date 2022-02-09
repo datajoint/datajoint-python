@@ -1,4 +1,4 @@
-0.13.3 -- TBD
+0.13.3 -- Feb 9, 2022
 ----------------------
 * Bugfix - Fix error in listing ancestors, descendants with part tables.
 * Bugfix - Fix Python 3.10 compatibility (#983) PR #972

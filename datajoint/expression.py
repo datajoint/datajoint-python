@@ -629,7 +629,6 @@ class Union(QueryExpression):
         result._support = [arg1, arg2]
         return result
 
-
     def make_sql(self):
         arg1, arg2 = self._support
         if not arg1.heading.secondary_attributes and not arg2.heading.secondary_attributes:
