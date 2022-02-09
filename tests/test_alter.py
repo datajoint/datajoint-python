@@ -48,8 +48,10 @@ class TypeMaster(dj.Manual):
     """
 
     class Type(dj.Part):
+        # NOTE type_id is necessary because table.alter cannot alter the primary key (yet)
         definition = """
         -> master
+        type_id : int
         """
 
         definition1 = """
