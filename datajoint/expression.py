@@ -9,6 +9,7 @@ from .fetch import Fetch, Fetch1
 from .preview import preview, repr_html
 from .condition import AndList, Not, \
     make_condition, assert_join_compatibility, extract_column_names, PromiscuousOperand
+from .declare import CONSTANT_LITERALS
 
 logger = logging.getLogger(__name__)
 
@@ -36,13 +37,16 @@ class QueryExpression:
     """
     _restriction = None
     _restriction_attributes = None
-    _left = []  # True for left joins, False for inner joins
+    _left = []  # list of booleans True for left joins, False for inner joins
     _original_heading = None  # heading before projections
 
     # subclasses or instantiators must provide values
     _connection = None
     _heading = None
     _support = None
+
+    # If the query will be using distinct
+    _distinct = False
 
     @property
     def connection(self):
@@ -98,7 +102,7 @@ class QueryExpression:
         return clause
 
     def where_clause(self):
-        return '' if not self.restriction else ' WHERE(%s)' % ')AND('.join(
+        return '' if not self.restriction else ' WHERE (%s)' % ')AND('.join(
             str(s) for s in self.restriction)
 
     def make_sql(self, fields=None):
@@ -106,9 +110,8 @@ class QueryExpression:
         Make the SQL SELECT statement.
         :param fields: used to explicitly set the select attributes
         """
-        distinct = self.heading.names == self.primary_key
         return 'SELECT {distinct}{fields} FROM {from_}{where}'.format(
-            distinct="DISTINCT " if distinct else "",
+            distinct="DISTINCT " if self._distinct else "",
             fields=self.heading.as_sql(fields or self.heading.names),
             from_=self.from_clause(), where=self.where_clause())
 
@@ -260,15 +263,17 @@ class QueryExpression:
         if semantic_check:
             assert_join_compatibility(self, other)
         join_attributes = set(n for n in self.heading.names if n in other.heading.names)
-        # needs subquery if FROM class has common attributes with the other's FROM clause
+        # needs subquery if self's FROM clause has common attributes with other's FROM clause
         need_subquery1 = need_subquery2 = bool(
             (set(self.original_heading.names) & set(other.original_heading.names))
             - join_attributes)
         # need subquery if any of the join attributes are derived
         need_subquery1 = (need_subquery1 or isinstance(self, Aggregation) or
-                          any(n in self.heading.new_attributes for n in join_attributes))
+                          any(n in self.heading.new_attributes for n in join_attributes)
+                          or isinstance(self, Union))
         need_subquery2 = (need_subquery2 or isinstance(other, Aggregation) or
-                          any(n in other.heading.new_attributes for n in join_attributes))
+                          any(n in other.heading.new_attributes for n in join_attributes)
+                          or isinstance(self, Union))
         if need_subquery1:
             self = self.make_subquery()
         if need_subquery2:
@@ -301,7 +306,7 @@ class QueryExpression:
         self.proj(...) or self.proj(Ellipsis) -- include all attributes (return self)
         self.proj() -- include only primary key
         self.proj('attr1', 'attr2')  -- include primary key and attributes attr1 and attr2
-        self.proj(..., '-attr1', '-attr2')  -- include attributes except attr1 and attr2
+        self.proj(..., '-attr1', '-attr2')  -- include all attributes except attr1 and attr2
         self.proj(name1='attr1') -- include primary key and 'attr1' renamed as name1
         self.proj('attr1', dup='(attr1)') -- include primary key and attribute attr1 twice, with the duplicate 'dup'
         self.proj(k='abs(attr1)') adds the new attribute k with the value computed as an expression (SQL syntax)
@@ -309,9 +314,9 @@ class QueryExpression:
         Each attribute name can only be used once.
         """
         # new attributes in parentheses are included again with the new name without removing original
-        duplication_pattern = re.compile(r'\s*\(\s*(?P<name>[a-z][a-z_0-9]*)\s*\)\s*$')
+        duplication_pattern = re.compile(fr'^\s*\(\s*(?!{"|".join(CONSTANT_LITERALS)})(?P<name>[a-zA-Z_]\w*)\s*\)\s*$')
         # attributes without parentheses renamed
-        rename_pattern = re.compile(r'\s*(?P<name>[a-z][a-z_0-9]*)\s*$')
+        rename_pattern = re.compile(fr'^\s*(?!{"|".join(CONSTANT_LITERALS)})(?P<name>[a-zA-Z_]\w*)\s*$')
         replicate_map = {k: m.group('name')
                          for k, m in ((k, duplication_pattern.match(v)) for k, v in named_attributes.items()) if m}
         rename_map = {k: m.group('name')
@@ -440,8 +445,10 @@ class QueryExpression:
     def __len__(self):
         """:return: number of elements in the result set e.g. ``len(q1)``."""
         return self.connection.query(
-            'SELECT count(DISTINCT {fields}) FROM {from_}{where}'.format(
-                fields=self.heading.as_sql(self.primary_key, include_aliases=False),
+            'SELECT {select_} FROM {from_}{where}'.format(
+                select_=('count(*)' if any(self._left)
+                         else 'count(DISTINCT {fields})'.format(fields=self.heading.as_sql(
+                            self.primary_key, include_aliases=False))),
                 from_=self.from_clause(),
                 where=self.where_clause())).fetchone()[0]
 
@@ -554,7 +561,7 @@ class Aggregation(QueryExpression):
         if inspect.isclass(group) and issubclass(group, QueryExpression):
             group = group()   # instantiate if a class
         assert isinstance(group, QueryExpression)
-        if keep_all_rows and len(group.support) > 1:
+        if keep_all_rows and len(group.support) > 1 or group.heading.new_attributes:
             group = group.make_subquery()  # subquery if left joining a join
         join = arg.join(group, left=keep_all_rows)  # reuse the join logic
         result = cls()
@@ -620,15 +627,17 @@ class Union(QueryExpression):
         result._support = [arg1, arg2]
         return result
 
+    __count = count()
+
     def make_sql(self):
         arg1, arg2 = self._support
         if not arg1.heading.secondary_attributes and not arg2.heading.secondary_attributes:
             # no secondary attributes: use UNION DISTINCT
             fields = arg1.primary_key
-            return "({sql1}) UNION ({sql2})".format(
+            return ("SELECT * FROM (({sql1}) UNION ({sql2})) as `_u%x`".format(
                 sql1=arg1.make_sql() if isinstance(arg1, Union) else arg1.make_sql(fields),
                 sql2=arg2.make_sql() if isinstance(arg2, Union) else arg2.make_sql(fields),
-                )
+                )) % next(self.__count)
         # with secondary attributes, use union of left join with antijoin
         fields = self.heading.names
         sql1 = arg1.join(arg2, left=True).make_sql(fields)
@@ -719,6 +728,7 @@ class U:
         if not isinstance(other, QueryExpression):
             raise DataJointError('Set U can only be restricted with a QueryExpression.')
         result = copy.copy(other)
+        result._distinct = True
         result._heading = result.heading.set_primary_key(self.primary_key)
         result = result.proj()
         return result

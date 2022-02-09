@@ -8,7 +8,6 @@ class TestPopulate:
     """
     Test base relations: insert, delete
     """
-
     def setUp(self):
         self.user = schema.User()
         self.subject = schema.Subject()
@@ -53,7 +52,7 @@ class TestPopulate:
 
     def test_allow_direct_insert(self):
         assert_true(self.subject, 'root tables are empty')
-        key = self.subject.fetch('KEY')[0]
+        key = self.subject.fetch('KEY', limit=1)[0]
         key['experiment_id'] = 1000
         key['experiment_date'] = '2018-10-30'
         self.experiment.insert1(key, allow_direct_insert=True)

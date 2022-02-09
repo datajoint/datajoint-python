@@ -9,13 +9,17 @@ def test_unite_master_parts():
         ['`s`.`a`', '`s`.`a__q`', '`s`.`a__r`', '`s`.`b`', '`s`.`b__q`', '`s`.`c`', '`s`.`c__q`', '`s`.`d`'])
     assert_list_equal(unite_master_parts(
         [
+            '`lab`.`#equipment`',
             '`cells`.`cell_analysis_method`',
             '`cells`.`cell_analysis_method_task_type`',
             '`cells`.`cell_analysis_method_users`',
             '`cells`.`favorite_selection`',
             '`cells`.`cell_analysis_method__cell_selection_params`',
+            '`lab`.`#equipment__config`',
             '`cells`.`cell_analysis_method__field_detect_params`']),
         [
+            '`lab`.`#equipment`',
+            '`lab`.`#equipment__config`',
             '`cells`.`cell_analysis_method`',
             '`cells`.`cell_analysis_method__cell_selection_params`',
             '`cells`.`cell_analysis_method__field_detect_params`',
