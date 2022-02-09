@@ -102,7 +102,7 @@ class QueryExpression:
         return clause
 
     def where_clause(self):
-        return '' if not self.restriction else ' WHERE(%s)' % ')AND('.join(
+        return '' if not self.restriction else ' WHERE (%s)' % ')AND('.join(
             str(s) for s in self.restriction)
 
     def make_sql(self, fields=None):
@@ -606,6 +606,8 @@ class Union(QueryExpression):
     """
     Union is the private DataJoint class that implements the union operator.
     """
+    __count = count()
+
     @classmethod
     def create(cls, arg1, arg2):
         if inspect.isclass(arg2) and issubclass(arg2, QueryExpression):
@@ -632,9 +634,11 @@ class Union(QueryExpression):
         if not arg1.heading.secondary_attributes and not arg2.heading.secondary_attributes:
             # no secondary attributes: use UNION DISTINCT
             fields = arg1.primary_key
-            return "({sql1}) UNION ({sql2})".format(
-                sql1=arg1.make_sql(fields),
-                sql2=arg2.make_sql(fields))
+            return ("SELECT * FROM (({sql1}) UNION ({sql2})) as `_u{alias}`".format(
+                sql1=arg1.make_sql() if isinstance(arg1, Union) else arg1.make_sql(fields),
+                sql2=arg2.make_sql() if isinstance(arg2, Union) else arg2.make_sql(fields),
+                alias=next(self.__count)
+                ))
         # with secondary attributes, use union of left join with antijoin
         fields = self.heading.names
         sql1 = arg1.join(arg2, left=True).make_sql(fields)
