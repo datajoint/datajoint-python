@@ -42,26 +42,23 @@ def test_alter():
 
 
 @schema
-class TypeMaster(dj.Manual):
+class AlterMaster(dj.Manual):
     definition = """
     master_id : int
     """
 
-    class Type(dj.Part):
-        # NOTE type_id is necessary because table.alter cannot alter the primary key (yet)
+    class AlterPart(dj.Part):
         definition = """
         -> master
-        type_id : int
         """
 
         definition1 = """
-        -> TypeMaster
-        type_id : int
+        -> AlterMaster
         """
 
 def test_alter_part():
-    original = schema.connection.query("SHOW CREATE TABLE " + TypeMaster.Type.full_table_name).fetchone()[1]
-    TypeMaster.Type.definition = Experiment.definition1
-    TypeMaster.Type.alter(prompt=False)
-    altered = schema.connection.query("SHOW CREATE TABLE " + TypeMaster.Type.full_table_name).fetchone()[1]
+    original = schema.connection.query("SHOW CREATE TABLE " + AlterMaster.AlterPart.full_table_name).fetchone()[1]
+    AlterMaster.AlterPart.definition = AlterMaster.AlterPart.definition1
+    AlterMaster.AlterPart.alter(prompt=False)
+    altered = schema.connection.query("SHOW CREATE TABLE " + AlterMaster.AlterPart.full_table_name).fetchone()[1]
     assert_equal(original, altered)
