@@ -56,6 +56,7 @@ class TypeMaster(dj.Manual):
 
         definition1 = """
         -> TypeMaster
+        type_id : int
         """
 
 def test_alter_part():
