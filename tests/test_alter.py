@@ -56,7 +56,7 @@ class AlterMaster(dj.Manual):
         -> AlterMaster
         """
 
-def test_alter_part():
+def test_alter_part_master_keyword():
     original = schema.connection.query("SHOW CREATE TABLE " + AlterMaster.AlterPart.full_table_name).fetchone()[1]
     AlterMaster.AlterPart.definition = AlterMaster.AlterPart.definition1
     AlterMaster.AlterPart.alter(prompt=False)
