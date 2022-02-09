@@ -104,7 +104,11 @@ class Blob:
             self._pos = 0
         blob_format = self.read_zero_terminated_string()
         if blob_format in ('mYm', 'dj0'):
-            return self.read_blob(n_bytes=len(self._blob) - self._pos)
+            try:
+                return self.read_blob(n_bytes=len(self._blob) - self._pos)
+            except:
+                self.is_32_bit = True
+                return self.read_blob(n_bytes=len(self._blob) - self._pos)
 
     def read_blob(self, n_bytes=None):
         start = self._pos
