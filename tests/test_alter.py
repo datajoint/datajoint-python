@@ -39,3 +39,26 @@ def test_alter():
     restored = schema.connection.query("SHOW CREATE TABLE " + Experiment.full_table_name).fetchone()[1]
     assert_not_equal(altered, restored)
     assert_equal(original, restored)
+
+
+@schema
+class TypeMaster(dj.Manual):
+    definition = """
+    master_id : int
+    """
+
+    class Type(dj.Part):
+        definition = """
+        -> master
+        """
+
+        definition1 = """
+        -> TypeMaster
+        """
+
+def test_alter_part():
+    original = schema.connection.query("SHOW CREATE TABLE " + TypeMaster.Type.full_table_name).fetchone()[1]
+    TypeMaster.Type.definition = Experiment.definition1
+    TypeMaster.Type.alter(prompt=False)
+    altered = schema.connection.query("SHOW CREATE TABLE " + TypeMaster.Type.full_table_name).fetchone()[1]
+    assert_equal(original, altered)
