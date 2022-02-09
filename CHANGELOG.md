@@ -16,6 +16,7 @@
 * Bugfix - Fix count for left-joined `QueryExpressions` (#951) PR #966
 * Bugfix - Fix assertion error when performing a union into a join (#930) PR #967
 * Update `~jobs.error_stack` from blob to mediumblob to allow error stacks >64kB in jobs (#984) PR #986
+* Bugfix - Fix error when altering a part table that uses the "master" keyword (#936) PR #990
 
 ### 0.13.2 -- May 7, 2021
 * Update `setuptools_certificate` dependency to new name `otumat`
