@@ -606,6 +606,8 @@ class Union(QueryExpression):
     """
     Union is the private DataJoint class that implements the union operator.
     """
+    __count = count()
+
     @classmethod
     def create(cls, arg1, arg2):
         if inspect.isclass(arg2) and issubclass(arg2, QueryExpression):
@@ -627,7 +629,6 @@ class Union(QueryExpression):
         result._support = [arg1, arg2]
         return result
 
-    __count = count()
 
     def make_sql(self):
         arg1, arg2 = self._support
