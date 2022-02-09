@@ -64,12 +64,12 @@ class MatStruct(np.recarray):
 
 
 class Blob:
-    def __init__(self, squeeze=False):
+    def __init__(self, squeeze=False, is_32_bit = False):
         self._squeeze = squeeze
         self._blob = None
         self._pos = 0
         self.protocol = None
-        self.is_32_bit = False
+        self.is_32_bit = is_32_bit
 
     def set_dj0(self):
         if not config.get('enable_python_native_blobs'):
@@ -104,11 +104,7 @@ class Blob:
             self._pos = 0
         blob_format = self.read_zero_terminated_string()
         if blob_format in ('mYm', 'dj0'):
-            try:
-                return self.read_blob(n_bytes=len(self._blob) - self._pos)
-            except:
-                self.is_32_bit = True
-                return self.read_blob(n_bytes=len(self._blob) - self._pos)
+            return self.read_blob(n_bytes=len(self._blob) - self._pos)
 
     def read_blob(self, n_bytes=None):
         start = self._pos
@@ -472,4 +468,7 @@ def unpack(blob, squeeze=False):
         assert isinstance(blob, bytes) and blob.startswith((b'ZL123\0', b'mYm\0', b'dj0\0'))
         return blob
     if blob is not None:
-        return Blob(squeeze=squeeze).unpack(blob)
+        try:
+            return Blob(squeeze=squeeze).unpack(blob)
+        except:
+            return Blob(squeeze=squeeze, is_32_bit=True).unpack(blob)
