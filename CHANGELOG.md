@@ -17,6 +17,7 @@
 * Bugfix - Fix assertion error when performing a union into a join (#930) PR #967
 * Update `~jobs.error_stack` from blob to mediumblob to allow error stacks >64kB in jobs (#984) PR #986
 * Bugfix - Fix error when performing a union on multiple tables (#926) PR #964
+* Add - Allow optional keyword arguments for `make()` in `populate()` PR #971
 
 ### 0.13.2 -- May 7, 2021
 * Update `setuptools_certificate` dependency to new name `otumat`
