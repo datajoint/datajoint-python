@@ -516,3 +516,13 @@ class TestRelational:
         session_dates = ((SessionDateA * (subj_query & 'date_trained<"2020-12-21"')) &
                          'session_date<date_trained')
         assert len(session_dates) == 1
+
+    @staticmethod
+    def test_union_multiple():
+        # https://github.com/datajoint/datajoint-python/issues/926
+        q1 = IJ & dict(j=2)
+        q2 = (IJ & dict(j=2, i=0)) + (IJ & dict(j=2, i=1)) + (IJ & dict(j=2, i=2))
+        x = set(zip(*q1.fetch('i', 'j')))
+        y = set(zip(*q2.fetch('i', 'j')))
+        assert x == y
+        assert q1.fetch(as_dict=True) == q2.fetch(as_dict=True)

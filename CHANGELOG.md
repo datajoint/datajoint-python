@@ -1,6 +1,6 @@
 ## Release notes
 
-### 0.13.3 -- TBD
+### 0.13.3 -- Feb 9, 2022
 * Bugfix - Fix error in listing ancestors, descendants with part tables.
 * Bugfix - Fix Python 3.10 compatibility (#983) PR #972
 * Bugfix - Allow renaming non-conforming attributes in proj (#982) PR #972
@@ -15,6 +15,9 @@
 * Bugfix - Fix sql code generation to comply with sql mode `ONLY_FULL_GROUP_BY` (#916) PR #965
 * Bugfix - Fix count for left-joined `QueryExpressions` (#951) PR #966
 * Bugfix - Fix assertion error when performing a union into a join (#930) PR #967
+* Update `~jobs.error_stack` from blob to mediumblob to allow error stacks >64kB in jobs (#984) PR #986
+* Bugfix - Fix error when performing a union on multiple tables (#926) PR #964
+* Add - Allow optional keyword arguments for `make()` in `populate()` PR #971
 
 ### 0.13.2 -- May 7, 2021
 * Update `setuptools_certificate` dependency to new name `otumat`
@@ -248,7 +251,7 @@ Documentation and tutorials available at https://docs.datajoint.io and https://t
 * ERD() no longer text the context argument.
 * ERD.draw() now takes an optional context argument.  By default uses the caller's locals.
 
-### 0.3.2.   
+### 0.3.2.
 * Fixed issue #223:  `insert` can insert relations without fetching.
 * ERD() now takes the `context` argument, which specifies in which context to look for classes. The default is taken from the argument (schema or relation).
 * ERD.draw() no longer has the `prefix` argument: class names are shown as found in the context.
