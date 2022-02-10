@@ -135,8 +135,8 @@ class AutoPopulate:
         for which there is not already a tuple in table.
         :param restrictions: a list of restrictions each restrict
             (table.key_source - target.proj())
-        :param keys: The list of dicts to populate. When None (default),
-             uses self.key_source to query keys to populate.
+        :param keys: The list of keys (dicts) to send to self.make().
+            If None (default), then use self.key_source to query they keys.
         :param suppress_errors: if True, do not terminate execution.
         :param return_exception_objects: return error objects instead of just error messages
         :param reserve_jobs: if True, reserve jobs to populate in asynchronous fashion
