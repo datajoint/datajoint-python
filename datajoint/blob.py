@@ -441,7 +441,9 @@ class Blob:
         except ValueError:
             self.is_32_bit = True
             self._pos = self._pos_prev
-            data = np.frombuffer(self._blob, dtype='uint32', count=self.read_value(), offset=self._pos)
+            data = np.frombuffer(self._blob, dtype='uint32',
+                                 count=self.read_value() if count != 1 else 1,
+                                 offset=self._pos)
         self._pos_prev = self._pos
         self._pos += data.dtype.itemsize * data.size
         return data[0] if count == 1 else data
