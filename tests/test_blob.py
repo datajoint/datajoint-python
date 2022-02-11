@@ -134,7 +134,7 @@ def test_complex():
 
 
 def test_insert_longblob():
-    query = ("INSERT INTO djtest_test1.testmym (id, data) VALUES (1, "
+    query = ("INSERT INTO djtest_test1.longblob (id, data) VALUES (1, "
             "X'6D596D00530200000001000000010000000400000068697473007369646573007461736B73007374"
             "616765004D000000410200000001000000070000000600000000000000000000000000F8FF00000000"
             "0000F03F000000000000F03F0000000000000000000000000000F03F00000000000000000000000000"
@@ -149,4 +149,4 @@ def test_insert_longblob():
             np.array(['ddddddd'], dtype='<U7'),
             np.array(['Stage 10'], dtype='<U8'))]],
         dtype=[('hits', 'O'), ('sides', 'O'), ('tasks', 'O'), ('stage', 'O')])}
-    assert (schema.Testmym & 'id=1').fetch1() == data_32
+    assert (schema.Longblob & 'id=1').fetch1() == data_32

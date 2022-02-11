@@ -452,7 +452,7 @@ class Stimulus(dj.Lookup):
 
 
 @schema
-class Testmym(dj.Manual):
+class Longblob(dj.Manual):
     definition = """
     id: int
     ---

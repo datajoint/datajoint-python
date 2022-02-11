@@ -64,13 +64,13 @@ class MatStruct(np.recarray):
 
 
 class Blob:
-    def __init__(self, squeeze=False, is_32_bit = False):
+    def __init__(self, squeeze=False):
         self._squeeze = squeeze
         self._blob = None
         self._pos = 0
         self._pos_prev = 0
         self.protocol = None
-        self.is_32_bit = is_32_bit
+        self.is_32_bit = False
 
     def set_dj0(self):
         if not config.get('enable_python_native_blobs'):
