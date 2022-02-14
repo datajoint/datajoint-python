@@ -134,6 +134,23 @@ def test_complex():
 
 
 def test_insert_longblob():
+    insert_64 = {'id': 1, 'data':
+        np.rec.array(
+            [[
+                (
+                    np.array([[np.nan,  1.,  1.,  0.,  1.,  0., np.nan]]),
+                    np.array(['llllrrl'], dtype='<U7'),
+                    np.array(['ddddddd'], dtype='<U7'),
+                    np.array(['Stage 10'], dtype='<U8')
+                )
+            ]],
+            dtype=[('hits', 'O'), ('sides', 'O'), ('tasks', 'O'), ('stage', 'O')]
+        )
+    }
+    schema.Longblob.insert1(insert_64)
+    # assert (schema.Longblob & 'id=1').fetch1() == insert_64
+    (schema.Longblob & 'id=1').delete()
+
     query_32 = ("INSERT INTO djtest_test1.longblob (id, data) VALUES (1, "
                 "X'6D596D00530200000001000000010000000400000068697473007369646573007461736B73007374"
                 "616765004D000000410200000001000000070000000600000000000000000000000000F8FF00000000"
@@ -141,39 +158,16 @@ def test_insert_longblob():
                 "00F8FF230000004102000000010000000700000004000000000000006C006C006C006C00720072006C"
                 "0023000000410200000001000000070000000400000000000000640064006400640064006400640025"
                 "00000041020000000100000008000000040000000000000053007400610067006500200031003000')")
-    query_64 = ("INSERT INTO djtest_test1.longblob (id, data) VALUES (2, "
+    dj.conn().query(query_32).fetchall()
+    assert (schema.Longblob & 'id=1').fetch1() == insert_64
+    (schema.Longblob & 'id=1').delete()
+
+    query_64 = ("INSERT INTO djtest_test1.longblob (id, data) VALUES (1, "
                 "X'646A300002060000000000000004000000000000000A01000104000000000000000A010002040000"
                 "00000000000A01000304000000000000000A01000404000000000000000A0100050400000000000000"
                 "0A010006')")
-    insert_64 = {'id':3, 'data':{
-        'stage': 'Stage 10', 
-        'tasks': 'ddddddd0', 
-        'sides': 'llllrrl', 
-        'hits': [np.nan,1.,1.,0.,1.,0.,np.nan]
-        }
-    }
-    dj.conn().query(query_32).fetchall()
+
     dj.conn().query(query_64).fetchall()
-    schema.Longblob.insert1(insert_64)
-    
-    query_32_fetch = {'id': 1, 'data':
-        np.rec.array([[(
-            np.array([[np.nan,  1.,  1.,  0.,  1.,  0., np.nan]]),
-            np.array(['llllrrl'], dtype='<U7'),
-            np.array(['ddddddd'], dtype='<U7'),
-            np.array(['Stage 10'], dtype='<U8'))]],
-        dtype=[('hits', 'O'), ('sides', 'O'), ('tasks', 'O'), ('stage', 'O')]
-        )
-    }
-    query_64_fetch = {'id': 2, 'data': [1, 2, 3, 4, 5, 6]}
-    insert_64_fetch = {'id':3, 'data':{
-        'stage': 'Stage 10', 
-        'tasks': 'ddddddd0', 
-        'sides': 'llllrrl', 
-        'hits': [np.nan,1.,1.,0.,1.,0.,np.nan]
-        }
-    }
-    
-    assert (schema.Longblob & 'id=1').fetch1() == query_32_fetch
-    assert (schema.Longblob & 'id=2').fetch1() == query_64_fetch
-    # assert (schema.Longblob & 'id=3').fetch1() == insert_64_fetch fails?????????
+    query_64_fetch = {'id': 1, 'data': [1, 2, 3, 4, 5, 6]}
+    assert (schema.Longblob & 'id=1').fetch1() == query_64_fetch
+    (schema.Longblob & 'id=1').delete()
