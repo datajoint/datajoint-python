@@ -134,7 +134,26 @@ def test_complex():
 
 
 def test_insert_longblob():
-    insert_64 = {'id': 1, 'data':
+    insert_dj_blob = {'id': 1, 'data': [1, 2, 3]}
+    schema.Longblob.insert1(insert_dj_blob)
+    assert (schema.Longblob & 'id=1').fetch1() == insert_dj_blob
+    (schema.Longblob & 'id=1').delete()
+
+    query_mym_blob = {'id': 1, 'data': np.array([1, 2, 3])}
+    schema.Longblob.insert1(query_mym_blob)
+    assert (schema.Longblob & 'id=1').fetch1()['data'].all() == query_mym_blob['data'].all()
+    (schema.Longblob & 'id=1').delete()
+
+    query_32_blob = ("INSERT INTO djtest_test1.longblob (id, data) VALUES (1, "
+                "X'6D596D00530200000001000000010000000400000068697473007369646573007461736B73007374"
+                "616765004D000000410200000001000000070000000600000000000000000000000000F8FF00000000"
+                "0000F03F000000000000F03F0000000000000000000000000000F03F00000000000000000000000000"
+                "00F8FF230000004102000000010000000700000004000000000000006C006C006C006C00720072006C"
+                "0023000000410200000001000000070000000400000000000000640064006400640064006400640025"
+                "00000041020000000100000008000000040000000000000053007400610067006500200031003000')")
+    dj.conn().query(query_32_blob).fetchall()
+    assert (schema.Longblob & 'id=1').fetch1() == {
+    'id': 1, 'data':
         np.rec.array(
             [[
                 (
@@ -147,27 +166,5 @@ def test_insert_longblob():
             dtype=[('hits', 'O'), ('sides', 'O'), ('tasks', 'O'), ('stage', 'O')]
         )
     }
-    schema.Longblob.insert1(insert_64)
-    # assert (schema.Longblob & 'id=1').fetch1() == insert_64
     (schema.Longblob & 'id=1').delete()
 
-    query_32 = ("INSERT INTO djtest_test1.longblob (id, data) VALUES (1, "
-                "X'6D596D00530200000001000000010000000400000068697473007369646573007461736B73007374"
-                "616765004D000000410200000001000000070000000600000000000000000000000000F8FF00000000"
-                "0000F03F000000000000F03F0000000000000000000000000000F03F00000000000000000000000000"
-                "00F8FF230000004102000000010000000700000004000000000000006C006C006C006C00720072006C"
-                "0023000000410200000001000000070000000400000000000000640064006400640064006400640025"
-                "00000041020000000100000008000000040000000000000053007400610067006500200031003000')")
-    dj.conn().query(query_32).fetchall()
-    assert (schema.Longblob & 'id=1').fetch1() == insert_64
-    (schema.Longblob & 'id=1').delete()
-
-    query_64 = ("INSERT INTO djtest_test1.longblob (id, data) VALUES (1, "
-                "X'646A300002060000000000000004000000000000000A01000104000000000000000A010002040000"
-                "00000000000A01000304000000000000000A01000404000000000000000A0100050400000000000000"
-                "0A010006')")
-
-    dj.conn().query(query_64).fetchall()
-    query_64_fetch = {'id': 1, 'data': [1, 2, 3, 4, 5, 6]}
-    assert (schema.Longblob & 'id=1').fetch1() == query_64_fetch
-    (schema.Longblob & 'id=1').delete()
