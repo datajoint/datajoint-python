@@ -32,7 +32,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install flake8
       - name: Run syntax tests
-        run: flake8 datajoint --count --select=E9,F63,F7,F82 --show-source --statistics
+        run: |
+          flake8 datajoint --count --select=E9,F63,F7,F82 --show-source --statistics
+          black datajoint --check -v
       - name: Run primary tests
         env:
           UID: "1001"

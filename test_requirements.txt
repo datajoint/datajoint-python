@@ -2,3 +2,4 @@ nose
 nose-cov
 coveralls
 faker
+black
