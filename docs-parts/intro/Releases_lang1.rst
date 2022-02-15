@@ -1,3 +1,7 @@
+0.13.4 -- TBA
+----------------------
+* Bugfix - Fix error when fetching data that was inserted as 32-bit
+
 0.13.3 -- Feb 9, 2022
 ----------------------
 * Bugfix - Fix error in listing ancestors, descendants with part tables.
