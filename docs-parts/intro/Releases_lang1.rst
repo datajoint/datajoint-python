@@ -1,6 +1,6 @@
 0.13.4 -- TBA
 ----------------------
-* Bugfix - Fix error when fetching data that was inserted as 32-bit
+* Bugfix - Added a module flag for reading 32-bit data
 
 0.13.3 -- Feb 9, 2022
 ----------------------
