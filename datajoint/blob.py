@@ -43,6 +43,7 @@ compression = {
 }
 
 bypass_serialization = False  # runtime setting to bypass blob (en|de)code
+use_32bit_dims = False # runtime setting to read data as 32-bit
 
 
 def len_u64(obj):
@@ -68,9 +69,7 @@ class Blob:
         self._squeeze = squeeze
         self._blob = None
         self._pos = 0
-        self._pos_prev = 0
         self.protocol = None
-        self.is_32_bit = False
 
     def set_dj0(self):
         if not config.get('enable_python_native_blobs'):
@@ -435,14 +434,8 @@ class Blob:
 
     def read_value(self, dtype=None, count=1):
         if dtype is None:
-            dtype = 'uint32' if self.is_32_bit else 'uint64'
-        try:
-            data = np.frombuffer(self._blob, dtype=dtype, count=count, offset=self._pos)
-        except ValueError:
-            self.is_32_bit = True
-            self._pos = self._pos_prev
-            data = np.frombuffer(self._blob, dtype='uint32', count=self.read_value(), offset=self._pos)
-        self._pos_prev = self._pos
+            dtype = 'uint32' if use_32bit_dims else 'uint64'
+        data = np.frombuffer(self._blob, dtype=dtype, count=count, offset=self._pos)
         self._pos += data.dtype.itemsize * data.size
         return data[0] if count == 1 else data
 
