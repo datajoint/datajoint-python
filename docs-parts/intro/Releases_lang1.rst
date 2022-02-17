@@ -1,6 +1,6 @@
 0.13.4 -- TBA
 ----------------------
-* Add - A module flag for reading 32-bit data
+* Add - Allow reading blobs produced by legacy 32-bit compiled mYm library for matlab. PR #995
 
 0.13.3 -- Feb 9, 2022
 ----------------------
