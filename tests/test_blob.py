@@ -152,6 +152,7 @@ def test_insert_longblob():
                 "0023000000410200000001000000070000000400000000000000640064006400640064006400640025"
                 "00000041020000000100000008000000040000000000000053007400610067006500200031003000')")
     dj.conn().query(query_32_blob).fetchall()
+    dj.blob.use_32bit_dims = True
     assert (schema.Longblob & 'id=1').fetch1() == {
     'id': 1, 'data':
         np.rec.array(
@@ -167,4 +168,4 @@ def test_insert_longblob():
         )
     }
     (schema.Longblob & 'id=1').delete()
-
+    dj.blob.use_32bit_dims = False

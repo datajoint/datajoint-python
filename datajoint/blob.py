@@ -43,7 +43,10 @@ compression = {
 }
 
 bypass_serialization = False  # runtime setting to bypass blob (en|de)code
-use_32bit_dims = False # runtime setting to read data as 32-bit
+
+# runtime setting to read integers as 32-bit to read blobs created by the 32-bit 
+# version of the mYm library for MATLAB 
+use_32bit_dims = False
 
 
 def len_u64(obj):
