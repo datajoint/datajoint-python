@@ -1,5 +1,8 @@
 ## Release notes
 
+### 0.13.4 -- TBA
+* Add - Allow reading blobs produced by legacy 32-bit compiled mYm library for matlab. PR #995
+
 ### 0.13.3 -- Feb 9, 2022
 * Bugfix - Fix error in listing ancestors, descendants with part tables.
 * Bugfix - Fix Python 3.10 compatibility (#983) PR #972
