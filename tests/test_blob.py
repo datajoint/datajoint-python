@@ -1,5 +1,7 @@
+import datajoint as dj
 import numpy as np
 import uuid
+from . import schema
 from decimal import Decimal
 from datetime import datetime
 from datajoint.blob import pack, unpack
@@ -129,3 +131,41 @@ def test_complex():
 
     x = np.int16(np.random.randn(1, 2, 3)) + 1j*np.int16(np.random.randn(1, 2, 3))
     assert_array_equal(x, unpack(pack(x)), "Arrays do not match!")
+
+
+def test_insert_longblob():
+    insert_dj_blob = {'id': 1, 'data': [1, 2, 3]}
+    schema.Longblob.insert1(insert_dj_blob)
+    assert (schema.Longblob & 'id=1').fetch1() == insert_dj_blob
+    (schema.Longblob & 'id=1').delete()
+
+    query_mym_blob = {'id': 1, 'data': np.array([1, 2, 3])}
+    schema.Longblob.insert1(query_mym_blob)
+    assert (schema.Longblob & 'id=1').fetch1()['data'].all() == query_mym_blob['data'].all()
+    (schema.Longblob & 'id=1').delete()
+
+    query_32_blob = ("INSERT INTO djtest_test1.longblob (id, data) VALUES (1, "
+                "X'6D596D00530200000001000000010000000400000068697473007369646573007461736B73007374"
+                "616765004D000000410200000001000000070000000600000000000000000000000000F8FF00000000"
+                "0000F03F000000000000F03F0000000000000000000000000000F03F00000000000000000000000000"
+                "00F8FF230000004102000000010000000700000004000000000000006C006C006C006C00720072006C"
+                "0023000000410200000001000000070000000400000000000000640064006400640064006400640025"
+                "00000041020000000100000008000000040000000000000053007400610067006500200031003000')")
+    dj.conn().query(query_32_blob).fetchall()
+    dj.blob.use_32bit_dims = True
+    assert (schema.Longblob & 'id=1').fetch1() == {
+    'id': 1, 'data':
+        np.rec.array(
+            [[
+                (
+                    np.array([[np.nan,  1.,  1.,  0.,  1.,  0., np.nan]]),
+                    np.array(['llllrrl'], dtype='<U7'),
+                    np.array(['ddddddd'], dtype='<U7'),
+                    np.array(['Stage 10'], dtype='<U8')
+                )
+            ]],
+            dtype=[('hits', 'O'), ('sides', 'O'), ('tasks', 'O'), ('stage', 'O')]
+        )
+    }
+    (schema.Longblob & 'id=1').delete()
+    dj.blob.use_32bit_dims = False
