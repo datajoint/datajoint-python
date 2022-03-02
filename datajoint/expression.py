@@ -342,11 +342,11 @@ class QueryExpression:
         """
         # new attributes in parentheses are included again with the new name without removing original
         duplication_pattern = re.compile(
-            fr'^\s*\(\s*(?!{"|".join(CONSTANT_LITERALS)})(?P<name>[a-zA-Z_]\w*)\s*\)\s*$'
+            rf'^\s*\(\s*(?!{"|".join(CONSTANT_LITERALS)})(?P<name>[a-zA-Z_]\w*)\s*\)\s*$'
         )
         # attributes without parentheses renamed
         rename_pattern = re.compile(
-            fr'^\s*(?!{"|".join(CONSTANT_LITERALS)})(?P<name>[a-zA-Z_]\w*)\s*$'
+            rf'^\s*(?!{"|".join(CONSTANT_LITERALS)})(?P<name>[a-zA-Z_]\w*)\s*$'
         )
         replicate_map = {
             k: m.group("name")

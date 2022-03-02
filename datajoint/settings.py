@@ -239,12 +239,12 @@ class Config(collections.abc.MutableMapping):
 
         def __setitem__(self, key, value):
             logger.log(
-                logging.INFO, u"Setting {0:s} to {1:s}".format(str(key), str(value))
+                logging.INFO, "Setting {0:s} to {1:s}".format(str(key), str(value))
             )
             if validators[key](value):
                 self._conf[key] = value
             else:
-                raise DataJointError(u"Validator for {0:s} did not pass".format(key))
+                raise DataJointError("Validator for {0:s} did not pass".format(key))
 
 
 # Load configuration from file

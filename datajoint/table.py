@@ -866,7 +866,7 @@ class Table(QueryExpression):
                     for field in fields:
                         if field not in self.heading:
                             raise KeyError(
-                                u"`{0:s}` is not in the table heading".format(field)
+                                "`{0:s}` is not in the table heading".format(field)
                             )
             elif set(field_list) != set(fields).intersection(self.heading.names):
                 raise DataJointError("Attempt to insert rows with different fields.")
