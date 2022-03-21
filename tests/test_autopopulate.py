@@ -57,6 +57,12 @@ class TestPopulate:
         key['experiment_date'] = '2018-10-30'
         self.experiment.insert1(key, allow_direct_insert=True)
 
+    def test_multi_processing(self):
+        assert self.subject, 'root tables are empty'
+        assert not self.experiment, 'table already filled?'
+        self.experiment.populate(processes=2)
+        assert len(self.experiment) == len(self.subject)*self.experiment.fake_experiments_per_subject
+
     @raises(DataJointError)
     def test_allow_insert(self):
         assert_true(self.subject, 'root tables are empty')
