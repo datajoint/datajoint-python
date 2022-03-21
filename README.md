@@ -10,8 +10,8 @@ DataJoint for Python is a framework for scientific workflow management based on 
 
 DataJoint was initially developed in 2009 by Dimitri Yatsenko in Andreas Tolias' Lab for the distributed processing and management of large volumes of data streaming from regular experiments. Starting in 2011, DataJoint has been available as an open-source project adopted by other labs and improved through contributions from several developers.
 
-Vathes LLC supports DataJoint for Python as an open-source project and everyone is welcome to contribute.
-Its DataJoint Neuro (https://djneuro.io) business provides support to neuroscience labs for developing and executing custom data pipelines.
+[DataJoint Inc.](https://datajoint.com) supports DataJoint for Python as an open-source project and everyone is welcome to contribute.
+Its business provides support to neuroscience labs for developing and executing custom data pipelines.
 
 ## Installation
 ```
@@ -93,10 +93,9 @@ As always, be sure that your data is safely backed up before modifying any
 important DataJoint schema or records.
 
 ## Documentation and Tutorials
-A number of labs are currently adopting DataJoint and we are quickly getting the documentation in shape in February 2017.
 
-* https://datajoint.io  -- start page
-* https://docs.datajoint.io -- up-to-date documentation
+* https://datajoint.org  -- start page
+* https://docs.datajoint.org -- up-to-date documentation
 * https://tutorials.datajoint.io -- step-by-step tutorials
 * https://catalog.datajoint.io -- catalog of example pipelines
 
