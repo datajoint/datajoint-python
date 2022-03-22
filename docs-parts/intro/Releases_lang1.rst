@@ -1,6 +1,8 @@
-0.13.4 -- TBA
+0.13.4 -- March 25, 2022
 ----------------------
 * Add - Allow reading blobs produced by legacy 32-bit compiled mYm library for matlab. PR #995
+* Bugfix - Add missing `jobs` argument for multiprocessing
+* Add - Test for multiprocessing
 
 0.13.3 -- Feb 9, 2022
 ----------------------
