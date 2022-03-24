@@ -20,6 +20,15 @@ If you already have an older version of DataJoint installed using `pip`, upgrade
 ```bash
 pip3 install --upgrade datajoint
 ```
+
+## Documentation and Tutorials
+
+* https://datajoint.org  -- start page
+* https://docs.datajoint.org -- up-to-date documentation
+* https://tutorials.datajoint.io -- step-by-step tutorials
+* https://catalog.datajoint.io -- catalog of example pipelines
+* https://codebook.datajoint.io -- interactive online tutorials
+
 ## Python Native Blobs
 
 DataJoint 0.12 adds full support for all native python data types in blobs: tuples, lists, sets, dicts, strings, bytes, `None`, and all their recursive combinations.
@@ -90,12 +99,6 @@ the situation, but generally the following strategies may apply:
 As always, be sure that your data is safely backed up before modifying any
 important DataJoint schema or records.
 
-## Documentation and Tutorials
-
-* https://datajoint.org  -- start page
-* https://docs.datajoint.org -- up-to-date documentation
-* https://tutorials.datajoint.io -- step-by-step tutorials
-* https://catalog.datajoint.io -- catalog of example pipelines
 
 ## Running Tests Locally
 
