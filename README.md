@@ -26,7 +26,7 @@ pip3 install --upgrade datajoint
 * https://datajoint.org  -- start page
 * https://docs.datajoint.org -- up-to-date documentation
 * https://tutorials.datajoint.io -- step-by-step tutorials
-* https://catalog.datajoint.io -- catalog of example pipelines
+* https://elements.datajoint.org -- catalog of example pipelines
 * https://codebook.datajoint.io -- interactive online tutorials
 
 ## Python Native Blobs
