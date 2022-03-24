@@ -8,7 +8,7 @@ from datajoint import errors
 from . import PREFIX, CONN_INFO, S3_CONN_INFO
 
 stores_config = {
-    'repo_s3': dict(
+    'repo-s3': dict(
         S3_CONN_INFO,
         protocol='s3',
         location='adapted/repo',
@@ -59,7 +59,7 @@ class LayoutToFilepath(dj.AttributeAdapter):
     An adapted data type that saves a graph layout into fixed filepath
     """
 
-    attribute_type = 'filepath@repo_s3'
+    attribute_type = 'filepath@repo-s3'
 
     @staticmethod
     def get(path):
@@ -68,7 +68,7 @@ class LayoutToFilepath(dj.AttributeAdapter):
 
     @staticmethod
     def put(layout):
-        path = Path(dj.config['stores']['repo_s3']['stage'], 'layout.json')
+        path = Path(dj.config['stores']['repo-s3']['stage'], 'layout.json')
         with open(str(path), "w") as f:
             json.dump(layout, f)
         return path
