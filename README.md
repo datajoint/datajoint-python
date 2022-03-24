@@ -30,6 +30,8 @@ pip3 install --upgrade datajoint
 * https://codebook.datajoint.io -- interactive online tutorials
 
 ## Python Native Blobs
+<details>
+<summary>Click to expand details</summary>
 
 DataJoint 0.12 adds full support for all native python data types in blobs: tuples, lists, sets, dicts, strings, bytes, `None`, and all their recursive combinations.
 The new blobs are a superset of the old functionality and are fully backward compatible.
@@ -99,9 +101,11 @@ the situation, but generally the following strategies may apply:
 As always, be sure that your data is safely backed up before modifying any
 important DataJoint schema or records.
 
+</details>
 
 ## Running Tests Locally
-
+<details>
+<summary>Click to expand details</summary>
 
 * Create an `.env` with desired development environment values e.g.
 ``` sh
@@ -136,9 +140,9 @@ GID=1000
 * Add entry in `/etc/hosts` for `127.0.0.1 fakeservices.datajoint.io`
 
 
-
-
 ### Launch Jupyter Notebook for Interactive Use
 * Navigate to `localhost:8888`
 * Input Jupyter password
 * Launch a notebook i.e. `New > Python 3`
+
+</details>
