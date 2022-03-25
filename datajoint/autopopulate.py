@@ -233,9 +233,7 @@ class AutoPopulate:
             # spawn multiple processes
             self.connection.close()  # disconnect parent process from MySQL server
             del self.connection._conn.ctx  # SSLContext is not pickleable
-            with mp.Pool(
-                processes, _initialize_populate, (self, populate_kwargs)
-            ) as pool:
+            with mp.Pool(processes, _initialize_populate, (self, jobs, populate_kwargs)) as pool:
                 if display_progress:
                     with tqdm(desc="Processes: ", total=nkeys) as pbar:
                         for error in pool.imap(_call_populate1, keys, chunksize=1):
