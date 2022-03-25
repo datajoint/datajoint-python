@@ -11,25 +11,31 @@ from .attribute_adapter import get_adapter
 
 UUID_DATA_TYPE = "binary(16)"
 MAX_TABLE_NAME_LENGTH = 64
-CONSTANT_LITERALS = {'CURRENT_TIMESTAMP', 'NULL'}  # SQL literals to be used without quotes (case insensitive)
-EXTERNAL_TABLE_ROOT = '~external'
+CONSTANT_LITERALS = {
+    "CURRENT_TIMESTAMP",
+    "NULL",
+}  # SQL literals to be used without quotes (case insensitive)
+EXTERNAL_TABLE_ROOT = "~external"
 
-TYPE_PATTERN = {k: re.compile(v, re.I) for k, v in dict(
-    INTEGER=r'((tiny|small|medium|big|)int|integer)(\s*\(.+\))?(\s+unsigned)?(\s+auto_increment)?|serial$',
-    DECIMAL=r'(decimal|numeric)(\s*\(.+\))?(\s+unsigned)?$',
-    FLOAT=r'(double|float|real)(\s*\(.+\))?(\s+unsigned)?$',
-    STRING=r'(var)?char\s*\(.+\)$',
-    ENUM=r'enum\s*\(.+\)$',
-    BOOL=r'bool(ean)?$',   # aliased to tinyint(1)
-    TEMPORAL=r'(date|datetime|time|timestamp|year)(\s*\(.+\))?$',
-    INTERNAL_BLOB=r'(tiny|small|medium|long|)blob$',
-    EXTERNAL_BLOB=r'blob@(?P<store>[a-z][\-\w]*)$',
-    INTERNAL_ATTACH=r'attach$',
-    EXTERNAL_ATTACH=r'attach@(?P<store>[a-z][\-\w]*)$',
-    FILEPATH=r'filepath@(?P<store>[a-z][\-\w]*)$',
-    UUID=r'uuid$',
-    ADAPTED=r'<.+>$'
-).items()}
+TYPE_PATTERN = {
+    k: re.compile(v, re.I)
+    for k, v in dict(
+        INTEGER=r"((tiny|small|medium|big|)int|integer)(\s*\(.+\))?(\s+unsigned)?(\s+auto_increment)?|serial$",
+        DECIMAL=r"(decimal|numeric)(\s*\(.+\))?(\s+unsigned)?$",
+        FLOAT=r"(double|float|real)(\s*\(.+\))?(\s+unsigned)?$",
+        STRING=r"(var)?char\s*\(.+\)$",
+        ENUM=r"enum\s*\(.+\)$",
+        BOOL=r"bool(ean)?$",  # aliased to tinyint(1)
+        TEMPORAL=r"(date|datetime|time|timestamp|year)(\s*\(.+\))?$",
+        INTERNAL_BLOB=r"(tiny|small|medium|long|)blob$",
+        EXTERNAL_BLOB=r"blob@(?P<store>[a-z][\-\w]*)$",
+        INTERNAL_ATTACH=r"attach$",
+        EXTERNAL_ATTACH=r"attach@(?P<store>[a-z][\-\w]*)$",
+        FILEPATH=r"filepath@(?P<store>[a-z][\-\w]*)$",
+        UUID=r"uuid$",
+        ADAPTED=r"<.+>$",
+    ).items()
+}
 
 # custom types are stored in attribute comment
 SPECIAL_TYPES = {
