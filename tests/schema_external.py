@@ -22,7 +22,7 @@ stores_config = {
         protocol='file',
         location=tempfile.mkdtemp()),
 
-    'repo_s3': dict(
+    'repo-s3': dict(
         S3_CONN_INFO,
         protocol='s3',
         location='dj/repo',
@@ -130,7 +130,7 @@ class FilepathS3(dj.Manual):
     # table for file management 
     fnum : int 
     ---
-    img : filepath@repo_s3  # managed files 
+    img : filepath@repo-s3  # managed files 
     """
 
 dj.errors._switch_filepath_types(False)
