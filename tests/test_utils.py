@@ -15,21 +15,19 @@ def teardown():
 
 
 def test_from_camel_case():
-    assert_equal(from_camel_case('AllGroups'), 'all_groups')
+    assert_equal(from_camel_case("AllGroups"), "all_groups")
     with assert_raises(DataJointError):
-        from_camel_case('repNames')
+        from_camel_case("repNames")
     with assert_raises(DataJointError):
-        from_camel_case('10_all')
+        from_camel_case("10_all")
     with assert_raises(DataJointError):
-        from_camel_case('hello world')
+        from_camel_case("hello world")
     with assert_raises(DataJointError):
-        from_camel_case('#baisc_names')
+        from_camel_case("#baisc_names")
 
 
 def test_to_camel_case():
-    assert_equal(to_camel_case('all_groups'), 'AllGroups')
-    assert_equal(to_camel_case('hello'), 'Hello')
-    assert_equal(to_camel_case('this_is_a_sample_case'), 'ThisIsASampleCase')
-    assert_equal(to_camel_case('This_is_Mixed'), 'ThisIsMixed')
-
-
+    assert_equal(to_camel_case("all_groups"), "AllGroups")
+    assert_equal(to_camel_case("hello"), "Hello")
+    assert_equal(to_camel_case("this_is_a_sample_case"), "ThisIsASampleCase")
+    assert_equal(to_camel_case("This_is_Mixed"), "ThisIsMixed")
