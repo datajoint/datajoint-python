@@ -244,9 +244,9 @@ class ArgmaxTest(dj.Lookup):
     def contents(self):
         n = self.n
         yield from zip(
-            range(n ** 2),
+            range(n**2),
             itertools.chain(*itertools.repeat(tuple(map(chr, range(100, 100 + n))), n)),
-            np.random.rand(n ** 2),
+            np.random.rand(n**2),
         )
 
 
