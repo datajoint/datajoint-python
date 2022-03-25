@@ -2,9 +2,9 @@ import uuid
 import datajoint as dj
 from . import PREFIX, CONN_INFO
 
-schema = dj.Schema(PREFIX + '_test1', connection=dj.conn(**CONN_INFO))
+schema = dj.Schema(PREFIX + "_test1", connection=dj.conn(**CONN_INFO))
 
-top_level_namespace_id = uuid.UUID('00000000-0000-0000-0000-000000000000')
+top_level_namespace_id = uuid.UUID("00000000-0000-0000-0000-000000000000")
 
 
 @schema
@@ -27,7 +27,9 @@ class Topic(dj.Manual):
 
     def add(self, topic):
         """add a new topic with a its UUID"""
-        self.insert1(dict(topic_id=uuid.uuid5(top_level_namespace_id, topic), topic=topic))
+        self.insert1(
+            dict(topic_id=uuid.uuid5(top_level_namespace_id, topic), topic=topic)
+        )
 
 
 @schema
@@ -39,8 +41,10 @@ class Item(dj.Computed):
     word : varchar(8000)
     """
 
-    key_source = Topic    # test key source that is not instantiated
+    key_source = Topic  # test key source that is not instantiated
 
     def make(self, key):
-        for word in ('Habenula', 'Hippocampus', 'Hypothalamus', 'Hypophysis'):
-            self.insert1(dict(key, word=word, item_id=uuid.uuid5(key['topic_id'], word)))
+        for word in ("Habenula", "Hippocampus", "Hypothalamus", "Hypophysis"):
+            self.insert1(
+                dict(key, word=word, item_id=uuid.uuid5(key["topic_id"], word))
+            )
