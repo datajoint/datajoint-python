@@ -110,7 +110,7 @@ important DataJoint schema or records.
 * Create an `.env` with desired development environment values e.g.
 ``` sh
 PY_VER=3.7
-ALPINE_VER=3.10
+DISTRO=alpine
 MYSQL_VER=5.7
 MINIO_VER=RELEASE.2021-09-03T03-56-13Z
 UID=1000

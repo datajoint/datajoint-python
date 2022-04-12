@@ -57,7 +57,7 @@ services:
         condition: service_healthy
   app:
     <<: *net
-    image: datajoint/pydev:${PY_VER}-alpine${ALPINE_VER}
+    image: datajoint/djtest:py${PY_VER}-${DISTRO}
     depends_on:
       fakeservices.datajoint.io:
         condition: service_healthy
@@ -82,7 +82,7 @@ services:
       - -c
       - |
         set -e
-        pip install --user nose nose-cov coveralls flake8 ptvsd black
+        pip install --user nose nose-cov
         pip install -e .
         pip freeze | grep datajoint
         ## You may run the below tests once sh'ed into container i.e. docker exec -it datajoint-python_app_1 sh

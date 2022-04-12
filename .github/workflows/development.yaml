@@ -14,12 +14,14 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        py_ver: ["3.8"]
+        py_ver: ["3.10"]
         mysql_ver: ["8.0", "5.7"]
         include:
-          - py_ver: "3.7"
+          - py_ver: "3.9"
             mysql_ver: "5.7"
-          - py_ver: "3.6"
+          - py_ver: "3.8"
+            mysql_ver: "5.7"
+          - py_ver: "3.7"
             mysql_ver: "5.7"
     steps:
       - uses: actions/checkout@v2
@@ -39,11 +41,9 @@ jobs:
           GID: "121"
           PY_VER: ${{matrix.py_ver}}
           MYSQL_VER: ${{matrix.mysql_ver}}
-          ALPINE_VER: "3.10"
+          DISTRO: alpine
           MINIO_VER: RELEASE.2021-09-03T03-56-13Z
           COMPOSE_HTTP_TIMEOUT: "120"
-          COVERALLS_SERVICE_NAME: travis-ci
-          COVERALLS_REPO_TOKEN: fd0BoXG46TPReEem0uMy7BJO5j0w1MQiY
         run: docker-compose -f LNX-docker-compose.yml up --build --exit-code-from app
       - name: Run style tests
         run: |
