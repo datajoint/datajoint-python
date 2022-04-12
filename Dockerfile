@@ -1,5 +1,5 @@
-FROM datajoint/pydev
+FROM datajoint/djbase
 
-COPY --chown=dja . /tmp/src
-RUN pip install --user /tmp/src && \
+COPY --chown=anaconda:anaconda . /tmp/src
+RUN pip install --no-cache-dir /tmp/src && \
     rm -rf /tmp/src
