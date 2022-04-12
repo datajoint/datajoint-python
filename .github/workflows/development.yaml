@@ -44,8 +44,6 @@ jobs:
           DISTRO: alpine
           MINIO_VER: RELEASE.2021-09-03T03-56-13Z
           COMPOSE_HTTP_TIMEOUT: "120"
-          COVERALLS_SERVICE_NAME: travis-ci
-          COVERALLS_REPO_TOKEN: fd0BoXG46TPReEem0uMy7BJO5j0w1MQiY
         run: docker-compose -f LNX-docker-compose.yml up --build --exit-code-from app
       - name: Run style tests
         run: |
