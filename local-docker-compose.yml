@@ -103,7 +103,7 @@ services:
     ports:
       - "8888:8888"
       - "5678:5678"
-    user: ${UID}:${GID}
+    user: ${HOST_UID}:anaconda
     volumes:
       - .:/src
       - /tmp/.X11-unix:/tmp/.X11-unix:rw

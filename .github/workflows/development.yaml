@@ -37,7 +37,7 @@ jobs:
         run: flake8 datajoint --count --select=E9,F63,F7,F82 --show-source --statistics
       - name: Run primary tests
         env:
-          UID: "1001"
+          HOST_UID: "1001"
           GID: "121"
           PY_VER: ${{matrix.py_ver}}
           MYSQL_VER: ${{matrix.mysql_ver}}

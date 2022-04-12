@@ -82,7 +82,7 @@ services:
         # jupyter notebook
     # ports:
     #   - "8888:8888"
-    user: ${UID}:${GID}
+    user: ${HOST_UID}:anaconda
     volumes:
       - .:/src
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
