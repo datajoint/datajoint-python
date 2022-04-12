@@ -42,7 +42,7 @@ jobs:
           PY_VER: ${{matrix.py_ver}}
           MYSQL_VER: ${{matrix.mysql_ver}}
           DISTRO: alpine
-          MINIO_VER: RELEASE.2021-09-03T03-56-13Z
+          MINIO_VER: RELEASE.2022-04-12T06-55-35Z
           COMPOSE_HTTP_TIMEOUT: "120"
         run: docker-compose -f LNX-docker-compose.yml up --build --exit-code-from app
       - name: Run style tests
