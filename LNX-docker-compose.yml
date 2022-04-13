@@ -75,7 +75,7 @@ services:
       - -c
       - |
         set -e
-        pip install --user -r nose nose-cov
+        pip install --user nose nose-cov
         pip install -e .
         pip freeze | grep datajoint
         nosetests -vsw tests --with-coverage --cover-package=datajoint
