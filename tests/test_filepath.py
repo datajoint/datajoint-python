@@ -91,7 +91,7 @@ def test_filepath(store="repo"):
 
 def test_filepath_s3():
     """ test file management with s3 """
-    test_filepath(store="repo_s3")
+    test_filepath(store="repo-s3")
 
 
 def test_duplicate_upload(store="repo"):
@@ -107,7 +107,7 @@ def test_duplicate_upload(store="repo"):
 
 
 def test_duplicate_upload_s3():
-    test_duplicate_upload(store="repo_s3")
+    test_duplicate_upload(store="repo-s3")
 
 
 @raises(dj.DataJointError)
@@ -128,7 +128,7 @@ def test_duplicate_error(store="repo"):
 
 
 def test_duplicate_error_s3():
-    test_duplicate_error(store="repo_s3")
+    test_duplicate_error(store="repo-s3")
 
 
 def test_filepath_class(table=Filepath(), store="repo"):
@@ -176,12 +176,12 @@ def test_filepath_class_again():
 
 
 def test_filepath_class_s3():
-    test_filepath_class(FilepathS3(), "repo_s3")
+    test_filepath_class(FilepathS3(), "repo-s3")
 
 
 def test_filepath_class_s3_again():
     """test_filepath_class_s3 again to deal with existing remote files"""
-    test_filepath_class(FilepathS3(), "repo_s3")
+    test_filepath_class(FilepathS3(), "repo-s3")
 
 
 def test_filepath_cleanup(table=Filepath(), store="repo"):
@@ -218,7 +218,7 @@ def test_filepath_cleanup(table=Filepath(), store="repo"):
 
 def test_filepath_cleanup_s3():
     """test deletion of filepath entries from external table """
-    store = "repo_s3"
+    store = "repo-s3"
     test_filepath_cleanup(FilepathS3(), store)
 
 
