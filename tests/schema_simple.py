@@ -13,7 +13,7 @@ from . import PREFIX, CONN_INFO
 import numpy as np
 from datetime import date, timedelta
 
-schema = dj.Schema(PREFIX + '_relational', locals(), connection=dj.conn(**CONN_INFO))
+schema = dj.Schema(PREFIX + "_relational", locals(), connection=dj.conn(**CONN_INFO))
 
 
 @schema
@@ -22,7 +22,7 @@ class IJ(dj.Lookup):
     i  : int
     j  : int
     """
-    contents = list(dict(i=i, j=j+2) for i in range(3) for j in range(3))
+    contents = list(dict(i=i, j=j + 2) for i in range(3) for j in range(3))
 
 
 @schema
@@ -31,7 +31,7 @@ class JI(dj.Lookup):
     j  : int
     i  : int
     """
-    contents = list(dict(i=i+1, j=j) for i in range(3) for j in range(3))
+    contents = list(dict(i=i + 1, j=j) for i in range(3) for j in range(3))
 
 
 @schema
@@ -67,12 +67,15 @@ class B(dj.Computed):
         random.seed(str(key))
         sub = B.C()
         for i in range(4):
-            key['id_b'] = i
+            key["id_b"] = i
             mu = random.normalvariate(0, 10)
             sigma = random.lognormvariate(0, 4)
             n = random.randint(0, 10)
             self.insert1(dict(key, mu=mu, sigma=sigma, n=n))
-            sub.insert(dict(key, id_c=j, value=random.normalvariate(mu, sigma)) for j in range(n))
+            sub.insert(
+                dict(key, id_c=j, value=random.normalvariate(mu, sigma))
+                for j in range(n)
+            )
 
 
 @schema
@@ -97,7 +100,7 @@ class D(dj.Computed):
     def _make_tuples(self, key):
         # make reference to a random tuple from L
         random.seed(str(key))
-        lookup = list(L().fetch('KEY'))
+        lookup = list(L().fetch("KEY"))
         self.insert(dict(key, id_d=i, **random.choice(lookup)) for i in range(4))
 
 
@@ -120,11 +123,15 @@ class E(dj.Computed):
 
     def make(self, key):
         random.seed(str(key))
-        self.insert1(dict(key, **random.choice(list(L().fetch('KEY')))))
+        self.insert1(dict(key, **random.choice(list(L().fetch("KEY")))))
         sub = E.F()
-        references = list((B.C() & key).fetch('KEY'))
+        references = list((B.C() & key).fetch("KEY"))
         random.shuffle(references)
-        sub.insert(dict(key, id_f=i, **ref) for i, ref in enumerate(references) if random.getrandbits(1))
+        sub.insert(
+            dict(key, id_f=i, **ref)
+            for i, ref in enumerate(references)
+            if random.getrandbits(1)
+        )
 
 
 @schema
@@ -134,6 +141,7 @@ class F(dj.Manual):
     ----
     date=null: date
     """
+
 
 @schema
 class DataA(dj.Lookup):
@@ -199,9 +207,10 @@ class Profile(dj.Manual):
             profile = fake.profile()
             with self.connection.transaction:
                 self.insert1(profile, ignore_extra_fields=True)
-                for url in profile['website']:
+                for url in profile["website"]:
                     self.Website().insert1(
-                        dict(ssn=profile['ssn'], url_hash=Website().insert1_url(url)))
+                        dict(ssn=profile["ssn"], url_hash=Website().insert1_url(url))
+                    )
 
 
 @schema
@@ -215,8 +224,9 @@ class TTestUpdate(dj.Lookup):
     """
 
     contents = [
-        (0, 'my_string', 0.0, np.random.randn(10, 2)),
-        (1, 'my_other_string', 1.0, np.random.randn(20, 1))]
+        (0, "my_string", 0.0, np.random.randn(10, 2)),
+        (1, "my_other_string", 1.0, np.random.randn(20, 1)),
+    ]
 
 
 @schema
@@ -233,9 +243,11 @@ class ArgmaxTest(dj.Lookup):
     @property
     def contents(self):
         n = self.n
-        yield from zip(range(n ** 2),
-                       itertools.chain(*itertools.repeat(tuple(map(chr, range(100, 100 + n))), n)),
-                       np.random.rand(n ** 2))
+        yield from zip(
+            range(n**2),
+            itertools.chain(*itertools.repeat(tuple(map(chr, range(100, 100 + n))), n)),
+            np.random.rand(n**2),
+        )
 
 
 @schema
@@ -267,4 +279,4 @@ class OutfitLaunch(dj.Lookup):
         -> OutfitLaunch
         piece: varchar(20)
         """
-        contents = [(0, 'jeans'), (0, 'sneakers'), (0, 'polo')]
+        contents = [(0, "jeans"), (0, "sneakers"), (0, "polo")]
