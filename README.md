@@ -9,7 +9,7 @@
 DataJoint for Python is a framework for scientific workflow management based on relational principles. DataJoint is built on the foundation of the relational data model and prescribes a consistent method for organizing, populating, computing, and querying data.
 
 DataJoint was initially developed in 2009 by Dimitri Yatsenko in Andreas Tolias' Lab at Baylor College of Medicine for the distributed processing and management of large volumes of data streaming from regular experiments. Starting in 2011, DataJoint has been available as an open-source project adopted by other labs and improved through contributions from several developers.
-Presently, the primary developer of DataJoint open-source software is the company DataJoint (https://datajoint.com). Related resources are listed at https://datajoint.org
+Presently, the primary developer of DataJoint open-source software is the company DataJoint (https://datajoint.com). Related resources are listed at https://datajoint.org.
 
 ## Installation
 ```
@@ -28,6 +28,17 @@ pip3 install --upgrade datajoint
 * https://tutorials.datajoint.io -- step-by-step tutorials
 * https://elements.datajoint.org -- catalog of example pipelines
 * https://codebook.datajoint.io -- interactive online tutorials
+
+## Citation
++ If your work uses DataJoint for Python, please cite the following Research Resource Identifier (RRID) and manuscript.
+
+  ```
+  DataJoint (RRID:SCR_014543) - DataJoint for Python (version < enter version number >)
+  ```
+
+  ```
+  Yatsenko D, Reimer J, Ecker AS, Walker EY, Sinz F, Berens P, Hoenselaar A, Cotton RJ, Siapas AS, Tolias AS. DataJoint: managing big scientific data using MATLAB or Python. bioRxiv. 2015 Jan 1:031658. doi: https://doi.org/10.1101/031658
+  ```
 
 ## Python Native Blobs
 <details>
