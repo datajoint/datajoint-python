@@ -109,11 +109,11 @@ important DataJoint schema or records.
 
 * Create an `.env` with desired development environment values e.g.
 ``` sh
-PY_VER=3.7
-DISTRO=alpine
+PY_VER=3.9
 MYSQL_VER=5.7
-MINIO_VER=RELEASE.2021-09-03T03-56-13Z
-UID=1000
+DISTRO=alpine
+MINIO_VER=RELEASE.2022-01-03T18-22-58Z
+HOST_UID=1000
 GID=1000
 ```
 * `cp local-docker-compose.yml docker-compose.yml`
