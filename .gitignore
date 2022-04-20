@@ -24,4 +24,5 @@ notebook
 .vscode
 __main__.py
 jupyter_custom.js
+apk_requirements.txt
 .eggs
