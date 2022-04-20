@@ -1,3 +1,7 @@
+0.13.5 -- TBA
+----------------------
+* Update - Switch testing image from `pydev` to `djtest` PR #1012
+
 0.13.4 -- March 28, 2022
 ----------------------
 * Add - Allow reading blobs produced by legacy 32-bit compiled mYm library for matlab. PR #995
