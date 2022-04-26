@@ -5,7 +5,7 @@ compatibility with Matlab-based serialization implemented by mYm.
 
 import zlib
 from itertools import repeat
-import collections
+import collections.abc
 from decimal import Decimal
 import datetime
 import uuid
@@ -188,17 +188,17 @@ class Blob:
             return self.pack_decimal(obj)
         if isinstance(obj, uuid.UUID):
             return self.pack_uuid(obj)
-        if isinstance(obj, collections.Mapping):
+        if isinstance(obj, collections.abc.Mapping):
             return self.pack_dict(obj)
         if isinstance(obj, str):
             return self.pack_string(obj)
-        if isinstance(obj, collections.ByteString):
+        if isinstance(obj, collections.abc.ByteString):
             return self.pack_bytes(obj)
-        if isinstance(obj, collections.MutableSequence):
+        if isinstance(obj, collections.abc.MutableSequence):
             return self.pack_list(obj)
-        if isinstance(obj, collections.Sequence):
+        if isinstance(obj, collections.abc.Sequence):
             return self.pack_tuple(obj)
-        if isinstance(obj, collections.Set):
+        if isinstance(obj, collections.abc.Set):
             return self.pack_set(obj)
         if obj is None:
             return self.pack_none()
