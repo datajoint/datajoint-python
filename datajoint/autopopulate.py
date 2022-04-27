@@ -222,7 +222,11 @@ class AutoPopulate:
             make_kwargs=make_kwargs,
         )
 
-        if processes == 1:
+        if processes < 0:
+            raise Exception("processes must not be negative")
+        elif processes == 0:
+            return None
+        elif processes == 1:
             for key in (
                 tqdm(keys, desc=self.__class__.__name__) if display_progress else keys
             ):
@@ -252,8 +256,7 @@ class AutoPopulate:
         if reserve_jobs:
             signal.signal(signal.SIGTERM, old_handler)
 
-        if suppress_errors:
-            return error_list
+        return error_list, nkeys
 
     def _populate1(
         self, key, jobs, suppress_errors, return_exception_objects, make_kwargs=None
