@@ -436,7 +436,7 @@ class Heading:
         """
         derive a new heading by selecting, renaming, or computing attributes.
         In relational algebra these operators are known as project, rename, and extend.
-        
+
         :param select_list:  the full list of existing attributes to include
         :param rename_map:  dictionary of renamed attributes: keys=new names, values=old names
         :param compute_map: a direction of computed attributes

@@ -248,7 +248,7 @@ class Connection:
         1. Only SELECT queries are allowed.
         2. The results of queries are cached under the path indicated by dj.config['query_cache']
         3. query_cache is a string that differentiates different cache states.
-        
+
         :param query_cache: a string to initialize the hash for query results
         """
         self._query_cache = query_cache

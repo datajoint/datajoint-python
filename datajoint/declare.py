@@ -568,7 +568,7 @@ def substitute_special_type(match, category, foreign_key_sql, context):
 def compile_attribute(line, in_key, foreign_key_sql, context):
     """
     Convert attribute definition from DataJoint format to SQL
-    
+
     :param line: attribution line
     :param in_key: set to True if attribute is in primary key set
     :param foreign_key_sql: the list of foreign key declarations to add to

@@ -92,7 +92,7 @@ def from_camel_case(s):
 def safe_write(filepath, blob):
     """
     A two-step write.
-    
+
     :param filename: full path
     :param blob: binary data
     """

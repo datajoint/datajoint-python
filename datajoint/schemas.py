@@ -535,7 +535,7 @@ class VirtualModule(types.ModuleType):
 
 def list_schemas(connection=None):
     """
-    
+
     :param connection: a dj.Connection object
     :return: list of all accessible schemas on the server
     """

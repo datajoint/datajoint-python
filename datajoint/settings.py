@@ -109,7 +109,7 @@ class Config(collections.abc.MutableMapping):
     def load(self, filename):
         """
         Updates the setting from config file in JSON format.
-        
+
         :param filename: filename of the local JSON settings file. If None, the local config file is used.
         """
         if filename is None:

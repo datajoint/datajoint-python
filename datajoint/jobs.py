@@ -101,7 +101,7 @@ class JobTable(Table):
         """
         Log an error message.  The job reservation is replaced with an error entry.
         if an error occurs, leave an entry describing the problem
-        
+
         :param table_name: `database`.`table_name`
         :param key: the dict of the job's primary key
         :param error_message: string error message

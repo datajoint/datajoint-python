@@ -164,7 +164,7 @@ class Fetch:
                         "frequency") To order by primary key, use "KEY" or "KEY DESC"
         :param format: Effective when as_dict=None and when attrs is empty None: default from config['fetch_format'] or
                         'array' if not configured "array": use numpy.key_array "frame": output pandas.DataFrame. .
-        :param as_dict: returns a list of dictionaries instead of a record array. Defaults to False for .fetch() and to 
+        :param as_dict: returns a list of dictionaries instead of a record array. Defaults to False for .fetch() and to
                         True for .fetch('KEY')
         :param squeeze:  if True, remove extra dimensions from arrays
         :param download_path: for fetches that download data, e.g. attachments

@@ -20,7 +20,7 @@ class AttributeAdapter:
         convert value retrieved from the the attribute in a table into the adapted type
 
         :param value: value from the database
-        
+
         :return: object of the adapted type
         """
         raise NotImplementedError("Undefined attribute adapter")

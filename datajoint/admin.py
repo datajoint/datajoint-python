@@ -87,7 +87,7 @@ def kill(restriction=None, connection=None, order_by=None):  # pragma: no cover
 def kill_quick(restriction=None, connection=None):
     """
     Kill database connections without prompting. Returns number of terminated connections.
-    
+
     :param restriction: restriction to be applied to processlist
     :param connection: a datajoint.Connection object. Default calls datajoint.conn()
 
