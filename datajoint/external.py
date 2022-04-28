@@ -406,8 +406,8 @@ class ExternalTable(Table):
     ):
         """
 
-        :param delete_external_files: True or False. If False, only the tracking info is removed from the external store table but the external files remain intact. If True, then the external files themselves are deleted too.
-
+        :param delete_external_files: True or False. If False, only the tracking info is removed from the external 
+                store table but the external files remain intact. If True, then the external files themselves are deleted too.
         :param errors_as_string: If True any errors returned when deleting from external files will be strings
         :param limit: (integer) limit the number of items to delete
         :param display_progress: if True, display progress as files are cleaned up

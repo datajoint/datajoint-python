@@ -341,7 +341,8 @@ class Table(QueryExpression):
         """
             Insert a collection of rows.
 
-            :param rows: An iterable where an element is a numpy record, a dict-like object, a pandas.DataFrame, a sequence, or a query expression with the same heading as self.
+            :param rows: An iterable where an element is a numpy record, a dict-like object, a pandas.DataFrame, a sequence, 
+                        or a query expression with the same heading as self.
             :param replace: If True, replaces the existing tuple.
             :param skip_duplicates: If True, silently skip duplicate inserts.
             :param ignore_extra_fields: If False, fields that are not in the heading raise error.
@@ -457,7 +458,8 @@ class Table(QueryExpression):
         """
         Deletes the contents of the table and its dependent tables, recursively.
 
-        :param transaction: if True, use the entire delete becomes an atomic transaction. This is the default and recommended behavior. Set to False if this delete is nested within another transaction.
+        :param transaction: if True, use the entire delete becomes an atomic transaction. This is the default and 
+                            recommended behavior. Set to False if this delete is nested within another transaction.
         :param safemode: If True, prohibit nested transactions and prompt to confirm. Default is dj.config['safemode'].
         :param force_parts: Delete from parts even when not deleting from their masters.
         :return: number of deleted rows (excluding those from dependent tables)
