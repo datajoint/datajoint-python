@@ -6,49 +6,49 @@ from nose.tools import assert_true, assert_equal, raises
 import datajoint as dj
 import os
 
-__author__ = 'Fabian Sinz'
+__author__ = "Fabian Sinz"
 
 
 def test_load_save():
     """Testing load and save"""
-    dj.config.save('tmp.json')
+    dj.config.save("tmp.json")
     conf = settings.Config()
-    conf.load('tmp.json')
-    assert_true(conf == dj.config, 'Two config files do not match.')
-    os.remove('tmp.json')
+    conf.load("tmp.json")
+    assert_true(conf == dj.config, "Two config files do not match.")
+    os.remove("tmp.json")
 
 
 def test_singleton():
     """Testing singleton property"""
-    dj.config.save('tmp.json')
+    dj.config.save("tmp.json")
     conf = settings.Config()
-    conf.load('tmp.json')
-    conf['dummy.val'] = 2
+    conf.load("tmp.json")
+    conf["dummy.val"] = 2
 
-    assert_true(conf == dj.config, 'Config does not behave like a singleton.')
-    os.remove('tmp.json')
+    assert_true(conf == dj.config, "Config does not behave like a singleton.")
+    os.remove("tmp.json")
 
 
 def test_singleton2():
     """Testing singleton property"""
     conf = settings.Config()
-    conf['dummy.val'] = 2
-    _ = settings.Config() # a new instance should not delete dummy.val
-    assert_true(conf['dummy.val'] == 2, 'Config does not behave like a singleton.')
+    conf["dummy.val"] = 2
+    _ = settings.Config()  # a new instance should not delete dummy.val
+    assert_true(conf["dummy.val"] == 2, "Config does not behave like a singleton.")
 
 
 @raises(dj.DataJointError)
 def test_validator():
     """Testing validator"""
-    dj.config['database.port'] = 'harbor'
+    dj.config["database.port"] = "harbor"
 
 
 def test_del():
     """Testing del"""
-    dj.config['peter'] = 2
-    assert_true('peter' in dj.config)
-    del dj.config['peter']
-    assert_true('peter' not in dj.config)
+    dj.config["peter"] = 2
+    assert_true("peter" in dj.config)
+    del dj.config["peter"]
+    assert_true("peter" not in dj.config)
 
 
 def test_len():
@@ -68,7 +68,9 @@ def test_repr():
 
 def test_save():
     """Testing save of config"""
-    tmpfile = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(20))
+    tmpfile = "".join(
+        random.choice(string.ascii_uppercase + string.digits) for _ in range(20)
+    )
     moved = False
     if os.path.isfile(settings.LOCALCONFIG):
         os.rename(settings.LOCALCONFIG, tmpfile)
@@ -82,7 +84,12 @@ def test_save():
 def test_load_save():
     """Testing load and save of config"""
     filename_old = dj.settings.LOCALCONFIG
-    filename = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(50)) + '.json'
+    filename = (
+        "".join(
+            random.choice(string.ascii_uppercase + string.digits) for _ in range(50)
+        )
+        + ".json"
+    )
     dj.settings.LOCALCONFIG = filename
     dj.config.save_local()
     dj.config.load(filename=filename)
@@ -92,7 +99,7 @@ def test_load_save():
 
 def test_contextmanager():
     """Testing context manager"""
-    dj.config['arbitrary.stuff'] = 7
+    dj.config["arbitrary.stuff"] = 7
     with dj.config(arbitrary__stuff=10):
-        assert_true(dj.config['arbitrary.stuff'] == 10)
-    assert_true(dj.config['arbitrary.stuff'] == 7)
+        assert_true(dj.config["arbitrary.stuff"] == 10)
+    assert_true(dj.config["arbitrary.stuff"] == 7)

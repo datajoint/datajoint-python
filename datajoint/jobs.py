@@ -7,22 +7,22 @@ from .errors import DuplicateError
 from .heading import Heading
 
 ERROR_MESSAGE_LENGTH = 2047
-TRUNCATION_APPENDIX = '...truncated'
+TRUNCATION_APPENDIX = "...truncated"
 
 
 class JobTable(Table):
     """
     A base relation with no definition. Allows reserving jobs
     """
+
     def __init__(self, conn, database):
         self.database = database
         self._connection = conn
-        self._heading = Heading(table_info=dict(
-            conn=conn,
-            database=database,
-            table_name=self.table_name,
-            context=None
-        ))
+        self._heading = Heading(
+            table_info=dict(
+                conn=conn, database=database, table_name=self.table_name, context=None
+            )
+        )
         self._support = [self.full_table_name]
 
         self._definition = """    # job reservation table for `{database}`
@@ -32,13 +32,15 @@ class JobTable(Table):
         status  :enum('reserved','error','ignore')  # if tuple is missing, the job is available
         key=null  :blob  # structure containing the key
         error_message=""  :varchar({error_message_length})  # error message returned if failed
-        error_stack=null  :blob  # error stack if failed
+        error_stack=null  :mediumblob  # error stack if failed
         user="" :varchar(255) # database user
         host=""  :varchar(255)  # system hostname
         pid=0  :int unsigned  # system process id
         connection_id = 0  : bigint unsigned          # connection_id()
         timestamp=CURRENT_TIMESTAMP  :timestamp   # automatic timestamp
-        """.format(database=database, error_message_length=ERROR_MESSAGE_LENGTH)
+        """.format(
+            database=database, error_message_length=ERROR_MESSAGE_LENGTH
+        )
         if not self.is_declared:
             self.declare()
         self._user = self.connection.get_user()
@@ -49,7 +51,7 @@ class JobTable(Table):
 
     @property
     def table_name(self):
-        return '~jobs'
+        return "~jobs"
 
     def delete(self):
         """bypass interactive prompts and dependencies"""
@@ -70,12 +72,13 @@ class JobTable(Table):
         job = dict(
             table_name=table_name,
             key_hash=key_hash(key),
-            status='reserved',
+            status="reserved",
             host=platform.node(),
             pid=os.getpid(),
             connection_id=self.connection.connection_id,
             key=key,
-            user=self._user)
+            user=self._user,
+        )
         try:
             with config(enable_python_native_blobs=True):
                 self.insert1(job, ignore_extra_fields=True)
@@ -102,7 +105,10 @@ class JobTable(Table):
         :param error_stack: stack trace
         """
         if len(error_message) > ERROR_MESSAGE_LENGTH:
-            error_message = error_message[:ERROR_MESSAGE_LENGTH-len(TRUNCATION_APPENDIX)] + TRUNCATION_APPENDIX
+            error_message = (
+                error_message[: ERROR_MESSAGE_LENGTH - len(TRUNCATION_APPENDIX)]
+                + TRUNCATION_APPENDIX
+            )
         with config(enable_python_native_blobs=True):
             self.insert1(
                 dict(
@@ -115,5 +121,8 @@ class JobTable(Table):
                     user=self._user,
                     key=key,
                     error_message=error_message,
-                    error_stack=error_stack),
-                replace=True, ignore_extra_fields=True)
+                    error_stack=error_stack,
+                ),
+                replace=True,
+                ignore_extra_fields=True,
+            )

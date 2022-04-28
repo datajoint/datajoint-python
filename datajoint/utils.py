@@ -23,12 +23,33 @@ def user_choice(prompt, choices=("yes", "no"), default=None):
     :return: the user's choice
     """
     assert default is None or default in choices
-    choice_list = ', '.join((choice.title() if choice == default else choice for choice in choices))
+    choice_list = ", ".join(
+        (choice.title() if choice == default else choice for choice in choices)
+    )
     response = None
     while response not in choices:
-        response = input(prompt + ' [' + choice_list + ']: ')
+        response = input(prompt + " [" + choice_list + "]: ")
         response = response.lower() if response else default
     return response
+
+
+def get_master(full_table_name: str) -> str:
+    """
+    If the table name is that of a part table, then return what the master table name would be.
+    This follows DataJoint's table naming convention where a master and a part must be in the
+    same schema and the part table is prefixed with the master table name + ``__``.
+
+    Example:
+       `ephys`.`session`    -- master
+       `ephys`.`session__recording`  -- part
+
+    :param full_table_name: Full table name including part.
+    :type full_table_name: str
+    :return: Supposed master full table name or empty string if not a part table name.
+    :rtype: str
+    """
+    match = re.match(r"(?P<master>`\w+`.`\w+)__(?P<part>\w+)`", full_table_name)
+    return match["master"] + "`" if match else ""
 
 
 def to_camel_case(s):
@@ -43,7 +64,7 @@ def to_camel_case(s):
     def to_upper(match):
         return match.group(0)[-1].upper()
 
-    return re.sub(r'(^|[_\W])+[a-zA-Z]', to_upper, s)
+    return re.sub(r"(^|[_\W])+[a-zA-Z]", to_upper, s)
 
 
 def from_camel_case(s):
@@ -56,12 +77,13 @@ def from_camel_case(s):
     """
 
     def convert(match):
-        return ('_' if match.groups()[0] else '') + match.group(0).lower()
+        return ("_" if match.groups()[0] else "") + match.group(0).lower()
 
-    if not re.match(r'[A-Z][a-zA-Z0-9]*', s):
+    if not re.match(r"[A-Z][a-zA-Z0-9]*", s):
         raise DataJointError(
-            'ClassName must be alphanumeric in CamelCase, begin with a capital letter')
-    return re.sub(r'(\B[A-Z])|(\b[A-Z])', convert, s)
+            "ClassName must be alphanumeric in CamelCase, begin with a capital letter"
+        )
+    return re.sub(r"(\B[A-Z])|(\b[A-Z])", convert, s)
 
 
 def safe_write(filepath, blob):
@@ -73,7 +95,7 @@ def safe_write(filepath, blob):
     filepath = Path(filepath)
     if not filepath.is_file():
         filepath.parent.mkdir(parents=True, exist_ok=True)
-        temp_file = filepath.with_suffix(filepath.suffix + '.saving')
+        temp_file = filepath.with_suffix(filepath.suffix + ".saving")
         temp_file.write_bytes(blob)
         temp_file.rename(filepath)
 
@@ -85,7 +107,7 @@ def safe_copy(src, dest, overwrite=False):
     src, dest = Path(src), Path(dest)
     if not (dest.exists() and src.samefile(dest)) and (overwrite or not dest.is_file()):
         dest.parent.mkdir(parents=True, exist_ok=True)
-        temp_file = dest.with_suffix(dest.suffix + '.copying')
+        temp_file = dest.with_suffix(dest.suffix + ".copying")
         shutil.copyfile(str(src), str(temp_file))
         temp_file.rename(dest)
 
@@ -94,16 +116,16 @@ def parse_sql(filepath):
     """
     yield SQL statements from an SQL file
     """
-    delimiter = ';'
+    delimiter = ";"
     statement = []
-    with Path(filepath).open('rt') as f:
+    with Path(filepath).open("rt") as f:
         for line in f:
             line = line.strip()
-            if not line.startswith('--') and len(line) > 1:
-                if line.startswith('delimiter'):
+            if not line.startswith("--") and len(line) > 1:
+                if line.startswith("delimiter"):
                     delimiter = line.split()[1]
                 else:
                     statement.append(line)
                     if line.endswith(delimiter):
-                        yield ' '.join(statement)
+                        yield " ".join(statement)
                         statement = []

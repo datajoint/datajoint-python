@@ -8,15 +8,14 @@ from datajoint import errors
 from . import PREFIX, CONN_INFO, S3_CONN_INFO
 
 stores_config = {
-    'repo_s3': dict(
-        S3_CONN_INFO,
-        protocol='s3',
-        location='adapted/repo',
-        stage=tempfile.mkdtemp())}
+    "repo-s3": dict(
+        S3_CONN_INFO, protocol="s3", location="adapted/repo", stage=tempfile.mkdtemp()
+    )
+}
 
-dj.config['stores'] = stores_config
+dj.config["stores"] = stores_config
 
-schema_name = PREFIX + '_test_custom_datatype'
+schema_name = PREFIX + "_test_custom_datatype"
 schema = dj.schema(schema_name, connection=dj.conn(**CONN_INFO))
 
 
@@ -25,7 +24,7 @@ errors._switch_adapted_types(True)  # enable adapted types for testing only
 
 class GraphAdapter(dj.AttributeAdapter):
 
-    attribute_type = 'longblob'  # this is how the attribute will be declared
+    attribute_type = "longblob"  # this is how the attribute will be declared
 
     @staticmethod
     def get(obj):
@@ -51,6 +50,7 @@ class Connectivity(dj.Manual):
     conn_graph = null : <graph>
     """
 
+
 errors._switch_filepath_types(True)
 
 
@@ -59,7 +59,7 @@ class LayoutToFilepath(dj.AttributeAdapter):
     An adapted data type that saves a graph layout into fixed filepath
     """
 
-    attribute_type = 'filepath@repo_s3'
+    attribute_type = "filepath@repo-s3"
 
     @staticmethod
     def get(path):
@@ -68,7 +68,7 @@ class LayoutToFilepath(dj.AttributeAdapter):
 
     @staticmethod
     def put(layout):
-        path = Path(dj.config['stores']['repo_s3']['stage'], 'layout.json')
+        path = Path(dj.config["stores"]["repo-s3"]["stage"], "layout.json")
         with open(str(path), "w") as f:
             json.dump(layout, f)
         return path
@@ -85,6 +85,7 @@ class Layout(dj.Manual):
     ---
     layout: <layout_to_filepath>
     """
+
 
 errors._switch_filepath_types(False)
 errors._switch_adapted_types(False)  # disable again
