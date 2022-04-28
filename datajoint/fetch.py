@@ -155,14 +155,14 @@ class Fetch:
         Fetches the expression results from the database into an np.array or list of dictionaries and
         unpacks blob attributes.
 
-        :param attrs: zero or more attributes to fetch. If not provided, the call will return all attributes of this 
+        :param attrs: zero or more attributes to fetch. If not provided, the call will return all attributes of this
                         relation. If provided, returns tuples with an entry for each attribute.
         :param offset: the number of tuples to skip in the returned result
         :param limit: the maximum number of tuples to return
-        :param order_by: a single attribute or the list of attributes to order the results. No ordering should be assumed 
-                        if order_by=None. To reverse the order, add DESC to the attribute name or names: e.g. ("age DESC", 
+        :param order_by: a single attribute or the list of attributes to order the results. No ordering should be assumed
+                        if order_by=None. To reverse the order, add DESC to the attribute name or names: e.g. ("age DESC",
                         "frequency") To order by primary key, use "KEY" or "KEY DESC"
-        :param format: Effective when as_dict=None and when attrs is empty None: default from config['fetch_format'] or 
+        :param format: Effective when as_dict=None and when attrs is empty None: default from config['fetch_format'] or
                         'array' if not configured "array": use numpy.key_array "frame": output pandas.DataFrame. .
         :param as_dict: returns a list of dictionaries instead of a record array. Defaults to False for .fetch() and to 
                         True for .fetch('KEY')
@@ -289,10 +289,11 @@ class Fetch:
                     ret = pandas.DataFrame(ret).set_index(heading.primary_key)
         return ret
 
+
 class Fetch1:
     """
     Fetch object for fetching the result of a query yielding one row.
-    
+
     :param expression: a query expression to fetch from.
     """
 
