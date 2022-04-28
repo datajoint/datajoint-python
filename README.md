@@ -110,6 +110,18 @@ important DataJoint schema or records.
 
 </details>
 
+### API docs
+
+The API documentation can be built using sphinx by running
+
+``` bash
+pip install sphinx sphinx_rtd_theme 
+(cd docs-api/sphinx && make html)
+```
+
+Generated docs are written to `docs-api/docs/html/index.html`.
+More details in [docs-api/README.md](docs-api/README.md).
+
 ## Running Tests Locally
 <details>
 <summary>Click to expand details</summary>
