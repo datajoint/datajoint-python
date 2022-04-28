@@ -97,6 +97,7 @@ class Config(collections.abc.MutableMapping):
     def save(self, filename, verbose=False):
         """
         Saves the settings in JSON format to the given file path.
+
         :param filename: filename of the local JSON settings file.
         :param verbose: report having saved the settings file
         """
@@ -108,6 +109,7 @@ class Config(collections.abc.MutableMapping):
     def load(self, filename):
         """
         Updates the setting from config file in JSON format.
+        
         :param filename: filename of the local JSON settings file. If None, the local config file is used.
         """
         if filename is None:

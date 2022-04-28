@@ -146,6 +146,7 @@ else:
         def from_sequence(cls, sequence):
             """
             The join Diagram for all objects in sequence
+            
             :param sequence: a sequence (e.g. list, tuple)
             :return: Diagram(arg1) + ... + Diagram(argn)
             """

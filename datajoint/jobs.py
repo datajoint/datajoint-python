@@ -65,6 +65,7 @@ class JobTable(Table):
         """
         Reserve a job for computation.  When a job is reserved, the job table contains an entry for the
         job key, identified by its hash. When jobs are completed, the entry is removed.
+
         :param table_name: `database`.`table_name`
         :param key: the dict of the job's primary key
         :return: True if reserved job successfully. False = the jobs is already taken
@@ -89,6 +90,7 @@ class JobTable(Table):
     def complete(self, table_name, key):
         """
         Log a completed job.  When a job is completed, its reservation entry is deleted.
+
         :param table_name: `database`.`table_name`
         :param key: the dict of the job's primary key
         """
@@ -99,6 +101,7 @@ class JobTable(Table):
         """
         Log an error message.  The job reservation is replaced with an error entry.
         if an error occurs, leave an entry describing the problem
+        
         :param table_name: `database`.`table_name`
         :param key: the dict of the job's primary key
         :param error_message: string error message
