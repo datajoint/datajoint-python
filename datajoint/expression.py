@@ -121,6 +121,7 @@ class QueryExpression:
     def make_sql(self, fields=None):
         """
         Make the SQL SELECT statement.
+
         :param fields: used to explicitly set the select attributes
         """
         return "SELECT {distinct}{fields} FROM {from_}{where}".format(
@@ -323,6 +324,7 @@ class QueryExpression:
     def proj(self, *attributes, **named_attributes):
         """
         Projection operator.
+
         :param attributes:  attributes to be included in the result. (The primary key is already included).
         :param named_attributes: new attributes computed or renamed from existing attributes.
         :return: the projected expression.
@@ -481,6 +483,7 @@ class QueryExpression:
         """
         Aggregation of the type U('attr1','attr2').aggr(group, computation="QueryExpression")
         has the primary key ('attr1','attr2') and performs aggregation computations for all matching elements of `group`.
+
         :param group:  The query expression to be aggregated.
         :param keep_all_rows: True=keep all the rows from self. False=keep only rows that match entries in group.
         :param named_attributes: computations of the form new_attribute="sql expression on attributes of group"
@@ -510,6 +513,7 @@ class QueryExpression:
         """
         shortcut to fetch the first few entries from query expression.
         Equivalent to fetch(order_by="KEY", limit=25)
+
         :param limit:  number of entries
         :param fetch_kwargs: kwargs for fetch
         :return: query result
@@ -520,6 +524,7 @@ class QueryExpression:
         """
         shortcut to fetch the last few entries from query expression.
         Equivalent to fetch(order_by="KEY DESC", limit=25)[::-1]
+
         :param limit:  number of entries
         :param fetch_kwargs: kwargs for fetch
         :return: query result
@@ -561,6 +566,7 @@ class QueryExpression:
         """
         returns True if the restriction in item matches any entries in self
             e.g. ``restriction in q1``.
+
         :param item: any restriction
         (item in query_expression) is equivalent to bool(query_expression & item) but may be
         executed more efficiently.
@@ -907,6 +913,7 @@ class U:
         """
         Aggregation of the type U('attr1','attr2').aggr(group, computation="QueryExpression")
         has the primary key ('attr1','attr2') and performs aggregation computations for all matching elements of `group`.
+
         :param group:  The query expression to be aggregated.
         :param named_attributes: computations of the form new_attribute="sql expression on attributes of group"
         :return: The derived query expression

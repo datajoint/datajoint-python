@@ -82,6 +82,7 @@ class Table(QueryExpression):
     def declare(self, context=None):
         """
         Declare the table in the schema based on self.definition.
+
         :param context: the context for foreign key resolution. If None, foreign keys are
             not allowed.
         """
@@ -159,6 +160,7 @@ class Table(QueryExpression):
 
     def parents(self, primary=None, as_objects=False, foreign_key_info=False):
         """
+
         :param primary: if None, then all parents are returned. If True, then only foreign keys composed of
             primary key attributes are considered.  If False, return foreign keys including at least one
             secondary attribute.
@@ -180,6 +182,7 @@ class Table(QueryExpression):
 
     def children(self, primary=None, as_objects=False, foreign_key_info=False):
         """
+
         :param primary: if None, then all children are returned. If True, then only foreign keys composed of
             primary key attributes are considered.  If False, return foreign keys including at least one
             secondary attribute.
@@ -201,6 +204,7 @@ class Table(QueryExpression):
 
     def descendants(self, as_objects=False):
         """
+
         :param as_objects: False - a list of table names; True - a list of table objects.
         :return: list of tables descendants in topological order.
         """
@@ -212,6 +216,7 @@ class Table(QueryExpression):
 
     def ancestors(self, as_objects=False):
         """
+
         :param as_objects: False - a list of table names; True - a list of table objects.
         :return: list of tables ancestors in topological order.
         """
@@ -224,6 +229,7 @@ class Table(QueryExpression):
     def parts(self, as_objects=False):
         """
         return part tables either as entries in a dict with foreign key informaiton or a list of objects
+
         :param as_objects: if False (default), the output is a dict describing the foreign keys. If True, return table objects.
         """
         nodes = [
@@ -334,8 +340,9 @@ class Table(QueryExpression):
     ):
         """
             Insert a collection of rows.
-            :param rows: An iterable where an element is a numpy record, a dict-like object, a
-                pandas.DataFrame, a sequence, or a query expression with the same heading as self.
+
+            :param rows: An iterable where an element is a numpy record, a dict-like object, a pandas.DataFrame, a sequence,
+                        or a query expression with the same heading as self.
             :param replace: If True, replaces the existing tuple.
             :param skip_duplicates: If True, silently skip duplicate inserts.
             :param ignore_extra_fields: If False, fields that are not in the heading raise error.
@@ -451,11 +458,9 @@ class Table(QueryExpression):
         """
         Deletes the contents of the table and its dependent tables, recursively.
 
-        :param transaction: if True, use the entire delete becomes an atomic transaction.
-            This is the default and recommended behavior. Set to False if this delete is nested
-            within another transaction.
-        :param safemode: If True, prohibit nested transactions and prompt to confirm. Default
-            is dj.config['safemode'].
+        :param transaction: if True, use the entire delete becomes an atomic transaction. This is the default and
+                            recommended behavior. Set to False if this delete is nested within another transaction.
+        :param safemode: If True, prohibit nested transactions and prompt to confirm. Default is dj.config['safemode'].
         :param force_parts: Delete from parts even when not deleting from their masters.
         :return: number of deleted rows (excluding those from dependent tables)
         """
@@ -796,6 +801,7 @@ class Table(QueryExpression):
         For a given attribute `name` with `value`, return its processed value or value placeholder
         as a string to be included in the query and the value, if any, to be submitted for
         processing by mysql API.
+
         :param name:  name of attribute to be inserted
         :param value: value of attribute to be inserted
         """
@@ -852,6 +858,7 @@ class Table(QueryExpression):
     def __make_row_to_insert(self, row, field_list, ignore_extra_fields):
         """
         Helper function for insert and update
+
         :param row:  A tuple to insert
         :return: a dict with fields 'names', 'placeholders', 'values'
         """
@@ -859,6 +866,7 @@ class Table(QueryExpression):
         def check_fields(fields):
             """
             Validates that all items in `fields` are valid attributes in the heading
+
             :param fields: field names of a tuple
             """
             if not field_list:
@@ -923,6 +931,7 @@ class Table(QueryExpression):
 def lookup_class_name(name, context, depth=3):
     """
     given a table name in the form `schema_name`.`table_name`, find its class in the context.
+
     :param name: `schema_name`.`table_name`
     :param context: dictionary representing the namespace
     :param depth: search depth into imported modules, helps avoid infinite recursion.
@@ -977,6 +986,7 @@ class FreeTable(Table):
     """
     A base relation without a dedicated class. Each instance is associated with a table
     specified by full_table_name.
+
     :param conn:  a dj.Connection object
     :param full_table_name: in format `database`.`table_name`
     """
@@ -1007,6 +1017,7 @@ class Log(Table):
     """
     The log table for each schema.
     Instances are callable.  Calls log the time and identifying information along with the event.
+
     :param skip_logging: if True, then log entry is skipped by default. See __call__
     """
 
@@ -1048,6 +1059,7 @@ class Log(Table):
 
     def __call__(self, event, skip_logging=None):
         """
+
         :param event: string to write into the log table
         :param skip_logging: If True then do not log. If None, then use self.skip_logging
         """
@@ -1070,6 +1082,7 @@ class Log(Table):
     def delete(self):
         """
         bypass interactive prompts and cascading dependencies
+
         :return: number of deleted items
         """
         return self.delete_quick(get_count=True)

@@ -52,6 +52,7 @@ def connect_host_hook(connection_obj):
 def translate_query_error(client_error, query):
     """
     Take client error and original query and return the corresponding DataJoint exception.
+
     :param client_error: the exception raised by the client interface
     :param query: sql query with placeholders
     :return: an instance of the corresponding subclass of datajoint.errors.DataJointError
@@ -247,6 +248,7 @@ class Connection:
         1. Only SELECT queries are allowed.
         2. The results of queries are cached under the path indicated by dj.config['query_cache']
         3. query_cache is a string that differentiates different cache states.
+
         :param query_cache: a string to initialize the hash for query results
         """
         self._query_cache = query_cache
@@ -298,6 +300,7 @@ class Connection:
     ):
         """
         Execute the specified query and return the tuple generator (cursor).
+
         :param query: SQL query
         :param args: additional arguments for the client.cursor
         :param as_dict: If as_dict is set to True, the returned cursor objects returns

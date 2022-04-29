@@ -300,6 +300,7 @@ class ExternalTable(Table):
     def download_filepath(self, filepath_hash):
         """
         sync a file from external store to the local stage
+
         :param filepath_hash: The hash (UUID) of the relative_path
         :return: hash (UUID) of the contents of the downloaded file or Nones
         """
@@ -351,6 +352,7 @@ class ExternalTable(Table):
         """
         generate complete external filepaths from the query.
         Each element is a tuple: (uuid, path)
+
         :param fetch_kwargs: keyword arguments to pass to fetch
         """
         fetch_kwargs.update(as_dict=True)
@@ -371,6 +373,7 @@ class ExternalTable(Table):
     def unused(self):
         """
         query expression for unused hashes
+
         :return: self restricted to elements that are not in use by any tables in the schema
         """
         return self - [
@@ -383,6 +386,7 @@ class ExternalTable(Table):
     def used(self):
         """
         query expression for used hashes
+
         :return: self restricted to elements that in use by tables in the schema
         """
         return self & [
@@ -401,9 +405,9 @@ class ExternalTable(Table):
         errors_as_string=True
     ):
         """
-        :param delete_external_files: True or False. If False, only the tracking info is removed from the
-        external store table but the external files remain intact. If True, then the external files
-        themselves are deleted too.
+
+        :param delete_external_files: True or False. If False, only the tracking info is removed from the external
+                store table but the external files remain intact. If True, then the external files themselves are deleted too.
         :param errors_as_string: If True any errors returned when deleting from external files will be strings
         :param limit: (integer) limit the number of items to delete
         :param display_progress: if True, display progress as files are cleaned up
@@ -470,6 +474,7 @@ class ExternalMapping(Mapping):
         """
         Triggers the creation of an external table.
         Should only be used when ready to save or read from external storage.
+
         :param store: the name of the store
         :return: the ExternalTable object for the store
         """
