@@ -10,7 +10,7 @@ Welcome to DataJoint's API Documentation!
    :maxdepth: 2
    :caption: Contents:
    
-   modules
+   datajoint
 
 
 
