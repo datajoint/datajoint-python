@@ -18,8 +18,9 @@ services:
       - bash
       - -c
       - |
-        # make html
-        # chmod -R o=rwx /main/_build/html
         pip install /main/datajoint-python
-        tail -f /dev/null
+        make html
+        chmod -R o=rwx /main/_build/html
+        # tail -f /dev/null
+        # sphinx-quickstart 
         # sphinx-apidoc -o ./source ../datajoint-python/datajoint
