@@ -20,7 +20,7 @@ services:
       - |
         pip install /main/datajoint-python
         make html
-        chmod -R o=rwx /main/_build/html
+        chmod -R o=rwx /main/docs-api/build/html
         # tail -f /dev/null
         # sphinx-quickstart 
         # sphinx-apidoc -o ./source ../datajoint-python/datajoint
