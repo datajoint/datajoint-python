@@ -225,7 +225,7 @@ class AutoPopulate:
         if processes < 0:
             raise Exception("processes must not be negative")
         elif processes == 0:
-            return None
+            return error_list, nkeys
         elif processes == 1:
             for key in (
                 tqdm(keys, desc=self.__class__.__name__) if display_progress else keys
