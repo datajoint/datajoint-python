@@ -6,13 +6,19 @@
 Welcome to DataJoint's API Documentation!
 =========================================
 
+datajoint module
+----------------
+
+.. automodule:: datajoint
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Submodules:
    
-   datajoint
-
-
+   submodules
 
 Indices and tables
 ==================
