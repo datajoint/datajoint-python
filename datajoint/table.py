@@ -276,16 +276,20 @@ class Table(QueryExpression):
 
     def update1(self, row):
         """
-        update1 updates one existing entry in the table.
-        Caution: In DataJoint the primary modes for data manipulation is to ``insert`` and ``delete``
-        entire records since referential integrity works on the level of records, not fields.
-        Therefore, updates are reserved for corrective operations outside of main workflow.
-        Use UPDATE methods sparingly with full awareness of potential violations of assumptions.
+        ``update1`` updates one existing entry in the table.
+        Caution: In DataJoint the primary modes for data manipulation is to ``insert`` and
+        ``delete`` entire records since referential integrity works on the level of records,
+        not fields. Therefore, updates are reserved for corrective operations outside of main
+        workflow. Use UPDATE methods sparingly with full awareness of potential violations of
+        assumptions.
 
         :param row: a ``dict`` containing the primary key values and the attributes to update.
-        Setting an attribute value to None will reset it to the default value (if any)
+            Setting an attribute value to None will reset it to the default value (if any).
+
         The primary key attributes must always be provided.
+
         Examples:
+
         >>> table.update1({'id': 1, 'value': 3})  # update value in record with id=1
         >>> table.update1({'id': 1, 'value': None})  # reset value to default
         """
@@ -326,7 +330,7 @@ class Table(QueryExpression):
         Insert one data record into the table. For ``kwargs``, see ``insert()``.
 
         :param row: a numpy record, a dict-like object, or an ordered sequence to be inserted
-        as one row.
+            as one row.
         """
         self.insert((row,), **kwargs)
 
@@ -339,16 +343,18 @@ class Table(QueryExpression):
         allow_direct_insert=None,
     ):
         """
-            Insert a collection of rows.
+        Insert a collection of rows.
 
-            :param rows: An iterable where an element is a numpy record, a dict-like object, a pandas.DataFrame, a sequence,
-                        or a query expression with the same heading as self.
-            :param replace: If True, replaces the existing tuple.
-            :param skip_duplicates: If True, silently skip duplicate inserts.
-            :param ignore_extra_fields: If False, fields that are not in the heading raise error.
-            :param allow_direct_insert: applies only in auto-populated tables.
-        If False (default), insert are allowed only from inside the make callback.
-            Example::
+        :param rows: An iterable where an element is a numpy record, a dict-like object, a
+            pandas.DataFrame, a sequence, or a query expression with the same heading as self.
+        :param replace: If True, replaces the existing tuple.
+        :param skip_duplicates: If True, silently skip duplicate inserts.
+        :param ignore_extra_fields: If False, fields that are not in the heading raise error.
+        :param allow_direct_insert: applies only in auto-populated tables. If False (default),
+            insert are allowed only from inside the make callback.
+
+        Example:
+
             >>> relation.insert([
             >>>     dict(subject_id=7, species="mouse", date_of_birth="2014-09-01"),
             >>>     dict(subject_id=8, species="mouse", date_of_birth="2014-09-02")])
