@@ -1,9 +1,3 @@
-datajoint package
-=================
-
-Submodules
-----------
-
 datajoint.admin module
 ----------------------
 
@@ -208,14 +202,6 @@ datajoint.version module
 ------------------------
 
 .. automodule:: datajoint.version
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: datajoint
    :members:
    :undoc-members:
    :show-inheritance:
