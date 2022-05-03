@@ -487,17 +487,24 @@ class Blob:
     def read_datetime(self):
         """deserialize datetime.date, .time, or .datetime"""
         date, time = self.read_value("int32"), self.read_value("int64")
+        date_str = str(date)
+        time_str = str(time)
+
         date = (
-            datetime.date(year=date // 10000, month=(date // 100) % 100, day=date % 100)
+            datetime.date(
+                year=int(date_str[:4]) if date_str[:4] != "" else 0,
+                month=int(date_str[4:6]) if date_str[4:6] != "" else 0,
+                day=int(date_str[-2:] if date_str[-2:] != "" else 0),
+            )
             if date >= 0
             else None
         )
         time = (
             datetime.time(
-                hour=(time // 10000000000) % 100,
-                minute=(time // 100000000) % 100,
-                second=(time // 1000000) % 100,
-                microsecond=time % 1000000,
+                hour=int(time_str[-12:-10]) if time_str[-12:-10] != "" else 0,
+                minute=int(time_str[-10:-8]) if time_str[-10:-8] != "" else 0,
+                second=int(time_str[-8:-6]) if time_str[-8:-6] != "" else 0,
+                microsecond=int(time_str[6:12]) if time_str[6:12] != "" else 0,
             )
             if time >= 0
             else None
