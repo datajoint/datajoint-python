@@ -1,0 +1,27 @@
+# HOST_UID=1000 docker-compose -f ./docs-api/docker-compose.yaml up --build
+# docker exec -it docs-api_docs-builder_1 bash -c "pip install -U /main/datajoint-python && rm -R build && make html"
+version: '2.4'
+services:
+  # example how to build
+  docs-builder:
+    # build: .
+    image: datajoint/djbase:py3.9-debian
+    user: ${HOST_UID}:anaconda
+    working_dir: /main/docs-api
+    volumes:
+      - .:/main/docs-api
+      - ./pip_requirements.txt:/tmp/pip_requirements.txt
+      - ./apt_requirements.txt:/tmp/apt_requirements.txt
+      - ../datajoint:/main/datajoint-python/datajoint:ro
+      - ../setup.py:/main/datajoint-python/setup.py:ro
+      - ../requirements.txt:/main/datajoint-python/requirements.txt
+    command:
+      - bash
+      - -c
+      - |
+        pip install /main/datajoint-python
+        make html
+        chmod -R o=rwx /main/docs-api/build/html
+        # tail -f /dev/null
+        # sphinx-quickstart 
+        # sphinx-apidoc -o ./source ../datajoint-python/datajoint

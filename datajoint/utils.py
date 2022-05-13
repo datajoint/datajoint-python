@@ -17,6 +17,7 @@ class ClassProperty:
 def user_choice(prompt, choices=("yes", "no"), default=None):
     """
     Prompts the user for confirmation.  The default value, if any, is capitalized.
+
     :param prompt: Information to display to the user.
     :param choices: an iterable of possible choices.
     :param default: default choice
@@ -55,6 +56,7 @@ def get_master(full_table_name: str) -> str:
 def to_camel_case(s):
     """
     Convert names with under score (_) separation into camel case names.
+
     :param s: string in under_score notation
     :returns: string in CamelCase notation
     Example:
@@ -70,6 +72,7 @@ def to_camel_case(s):
 def from_camel_case(s):
     """
     Convert names in camel case into underscore (_) separated names
+
     :param s: string in CamelCase notation
     :returns: string in under_score notation
     Example:
@@ -89,6 +92,7 @@ def from_camel_case(s):
 def safe_write(filepath, blob):
     """
     A two-step write.
+
     :param filename: full path
     :param blob: binary data
     """
