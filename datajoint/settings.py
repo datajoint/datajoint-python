@@ -7,6 +7,7 @@ import os
 import pprint
 import logging
 import collections
+import collections.abc
 from enum import Enum
 from .errors import DataJointError
 

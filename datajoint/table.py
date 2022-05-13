@@ -1,4 +1,4 @@
-import collections
+import collections.abc
 import itertools
 import inspect
 import platform
