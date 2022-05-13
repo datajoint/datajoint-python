@@ -5,7 +5,7 @@ compatibility with Matlab-based serialization implemented by mYm.
 
 import zlib
 from itertools import repeat
-import collections.abc
+import collections
 from decimal import Decimal
 import datetime
 import uuid
