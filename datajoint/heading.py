@@ -67,6 +67,7 @@ class Attribute(namedtuple("_Attribute", default_attribute_properties)):
         Convert primary key attribute tuple into its SQL CREATE TABLE clause.
         Default values are not reflected.
         This is used for declaring foreign keys in referencing tables
+
         :return: SQL code for attribute declaration
         """
         return '`{name}` {type} NOT NULL COMMENT "{comment}"'.format(
@@ -90,6 +91,7 @@ class Heading:
 
     def __init__(self, attribute_specs=None, table_info=None):
         """
+
         :param attribute_specs: a list of dicts with the same keys as Attribute
         :param table_info: a dict with information to load the heading from the database
         """
@@ -434,6 +436,7 @@ class Heading:
         """
         derive a new heading by selecting, renaming, or computing attributes.
         In relational algebra these operators are known as project, rename, and extend.
+
         :param select_list:  the full list of existing attributes to include
         :param rename_map:  dictionary of renamed attributes: keys=new names, values=old names
         :param compute_map: a direction of computed attributes

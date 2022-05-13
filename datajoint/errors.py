@@ -34,6 +34,7 @@ class DataJointError(Exception):
     def suggest(self, *args):
         """
         regenerate the exception with additional arguments
+
         :param args: addition arguments
         :return: a new exception of the same type with the additional arguments
         """
