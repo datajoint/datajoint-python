@@ -1,7 +1,7 @@
 """ methods for generating SQL WHERE clauses from datajoint restriction conditions """
 
 import inspect
-import collections.abc
+import collections
 import re
 import uuid
 import datetime
