@@ -173,8 +173,8 @@ class Fetch:
         """
         if disable_checksum and config["safemode"]:
             warn_str = (
-                b"Are you sure that you want to disable checksums?\n"
-                + b"There is no guarantee that any files you retrieve have been unmodified.\n"
+                "Are you sure that you want to disable checksums?\n"
+                + "There is no guarantee that any files you retrieve have been unmodified.\n"
                 + "(Y/N):"
             )
             choice = input(warn_str)
@@ -337,8 +337,8 @@ class Fetch1:
 
         if disable_checksum and config["safemode"]:
             warn_str = (
-                b"Are you sure that you want to disable checksums?\n"
-                + b"There is no guarantee that any files you retrieve have been unmodified.\n"
+                "Are you sure that you want to disable checksums?\n"
+                + "There is no guarantee that any files you retrieve have been unmodified.\n"
                 + "(Y/N):"
             )
             choice = input(warn_str)
