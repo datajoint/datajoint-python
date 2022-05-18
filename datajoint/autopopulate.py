@@ -173,8 +173,7 @@ class AutoPopulate:
         :param limit: if not None, check at most this many keys
         :param max_calls: if not None, populate at most this many keys
         :param display_progress: if True, report progress_bar
-        :param processes: number of processes to use. When set to a large number, then
-            uses as many as CPU cores
+        :param processes: number of processes to use. Set to None to use all cores
         :param make_kwargs: Keyword arguments which do not affect the result of computation
             to be passed down to each ``make()`` call. Computation arguments should be
             specified within the pipeline e.g. using a `dj.Lookup` table.
@@ -211,6 +210,8 @@ class AutoPopulate:
 
         keys = keys[:max_calls]
         nkeys = len(keys)
+        if not nkeys:
+            return
 
         if processes > 1:
             processes = min(processes, nkeys, mp.cpu_count())
@@ -222,11 +223,7 @@ class AutoPopulate:
             make_kwargs=make_kwargs,
         )
 
-        if processes < 0:
-            raise ValueError("processes must not be negative")
-        elif processes == 0:
-            return error_list, nkeys
-        elif processes == 1:
+        if processes == 1:
             for key in (
                 tqdm(keys, desc=self.__class__.__name__) if display_progress else keys
             ):
@@ -256,7 +253,8 @@ class AutoPopulate:
         if reserve_jobs:
             signal.signal(signal.SIGTERM, old_handler)
 
-        return error_list, nkeys
+        if not suppress_errors:
+            return error_list
 
     def _populate1(
         self, key, jobs, suppress_errors, return_exception_objects, make_kwargs=None
