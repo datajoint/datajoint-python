@@ -243,8 +243,7 @@ computes secondary attributes, and inserts the new tuples into self.</p>
 <li><p><strong>limit</strong> – if not None, check at most this many keys</p></li>
 <li><p><strong>max_calls</strong> – if not None, populate at most this many keys</p></li>
 <li><p><strong>display_progress</strong> – if True, report progress_bar</p></li>
-<li><p><strong>processes</strong> – number of processes to use. When set to a large number, then
-uses as many as CPU cores</p></li>
+<li><p><strong>processes</strong> – number of processes to use. Set to None to use all cores</p></li>
 <li><p><strong>make_kwargs</strong> (<em>dict</em><em>, </em><em>optional</em>) – Keyword arguments which do not affect the result of computation
 to be passed down to each <code class="docutils literal notranslate"><span class="pre">make()</span></code> call. Computation arguments should be
 specified within the pipeline e.g. using a <cite>dj.Lookup</cite> table.</p></li>
