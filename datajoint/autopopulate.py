@@ -223,7 +223,7 @@ class AutoPopulate:
         )
 
         if processes < 0:
-            raise Exception("processes must not be negative")
+            raise ValueError("processes must not be negative")
         elif processes == 0:
             return error_list, nkeys
         elif processes == 1:
