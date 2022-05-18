@@ -253,7 +253,7 @@ class AutoPopulate:
         if reserve_jobs:
             signal.signal(signal.SIGTERM, old_handler)
 
-        if not suppress_errors:
+        if suppress_errors:
             return error_list
 
     def _populate1(
