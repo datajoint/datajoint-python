@@ -12,21 +12,14 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../..'))
-
-import datajoint
-
-import sphinx_rtd_theme
+sys.path.insert(0, os.path.abspath('../datajoint'))
 
 
 # -- Project information -----------------------------------------------------
 
-project = 'DataJoint'
-copyright = '2021, datajoint.io'
-author = 'datajoint.io'
-
-# The full version, including alpha/beta/rc tags
-release = datajoint.__version__
+project = 'DataJoint API Docs'
+copyright = '2022, DataJoint contributors'
+author = 'DataJoint contributors'
 
 
 # -- General configuration ---------------------------------------------------
@@ -34,9 +27,7 @@ release = datajoint.__version__
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = [
-    'sphinx.ext.todo', 'sphinx.ext.viewcode', 'sphinx.ext.autodoc'
-]
+extensions = ['sphinx.ext.autodoc']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -57,4 +48,4 @@ html_theme = 'sphinx_rtd_theme'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = []
+html_static_path = ['_static']

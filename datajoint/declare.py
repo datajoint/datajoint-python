@@ -153,6 +153,7 @@ index_parser = build_index_parser()
 
 def is_foreign_key(line):
     """
+
     :param line: a line from the table definition
     :return: true if the line appears to be a foreign key definition
     """
@@ -366,6 +367,7 @@ def prepare_declare(definition, context):
 def declare(full_table_name, definition, context):
     """
     Parse declaration and generate the SQL CREATE TABLE code
+
     :param full_table_name: full name of the table
     :param definition: DataJoint table definition
     :param context: dictionary of objects that might be referred to in the table
@@ -566,6 +568,7 @@ def substitute_special_type(match, category, foreign_key_sql, context):
 def compile_attribute(line, in_key, foreign_key_sql, context):
     """
     Convert attribute definition from DataJoint format to SQL
+
     :param line: attribution line
     :param in_key: set to True if attribute is in primary key set
     :param foreign_key_sql: the list of foreign key declarations to add to

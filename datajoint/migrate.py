@@ -7,6 +7,7 @@ from .utils import user_choice
 def migrate_dj011_external_blob_storage_to_dj012(migration_schema, store):
     """
     Utility function to migrate external blob data from 0.11 to 0.12.
+
     :param migration_schema: string of target schema to be migrated
     :param store: string of target dj.config['store'] to be migrated
     """

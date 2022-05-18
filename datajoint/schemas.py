@@ -23,6 +23,7 @@ def ordered_dir(class_):
     """
     List (most) attributes of the class including inherited ones, similar to `dir` build-in function,
     but respects order of attribute declaration as much as possible.
+
     :param class_: class to list members for
     :return: a list of attributes declared in class_ and its superclasses
     """
@@ -91,6 +92,7 @@ class Schema:
         """
         Associate database schema `schema_name`. If the schema does not exist, attempt to
         create it on the server.
+
         :param schema_name: the database schema to associate.
             schema_name=None is used to assert that the schema has already been activated.
         :param connection: Connection object. Defaults to datajoint.conn().
@@ -162,6 +164,7 @@ class Schema:
     def __call__(self, cls, *, context=None):
         """
         Binds the supplied class to a schema. This is intended to be used as a decorator.
+
         :param cls: class to decorate.
         :param context: supplied when called from spawn_missing_classes
         """
@@ -178,6 +181,7 @@ class Schema:
 
     def _decorate_master(self, cls, context):
         """
+
         :param cls: the master class to process
         :param context: the class' declaration context
         """
@@ -282,6 +286,7 @@ class Schema:
         """
         Creates the appropriate python user relation classes from tables in the schema and places them
         in the context.
+
         :param context: alternative context to place the missing classes into, e.g. locals()
         """
         self._assert_exists()
@@ -390,6 +395,7 @@ class Schema:
     def jobs(self):
         """
         schema.jobs provides a view of the job reservation table for the schema
+
         :return: jobs table
         """
         self._assert_exists()
@@ -406,6 +412,7 @@ class Schema:
         """
         Generate the code for a module that recreates the schema.
         This method is in preparation for a future release and is not officially supported.
+
         :return: a string containing the body of a complete Python module defining this schema.
         """
         self._assert_exists()
@@ -472,6 +479,7 @@ class Schema:
         """
         Return a list of all tables in the schema except tables with ~ in first character such
         as ~logs and ~job
+
         :return: A list of table names from the database schema.
         """
         return [
@@ -503,6 +511,7 @@ class VirtualModule(types.ModuleType):
         """
         Creates a python module with the given name from the name of a schema on the server and
         automatically adds classes to it corresponding to the tables in the schema.
+
         :param module_name: displayed module name
         :param schema_name: name of the database in mysql
         :param create_schema: if True, create the schema on the database server
@@ -526,6 +535,7 @@ class VirtualModule(types.ModuleType):
 
 def list_schemas(connection=None):
     """
+
     :param connection: a dj.Connection object
     :return: list of all accessible schemas on the server
     """

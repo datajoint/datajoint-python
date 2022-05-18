@@ -1,6 +1,6 @@
 """
-This module contains the Connection class that manages the connection to the database,
- and the `conn` function that provides access to a persistent connection in datajoint.
+This module contains the Connection class that manages the connection to the database, and
+the ``conn`` function that provides access to a persistent connection in datajoint.
 """
 import warnings
 from contextlib import contextmanager
@@ -52,6 +52,7 @@ def connect_host_hook(connection_obj):
 def translate_query_error(client_error, query):
     """
     Take client error and original query and return the corresponding DataJoint exception.
+
     :param client_error: the exception raised by the client interface
     :param query: sql query with placeholders
     :return: an instance of the corresponding subclass of datajoint.errors.DataJointError
@@ -108,11 +109,9 @@ def conn(
     :param password: mysql password
     :param init_fun: initialization function
     :param reset: whether the connection should be reset or not
-    :param use_tls: TLS encryption option. Valid options are: True (required),
-                    False (required no TLS), None (TLS prefered, default),
-                    dict (Manually specify values per
-                    https://dev.mysql.com/doc/refman/5.7/en/connection-options.html
-                        #encrypted-connection-options).
+    :param use_tls: TLS encryption option. Valid options are: True (required), False
+        (required no TLS), None (TLS prefered, default), dict (Manually specify values per
+        https://dev.mysql.com/doc/refman/5.7/en/connection-options.html#encrypted-connection-options).
     """
     if not hasattr(conn, "connection") or reset:
         host = host if host is not None else config["database.host"]
@@ -247,6 +246,7 @@ class Connection:
         1. Only SELECT queries are allowed.
         2. The results of queries are cached under the path indicated by dj.config['query_cache']
         3. query_cache is a string that differentiates different cache states.
+
         :param query_cache: a string to initialize the hash for query results
         """
         self._query_cache = query_cache
@@ -298,6 +298,7 @@ class Connection:
     ):
         """
         Execute the specified query and return the tuple generator (cursor).
+
         :param query: SQL query
         :param args: additional arguments for the client.cursor
         :param as_dict: If as_dict is set to True, the returned cursor objects returns
