@@ -1,6 +1,5 @@
 ## Release notes
 
-
 ### 0.13.5 -- TBD
 * Update - Import ABC from collections.abc for Python 3.10 compatibility
 * Bugfix - Fix multiprocessing value error (#1013) PR #1026
