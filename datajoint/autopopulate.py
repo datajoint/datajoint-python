@@ -237,12 +237,16 @@ class AutoPopulate:
             with mp.Pool(
                 processes, _initialize_populate, (self, jobs, populate_kwargs)
             ) as pool:
-                    with (tqdm(desc="Processes: ", total=nkeys) if display_progress else contextlib.nullcontext()) as pbar:
-                        for error in pool.imap(_call_populate1, keys, chunksize=1):
-                            if error is not None:
-                                error_list.append(error)
-                            if display_progress:
-                                pbar.update()
+                with (
+                    tqdm(desc="Processes: ", total=nkeys)
+                    if display_progress
+                    else contextlib.nullcontext()
+                ) as pbar:
+                    for error in pool.imap(_call_populate1, keys, chunksize=1):
+                        if error is not None:
+                            error_list.append(error)
+                        if display_progress:
+                            pbar.update()
             self.connection.connect()  # reconnect parent process to MySQL server
 
         # restore original signal handler:
