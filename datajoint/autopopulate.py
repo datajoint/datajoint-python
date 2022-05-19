@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 # --- helper functions for multiprocessing --
 
+
 def _initialize_populate(table, jobs, populate_kwargs):
     """
     Initialize the process for mulitprocessing.
@@ -45,6 +46,7 @@ class AutoPopulate:
     Auto-populated relations must inherit from both Relation and AutoPopulate,
     must define the property `key_source`, and must define the callback method `make`.
     """
+
     _key_source = None
     _allow_insert = False
 
@@ -57,17 +59,29 @@ class AutoPopulate:
         Subclasses may override they key_source to change the scope or the granularity
         of the make calls.
         """
+
         def _rename_attributes(table, props):
-            return (table.proj(
-                **{attr: ref for attr, ref in props['attr_map'].items() if attr != ref})
-                if props['aliased'] else table.proj())
+            return (
+                table.proj(
+                    **{
+                        attr: ref
+                        for attr, ref in props["attr_map"].items()
+                        if attr != ref
+                    }
+                )
+                if props["aliased"]
+                else table.proj()
+            )
 
         if self._key_source is None:
             parents = self.target.parents(
-                primary=True, as_objects=True, foreign_key_info=True)
+                primary=True, as_objects=True, foreign_key_info=True
+            )
             if not parents:
-                raise DataJointError('A table must have dependencies '
-                                     'from its primary key for auto-populate to work')
+                raise DataJointError(
+                    "A table must have dependencies "
+                    "from its primary key for auto-populate to work"
+                )
             self._key_source = _rename_attributes(*parents[0])
             for q in parents[1:]:
                 self._key_source *= _rename_attributes(*q)
@@ -80,7 +94,8 @@ class AutoPopulate:
         computes secondary attributes, and inserts the new tuples into self.
         """
         raise NotImplementedError(
-            'Subclasses of AutoPopulate must implement the method `make`')
+            "Subclasses of AutoPopulate must implement the method `make`"
+        )
 
     @property
     def target(self):
@@ -104,8 +119,10 @@ class AutoPopulate:
         :return: the relation containing the keys to be computed (derived from self.key_source)
         """
         if self.restriction:
-            raise DataJointError('Cannot call populate on a restricted table. '
-                                 'Instead, pass conditions to populate() as arguments.')
+            raise DataJointError(
+                "Cannot call populate on a restricted table. "
+                "Instead, pass conditions to populate() as arguments."
+            )
         todo = self.key_source
 
         # key_source is a QueryExpression subclass -- trigger instantiation
@@ -113,22 +130,36 @@ class AutoPopulate:
             todo = todo()
 
         if not isinstance(todo, QueryExpression):
-            raise DataJointError('Invalid key_source value')
+            raise DataJointError("Invalid key_source value")
 
         try:
             # check if target lacks any attributes from the primary key of key_source
             raise DataJointError(
-                'The populate target lacks attribute %s '
-                'from the primary key of key_source' % next(
-                    name for name in todo.heading.primary_key
-                    if name not in self.target.heading))
+                "The populate target lacks attribute %s "
+                "from the primary key of key_source"
+                % next(
+                    name
+                    for name in todo.heading.primary_key
+                    if name not in self.target.heading
+                )
+            )
         except StopIteration:
             pass
         return (todo & AndList(restrictions)).proj()
 
-    def populate(self, *restrictions, suppress_errors=False, return_exception_objects=False,
-                 reserve_jobs=False, order="original", limit=None, max_calls=None,
-                 display_progress=False, processes=1, make_kwargs=None):
+    def populate(
+        self,
+        *restrictions,
+        suppress_errors=False,
+        return_exception_objects=False,
+        reserve_jobs=False,
+        order="original",
+        limit=None,
+        max_calls=None,
+        display_progress=False,
+        processes=1,
+        make_kwargs=None
+    ):
         """
         ``table.populate()`` calls ``table.make(key)`` for every primary key in
         ``self.key_source`` for which there is not already a tuple in table.
@@ -142,26 +173,31 @@ class AutoPopulate:
         :param limit: if not None, check at most this many keys
         :param max_calls: if not None, populate at most this many keys
         :param display_progress: if True, report progress_bar
-        :param processes: number of processes to use. When set to a large number, then
-            uses as many as CPU cores
+        :param processes: number of processes to use. Set to None to use all cores
         :param make_kwargs: Keyword arguments which do not affect the result of computation
             to be passed down to each ``make()`` call. Computation arguments should be
             specified within the pipeline e.g. using a `dj.Lookup` table.
         :type make_kwargs: dict, optional
         """
         if self.connection.in_transaction:
-            raise DataJointError('Populate cannot be called during a transaction.')
+            raise DataJointError("Populate cannot be called during a transaction.")
 
-        valid_order = ['original', 'reverse', 'random']
+        valid_order = ["original", "reverse", "random"]
         if order not in valid_order:
-            raise DataJointError('The order argument must be one of %s' % str(valid_order))
-        jobs = self.connection.schemas[self.target.database].jobs if reserve_jobs else None
+            raise DataJointError(
+                "The order argument must be one of %s" % str(valid_order)
+            )
+        jobs = (
+            self.connection.schemas[self.target.database].jobs if reserve_jobs else None
+        )
 
         # define and set up signal handler for SIGTERM:
         if reserve_jobs:
+
             def handler(signum, frame):
-                logger.info('Populate terminated by SIGTERM')
-                raise SystemExit('SIGTERM received')
+                logger.info("Populate terminated by SIGTERM")
+                raise SystemExit("SIGTERM received")
+
             old_handler = signal.signal(signal.SIGTERM, handler)
 
         keys = (self._jobs_to_do(restrictions) - self.target).fetch("KEY", limit=limit)
@@ -170,22 +206,26 @@ class AutoPopulate:
         elif order == "random":
             random.shuffle(keys)
 
-        logger.info('Found %d keys to populate' % len(keys))
+        logger.info("Found %d keys to populate" % len(keys))
 
         keys = keys[:max_calls]
         nkeys = len(keys)
+        if not nkeys:
+            return
 
-        if processes > 1:
-            processes = min(processes, nkeys, mp.cpu_count())
+        processes = min(*(_ for _ in (processes, nkeys, mp.cpu_count()) if _))
 
         error_list = []
         populate_kwargs = dict(
             suppress_errors=suppress_errors,
             return_exception_objects=return_exception_objects,
-            make_kwargs=make_kwargs)
+            make_kwargs=make_kwargs,
+        )
 
         if processes == 1:
-            for key in tqdm(keys, desc=self.__class__.__name__) if display_progress else keys:
+            for key in (
+                tqdm(keys, desc=self.__class__.__name__) if display_progress else keys
+            ):
                 error = self._populate1(key, jobs, **populate_kwargs)
                 if error is not None:
                     error_list.append(error)
@@ -193,7 +233,9 @@ class AutoPopulate:
             # spawn multiple processes
             self.connection.close()  # disconnect parent process from MySQL server
             del self.connection._conn.ctx  # SSLContext is not pickleable
-            with mp.Pool(processes, _initialize_populate, (self, populate_kwargs)) as pool:
+            with mp.Pool(
+                processes, _initialize_populate, (self, jobs, populate_kwargs)
+            ) as pool:
                 if display_progress:
                     with tqdm(desc="Processes: ", total=nkeys) as pbar:
                         for error in pool.imap(_call_populate1, keys, chunksize=1):
@@ -213,7 +255,9 @@ class AutoPopulate:
         if suppress_errors:
             return error_list
 
-    def _populate1(self, key, jobs, suppress_errors, return_exception_objects, make_kwargs=None):
+    def _populate1(
+        self, key, jobs, suppress_errors, return_exception_objects, make_kwargs=None
+    ):
         """
         populates table for one source key, calling self.make inside a transaction.
         :param jobs: the jobs table or None if not reserve_jobs
@@ -222,7 +266,7 @@ class AutoPopulate:
         :param return_exception_objects: if True, errors must be returned as objects
         :return: (key, error) when suppress_errors=True, otherwise None
         """
-        make = self._make_tuples if hasattr(self, '_make_tuples') else self.make
+        make = self._make_tuples if hasattr(self, "_make_tuples") else self.make
 
         if jobs is None or jobs.reserve(self.target.table_name, self._job_key(key)):
             self.connection.start_transaction()
@@ -231,7 +275,7 @@ class AutoPopulate:
                 if jobs is not None:
                     jobs.complete(self.target.table_name, self._job_key(key))
             else:
-                logger.info('Populating: ' + str(key))
+                logger.info("Populating: " + str(key))
                 self.__class__._allow_insert = True
                 try:
                     make(dict(key), **(make_kwargs or {}))
@@ -240,14 +284,18 @@ class AutoPopulate:
                         self.connection.cancel_transaction()
                     except LostConnectionError:
                         pass
-                    error_message = '{exception}{msg}'.format(
+                    error_message = "{exception}{msg}".format(
                         exception=error.__class__.__name__,
-                        msg=': ' + str(error) if str(error) else '')
+                        msg=": " + str(error) if str(error) else "",
+                    )
                     if jobs is not None:
                         # show error name and error message (if any)
                         jobs.error(
-                            self.target.table_name, self._job_key(key),
-                            error_message=error_message, error_stack=traceback.format_exc())
+                            self.target.table_name,
+                            self._job_key(key),
+                            error_message=error_message,
+                            error_stack=traceback.format_exc(),
+                        )
                     if not suppress_errors or isinstance(error, SystemExit):
                         raise
                     else:
@@ -269,9 +317,17 @@ class AutoPopulate:
         total = len(todo)
         remaining = len(todo - self.target)
         if display:
-            print('%-20s' % self.__class__.__name__,
-                  'Completed %d of %d (%2.1f%%)   %s' % (
-                      total - remaining, total, 100 - 100 * remaining / (total+1e-12),
-                      datetime.datetime.strftime(datetime.datetime.now(),
-                                                 '%Y-%m-%d %H:%M:%S')), flush=True)
+            print(
+                "%-20s" % self.__class__.__name__,
+                "Completed %d of %d (%2.1f%%)   %s"
+                % (
+                    total - remaining,
+                    total,
+                    100 - 100 * remaining / (total + 1e-12),
+                    datetime.datetime.strftime(
+                        datetime.datetime.now(), "%Y-%m-%d %H:%M:%S"
+                    ),
+                ),
+                flush=True,
+            )
         return remaining, total

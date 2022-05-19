@@ -8,10 +8,8 @@
 # Welcome to DataJoint for Python!
 DataJoint for Python is a framework for scientific workflow management based on relational principles. DataJoint is built on the foundation of the relational data model and prescribes a consistent method for organizing, populating, computing, and querying data.
 
-DataJoint was initially developed in 2009 by Dimitri Yatsenko in Andreas Tolias' Lab for the distributed processing and management of large volumes of data streaming from regular experiments. Starting in 2011, DataJoint has been available as an open-source project adopted by other labs and improved through contributions from several developers.
-
-Vathes LLC supports DataJoint for Python as an open-source project and everyone is welcome to contribute.
-Its DataJoint Neuro (https://djneuro.io) business provides support to neuroscience labs for developing and executing custom data pipelines.
+DataJoint was initially developed in 2009 by Dimitri Yatsenko in Andreas Tolias' Lab at Baylor College of Medicine for the distributed processing and management of large volumes of data streaming from regular experiments. Starting in 2011, DataJoint has been available as an open-source project adopted by other labs and improved through contributions from several developers.
+Presently, the primary developer of DataJoint open-source software is the company DataJoint (https://datajoint.com). Related resources are listed at https://datajoint.org.
 
 ## Installation
 ```
@@ -22,7 +20,25 @@ If you already have an older version of DataJoint installed using `pip`, upgrade
 ```bash
 pip3 install --upgrade datajoint
 ```
+
+## Documentation and Tutorials
+
+* https://datajoint.org  -- start page
+* https://docs.datajoint.org -- up-to-date documentation
+* https://tutorials.datajoint.io -- step-by-step tutorials
+* https://elements.datajoint.org -- catalog of example pipelines
+* https://codebook.datajoint.io -- interactive online tutorials
+
+## Citation
++ If your work uses DataJoint for Python, please cite the following Research Resource Identifier (RRID) and manuscript.
+
++ DataJoint ([RRID:SCR_014543](https://scicrunch.org/resolver/SCR_014543)) - DataJoint for Python (version `<Enter version number>`)
+
++ Yatsenko D, Reimer J, Ecker AS, Walker EY, Sinz F, Berens P, Hoenselaar A, Cotton RJ, Siapas AS, Tolias AS. DataJoint: managing big scientific data using MATLAB or Python. bioRxiv. 2015 Jan 1:031658. doi: https://doi.org/10.1101/031658
+
 ## Python Native Blobs
+<details>
+<summary>Click to expand details</summary>
 
 DataJoint 0.12 adds full support for all native python data types in blobs: tuples, lists, sets, dicts, strings, bytes, `None`, and all their recursive combinations.
 The new blobs are a superset of the old functionality and are fully backward compatible.
@@ -92,16 +108,23 @@ the situation, but generally the following strategies may apply:
 As always, be sure that your data is safely backed up before modifying any
 important DataJoint schema or records.
 
-## Documentation and Tutorials
-A number of labs are currently adopting DataJoint and we are quickly getting the documentation in shape in February 2017.
+</details>
 
-* https://datajoint.io  -- start page
-* https://docs.datajoint.io -- up-to-date documentation
-* https://tutorials.datajoint.io -- step-by-step tutorials
-* https://catalog.datajoint.io -- catalog of example pipelines
+### API docs
+
+The API documentation can be built using sphinx by running
+
+``` bash
+pip install sphinx sphinx_rtd_theme 
+(cd docs-api/sphinx && make html)
+```
+
+Generated docs are written to `docs-api/docs/html/index.html`.
+More details in [docs-api/README.md](docs-api/README.md).
 
 ## Running Tests Locally
-
+<details>
+<summary>Click to expand details</summary>
 
 * Create an `.env` with desired development environment values e.g.
 ``` sh
@@ -136,9 +159,9 @@ GID=1000
 * Add entry in `/etc/hosts` for `127.0.0.1 fakeservices.datajoint.io`
 
 
-
-
 ### Launch Jupyter Notebook for Interactive Use
 * Navigate to `localhost:8888`
 * Input Jupyter password
 * Launch a notebook i.e. `New > Python 3`
+
+</details>

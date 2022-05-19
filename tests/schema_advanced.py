@@ -1,7 +1,7 @@
 import datajoint as dj
 from . import PREFIX, CONN_INFO
 
-schema = dj.Schema(PREFIX + '_advanced', locals(), connection=dj.conn(**CONN_INFO))
+schema = dj.Schema(PREFIX + "_advanced", locals(), connection=dj.conn(**CONN_INFO))
 
 
 @schema
@@ -17,23 +17,26 @@ class Person(dj.Manual):
         """
         fill fake names from www.fakenamegenerator.com
         """
-        self.insert((
-            (0, "May K. Hall", "F"),
-            (1, "Jeffrey E. Gillen", "M"),
-            (2, "Hanna R. Walters", "F"),
-            (3, "Russel S. James", "M"),
-            (4, "Robbin J. Fletcher", "F"),
-            (5, "Wade J. Sullivan", "M"),
-            (6, "Dorothy J. Chen", "F"),
-            (7, "Michael L. Kowalewski", "M"),
-            (8, "Kimberly J. Stringer", "F"),
-            (9, "Mark G. Hair", "M"),
-            (10, "Mary R. Thompson", "F"),
-            (11, "Graham C. Gilpin", "M"),
-            (12, "Nelda T. Ruggeri", "F"),
-            (13, "Bryan M. Cummings", "M"),
-            (14, "Sara C. Le", "F"),
-            (15, "Myron S. Jaramillo", "M")))
+        self.insert(
+            (
+                (0, "May K. Hall", "F"),
+                (1, "Jeffrey E. Gillen", "M"),
+                (2, "Hanna R. Walters", "F"),
+                (3, "Russel S. James", "M"),
+                (4, "Robbin J. Fletcher", "F"),
+                (5, "Wade J. Sullivan", "M"),
+                (6, "Dorothy J. Chen", "F"),
+                (7, "Michael L. Kowalewski", "M"),
+                (8, "Kimberly J. Stringer", "F"),
+                (9, "Mark G. Hair", "M"),
+                (10, "Mary R. Thompson", "F"),
+                (11, "Graham C. Gilpin", "M"),
+                (12, "Nelda T. Ruggeri", "F"),
+                (13, "Bryan M. Cummings", "M"),
+                (14, "Sara C. Le", "F"),
+                (15, "Myron S. Jaramillo", "M"),
+            )
+        )
 
 
 @schema
@@ -46,16 +49,44 @@ class Parent(dj.Manual):
     """
 
     def fill(self):
-
         def make_parent(pid, parent):
-            return dict(person_id=pid,
-                        parent=parent,
-                        parent_sex=(Person & {'person_id': parent}).fetch1('sex'))
+            return dict(
+                person_id=pid,
+                parent=parent,
+                parent_sex=(Person & {"person_id": parent}).fetch1("sex"),
+            )
 
-        self.insert(make_parent(*r) for r in (
-            (0, 2), (0, 3), (1, 4), (1, 5), (2, 4), (2, 5), (3, 4), (3, 7), (4, 7),
-            (4, 8), (5, 9), (5, 10), (6, 9), (6, 10), (7, 11), (7, 12), (8, 11), (8, 14),
-            (9, 11), (9, 12), (10, 13), (10, 14), (11, 14), (11, 15), (12, 14), (12, 15)))
+        self.insert(
+            make_parent(*r)
+            for r in (
+                (0, 2),
+                (0, 3),
+                (1, 4),
+                (1, 5),
+                (2, 4),
+                (2, 5),
+                (3, 4),
+                (3, 7),
+                (4, 7),
+                (4, 8),
+                (5, 9),
+                (5, 10),
+                (6, 9),
+                (6, 10),
+                (7, 11),
+                (7, 12),
+                (8, 11),
+                (8, 14),
+                (9, 11),
+                (9, 12),
+                (10, 13),
+                (10, 14),
+                (11, 14),
+                (11, 15),
+                (12, 14),
+                (12, 15),
+            )
+        )
 
 
 @schema

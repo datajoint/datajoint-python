@@ -8,6 +8,7 @@ class TestPopulate:
     """
     Test base relations: insert, delete
     """
+
     def setUp(self):
         self.user = schema.User()
         self.subject = schema.Subject()
@@ -26,19 +27,21 @@ class TestPopulate:
 
     def test_populate(self):
         # test simple populate
-        assert_true(self.subject, 'root tables are empty')
-        assert_false(self.experiment, 'table already filled?')
+        assert_true(self.subject, "root tables are empty")
+        assert_false(self.experiment, "table already filled?")
         self.experiment.populate()
-        assert_true(len(self.experiment) ==
-                    len(self.subject)*self.experiment.fake_experiments_per_subject)
+        assert_true(
+            len(self.experiment)
+            == len(self.subject) * self.experiment.fake_experiments_per_subject
+        )
 
         # test restricted populate
-        assert_false(self.trial, 'table already filled?')
-        restriction = self.subject.proj(animal='subject_id').fetch('KEY')[0]
+        assert_false(self.trial, "table already filled?")
+        restriction = self.subject.proj(animal="subject_id").fetch("KEY")[0]
         d = self.trial.connection.dependencies
         d.load()
         self.trial.populate(restriction)
-        assert_true(self.trial, 'table was not populated')
+        assert_true(self.trial, "table was not populated")
         key_source = self.trial.key_source
         assert_equal(len(key_source & self.trial), len(key_source & restriction))
         assert_equal(len(key_source - self.trial), len(key_source - restriction))
@@ -51,22 +54,40 @@ class TestPopulate:
         assert_true(self.channel)
 
     def test_allow_direct_insert(self):
-        assert_true(self.subject, 'root tables are empty')
-        key = self.subject.fetch('KEY', limit=1)[0]
-        key['experiment_id'] = 1000
-        key['experiment_date'] = '2018-10-30'
+        assert_true(self.subject, "root tables are empty")
+        key = self.subject.fetch("KEY", limit=1)[0]
+        key["experiment_id"] = 1000
+        key["experiment_date"] = "2018-10-30"
         self.experiment.insert1(key, allow_direct_insert=True)
+
+    def test_multi_processing(self):
+        assert self.subject, "root tables are empty"
+        assert not self.experiment, "table already filled?"
+        self.experiment.populate(processes=2)
+        assert (
+            len(self.experiment)
+            == len(self.subject) * self.experiment.fake_experiments_per_subject
+        )
+
+    def test_max_multi_processing(self):
+        assert self.subject, "root tables are empty"
+        assert not self.experiment, "table already filled?"
+        self.experiment.populate(processes=None)
+        assert (
+            len(self.experiment)
+            == len(self.subject) * self.experiment.fake_experiments_per_subject
+        )
 
     @raises(DataJointError)
     def test_allow_insert(self):
-        assert_true(self.subject, 'root tables are empty')
-        key = self.subject.fetch('KEY')[0]
-        key['experiment_id'] = 1001
-        key['experiment_date'] = '2018-10-30'
+        assert_true(self.subject, "root tables are empty")
+        key = self.subject.fetch("KEY")[0]
+        key["experiment_id"] = 1001
+        key["experiment_date"] = "2018-10-30"
         self.experiment.insert1(key)
 
     def test_load_dependencies(self):
-        schema = dj.Schema(f'{PREFIX}_load_dependencies_populate')
+        schema = dj.Schema(f"{PREFIX}_load_dependencies_populate")
 
         @schema
         class ImageSource(dj.Lookup):

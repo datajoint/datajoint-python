@@ -15,6 +15,7 @@ class PromiscuousOperand:
     """
     A container for an operand to ignore join compatibility
     """
+
     def __init__(self, operand):
         self.operand = operand
 
@@ -30,6 +31,7 @@ class AndList(list):
     is equivalent to
     expr2 = expr & cond1 & cond2 & cond3
     """
+
     def append(self, restriction):
         if isinstance(restriction, AndList):
             # extend to reduce nesting
@@ -39,7 +41,8 @@ class AndList(list):
 
 
 class Not:
-    """ invert restriction """
+    """invert restriction"""
+
     def __init__(self, restriction):
         self.restriction = restriction
 
@@ -59,13 +62,21 @@ def assert_join_compatibility(expr1, expr2):
     for rel in (expr1, expr2):
         if not isinstance(rel, (U, QueryExpression)):
             raise DataJointError(
-                'Object %r is not a QueryExpression and cannot be joined.' % rel)
-    if not isinstance(expr1, U) and not isinstance(expr2, U):  # dj.U is always compatible
+                "Object %r is not a QueryExpression and cannot be joined." % rel
+            )
+    if not isinstance(expr1, U) and not isinstance(
+        expr2, U
+    ):  # dj.U is always compatible
         try:
             raise DataJointError(
-                "Cannot join query expressions on dependent attribute `%s`" % next(
-                    r for r in set(expr1.heading.secondary_attributes).intersection(
-                        expr2.heading.secondary_attributes)))
+                "Cannot join query expressions on dependent attribute `%s`"
+                % next(
+                    r
+                    for r in set(expr1.heading.secondary_attributes).intersection(
+                        expr2.heading.secondary_attributes
+                    )
+                )
+            )
         except StopIteration:
             pass  # all ok
 
@@ -90,13 +101,16 @@ def make_condition(query_expression, condition, columns):
                     v = uuid.UUID(v)
                 except (AttributeError, ValueError):
                     raise DataJointError(
-                        'Badly formed UUID {v} in restriction by `{k}`'.format(k=k, v=v))
+                        "Badly formed UUID {v} in restriction by `{k}`".format(k=k, v=v)
+                    )
             return "X'%s'" % v.bytes.hex()
-        if isinstance(v, (datetime.date, datetime.datetime, datetime.time, decimal.Decimal)):
+        if isinstance(
+            v, (datetime.date, datetime.datetime, datetime.time, decimal.Decimal)
+        ):
             return '"%s"' % v
         if isinstance(v, str):
-            return '"%s"' % v.replace('%', '%%')
-        return '%r' % v
+            return '"%s"' % v.replace("%", "%%")
+        return "%r" % v
 
     negate = False
     while isinstance(condition, Not):
@@ -107,19 +121,25 @@ def make_condition(query_expression, condition, columns):
     # restrict by string
     if isinstance(condition, str):
         columns.update(extract_column_names(condition))
-        return template % condition.strip().replace("%", "%%")  # escape %, see issue #376
+        return template % condition.strip().replace(
+            "%", "%%"
+        )  # escape %, see issue #376
 
     # restrict by AndList
     if isinstance(condition, AndList):
         # omit all conditions that evaluate to True
-        items = [item for item in (make_condition(query_expression, cond, columns)
-                 for cond in condition)
-                 if item is not True]
+        items = [
+            item
+            for item in (
+                make_condition(query_expression, cond, columns) for cond in condition
+            )
+            if item is not True
+        ]
         if any(item is False for item in items):
             return negate  # if any item is False, the whole thing is False
         if not items:
             return not negate  # and empty AndList is True
-        return template % ('(' + ') AND ('.join(items) + ')')
+        return template % ("(" + ") AND (".join(items) + ")")
 
     # restriction by dj.U evaluates to True
     if isinstance(condition, U):
@@ -135,20 +155,36 @@ def make_condition(query_expression, condition, columns):
         if not common_attributes:
             return not negate  # no matching attributes -> evaluates to True
         columns.update(common_attributes)
-        return template % ('(' + ') AND ('.join(
-            '`%s`%s' % (k, ' IS NULL' if condition[k] is None
-                        else f'={prep_value(k, condition[k])}')
-            for k in common_attributes) + ')')
+        return template % (
+            "("
+            + ") AND (".join(
+                "`%s`%s"
+                % (
+                    k,
+                    " IS NULL"
+                    if condition[k] is None
+                    else f"={prep_value(k, condition[k])}",
+                )
+                for k in common_attributes
+            )
+            + ")"
+        )
 
     # restrict by a numpy record -- convert to an AndList of string equality conditions
     if isinstance(condition, numpy.void):
         common_attributes = set(condition.dtype.fields).intersection(
-            query_expression.heading.names)
+            query_expression.heading.names
+        )
         if not common_attributes:
-            return not negate   # no matching attributes -> evaluate to True
+            return not negate  # no matching attributes -> evaluate to True
         columns.update(common_attributes)
-        return template % ('(' + ') AND ('.join(
-            '`%s`=%s' % (k, prep_value(k, condition[k])) for k in common_attributes) + ')')
+        return template % (
+            "("
+            + ") AND (".join(
+                "`%s`=%s" % (k, prep_value(k, condition[k])) for k in common_attributes
+            )
+            + ")"
+        )
 
     # restrict by a QueryExpression subclass -- trigger instantiation and move on
     if inspect.isclass(condition) and issubclass(condition, QueryExpression):
@@ -163,18 +199,22 @@ def make_condition(query_expression, condition, columns):
     if isinstance(condition, QueryExpression):
         if check_compatibility:
             assert_join_compatibility(query_expression, condition)
-        common_attributes = [q for q in condition.heading.names
-                             if q in query_expression.heading.names]
+        common_attributes = [
+            q for q in condition.heading.names if q in query_expression.heading.names
+        ]
         columns.update(common_attributes)
         if isinstance(condition, Aggregation):
             condition = condition.make_subquery()
         return (
             # without common attributes, any non-empty set matches everything
-            (not negate if condition else negate) if not common_attributes
-            else '({fields}) {not_}in ({subquery})'.format(
-                fields='`' + '`,`'.join(common_attributes) + '`',
+            (not negate if condition else negate)
+            if not common_attributes
+            else "({fields}) {not_}in ({subquery})".format(
+                fields="`" + "`,`".join(common_attributes) + "`",
                 not_="not " if negate else "",
-                subquery=condition.make_sql(common_attributes)))
+                subquery=condition.make_sql(common_attributes),
+            )
+        )
 
     # restrict by pandas.DataFrames
     if isinstance(condition, pandas.DataFrame):
@@ -184,12 +224,14 @@ def make_condition(query_expression, condition, columns):
     try:
         or_list = [make_condition(query_expression, q, columns) for q in condition]
     except TypeError:
-        raise DataJointError('Invalid restriction type %r' % condition)
+        raise DataJointError("Invalid restriction type %r" % condition)
     else:
-        or_list = [item for item in or_list if item is not False]  # ignore False conditions
+        or_list = [
+            item for item in or_list if item is not False
+        ]  # ignore False conditions
         if any(item is True for item in or_list):  # if any item is True, entirely True
             return not negate
-        return template % ('(%s)' % ' OR '.join(or_list)) if or_list else negate
+        return template % ("(%s)" % " OR ".join(or_list)) if or_list else negate
 
 
 def extract_column_names(sql_expression):
@@ -205,21 +247,38 @@ def extract_column_names(sql_expression):
     result = set()
     s = sql_expression  # for terseness
     # remove escaped quotes
-    s = re.sub(r'(\\\")|(\\\')', '', s)
+    s = re.sub(r"(\\\")|(\\\')", "", s)
     # remove quoted text
     s = re.sub(r"'[^']*'", "", s)
-    s = re.sub(r'"[^"]*"', '', s)
+    s = re.sub(r'"[^"]*"', "", s)
     # find all tokens in back quotes and remove them
     result.update(re.findall(r"`([a-z][a-z_0-9]*)`", s))
-    s = re.sub(r"`[a-z][a-z_0-9]*`", '', s)
+    s = re.sub(r"`[a-z][a-z_0-9]*`", "", s)
     # remove space before parentheses
     s = re.sub(r"\s*\(", "(", s)
     # remove tokens followed by ( since they must be functions
     s = re.sub(r"(\b[a-z][a-z_0-9]*)\(", "(", s)
     remaining_tokens = set(re.findall(r"\b[a-z][a-z_0-9]*\b", s))
     # update result removing reserved words
-    result.update(remaining_tokens - {"is", "in", "between", "like", "and", "or", "null",
-                                      "not", "interval", "second", "minute", "hour", "day",
-                                      "month", "week", "year"
-                                      })
+    result.update(
+        remaining_tokens
+        - {
+            "is",
+            "in",
+            "between",
+            "like",
+            "and",
+            "or",
+            "null",
+            "not",
+            "interval",
+            "second",
+            "minute",
+            "hour",
+            "day",
+            "month",
+            "week",
+            "year",
+        }
+    )
     return result

@@ -1,3 +1,16 @@
+0.13.5 -- May 19, 2022
+----------------------
+* Update - Import ABC from collections.abc for Python 3.10 compatibility
+* Bugfix - Fix multiprocessing value error (#1013) PR #1026
+
+0.13.4 -- March 28, 2022
+----------------------
+* Add - Allow reading blobs produced by legacy 32-bit compiled mYm library for matlab. PR #995
+* Bugfix - Add missing ``jobs`` argument for multiprocessing PR #997
+* Add - Test for multiprocessing PR #1008
+* Bugfix - Fix external store key name doesn't allow '-' (#1005) PR #1006
+* Add - Adopted black formatting into code base PR #998
+
 0.13.3 -- Feb 9, 2022
 ----------------------
 * Bugfix - Fix error in listing ancestors, descendants with part tables.

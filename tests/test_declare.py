@@ -1,4 +1,11 @@
-from nose.tools import assert_true, assert_false, assert_equal, assert_list_equal, raises, assert_set_equal
+from nose.tools import (
+    assert_true,
+    assert_false,
+    assert_equal,
+    assert_list_equal,
+    raises,
+    assert_set_equal,
+)
 from .schema import *
 import datajoint as dj
 import inspect
@@ -16,7 +23,6 @@ channel = Ephys.Channel()
 
 
 class TestDeclare:
-
     @staticmethod
     def test_schema_decorator():
         assert_true(issubclass(Subject, dj.Lookup))
@@ -73,7 +79,7 @@ class TestDeclare:
             definition = """
             type :  varchar(255)
             """
-            contents = zip(('Type1', 'Type2', 'Type3'))
+            contents = zip(("Type1", "Type2", "Type3"))
 
         @local_schema
         class TypeMaster(dj.Manual):
@@ -90,39 +96,52 @@ class TestDeclare:
     @staticmethod
     def test_attributes():
         # test autoincrement declaration
-        assert_list_equal(auto.heading.names, ['id', 'name'])
-        assert_true(auto.heading.attributes['id'].autoincrement)
+        assert_list_equal(auto.heading.names, ["id", "name"])
+        assert_true(auto.heading.attributes["id"].autoincrement)
 
         # test attribute declarations
-        assert_list_equal(subject.heading.names,
-                          ['subject_id', 'real_id', 'species', 'date_of_birth', 'subject_notes'])
-        assert_list_equal(subject.primary_key,
-                          ['subject_id'])
-        assert_true(subject.heading.attributes['subject_id'].numeric)
-        assert_false(subject.heading.attributes['real_id'].numeric)
+        assert_list_equal(
+            subject.heading.names,
+            ["subject_id", "real_id", "species", "date_of_birth", "subject_notes"],
+        )
+        assert_list_equal(subject.primary_key, ["subject_id"])
+        assert_true(subject.heading.attributes["subject_id"].numeric)
+        assert_false(subject.heading.attributes["real_id"].numeric)
 
-        assert_list_equal(experiment.heading.names,
-                          ['subject_id', 'experiment_id', 'experiment_date',
-                           'username', 'data_path',
-                           'notes', 'entry_time'])
-        assert_list_equal(experiment.primary_key,
-                          ['subject_id', 'experiment_id'])
+        assert_list_equal(
+            experiment.heading.names,
+            [
+                "subject_id",
+                "experiment_id",
+                "experiment_date",
+                "username",
+                "data_path",
+                "notes",
+                "entry_time",
+            ],
+        )
+        assert_list_equal(experiment.primary_key, ["subject_id", "experiment_id"])
 
-        assert_list_equal(trial.heading.names,   # tests issue #516
-                          ['animal', 'experiment_id', 'trial_id', 'start_time'])
-        assert_list_equal(trial.primary_key,
-                          ['animal', 'experiment_id', 'trial_id'])
+        assert_list_equal(
+            trial.heading.names,  # tests issue #516
+            ["animal", "experiment_id", "trial_id", "start_time"],
+        )
+        assert_list_equal(trial.primary_key, ["animal", "experiment_id", "trial_id"])
 
-        assert_list_equal(ephys.heading.names,
-                          ['animal', 'experiment_id', 'trial_id', 'sampling_frequency', 'duration'])
-        assert_list_equal(ephys.primary_key,
-                          ['animal', 'experiment_id', 'trial_id'])
+        assert_list_equal(
+            ephys.heading.names,
+            ["animal", "experiment_id", "trial_id", "sampling_frequency", "duration"],
+        )
+        assert_list_equal(ephys.primary_key, ["animal", "experiment_id", "trial_id"])
 
-        assert_list_equal(channel.heading.names,
-                          ['animal', 'experiment_id', 'trial_id', 'channel', 'voltage', 'current'])
-        assert_list_equal(channel.primary_key,
-                          ['animal', 'experiment_id', 'trial_id', 'channel'])
-        assert_true(channel.heading.attributes['voltage'].is_blob)
+        assert_list_equal(
+            channel.heading.names,
+            ["animal", "experiment_id", "trial_id", "channel", "voltage", "current"],
+        )
+        assert_list_equal(
+            channel.primary_key, ["animal", "experiment_id", "trial_id", "channel"]
+        )
+        assert_true(channel.heading.attributes["voltage"].is_blob)
 
     @staticmethod
     def test_dependencies():
@@ -130,35 +149,67 @@ class TestDeclare:
         assert_equal(set(experiment.parents(primary=False)), {user.full_table_name})
         assert_true(experiment.full_table_name in user.children(primary=False))
         assert_set_equal(set(experiment.parents(primary=False)), {user.full_table_name})
-        assert_set_equal(set(s.full_table_name for s in experiment.parents(primary=False, as_objects=True)),
-                         {user.full_table_name})
+        assert_set_equal(
+            set(
+                s.full_table_name
+                for s in experiment.parents(primary=False, as_objects=True)
+            ),
+            {user.full_table_name},
+        )
 
         assert_true(experiment.full_table_name in subject.descendants())
-        assert_true(experiment.full_table_name in {s.full_table_name for s in subject.descendants(as_objects=True)})
+        assert_true(
+            experiment.full_table_name
+            in {s.full_table_name for s in subject.descendants(as_objects=True)}
+        )
         assert_true(subject.full_table_name in experiment.ancestors())
-        assert_true(subject.full_table_name in {s.full_table_name for s in experiment.ancestors(as_objects=True)})
+        assert_true(
+            subject.full_table_name
+            in {s.full_table_name for s in experiment.ancestors(as_objects=True)}
+        )
 
         assert_true(trial.full_table_name in experiment.descendants())
-        assert_true(trial.full_table_name in {s.full_table_name for s in experiment.descendants(as_objects=True)})
+        assert_true(
+            trial.full_table_name
+            in {s.full_table_name for s in experiment.descendants(as_objects=True)}
+        )
         assert_true(experiment.full_table_name in trial.ancestors())
-        assert_true(experiment.full_table_name in {s.full_table_name for s in trial.ancestors(as_objects=True)})
+        assert_true(
+            experiment.full_table_name
+            in {s.full_table_name for s in trial.ancestors(as_objects=True)}
+        )
 
-        assert_set_equal(set(trial.children(primary=True)), {ephys.full_table_name, trial.Condition.full_table_name})
+        assert_set_equal(
+            set(trial.children(primary=True)),
+            {ephys.full_table_name, trial.Condition.full_table_name},
+        )
         assert_set_equal(set(trial.parts()), {trial.Condition.full_table_name})
-        assert_set_equal(set(s.full_table_name for s in trial.parts(as_objects=True)),
-                         {trial.Condition.full_table_name})
-        assert_set_equal(set(ephys.parents(primary=True)),
-                         {trial.full_table_name})
-        assert_set_equal(set(s.full_table_name for s in ephys.parents(primary=True, as_objects=True)),
-                         {trial.full_table_name})
-        assert_set_equal(set(ephys.children(primary=True)),
-                         {channel.full_table_name})
-        assert_set_equal(set(s.full_table_name for s in ephys.children(primary=True, as_objects=True)),
-                         {channel.full_table_name})
-        assert_set_equal(set(channel.parents(primary=True)),
-                         {ephys.full_table_name})
-        assert_set_equal(set(s.full_table_name for s in channel.parents(primary=True, as_objects=True)),
-                         {ephys.full_table_name})
+        assert_set_equal(
+            set(s.full_table_name for s in trial.parts(as_objects=True)),
+            {trial.Condition.full_table_name},
+        )
+        assert_set_equal(set(ephys.parents(primary=True)), {trial.full_table_name})
+        assert_set_equal(
+            set(
+                s.full_table_name for s in ephys.parents(primary=True, as_objects=True)
+            ),
+            {trial.full_table_name},
+        )
+        assert_set_equal(set(ephys.children(primary=True)), {channel.full_table_name})
+        assert_set_equal(
+            set(
+                s.full_table_name for s in ephys.children(primary=True, as_objects=True)
+            ),
+            {channel.full_table_name},
+        )
+        assert_set_equal(set(channel.parents(primary=True)), {ephys.full_table_name})
+        assert_set_equal(
+            set(
+                s.full_table_name
+                for s in channel.parents(primary=True, as_objects=True)
+            ),
+            {ephys.full_table_name},
+        )
 
     @staticmethod
     def test_descendants_only_contain_part_table():
@@ -189,12 +240,15 @@ class TestDeclare:
                 -> B
                 """
 
-        assert A.descendants() == ['`djtest_test1`.`a`', '`djtest_test1`.`b`', '`djtest_test1`.`master__part`']
+        assert A.descendants() == [
+            "`djtest_test1`.`a`",
+            "`djtest_test1`.`b`",
+            "`djtest_test1`.`master__part`",
+        ]
 
     @staticmethod
     @raises(dj.DataJointError)
     def test_bad_attribute_name():
-
         @schema
         class BadName(dj.Manual):
             definition = """
@@ -241,7 +295,6 @@ class TestDeclare:
     @staticmethod
     @raises(dj.DataJointError)
     def test_unsupported_datatype():
-
         @schema
         class Q(dj.Manual):
             definition = """
@@ -252,7 +305,6 @@ class TestDeclare:
 
     @staticmethod
     def test_int_datatype():
-
         @schema
         class Owner(dj.Manual):
             definition = """
@@ -264,7 +316,6 @@ class TestDeclare:
     @staticmethod
     @raises(dj.DataJointError)
     def test_unsupported_int_datatype():
-
         @schema
         class Driver(dj.Manual):
             definition = """
