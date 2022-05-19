@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 from os import path
 import sys
 
-min_py_version = (3, 6)
+min_py_version = (3, 7)
 
 if sys.version_info <  min_py_version:
     sys.exit('DataJoint is only supported for Python {}.{} or higher'.format(*min_py_version))
