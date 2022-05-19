@@ -32,7 +32,7 @@ def to_dicts(recarray):
         yield dict(zip(recarray.dtype.names, rec.tolist()))
 
 
-def _get(connection, attr, data, squeeze, download_path, disable_checksum):
+def _get(connection, attr, data, squeeze, download_path):
     """
     This function is called for every attribute
 
@@ -71,7 +71,7 @@ def _get(connection, attr, data, squeeze, download_path, disable_checksum):
             else data.split(b"\0", 1)[0].decode()
         )
         local_filepath = Path(download_path) / attachment_name
-        if local_filepath.is_file() and not disable_checksum:
+        if local_filepath.is_file():
             attachment_checksum = (
                 _uuid if attr.is_external else hash.uuid_from_buffer(data)
             )
@@ -149,8 +149,7 @@ class Fetch:
         format=None,
         as_dict=None,
         squeeze=False,
-        download_path=".",
-        disable_checksum=False
+        download_path="."
     ):
         """
         Fetches the expression results from the database into an np.array or list of dictionaries and
@@ -171,18 +170,6 @@ class Fetch:
         :param download_path: for fetches that download data, e.g. attachments
         :return: the contents of the relation in the form of a structured numpy.array or a dict list
         """
-        if disable_checksum and config["safemode"]:
-            warn_str = (
-                "Are you sure that you want to disable checksums?\n"
-                + "There is no guarantee that any files you retrieve have been unmodified.\n"
-                + "(Y/N):"
-            )
-            choice = input(warn_str)
-            if choice == "N":
-                return "Nothing fetched (fetch aborted)"
-            elif choice != "Y":
-                return "Nothing fetched (invalid prompt input)"
-
         if order_by is not None:
             # if 'order_by' passed in a string, make into list
             if isinstance(order_by, str):
@@ -233,7 +220,6 @@ class Fetch:
             self._expression.connection,
             squeeze=squeeze,
             download_path=download_path,
-            disable_checksum=disable_checksum,
         )
         if attrs:  # a list of attributes provided
             attributes = [a for a in attrs if not is_key(a)]
@@ -314,9 +300,7 @@ class Fetch1:
     def __init__(self, expression):
         self._expression = expression
 
-    def __call__(
-        self, *attrs, squeeze=False, download_path=".", disable_checksum=False
-    ):
+    def __call__(self, *attrs, squeeze=False, download_path="."):
         """
         Fetches the result of a query expression that yields one entry.
 
@@ -335,18 +319,6 @@ class Fetch1:
         """
         heading = self._expression.heading
 
-        if disable_checksum and config["safemode"]:
-            warn_str = (
-                "Are you sure that you want to disable checksums?\n"
-                + "There is no guarantee that any files you retrieve have been unmodified.\n"
-                + "(Y/N):"
-            )
-            choice = input(warn_str)
-            if choice == "N":
-                return "Nothing fetched (fetch aborted)"
-            elif choice != "Y":
-                return "Nothing fetched (invalid prompt input)"
-
         if not attrs:  # fetch all attributes, return as ordered dict
             cur = self._expression.cursor(as_dict=True)
             ret = cur.fetchone()
@@ -363,7 +335,6 @@ class Fetch1:
                         ret[name],
                         squeeze=squeeze,
                         download_path=download_path,
-                        disable_checksum=disable_checksum,
                     ),
                 )
                 for name in heading.names
