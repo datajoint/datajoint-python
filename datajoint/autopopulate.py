@@ -173,8 +173,7 @@ class AutoPopulate:
         :param limit: if not None, check at most this many keys
         :param max_calls: if not None, populate at most this many keys
         :param display_progress: if True, report progress_bar
-        :param processes: number of processes to use. When set to a large number, then
-            uses as many as CPU cores
+        :param processes: number of processes to use. Set to None to use all cores
         :param make_kwargs: Keyword arguments which do not affect the result of computation
             to be passed down to each ``make()`` call. Computation arguments should be
             specified within the pipeline e.g. using a `dj.Lookup` table.
@@ -211,9 +210,10 @@ class AutoPopulate:
 
         keys = keys[:max_calls]
         nkeys = len(keys)
+        if not nkeys:
+            return
 
-        if processes > 1:
-            processes = min(processes, nkeys, mp.cpu_count())
+        processes = min(*(_ for _ in (processes, nkeys, mp.cpu_count()) if _))
 
         error_list = []
         populate_kwargs = dict(

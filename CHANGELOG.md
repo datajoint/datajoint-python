@@ -1,7 +1,8 @@
 ## Release notes
 
-### 0.13.5 -- May 13, 2022
+### 0.13.5 -- May 19, 2022
 * Update - Import ABC from collections.abc for Python 3.10 compatibility
+* Bugfix - Fix multiprocessing value error (#1013) PR #1026
 
 ### 0.13.4 -- March, 28 2022
 * Add - Allow reading blobs produced by legacy 32-bit compiled mYm library for matlab. PR #995
