@@ -213,8 +213,7 @@ class AutoPopulate:
         if not nkeys:
             return
 
-        if processes > 1:
-            processes = min(*(_ for _ in (processes, nkeys, mp.cpu_count()) if _))
+        processes = min(*(_ for _ in (processes, nkeys, mp.cpu_count()) if _))
 
         error_list = []
         populate_kwargs = dict(

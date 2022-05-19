@@ -69,6 +69,15 @@ class TestPopulate:
             == len(self.subject) * self.experiment.fake_experiments_per_subject
         )
 
+    def test_max_multi_processing(self):
+        assert self.subject, "root tables are empty"
+        assert not self.experiment, "table already filled?"
+        self.experiment.populate(processes=None)
+        assert (
+            len(self.experiment)
+            == len(self.subject) * self.experiment.fake_experiments_per_subject
+        )
+
     @raises(DataJointError)
     def test_allow_insert(self):
         assert_true(self.subject, "root tables are empty")
