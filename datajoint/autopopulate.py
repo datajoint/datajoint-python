@@ -214,7 +214,7 @@ class AutoPopulate:
         if not nkeys:
             return
 
-        processes = min(*(_ for _ in (processes, nkeys, mp.cpu_count()) if _))
+        processes = min(_ for _ in (processes, nkeys, mp.cpu_count()) if _)
 
         error_list = []
         populate_kwargs = dict(
@@ -241,12 +241,12 @@ class AutoPopulate:
                     tqdm(desc="Processes: ", total=nkeys)
                     if display_progress
                     else contextlib.nullcontext()
-                ) as pbar:
+                ) as progress_bar:
                     for error in pool.imap(_call_populate1, keys, chunksize=1):
                         if error is not None:
                             error_list.append(error)
                         if display_progress:
-                            pbar.update()
+                            progress_bar.update()
             self.connection.connect()  # reconnect parent process to MySQL server
 
         # restore original signal handler:
