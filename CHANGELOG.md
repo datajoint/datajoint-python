@@ -1,6 +1,6 @@
 ## Release notes
 
-### 0.13.5 -- TBD
+### 0.13.5 -- May 19, 2022
 * Update - Import ABC from collections.abc for Python 3.10 compatibility
 * Bugfix - Fix multiprocessing value error (#1013) PR #1026
 
