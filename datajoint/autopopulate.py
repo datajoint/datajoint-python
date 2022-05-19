@@ -214,7 +214,7 @@ class AutoPopulate:
             return
 
         if processes > 1:
-            processes = min(processes, nkeys, mp.cpu_count())
+            processes = min(*(_ for _ in (processes, nkeys, mp.cpu_count()) if _))
 
         error_list = []
         populate_kwargs = dict(
