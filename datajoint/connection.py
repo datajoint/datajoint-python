@@ -9,6 +9,7 @@ import logging
 from getpass import getpass
 import re
 import pathlib
+import shutil
 
 from .settings import config
 from . import errors
@@ -258,9 +259,7 @@ class Connection:
             and isinstance(config["query_cache"], str)
             and pathlib.Path(config["query_cache"]).is_dir()
         ):
-            path_iter = pathlib.Path(config["query_cache"]).glob("**/*")
-            for path in path_iter:
-                path.unlink()
+            shutil.rmtree()
 
     def close(self):
         self._conn.close()
