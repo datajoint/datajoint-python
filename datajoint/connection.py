@@ -22,6 +22,9 @@ logger = logging.getLogger(__name__)
 query_log_max_length = 300
 
 
+cache_key = "query_cache"   # the key to lookup the query_cache folder in dj.config
+
+
 def get_host_hook(host_input):
     if "://" in host_input:
         plugin_name = host_input.split("://")[0]
@@ -255,11 +258,13 @@ class Connection:
     def purge_query_cache(self):
         """Purges all query cache."""
         if (
-            "query_cache" in config
-            and isinstance(config["query_cache"], str)
-            and pathlib.Path(config["query_cache"]).is_dir()
+            cache_key in config
+            and isinstance(config[cache_key], str)
+            and pathlib.Path(config[cache_key]).is_dir()
         ):
-            shutil.rmtree()
+            for path in pathlib.Path(config[cache_key].iterdir()):
+                if not path.is_dir():
+                    path.unlink()
 
     def close(self):
         self._conn.close()
@@ -312,15 +317,15 @@ class Connection:
                 "Only SELECT queries are allowed when query caching is on."
             )
         if use_query_cache:
-            if not config["query_cache"]:
+            if not config[cache_key]:
                 raise errors.DataJointError(
-                    "Provide filepath dj.config['query_cache'] when using query caching."
+                    f"Provide filepath dj.config['{cache_key}'] when using query caching."
                 )
             hash_ = uuid_from_buffer(
                 (str(self._query_cache) + re.sub(r"`\$\w+`", "", query)).encode()
                 + pack(args)
             )
-            cache_path = pathlib.Path(config["query_cache"]) / str(hash_)
+            cache_path = pathlib.Path(config[cache_key]) / str(hash_)
             try:
                 buffer = cache_path.read_bytes()
             except FileNotFoundError:
