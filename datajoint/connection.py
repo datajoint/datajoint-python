@@ -258,11 +258,10 @@ class Connection:
     def purge_query_cache(self):
         """Purges all query cache."""
         if (
-            cache_key in config
-            and isinstance(config[cache_key], str)
+            isinstance(config.get(cache_key), str)
             and pathlib.Path(config[cache_key]).is_dir()
         ):
-            for path in pathlib.Path(config[cache_key].iterdir()):
+            for path in pathlib.Path(config[cache_key]).iterdir():
                 if not path.is_dir():
                     path.unlink()
 
