@@ -9,7 +9,6 @@ import logging
 from getpass import getpass
 import re
 import pathlib
-import shutil
 
 from .settings import config
 from . import errors
@@ -22,7 +21,7 @@ logger = logging.getLogger(__name__)
 query_log_max_length = 300
 
 
-cache_key = "query_cache"   # the key to lookup the query_cache folder in dj.config
+cache_key = "query_cache"  # the key to lookup the query_cache folder in dj.config
 
 
 def get_host_hook(host_input):
@@ -224,7 +223,7 @@ class Connection:
                         k: v
                         for k, v in self.conn_info.items()
                         if k not in ["ssl_input", "host_input"]
-                    }
+                    },
                 )
             except client.err.InternalError:
                 self._conn = client.connect(
@@ -240,7 +239,7 @@ class Connection:
                             or k == "ssl"
                             and self.conn_info["ssl_input"] is None
                         )
-                    }
+                    },
                 )
         self._conn.autocommit(True)
 
