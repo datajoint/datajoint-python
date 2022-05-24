@@ -36,8 +36,6 @@ jobs:
         include:
           - py_ver: "3.7"
             mysql_ver: "5.7"
-          - py_ver: "3.6"
-            mysql_ver: "5.7"
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{matrix.py_ver}}
