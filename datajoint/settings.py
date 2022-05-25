@@ -46,6 +46,7 @@ default = dict(
         "display.show_tuple_count": True,
         "database.use_tls": None,
         "enable_python_native_blobs": True,  # python-native/dj0 encoding support
+        "filepath_checksum_size_limit": None,  # file size limit for when to disable checksums
     }
 )
 

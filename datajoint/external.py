@@ -310,12 +310,38 @@ class ExternalTable(Table):
             )
             external_path = self._make_external_filepath(relative_filepath)
             local_filepath = Path(self.spec["stage"]).absolute() / relative_filepath
-            file_exists = (
+            if (
+                config["filepath_checksum_size_limit"] is not None
+                and Path(local_filepath).stat().st_size
+                > config["filepath_checksum_size_limit"]
+            ):
+                print(f"WARNING SKIPPING CHECKSUM FOR {filepath_hash}\n", flush=True)
+            if (
                 Path(local_filepath).is_file()
-                and uuid_from_file(local_filepath) == contents_hash
-            )
+                and config["filepath_checksum_size_limit"] is None
+            ):
+                file_exists = uuid_from_file(local_filepath) == contents_hash
+            elif (
+                Path(local_filepath).is_file()
+                and config["filepath_checksum_size_limit"] is not None
+            ):
+                file_exists = (
+                    True
+                    if Path(local_filepath).stat().st_size  # size in bytes
+                    > config["filepath_checksum_size_limit"]
+                    else (uuid_from_file(local_filepath) == contents_hash)
+                )
+            else:
+                file_exists = False
+
             if not file_exists:
                 self._download_file(external_path, local_filepath)
+                if (
+                    config["filepath_checksum_size_limit"] is not None
+                    and Path(local_filepath).stat().st_size
+                    > config["filepath_checksum_size_limit"]
+                ):
+                    return str(local_filepath), contents_hash
                 checksum = uuid_from_file(local_filepath)
                 if (
                     checksum != contents_hash
@@ -402,7 +428,7 @@ class ExternalTable(Table):
         delete_external_files=None,
         limit=None,
         display_progress=True,
-        errors_as_string=True
+        errors_as_string=True,
     ):
         """
 
