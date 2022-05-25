@@ -9,6 +9,7 @@ from .heading import Heading
 from .declare import EXTERNAL_TABLE_ROOT
 from . import s3
 from .utils import safe_write, safe_copy
+import logging
 
 CACHE_SUBFOLDING = (
     2,
@@ -340,9 +341,9 @@ class ExternalTable(Table):
                 and Path(local_filepath).stat().st_size
                 >= config["filepath_checksum_size_limit"]
             ):
-                print(
+                logging.warning(
                     f"WARNING SKIPPED CHECKSUM FOR FILE WITH HASH: {contents_hash}"
-                )  # placeholder for logger
+                )
             return str(local_filepath), contents_hash
 
     # --- UTILITIES ---
