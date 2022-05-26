@@ -8,41 +8,26 @@ import datajoint as dj
 from . import PREFIX, CONN_INFO, S3_CONN_INFO
 import numpy as np
 
-schema = dj.Schema(PREFIX + '_extern', connection=dj.conn(**CONN_INFO))
+schema = dj.Schema(PREFIX + "_extern", connection=dj.conn(**CONN_INFO))
 
 
 stores_config = {
-
-    'raw': dict(
-        protocol='file',
-        location=tempfile.mkdtemp()),
-
-    'repo': dict(
-        stage=tempfile.mkdtemp(),
-        protocol='file',
-        location=tempfile.mkdtemp()),
-
-    'repo_s3': dict(
-        S3_CONN_INFO,
-        protocol='s3',
-        location='dj/repo',
-        stage=tempfile.mkdtemp()),
-
-    'local': dict(
-        protocol='file',
-        location=tempfile.mkdtemp(),
-        subfolding=(1, 1)),
-
-    'share': dict(
-        S3_CONN_INFO,
-        protocol='s3',
-        location='dj/store/repo',
-        subfolding=(2, 4))
+    "raw": dict(protocol="file", location=tempfile.mkdtemp()),
+    "repo": dict(
+        stage=tempfile.mkdtemp(), protocol="file", location=tempfile.mkdtemp()
+    ),
+    "repo-s3": dict(
+        S3_CONN_INFO, protocol="s3", location="dj/repo", stage=tempfile.mkdtemp()
+    ),
+    "local": dict(protocol="file", location=tempfile.mkdtemp(), subfolding=(1, 1)),
+    "share": dict(
+        S3_CONN_INFO, protocol="s3", location="dj/store/repo", subfolding=(2, 4)
+    ),
 }
 
-dj.config['stores'] = stores_config
+dj.config["stores"] = stores_config
 
-dj.config['cache'] = tempfile.mkdtemp()
+dj.config["cache"] = tempfile.mkdtemp()
 
 
 @schema
@@ -78,9 +63,7 @@ class Dimension(dj.Lookup):
     ---
     dimensions  : blob
     """
-    contents = (
-        [0, [100, 50]],
-        [1, [3, 4, 8, 6]])
+    contents = ([0, [100, 50]], [1, [3, 4, 8, 6]])
 
 
 @schema
@@ -95,8 +78,8 @@ class Image(dj.Computed):
     """
 
     def make(self, key):
-        np.random.seed(key['seed'])
-        img = np.random.rand(*(Dimension() & key).fetch1('dimensions'))
+        np.random.seed(key["seed"])
+        img = np.random.rand(*(Dimension() & key).fetch1("dimensions"))
         self.insert1(dict(key, img=img, neg=-img.astype(np.float32)))
 
 
@@ -130,7 +113,8 @@ class FilepathS3(dj.Manual):
     # table for file management 
     fnum : int 
     ---
-    img : filepath@repo_s3  # managed files 
+    img : filepath@repo-s3  # managed files 
     """
+
 
 dj.errors._switch_filepath_types(False)

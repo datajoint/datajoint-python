@@ -8,7 +8,7 @@ import datajoint as dj
 import inspect
 from . import PREFIX, CONN_INFO
 
-schema = dj.Schema(PREFIX + '_test1', connection=dj.conn(**CONN_INFO))
+schema = dj.Schema(PREFIX + "_test1", connection=dj.conn(**CONN_INFO))
 
 
 @schema
@@ -16,12 +16,13 @@ class TTest(dj.Lookup):
     """
     doc string
     """
+
     definition = """
     key   :   int     # key
     ---
     value   :   int     # value
     """
-    contents = [(k, 2*k) for k in range(10)]
+    contents = [(k, 2 * k) for k in range(10)]
 
 
 @schema
@@ -58,6 +59,7 @@ class TTestExtra(dj.Manual):
     """
     clone of Test but with an extra field
     """
+
     definition = TTest.definition + "\nextra : int # extra int\n"
 
 
@@ -66,6 +68,7 @@ class TTestNoExtra(dj.Manual):
     """
     clone of Test but with no extra fields
     """
+
     definition = TTest.definition
 
 
@@ -87,7 +90,15 @@ class User(dj.Lookup):
     definition = """      # lab members
     username: varchar(12)
     """
-    contents = [['Jake'], ['Cathryn'], ['Shan'], ['Fabian'], ['Edgar'], ['George'], ['Dimitri']]
+    contents = [
+        ["Jake"],
+        ["Cathryn"],
+        ["Shan"],
+        ["Fabian"],
+        ["Edgar"],
+        ["George"],
+        ["Dimitri"],
+    ]
 
 
 @schema
@@ -103,10 +114,11 @@ class Subject(dj.Lookup):
     """
 
     contents = [
-        [1551, '1551', 'mouse', '2015-04-01', 'genetically engineered super mouse'],
-        [10, 'Curious George', 'monkey', '2008-06-30', ''],
-        [1552, '1552', 'mouse', '2015-06-15', ''],
-        [1553, '1553', 'mouse', '2016-07-01', '']]
+        [1551, "1551", "mouse", "2015-04-01", "genetically engineered super mouse"],
+        [10, "Curious George", "monkey", "2008-06-30", ""],
+        [1552, "1552", "mouse", "2015-06-15", ""],
+        [1553, "1553", "mouse", "2016-07-01", ""],
+    ]
 
 
 @schema
@@ -118,12 +130,13 @@ class Language(dj.Lookup):
     language    : varchar(40) # language
     """
     contents = [
-        ('Fabian', 'English'),
-        ('Edgar', 'English'),
-        ('Dimitri', 'English'),
-        ('Dimitri', 'Ukrainian'),
-        ('Fabian', 'German'),
-        ('Edgar', 'Japanese')]
+        ("Fabian", "English"),
+        ("Edgar", "English"),
+        ("Dimitri", "English"),
+        ("Dimitri", "Ukrainian"),
+        ("Fabian", "German"),
+        ("Edgar", "Japanese"),
+    ]
 
 
 @schema
@@ -146,14 +159,21 @@ class Experiment(dj.Imported):
         populate with random data
         """
         from datetime import date, timedelta
-        users = [None, None] + list(User().fetch()['username'])
-        random.seed('Amazing Seed')
+
+        users = [None, None] + list(User().fetch()["username"])
+        random.seed("Amazing Seed")
         self.insert(
-            dict(key,
-                 experiment_id=experiment_id,
-                 experiment_date=(date.today() - timedelta(random.expovariate(1 / 30))).isoformat(),
-                 username=random.choice(users))
-            for experiment_id in range(self.fake_experiments_per_subject))
+            dict(
+                key,
+                experiment_id=experiment_id,
+                experiment_date=(
+                    date.today() - timedelta(random.expovariate(1 / 30))
+                ).isoformat(),
+                username=random.choice(users),
+            )
+            for experiment_id in range(self.fake_experiments_per_subject)
+        )
+
 
 @schema
 class Trial(dj.Imported):
@@ -173,15 +193,16 @@ class Trial(dj.Imported):
         """
 
     def make(self, key):
-        """ populate with random data (pretend reading from raw files) """
-        random.seed('Amazing Seed')
+        """populate with random data (pretend reading from raw files)"""
+        random.seed("Amazing Seed")
         trial = self.Condition()
         for trial_id in range(10):
-            key['trial_id'] = trial_id
+            key["trial_id"] = trial_id
             self.insert1(dict(key, start_time=random.random() * 1e9))
-            trial.insert(dict(key,
-                              cond_idx=cond_idx,
-                              orientation=random.random()*360) for cond_idx in range(30))
+            trial.insert(
+                dict(key, cond_idx=cond_idx, orientation=random.random() * 360)
+                for cond_idx in range(30)
+            )
 
 
 @schema
@@ -207,17 +228,20 @@ class Ephys(dj.Imported):
         populate with random data
         """
         random.seed(str(key))
-        row = dict(key,
-                   sampling_frequency=6000,
-                   duration=np.minimum(2, random.expovariate(1)))
+        row = dict(
+            key, sampling_frequency=6000, duration=np.minimum(2, random.expovariate(1))
+        )
         self.insert1(row)
-        number_samples = int(row['duration'] * row['sampling_frequency'] + 0.5)
+        number_samples = int(row["duration"] * row["sampling_frequency"] + 0.5)
         sub = self.Channel()
         sub.insert(
-            dict(key,
-                 channel=channel,
-                 voltage=np.float32(np.random.randn(number_samples)))
-            for channel in range(2))
+            dict(
+                key,
+                channel=channel,
+                voltage=np.float32(np.random.randn(number_samples)),
+            )
+            for channel in range(2)
+        )
 
 
 @schema
@@ -274,7 +298,7 @@ class SigTermTable(dj.Computed):
     """
 
     def make(self, key):
-        raise SystemExit('SIGTERM received')
+        raise SystemExit("SIGTERM received")
 
 
 @schema
@@ -285,8 +309,11 @@ class DjExceptionName(dj.Lookup):
 
     @property
     def contents(self):
-        return [[member_name] for member_name, member_type in inspect.getmembers(dj.errors)
-                if inspect.isclass(member_type) and issubclass(member_type, Exception)]
+        return [
+            [member_name]
+            for member_name, member_type in inspect.getmembers(dj.errors)
+            if inspect.isclass(member_type) and issubclass(member_type, Exception)
+        ]
 
 
 @schema
@@ -296,7 +323,7 @@ class ErrorClass(dj.Computed):
     """
 
     def make(self, key):
-        exception_name = key['dj_exception_name']
+        exception_name = key["dj_exception_name"]
         raise getattr(dj.errors, exception_name)
 
 
@@ -354,7 +381,7 @@ class Parent(dj.Lookup):
     ---
     name: varchar(30)
     """
-    contents = [(1, 'Joe')]
+    contents = [(1, "Joe")]
 
 
 @schema
@@ -365,19 +392,21 @@ class Child(dj.Lookup):
     ---
     name: varchar(30)
     """
-    contents = [(1, 12, 'Dan')]
+    contents = [(1, 12, "Dan")]
+
 
 # Related to issue #886 (8), #883 (5)
 @schema
 class ComplexParent(dj.Lookup):
-    definition = '\n'.join(['parent_id_{}: int'.format(i+1) for i in range(8)])
+    definition = "\n".join(["parent_id_{}: int".format(i + 1) for i in range(8)])
     contents = [tuple(i for i in range(8))]
 
 
 @schema
 class ComplexChild(dj.Lookup):
-    definition = '\n'.join(['-> ComplexParent'] + ['child_id_{}: int'.format(i+1)
-                                                   for i in range(1)])
+    definition = "\n".join(
+        ["-> ComplexParent"] + ["child_id_{}: int".format(i + 1) for i in range(1)]
+    )
     contents = [tuple(i for i in range(9))]
 
 
@@ -390,9 +419,9 @@ class SubjectA(dj.Lookup):
     sex : enum('M', 'F', 'U')
     """
     contents = [
-        ('mouse1', '2020-09-01', 'M'),
-        ('mouse2', '2020-03-19', 'F'),
-        ('mouse3', '2020-08-23', 'F')
+        ("mouse1", "2020-09-01", "M"),
+        ("mouse2", "2020-03-19", "F"),
+        ("mouse3", "2020-08-23", "F"),
     ]
 
 
@@ -405,10 +434,10 @@ class SessionA(dj.Lookup):
     session_dir=''  : varchar(32)
     """
     contents = [
-        ('mouse1', '2020-12-01 12:32:34', ''),
-        ('mouse1', '2020-12-02 12:32:34', ''),
-        ('mouse1', '2020-12-03 12:32:34', ''),
-        ('mouse1', '2020-12-04 12:32:34', '')
+        ("mouse1", "2020-12-01 12:32:34", ""),
+        ("mouse1", "2020-12-02 12:32:34", ""),
+        ("mouse1", "2020-12-03 12:32:34", ""),
+        ("mouse1", "2020-12-04 12:32:34", ""),
     ]
 
 
@@ -420,10 +449,10 @@ class SessionStatusA(dj.Lookup):
     status: enum('in_training', 'trained_1a', 'trained_1b', 'ready4ephys')
     """
     contents = [
-        ('mouse1', '2020-12-01 12:32:34', 'in_training'),
-        ('mouse1', '2020-12-02 12:32:34', 'trained_1a'),
-        ('mouse1', '2020-12-03 12:32:34', 'trained_1b'),
-        ('mouse1', '2020-12-04 12:32:34', 'ready4ephys'),
+        ("mouse1", "2020-12-01 12:32:34", "in_training"),
+        ("mouse1", "2020-12-02 12:32:34", "trained_1a"),
+        ("mouse1", "2020-12-03 12:32:34", "trained_1b"),
+        ("mouse1", "2020-12-04 12:32:34", "ready4ephys"),
     ]
 
 
@@ -434,10 +463,10 @@ class SessionDateA(dj.Lookup):
     session_date:  date
     """
     contents = [
-        ('mouse1', '2020-12-01'),
-        ('mouse1', '2020-12-02'),
-        ('mouse1', '2020-12-03'),
-        ('mouse1', '2020-12-04')
+        ("mouse1", "2020-12-01"),
+        ("mouse1", "2020-12-02"),
+        ("mouse1", "2020-12-03"),
+        ("mouse1", "2020-12-04"),
     ]
 
 
@@ -448,4 +477,13 @@ class Stimulus(dj.Lookup):
     ---
     contrast: int
     brightness: int
+    """
+
+
+@schema
+class Longblob(dj.Manual):
+    definition = """
+    id: int
+    ---
+    data: longblob
     """

@@ -2,7 +2,13 @@ from inspect import getmembers
 import re
 import pandas
 import numpy as np
-from nose.tools import assert_equal, assert_not_equal, assert_true, assert_list_equal, raises
+from nose.tools import (
+    assert_equal,
+    assert_not_equal,
+    assert_true,
+    assert_list_equal,
+    raises,
+)
 import datajoint as dj
 from datajoint.table import Table
 from unittest.mock import patch
@@ -43,14 +49,18 @@ class TestRelation:
         # test contents
         assert_true(self.user)
         assert_true(len(self.user) == len(self.user.contents))
-        u = self.user.fetch(order_by=['username'])
-        assert_list_equal(list(u['username']), sorted([s[0] for s in self.user.contents]))
+        u = self.user.fetch(order_by=["username"])
+        assert_list_equal(
+            list(u["username"]), sorted([s[0] for s in self.user.contents])
+        )
 
         # test prepare
         assert_true(self.subject)
         assert_true(len(self.subject) == len(self.subject.contents))
-        u = self.subject.fetch(order_by=['subject_id'])
-        assert_list_equal(list(u['subject_id']), sorted([s[0] for s in self.subject.contents]))
+        u = self.subject.fetch(order_by=["subject_id"])
+        assert_list_equal(
+            list(u["subject_id"]), sorted([s[0] for s in self.subject.contents])
+        )
 
     @raises(dj.DataJointError)
     def test_misnamed_attribute1(self):
@@ -65,7 +75,9 @@ class TestRelation:
         self.user.insert1(dict(username="Robert", spouse="Alice"))
 
     def test_extra_attribute2(self):
-        self.user.insert1(dict(username="Robert", spouse="Alice"), ignore_extra_fields=True)
+        self.user.insert1(
+            dict(username="Robert", spouse="Alice"), ignore_extra_fields=True
+        )
 
     @raises(NotImplementedError)
     def test_missing_definition(self):
@@ -87,7 +99,7 @@ class TestRelation:
 
     @raises(dj.DataJointError)
     def test_wrong_arguments_insert(self):
-        self.user.insert1(('First', 'Second'))
+        self.user.insert1(("First", "Second"))
 
     @raises(dj.DataJointError)
     def test_wrong_insert_type(self):
@@ -99,17 +111,23 @@ class TestRelation:
         assert_equal(len(schema.TTest2()), len(schema.TTest()))
 
         original_length = len(self.subject)
-        elements = self.subject.proj(..., s='subject_id')
-        elements = elements.proj('real_id', 'date_of_birth', 'subject_notes', subject_id='s+1000', species='"human"')
+        elements = self.subject.proj(..., s="subject_id")
+        elements = elements.proj(
+            "real_id",
+            "date_of_birth",
+            "subject_notes",
+            subject_id="s+1000",
+            species='"human"',
+        )
         self.subject.insert(elements, ignore_extra_fields=True)
-        assert_equal(len(self.subject), 2*original_length)
+        assert_equal(len(self.subject), 2 * original_length)
 
     def test_insert_pandas_roundtrip(self):
-        """ ensure fetched frames can be inserted """
+        """ensure fetched frames can be inserted"""
         schema.TTest2.delete()
         n = len(schema.TTest())
         assert_true(n > 0)
-        df = schema.TTest.fetch(format='frame')
+        df = schema.TTest.fetch(format="frame")
         assert_true(isinstance(df, pandas.DataFrame))
         assert_equal(len(df), n)
         schema.TTest2.insert(df)
@@ -131,35 +149,40 @@ class TestRelation:
 
     @raises(dj.DataJointError)
     def test_insert_select_ignore_extra_fields0(self):
-        """ need ignore extra fields for insert select """
-        self.test_extra.insert1((self.test.fetch('key').max() + 1, 0, 0))
+        """need ignore extra fields for insert select"""
+        self.test_extra.insert1((self.test.fetch("key").max() + 1, 0, 0))
         self.test.insert(self.test_extra)
 
     def test_insert_select_ignore_extra_fields1(self):
-        """ make sure extra fields works in insert select """
+        """make sure extra fields works in insert select"""
         self.test_extra.delete()
-        keyno = self.test.fetch('key').max() + 1
+        keyno = self.test.fetch("key").max() + 1
         self.test_extra.insert1((keyno, 0, 0))
         self.test.insert(self.test_extra, ignore_extra_fields=True)
-        assert(keyno in self.test.fetch('key'))
+        assert keyno in self.test.fetch("key")
 
     def test_insert_select_ignore_extra_fields2(self):
-        """ make sure insert select still works when ignoring extra fields when there are none """
+        """make sure insert select still works when ignoring extra fields when there are none"""
         self.test_no_extra.delete()
         self.test_no_extra.insert(self.test, ignore_extra_fields=True)
 
     def test_insert_select_ignore_extra_fields3(self):
-        """ make sure insert select works for from query result """
+        """make sure insert select works for from query result"""
         self.test_no_extra.delete()
-        keystr = str(self.test_extra.fetch('key').max())
-        self.test_no_extra.insert((self.test_extra & '`key`=' + keystr),
-                                  ignore_extra_fields=True)
+        keystr = str(self.test_extra.fetch("key").max())
+        self.test_no_extra.insert(
+            (self.test_extra & "`key`=" + keystr), ignore_extra_fields=True
+        )
 
     def test_skip_duplicates(self):
-        """ test that skip_dublicates works when inserting from another relation  """
+        """test that skip_dublicates works when inserting from another relation"""
         self.test_no_extra.delete()
-        self.test_no_extra.insert(self.test, ignore_extra_fields=True, skip_duplicates=True)
-        self.test_no_extra.insert(self.test, ignore_extra_fields=True, skip_duplicates=True)
+        self.test_no_extra.insert(
+            self.test, ignore_extra_fields=True, skip_duplicates=True
+        )
+        self.test_no_extra.insert(
+            self.test, ignore_extra_fields=True, skip_duplicates=True
+        )
 
     def test_replace(self):
         """
@@ -167,51 +190,74 @@ class TestRelation:
         """
         key = dict(subject_id=7)
         date = "2015-01-01"
-        self.subject.insert1(
-            dict(key, real_id=7, date_of_birth=date, subject_notes=""))
-        assert_equal(date, str((self.subject & key).fetch1('date_of_birth')), 'incorrect insert')
+        self.subject.insert1(dict(key, real_id=7, date_of_birth=date, subject_notes=""))
+        assert_equal(
+            date, str((self.subject & key).fetch1("date_of_birth")), "incorrect insert"
+        )
         date = "2015-01-02"
         self.subject.insert1(
-            dict(key, real_id=7, date_of_birth=date, subject_notes=""), skip_duplicates=True)
-        assert_not_equal(date, str((self.subject & key).fetch1('date_of_birth')),
-                         'inappropriate replace')
+            dict(key, real_id=7, date_of_birth=date, subject_notes=""),
+            skip_duplicates=True,
+        )
+        assert_not_equal(
+            date,
+            str((self.subject & key).fetch1("date_of_birth")),
+            "inappropriate replace",
+        )
         self.subject.insert1(
-            dict(key, real_id=7, date_of_birth=date, subject_notes=""), replace=True)
-        assert_equal(date, str((self.subject & key).fetch1('date_of_birth')), "replace failed")
+            dict(key, real_id=7, date_of_birth=date, subject_notes=""), replace=True
+        )
+        assert_equal(
+            date, str((self.subject & key).fetch1("date_of_birth")), "replace failed"
+        )
 
     def test_delete_quick(self):
         """Tests quick deletion"""
-        tmp = np.array([
-            (2, 'Klara', 'monkey', '2010-01-01', ''),
-            (1, 'Peter', 'mouse', '2015-01-01', '')],
-            dtype=self.subject.heading.as_dtype)
+        tmp = np.array(
+            [
+                (2, "Klara", "monkey", "2010-01-01", ""),
+                (1, "Peter", "mouse", "2015-01-01", ""),
+            ],
+            dtype=self.subject.heading.as_dtype,
+        )
         self.subject.insert(tmp)
-        s = self.subject & ('subject_id in (%s)' % ','.join(str(r) for r in tmp['subject_id']))
-        assert_true(len(s) == 2, 'insert did not work.')
+        s = self.subject & (
+            "subject_id in (%s)" % ",".join(str(r) for r in tmp["subject_id"])
+        )
+        assert_true(len(s) == 2, "insert did not work.")
         s.delete_quick()
-        assert_true(len(s) == 0, 'delete did not work.')
+        assert_true(len(s) == 0, "delete did not work.")
 
     def test_skip_duplicate(self):
         """Tests if duplicates are properly skipped."""
-        tmp = np.array([
-            (2, 'Klara', 'monkey', '2010-01-01', ''),
-            (1, 'Peter', 'mouse', '2015-01-01', '')],
-            dtype=self.subject.heading.as_dtype)
+        tmp = np.array(
+            [
+                (2, "Klara", "monkey", "2010-01-01", ""),
+                (1, "Peter", "mouse", "2015-01-01", ""),
+            ],
+            dtype=self.subject.heading.as_dtype,
+        )
         self.subject.insert(tmp)
-        tmp = np.array([
-            (2, 'Klara', 'monkey', '2010-01-01', ''),
-            (1, 'Peter', 'mouse', '2015-01-01', '')],
-            dtype=self.subject.heading.as_dtype)
+        tmp = np.array(
+            [
+                (2, "Klara", "monkey", "2010-01-01", ""),
+                (1, "Peter", "mouse", "2015-01-01", ""),
+            ],
+            dtype=self.subject.heading.as_dtype,
+        )
         self.subject.insert(tmp, skip_duplicates=True)
 
     @raises(dj.errors.DuplicateError)
     def test_not_skip_duplicate(self):
         """Tests if duplicates are not skipped."""
-        tmp = np.array([
-            (2, 'Klara', 'monkey', '2010-01-01', ''),
-            (2, 'Klara', 'monkey', '2010-01-01', ''),
-            (1, 'Peter', 'mouse', '2015-01-01', '')],
-            dtype=self.subject.heading.as_dtype)
+        tmp = np.array(
+            [
+                (2, "Klara", "monkey", "2010-01-01", ""),
+                (2, "Klara", "monkey", "2010-01-01", ""),
+                (1, "Peter", "mouse", "2015-01-01", ""),
+            ],
+            dtype=self.subject.heading.as_dtype,
+        )
         self.subject.insert(tmp, skip_duplicates=False)
 
     @raises(dj.errors.MissingAttributeError)
@@ -223,31 +269,38 @@ class TestRelation:
         """Tests inserting and retrieving blobs."""
         X = np.random.randn(20, 10)
         self.img.insert1((1, X))
-        Y = self.img.fetch()[0]['img']
-        assert_true(np.all(X == Y), 'Inserted and retrieved image are not identical')
+        Y = self.img.fetch()[0]["img"]
+        assert_true(np.all(X == Y), "Inserted and retrieved image are not identical")
 
     @raises(dj.DataJointError)
     def test_drop(self):
         """Tests dropping tables"""
-        dj.config['safemode'] = True
+        dj.config["safemode"] = True
         try:
-            with patch.object(dj.utils, "input", create=True, return_value='yes'):
+            with patch.object(dj.utils, "input", create=True, return_value="yes"):
                 self.trash.drop()
         except:
             pass
         finally:
-            dj.config['safemode'] = False
+            dj.config["safemode"] = False
         self.trash.fetch()
 
     def test_table_regexp(self):
         """Test whether table names are matched by regular expressions"""
         tiers = [dj.Imported, dj.Manual, dj.Lookup, dj.Computed]
         for name, rel in getmembers(schema, relation_selector):
-            assert_true(re.match(rel.tier_regexp, rel.table_name),
-                        'Regular expression does not match for {name}'.format(name=name))
+            assert_true(
+                re.match(rel.tier_regexp, rel.table_name),
+                "Regular expression does not match for {name}".format(name=name),
+            )
             for tier in tiers:
-                assert_true(issubclass(rel, tier) or not re.match(tier.tier_regexp, rel.table_name),
-                            'Regular expression matches for {name} but should not'.format(name=name))
+                assert_true(
+                    issubclass(rel, tier)
+                    or not re.match(tier.tier_regexp, rel.table_name),
+                    "Regular expression matches for {name} but should not".format(
+                        name=name
+                    ),
+                )
 
     def test_table_size(self):
         """test getting the size of the table and its indices in bytes"""
