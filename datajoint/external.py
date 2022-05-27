@@ -11,6 +11,8 @@ from . import s3
 from .utils import safe_write, safe_copy
 import logging
 
+logger = logging.getLogger(__name__)
+
 CACHE_SUBFOLDING = (
     2,
     2,
@@ -314,18 +316,18 @@ class ExternalTable(Table):
 
             file_exists = Path(local_filepath).is_file() and (
                 (
-                    config["filepath_checksum_size_limit"]  # check if None
+                    config.get("filepath_checksum_size_limit")  # check if None
                     and Path(local_filepath).stat().st_size
-                    >= config["filepath_checksum_size_limit"]
+                    >= config.get("filepath_checksum_size_limit")
                 )
                 or uuid_from_file(local_filepath) == contents_hash
             )
 
             if not file_exists:
                 self._download_file(external_path, local_filepath)
-                if not config["filepath_checksum_size_limit"] or (
+                if not config.get("filepath_checksum_size_limit") or (
                     Path(local_filepath).stat().st_size
-                    < config["filepath_checksum_size_limit"]
+                    < config.get("filepath_checksum_size_limit")
                 ):
                     checksum = uuid_from_file(local_filepath)
                     if (
@@ -336,12 +338,10 @@ class ExternalTable(Table):
                                 file=local_filepath
                             )
                         )
-            if (
-                config["filepath_checksum_size_limit"]
-                and Path(local_filepath).stat().st_size
-                >= config["filepath_checksum_size_limit"]
-            ):
-                logging.warning(
+            if config.get("filepath_checksum_size_limit") and Path(
+                local_filepath
+            ).stat().st_size >= config.get("filepath_checksum_size_limit"):
+                logger.warning(
                     f"WARNING SKIPPED CHECKSUM FOR FILE WITH HASH: {contents_hash}"
                 )
             return str(local_filepath), contents_hash
