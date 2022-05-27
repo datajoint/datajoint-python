@@ -1,7 +1,7 @@
 ## Release notes
 
 ### 0.13.6 -- TBD
-* Add - option to set threshold for when to stop using checksums for filepath stores. PR #1025
+* Add - Config option to set threshold for when to stop using checksums for filepath stores. PR #1025
 
 ### 0.13.5 -- May 19, 2022
 * Update - Import ABC from collections.abc for Python 3.10 compatibility
