@@ -3,7 +3,6 @@ import datajoint as dj
 import os
 from pathlib import Path
 import random
-import logging
 from .schema_external import schema, Filepath, FilepathS3, stores_config
 
 

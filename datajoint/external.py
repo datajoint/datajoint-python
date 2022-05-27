@@ -341,9 +341,9 @@ class ExternalTable(Table):
             if config.get("filepath_checksum_size_limit") and Path(
                 local_filepath
             ).stat().st_size >= config.get("filepath_checksum_size_limit"):
-                logger.warning(
+                print(
                     f"WARNING SKIPPED CHECKSUM FOR FILE WITH HASH: {contents_hash}"
-                )
+                ) # This will turn into a proper logger when we implement the datajoint logger
             return str(local_filepath), contents_hash
 
     # --- UTILITIES ---
