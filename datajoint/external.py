@@ -307,6 +307,12 @@ class ExternalTable(Table):
         :param filepath_hash: The hash (UUID) of the relative_path
         :return: hash (UUID) of the contents of the downloaded file or Nones
         """
+
+        def _verify_contents(local_filepath):
+            return config.get("filepath_checksum_size_limit") is None or Path(
+                local_filepath
+            ).stat().st_size < config.get("filepath_checksum_size_limit")
+
         if filepath_hash is not None:
             relative_filepath, contents_hash = (self & {"hash": filepath_hash}).fetch1(
                 "filepath", "contents_hash"
@@ -315,20 +321,13 @@ class ExternalTable(Table):
             local_filepath = Path(self.spec["stage"]).absolute() / relative_filepath
 
             file_exists = Path(local_filepath).is_file() and (
-                (
-                    config.get("filepath_checksum_size_limit")  # check if None
-                    and Path(local_filepath).stat().st_size
-                    >= config.get("filepath_checksum_size_limit")
-                )
+                not _verify_contents(local_filepath)
                 or uuid_from_file(local_filepath) == contents_hash
             )
 
             if not file_exists:
                 self._download_file(external_path, local_filepath)
-                if not config.get("filepath_checksum_size_limit") or (
-                    Path(local_filepath).stat().st_size
-                    < config.get("filepath_checksum_size_limit")
-                ):
+                if _verify_contents(local_filepath):
                     checksum = uuid_from_file(local_filepath)
                     if (
                         checksum != contents_hash
