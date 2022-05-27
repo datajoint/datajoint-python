@@ -133,7 +133,7 @@ def test_duplicate_error_s3():
 
 def test_filepath_class(table=Filepath(), store="repo", verify_checksum=True):
     if not verify_checksum:
-        dj.config["filepath_checksum_size_limit"] = 0  # cant be 0, breaks boolean logic
+        dj.config["filepath_checksum_size_limit"] = 0
     dj.errors._switch_filepath_types(True)
     stage_path = dj.config["stores"][store]["stage"]
     # create a mock file
