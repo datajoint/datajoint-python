@@ -329,9 +329,8 @@ class ExternalTable(Table):
                 self._download_file(external_path, local_filepath)
                 if _verify_contents(local_filepath):
                     checksum = uuid_from_file(local_filepath)
-                    if (
-                        checksum != contents_hash
-                    ):  # this should never happen without outside interference
+                    if checksum != contents_hash:
+                        # this should never happen without outside interference
                         raise DataJointError(
                             "'{file}' downloaded but did not pass checksum'".format(
                                 file=local_filepath
