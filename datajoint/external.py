@@ -9,9 +9,6 @@ from .heading import Heading
 from .declare import EXTERNAL_TABLE_ROOT
 from . import s3
 from .utils import safe_write, safe_copy
-import logging
-
-logger = logging.getLogger(__name__)
 
 CACHE_SUBFOLDING = (
     2,
