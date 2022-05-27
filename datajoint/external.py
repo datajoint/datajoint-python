@@ -305,10 +305,9 @@ class ExternalTable(Table):
         :return: hash (UUID) of the contents of the downloaded file or Nones
         """
 
-        def _verify_contents(local_filepath):
-            return config.get("filepath_checksum_size_limit") is None or Path(
-                local_filepath
-            ).stat().st_size < config.get("filepath_checksum_size_limit")
+        def _need_checksum(local_filepath):
+            limit = config.get("filepath_checksum_size_limit")
+            return limit is None or Path(local_filepath).stat().st_size < limit
 
         if filepath_hash is not None:
             relative_filepath, contents_hash = (self & {"hash": filepath_hash}).fetch1(
@@ -318,13 +317,13 @@ class ExternalTable(Table):
             local_filepath = Path(self.spec["stage"]).absolute() / relative_filepath
 
             file_exists = Path(local_filepath).is_file() and (
-                not _verify_contents(local_filepath)
+                not _need_checksum(local_filepath)
                 or uuid_from_file(local_filepath) == contents_hash
             )
 
             if not file_exists:
                 self._download_file(external_path, local_filepath)
-                if _verify_contents(local_filepath):
+                if _need_checksum(local_filepath):
                     checksum = uuid_from_file(local_filepath)
                     if checksum != contents_hash:
                         # this should never happen without outside interference
@@ -333,7 +332,7 @@ class ExternalTable(Table):
                                 file=local_filepath
                             )
                         )
-            if not _verify_contents(local_filepath):
+            if not _need_checksum(local_filepath):
                 print(f"WARNING SKIPPED CHECKSUM FOR FILE WITH HASH: {contents_hash}")
                 # This will turn into a proper logger when we implement the datajoint logger
             return str(local_filepath), contents_hash
