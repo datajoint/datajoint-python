@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 def _initialize_populate(table, jobs, populate_kwargs):
     """
-    Initialize the process for mulitprocessing.
+    Initialize the process for multiprocessing.
     Saves the unpickled copy of the table to the current process and reconnects.
     """
     process = mp.current_process()
@@ -150,6 +150,7 @@ class AutoPopulate:
     def populate(
         self,
         *restrictions,
+        keys=None,
         suppress_errors=False,
         return_exception_objects=False,
         reserve_jobs=False,
@@ -166,6 +167,8 @@ class AutoPopulate:
 
         :param restrictions: a list of restrictions each restrict
             (table.key_source - target.proj())
+        :param keys: The list of keys (dicts) to send to self.make().
+            If None (default), then use self.key_source to query they keys.
         :param suppress_errors: if True, do not terminate execution.
         :param return_exception_objects: return error objects instead of just error messages
         :param reserve_jobs: if True, reserve jobs to populate in asynchronous fashion
@@ -200,7 +203,9 @@ class AutoPopulate:
 
             old_handler = signal.signal(signal.SIGTERM, handler)
 
-        keys = (self._jobs_to_do(restrictions) - self.target).fetch("KEY", limit=limit)
+        if keys is None:
+            keys = (self._jobs_to_do(restrictions) - self.target).fetch(
+                "KEY", limit=limit)
         if order == "reverse":
             keys.reverse()
         elif order == "random":
@@ -266,6 +271,7 @@ class AutoPopulate:
         :param return_exception_objects: if True, errors must be returned as objects
         :return: (key, error) when suppress_errors=True, otherwise None
         """
+        # use the legacy `_make_tuples` callback.
         make = self._make_tuples if hasattr(self, "_make_tuples") else self.make
 
         if jobs is None or jobs.reserve(self.target.table_name, self._job_key(key)):

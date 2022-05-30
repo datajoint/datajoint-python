@@ -351,7 +351,7 @@ class Table(QueryExpression):
         :param skip_duplicates: If True, silently skip duplicate inserts.
         :param ignore_extra_fields: If False, fields that are not in the heading raise error.
         :param allow_direct_insert: applies only in auto-populated tables. If False (default),
-            insert are allowed only from inside the make callback.
+            inserts are allowed only from inside the make callback.
 
         Example:
 
@@ -583,17 +583,16 @@ class Table(QueryExpression):
                 print("Nothing to delete.")
             if transaction:
                 self.connection.cancel_transaction()
+        elif not transaction:
+            print("Delete completed")
+        elif not safemode or user_choice("Commit deletes?", default="no") == "yes":
+            self.connection.commit_transaction()
+            if safemode:
+                print("Deletes committed.")
         else:
-            if not safemode or user_choice("Commit deletes?", default="no") == "yes":
-                if transaction:
-                    self.connection.commit_transaction()
-                if safemode:
-                    print("Deletes committed.")
-            else:
-                if transaction:
-                    self.connection.cancel_transaction()
-                if safemode:
-                    print("Deletes cancelled")
+            self.connection.cancel_transaction()
+            if safemode:
+                print("Deletes cancelled")
         return delete_count
 
     def drop_quick(self):

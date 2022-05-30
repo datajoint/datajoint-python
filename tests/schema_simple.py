@@ -200,9 +200,8 @@ class Profile(dj.Manual):
         """
 
     def populate_random(self, n=10):
-        faker.Faker.seed(0)
+        faker.Faker.seed(0)  # make test deterministic
         fake = faker.Faker()
-        faker.Faker.seed(0)  # make tests deterministic
         for _ in range(n):
             profile = fake.profile()
             with self.connection.transaction:
