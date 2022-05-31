@@ -72,9 +72,7 @@ class ExternalTable(Table):
 
     @property
     def table_name(self):
-        return "{external_table_root}_{store}".format(
-            external_table_root=EXTERNAL_TABLE_ROOT, store=self.store
-        )
+        return f"{EXTERNAL_TABLE_ROOT}_{self.store}"
 
     @property
     def s3(self):
@@ -276,9 +274,7 @@ class ExternalTable(Table):
             # the tracking entry exists, check that it's the same file as before
             if contents_hash != check_hash[0]:
                 raise DataJointError(
-                    "A different version of '{file}' has already been placed.".format(
-                        file=relative_filepath
-                    )
+                    f"A different version of '{relative_filepath}' has already been placed."
                 )
         else:
             # upload the file and create its tracking entry
