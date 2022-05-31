@@ -320,8 +320,7 @@ class ExternalTable(Table):
             if not file_exists:
                 self._download_file(external_path, local_filepath)
                 if _need_checksum(local_filepath):
-                    checksum = uuid_from_file(local_filepath)
-                    if checksum != contents_hash:
+                    if uuid_from_file(local_filepath) != contents_hash:
                         # this should never happen without outside interference
                         raise DataJointError(
                             f"'{local_filepath}' downloaded but did not pass checksum'"
