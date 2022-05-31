@@ -171,8 +171,6 @@ def test_filepath_class(table=Filepath(), store="repo", verify_checksum=True):
     table.external[store].delete(delete_external_files=True)
     dj.errors._switch_filepath_types(False)
     dj.config["filepath_checksum_size_limit"] = None
-    # Todo: assert here that the warning from external.download_file has been logged
-    # Waiting on DJ Logging implementation
 
 
 def test_filepath_class_again():
