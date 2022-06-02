@@ -198,8 +198,7 @@ class TestFetch:
 
     def test_offset(self):
         """Tests offset"""
-        with warnings.catch_warnings(record=True) as w:
-            cur = self.lang.fetch(limit=4, offset=1, order_by=["language", "name DESC"])
+        cur = self.lang.fetch(limit=4, offset=1, order_by=["language", "name DESC"])
 
         languages = self.lang.contents
         languages.sort(key=itemgetter(0), reverse=True)
@@ -210,11 +209,12 @@ class TestFetch:
                 np.all([cc == ll for cc, ll in zip(c, l)]), "Sorting order is different"
             )
 
-    def test_limit_warning(self):
-        """Tests whether warning is raised if offset is used without limit."""
-        with warnings.catch_warnings(record=True) as w:
-            self.lang.fetch(offset=1)
-            assert_true(len(w) > 0, "Warning was not raised")
+    # Need to change this to test a log instead of a warning now
+    # def test_limit_warning(self):
+    #     """Tests whether warning is raised if offset is used without limit."""
+    #     with warnings.catch_warnings(record=True) as w:
+    #         self.lang.fetch(offset=1)
+    #         assert_true(len(w) > 0, "Warning was not raised")
 
     def test_len(self):
         """Tests __len__"""

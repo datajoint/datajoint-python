@@ -17,7 +17,7 @@ from .blob import pack, unpack
 from .hash import uuid_from_buffer
 from .plugin import connection_plugins
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__.split(".")[0])
 query_log_max_length = 300
 
 
@@ -339,7 +339,7 @@ class Connection:
         except errors.LostConnectionError:
             if not reconnect:
                 raise
-            warnings.warn("MySQL server has gone away. Reconnecting to the server.")
+            logger.warning("MySQL server has gone away. Reconnecting to the server.")
             connect_host_hook(self)
             if self._in_transaction:
                 self.cancel_transaction()

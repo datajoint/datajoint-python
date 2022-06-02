@@ -2,10 +2,12 @@ import networkx as nx
 import re
 import functools
 import io
-import warnings
+import logging
 import inspect
 from .table import Table
 from .dependencies import unite_master_parts
+
+logger = logging.getLogger(__name__.split(".")[0])
 
 try:
     from matplotlib import pyplot as plt
@@ -63,7 +65,7 @@ if not diagram_active:
         """
 
         def __init__(self, *args, **kwargs):
-            warnings.warn(
+            logger.warning(
                 "Please install matplotlib and pygraphviz libraries to enable the Diagram feature."
             )
 

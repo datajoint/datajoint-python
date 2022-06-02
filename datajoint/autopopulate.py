@@ -12,7 +12,7 @@ import multiprocessing as mp
 
 # noinspection PyExceptionInherit,PyCallingNonCallable
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__.split(".")[0])
 
 
 # --- helper functions for multiprocessing --

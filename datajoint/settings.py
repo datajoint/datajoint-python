@@ -49,7 +49,7 @@ default = dict(
     }
 )
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__.split(".")[0])
 log_levels = {
     "INFO": logging.INFO,
     "WARNING": logging.WARNING,

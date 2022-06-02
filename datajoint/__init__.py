@@ -52,6 +52,7 @@ __all__ = [
     "key_hash",
 ]
 
+from .logging import logger
 from .version import __version__
 from .settings import config
 from .connection import conn, Connection
