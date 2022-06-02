@@ -16,6 +16,10 @@ from . import schema
 from .schema import Parent, Stimulus
 import datajoint as dj
 import os
+import logging
+import io
+
+logger = logging.getLogger("datajoint")
 
 
 class TestFetch:
@@ -209,12 +213,25 @@ class TestFetch:
                 np.all([cc == ll for cc, ll in zip(c, l)]), "Sorting order is different"
             )
 
-    # Need to change this to test a log instead of a warning now
-    # def test_limit_warning(self):
-    #     """Tests whether warning is raised if offset is used without limit."""
-    #     with warnings.catch_warnings(record=True) as w:
-    #         self.lang.fetch(offset=1)
-    #         assert_true(len(w) > 0, "Warning was not raised")
+    def test_limit_warning(self):
+        """Tests whether warning is raised if offset is used without limit."""
+        log_capture = io.StringIO()
+        stream_handler = logging.StreamHandler(log_capture)
+        log_format = logging.Formatter(
+            "[%(asctime)s][%(funcName)s][%(levelname)s]: %(message)s"
+        )
+        stream_handler.setFormatter(log_format)
+        stream_handler.set_name("test_limit_warning")
+        logger.addHandler(stream_handler)
+        self.lang.fetch(offset=1)
+
+        log_contents = log_capture.getvalue()
+        log_capture.close()
+
+        for handler in logger.handlers:  # Clean up handler
+            if handler.name == "test_limit_warning":
+                logger.removeHandler(handler)
+        assert "[WARNING]: Offset set, but no limit." in log_contents
 
     def test_len(self):
         """Tests __len__"""
