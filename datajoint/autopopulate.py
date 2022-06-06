@@ -275,7 +275,7 @@ class AutoPopulate:
                 if jobs is not None:
                     jobs.complete(self.target.table_name, self._job_key(key))
             else:
-                logger.info("Start populating TABLE: {} - KEY: {}".format(self.target.table_name, key))
+                logger.info("Start populating TABLE: {} - KEY: {}".format(self.target.full_table_name, key))
                 self.__class__._allow_insert = True
                 try:
                     make(dict(key), **(make_kwargs or {}))
@@ -288,7 +288,7 @@ class AutoPopulate:
                         exception=error.__class__.__name__,
                         msg=": " + str(error) if str(error) else "",
                     )
-                    logger.info("Error in populating TABLE: {} - KEY: {}\n\t Error Message: {}".format(self.target.table_name, key, error_message))
+                    logger.info("Error in populating TABLE: {} - KEY: {}\n\t Error Message: {}".format(self.target.full_table_name, key, error_message))
                     if jobs is not None:
                         # show error name and error message (if any)
                         jobs.error(
@@ -304,7 +304,7 @@ class AutoPopulate:
                         return key, error if return_exception_objects else error_message
                 else:
                     self.connection.commit_transaction()
-                    logger.info("Successful in populating TABLE: {} - KEY: {}".format(self.target.table_name, key))
+                    logger.info("Successful in populating TABLE: {} - KEY: {}".format(self.target.full_table_name, key))
                     if jobs is not None:
                         jobs.complete(self.target.table_name, self._job_key(key))
                 finally:
