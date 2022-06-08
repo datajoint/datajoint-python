@@ -4,6 +4,10 @@ import os
 from pathlib import Path
 import random
 from .schema_external import schema, Filepath, FilepathS3, stores_config
+import logging
+import io
+
+logger = logging.getLogger("datajoint")
 
 
 def setUp(self):
@@ -188,7 +192,21 @@ def test_filepath_class_s3_again():
 
 
 def test_filepath_class_no_checksum():
+    log_capture = io.StringIO()
+    stream_handler = logging.StreamHandler(log_capture)
+    log_format = logging.Formatter(
+        "[%(asctime)s][%(funcName)s][%(levelname)s]: %(message)s"
+    )
+    stream_handler.setFormatter(log_format)
+    stream_handler.set_name("test_limit_warning")
+    logger.addHandler(stream_handler)
     test_filepath_class(verify_checksum=False)
+    log_contents = log_capture.getvalue()
+    log_capture.close()
+    for handler in logger.handlers:  # Clean up handler
+        if handler.name == "test_limit_warning":
+            logger.removeHandler(handler)
+    assert "WARNING SKIPPED CHECKSUM FOR FILE WITH HASH" in log_contents
 
 
 def test_filepath_cleanup(table=Filepath(), store="repo"):

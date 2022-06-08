@@ -1,6 +1,7 @@
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from collections.abc import Mapping
 from tqdm import tqdm
+import logging
 from .settings import config
 from .errors import DataJointError, MissingExternalFile
 from .hash import uuid_from_buffer, uuid_from_file
@@ -9,6 +10,8 @@ from .heading import Heading
 from .declare import EXTERNAL_TABLE_ROOT
 from . import s3
 from .utils import safe_write, safe_copy
+
+logger = logging.getLogger(__name__.split(".")[0])
 
 CACHE_SUBFOLDING = (
     2,
@@ -326,7 +329,9 @@ class ExternalTable(Table):
                             f"'{local_filepath}' downloaded but did not pass checksum'"
                         )
             if not _need_checksum(local_filepath):
-                print(f"WARNING SKIPPED CHECKSUM FOR FILE WITH HASH: {contents_hash}")
+                logger.warning(
+                    f"WARNING SKIPPED CHECKSUM FOR FILE WITH HASH: {contents_hash}"
+                )
                 # This will turn into a proper logger when we implement the datajoint logger
             return str(local_filepath), contents_hash
 
