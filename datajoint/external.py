@@ -330,7 +330,7 @@ class ExternalTable(Table):
                         )
             if not _need_checksum(local_filepath):
                 logger.warning(
-                    f"WARNING SKIPPED CHECKSUM FOR FILE WITH HASH: {contents_hash}"
+                    f"Warning skipped checksum for file with hash: {contents_hash}"
                 )
                 # This will turn into a proper logger when we implement the datajoint logger
             return str(local_filepath), contents_hash

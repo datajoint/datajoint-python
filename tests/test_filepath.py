@@ -206,7 +206,7 @@ def test_filepath_class_no_checksum():
     for handler in logger.handlers:  # Clean up handler
         if handler.name == "test_limit_warning":
             logger.removeHandler(handler)
-    assert "WARNING SKIPPED CHECKSUM FOR FILE WITH HASH" in log_contents
+    assert "Warning skipped checksum for file with hash" in log_contents
 
 
 def test_filepath_cleanup(table=Filepath(), store="repo"):
