@@ -1,6 +1,6 @@
 from functools import partial
 from pathlib import Path
-import warnings
+import logging
 import pandas
 import itertools
 import re
@@ -11,6 +11,8 @@ from . import blob, hash
 from .errors import DataJointError
 from .settings import config
 from .utils import safe_write
+
+logger = logging.getLogger(__name__.split(".")[0])
 
 
 class key:
@@ -209,7 +211,7 @@ class Fetch:
                 )
 
         if limit is None and offset is not None:
-            warnings.warn(
+            logger.warning(
                 "Offset set, but no limit. Setting limit to a large number. "
                 "Consider setting a limit explicitly."
             )

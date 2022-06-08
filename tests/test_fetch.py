@@ -16,6 +16,10 @@ from . import schema
 from .schema import Parent, Stimulus
 import datajoint as dj
 import os
+import logging
+import io
+
+logger = logging.getLogger("datajoint")
 
 
 class TestFetch:
@@ -198,8 +202,7 @@ class TestFetch:
 
     def test_offset(self):
         """Tests offset"""
-        with warnings.catch_warnings(record=True) as w:
-            cur = self.lang.fetch(limit=4, offset=1, order_by=["language", "name DESC"])
+        cur = self.lang.fetch(limit=4, offset=1, order_by=["language", "name DESC"])
 
         languages = self.lang.contents
         languages.sort(key=itemgetter(0), reverse=True)
@@ -212,9 +215,23 @@ class TestFetch:
 
     def test_limit_warning(self):
         """Tests whether warning is raised if offset is used without limit."""
-        with warnings.catch_warnings(record=True) as w:
-            self.lang.fetch(offset=1)
-            assert_true(len(w) > 0, "Warning was not raised")
+        log_capture = io.StringIO()
+        stream_handler = logging.StreamHandler(log_capture)
+        log_format = logging.Formatter(
+            "[%(asctime)s][%(funcName)s][%(levelname)s]: %(message)s"
+        )
+        stream_handler.setFormatter(log_format)
+        stream_handler.set_name("test_limit_warning")
+        logger.addHandler(stream_handler)
+        self.lang.fetch(offset=1)
+
+        log_contents = log_capture.getvalue()
+        log_capture.close()
+
+        for handler in logger.handlers:  # Clean up handler
+            if handler.name == "test_limit_warning":
+                logger.removeHandler(handler)
+        assert "[WARNING]: Offset set, but no limit." in log_contents
 
     def test_len(self):
         """Tests __len__"""

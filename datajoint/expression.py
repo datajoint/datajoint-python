@@ -17,7 +17,7 @@ from .condition import (
 )
 from .declare import CONSTANT_LITERALS
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__.split(".")[0])
 
 
 class QueryExpression:

@@ -14,7 +14,7 @@ from .declare import (
 from .attribute_adapter import get_adapter, AttributeAdapter
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__.split(".")[0])
 
 default_attribute_properties = (
     dict(  # these default values are set in computed attributes

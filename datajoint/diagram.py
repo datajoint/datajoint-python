@@ -2,10 +2,15 @@ import networkx as nx
 import re
 import functools
 import io
-import warnings
+import logging
 import inspect
 from .table import Table
 from .dependencies import unite_master_parts
+from .user_tables import Manual, Imported, Computed, Lookup, Part
+from .errors import DataJointError
+from .table import lookup_class_name
+
+logger = logging.getLogger(__name__.split(".")[0])
 
 try:
     from matplotlib import pyplot as plt
@@ -20,10 +25,6 @@ try:
     diagram_active = True
 except:
     diagram_active = False
-
-from .user_tables import Manual, Imported, Computed, Lookup, Part
-from .errors import DataJointError
-from .table import lookup_class_name
 
 
 user_table_classes = (Manual, Lookup, Computed, Imported, Part)
@@ -63,7 +64,7 @@ if not diagram_active:
         """
 
         def __init__(self, *args, **kwargs):
-            warnings.warn(
+            logger.warning(
                 "Please install matplotlib and pygraphviz libraries to enable the Diagram feature."
             )
 

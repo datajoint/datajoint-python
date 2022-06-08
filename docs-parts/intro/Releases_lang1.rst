@@ -1,6 +1,8 @@
 0.13.6 -- TBD
 ----------------------
 * Add - Config option to set threshold for when to stop using checksums for filepath stores. PR #1025
+* Add - unified package level logger for package
+* Update - swap various datajoint messages, warnings, ect. to use the new logger.
 
 0.13.5 -- May 19, 2022
 ----------------------

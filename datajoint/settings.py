@@ -50,7 +50,7 @@ default = dict(
     }
 )
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__.split(".")[0])
 log_levels = {
     "INFO": logging.INFO,
     "WARNING": logging.WARNING,
@@ -105,7 +105,7 @@ class Config(collections.abc.MutableMapping):
         with open(filename, "w") as fid:
             json.dump(self._conf, fid, indent=4)
         if verbose:
-            print("Saved settings in " + filename)
+            logger.info("Saved settings in " + filename)
 
     def load(self, filename):
         """
