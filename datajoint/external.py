@@ -309,9 +309,9 @@ class ExternalTable(Table):
             return limit is None or Path(local_filepath).stat().st_size < limit
 
         if filepath_hash is not None:
-            relative_filepath, contents_hash = (self & {"hash": filepath_hash}).fetch1(
-                "filepath", "contents_hash"
-            )
+            relative_filepath, contents_hash, size = (
+                self & {"hash": filepath_hash}
+            ).fetch1("filepath", "contents_hash", "size")
             external_path = self._make_external_filepath(relative_filepath)
             local_filepath = Path(self.spec["stage"]).absolute() / relative_filepath
 
@@ -329,10 +329,12 @@ class ExternalTable(Table):
                             f"'{local_filepath}' downloaded but did not pass checksum'"
                         )
             if not _need_checksum(local_filepath):
-                logger.warning(
-                    f"Warning skipped checksum for file with hash: {contents_hash}"
-                )
-                # This will turn into a proper logger when we implement the datajoint logger
+                logger.warning(f"Skipped checksum for file with hash: {contents_hash}")
+                if size != Path(local_filepath).stat().st_size:
+                    # this should never happen without outside interference
+                    raise DataJointError(
+                        f"'{local_filepath}' downloaded but size is not the same (skipped checksum due to config)'"
+                    )
             return str(local_filepath), contents_hash
 
     # --- UTILITIES ---
