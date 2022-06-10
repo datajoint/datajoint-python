@@ -329,7 +329,9 @@ class ExternalTable(Table):
                             f"'{local_filepath}' downloaded but did not pass checksum'"
                         )
             if not _need_checksum(local_filepath):
-                logger.warning(f"Skipped checksum for file with hash: {contents_hash}")
+                logger.warning(
+                    f"Skipped checksum for file with hash: {contents_hash}, and path: {local_filepath}"
+                )
                 if size != Path(local_filepath).stat().st_size:
                     # this should never happen without outside interference
                     raise DataJointError(
