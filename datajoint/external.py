@@ -326,7 +326,7 @@ class ExternalTable(Table):
                     if uuid_from_file(local_filepath) != contents_hash:
                         # this should never happen without outside interference
                         raise DataJointError(
-                            f"'{local_filepath}' downloaded but did not pass checksum'"
+                            f"'{local_filepath}' downloaded but did not pass checksum."
                         )
             if not _need_checksum(local_filepath):
                 logger.warning(
@@ -335,7 +335,7 @@ class ExternalTable(Table):
                 if size != Path(local_filepath).stat().st_size:
                     # this should never happen without outside interference
                     raise DataJointError(
-                        f"'{local_filepath}' downloaded but size is not the same (skipped checksum due to config)'"
+                        f"'{local_filepath}' downloaded but size is not the same (skipped checksum due to config)."
                     )
             return str(local_filepath), contents_hash
 
