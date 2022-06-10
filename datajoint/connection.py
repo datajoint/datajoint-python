@@ -380,7 +380,7 @@ class Connection:
             raise errors.DataJointError("Nested connections are not supported.")
         self.query("START TRANSACTION WITH CONSISTENT SNAPSHOT")
         self._in_transaction = True
-        logger.info("Transaction started")
+        logger.debug("Transaction started")
 
     def cancel_transaction(self):
         """
@@ -388,7 +388,7 @@ class Connection:
         """
         self.query("ROLLBACK")
         self._in_transaction = False
-        logger.info("Transaction cancelled. Rolling back ...")
+        logger.debug("Transaction cancelled. Rolling back ...")
 
     def commit_transaction(self):
         """
@@ -397,7 +397,7 @@ class Connection:
         """
         self.query("COMMIT")
         self._in_transaction = False
-        logger.info("Transaction committed and closed.")
+        logger.debug("Transaction committed and closed.")
 
     # -------- context manager for transactions
     @property
