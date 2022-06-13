@@ -10,7 +10,6 @@ from .user_tables import Manual, Imported, Computed, Lookup, Part
 from .errors import DataJointError
 from .table import lookup_class_name
 
-logger = logging.getLogger(__name__.split(".")[0])
 
 try:
     from matplotlib import pyplot as plt
@@ -27,6 +26,7 @@ except:
     diagram_active = False
 
 
+logger = logging.getLogger(__name__.split(".")[0])
 user_table_classes = (Manual, Lookup, Computed, Imported, Part)
 
 

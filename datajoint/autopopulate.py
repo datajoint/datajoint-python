@@ -9,6 +9,7 @@ from .expression import QueryExpression, AndList
 from .errors import DataJointError, LostConnectionError
 import signal
 import multiprocessing as mp
+import contextlib
 
 # noinspection PyExceptionInherit,PyCallingNonCallable
 
@@ -158,7 +159,7 @@ class AutoPopulate:
         max_calls=None,
         display_progress=False,
         processes=1,
-        make_kwargs=None
+        make_kwargs=None,
     ):
         """
         ``table.populate()`` calls ``table.make(key)`` for every primary key in
@@ -206,14 +207,14 @@ class AutoPopulate:
         elif order == "random":
             random.shuffle(keys)
 
-        logger.info("Found %d keys to populate" % len(keys))
+        logger.debug("Found %d keys to populate" % len(keys))
 
         keys = keys[:max_calls]
         nkeys = len(keys)
         if not nkeys:
             return
 
-        processes = min(*(_ for _ in (processes, nkeys, mp.cpu_count()) if _))
+        processes = min(_ for _ in (processes, nkeys, mp.cpu_count()) if _)
 
         error_list = []
         populate_kwargs = dict(
@@ -235,17 +236,16 @@ class AutoPopulate:
             del self.connection._conn.ctx  # SSLContext is not pickleable
             with mp.Pool(
                 processes, _initialize_populate, (self, jobs, populate_kwargs)
-            ) as pool:
-                if display_progress:
-                    with tqdm(desc="Processes: ", total=nkeys) as pbar:
-                        for error in pool.imap(_call_populate1, keys, chunksize=1):
-                            if error is not None:
-                                error_list.append(error)
-                            pbar.update()
-                else:
-                    for error in pool.imap(_call_populate1, keys):
-                        if error is not None:
-                            error_list.append(error)
+            ) as pool, (
+                tqdm(desc="Processes: ", total=nkeys)
+                if display_progress
+                else contextlib.nullcontext()
+            ) as progress_bar:
+                for error in pool.imap(_call_populate1, keys, chunksize=1):
+                    if error is not None:
+                        error_list.append(error)
+                    if display_progress:
+                        progress_bar.update()
             self.connection.connect()  # reconnect parent process to MySQL server
 
         # restore original signal handler:
@@ -275,7 +275,7 @@ class AutoPopulate:
                 if jobs is not None:
                     jobs.complete(self.target.table_name, self._job_key(key))
             else:
-                logger.debug("Populating: " + str(key))
+                logger.debug(f"Making {key} -> {self.target.full_table_name}")
                 self.__class__._allow_insert = True
                 try:
                     make(dict(key), **(make_kwargs or {}))
@@ -287,6 +287,9 @@ class AutoPopulate:
                     error_message = "{exception}{msg}".format(
                         exception=error.__class__.__name__,
                         msg=": " + str(error) if str(error) else "",
+                    )
+                    logger.debug(
+                        f"Error making {key} -> {self.target.full_table_name} - {error_message}"
                     )
                     if jobs is not None:
                         # show error name and error message (if any)
@@ -303,6 +306,9 @@ class AutoPopulate:
                         return key, error if return_exception_objects else error_message
                 else:
                     self.connection.commit_transaction()
+                    logger.debug(
+                        f"Success making {key} -> {self.target.full_table_name}"
+                    )
                     if jobs is not None:
                         jobs.complete(self.target.table_name, self._job_key(key))
                 finally:

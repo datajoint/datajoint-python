@@ -134,7 +134,7 @@ class Schema:
                     )
                 )
             # create database
-            logger.info("Creating schema `{name}`.".format(name=schema_name))
+            logger.debug("Creating schema `{name}`.".format(name=schema_name))
             try:
                 self.connection.query(
                     "CREATE DATABASE `{name}`".format(name=schema_name)
@@ -360,12 +360,12 @@ class Schema:
             )
             == "yes"
         ):
-            logger.info("Dropping `{database}`.".format(database=self.database))
+            logger.debug("Dropping `{database}`.".format(database=self.database))
             try:
                 self.connection.query(
                     "DROP DATABASE `{database}`".format(database=self.database)
                 )
-                logger.info(
+                logger.debug(
                     "Schema `{database}` was dropped successfully.".format(
                         database=self.database
                     )
