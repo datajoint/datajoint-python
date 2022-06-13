@@ -1,4 +1,4 @@
-0.13.6 -- TBD
+0.13.6 -- Jun 13, 2022
 ----------------------
 * Add - unified package level logger for package (#667) PR #1031
 * Update - swap various datajoint messages, warnings, etc. to use the new logger. (#667) PR #1031
