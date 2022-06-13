@@ -14,6 +14,7 @@
         <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
         <script src="_static/doctools.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
@@ -91,7 +92,7 @@
            <div itemprop="articleBody">
              
   <section id="module-datajoint.admin">
-<span id="datajoint-admin-module"></span><h1>datajoint.admin module<a class="headerlink" href="#module-datajoint.admin" title="Permalink to this headline"></a></h1>
+<span id="datajoint-admin-module"></span><h1>datajoint.admin module<a class="headerlink" href="#module-datajoint.admin" title="Permalink to this heading"></a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="datajoint.admin.kill">
 <span class="sig-prename descclassname"><span class="pre">datajoint.admin.</span></span><span class="sig-name descname"><span class="pre">kill</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">restriction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">connection</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">order_by</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#datajoint.admin.kill" title="Permalink to this definition"></a></dt>
@@ -141,7 +142,7 @@ information_schema.processlist: ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.<
 
 </section>
 <section id="module-datajoint.attribute_adapter">
-<span id="datajoint-attribute-adapter-module"></span><h1>datajoint.attribute_adapter module<a class="headerlink" href="#module-datajoint.attribute_adapter" title="Permalink to this headline"></a></h1>
+<span id="datajoint-attribute-adapter-module"></span><h1>datajoint.attribute_adapter module<a class="headerlink" href="#module-datajoint.attribute_adapter" title="Permalink to this heading"></a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="datajoint.attribute_adapter.AttributeAdapter">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.attribute_adapter.</span></span><span class="sig-name descname"><span class="pre">AttributeAdapter</span></span><a class="headerlink" href="#datajoint.attribute_adapter.AttributeAdapter" title="Permalink to this definition"></a></dt>
@@ -195,7 +196,7 @@ information_schema.processlist: ID, USER, HOST, DB, COMMAND, TIME, STATE, INFO.<
 
 </section>
 <section id="module-datajoint.autopopulate">
-<span id="datajoint-autopopulate-module"></span><h1>datajoint.autopopulate module<a class="headerlink" href="#module-datajoint.autopopulate" title="Permalink to this headline"></a></h1>
+<span id="datajoint-autopopulate-module"></span><h1>datajoint.autopopulate module<a class="headerlink" href="#module-datajoint.autopopulate" title="Permalink to this heading"></a></h1>
 <p>This module defines class dj.AutoPopulate</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="datajoint.autopopulate.AutoPopulate">
@@ -275,7 +276,7 @@ inheritance and the target is self.</p>
 
 </section>
 <section id="module-datajoint.blob">
-<span id="datajoint-blob-module"></span><h1>datajoint.blob module<a class="headerlink" href="#module-datajoint.blob" title="Permalink to this headline"></a></h1>
+<span id="datajoint-blob-module"></span><h1>datajoint.blob module<a class="headerlink" href="#module-datajoint.blob" title="Permalink to this heading"></a></h1>
 <p>(De)serialization methods for basic datatypes and numpy.ndarrays with provisions for mutual
 compatibility with Matlab-based serialization implemented by mYm.</p>
 <dl class="py class">
@@ -526,14 +527,14 @@ If convert_to_scalar, then convert zero-dimensional arrays to scalars</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="datajoint.blob.MatCell">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.blob.</span></span><span class="sig-name descname"><span class="pre">MatCell</span></span><a class="headerlink" href="#datajoint.blob.MatCell" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></p>
 <p>a numpy ndarray representing a Matlab cell array</p>
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="datajoint.blob.MatStruct">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.blob.</span></span><span class="sig-name descname"><span class="pre">MatStruct</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buf</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">strides</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">formats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">titles</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">byteorder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aligned</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">order</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'C'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#datajoint.blob.MatStruct" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.recarray</span></code></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">recarray</span></code></p>
 <p>numpy.recarray representing a Matlab struct array</p>
 </dd></dl>
 
@@ -559,7 +560,7 @@ If convert_to_scalar, then convert zero-dimensional arrays to scalars</p>
 
 </section>
 <section id="module-datajoint.condition">
-<span id="datajoint-condition-module"></span><h1>datajoint.condition module<a class="headerlink" href="#module-datajoint.condition" title="Permalink to this headline"></a></h1>
+<span id="datajoint-condition-module"></span><h1>datajoint.condition module<a class="headerlink" href="#module-datajoint.condition" title="Permalink to this heading"></a></h1>
 <p>methods for generating SQL WHERE clauses from datajoint restriction conditions</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="datajoint.condition.AndList">
@@ -648,7 +649,7 @@ condition.</p></li>
 
 </section>
 <section id="module-datajoint.connection">
-<span id="datajoint-connection-module"></span><h1>datajoint.connection module<a class="headerlink" href="#module-datajoint.connection" title="Permalink to this headline"></a></h1>
+<span id="datajoint-connection-module"></span><h1>datajoint.connection module<a class="headerlink" href="#module-datajoint.connection" title="Permalink to this heading"></a></h1>
 <p>This module contains the Connection class that manages the connection to the database, and
 the <code class="docutils literal notranslate"><span class="pre">conn</span></code> function that provides access to a persistent connection in datajoint.</p>
 <dl class="py class">
@@ -863,7 +864,7 @@ datajoint prompts for the password.</p>
 
 </section>
 <section id="module-datajoint.declare">
-<span id="datajoint-declare-module"></span><h1>datajoint.declare module<a class="headerlink" href="#module-datajoint.declare" title="Permalink to this headline"></a></h1>
+<span id="datajoint-declare-module"></span><h1>datajoint.declare module<a class="headerlink" href="#module-datajoint.declare" title="Permalink to this heading"></a></h1>
 <p>This module hosts functions to convert DataJoint table definitions into mysql table definitions, and to
 declare the corresponding mysql tables.</p>
 <dl class="py function">
@@ -1004,11 +1005,11 @@ of primary key attributes thus far – to be updated by the function</p></li>
 
 </section>
 <section id="module-datajoint.dependencies">
-<span id="datajoint-dependencies-module"></span><h1>datajoint.dependencies module<a class="headerlink" href="#module-datajoint.dependencies" title="Permalink to this headline"></a></h1>
+<span id="datajoint-dependencies-module"></span><h1>datajoint.dependencies module<a class="headerlink" href="#module-datajoint.dependencies" title="Permalink to this heading"></a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="datajoint.dependencies.Dependencies">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.dependencies.</span></span><span class="sig-name descname"><span class="pre">Dependencies</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">connection</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#datajoint.dependencies.Dependencies" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">networkx.classes.digraph.DiGraph</span></code></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">DiGraph</span></code></p>
 <p>The graph of dependencies (foreign keys) between loaded tables.</p>
 <p>Note: the ‘connection’ argument should normally be supplied;
 Empty use is permitted to facilitate use of networkx algorithms which
@@ -1117,11 +1118,11 @@ unite_master_parts(</p>
 
 </section>
 <section id="module-datajoint.diagram">
-<span id="datajoint-diagram-module"></span><h1>datajoint.diagram module<a class="headerlink" href="#module-datajoint.diagram" title="Permalink to this headline"></a></h1>
+<span id="datajoint-diagram-module"></span><h1>datajoint.diagram module<a class="headerlink" href="#module-datajoint.diagram" title="Permalink to this heading"></a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="datajoint.diagram.Diagram">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.diagram.</span></span><span class="sig-name descname"><span class="pre">Diagram</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#datajoint.diagram.Diagram" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">networkx.classes.digraph.DiGraph</span></code></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">DiGraph</span></code></p>
 <p>Entity relationship diagram.</p>
 <p>Usage:</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span> <span class="n">diag</span> <span class="o">=</span> <span class="n">Diagram</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
@@ -1203,19 +1204,19 @@ Only those tables that are loaded in the connection object are displayed</p>
 
 </section>
 <section id="module-datajoint.errors">
-<span id="datajoint-errors-module"></span><h1>datajoint.errors module<a class="headerlink" href="#module-datajoint.errors" title="Permalink to this headline"></a></h1>
+<span id="datajoint-errors-module"></span><h1>datajoint.errors module<a class="headerlink" href="#module-datajoint.errors" title="Permalink to this heading"></a></h1>
 <p>Exception classes for the DataJoint library</p>
 <dl class="py exception">
 <dt class="sig sig-object py" id="datajoint.errors.AccessError">
 <em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.errors.</span></span><span class="sig-name descname"><span class="pre">AccessError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#datajoint.errors.AccessError" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="#datajoint.errors.QueryError" title="datajoint.errors.QueryError"><code class="xref py py-class docutils literal notranslate"><span class="pre">datajoint.errors.QueryError</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.errors.QueryError" title="datajoint.errors.QueryError"><code class="xref py py-class docutils literal notranslate"><span class="pre">QueryError</span></code></a></p>
 <p>User access error: insufficient privileges.</p>
 </dd></dl>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="datajoint.errors.BucketInaccessible">
 <em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.errors.</span></span><span class="sig-name descname"><span class="pre">BucketInaccessible</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#datajoint.errors.BucketInaccessible" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="#datajoint.errors.DataJointError" title="datajoint.errors.DataJointError"><code class="xref py py-class docutils literal notranslate"><span class="pre">datajoint.errors.DataJointError</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.errors.DataJointError" title="datajoint.errors.DataJointError"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataJointError</span></code></a></p>
 <p>Error raised when a S3 bucket is inaccessible</p>
 </dd></dl>
 
@@ -1243,42 +1244,42 @@ Only those tables that are loaded in the connection object are displayed</p>
 <dl class="py exception">
 <dt class="sig sig-object py" id="datajoint.errors.DuplicateError">
 <em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.errors.</span></span><span class="sig-name descname"><span class="pre">DuplicateError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#datajoint.errors.DuplicateError" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="#datajoint.errors.QueryError" title="datajoint.errors.QueryError"><code class="xref py py-class docutils literal notranslate"><span class="pre">datajoint.errors.QueryError</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.errors.QueryError" title="datajoint.errors.QueryError"><code class="xref py py-class docutils literal notranslate"><span class="pre">QueryError</span></code></a></p>
 <p>An integrity error caused by a duplicate entry into a unique key</p>
 </dd></dl>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="datajoint.errors.IntegrityError">
 <em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.errors.</span></span><span class="sig-name descname"><span class="pre">IntegrityError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#datajoint.errors.IntegrityError" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="#datajoint.errors.QueryError" title="datajoint.errors.QueryError"><code class="xref py py-class docutils literal notranslate"><span class="pre">datajoint.errors.QueryError</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.errors.QueryError" title="datajoint.errors.QueryError"><code class="xref py py-class docutils literal notranslate"><span class="pre">QueryError</span></code></a></p>
 <p>An integrity error triggered by foreign key constraints</p>
 </dd></dl>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="datajoint.errors.LostConnectionError">
 <em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.errors.</span></span><span class="sig-name descname"><span class="pre">LostConnectionError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#datajoint.errors.LostConnectionError" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="#datajoint.errors.DataJointError" title="datajoint.errors.DataJointError"><code class="xref py py-class docutils literal notranslate"><span class="pre">datajoint.errors.DataJointError</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.errors.DataJointError" title="datajoint.errors.DataJointError"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataJointError</span></code></a></p>
 <p>Loss of server connection</p>
 </dd></dl>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="datajoint.errors.MissingAttributeError">
 <em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.errors.</span></span><span class="sig-name descname"><span class="pre">MissingAttributeError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#datajoint.errors.MissingAttributeError" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="#datajoint.errors.QueryError" title="datajoint.errors.QueryError"><code class="xref py py-class docutils literal notranslate"><span class="pre">datajoint.errors.QueryError</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.errors.QueryError" title="datajoint.errors.QueryError"><code class="xref py py-class docutils literal notranslate"><span class="pre">QueryError</span></code></a></p>
 <p>An error arising when a required attribute value is not provided in INSERT</p>
 </dd></dl>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="datajoint.errors.MissingExternalFile">
 <em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.errors.</span></span><span class="sig-name descname"><span class="pre">MissingExternalFile</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#datajoint.errors.MissingExternalFile" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="#datajoint.errors.DataJointError" title="datajoint.errors.DataJointError"><code class="xref py py-class docutils literal notranslate"><span class="pre">datajoint.errors.DataJointError</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.errors.DataJointError" title="datajoint.errors.DataJointError"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataJointError</span></code></a></p>
 <p>Error raised when an external file managed by DataJoint is no longer accessible</p>
 </dd></dl>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="datajoint.errors.MissingTableError">
 <em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.errors.</span></span><span class="sig-name descname"><span class="pre">MissingTableError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#datajoint.errors.MissingTableError" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="#datajoint.errors.DataJointError" title="datajoint.errors.DataJointError"><code class="xref py py-class docutils literal notranslate"><span class="pre">datajoint.errors.DataJointError</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.errors.DataJointError" title="datajoint.errors.DataJointError"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataJointError</span></code></a></p>
 <p>Query on a table that has not been declared</p>
 </dd></dl>
 
@@ -1291,31 +1292,31 @@ Only those tables that are loaded in the connection object are displayed</p>
 <dl class="py exception">
 <dt class="sig sig-object py" id="datajoint.errors.QueryError">
 <em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.errors.</span></span><span class="sig-name descname"><span class="pre">QueryError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#datajoint.errors.QueryError" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="#datajoint.errors.DataJointError" title="datajoint.errors.DataJointError"><code class="xref py py-class docutils literal notranslate"><span class="pre">datajoint.errors.DataJointError</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.errors.DataJointError" title="datajoint.errors.DataJointError"><code class="xref py py-class docutils literal notranslate"><span class="pre">DataJointError</span></code></a></p>
 <p>Errors arising from queries to the database</p>
 </dd></dl>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="datajoint.errors.QuerySyntaxError">
 <em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.errors.</span></span><span class="sig-name descname"><span class="pre">QuerySyntaxError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#datajoint.errors.QuerySyntaxError" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="#datajoint.errors.QueryError" title="datajoint.errors.QueryError"><code class="xref py py-class docutils literal notranslate"><span class="pre">datajoint.errors.QueryError</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.errors.QueryError" title="datajoint.errors.QueryError"><code class="xref py py-class docutils literal notranslate"><span class="pre">QueryError</span></code></a></p>
 <p>Errors arising from incorrect query syntax</p>
 </dd></dl>
 
 <dl class="py exception">
 <dt class="sig sig-object py" id="datajoint.errors.UnknownAttributeError">
 <em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.errors.</span></span><span class="sig-name descname"><span class="pre">UnknownAttributeError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#datajoint.errors.UnknownAttributeError" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="#datajoint.errors.QueryError" title="datajoint.errors.QueryError"><code class="xref py py-class docutils literal notranslate"><span class="pre">datajoint.errors.QueryError</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.errors.QueryError" title="datajoint.errors.QueryError"><code class="xref py py-class docutils literal notranslate"><span class="pre">QueryError</span></code></a></p>
 <p>User requests an attribute name not found in query heading</p>
 </dd></dl>
 
 </section>
 <section id="module-datajoint.expression">
-<span id="datajoint-expression-module"></span><h1>datajoint.expression module<a class="headerlink" href="#module-datajoint.expression" title="Permalink to this headline"></a></h1>
+<span id="datajoint-expression-module"></span><h1>datajoint.expression module<a class="headerlink" href="#module-datajoint.expression" title="Permalink to this heading"></a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="datajoint.expression.Aggregation">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.expression.</span></span><span class="sig-name descname"><span class="pre">Aggregation</span></span><a class="headerlink" href="#datajoint.expression.Aggregation" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="#datajoint.expression.QueryExpression" title="datajoint.expression.QueryExpression"><code class="xref py py-class docutils literal notranslate"><span class="pre">datajoint.expression.QueryExpression</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.expression.QueryExpression" title="datajoint.expression.QueryExpression"><code class="xref py py-class docutils literal notranslate"><span class="pre">QueryExpression</span></code></a></p>
 <p>Aggregation.create(arg, group, comp1=’calc1’, …, compn=’calcn’)  yields an entity set
 with primary key from arg.
 The computed arguments comp1, …, compn use aggregation calculations on the attributes of
@@ -1737,7 +1738,7 @@ the primary key of the other query expression.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="datajoint.expression.Union">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.expression.</span></span><span class="sig-name descname"><span class="pre">Union</span></span><a class="headerlink" href="#datajoint.expression.Union" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="#datajoint.expression.QueryExpression" title="datajoint.expression.QueryExpression"><code class="xref py py-class docutils literal notranslate"><span class="pre">datajoint.expression.QueryExpression</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.expression.QueryExpression" title="datajoint.expression.QueryExpression"><code class="xref py py-class docutils literal notranslate"><span class="pre">QueryExpression</span></code></a></p>
 <p>Union is the private DataJoint class that implements the union operator.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="datajoint.expression.Union.create">
@@ -1771,11 +1772,11 @@ the primary key of the other query expression.</p>
 
 </section>
 <section id="module-datajoint.external">
-<span id="datajoint-external-module"></span><h1>datajoint.external module<a class="headerlink" href="#module-datajoint.external" title="Permalink to this headline"></a></h1>
+<span id="datajoint-external-module"></span><h1>datajoint.external module<a class="headerlink" href="#module-datajoint.external" title="Permalink to this heading"></a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="datajoint.external.ExternalMapping">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.external.</span></span><span class="sig-name descname"><span class="pre">ExternalMapping</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#datajoint.external.ExternalMapping" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">collections.abc.Mapping</span></code></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Mapping</span></code></p>
 <p>The external manager contains all the tables for all external stores for a given schema
 :Example:</p>
 <blockquote>
@@ -1787,7 +1788,7 @@ external_table = e[store]</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="datajoint.external.ExternalTable">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.external.</span></span><span class="sig-name descname"><span class="pre">ExternalTable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">connection</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">store</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">database</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#datajoint.external.ExternalTable" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="#datajoint.table.Table" title="datajoint.table.Table"><code class="xref py py-class docutils literal notranslate"><span class="pre">datajoint.table.Table</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.table.Table" title="datajoint.table.Table"><code class="xref py py-class docutils literal notranslate"><span class="pre">Table</span></code></a></p>
 <p>The table tracking externally stored objects.
 Declare as ExternalTable(connection, database)</p>
 <dl class="py property">
@@ -1938,7 +1939,7 @@ If an external entry exists with the same checksum, then no copying should occur
 
 </section>
 <section id="module-datajoint.fetch">
-<span id="datajoint-fetch-module"></span><h1>datajoint.fetch module<a class="headerlink" href="#module-datajoint.fetch" title="Permalink to this headline"></a></h1>
+<span id="datajoint-fetch-module"></span><h1>datajoint.fetch module<a class="headerlink" href="#module-datajoint.fetch" title="Permalink to this heading"></a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="datajoint.fetch.Fetch">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.fetch.</span></span><span class="sig-name descname"><span class="pre">Fetch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">expression</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#datajoint.fetch.Fetch" title="Permalink to this definition"></a></dt>
@@ -1984,7 +1985,7 @@ The string “KEY” can be used instead of the class key</p>
 
 </section>
 <section id="module-datajoint.hash">
-<span id="datajoint-hash-module"></span><h1>datajoint.hash module<a class="headerlink" href="#module-datajoint.hash" title="Permalink to this headline"></a></h1>
+<span id="datajoint-hash-module"></span><h1>datajoint.hash module<a class="headerlink" href="#module-datajoint.hash" title="Permalink to this heading"></a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="datajoint.hash.key_hash">
 <span class="sig-prename descclassname"><span class="pre">datajoint.hash.</span></span><span class="sig-name descname"><span class="pre">key_hash</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mapping</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#datajoint.hash.key_hash" title="Permalink to this definition"></a></dt>
@@ -2021,11 +2022,11 @@ For example, the JobTable in datajoint.jobs uses this function to hash the prima
 
 </section>
 <section id="module-datajoint.heading">
-<span id="datajoint-heading-module"></span><h1>datajoint.heading module<a class="headerlink" href="#module-datajoint.heading" title="Permalink to this headline"></a></h1>
+<span id="datajoint-heading-module"></span><h1>datajoint.heading module<a class="headerlink" href="#module-datajoint.heading" title="Permalink to this heading"></a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="datajoint.heading.Attribute">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.heading.</span></span><span class="sig-name descname"><span class="pre">Attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">in_key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nullable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comment</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">autoincrement</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">numeric</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">string</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">uuid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_blob</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_attachment</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_filepath</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_external</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adapter</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">store</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unsupported</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attribute_expression</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">database</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#datajoint.heading.Attribute" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">datajoint.heading._Attribute</span></code></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_Attribute</span></code></p>
 <p>Properties of a table column (attribute)</p>
 <dl class="py property">
 <dt class="sig sig-object py" id="datajoint.heading.Attribute.original_name">
@@ -2179,11 +2180,11 @@ This low-level method performs no error checking.</p>
 
 </section>
 <section id="module-datajoint.jobs">
-<span id="datajoint-jobs-module"></span><h1>datajoint.jobs module<a class="headerlink" href="#module-datajoint.jobs" title="Permalink to this headline"></a></h1>
+<span id="datajoint-jobs-module"></span><h1>datajoint.jobs module<a class="headerlink" href="#module-datajoint.jobs" title="Permalink to this heading"></a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="datajoint.jobs.JobTable">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.jobs.</span></span><span class="sig-name descname"><span class="pre">JobTable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">conn</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">database</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#datajoint.jobs.JobTable" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="#datajoint.table.Table" title="datajoint.table.Table"><code class="xref py py-class docutils literal notranslate"><span class="pre">datajoint.table.Table</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.table.Table" title="datajoint.table.Table"><code class="xref py py-class docutils literal notranslate"><span class="pre">Table</span></code></a></p>
 <p>A base relation with no definition. Allows reserving jobs</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="datajoint.jobs.JobTable.complete">
@@ -2260,7 +2261,7 @@ job key, identified by its hash. When jobs are completed, the entry is removed.<
 
 </section>
 <section id="module-datajoint.migrate">
-<span id="datajoint-migrate-module"></span><h1>datajoint.migrate module<a class="headerlink" href="#module-datajoint.migrate" title="Permalink to this headline"></a></h1>
+<span id="datajoint-migrate-module"></span><h1>datajoint.migrate module<a class="headerlink" href="#module-datajoint.migrate" title="Permalink to this heading"></a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="datajoint.migrate.migrate_dj011_external_blob_storage_to_dj012">
 <span class="sig-prename descclassname"><span class="pre">datajoint.migrate.</span></span><span class="sig-name descname"><span class="pre">migrate_dj011_external_blob_storage_to_dj012</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">migration_schema</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">store</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#datajoint.migrate.migrate_dj011_external_blob_storage_to_dj012" title="Permalink to this definition"></a></dt>
@@ -2277,10 +2278,10 @@ job key, identified by its hash. When jobs are completed, the entry is removed.<
 
 </section>
 <section id="module-datajoint.plugin">
-<span id="datajoint-plugin-module"></span><h1>datajoint.plugin module<a class="headerlink" href="#module-datajoint.plugin" title="Permalink to this headline"></a></h1>
+<span id="datajoint-plugin-module"></span><h1>datajoint.plugin module<a class="headerlink" href="#module-datajoint.plugin" title="Permalink to this heading"></a></h1>
 </section>
 <section id="module-datajoint.preview">
-<span id="datajoint-preview-module"></span><h1>datajoint.preview module<a class="headerlink" href="#module-datajoint.preview" title="Permalink to this headline"></a></h1>
+<span id="datajoint-preview-module"></span><h1>datajoint.preview module<a class="headerlink" href="#module-datajoint.preview" title="Permalink to this heading"></a></h1>
 <p>methods for generating previews of query expression results in python command line and Jupyter</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="datajoint.preview.preview">
@@ -2294,7 +2295,7 @@ job key, identified by its hash. When jobs are completed, the entry is removed.<
 
 </section>
 <section id="module-datajoint.s3">
-<span id="datajoint-s3-module"></span><h1>datajoint.s3 module<a class="headerlink" href="#module-datajoint.s3" title="Permalink to this headline"></a></h1>
+<span id="datajoint-s3-module"></span><h1>datajoint.s3 module<a class="headerlink" href="#module-datajoint.s3" title="Permalink to this heading"></a></h1>
 <p>AWS S3 operations</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="datajoint.s3.Folder">
@@ -2341,7 +2342,7 @@ job key, identified by its hash. When jobs are completed, the entry is removed.<
 
 </section>
 <section id="module-datajoint.schemas">
-<span id="datajoint-schemas-module"></span><h1>datajoint.schemas module<a class="headerlink" href="#module-datajoint.schemas" title="Permalink to this headline"></a></h1>
+<span id="datajoint-schemas-module"></span><h1>datajoint.schemas module<a class="headerlink" href="#module-datajoint.schemas" title="Permalink to this heading"></a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="datajoint.schemas.Schema">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.schemas.</span></span><span class="sig-name descname"><span class="pre">Schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">connection</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">create_schema</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">create_tables</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_objects</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#datajoint.schemas.Schema" title="Permalink to this definition"></a></dt>
@@ -2497,12 +2498,12 @@ but respects order of attribute declaration as much as possible.</p>
 
 </section>
 <section id="module-datajoint.settings">
-<span id="datajoint-settings-module"></span><h1>datajoint.settings module<a class="headerlink" href="#module-datajoint.settings" title="Permalink to this headline"></a></h1>
+<span id="datajoint-settings-module"></span><h1>datajoint.settings module<a class="headerlink" href="#module-datajoint.settings" title="Permalink to this heading"></a></h1>
 <p>Settings for DataJoint.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="datajoint.settings.Config">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.settings.</span></span><span class="sig-name descname"><span class="pre">Config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#datajoint.settings.Config" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">collections.abc.MutableMapping</span></code></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">MutableMapping</span></code></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="datajoint.settings.Config.get_store_spec">
 <span class="sig-name descname"><span class="pre">get_store_spec</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">store</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#datajoint.settings.Config.get_store_spec" title="Permalink to this definition"></a></dt>
@@ -2556,7 +2557,7 @@ but respects order of attribute declaration as much as possible.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="datajoint.settings.Role">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.settings.</span></span><span class="sig-name descname"><span class="pre">Role</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#datajoint.settings.Role" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">enum.Enum</span></code></p>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
 <p>An enumeration.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="datajoint.settings.Role.computed">
@@ -2587,11 +2588,11 @@ but respects order of attribute declaration as much as possible.</p>
 
 </section>
 <section id="module-datajoint.table">
-<span id="datajoint-table-module"></span><h1>datajoint.table module<a class="headerlink" href="#module-datajoint.table" title="Permalink to this headline"></a></h1>
+<span id="datajoint-table-module"></span><h1>datajoint.table module<a class="headerlink" href="#module-datajoint.table" title="Permalink to this heading"></a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="datajoint.table.FreeTable">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.table.</span></span><span class="sig-name descname"><span class="pre">FreeTable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">conn</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">full_table_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#datajoint.table.FreeTable" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="#datajoint.table.Table" title="datajoint.table.Table"><code class="xref py py-class docutils literal notranslate"><span class="pre">datajoint.table.Table</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.table.Table" title="datajoint.table.Table"><code class="xref py py-class docutils literal notranslate"><span class="pre">Table</span></code></a></p>
 <p>A base relation without a dedicated class. Each instance is associated with a table
 specified by full_table_name.</p>
 <dl class="field-list simple">
@@ -2607,7 +2608,7 @@ specified by full_table_name.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="datajoint.table.Log">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.table.</span></span><span class="sig-name descname"><span class="pre">Log</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">conn</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">database</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_logging</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#datajoint.table.Log" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="#datajoint.table.Table" title="datajoint.table.Table"><code class="xref py py-class docutils literal notranslate"><span class="pre">datajoint.table.Table</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.table.Table" title="datajoint.table.Table"><code class="xref py py-class docutils literal notranslate"><span class="pre">Table</span></code></a></p>
 <p>The log table for each schema.
 Instances are callable.  Calls log the time and identifying information along with the event.</p>
 <dl class="field-list simple">
@@ -2642,7 +2643,7 @@ Instances are callable.  Calls log the time and identifying information along wi
 <dl class="py class">
 <dt class="sig sig-object py" id="datajoint.table.Table">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.table.</span></span><span class="sig-name descname"><span class="pre">Table</span></span><a class="headerlink" href="#datajoint.table.Table" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="#datajoint.expression.QueryExpression" title="datajoint.expression.QueryExpression"><code class="xref py py-class docutils literal notranslate"><span class="pre">datajoint.expression.QueryExpression</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.expression.QueryExpression" title="datajoint.expression.QueryExpression"><code class="xref py py-class docutils literal notranslate"><span class="pre">QueryExpression</span></code></a></p>
 <p>Table is an abstract class that represents a table in the schema.
 It implements insert and delete methods and inherits query functionality.
 To make it a concrete class, override the abstract properties specifying the connection,
@@ -2954,12 +2955,12 @@ Setting an attribute value to None will reset it to the default value (if any).<
 
 </section>
 <section id="module-datajoint.user_tables">
-<span id="datajoint-user-tables-module"></span><h1>datajoint.user_tables module<a class="headerlink" href="#module-datajoint.user_tables" title="Permalink to this headline"></a></h1>
+<span id="datajoint-user-tables-module"></span><h1>datajoint.user_tables module<a class="headerlink" href="#module-datajoint.user_tables" title="Permalink to this heading"></a></h1>
 <p>Hosts the table tiers, user relations should be derived from.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="datajoint.user_tables.Computed">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.user_tables.</span></span><span class="sig-name descname"><span class="pre">Computed</span></span><a class="headerlink" href="#datajoint.user_tables.Computed" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="#datajoint.user_tables.UserTable" title="datajoint.user_tables.UserTable"><code class="xref py py-class docutils literal notranslate"><span class="pre">datajoint.user_tables.UserTable</span></code></a>, <a class="reference internal" href="#datajoint.autopopulate.AutoPopulate" title="datajoint.autopopulate.AutoPopulate"><code class="xref py py-class docutils literal notranslate"><span class="pre">datajoint.autopopulate.AutoPopulate</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.user_tables.UserTable" title="datajoint.user_tables.UserTable"><code class="xref py py-class docutils literal notranslate"><span class="pre">UserTable</span></code></a>, <a class="reference internal" href="#datajoint.autopopulate.AutoPopulate" title="datajoint.autopopulate.AutoPopulate"><code class="xref py py-class docutils literal notranslate"><span class="pre">AutoPopulate</span></code></a></p>
 <p>Inherit from this class if the table’s values are computed from other relations in the schema.
 The inherited class must at least provide the function <cite>_make_tuples</cite>.</p>
 <dl class="py attribute">
@@ -2972,7 +2973,7 @@ The inherited class must at least provide the function <cite>_make_tuples</cite>
 <dl class="py class">
 <dt class="sig sig-object py" id="datajoint.user_tables.Imported">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.user_tables.</span></span><span class="sig-name descname"><span class="pre">Imported</span></span><a class="headerlink" href="#datajoint.user_tables.Imported" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="#datajoint.user_tables.UserTable" title="datajoint.user_tables.UserTable"><code class="xref py py-class docutils literal notranslate"><span class="pre">datajoint.user_tables.UserTable</span></code></a>, <a class="reference internal" href="#datajoint.autopopulate.AutoPopulate" title="datajoint.autopopulate.AutoPopulate"><code class="xref py py-class docutils literal notranslate"><span class="pre">datajoint.autopopulate.AutoPopulate</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.user_tables.UserTable" title="datajoint.user_tables.UserTable"><code class="xref py py-class docutils literal notranslate"><span class="pre">UserTable</span></code></a>, <a class="reference internal" href="#datajoint.autopopulate.AutoPopulate" title="datajoint.autopopulate.AutoPopulate"><code class="xref py py-class docutils literal notranslate"><span class="pre">AutoPopulate</span></code></a></p>
 <p>Inherit from this class if the table’s values are imported from external data sources.
 The inherited class must at least provide the function <cite>_make_tuples</cite>.</p>
 <dl class="py attribute">
@@ -2985,7 +2986,7 @@ The inherited class must at least provide the function <cite>_make_tuples</cite>
 <dl class="py class">
 <dt class="sig sig-object py" id="datajoint.user_tables.Lookup">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.user_tables.</span></span><span class="sig-name descname"><span class="pre">Lookup</span></span><a class="headerlink" href="#datajoint.user_tables.Lookup" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="#datajoint.user_tables.UserTable" title="datajoint.user_tables.UserTable"><code class="xref py py-class docutils literal notranslate"><span class="pre">datajoint.user_tables.UserTable</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.user_tables.UserTable" title="datajoint.user_tables.UserTable"><code class="xref py py-class docutils literal notranslate"><span class="pre">UserTable</span></code></a></p>
 <p>Inherit from this class if the table’s values are for lookup. This is
 currently equivalent to defining the table as Manual and serves semantic
 purposes only.</p>
@@ -2999,7 +3000,7 @@ purposes only.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="datajoint.user_tables.Manual">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.user_tables.</span></span><span class="sig-name descname"><span class="pre">Manual</span></span><a class="headerlink" href="#datajoint.user_tables.Manual" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="#datajoint.user_tables.UserTable" title="datajoint.user_tables.UserTable"><code class="xref py py-class docutils literal notranslate"><span class="pre">datajoint.user_tables.UserTable</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.user_tables.UserTable" title="datajoint.user_tables.UserTable"><code class="xref py py-class docutils literal notranslate"><span class="pre">UserTable</span></code></a></p>
 <p>Inherit from this class if the table’s values are entered manually.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="datajoint.user_tables.Manual.tier_regexp">
@@ -3011,7 +3012,7 @@ purposes only.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="datajoint.user_tables.Part">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.user_tables.</span></span><span class="sig-name descname"><span class="pre">Part</span></span><a class="headerlink" href="#datajoint.user_tables.Part" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="#datajoint.user_tables.UserTable" title="datajoint.user_tables.UserTable"><code class="xref py py-class docutils literal notranslate"><span class="pre">datajoint.user_tables.UserTable</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.user_tables.UserTable" title="datajoint.user_tables.UserTable"><code class="xref py py-class docutils literal notranslate"><span class="pre">UserTable</span></code></a></p>
 <p>Inherit from this class if the table’s values are details of an entry in another relation
 and if this table is populated by this relation. For example, the entries inheriting from
 dj.Part could be single entries of a matrix, while the parent table refers to the entire matrix.
@@ -3066,7 +3067,7 @@ at class level. For example, this allows Table.fetch() instead of Table().fetch(
 <dl class="py class">
 <dt class="sig sig-object py" id="datajoint.user_tables.UserTable">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">datajoint.user_tables.</span></span><span class="sig-name descname"><span class="pre">UserTable</span></span><a class="headerlink" href="#datajoint.user_tables.UserTable" title="Permalink to this definition"></a></dt>
-<dd><p>Bases: <a class="reference internal" href="#datajoint.table.Table" title="datajoint.table.Table"><code class="xref py py-class docutils literal notranslate"><span class="pre">datajoint.table.Table</span></code></a></p>
+<dd><p>Bases: <a class="reference internal" href="#datajoint.table.Table" title="datajoint.table.Table"><code class="xref py py-class docutils literal notranslate"><span class="pre">Table</span></code></a></p>
 <p>A subclass of UserTable is a dedicated class interfacing a base relation.
 UserTable is initialized by the decorator generated by schema().</p>
 <dl class="py attribute">
@@ -3103,7 +3104,7 @@ UserTable is initialized by the decorator generated by schema().</p>
 
 </section>
 <section id="module-datajoint.utils">
-<span id="datajoint-utils-module"></span><h1>datajoint.utils module<a class="headerlink" href="#module-datajoint.utils" title="Permalink to this headline"></a></h1>
+<span id="datajoint-utils-module"></span><h1>datajoint.utils module<a class="headerlink" href="#module-datajoint.utils" title="Permalink to this heading"></a></h1>
 <p>General-purpose utilities</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="datajoint.utils.ClassProperty">
@@ -3213,7 +3214,7 @@ same schema and the part table is prefixed with the master table name + <code cl
 
 </section>
 <section id="module-datajoint.version">
-<span id="datajoint-version-module"></span><h1>datajoint.version module<a class="headerlink" href="#module-datajoint.version" title="Permalink to this headline"></a></h1>
+<span id="datajoint-version-module"></span><h1>datajoint.version module<a class="headerlink" href="#module-datajoint.version" title="Permalink to this heading"></a></h1>
 </section>
 
 
