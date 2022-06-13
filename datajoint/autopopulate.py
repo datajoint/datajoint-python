@@ -9,6 +9,7 @@ from .expression import QueryExpression, AndList
 from .errors import DataJointError, LostConnectionError
 import signal
 import multiprocessing as mp
+import contextlib
 
 # noinspection PyExceptionInherit,PyCallingNonCallable
 
@@ -213,7 +214,7 @@ class AutoPopulate:
         if not nkeys:
             return
 
-        processes = min(*(_ for _ in (processes, nkeys, mp.cpu_count()) if _))
+        processes = min(_ for _ in (processes, nkeys, mp.cpu_count()) if _)
 
         error_list = []
         populate_kwargs = dict(
@@ -235,17 +236,16 @@ class AutoPopulate:
             del self.connection._conn.ctx  # SSLContext is not pickleable
             with mp.Pool(
                 processes, _initialize_populate, (self, jobs, populate_kwargs)
-            ) as pool:
-                if display_progress:
-                    with tqdm(desc="Processes: ", total=nkeys) as pbar:
-                        for error in pool.imap(_call_populate1, keys, chunksize=1):
-                            if error is not None:
-                                error_list.append(error)
-                            pbar.update()
-                else:
-                    for error in pool.imap(_call_populate1, keys):
-                        if error is not None:
-                            error_list.append(error)
+            ) as pool, (
+                tqdm(desc="Processes: ", total=nkeys)
+                if display_progress
+                else contextlib.nullcontext()
+            ) as progress_bar:
+                for error in pool.imap(_call_populate1, keys, chunksize=1):
+                    if error is not None:
+                        error_list.append(error)
+                    if display_progress:
+                        progress_bar.update()
             self.connection.connect()  # reconnect parent process to MySQL server
 
         # restore original signal handler:
