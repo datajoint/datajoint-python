@@ -2,7 +2,7 @@
 
 ### 0.13.6 -- TBD
 * Add - unified package level logger for package (#667) PR #1031
-* Update - swap various datajoint messages, warnings, etc. to use the new logger.( #667) PR #1031
+* Update - swap various datajoint messages, warnings, etc. to use the new logger. (#667) PR #1031
 
 ### 0.13.5 -- May 19, 2022
 * Update - Import ABC from collections.abc for Python 3.10 compatibility
