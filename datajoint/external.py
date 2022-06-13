@@ -304,9 +304,15 @@ class ExternalTable(Table):
         :return: hash (UUID) of the contents of the downloaded file or Nones
         """
 
-        def _need_checksum(local_filepath):
+        def _need_checksum(local_filepath, expected_size):
             limit = config.get("filepath_checksum_size_limit")
-            return limit is None or Path(local_filepath).stat().st_size < limit
+            actual_size = Path(local_filepath).stat().st_size
+            if expected_size != actual_size:
+                # this should never happen without outside interference
+                raise DataJointError(
+                    f"'{local_filepath}' downloaded but size did not match."
+                )
+            return limit is None or actual_size < limit
 
         if filepath_hash is not None:
             relative_filepath, contents_hash, size = (
@@ -316,27 +322,24 @@ class ExternalTable(Table):
             local_filepath = Path(self.spec["stage"]).absolute() / relative_filepath
 
             file_exists = Path(local_filepath).is_file() and (
-                not _need_checksum(local_filepath)
+                not _need_checksum(local_filepath, size)
                 or uuid_from_file(local_filepath) == contents_hash
             )
 
             if not file_exists:
                 self._download_file(external_path, local_filepath)
-                if _need_checksum(local_filepath):
-                    if uuid_from_file(local_filepath) != contents_hash:
-                        # this should never happen without outside interference
-                        raise DataJointError(
-                            f"'{local_filepath}' downloaded but did not pass checksum."
-                        )
-            if not _need_checksum(local_filepath):
+                if (
+                    _need_checksum(local_filepath, size)
+                    and uuid_from_file(local_filepath) != contents_hash
+                ):
+                    # this should never happen without outside interference
+                    raise DataJointError(
+                        f"'{local_filepath}' downloaded but did not pass checksum."
+                    )
+            if not _need_checksum(local_filepath, size):
                 logger.warning(
                     f"Skipped checksum for file with hash: {contents_hash}, and path: {local_filepath}"
                 )
-                if size != Path(local_filepath).stat().st_size:
-                    # this should never happen without outside interference
-                    raise DataJointError(
-                        f"'{local_filepath}' downloaded but size is not the same (skipped checksum due to config)."
-                    )
             return str(local_filepath), contents_hash
 
     # --- UTILITIES ---

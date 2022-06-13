@@ -1,4 +1,4 @@
-### 0.13.6 -- Jun 13, 2022
+0.13.6 -- Jun 13, 2022
 ----------------------
 * Add - Config option to set threshold for when to stop using checksums for filepath stores. PR #1025
 * Add - Unified package level logger for package (#667) PR #1031
