@@ -1,8 +1,10 @@
 ### 0.13.6 -- Jun 13, 2022
 ----------------------
 * Add - Config option to set threshold for when to stop using checksums for filepath stores. PR #1025
-* Add - unified package level logger for package (#667) PR #1031
-* Update - swap various datajoint messages, warnings, etc. to use the new logger. (#667) PR #1031
+* Add - Unified package level logger for package (#667) PR #1031
+* Update - Swap various datajoint messages, warnings, etc. to use the new logger. (#667) PR #1031
+* Bugfix - Fix query caching deleting non-datajoint files PR #1027
+* Update - Minimum Python version for Datajoint-Python is now 3.7 PR #1027
 
 0.13.5 -- May 19, 2022
 ----------------------
