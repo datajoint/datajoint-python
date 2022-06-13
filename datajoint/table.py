@@ -310,7 +310,7 @@ class Table(QueryExpression):
             raise DataJointError("Update cannot be applied to a restricted table.")
         key = {k: row[k] for k in self.primary_key}
         if len(self & key) != 1:
-            raise DataJointError("Update entry must exist.")
+            raise DataJointError("Update can only be applied to one existing entry.")
         # UPDATE query
         row = [
             self.__make_placeholder(k, v)
