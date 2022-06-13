@@ -275,7 +275,7 @@ class AutoPopulate:
                 if jobs is not None:
                     jobs.complete(self.target.table_name, self._job_key(key))
             else:
-                logger.debug(f"Making {key} -> {self.target.table_name} ")
+                logger.debug(f"Making {key} -> {self.target.full_table_name}")
                 self.__class__._allow_insert = True
                 try:
                     make(dict(key), **(make_kwargs or {}))
@@ -289,7 +289,7 @@ class AutoPopulate:
                         msg=": " + str(error) if str(error) else "",
                     )
                     logger.debug(
-                        f"Error making {key} -> {self.target.table_name} - {error_message}"
+                        f"Error making {key} -> {self.target.full_table_name} - {error_message}"
                     )
                     if jobs is not None:
                         # show error name and error message (if any)
@@ -306,7 +306,9 @@ class AutoPopulate:
                         return key, error if return_exception_objects else error_message
                 else:
                     self.connection.commit_transaction()
-                    logger.debug(f"Success making {key} -> {self.target.table_name}")
+                    logger.debug(
+                        f"Success making {key} -> {self.target.full_table_name}"
+                    )
                     if jobs is not None:
                         jobs.complete(self.target.table_name, self._job_key(key))
                 finally:
