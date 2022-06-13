@@ -13,7 +13,7 @@ import contextlib
 
 # noinspection PyExceptionInherit,PyCallingNonCallable
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__.split(".")[0])
 
 
 # --- helper functions for multiprocessing --
@@ -159,7 +159,7 @@ class AutoPopulate:
         max_calls=None,
         display_progress=False,
         processes=1,
-        make_kwargs=None
+        make_kwargs=None,
     ):
         """
         ``table.populate()`` calls ``table.make(key)`` for every primary key in
@@ -207,7 +207,7 @@ class AutoPopulate:
         elif order == "random":
             random.shuffle(keys)
 
-        logger.info("Found %d keys to populate" % len(keys))
+        logger.debug("Found %d keys to populate" % len(keys))
 
         keys = keys[:max_calls]
         nkeys = len(keys)
@@ -275,7 +275,7 @@ class AutoPopulate:
                 if jobs is not None:
                     jobs.complete(self.target.table_name, self._job_key(key))
             else:
-                logger.info("Populating: " + str(key))
+                logger.debug(f"Making {key} -> {self.target.full_table_name}")
                 self.__class__._allow_insert = True
                 try:
                     make(dict(key), **(make_kwargs or {}))
@@ -287,6 +287,9 @@ class AutoPopulate:
                     error_message = "{exception}{msg}".format(
                         exception=error.__class__.__name__,
                         msg=": " + str(error) if str(error) else "",
+                    )
+                    logger.debug(
+                        f"Error making {key} -> {self.target.full_table_name} - {error_message}"
                     )
                     if jobs is not None:
                         # show error name and error message (if any)
@@ -303,6 +306,9 @@ class AutoPopulate:
                         return key, error if return_exception_objects else error_message
                 else:
                     self.connection.commit_transaction()
+                    logger.debug(
+                        f"Success making {key} -> {self.target.full_table_name}"
+                    )
                     if jobs is not None:
                         jobs.complete(self.target.table_name, self._job_key(key))
                 finally:

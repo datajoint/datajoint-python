@@ -49,7 +49,7 @@ default = dict(
     }
 )
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__.split(".")[0])
 log_levels = {
     "INFO": logging.INFO,
     "WARNING": logging.WARNING,
@@ -104,7 +104,7 @@ class Config(collections.abc.MutableMapping):
         with open(filename, "w") as fid:
             json.dump(self._conf, fid, indent=4)
         if verbose:
-            print("Saved settings in " + filename)
+            logger.info("Saved settings in " + filename)
 
     def load(self, filename):
         """
@@ -240,8 +240,8 @@ class Config(collections.abc.MutableMapping):
             return self._conf[key]
 
         def __setitem__(self, key, value):
-            logger.log(
-                logging.INFO, "Setting {0:s} to {1:s}".format(str(key), str(value))
+            logger.debug(
+                logging.DEBUG, "Setting {0:s} to {1:s}".format(str(key), str(value))
             )
             if validators[key](value):
                 self._conf[key] = value

@@ -17,7 +17,7 @@ from .blob import pack, unpack
 from .hash import uuid_from_buffer
 from .plugin import connection_plugins
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__.split(".")[0])
 query_log_max_length = 300
 
 
@@ -187,7 +187,7 @@ class Connection:
         self.conn_info["ssl_input"] = use_tls
         self.conn_info["host_input"] = host_input
         self.init_fun = init_fun
-        print("Connecting {user}@{host}:{port}".format(**self.conn_info))
+        logger.info("Connecting {user}@{host}:{port}".format(**self.conn_info))
         self._conn = None
         self._query_cache = None
         connect_host_hook(self)
@@ -341,7 +341,7 @@ class Connection:
         except errors.LostConnectionError:
             if not reconnect:
                 raise
-            warnings.warn("MySQL server has gone away. Reconnecting to the server.")
+            logger.warning("MySQL server has gone away. Reconnecting to the server.")
             connect_host_hook(self)
             if self._in_transaction:
                 self.cancel_transaction()
@@ -382,7 +382,7 @@ class Connection:
             raise errors.DataJointError("Nested connections are not supported.")
         self.query("START TRANSACTION WITH CONSISTENT SNAPSHOT")
         self._in_transaction = True
-        logger.info("Transaction started")
+        logger.debug("Transaction started")
 
     def cancel_transaction(self):
         """
@@ -390,7 +390,7 @@ class Connection:
         """
         self.query("ROLLBACK")
         self._in_transaction = False
-        logger.info("Transaction cancelled. Rolling back ...")
+        logger.debug("Transaction cancelled. Rolling back ...")
 
     def commit_transaction(self):
         """
@@ -399,7 +399,7 @@ class Connection:
         """
         self.query("COMMIT")
         self._in_transaction = False
-        logger.info("Transaction committed and closed.")
+        logger.debug("Transaction committed and closed.")
 
     # -------- context manager for transactions
     @property
