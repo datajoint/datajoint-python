@@ -206,7 +206,7 @@ class AutoPopulate:
         elif order == "random":
             random.shuffle(keys)
 
-        logger.info("Found %d keys to populate" % len(keys))
+        logger.debug("Found %d keys to populate" % len(keys))
 
         keys = keys[:max_calls]
         nkeys = len(keys)

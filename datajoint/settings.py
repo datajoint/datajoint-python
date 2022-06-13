@@ -240,8 +240,8 @@ class Config(collections.abc.MutableMapping):
             return self._conf[key]
 
         def __setitem__(self, key, value):
-            logger.log(
-                logging.INFO, "Setting {0:s} to {1:s}".format(str(key), str(value))
+            logger.debug(
+                logging.DEBUG, "Setting {0:s} to {1:s}".format(str(key), str(value))
             )
             if validators[key](value):
                 self._conf[key] = value
