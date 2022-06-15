@@ -551,7 +551,6 @@ class Blob:
         if dtype is None:
             dtype = "uint32" if use_32bit_dims else "uint64"
         data = np.frombuffer(self._blob, dtype=dtype, count=count, offset=self._pos)
-        # print(data, flush=True)
         self._pos += data.dtype.itemsize * data.size
         return data[0] if count == 1 else data
 
