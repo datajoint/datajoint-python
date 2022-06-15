@@ -1,4 +1,5 @@
 import datajoint as dj
+import timeit
 import numpy as np
 import uuid
 from . import schema
@@ -149,6 +150,9 @@ def test_pack():
         x == unpack(pack(x)), "Numpy string array object did not pack/unpack correctly"
     )
 
+    x = np.datetime64("1998").astype("datetime64[us]")
+    assert_true(x == unpack(pack(x)))
+
 
 def test_recarrays():
     x = np.array([(1.0, 2), (3.0, 4)], dtype=[("x", float), ("y", int)])
@@ -222,3 +226,16 @@ def test_insert_longblob():
     }
     (schema.Longblob & "id=1").delete()
     dj.blob.use_32bit_dims = False
+
+
+def test_datetime_serialization_speed():
+    # If this fails that means for some reason deserializing/serializing
+    # np.datetime64 types is now slower than regular datetime
+
+    numpy_exe_time = timeit.timeit(
+        "unpack(pack(np.datetime64('now')))", number=100, globals=globals()
+    )
+    python_exe_time = timeit.timeit(
+        "unpack(pack(datetime.now()))", number=100, globals=globals()
+    )
+    assert numpy_exe_time < python_exe_time

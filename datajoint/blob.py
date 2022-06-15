@@ -141,6 +141,7 @@ class Blob:
                 "F": self.read_recarray,  # numpy array with fields, including recarrays
                 "d": self.read_decimal,  # a decimal
                 "t": self.read_datetime,  # date, time, or datetime
+                "T": self.read_np_datetime,  # np.datetime64
                 "u": self.read_uuid,  # UUID
             }[data_structure_code]
         except KeyError:
@@ -182,7 +183,9 @@ class Blob:
             return self.pack_array(np.array(obj))
         if isinstance(obj, (float, int, complex)):
             return self.pack_array(np.array(obj))
-        if isinstance(obj, (datetime.datetime, datetime.date, datetime.time)):
+        if isinstance(
+            obj, (datetime.datetime, datetime.date, datetime.time, np.datetime64)
+        ):
             return self.pack_datetime(obj)
         if isinstance(obj, Decimal):
             return self.pack_decimal(obj)
@@ -504,12 +507,18 @@ class Blob:
         )
         return time and date and datetime.datetime.combine(date, time) or time or date
 
+    def read_np_datetime(self):
+        data = self.read_value()
+        return data.astype("datetime64[us]")
+
     @staticmethod
     def pack_datetime(d):
         if isinstance(d, datetime.datetime):
             date, time = d.date(), d.time()
         elif isinstance(d, datetime.date):
             date, time = d, None
+        elif isinstance(d, np.datetime64):
+            return b"T" + (d.astype("datetime64[us]")).tobytes()
         else:
             date, time = None, d
         return b"t" + (
@@ -542,6 +551,7 @@ class Blob:
         if dtype is None:
             dtype = "uint32" if use_32bit_dims else "uint64"
         data = np.frombuffer(self._blob, dtype=dtype, count=count, offset=self._pos)
+        # print(data, flush=True)
         self._pos += data.dtype.itemsize * data.size
         return data[0] if count == 1 else data
 
