@@ -141,7 +141,8 @@ class Blob:
                 "F": self.read_recarray,  # numpy array with fields, including recarrays
                 "d": self.read_decimal,  # a decimal
                 "t": self.read_datetime,  # date, time, or datetime
-                "T": self.read_np_datetime,  # np.datetime64
+                "T": self.read_int64_datetime,  # np.datetime64
+                "Z": self.read_np_array_dt64,
                 "u": self.read_uuid,  # UUID
             }[data_structure_code]
         except KeyError:
@@ -243,6 +244,9 @@ class Blob:
         """
         Serialize an np.ndarray into bytes.  Scalars are encoded with ndim=0.
         """
+        if "datetime64" in array.dtype.name:
+            self.set_dj0()
+            return b"Z" + array.astype("datetime64[us]").tobytes()
         blob = (
             b"A"
             + np.uint64(array.ndim).tobytes()
@@ -429,6 +433,10 @@ class Blob:
             )
         )
 
+    def read_np_array_dt64(self):
+        data = self.read_value(dtype="<M8[us]", count=-1)
+        return data
+
     def read_struct(self):
         """deserialize matlab stuct"""
         n_dims = self.read_value()
@@ -507,7 +515,7 @@ class Blob:
         )
         return time and date and datetime.datetime.combine(date, time) or time or date
 
-    def read_np_datetime(self):
+    def read_int64_datetime(self):
         data = self.read_value()
         return data.astype("datetime64[us]")
 
