@@ -34,6 +34,7 @@ mxClassID = dict(
         ("mxINT64_CLASS", np.dtype("int64")),
         ("mxUINT64_CLASS", np.dtype("uint64")),
         ("mxFUNCTION_CLASS", None),
+        ("NON_mx_DATETIME64", np.dtype("<M8[us]")),
     )
 )
 
@@ -142,7 +143,6 @@ class Blob:
                 "d": self.read_decimal,  # a decimal
                 "t": self.read_datetime,  # date, time, or datetime
                 "T": self.read_int64_datetime,  # np.datetime64
-                "Z": self.read_array_dt64,
                 "u": self.read_uuid,  # UUID
             }[data_structure_code]
         except KeyError:
@@ -245,8 +245,8 @@ class Blob:
         Serialize an np.ndarray into bytes.  Scalars are encoded with ndim=0.
         """
         if "datetime64" in array.dtype.name:
+            array = array.astype("datetime64[us]")
             self.set_dj0()
-            return b"Z" + array.astype("datetime64[us]").tobytes()
         blob = (
             b"A"
             + np.uint64(array.ndim).tobytes()
@@ -432,10 +432,6 @@ class Blob:
                 for packed in (map(self.pack_blob, pair) for pair in d.items())
             )
         )
-
-    def read_array_dt64(self):
-        data = self.read_value(dtype="<M8[us]", count=-1)
-        return data
 
     def read_struct(self):
         """deserialize matlab stuct"""
