@@ -142,7 +142,7 @@ class Blob:
                 "d": self.read_decimal,  # a decimal
                 "t": self.read_datetime,  # date, time, or datetime
                 "T": self.read_int64_datetime,  # np.datetime64
-                "Z": self.read_np_array_dt64,
+                "Z": self.read_array_dt64,
                 "u": self.read_uuid,  # UUID
             }[data_structure_code]
         except KeyError:
@@ -433,7 +433,7 @@ class Blob:
             )
         )
 
-    def read_np_array_dt64(self):
+    def read_array_dt64(self):
         data = self.read_value(dtype="<M8[us]", count=-1)
         return data
 
