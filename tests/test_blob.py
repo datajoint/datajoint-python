@@ -230,12 +230,19 @@ def test_insert_longblob():
 
 def test_datetime_serialization_speed():
     # If this fails that means for some reason deserializing/serializing
-    # np.datetime64 types is now slower than regular datetime
+    # np arrays of np.datetime64 types is now slower than regular arrays of datetime64
 
-    numpy_exe_time = timeit.timeit(
-        "unpack(pack(np.datetime64('now')))", number=100, globals=globals()
+    np_array_dt_exe_time = timeit.timeit(
+        setup='myarr=pack(np.array([np.datetime64(f"{x}") for x in range(1900, 2000)]))',
+        stmt="unpack(myarr)",
+        number=10,
+        globals=globals(),
     )
-    python_exe_time = timeit.timeit(
-        "unpack(pack(datetime.now()))", number=100, globals=globals()
+    python_array_dt_exe_time = timeit.timeit(
+        setup='myarr2=pack([np.datetime64(f"{x}") for x in range(1900, 2000)])',
+        stmt="unpack(myarr2)",
+        number=10,
+        globals=globals(),
     )
-    assert numpy_exe_time < python_exe_time
+
+    assert np_array_dt_exe_time < python_array_dt_exe_time
