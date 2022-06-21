@@ -38,7 +38,23 @@ scalar_id = dict(
     )
 )
 
-rev_class_id = {dtype: i for i, dtype in enumerate(scalar_id.values())}
+# Matlab numeric codes
+matlab_scalar_mapping = {
+    np.dtype("bool"): 3,  # LOGICAL
+    np.dtype("c"): 4,  # CHAR
+    np.dtype("O"): 5,  # VOID
+    np.dtype("float64"): 6,  # DOUBLE
+    np.dtype("float32"): 7,  # SINGLE
+    np.dtype("int8"): 8,  # INT8
+    np.dtype("uint8"): 9,  # UINT8
+    np.dtype("int16"): 10,  # INT16
+    np.dtype("uint16"): 11,  # UINT16
+    np.dtype("int32"): 12,  # INT32
+    np.dtype("uint32"): 13,  # UINT32
+    np.dtype("int64"): 14,  # INT64
+    np.dtype("uint64"): 15,  # UINT64
+}
+
 dtype_list = list(scalar_id.values())
 type_names = list(scalar_id)
 
@@ -256,9 +272,13 @@ class Blob:
         if is_complex:
             array, imaginary = np.real(array), np.imag(array)
         type_id = (
-            rev_class_id[array.dtype]
-            if array.dtype.char != "U"
-            else rev_class_id[np.dtype("O")]
+            matlab_scalar_mapping[np.dtype("O")]
+            if array.dtype not in matlab_scalar_mapping
+            else (
+                matlab_scalar_mapping[array.dtype]
+                if array.dtype.char != "U"
+                else matlab_scalar_mapping[np.dtype("O")]
+            )
         )
         if dtype_list[type_id] is None:
             raise DataJointError("Type %s is ambiguous or unknown" % array.dtype)

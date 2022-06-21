@@ -233,13 +233,13 @@ def test_datetime_serialization_speed():
     # np arrays of np.datetime64 types is now slower than regular arrays of datetime64
 
     np_array_dt_exe_time = timeit.timeit(
-        setup='myarr=pack(np.array([np.datetime64(f"{x}") for x in range(1900, 2000)]))',
+        setup="myarr=pack(np.array([np.datetime64(f'{x}') for x in range(1900, 2000)]))",
         stmt="unpack(myarr)",
         number=10,
         globals=globals(),
     )
     python_array_dt_exe_time = timeit.timeit(
-        setup='myarr2=pack([np.datetime64(f"{x}") for x in range(1900, 2000)])',
+        setup="myarr2=pack([datetime.now() for x in range (1900, 2000)])",
         stmt="unpack(myarr2)",
         number=10,
         globals=globals(),
