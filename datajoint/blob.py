@@ -14,7 +14,7 @@ from .errors import DataJointError
 from .settings import config
 
 
-scalar_types = dict(
+scalar_type = dict(
     (
         # see http://www.mathworks.com/help/techdoc/apiref/mxclassid.html
         ("UNKNOWN", None),
@@ -55,8 +55,8 @@ matlab_scalar_mapping = {
     np.dtype("uint64"): 15,  # UINT64
 }
 
-dtype_list = list(scalar_id.values())
-type_names = list(scalar_id)
+dtype_list = list(scalar_type.values())
+type_names = list(scalar_type)
 
 compression = {b"ZL123\0": zlib.decompress}
 
