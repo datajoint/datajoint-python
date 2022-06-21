@@ -14,33 +14,33 @@ from .errors import DataJointError
 from .settings import config
 
 
-mxClassID = dict(
+scalar_id = dict(
     (
         # see http://www.mathworks.com/help/techdoc/apiref/mxclassid.html
-        ("mxUNKNOWN_CLASS", None),
-        ("mxCELL_CLASS", None),
-        ("mxSTRUCT_CLASS", None),
-        ("mxLOGICAL_CLASS", np.dtype("bool")),
-        ("mxCHAR_CLASS", np.dtype("c")),
-        ("mxVOID_CLASS", np.dtype("O")),
-        ("mxDOUBLE_CLASS", np.dtype("float64")),
-        ("mxSINGLE_CLASS", np.dtype("float32")),
-        ("mxINT8_CLASS", np.dtype("int8")),
-        ("mxUINT8_CLASS", np.dtype("uint8")),
-        ("mxINT16_CLASS", np.dtype("int16")),
-        ("mxUINT16_CLASS", np.dtype("uint16")),
-        ("mxINT32_CLASS", np.dtype("int32")),
-        ("mxUINT32_CLASS", np.dtype("uint32")),
-        ("mxINT64_CLASS", np.dtype("int64")),
-        ("mxUINT64_CLASS", np.dtype("uint64")),
-        ("mxFUNCTION_CLASS", None),
-        ("NON_mx_DATETIME64", np.dtype("<M8[us]")),
+        ("UNKNOWN", None),
+        ("CELL", None),
+        ("STRUCT", None),
+        ("LOGICAL", np.dtype("bool")),
+        ("CHAR", np.dtype("c")),
+        ("VOID", np.dtype("O")),
+        ("DOUBLE", np.dtype("float64")),
+        ("SINGLE", np.dtype("float32")),
+        ("INT8", np.dtype("int8")),
+        ("UINT8", np.dtype("uint8")),
+        ("INT16", np.dtype("int16")),
+        ("UINT16", np.dtype("uint16")),
+        ("INT32", np.dtype("int32")),
+        ("UINT32", np.dtype("uint32")),
+        ("INT64", np.dtype("int64")),
+        ("UINT64", np.dtype("uint64")),
+        ("FUNCTION", None),
+        ("DATETIME64", np.dtype("<M8[us]")),
     )
 )
 
-rev_class_id = {dtype: i for i, dtype in enumerate(mxClassID.values())}
-dtype_list = list(mxClassID.values())
-type_names = list(mxClassID)
+rev_class_id = {dtype: i for i, dtype in enumerate(scalar_id.values())}
+dtype_list = list(scalar_id.values())
+type_names = list(scalar_id)
 
 compression = {b"ZL123\0": zlib.decompress}
 
@@ -217,12 +217,12 @@ class Blob:
         dtype_id, is_complex = self.read_value("uint32", 2)
         dtype = dtype_list[dtype_id]
 
-        if type_names[dtype_id] == "mxVOID_CLASS":
+        if type_names[dtype_id] == "VOID":
             data = np.array(
                 list(self.read_blob(self.read_value()) for _ in range(n_elem)),
                 dtype=np.dtype("O"),
             )
-        elif type_names[dtype_id] == "mxCHAR_CLASS":
+        elif type_names[dtype_id] == "CHAR":
             # compensate for MATLAB packing of char arrays
             data = self.read_value(dtype, count=2 * n_elem)
             data = data[::2].astype("U1")
@@ -264,13 +264,13 @@ class Blob:
             raise DataJointError("Type %s is ambiguous or unknown" % array.dtype)
 
         blob += np.array([type_id, is_complex], dtype=np.uint32).tobytes()
-        if type_names[type_id] == "mxVOID_CLASS":  # array of dtype('O')
+        if type_names[type_id] == "VOID":  # array of dtype('O')
             blob += b"".join(
                 len_u64(it) + it
                 for it in (self.pack_blob(e) for e in array.flatten(order="F"))
             )
             self.set_dj0()  # not supported by original mym
-        elif type_names[type_id] == "mxCHAR_CLASS":  # array of dtype('c')
+        elif type_names[type_id] == "CHAR":  # array of dtype('c')
             blob += (
                 array.view(np.uint8).astype(np.uint16).tobytes()
             )  # convert to 16-bit chars for MATLAB
