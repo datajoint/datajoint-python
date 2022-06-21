@@ -14,7 +14,7 @@ from .errors import DataJointError
 from .settings import config
 
 
-scalar_id = dict(
+scalar_types = dict(
     (
         # see http://www.mathworks.com/help/techdoc/apiref/mxclassid.html
         ("UNKNOWN", None),
