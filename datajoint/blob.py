@@ -38,8 +38,7 @@ scalar_type = dict(
     )
 )
 
-# Matlab numeric codes
-matlab_scalar_mapping = {
+scalar_codes = {
     np.dtype("bool"): 3,  # LOGICAL
     np.dtype("c"): 4,  # CHAR
     np.dtype("O"): 5,  # VOID
@@ -53,10 +52,16 @@ matlab_scalar_mapping = {
     np.dtype("uint32"): 13,  # UINT32
     np.dtype("int64"): 14,  # INT64
     np.dtype("uint64"): 15,  # UINT64
+    np.dtype(
+        "<M8[us]"
+    ): 50,  # Datetime[us], skipped to 50 to accommodate more matlab types
 }
 
-dtype_list = list(scalar_type.values())
-type_names = list(scalar_type)
+# Lookup dict for quickly getting a scalar type from its code
+scalar_code_lookup = dict((v, k) for k, v in scalar_codes.items())
+# Lookup dict for quickly getting a scalar name from its type
+scalar_name_lookup = dict((v, k) for k, v in scalar_type.items())
+
 
 compression = {b"ZL123\0": zlib.decompress}
 
@@ -231,14 +236,18 @@ class Blob:
         shape = self.read_value(count=n_dims)
         n_elem = np.prod(shape, dtype=int)
         dtype_id, is_complex = self.read_value("uint32", 2)
-        dtype = dtype_list[dtype_id]
 
-        if type_names[dtype_id] == "VOID":
+        # Get dtype from type id
+        dtype = scalar_code_lookup[dtype_id]
+
+        # Check if name is void
+        if scalar_name_lookup[dtype] == "VOID":
             data = np.array(
                 list(self.read_blob(self.read_value()) for _ in range(n_elem)),
                 dtype=np.dtype("O"),
             )
-        elif type_names[dtype_id] == "CHAR":
+        # Check if name is char
+        elif scalar_name_lookup[dtype] == "CHAR":
             # compensate for MATLAB packing of char arrays
             data = self.read_value(dtype, count=2 * n_elem)
             data = data[::2].astype("U1")
@@ -271,26 +280,24 @@ class Blob:
         is_complex = np.iscomplexobj(array)
         if is_complex:
             array, imaginary = np.real(array), np.imag(array)
-        type_id = (
-            matlab_scalar_mapping[np.dtype("O")]
-            if array.dtype not in matlab_scalar_mapping
-            else (
-                matlab_scalar_mapping[array.dtype]
-                if array.dtype.char != "U"
-                else matlab_scalar_mapping[np.dtype("O")]
-            )
-        )
-        if dtype_list[type_id] is None:
-            raise DataJointError("Type %s is ambiguous or unknown" % array.dtype)
+        try:
+            type_id = scalar_codes[array.dtype]
+        except KeyError:
+            if array.dtype.char == "U":
+                type_id = scalar_codes[np.dtype("O")]
+                pass
+            else:
+                raise DataJointError("Type %s is ambiguous or unknown" % array.dtype)
 
         blob += np.array([type_id, is_complex], dtype=np.uint32).tobytes()
-        if type_names[type_id] == "VOID":  # array of dtype('O')
+        # array of dtype('O'), U is for unicode string
+        if array.dtype.char == "U" or scalar_name_lookup[array.dtype] == "VOID":
             blob += b"".join(
                 len_u64(it) + it
                 for it in (self.pack_blob(e) for e in array.flatten(order="F"))
             )
             self.set_dj0()  # not supported by original mym
-        elif type_names[type_id] == "CHAR":  # array of dtype('c')
+        elif scalar_name_lookup[array.dtype] == "CHAR":  # array of dtype('c')
             blob += (
                 array.view(np.uint8).astype(np.uint16).tobytes()
             )  # convert to 16-bit chars for MATLAB
