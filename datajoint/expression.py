@@ -639,7 +639,8 @@ class QueryExpression:
         """
         return (
             super().__repr__()
-            if config["loglevel"].lower() == "debug" or self.database is None
+            if config["loglevel"].lower() == "debug"
+            or getattr(self, "database", None) is None
             else self.preview()
         )
 
