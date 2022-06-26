@@ -1,21 +1,22 @@
-from itertools import count
-import logging
-import inspect
 import copy
+import inspect
+import logging
 import re
-from .settings import config
-from .errors import DataJointError
-from .fetch import Fetch, Fetch1
-from .preview import preview, repr_html
+from itertools import count
+
 from .condition import (
     AndList,
     Not,
-    make_condition,
+    PromiscuousOperand,
     assert_join_compatibility,
     extract_column_names,
-    PromiscuousOperand,
+    make_condition,
 )
 from .declare import CONSTANT_LITERALS
+from .errors import DataJointError
+from .fetch import Fetch, Fetch1
+from .preview import preview, repr_html
+from .settings import config
 
 logger = logging.getLogger(__name__.split(".")[0])
 
@@ -638,7 +639,7 @@ class QueryExpression:
         """
         return (
             super().__repr__()
-            if config["loglevel"].lower() == "debug"
+            if config["loglevel"].lower() == "debug" or self.database is None
             else self.preview()
         )
 
