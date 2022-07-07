@@ -14,53 +14,42 @@ from .errors import DataJointError
 from .settings import config
 
 
-scalar_type = dict(
-    (
-        # see http://www.mathworks.com/help/techdoc/apiref/mxclassid.html
-        ("UNKNOWN", None),
-        ("CELL", None),
-        ("STRUCT", None),
-        ("LOGICAL", np.dtype("bool")),
-        ("CHAR", np.dtype("c")),
-        ("VOID", np.dtype("O")),
-        ("DOUBLE", np.dtype("float64")),
-        ("SINGLE", np.dtype("float32")),
-        ("INT8", np.dtype("int8")),
-        ("UINT8", np.dtype("uint8")),
-        ("INT16", np.dtype("int16")),
-        ("UINT16", np.dtype("uint16")),
-        ("INT32", np.dtype("int32")),
-        ("UINT32", np.dtype("uint32")),
-        ("INT64", np.dtype("int64")),
-        ("UINT64", np.dtype("uint64")),
-        ("FUNCTION", None),
-        ("DATETIME64", np.dtype("<M8[us]")),
-    )
-)
-
-scalar_codes = {
-    np.dtype("bool"): 3,  # LOGICAL
-    np.dtype("c"): 4,  # CHAR
-    np.dtype("O"): 5,  # VOID
-    np.dtype("float64"): 6,  # DOUBLE
-    np.dtype("float32"): 7,  # SINGLE
-    np.dtype("int8"): 8,  # INT8
-    np.dtype("uint8"): 9,  # UINT8
-    np.dtype("int16"): 10,  # INT16
-    np.dtype("uint16"): 11,  # UINT16
-    np.dtype("int32"): 12,  # INT32
-    np.dtype("uint32"): 13,  # UINT32
-    np.dtype("int64"): 14,  # INT64
-    np.dtype("uint64"): 15,  # UINT64
-    np.dtype(
-        "<M8[us]"
-    ): 50,  # Datetime[us], skipped to 50 to accommodate more matlab types
+deserialize_lookup = {
+    0: {"dtype": None, "scalar_type": "UNKNOWN"},
+    1: {"dtype": None, "scalar_type": "CELL"},
+    2: {"dtype": None, "scalar_type": "STRUCT"},
+    3: {"dtype": np.dtype("bool"), "scalar_type": "LOGICAL"},
+    4: {"dtype": np.dtype("c"), "scalar_type": "CHAR"},
+    5: {"dtype": np.dtype("O"), "scalar_type": "VOID"},
+    6: {"dtype": np.dtype("float64"), "scalar_type": "DOUBLE"},
+    7: {"dtype": np.dtype("float32"), "scalar_type": "SINGLE"},
+    8: {"dtype": np.dtype("int8"), "scalar_type": "INT8"},
+    9: {"dtype": np.dtype("uint8"), "scalar_type": "UINT8"},
+    10: {"dtype": np.dtype("int16"), "scalar_type": "INT16"},
+    11: {"dtype": np.dtype("uint16"), "scalar_type": "UINT16"},
+    12: {"dtype": np.dtype("int32"), "scalar_type": "INT32"},
+    13: {"dtype": np.dtype("uint32"), "scalar_type": "UINT32"},
+    14: {"dtype": np.dtype("int64"), "scalar_type": "INT64"},
+    15: {"dtype": np.dtype("uint64"), "scalar_type": "UINT64"},
+    16: {"dtype": None, "scalar_type": "FUNCTION"},
+    128: {"dtype": np.dtype("<M8[Y]"), "scalar_type": "DATETIME64[Y]"},
+    129: {"dtype": np.dtype("<M8[M]"), "scalar_type": "DATETIME64[M]"},
+    130: {"dtype": np.dtype("<M8[W]"), "scalar_type": "DATETIME64[W]"},
+    131: {"dtype": np.dtype("<M8[D]"), "scalar_type": "DATETIME64[D]"},
+    132: {"dtype": np.dtype("<M8[h]"), "scalar_type": "DATETIME64[h]"},
+    133: {"dtype": np.dtype("<M8[m]"), "scalar_type": "DATETIME64[m]"},
+    134: {"dtype": np.dtype("<M8[s]"), "scalar_type": "DATETIME64[s]"},
+    135: {"dtype": np.dtype("<M8[ms]"), "scalar_type": "DATETIME64[ms]"},
+    136: {"dtype": np.dtype("<M8[us]"), "scalar_type": "DATETIME64[us]"},
+    137: {"dtype": np.dtype("<M8[ps]"), "scalar_type": "DATETIME64[ps]"},
+    138: {"dtype": np.dtype("<M8[fs]"), "scalar_type": "DATETIME64[fs]"},
+    139: {"dtype": np.dtype("<M8[as]"), "scalar_type": "DATETIME64[as]"},
 }
-
-# Lookup dict for quickly getting a scalar type from its code
-scalar_code_lookup = dict((v, k) for k, v in scalar_codes.items())
-# Lookup dict for quickly getting a scalar name from its type
-scalar_name_lookup = dict((v, k) for k, v in scalar_type.items())
+serialize_lookup = {
+    v["dtype"]: {"type_id": k, "scalar_type": v["scalar_type"]}
+    for k, v in deserialize_lookup.items()
+    if v["dtype"] is not None
+}
 
 
 compression = {b"ZL123\0": zlib.decompress}
@@ -235,16 +224,16 @@ class Blob:
         dtype_id, is_complex = self.read_value("uint32", 2)
 
         # Get dtype from type id
-        dtype = scalar_code_lookup[dtype_id]
+        dtype = deserialize_lookup[dtype_id]["dtype"]
 
         # Check if name is void
-        if scalar_name_lookup[dtype] == "VOID":
+        if deserialize_lookup[dtype_id]["scalar_type"] == "VOID":
             data = np.array(
                 list(self.read_blob(self.read_value()) for _ in range(n_elem)),
                 dtype=np.dtype("O"),
             )
         # Check if name is char
-        elif scalar_name_lookup[dtype] == "CHAR":
+        elif deserialize_lookup[dtype_id]["scalar_type"] == "CHAR":
             # compensate for MATLAB packing of char arrays
             data = self.read_value(dtype, count=2 * n_elem)
             data = data[::2].astype("U1")
@@ -267,7 +256,6 @@ class Blob:
         Serialize an np.ndarray into bytes.  Scalars are encoded with ndim=0.
         """
         if "datetime64" in array.dtype.name:
-            array = array.astype("datetime64[us]")
             self.set_dj0()
         blob = (
             b"A"
@@ -278,23 +266,27 @@ class Blob:
         if is_complex:
             array, imaginary = np.real(array), np.imag(array)
         try:
-            type_id = scalar_codes[array.dtype]
+            type_id = serialize_lookup[array.dtype]["type_id"]
         except KeyError:
             if array.dtype.char == "U":
-                type_id = scalar_codes[np.dtype("O")]
+                type_id = serialize_lookup[np.dtype("O")]["type_id"]
                 pass
             else:
                 raise DataJointError("Type %s is ambiguous or unknown" % array.dtype)
 
         blob += np.array([type_id, is_complex], dtype=np.uint32).tobytes()
         # array of dtype('O'), U is for unicode string
-        if array.dtype.char == "U" or scalar_name_lookup[array.dtype] == "VOID":
+        if (
+            array.dtype.char == "U"
+            or serialize_lookup[array.dtype]["scalar_type"] == "VOID"
+        ):
             blob += b"".join(
                 len_u64(it) + it
                 for it in (self.pack_blob(e) for e in array.flatten(order="F"))
             )
             self.set_dj0()  # not supported by original mym
-        elif scalar_name_lookup[array.dtype] == "CHAR":  # array of dtype('c')
+        # array of dtype('c')
+        elif serialize_lookup[array.dtype]["scalar_type"] == "CHAR":
             blob += (
                 array.view(np.uint8).astype(np.uint16).tobytes()
             )  # convert to 16-bit chars for MATLAB
