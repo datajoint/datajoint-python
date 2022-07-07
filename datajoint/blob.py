@@ -41,9 +41,10 @@ deserialize_lookup = {
     134: {"dtype": np.dtype("<M8[s]"), "scalar_type": "DATETIME64[s]"},
     135: {"dtype": np.dtype("<M8[ms]"), "scalar_type": "DATETIME64[ms]"},
     136: {"dtype": np.dtype("<M8[us]"), "scalar_type": "DATETIME64[us]"},
-    137: {"dtype": np.dtype("<M8[ps]"), "scalar_type": "DATETIME64[ps]"},
-    138: {"dtype": np.dtype("<M8[fs]"), "scalar_type": "DATETIME64[fs]"},
-    139: {"dtype": np.dtype("<M8[as]"), "scalar_type": "DATETIME64[as]"},
+    137: {"dtype": np.dtype("<M8[ns]"), "scalar_type": "DATETIME64[ns]"},
+    138: {"dtype": np.dtype("<M8[ps]"), "scalar_type": "DATETIME64[ps]"},
+    139: {"dtype": np.dtype("<M8[fs]"), "scalar_type": "DATETIME64[fs]"},
+    140: {"dtype": np.dtype("<M8[as]"), "scalar_type": "DATETIME64[as]"},
 }
 serialize_lookup = {
     v["dtype"]: {"type_id": k, "scalar_type": v["scalar_type"]}
