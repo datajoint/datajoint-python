@@ -2,7 +2,6 @@ import datajoint as dj
 import timeit
 import numpy as np
 import uuid
-from faker import Faker
 from . import schema
 from decimal import Decimal
 from datetime import datetime
