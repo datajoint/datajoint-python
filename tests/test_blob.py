@@ -2,6 +2,7 @@ import datajoint as dj
 import timeit
 import numpy as np
 import uuid
+from faker import Faker
 from . import schema
 from decimal import Decimal
 from datetime import datetime
@@ -232,17 +233,17 @@ def test_datetime_serialization_speed():
     # If this fails that means for some reason deserializing/serializing
     # np arrays of np.datetime64 types is now slower than regular arrays of datetime64
 
-    np_array_dt_exe_time = timeit.timeit(
-        setup="myarr=pack(np.array([np.datetime64(f'{x}') for x in range(1900, 2000)]))",
+    optimized_exe_time = timeit.timeit(
+        setup="myarr=pack(np.array([np.datetime64('2022-10-13 03:03:13') for _ in range(0, 10000)]))",
         stmt="unpack(myarr)",
         number=10,
         globals=globals(),
     )
-    python_array_dt_exe_time = timeit.timeit(
-        setup="myarr2=pack([datetime.now() for x in range (1900, 2000)])",
+    baseline_exe_time = timeit.timeit(
+        setup="myarr2=pack(np.array([datetime(2022,10,13,3,3,13) for _ in range (0, 10000)]))",
         stmt="unpack(myarr2)",
         number=10,
         globals=globals(),
     )
 
-    assert np_array_dt_exe_time < python_array_dt_exe_time
+    assert optimized_exe_time * 1000 < baseline_exe_time

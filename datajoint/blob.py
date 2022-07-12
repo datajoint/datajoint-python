@@ -32,19 +32,19 @@ deserialize_lookup = {
     14: {"dtype": np.dtype("int64"), "scalar_type": "INT64"},
     15: {"dtype": np.dtype("uint64"), "scalar_type": "UINT64"},
     16: {"dtype": None, "scalar_type": "FUNCTION"},
-    65536: {"dtype": np.dtype("datetime64[Y]"), "scalar_type": "DATETIME64[Y]"},
-    65537: {"dtype": np.dtype("datetime64[M]"), "scalar_type": "DATETIME64[M]"},
-    65538: {"dtype": np.dtype("datetime64[W]"), "scalar_type": "DATETIME64[W]"},
-    65539: {"dtype": np.dtype("datetime64[D]"), "scalar_type": "DATETIME64[D]"},
-    65540: {"dtype": np.dtype("datetime64[h]"), "scalar_type": "DATETIME64[h]"},
-    65541: {"dtype": np.dtype("datetime64[m]"), "scalar_type": "DATETIME64[m]"},
-    65542: {"dtype": np.dtype("datetime64[s]"), "scalar_type": "DATETIME64[s]"},
-    65543: {"dtype": np.dtype("datetime64[ms]"), "scalar_type": "DATETIME64[ms]"},
-    65544: {"dtype": np.dtype("datetime64[us]"), "scalar_type": "DATETIME64[us]"},
-    65545: {"dtype": np.dtype("datetime64[ns]"), "scalar_type": "DATETIME64[ns]"},
-    65546: {"dtype": np.dtype("datetime64[ps]"), "scalar_type": "DATETIME64[ps]"},
-    65547: {"dtype": np.dtype("datetime64[fs]"), "scalar_type": "DATETIME64[fs]"},
-    65548: {"dtype": np.dtype("datetime64[as]"), "scalar_type": "DATETIME64[as]"},
+    65_536: {"dtype": np.dtype("datetime64[Y]"), "scalar_type": "DATETIME64[Y]"},
+    65_537: {"dtype": np.dtype("datetime64[M]"), "scalar_type": "DATETIME64[M]"},
+    65_538: {"dtype": np.dtype("datetime64[W]"), "scalar_type": "DATETIME64[W]"},
+    65_539: {"dtype": np.dtype("datetime64[D]"), "scalar_type": "DATETIME64[D]"},
+    65_540: {"dtype": np.dtype("datetime64[h]"), "scalar_type": "DATETIME64[h]"},
+    65_541: {"dtype": np.dtype("datetime64[m]"), "scalar_type": "DATETIME64[m]"},
+    65_542: {"dtype": np.dtype("datetime64[s]"), "scalar_type": "DATETIME64[s]"},
+    65_543: {"dtype": np.dtype("datetime64[ms]"), "scalar_type": "DATETIME64[ms]"},
+    65_544: {"dtype": np.dtype("datetime64[us]"), "scalar_type": "DATETIME64[us]"},
+    65_545: {"dtype": np.dtype("datetime64[ns]"), "scalar_type": "DATETIME64[ns]"},
+    65_546: {"dtype": np.dtype("datetime64[ps]"), "scalar_type": "DATETIME64[ps]"},
+    65_547: {"dtype": np.dtype("datetime64[fs]"), "scalar_type": "DATETIME64[fs]"},
+    65_548: {"dtype": np.dtype("datetime64[as]"), "scalar_type": "DATETIME64[as]"},
 }
 serialize_lookup = {
     v["dtype"]: {"type_id": k, "scalar_type": v["scalar_type"]}
@@ -269,14 +269,13 @@ class Blob:
         try:
             type_id = serialize_lookup[array.dtype]["type_id"]
         except KeyError:
+            # U is for unicode string
             if array.dtype.char == "U":
                 type_id = serialize_lookup[np.dtype("O")]["type_id"]
-                pass
             else:
-                raise DataJointError("Type %s is ambiguous or unknown" % array.dtype)
+                raise DataJointError(f"Type {array.dtype} is ambiguous or unknown")
 
         blob += np.array([type_id, is_complex], dtype=np.uint32).tobytes()
-        # array of dtype('O'), U is for unicode string
         if (
             array.dtype.char == "U"
             or serialize_lookup[array.dtype]["scalar_type"] == "VOID"
@@ -286,7 +285,6 @@ class Blob:
                 for it in (self.pack_blob(e) for e in array.flatten(order="F"))
             )
             self.set_dj0()  # not supported by original mym
-        # array of dtype('c')
         elif serialize_lookup[array.dtype]["scalar_type"] == "CHAR":
             blob += (
                 array.view(np.uint8).astype(np.uint16).tobytes()
