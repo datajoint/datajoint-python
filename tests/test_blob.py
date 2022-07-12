@@ -239,11 +239,13 @@ def test_datetime_serialization_speed():
         number=10,
         globals=globals(),
     )
+    print(f"np time {optimized_exe_time}")
     baseline_exe_time = timeit.timeit(
         setup="myarr2=pack(np.array([datetime(2022,10,13,3,3,13) for _ in range (0, 10000)]))",
         stmt="unpack(myarr2)",
         number=10,
         globals=globals(),
     )
+    print(f"python time {baseline_exe_time}")
 
     assert optimized_exe_time * 1000 < baseline_exe_time
