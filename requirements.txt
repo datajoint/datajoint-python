@@ -4,7 +4,7 @@ pyparsing
 ipython
 pandas
 tqdm
-networkx
+networkx<=2.6.3
 pydot
 minio>=7.0.0
 matplotlib

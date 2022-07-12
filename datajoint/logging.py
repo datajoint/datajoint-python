@@ -21,12 +21,7 @@ def excepthook(exc_type, exc_value, exc_traceback):
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
         return
 
-    if logger.getEffectiveLevel() == 10:
-        logger.debug(
-            "Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback)
-        )
-    else:
-        logger.error(f"Uncaught exception: {exc_value}")
+    logger.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
 
 
 sys.excepthook = excepthook

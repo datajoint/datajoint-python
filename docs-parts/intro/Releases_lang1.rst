@@ -1,3 +1,9 @@
+0.13.7 -- Jul 13, 2022
+----------------------
+* Bugfix - Fix networkx incompatable change by version pinning to 2.6.3 PR #1036 (#1035)
+* Add - Support for serializing numpy datetime64 types PR #1036 (#1022)
+* Update - Add traceback to default logging PR #1036
+
 0.13.6 -- Jun 13, 2022
 ----------------------
 * Add - Config option to set threshold for when to stop using checksums for filepath stores. PR #1025
