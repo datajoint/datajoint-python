@@ -198,5 +198,5 @@ def test_schema_progress():
                    'error': 0,
                    'ignore': 0,
                    'remaining': 0}}).T
-    schema_progress = schema_simple.progress()
+    schema_progress = schema.schema.progress()
     assert expected_progress.equals(schema_progress)
