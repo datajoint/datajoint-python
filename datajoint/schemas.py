@@ -4,6 +4,7 @@ import inspect
 import re
 import itertools
 import collections
+import pandas as pd
 from .connection import conn
 from .diagram import Diagram, _get_tier
 from .settings import config
@@ -14,6 +15,7 @@ from .heading import Heading
 from .utils import user_choice, to_camel_case
 from .user_tables import Part, Computed, Imported, Manual, Lookup
 from .table import lookup_class_name, Log, FreeTable
+from .expression import U
 import types
 
 logger = logging.getLogger(__name__)
@@ -375,6 +377,39 @@ class Schema:
         return [t for d, t in (full_t.replace('`', '').split('.')
                                for full_t in Diagram(self).topological_sort())
                 if d == self.database]
+
+    def progress(self):
+        # get job status from jobs table
+        job_status_df = {job_status: U('table_name').aggr(
+            self.jobs & f'status = "{job_status}"',
+            **{job_status: 'count(table_name)'}).fetch(format='frame')
+                         for job_status in ('reserved', 'error', 'ignore')}
+        # get imported/computed tables
+        _tables = {}
+        self.spawn_missing_classes(context=_tables)
+        process_tables = {process.table_name: process
+                          for process in _tables.values() if process.table_name.startswith('_')}
+        # analyse progress of the schema
+        workflow_status = pd.DataFrame(list(process_tables), columns=['table_name'])
+        workflow_status.set_index('table_name', inplace=True)
+
+        workflow_status['total'] = [len(process_tables[t].key_source)
+                                    for t in workflow_status.index]
+        workflow_status['in_queue'] = [len(process_tables[t].key_source
+                                           - process_tables[t].proj())
+                                       for t in workflow_status.index]
+
+        workflow_status = workflow_status.join(job_status_df['reserved'].join(
+            job_status_df['error'], how='outer').join(
+            job_status_df['ignore'], how='outer'), how='left')
+        workflow_status.fillna(0, inplace=True)
+
+        workflow_status['remaining'] = (workflow_status.in_queue
+                                        - workflow_status.reserved
+                                        - workflow_status.error
+                                        - workflow_status.ignore)
+
+        return workflow_status
 
 
 class VirtualModule(types.ModuleType):
