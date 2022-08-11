@@ -379,6 +379,18 @@ class Schema:
                 if d == self.database]
 
     def progress(self):
+        """
+        Function to retrieve the processing status of this schema
+        Return a dataframe with all Imported/Computed tables, and their corresponding processing status:
+            + total - number of entries in key_source
+            + in queue - subset of the key_source that is not yet populated
+            + reserved - number of reserved jobs
+            + error - number of error jobs
+            + ignore - number of ignore jobs
+            + remaining - number of remaining jobs to be worked on
+        (note: tables not topologically sorted)
+        :return: pandas DataFrame of the table's progress
+        """
         # get job status from jobs table
         job_status_df = {job_status: U('table_name').aggr(
             self.jobs & f'status = "{job_status}"',
