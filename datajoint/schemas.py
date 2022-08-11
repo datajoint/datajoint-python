@@ -392,36 +392,36 @@ class Schema:
         :return: pandas DataFrame of the table's progress
         """
         # get job status from jobs table
-        job_status_df = {job_status: U('table_name').aggr(
-            self.jobs & f'status = "{job_status}"',
-            **{job_status: 'count(table_name)'}).fetch(format='frame')
-                         for job_status in ('reserved', 'error', 'ignore')}
+        job_status = {status: U('table_name').aggr(
+            self.jobs & f'status = "{status}"',
+            **{status: 'count(table_name)'}).fetch(format='frame')
+                         for status in ('reserved', 'error', 'ignore')}
         # get imported/computed tables
         _tables = {}
         self.spawn_missing_classes(context=_tables)
         process_tables = {process.table_name: process
                           for process in _tables.values() if process.table_name.startswith('_')}
         # analyse progress of the schema
-        workflow_status = pd.DataFrame(list(process_tables), columns=['table_name'])
-        workflow_status.set_index('table_name', inplace=True)
+        schema_progress = pd.DataFrame(list(process_tables), columns=['table_name'])
+        schema_progress.set_index('table_name', inplace=True)
 
-        workflow_status['total'] = [len(process_tables[t].key_source)
-                                    for t in workflow_status.index]
-        workflow_status['in_queue'] = [len(process_tables[t].key_source
+        schema_progress['total'] = [len(process_tables[t].key_source)
+                                    for t in schema_progress.index]
+        schema_progress['in_queue'] = [len(process_tables[t].key_source
                                            - process_tables[t].proj())
-                                       for t in workflow_status.index]
+                                       for t in schema_progress.index]
 
-        workflow_status = workflow_status.join(job_status_df['reserved'].join(
-            job_status_df['error'], how='outer').join(
-            job_status_df['ignore'], how='outer'), how='left')
-        workflow_status.fillna(0, inplace=True)
+        schema_progress = schema_progress.join(job_status['reserved'].join(
+            job_status['error'], how='outer').join(
+            job_status['ignore'], how='outer'), how='left')
+        schema_progress.fillna(0, inplace=True)
 
-        workflow_status['remaining'] = (workflow_status.in_queue
-                                        - workflow_status.reserved
-                                        - workflow_status.error
-                                        - workflow_status.ignore)
+        schema_progress['remaining'] = (schema_progress.in_queue
+                                        - schema_progress.reserved
+                                        - schema_progress.error
+                                        - schema_progress.ignore)
 
-        return workflow_status
+        return schema_progress
 
 
 class VirtualModule(types.ModuleType):
