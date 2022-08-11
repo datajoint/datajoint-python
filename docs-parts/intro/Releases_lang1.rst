@@ -1,17 +1,49 @@
-0.13.3 -- TBD
+0.13.7 -- Jul 13, 2022
+----------------------
+* Bugfix - Fix networkx incompatable change by version pinning to 2.6.3 PR #1036 (#1035)
+* Add - Support for serializing numpy datetime64 types PR #1036 (#1022)
+* Update - Add traceback to default logging PR #1036
+
+0.13.6 -- Jun 13, 2022
+----------------------
+* Add - Config option to set threshold for when to stop using checksums for filepath stores. PR #1025
+* Add - Unified package level logger for package (#667) PR #1031
+* Update - Swap various datajoint messages, warnings, etc. to use the new logger. (#667) PR #1031
+* Bugfix - Fix query caching deleting non-datajoint files PR #1027
+* Update - Minimum Python version for Datajoint-Python is now 3.7 PR #1027
+
+0.13.5 -- May 19, 2022
+----------------------
+* Update - Import ABC from collections.abc for Python 3.10 compatibility
+* Bugfix - Fix multiprocessing value error (#1013) PR #1026
+
+0.13.4 -- Mar 28, 2022
+----------------------
+* Add - Allow reading blobs produced by legacy 32-bit compiled mYm library for matlab. PR #995
+* Bugfix - Add missing ``jobs`` argument for multiprocessing PR #997
+* Add - Test for multiprocessing PR #1008
+* Bugfix - Fix external store key name doesn't allow '-' (#1005) PR #1006
+* Add - Adopted black formatting into code base PR #998
+
+0.13.3 -- Feb 9, 2022
 ----------------------
 * Bugfix - Fix error in listing ancestors, descendants with part tables.
 * Bugfix - Fix Python 3.10 compatibility (#983) PR #972
 * Bugfix - Allow renaming non-conforming attributes in proj (#982) PR #972
 * Add - Expose proxy feature for S3 external stores (#961) PR #962
+* Add - implement multiprocessing in populate (#695) PR #704, #969
 * Bugfix - Dependencies not properly loaded on populate. (#902) PR #919
 * Bugfix - Replace use of numpy aliases of built-in types with built-in type. (#938) PR #939
+* Bugfix - Deletes and drops must include the master of each part. (#151, #374) PR #957
 * Bugfix - `ExternalTable.delete` should not remove row on error (#953) PR #956
 * Bugfix - Fix error handling of remove_object function in `s3.py` (#952) PR #955
 * Bugfix - Fix sql code generation to comply with sql mode ``ONLY_FULL_GROUP_BY`` (#916) PR #965
 * Bugfix - Fix count for left-joined ``QueryExpressions`` (#951) PR #966
 * Bugfix - Fix assertion error when performing a union into a join (#930) PR #967
 * Bugfix - Fix regression issue with `DISTINCT` clause and `GROUP_BY` (#914) PR #963
+* Update `~jobs.error_stack` from blob to mediumblob to allow error stacks >64kB in jobs (#984) PR #986
+* Bugfix - Fix error when performing a union on multiple tables (#926) PR #964
+* Add - Allow optional keyword arguments for `make()` in `populate()` PR #971
 
 0.13.2 -- May 7, 2021
 ----------------------
@@ -140,7 +172,7 @@
 
 0.11.1 -- Nov 15, 2018
 ----------------------
-* Fix ordering of attributes in proj (#483 and #516)
+* Fix ordering of attributes in proj (#483, #516)
 * Prohibit direct insert into auto-populated tables (#511)
 
 0.11.0 -- Oct 25, 2018

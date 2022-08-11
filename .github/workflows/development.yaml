@@ -9,6 +9,23 @@ on:
       - '**' # every branch
       - '!stage*' # exclude branches beginning with stage
 jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_CLIENT_TIMEOUT: "120"
+      COMPOSE_HTTP_TIMEOUT: "120"
+    steps:
+      - uses: actions/checkout@v2
+      - name: Compile docs static artifacts
+        run: |
+          export HOST_UID=$(id -u)
+          docker-compose -f ./docs-api/docker-compose.yaml up --exit-code-from docs-builder --build 
+      - name: Add docs static artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: docs-api-static
+          path: docs-api/build/html
+          retention-days: 1
   test:
     if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -19,8 +36,6 @@ jobs:
         include:
           - py_ver: "3.7"
             mysql_ver: "5.7"
-          - py_ver: "3.6"
-            mysql_ver: "5.7"
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{matrix.py_ver}}
@@ -30,7 +45,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install flake8
+          pip install flake8 black
       - name: Run syntax tests
         run: flake8 datajoint --count --select=E9,F63,F7,F82 --show-source --statistics
       - name: Run primary tests
@@ -47,5 +62,46 @@ jobs:
         run: docker-compose -f LNX-docker-compose.yml up --build --exit-code-from app
       - name: Run style tests
         run: |
-          flake8 --ignore=E121,E123,E126,E226,E24,E704,W503,W504,E722,F401,W605 datajoint \
+          flake8 --ignore=E203,E722,F401,W503 datajoint \
                  --count --max-complexity=62 --max-line-length=127 --statistics
+          black datajoint --check -v
+          black tests --check -v
+  publish-docs:
+    if: |
+      github.event_name == 'push' &&
+      (
+        github.repository_owner == 'datajoint' ||
+        github.repository_owner == 'datajoint-company' ||
+        github.repository_owner == 'dj-sciops'
+      )
+    needs: build-docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Fetch docs static artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: docs-api-static
+          path: docs-api/build/html
+      - name: Commit documentation changes
+        run: |
+          git clone https://github.com/${GITHUB_REPOSITORY}.git \
+              --branch gh-pages --single-branch gh-pages
+          rm -R gh-pages/*
+          cp -r docs-api/build/html/* gh-pages/
+          cp .gitignore gh-pages/
+          touch gh-pages/.nojekyll
+          echo "docs-api.datajoint.org" > gh-pages/CNAME
+          cd gh-pages
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add . --all
+          git commit -m "Update documentation" -a || true
+          # The above command will fail if no changes were present, so we ignore
+          # the return code.
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          branch: gh-pages
+          directory: gh-pages
+          github_token: ${{secrets.GITHUB_TOKEN}}

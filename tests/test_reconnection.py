@@ -24,7 +24,7 @@ class TestReconnect:
     def test_reconnect(self):
         assert_true(self.conn.is_connected, "Connection should be alive")
         self.conn.close()
-        self.conn.query('SHOW DATABASES;', reconnect=True).fetchall()
+        self.conn.query("SHOW DATABASES;", reconnect=True).fetchall()
         assert_true(self.conn.is_connected, "Connection should be alive")
 
     @raises(DataJointError)
@@ -32,4 +32,4 @@ class TestReconnect:
         assert_true(self.conn.is_connected, "Connection should be alive")
         with self.conn.transaction:
             self.conn.close()
-            self.conn.query('SHOW DATABASES;', reconnect=True).fetchall()
+            self.conn.query("SHOW DATABASES;", reconnect=True).fetchall()

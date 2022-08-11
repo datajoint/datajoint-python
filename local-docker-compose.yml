@@ -34,7 +34,7 @@ services:
       interval: 1s
   fakeservices.datajoint.io:
     <<: *net
-    image: datajoint/nginx:v0.0.19
+    image: datajoint/nginx:v0.2.1
     environment:
     - ADD_db_TYPE=DATABASE
     - ADD_db_ENDPOINT=db:3306
@@ -82,7 +82,7 @@ services:
       - -c
       - |
         set -e
-        pip install --user nose nose-cov coveralls flake8 ptvsd
+        pip install --user nose nose-cov coveralls flake8 ptvsd black
         pip install -e .
         pip freeze | grep datajoint
         ## You may run the below tests once sh'ed into container i.e. docker exec -it datajoint-python_app_1 sh
@@ -90,7 +90,8 @@ services:
         # nosetests -vs --tests=tests.test_external_class:test_insert_and_fetch; #run specific basic test
         # nosetests -vs --tests=tests.test_fetch:TestFetch.test_getattribute_for_fetch1; #run specific Class test
         # flake8 datajoint --count --select=E9,F63,F7,F82 --show-source --statistics
-        # flake8 --ignore=E121,E123,E126,E226,E24,E704,W503,W504,E722,F401,W605 datajoint --count --max-complexity=62 --max-line-length=127 --statistics
+        # flake8 --ignore=E203,E722,F401,W503 datajoint --count --max-complexity=62 --max-line-length=127 --statistics
+        # black datajoint --check -v
         ## Interactive Jupyter Notebook environment
         jupyter notebook &
         ## Remote debugger
