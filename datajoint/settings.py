@@ -248,6 +248,8 @@ class Config(collections.abc.MutableMapping):
                 self._conf[key] = value
             else:
                 raise DataJointError("Validator for {0:s} did not pass".format(key))
+            if "loglevel" in key:
+                logger.setLevel(value)
 
 
 # Load configuration from file
@@ -272,6 +274,7 @@ mapping = {
             "database.password",
             "external.aws_access_key_id",
             "external.aws_secret_access_key",
+            "loglevel",
         ),
         map(
             os.getenv,
@@ -281,6 +284,7 @@ mapping = {
                 "DJ_PASS",
                 "DJ_AWS_ACCESS_KEY_ID",
                 "DJ_AWS_SECRET_ACCESS_KEY",
+                "DJ_LOG_LEVEL",
             ),
         ),
     )
