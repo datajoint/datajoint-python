@@ -248,7 +248,8 @@ class Config(collections.abc.MutableMapping):
                 self._conf[key] = value
             else:
                 raise DataJointError("Validator for {0:s} did not pass".format(key))
-            if "loglevel" in key:
+            valid_logging_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+            if "loglevel" in key and key in valid_logging_levels:
                 logger.setLevel(value)
 
 
