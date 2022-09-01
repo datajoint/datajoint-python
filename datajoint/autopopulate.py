@@ -160,6 +160,7 @@ class AutoPopulate:
         display_progress=False,
         processes=1,
         make_kwargs=None,
+        return_success_count=False
     ):
         """
         ``table.populate()`` calls ``table.make(key)`` for every primary key in
@@ -217,6 +218,7 @@ class AutoPopulate:
         processes = min(_ for _ in (processes, nkeys, mp.cpu_count()) if _)
 
         error_list = []
+        success_list = []
         populate_kwargs = dict(
             suppress_errors=suppress_errors,
             return_exception_objects=return_exception_objects,
@@ -227,9 +229,12 @@ class AutoPopulate:
             for key in (
                 tqdm(keys, desc=self.__class__.__name__) if display_progress else keys
             ):
-                error = self._populate1(key, jobs, **populate_kwargs)
-                if error is not None:
-                    error_list.append(error)
+                status = self._populate1(key, jobs, **populate_kwargs)
+                if status is not None:
+                    if isinstance(status, tuple):
+                        error_list.append(status)
+                    elif status:
+                        success_list.append(1)
         else:
             # spawn multiple processes
             self.connection.close()  # disconnect parent process from MySQL server
@@ -241,9 +246,12 @@ class AutoPopulate:
                 if display_progress
                 else contextlib.nullcontext()
             ) as progress_bar:
-                for error in pool.imap(_call_populate1, keys, chunksize=1):
-                    if error is not None:
-                        error_list.append(error)
+                for status in pool.imap(_call_populate1, keys, chunksize=1):
+                    if status is not None:
+                        if isinstance(status, tuple):
+                            error_list.append(status)
+                        elif status:
+                            success_list.append(1)
                     if display_progress:
                         progress_bar.update()
             self.connection.connect()  # reconnect parent process to MySQL server
@@ -252,8 +260,12 @@ class AutoPopulate:
         if reserve_jobs:
             signal.signal(signal.SIGTERM, old_handler)
 
+        if suppress_errors and return_success_count:
+            return sum(success_list), error_list
         if suppress_errors:
             return error_list
+        if return_success_count:
+            return sum(success_list)
 
     def _populate1(
         self, key, jobs, suppress_errors, return_exception_objects, make_kwargs=None
@@ -311,6 +323,7 @@ class AutoPopulate:
                     )
                     if jobs is not None:
                         jobs.complete(self.target.table_name, self._job_key(key))
+                    return True
                 finally:
                     self.__class__._allow_insert = False
 
