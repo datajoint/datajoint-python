@@ -57,9 +57,8 @@ class TestPopulate:
         # test simple populate
         assert_true(self.subject, "root tables are empty")
         assert_false(self.experiment, "table already filled?")
-        before_count = len(self.experiment)
         success_count = self.experiment.populate(return_success_count=True)
-        assert_equal(len(self.experiment) - before_count, success_count)
+        assert_equal(len(self.experiment.key_source & self.experiment), success_count)
 
         # test restricted populate
         assert_false(self.trial, "table already filled?")
