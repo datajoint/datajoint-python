@@ -53,6 +53,21 @@ class TestPopulate:
         assert_true(self.ephys)
         assert_true(self.channel)
 
+    def test_populate_with_success_count(self):
+        # test simple populate
+        assert_true(self.subject, "root tables are empty")
+        assert_false(self.experiment, "table already filled?")
+        success_count = self.experiment.populate(return_success_count=True)
+        assert_equal(len(self.experiment), success_count)
+
+        # test restricted populate
+        assert_false(self.trial, "table already filled?")
+        restriction = self.subject.proj(animal="subject_id").fetch("KEY")[0]
+        d = self.trial.connection.dependencies
+        d.load()
+        success_count, _ = self.trial.populate(restriction, return_success_count=True, suppress_errors=True)
+        assert_equal(len(self.trial.key_source & self.trial), success_count)
+
     def test_allow_direct_insert(self):
         assert_true(self.subject, "root tables are empty")
         key = self.subject.fetch("KEY", limit=1)[0]
