@@ -65,7 +65,9 @@ class TestPopulate:
         restriction = self.subject.proj(animal="subject_id").fetch("KEY")[0]
         d = self.trial.connection.dependencies
         d.load()
-        success_count, _ = self.trial.populate(restriction, return_success_count=True, suppress_errors=True)
+        success_count, _ = self.trial.populate(
+            restriction, return_success_count=True, suppress_errors=True
+        )
         assert_equal(len(self.trial.key_source & self.trial), success_count)
 
     def test_allow_direct_insert(self):
