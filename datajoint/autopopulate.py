@@ -160,7 +160,7 @@ class AutoPopulate:
         display_progress=False,
         processes=1,
         return_success_count=False,
-        make_kwargs=None
+        make_kwargs=None,
     ):
         """
         ``table.populate()`` calls ``table.make(key)`` for every primary key in
