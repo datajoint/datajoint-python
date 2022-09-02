@@ -159,8 +159,8 @@ class AutoPopulate:
         max_calls=None,
         display_progress=False,
         processes=1,
-        make_kwargs=None,
-        return_success_count=False
+        return_success_count=False,
+        make_kwargs=None
     ):
         """
         ``table.populate()`` calls ``table.make(key)`` for every primary key in
@@ -176,6 +176,8 @@ class AutoPopulate:
         :param max_calls: if not None, populate at most this many keys
         :param display_progress: if True, report progress_bar
         :param processes: number of processes to use. Set to None to use all cores
+        :param return_success_count: if True, return the count of successful `make()` calls.
+            If suppress_errors is also True, returns a tuple: (success_count, errors)
         :param make_kwargs: Keyword arguments which do not affect the result of computation
             to be passed down to each ``make()`` call. Computation arguments should be
             specified within the pipeline e.g. using a `dj.Lookup` table.
