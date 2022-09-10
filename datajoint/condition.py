@@ -96,9 +96,9 @@ def make_condition(query_expression, condition, columns):
 
     def prep_value(k, v):
         """prepare SQL condition"""
-        attr = k.split(".", 1)[0]
         if v is None and "." not in k:
             return f"`{k}` IS NULL"
+        attr = k.split(".", 1)[0]
         if query_expression.heading[attr].uuid:
             if not isinstance(v, uuid.UUID):
                 try:

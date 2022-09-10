@@ -143,7 +143,7 @@ class Heading:
         return [
             k
             for k, v in self.attributes.items()
-            if not v.is_blob and not v.is_attachment and not v.is_filepath
+            if not (v.is_blob or v.is_attachment or v.is_filepath or v.json)
         ]
 
     @property
