@@ -126,15 +126,17 @@ def make_condition(query_expression, condition, columns):
             return f'{k}="{v.replace("%", "%%")}"'
         return f"{k}={v}"
 
+    def template(restrictions, operator=None):
+        return ("NOT (%s)" if negate else "%s") % (
+            restrictions[0]
+            if len(restrictions) == 1
+            else f"({f') {operator} ('.join(restrictions)})"
+        )
+
     negate = False
     while isinstance(condition, Not):
         negate = not negate
         condition = condition.restriction
-    template = lambda restrictions, operator=None: ("NOT (%s)" if negate else "%s") % (
-        restrictions[0]
-        if len(restrictions) == 1
-        else f"({f') {operator} ('.join(restrictions)})"
-    )
 
     # restrict by string
     if isinstance(condition, str):
