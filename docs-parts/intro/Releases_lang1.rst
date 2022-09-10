@@ -1,3 +1,7 @@
+0.14.0 -- TBA
+----------------------
+* Add ``json`` data type
+
 0.13.7 -- Jul 13, 2022
 ----------------------
 * Bugfix - Fix networkx incompatable change by version pinning to 2.6.3 PR #1036 (#1035)
