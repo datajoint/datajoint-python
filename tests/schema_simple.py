@@ -279,3 +279,56 @@ class OutfitLaunch(dj.Lookup):
         piece: varchar(20)
         """
         contents = [(0, "jeans"), (0, "sneakers"), (0, "polo")]
+
+
+@schema
+class Team(dj.Lookup):
+    definition = """
+    name: varchar(40)
+    ---
+    car=null: json
+    """
+    contents = [
+        (
+            "engineering",
+            {
+                "name": "Rever",
+                "length": 20.5,
+                "inspected": True,
+                "tire_pressure": [32, 31, 33, 34],
+                "headlights": [
+                    {
+                        "side": "left",
+                        "hyper_white": None,
+                    },
+                    {
+                        "side": "right",
+                        "hyper_white": None,
+                    },
+                ],
+            },
+        ),
+        (
+            "business",
+            {
+                "name": "Chaching",
+                "length": 20,
+                "safety_inspected": False,
+                "tire_pressure": [34, 30, 27, 32],
+                "headlights": [
+                    {
+                        "side": "left",
+                        "hyper_white": True,
+                    },
+                    {
+                        "side": "right",
+                        "hyper_white": True,
+                    },
+                ],
+            },
+        ),
+        (
+            "marketing",
+            None,
+        ),
+    ]

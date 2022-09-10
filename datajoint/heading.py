@@ -28,6 +28,7 @@ default_attribute_properties = (
         numeric=None,
         string=None,
         uuid=False,
+        json=None,
         is_blob=False,
         is_attachment=False,
         is_filepath=False,
@@ -291,6 +292,7 @@ class Heading:
                 ),
                 is_blob=bool(TYPE_PATTERN["INTERNAL_BLOB"].match(attr["type"])),
                 uuid=False,
+                json=bool(TYPE_PATTERN["JSON"].match(attr["type"])),
                 is_attachment=False,
                 is_filepath=False,
                 adapter=None,
@@ -376,10 +378,15 @@ class Heading:
                 )
 
             if attr["in_key"] and any(
-                (attr["is_blob"], attr["is_attachment"], attr["is_filepath"])
+                (
+                    attr["is_blob"],
+                    attr["is_attachment"],
+                    attr["is_filepath"],
+                    attr["json"],
+                )
             ):
                 raise DataJointError(
-                    "Blob, attachment, or filepath attributes are not allowed in the primary key"
+                    "Json, Blob, attachment, or filepath attributes are not allowed in the primary key"
                 )
 
             if (

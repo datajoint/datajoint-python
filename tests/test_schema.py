@@ -155,6 +155,7 @@ def test_list_tables():
             "#website",
             "profile",
             "profile__website",
+            "#team",
         ]
     ) == set(schema_simple.list_tables())
 

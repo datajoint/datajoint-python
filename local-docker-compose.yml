@@ -1,4 +1,4 @@
-# docker-compose -f local-docker-compose.yml --env-file LNX.env up --build
+# docker compose -f local-docker-compose.yml --env-file LNX.env up --build
 version: '2.2'
 x-net: &net
   networks:
@@ -34,7 +34,7 @@ services:
       interval: 1s
   fakeservices.datajoint.io:
     <<: *net
-    image: datajoint/nginx:v0.2.1
+    image: datajoint/nginx:v0.2.3
     environment:
     - ADD_db_TYPE=DATABASE
     - ADD_db_ENDPOINT=db:3306
@@ -82,7 +82,7 @@ services:
       - -c
       - |
         set -e
-        pip install --user nose nose-cov coveralls flake8 ptvsd black
+        pip install --user nose nose-cov coveralls flake8 ptvsd black faker
         pip install -e .
         pip freeze | grep datajoint
         ## You may run the below tests once sh'ed into container i.e. docker exec -it datajoint-python_app_1 sh
@@ -97,6 +97,7 @@ services:
         ## Remote debugger
         while true
         do
+          set +e
           python -m ptvsd --host 0.0.0.0 --port 5678 --wait .
           sleep 2
         done

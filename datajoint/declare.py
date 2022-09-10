@@ -24,6 +24,7 @@ TYPE_PATTERN = {
         DECIMAL=r"(decimal|numeric)(\s*\(.+\))?(\s+unsigned)?$",
         FLOAT=r"(double|float|real)(\s*\(.+\))?(\s+unsigned)?$",
         STRING=r"(var)?char\s*\(.+\)$",
+        JSON=r"json$",
         ENUM=r"enum\s*\(.+\)$",
         BOOL=r"bool(ean)?$",  # aliased to tinyint(1)
         TEMPORAL=r"(date|datetime|time|timestamp|year)(\s*\(.+\))?$",
