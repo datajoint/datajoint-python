@@ -11,9 +11,7 @@ import pandas
 import json
 from .errors import DataJointError
 
-attribute_pattern = re.compile(
-    r"^(?P<attr>\w+)(\.(?P<path>[\w.*\[\]]+))?(:(?P<type>\w+))?$"
-)
+json_pattern = re.compile(r"^(?P<attr>\w+)(\.(?P<path>[\w.*\[\]]+))?(:(?P<type>\w+))?$")
 
 
 class PromiscuousOperand:
@@ -100,7 +98,7 @@ def make_condition(query_expression, condition, columns):
 
     def prep_value(k, v):
         """prepare SQL condition"""
-        key_match = re.match(attribute_pattern, k).groupdict()
+        key_match = re.match(json_pattern, k).groupdict()
         if (
             query_expression.heading[key_match["attr"]].json
             and key_match["path"] is not None

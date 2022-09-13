@@ -1,6 +1,9 @@
 0.14.0 -- TBA
 ----------------------
 * Add ``json`` data type
+- Fix lingering prints by replacing with logs
+- ``table.progress()`` defaults to no stdout
+- ``table.describe()`` defaults to no stdout
 
 0.13.7 -- Jul 13, 2022
 ----------------------

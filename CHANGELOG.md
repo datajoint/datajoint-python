@@ -2,6 +2,9 @@
 
 ### 0.14.0 -- TBA
 * Add `json` data type
+- Fix lingering prints by replacing with logs
+- `table.progress()` defaults to no stdout
+- `table.describe()` defaults to no stdout
 
 ### 0.13.7 -- Jul 13, 2022
 * Bugfix - Fix networkx incompatable change by version pinning to 2.6.3 PR #1036 (#1035)
