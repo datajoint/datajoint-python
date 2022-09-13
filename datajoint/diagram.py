@@ -385,9 +385,7 @@ else:
                 if name.split(".")[0] in self.context:
                     cls = eval(name, self.context)
                     assert issubclass(cls, Table)
-                    description = (
-                        cls().describe(context=self.context, printout=False).split("\n")
-                    )
+                    description = cls().describe(context=self.context).split("\n")
                     description = (
                         "-" * 30
                         if q.startswith("---")

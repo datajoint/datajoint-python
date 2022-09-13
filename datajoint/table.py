@@ -117,11 +117,11 @@ class Table(QueryExpression):
             frame = inspect.currentframe().f_back
             context = dict(frame.f_globals, **frame.f_locals)
             del frame
-        old_definition = self.describe(context=context, printout=False)
+        old_definition = self.describe(context=context)
         sql, external_stores = alter(self.definition, old_definition, context)
         if not sql:
             if prompt:
-                print("Nothing to alter.")
+                logger.info("Nothing to alter.")
         else:
             sql = "ALTER TABLE {tab}\n\t".format(
                 tab=self.full_table_name
@@ -141,7 +141,7 @@ class Table(QueryExpression):
                         table_info=self.heading.table_info
                     )
                     if prompt:
-                        print("Table altered")
+                        logger.info("Table altered")
                     self._log("Altered " + self.full_table_name)
 
     def from_clause(self):
@@ -580,7 +580,7 @@ class Table(QueryExpression):
         # Confirm and commit
         if delete_count == 0:
             if safemode:
-                print("Nothing to delete.")
+                logger.info("Nothing to delete.")
             if transaction:
                 self.connection.cancel_transaction()
         else:
@@ -588,12 +588,12 @@ class Table(QueryExpression):
                 if transaction:
                     self.connection.commit_transaction()
                 if safemode:
-                    print("Deletes committed.")
+                    logger.info("Deletes committed.")
             else:
                 if transaction:
                     self.connection.cancel_transaction()
                 if safemode:
-                    print("Deletes cancelled")
+                    logger.info("Deletes cancelled")
         return delete_count
 
     def drop_quick(self):
@@ -640,12 +640,14 @@ class Table(QueryExpression):
 
         if config["safemode"]:
             for table in tables:
-                print(table, "(%d tuples)" % len(FreeTable(self.connection, table)))
+                logger.info(
+                    table, "(%d tuples)" % len(FreeTable(self.connection, table))
+                )
             do_drop = user_choice("Proceed?", default="no") == "yes"
         if do_drop:
             for table in reversed(tables):
                 FreeTable(self.connection, table).drop_quick()
-            print("Tables dropped.  Restart kernel.")
+            logger.info("Tables dropped.  Restart kernel.")
 
     @property
     def size_on_disk(self):
@@ -665,7 +667,7 @@ class Table(QueryExpression):
             "show_definition is deprecated. Use the describe method instead."
         )
 
-    def describe(self, context=None, printout=True):
+    def describe(self, context=None, printout=False):
         """
         :return:  the definition string for the relation using DataJoint DDL.
         """
@@ -746,7 +748,7 @@ class Table(QueryExpression):
                 unique="UNIQUE " if v["unique"] else "", attrs=", ".join(k)
             )
         if printout:
-            print(definition)
+            logger.info("\n" + definition)
         return definition
 
     def _update(self, attrname, value=None):

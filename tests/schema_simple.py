@@ -312,7 +312,7 @@ class Team(dj.Lookup):
             "business",
             {
                 "name": "Chaching",
-                "length": 20,
+                "length": 100,
                 "safety_inspected": False,
                 "tire_pressure": [34, 30, 27, 32],
                 "headlights": [

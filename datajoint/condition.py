@@ -11,6 +11,10 @@ import pandas
 import json
 from .errors import DataJointError
 
+attribute_pattern = re.compile(
+    r"^(?P<attr>\w+)(\.(?P<path>[\w.*\[\]]+))?(:(?P<type>\w+))?$"
+)
+
 
 class PromiscuousOperand:
     """
@@ -96,10 +100,21 @@ def make_condition(query_expression, condition, columns):
 
     def prep_value(k, v):
         """prepare SQL condition"""
-        if v is None and "." not in k:
-            return f"`{k}` IS NULL"
-        attr = k.split(".", 1)[0]
-        if query_expression.heading[attr].uuid:
+        key_match = re.match(attribute_pattern, k).groupdict()
+        if (
+            query_expression.heading[key_match["attr"]].json
+            and key_match["path"] is not None
+        ):
+            k = f'JSON_VALUE(`{key_match["attr"]}`, "$.{key_match["path"]}"%s)' % (
+                f" RETURNING {key_match['type']}" if key_match["type"] else ""
+            )
+            if isinstance(v, dict):
+                return f"{k}='{json.dumps(v)}'"
+        else:
+            k = f"`{k}`"
+        if v is None:
+            return f"{k} IS NULL"
+        if query_expression.heading[key_match["attr"]].uuid:
             if not isinstance(v, uuid.UUID):
                 try:
                     v = uuid.UUID(v)
@@ -107,19 +122,16 @@ def make_condition(query_expression, condition, columns):
                     raise DataJointError(
                         "Badly formed UUID {v} in restriction by `{k}`".format(k=k, v=v)
                     )
-            return f"`{k}`=X'{v.bytes.hex()}'"
-        if query_expression.heading[attr].json:
-            k = "`{}`->>'$.{}'".format(*k.split(".", 1))
-            if v is None:
-                return f"{k}='null'"
-            if isinstance(v, bool):
-                return f"{k}='{str(v).lower()}'"
-            if isinstance(v, dict):
-                return f"{k}='{json.dumps(v)}'"
-        else:
-            k = f"`{k}`"
+            return f"{k}=X'{v.bytes.hex()}'"
         if isinstance(
-            v, (datetime.date, datetime.datetime, datetime.time, decimal.Decimal, list)
+            v,
+            (
+                datetime.date,
+                datetime.datetime,
+                datetime.time,
+                decimal.Decimal,
+                list,
+            ),
         ):
             return f'{k}="{v}"'
         if isinstance(v, str):

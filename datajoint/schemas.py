@@ -449,7 +449,7 @@ class Schema:
                 defi=re.sub(
                     r"`([^`]+)`.`([^`]+)`",
                     replace,
-                    FreeTable(self.connection, table).describe(printout=False),
+                    FreeTable(self.connection, table).describe(),
                 ).replace("\n", "\n    " + indent),
             )
 

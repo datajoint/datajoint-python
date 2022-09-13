@@ -37,7 +37,7 @@ def test_describe():
     rel = Team()
     context = inspect.currentframe().f_globals
     s1 = declare(rel.full_table_name, rel.definition, context)
-    s2 = declare(rel.full_table_name, rel.describe(printout=False), context)
+    s2 = declare(rel.full_table_name, rel.describe(), context)
     assert s1 == s2
 
 
@@ -45,33 +45,41 @@ def test_query():
     # dict
     assert (Team & {"car.name": "Chaching"}).fetch1("name") == "business"
     assert (Team & {"car.length": 20.5}).fetch1("name") == "engineering"
-    assert (Team & {"car.inspected": True}).fetch1("name") == "engineering"
-    assert (Team & {"car.safety_inspected": False}).fetch1("name") == "business"
-    assert (Team & {"car.headlights[0].hyper_white": None}).fetch1(
+    assert (Team & {"car.inspected": "true"}).fetch1("name") == "engineering"
+    assert (Team & {"car.inspected:unsigned": True}).fetch1("name") == "engineering"
+    assert (Team & {"car.safety_inspected": "false"}).fetch1("name") == "business"
+    assert (Team & {"car.safety_inspected:unsigned": False}).fetch1(
         "name"
-    ) == "engineering"
+    ) == "business"
+    assert (Team & {"car.headlights[0].hyper_white": None}).fetch(
+        "name", order_by="name", as_dict=True
+    ) == [
+        {"name": "engineering"},
+        {"name": "marketing"},
+    ]  # if entire record missing, JSON key is missing, or value set to JSON null
     assert (Team & {"car": None}).fetch1("name") == "marketing"
     assert (Team & {"car.tire_pressure": [34, 30, 27, 32]}).fetch1("name") == "business"
     assert (
         Team & {"car.headlights[1]": {"side": "right", "hyper_white": True}}
     ).fetch1("name") == "business"
     # sql operators
-    assert (Team & "car->>'$.name' LIKE '%ching%'").fetch1(
+    assert (Team & "`car`->>'$.name' LIKE '%ching%'").fetch1(
         "name"
     ) == "business", "Missing substring"
-    assert (Team & "`car`->>'$.length' > 20").fetch1("name") == "engineering", "<= 20"
-    assert (Team & "car->>'$.safety_inspected' = 'false'").fetch1(
-        "name"
-    ) == "business", "Has `safety_inspected` set to `true`"
-    assert (Team & "car->>'$.headlights[0].hyper_white' = 'null'").fetch1(
-        "name"
-    ) == "engineering", "Has 1st `headlight` with `hyper_white` set to `null`"
-    assert (Team & "car->>'$.inspected' IS NOT NULL").fetch1(
-        "name"
-    ) == "engineering", "Has `inspected` key"
-    assert (Team & "car->>'$.tire_pressure' = '[34, 30, 27, 32]'").fetch1(
-        "name"
-    ) == "business", "Has `tire_pressure` set to array"
+    assert (Team & "`car`->>'$.length' > 30").fetch1("name") == "business", "<= 30"
     assert (
-        Team & """car->>'$.headlights[1]' = '{"side": "right", "hyper_white": true}'"""
-    ).fetch1("name") == "business", "Has 2nd `headlight` set to object"
+        Team & "JSON_VALUE(`car`, '$.safety_inspected' RETURNING UNSIGNED) = 0"
+    ).fetch1("name") == "business", "Has `safety_inspected` set to `true`"
+    assert (Team & "`car`->>'$.headlights[0].hyper_white' = 'null'").fetch1(
+        "name"
+    ) == "engineering", "Has 1st `headlight` with `hyper_white` not set to `null`"
+    assert (Team & "`car`->>'$.inspected' IS NOT NULL").fetch1(
+        "name"
+    ) == "engineering", "Missing `inspected` key"
+    assert (Team & "`car`->>'$.tire_pressure' = '[34, 30, 27, 32]'").fetch1(
+        "name"
+    ) == "business", "`tire_pressure` array did not match"
+    assert (
+        Team
+        & """`car`->>'$.headlights[1]' = '{"side": "right", "hyper_white": true}'"""
+    ).fetch1("name") == "business", "2nd `headlight` object did not match"

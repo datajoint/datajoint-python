@@ -2,6 +2,9 @@ import datajoint as dj
 from pathlib import Path
 import re
 from .utils import user_choice
+import logging
+
+logger = logging.getLogger(__name__.split(".")[0])
 
 
 def migrate_dj011_external_blob_storage_to_dj012(migration_schema, store):
@@ -34,13 +37,13 @@ Proceed?
     )
     if do_migration:
         _migrate_dj011_blob(dj.Schema(migration_schema), store)
-        print(
+        logger.info(
             "Migration completed for schema: {}, store: {}.".format(
                 migration_schema, store
             )
         )
         return
-    print("No migration performed.")
+    logger.info("No migration performed.")
 
 
 def _migrate_dj011_blob(schema, default_store):
@@ -114,8 +117,7 @@ def _migrate_dj011_blob(schema, default_store):
                 )
             )
         except:
-            print("Column already added")
-            pass
+            logger.info("Column already added")
 
         for _hash, size in zip(*legacy_external.fetch("hash", "size")):
             if _hash in hashes:
