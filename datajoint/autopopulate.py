@@ -325,7 +325,7 @@ class AutoPopulate:
         if display:
             logger.info(
                 "%-20s" % self.__class__.__name__
-                + "Completed %d of %d (%2.1f%%)   %s"
+                + " Completed %d of %d (%2.1f%%)   %s"
                 % (
                     total - remaining,
                     total,
