@@ -84,7 +84,7 @@ def kill(restriction=None, connection=None, order_by=None):  # pragma: no cover
                 try:
                     connection.query("kill %d" % pid)
                 except pymysql.err.InternalError:
-                    logger.info("Process not found")
+                    logger.warn("Process not found")
 
 
 def kill_quick(restriction=None, connection=None):

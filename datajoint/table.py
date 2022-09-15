@@ -121,7 +121,7 @@ class Table(QueryExpression):
         sql, external_stores = alter(self.definition, old_definition, context)
         if not sql:
             if prompt:
-                logger.info("Nothing to alter.")
+                logger.warn("Nothing to alter.")
         else:
             sql = "ALTER TABLE {tab}\n\t".format(
                 tab=self.full_table_name
@@ -580,7 +580,7 @@ class Table(QueryExpression):
         # Confirm and commit
         if delete_count == 0:
             if safemode:
-                logger.info("Nothing to delete.")
+                logger.warn("Nothing to delete.")
             if transaction:
                 self.connection.cancel_transaction()
         else:
@@ -593,7 +593,7 @@ class Table(QueryExpression):
                 if transaction:
                     self.connection.cancel_transaction()
                 if safemode:
-                    logger.info("Deletes cancelled")
+                    logger.warn("Deletes cancelled")
         return delete_count
 
     def drop_quick(self):

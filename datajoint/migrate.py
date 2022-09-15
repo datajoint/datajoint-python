@@ -43,7 +43,7 @@ Proceed?
             )
         )
         return
-    logger.info("No migration performed.")
+    logger.warn("No migration performed.")
 
 
 def _migrate_dj011_blob(schema, default_store):
@@ -117,7 +117,7 @@ def _migrate_dj011_blob(schema, default_store):
                 )
             )
         except:
-            logger.info("Column already added")
+            logger.warn("Column already added")
 
         for _hash, size in zip(*legacy_external.fetch("hash", "size")):
             if _hash in hashes:

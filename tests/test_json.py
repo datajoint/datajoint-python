@@ -42,7 +42,7 @@ def test_describe():
     assert s1 == s2
 
 
-def test_query():
+def test_restrict():
     # dict
     assert (Team & {"car.name": "Chaching"}).fetch1("name") == "business"
 
@@ -102,7 +102,7 @@ def test_query():
     ).fetch1("name") == "business", "2nd `headlight` object did not match"
 
 
-def test_fetch_subset():
+def test_proj():
     # proj necessary since we need to rename indexed value into a proper attribute name
     assert Team.proj(car_length="car.length").fetch(
         as_dict=True, order_by="car_length"
