@@ -14,6 +14,22 @@ from .errors import DataJointError
 json_pattern = re.compile(r"^(?P<attr>\w+)(\.(?P<path>[\w.*\[\]]+))?(:(?P<type>\w+))?$")
 
 
+def translate_attribute(key):
+    match = json_pattern.match(key)
+    if match is None:
+        return match, key
+    match = match.groupdict()
+    if match["path"] is None:
+        return match, match["attr"]
+    else:
+        return match, "JSON_VALUE(`{}`, '$.{}'{})".format(
+            *{
+                k: ((f" RETURNING {v}" if k == "type" else v) if v else "")
+                for k, v in match.items()
+            }.values()
+        )
+
+
 class PromiscuousOperand:
     """
     A container for an operand to ignore join compatibility
@@ -98,18 +114,15 @@ def make_condition(query_expression, condition, columns):
 
     def prep_value(k, v):
         """prepare SQL condition"""
-        key_match = re.match(json_pattern, k).groupdict()
+        key_match, k = translate_attribute(k)
+        if key_match["path"] is None:
+            k = f"`{k}`"
         if (
             query_expression.heading[key_match["attr"]].json
             and key_match["path"] is not None
+            and isinstance(v, dict)
         ):
-            k = f'JSON_VALUE(`{key_match["attr"]}`, "$.{key_match["path"]}"%s)' % (
-                f" RETURNING {key_match['type']}" if key_match["type"] else ""
-            )
-            if isinstance(v, dict):
-                return f"{k}='{json.dumps(v)}'"
-        else:
-            k = f"`{k}`"
+            return f"{k}='{json.dumps(v)}'"
         if v is None:
             return f"{k} IS NULL"
         if query_expression.heading[key_match["attr"]].uuid:
