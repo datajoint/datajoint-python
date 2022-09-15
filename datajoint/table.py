@@ -641,7 +641,7 @@ class Table(QueryExpression):
         if config["safemode"]:
             for table in tables:
                 logger.info(
-                    table, "(%d tuples)" % len(FreeTable(self.connection, table))
+                    table + "(%d tuples)" % len(FreeTable(self.connection, table))
                 )
             do_drop = user_choice("Proceed?", default="no") == "yes"
         if do_drop:

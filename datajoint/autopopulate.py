@@ -324,8 +324,8 @@ class AutoPopulate:
         remaining = len(todo - self.target)
         if display:
             logger.info(
-                "%-20s" % self.__class__.__name__,
-                "Completed %d of %d (%2.1f%%)   %s"
+                "%-20s" % self.__class__.__name__
+                + "Completed %d of %d (%2.1f%%)   %s"
                 % (
                     total - remaining,
                     total,
@@ -334,6 +334,5 @@ class AutoPopulate:
                         datetime.datetime.now(), "%Y-%m-%d %H:%M:%S"
                     ),
                 ),
-                flush=True,
             )
         return remaining, total
