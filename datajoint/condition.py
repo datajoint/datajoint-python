@@ -11,11 +11,11 @@ import pandas
 import json
 from .errors import DataJointError
 
-json_pattern = re.compile(r"^(?P<attr>\w+)(\.(?P<path>[\w.*\[\]]+))?(:(?P<type>\w+))?$")
+JSON_PATTERN = re.compile(r"^(?P<attr>\w+)(\.(?P<path>[\w.*\[\]]+))?(:(?P<type>\w+))?$")
 
 
 def translate_attribute(key):
-    match = json_pattern.match(key)
+    match = JSON_PATTERN.match(key)
     if match is None:
         return match, key
     match = match.groupdict()
