@@ -62,7 +62,7 @@ jobs:
         run: docker-compose -f LNX-docker-compose.yml up --build --exit-code-from app
       - name: Run style tests
         run: |
-          flake8 --ignore=E203,E722,F401,W503 datajoint \
+          flake8 --ignore=E203,E722,W503 datajoint \
                  --count --max-complexity=62 --max-line-length=127 --statistics
           black datajoint --check -v
           black tests --check -v

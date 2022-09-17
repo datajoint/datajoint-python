@@ -427,7 +427,8 @@ class Heading:
         ):
             if item["Key_name"] != "PRIMARY":
                 keys[item["Key_name"]][item["Seq_in_index"]] = dict(
-                    column=item["Column_name"],
+                    column=item["Column_name"]
+                    or f"({item['Expression']})".replace(r"\'", "'"),
                     unique=(item["Non_unique"] == 0),
                     nullable=item["Null"].lower() == "yes",
                 )

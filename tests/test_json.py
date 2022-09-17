@@ -1,13 +1,75 @@
-from .schema_simple import Team
 import inspect
 from datajoint.declare import declare
 import datajoint as dj
 import numpy as np
 from distutils.version import LooseVersion
+from . import PREFIX
 
 if LooseVersion(dj.conn().query("select @@version;").fetchone()[0]) >= LooseVersion(
     "8.0.0"
 ):
+    schema = dj.Schema(PREFIX + "_json")
+    Team = None
+
+    def setup():
+        global Team
+
+        @schema
+        class Team(dj.Lookup):
+            definition = """
+            name: varchar(40)
+            ---
+            car=null: json
+            unique index(car.name:char(20))
+            uniQue inDex ( name, car.name:char(20), (json_value(`car`, _utf8mb4'$.length' returning decimal(4, 1))) )
+            """
+            contents = [
+                (
+                    "engineering",
+                    {
+                        "name": "Rever",
+                        "length": 20.5,
+                        "inspected": True,
+                        "tire_pressure": [32, 31, 33, 34],
+                        "headlights": [
+                            {
+                                "side": "left",
+                                "hyper_white": None,
+                            },
+                            {
+                                "side": "right",
+                                "hyper_white": None,
+                            },
+                        ],
+                    },
+                ),
+                (
+                    "business",
+                    {
+                        "name": "Chaching",
+                        "length": 100,
+                        "safety_inspected": False,
+                        "tire_pressure": [34, 30, 27, 32],
+                        "headlights": [
+                            {
+                                "side": "left",
+                                "hyper_white": True,
+                            },
+                            {
+                                "side": "right",
+                                "hyper_white": True,
+                            },
+                        ],
+                    },
+                ),
+                (
+                    "marketing",
+                    None,
+                ),
+            ]
+
+    def teardown():
+        schema.drop()
 
     def test_insert_update():
         car = {
@@ -34,6 +96,12 @@ if LooseVersion(dj.conn().query("select @@version;").fetchone()[0]) >= LooseVers
         car.update({"length": 23})
         Team.update1({"name": "research", "car": car})
         assert q.fetch1("car") == car
+
+        try:
+            Team.insert1({"name": "hr", "car": car})
+            raise Exception("Inserted non-unique car name.")
+        except dj.DataJointError:
+            pass
 
         q.delete_quick()
         assert not q
@@ -116,7 +184,7 @@ if LooseVersion(dj.conn().query("select @@version;").fetchone()[0]) >= LooseVers
             {"name": "engineering", "car_length": "20.5"},
         ]
 
-        assert Team.proj(car_length="car.length:double").fetch(
+        assert Team.proj(car_length="car.length:decimal(4, 1)").fetch(
             as_dict=True, order_by="car_length"
         ) == [
             {"name": "marketing", "car_length": None},

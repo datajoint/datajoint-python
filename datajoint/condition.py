@@ -11,20 +11,22 @@ import pandas
 import json
 from .errors import DataJointError
 
-json_pattern = re.compile(r"^(?P<attr>\w+)(\.(?P<path>[\w.*\[\]]+))?(:(?P<type>\w+))?$")
+JSON_PATTERN = re.compile(
+    r"^(?P<attr>\w+)(\.(?P<path>[\w.*\[\]]+))?(:(?P<type>[\w(,\s)]+))?$"
+)
 
 
 def translate_attribute(key):
-    match = json_pattern.match(key)
+    match = JSON_PATTERN.match(key)
     if match is None:
         return match, key
     match = match.groupdict()
     if match["path"] is None:
         return match, match["attr"]
     else:
-        return match, "JSON_VALUE(`{}`, '$.{}'{})".format(
+        return match, "json_value(`{}`, _utf8mb4'$.{}'{})".format(
             *{
-                k: ((f" RETURNING {v}" if k == "type" else v) if v else "")
+                k: ((f" returning {v}" if k == "type" else v) if v else "")
                 for k, v in match.items()
             }.values()
         )

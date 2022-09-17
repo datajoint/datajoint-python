@@ -14,6 +14,11 @@ services:
     # To persist MySQL data
     # volumes:
     #   - ./mysql/data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 30s
+      retries: 5
+      interval: 15s
   minio:
     <<: *net
     image: minio/minio:$MINIO_VER
@@ -29,9 +34,9 @@ services:
     command: server --address ":9000" /data
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://minio:9000/minio/health/live"]
-      timeout: 5s
-      retries: 60
-      interval: 1s
+      timeout: 30s
+      retries: 5
+      interval: 15s
   fakeservices.datajoint.io:
     <<: *net
     image: datajoint/nginx:v0.2.3
@@ -90,7 +95,7 @@ services:
         # nosetests -vs --tests=tests.test_external_class:test_insert_and_fetch; #run specific basic test
         # nosetests -vs --tests=tests.test_fetch:TestFetch.test_getattribute_for_fetch1; #run specific Class test
         # flake8 datajoint --count --select=E9,F63,F7,F82 --show-source --statistics
-        # flake8 --ignore=E203,E722,F401,W503 datajoint --count --max-complexity=62 --max-line-length=127 --statistics
+        # flake8 --ignore=E203,E722,W503 datajoint --count --max-complexity=62 --max-line-length=127 --statistics
         # black datajoint --check -v
         ## Interactive Jupyter Notebook environment
         jupyter notebook &

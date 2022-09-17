@@ -13,6 +13,11 @@ services:
     #   - "3306:3306"
     # volumes:
     #   - ./mysql/data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 30s
+      retries: 5
+      interval: 15s
   minio:
     <<: *net
     image: minio/minio:$MINIO_VER
@@ -27,9 +32,9 @@ services:
     command: server --address ":9000" /data
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://minio:9000/minio/health/live"]
-      timeout: 5s
-      retries: 60
-      interval: 1s
+      timeout: 30s
+      retries: 5
+      interval: 15s
   fakeservices.datajoint.io:
     <<: *net
     image: datajoint/nginx:v0.2.3

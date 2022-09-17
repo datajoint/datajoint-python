@@ -14,7 +14,6 @@ from .condition import (
     assert_join_compatibility,
     extract_column_names,
     PromiscuousOperand,
-    json_pattern,
     translate_attribute,
 )
 from .declare import CONSTANT_LITERALS

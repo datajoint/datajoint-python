@@ -279,6 +279,7 @@ class TestRelation:
             self.trash.drop()
         try:
             self.trash.fetch()
+            raise Exception("Fetched after table dropped.")
         except dj.DataJointError:
             pass
         finally:
