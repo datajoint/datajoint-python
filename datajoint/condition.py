@@ -151,11 +151,9 @@ def make_condition(query_expression, condition, columns):
             return f'{k}="{v.replace("%", "%%")}"'
         return f"{k}={v}"
 
-    def template(restrictions, operator=None):
+    def join_conditions(negate, restrictions, operator="AND"):
         return ("NOT (%s)" if negate else "%s") % (
-            restrictions[0]
-            if len(restrictions) == 1
-            else f"({f') {operator} ('.join(restrictions)})"
+            f"({f') {operator} ('.join(restrictions)})"
         )
 
     negate = False
@@ -166,8 +164,8 @@ def make_condition(query_expression, condition, columns):
     # restrict by string
     if isinstance(condition, str):
         columns.update(extract_column_names(condition))
-        return template(
-            restrictions=[condition.strip().replace("%", "%%")]
+        return join_conditions(
+            negate, restrictions=[condition.strip().replace("%", "%%")]
         )  # escape %, see issue #376
 
     # restrict by AndList
@@ -184,7 +182,7 @@ def make_condition(query_expression, condition, columns):
             return negate  # if any item is False, the whole thing is False
         if not items:
             return not negate  # and empty AndList is True
-        return template(restrictions=items, operator="AND")
+        return join_conditions(negate, restrictions=items)
 
     # restriction by dj.U evaluates to True
     if isinstance(condition, U):
@@ -202,13 +200,13 @@ def make_condition(query_expression, condition, columns):
         if not common_attributes:
             return not negate  # no matching attributes -> evaluates to True
         columns.update(common_attributes)
-        return template(
+        return join_conditions(
+            negate,
             restrictions=[
                 prep_value(k, v)
                 for k, v in condition.items()
                 if k.split(".", 1)[0] in common_attributes
             ],
-            operator="AND",
         )
 
     # restrict by a numpy record -- convert to an AndList of string equality conditions
@@ -219,9 +217,9 @@ def make_condition(query_expression, condition, columns):
         if not common_attributes:
             return not negate  # no matching attributes -> evaluate to True
         columns.update(common_attributes)
-        return template(
+        return join_conditions(
+            negate,
             restrictions=[prep_value(k, condition[k]) for k in common_attributes],
-            operator="AND",
         )
 
     # restrict by a QueryExpression subclass -- trigger instantiation and move on
@@ -269,7 +267,11 @@ def make_condition(query_expression, condition, columns):
         ]  # ignore False conditions
         if any(item is True for item in or_list):  # if any item is True, entirely True
             return not negate
-        return template(restrictions=or_list, operator="OR") if or_list else negate
+        return (
+            join_conditions(negate, restrictions=or_list, operator="OR")
+            if or_list
+            else negate
+        )
 
 
 def extract_column_names(sql_expression):
