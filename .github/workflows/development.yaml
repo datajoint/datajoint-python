@@ -1,8 +1,6 @@
 name: Development
 on:
   push:
-    tags:
-      - '*.*.*'
   pull_request:
     branches:
       - '**' # every branch
@@ -77,7 +75,9 @@ jobs:
           black datajoint --check -v
           black tests --check -v
   publish-release:
-    if: github.event_name == 'push'
+    if: |
+      github.event_name == 'push' &&
+      startsWith(github.ref, 'refs/tags')
     needs: test
     runs-on: ubuntu-latest
     env:
