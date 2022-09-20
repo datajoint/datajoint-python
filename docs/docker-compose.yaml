@@ -27,7 +27,7 @@ services:
             mkdocs serve --config-file ./docs/mkdocs.yaml -a 0.0.0.0:80
         elif echo "$${MODE}" | grep -iE "qa|build" &>/dev/null; then
             git branch -D gh-pages || true
-            git fetch $${UPSTREAM_REPO} gh-pages && git merge FETCH_HEAD
+            git fetch $${UPSTREAM_REPO} gh-pages:gh-pages && git checkout gh-pages
             mike deploy --config-file ./docs/mkdocs.yaml -u $$(grep -oE '\d+\.\d+' /main/$${PACKAGE}/version.py) latest
             mike set-default --config-file ./docs/mkdocs.yaml latest
             if echo "$${MODE}" | grep -i qa &>/dev/null; then
