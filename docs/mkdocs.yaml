@@ -1,0 +1,86 @@
+# ---------------------- PROJECT SPECIFIC ---------------------------
+
+site_name: DataJoint Python
+repo_url: https://github.com/datajoint/datajoint-python
+repo_name: datajoint/datajoint-python
+nav:
+  - DataJoint Python: getting_started.md
+  - Getting Started: getting_started.md
+  - Concepts: concepts.md
+  - Tutorials: tutorials.md
+  - About:
+    - Changelog: about/changelog.md
+  - API: api/ # defer to gen-files + literate-nav
+
+# ---------------------------- STANDARD -----------------------------
+
+edit_uri: ./edit/master/docs/src
+docs_dir: ./src
+theme:
+  name: material
+  custom_dir: src/.overrides
+  logo: assets/images/project-logo-black.png
+  favicon: assets/images/project-logo-color.png
+  features:
+    - toc.integrate
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: datajoint
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+plugins:
+  - search
+  - redirects:
+      redirect_maps:
+        "index.md": "getting_started.md"
+  - mkdocstrings:
+      default_handler: python
+  - gen-files:
+      scripts:
+      - ./src/api/gen_api.py
+  - literate-nav:
+      nav_file: navigation.md
+  - exclude-search:
+      exclude:
+        - "*/navigation.md"
+markdown_extensions:
+  - attr_list
+  - toc:
+      permalink: true
+  - pymdownx.emoji:
+      options:
+        custom_icons:
+          - .overrides/.icons
+  - mdx_truly_sane_lists
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+extra:
+  generator: false # Disable watermark
+  version:
+    provider: mike
+  social:
+    - icon: datajoint/company-logo
+      link: https://www.datajoint.com/
+    - icon: fontawesome/brands/slack
+      link: https://datajoint.slack.com
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/company/datajoint
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/DataJointIO
+    - icon: fontawesome/brands/github
+      link: https://github.com/datajoint
+    - icon: fontawesome/brands/stack-overflow
+      link: https://stackoverflow.com/questions/tagged/datajoint
+    - icon: fontawesome/brands/youtube
+      link: https://www.youtube.com/channel/UCdeCuFOTCXlVMRzh6Wk-lGg
+extra_css:
+  - assets/stylesheets/extra.css
