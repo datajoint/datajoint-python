@@ -1,14 +1,42 @@
 name: Development
 on:
   push:
-    branches:
-      - '**' # every branch
-      - '!stage*' # exclude branches beginning with stage
+    tags:
+      - '*.*.*'
   pull_request:
     branches:
       - '**' # every branch
       - '!stage*' # exclude branches beginning with stage
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - py_ver: 3.8
+            distro: alpine
+            image: djbase
+    env:
+      PY_VER: ${{matrix.py_ver}}
+      DISTRO: ${{matrix.distro}}
+      IMAGE: ${{matrix.image}}
+      DOCKER_CLIENT_TIMEOUT: "120"
+      COMPOSE_HTTP_TIMEOUT: "120"
+    steps:
+      - uses: actions/checkout@v2
+      - name: Compile image
+        run: |
+          export DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py)
+          export HOST_UID=$(id -u)
+          docker-compose -f docker-compose-build.yaml up --exit-code-from app --build
+          echo "DJ_VERSION=${DJ_VERSION}" >> $GITHUB_ENV
+      - if: matrix.py_ver == '3.8' && matrix.distro == 'alpine'
+        name: Add pip artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: pip-datajoint-${{env.DJ_VERSION}}
+          path: dist
+          retention-days: 1
   test:
     runs-on: ubuntu-latest
     strategy:
@@ -48,3 +76,62 @@ jobs:
                  --count --max-complexity=62 --max-line-length=127 --statistics
           black datajoint --check -v
           black tests --check -v
+  publish-release:
+    if: github.event_name == 'push'
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      TWINE_USERNAME: ${{secrets.twine_username}}
+      TWINE_PASSWORD: ${{secrets.twine_password}}
+    outputs:
+      release_upload_url: ${{steps.create_gh_release.outputs.upload_url}}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Determine package version
+        run: |
+          DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py)
+          echo "DJ_VERSION=${DJ_VERSION}" >> $GITHUB_ENV
+      - name: Create GH release
+        id: create_gh_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        with:
+          tag_name: ${{env.DJ_VERSION}}
+          release_name: Release ${{env.DJ_VERSION}}
+          body: ""
+          prerelease: false
+          draft: false
+      - name: Fetch pip artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: pip-datajoint-${{env.DJ_VERSION}}
+          path: dist
+      - name: Determine pip artifact paths
+        run: |
+          echo "DJ_WHEEL_PATH=$(ls dist/datajoint-*.whl)" >> $GITHUB_ENV
+          echo "DJ_SDIST_PATH=$(ls dist/datajoint-*.tar.gz)" >> $GITHUB_ENV
+      - name: Upload pip wheel asset to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        with:
+          upload_url: ${{steps.create_gh_release.outputs.upload_url}}
+          asset_path: ${{env.DJ_WHEEL_PATH}}
+          asset_name: pip-datajoint-${{env.DJ_VERSION}}.whl
+          asset_content_type: application/zip
+      - name: Upload pip sdist asset to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        with:
+          upload_url: ${{steps.create_gh_release.outputs.upload_url}}
+          asset_path: ${{env.DJ_SDIST_PATH}}
+          asset_name: pip-datajoint-${{env.DJ_VERSION}}.tar.gz
+          asset_content_type: application/gzip
+      - name: Publish pip release
+        run: |
+          export HOST_UID=$(id -u)
+          docker-compose -f docker-compose-build.yaml run \
+            -e TWINE_USERNAME=${TWINE_USERNAME} -e TWINE_PASSWORD=${TWINE_PASSWORD} datajoint \
+            sh -lc "pip install twine && python -m twine upload dist/*"
