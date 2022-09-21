@@ -28,9 +28,16 @@ jobs:
       COMPOSE_HTTP_TIMEOUT: "120"
     steps:
       - uses: actions/checkout@v2
+      - name: Validate version and release notes
+        run: |
+          DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py)
+          RELEASE_BODY=$(python -c \
+            'print(open("./CHANGELOG.md").read().split("\n\n")[1].split("\n", 1)[1])' \
+          )
+          echo "DJ_VERSION=${DJ_VERSION}" >> $GITHUB_ENV
+          echo "RELEASE_BODY='${RELEASE_BODY}'" >> $GITHUB_ENV
       - name: Build pip artifacts
         run: |
-          export DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py)
           export HOST_UID=$(id -u)
           docker-compose -f docker-compose-build.yaml up --exit-code-from app --build
           echo "DJ_VERSION=${DJ_VERSION}" >> $GITHUB_ENV
