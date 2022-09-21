@@ -158,6 +158,9 @@ jobs:
         run: |
           export HOST_UID=$(id -u)
           echo one
+          docker-compose -f docker-compose-build.yaml up --exit-code-from app --build
+          echo one_point_five
+          docker images
           docker-compose -f docker-compose-build.yaml build
           echo two
           docker images
