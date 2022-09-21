@@ -85,7 +85,7 @@ services:
         # jupyter notebook
     # ports:
     #   - "8888:8888"
-    user: ${UID}:${GID}
+    user: ${HOST_UID}:${HOST_GID}
     volumes:
       - .:/src
       - /tmp/.X11-unix:/tmp/.X11-unix:rw

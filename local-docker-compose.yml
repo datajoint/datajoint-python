@@ -90,7 +90,7 @@ services:
         # nosetests -vs --tests=tests.test_external_class:test_insert_and_fetch; #run specific basic test
         # nosetests -vs --tests=tests.test_fetch:TestFetch.test_getattribute_for_fetch1; #run specific Class test
         # flake8 datajoint --count --select=E9,F63,F7,F82 --show-source --statistics
-        # flake8 --ignore=E203,E722,F401,W503 datajoint --count --max-complexity=62 --max-line-length=127 --statistics
+        # flake8 --ignore=E203,E722,W503 datajoint --count --max-complexity=62 --max-line-length=127 --statistics
         # black datajoint --check -v
         ## Interactive Jupyter Notebook environment
         jupyter notebook &
@@ -103,7 +103,7 @@ services:
     ports:
       - "8888:8888"
       - "5678:5678"
-    user: ${UID}:${GID}
+    user: ${HOST_UID}:${HOST_GID}
     volumes:
       - .:/src
       - /tmp/.X11-unix:/tmp/.X11-unix:rw

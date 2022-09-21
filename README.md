@@ -132,8 +132,8 @@ PY_VER=3.7
 ALPINE_VER=3.10
 MYSQL_VER=5.7
 MINIO_VER=RELEASE.2021-09-03T03-56-13Z
-UID=1000
-GID=1000
+HOST_UID=1000
+HOST_GID=1000
 ```
 * `cp local-docker-compose.yml docker-compose.yml`
 * `docker-compose up -d` (Note configured `JUPYTER_PASSWORD`)

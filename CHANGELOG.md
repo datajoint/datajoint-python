@@ -1,6 +1,6 @@
 ## Release notes
 
-### 0.13.8 -- Sep 28, 2022
+### 0.13.8 -- Sep 21, 2022
 * Bugfix - Fix queries with backslashes ([#999](https://github.com/datajoint/datajoint-python/issues/999)) PR [#1052](https://github.com/datajoint/datajoint-python/pull/1052)
 
 ### 0.13.7 -- Jul 13, 2022
