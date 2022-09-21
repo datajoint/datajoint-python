@@ -105,16 +105,16 @@ jobs:
       startsWith(github.ref, 'refs/tags')
     needs: test
     runs-on: ubuntu-latest
-    # strategy:
-      # matrix:
-      #   include:
-      #     - py_ver: 3.8
-      #       distro: alpine
-      #       image: djbase
+    strategy:
+      matrix:
+        include:
+          - py_ver: 3.8
+            distro: alpine
+            image: djbase
     env:
-      # PY_VER: ${{matrix.py_ver}}
-      # DISTRO: ${{matrix.distro}}
-      # IMAGE: ${{matrix.image}}
+      PY_VER: ${{matrix.py_ver}}
+      DISTRO: ${{matrix.distro}}
+      IMAGE: ${{matrix.image}}
       TWINE_USERNAME: ${{secrets.twine_username}}
       TWINE_PASSWORD: ${{secrets.twine_password}}
       DOCKER_CLIENT_TIMEOUT: "120"
@@ -168,13 +168,6 @@ jobs:
       - name: Publish pip release
         run: |
           export HOST_UID=$(id -u)
-          # echo one
-          # docker-compose -f docker-compose-build.yaml up --exit-code-from app --build
-          # echo one_point_five
-          # docker images
-          # docker-compose -f docker-compose-build.yaml build
-          # echo two
-          # docker images
           docker-compose -f docker-compose-build.yaml run \
             -e TWINE_USERNAME=${TWINE_USERNAME} -e TWINE_PASSWORD=${TWINE_PASSWORD} app \
             sh -lc "pip install twine && python -m twine upload dist/*"
