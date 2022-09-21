@@ -1,14 +1,17 @@
 ## Release notes
 
 ### 0.14.0 -- TBA
-* Add `json` data type
-- Fix lingering prints by replacing with logs
-- `table.progress()` defaults to no stdout
-- `table.describe()` defaults to no stdout
+* Add `json` data type ([#245](https://github.com/datajoint/datajoint-python/issues/245)) PR [#1051](https://github.com/datajoint/datajoint-python/pull/1051)
+- Fix lingering prints by replacing with logs PR [#1051](https://github.com/datajoint/datajoint-python/pull/1051)
+- `table.progress()` defaults to no stdout PR [#1051](https://github.com/datajoint/datajoint-python/pull/1051)
+- `table.describe()` defaults to no stdout PR [#1051](https://github.com/datajoint/datajoint-python/pull/1051)
+
+### 0.13.8 -- Sep 28, 2022
+* Bugfix - Fix queries with backslashes ([#999](https://github.com/datajoint/datajoint-python/issues/999)) PR [#1052](https://github.com/datajoint/datajoint-python/pull/1052)
 
 ### 0.13.7 -- Jul 13, 2022
-* Bugfix - Fix networkx incompatable change by version pinning to 2.6.3 PR #1036 (#1035)
-* Add - Support for serializing numpy datetime64 types PR #1036 (#1022)
+* Bugfix - Fix networkx incompatable change by version pinning to 2.6.3 (#1035) PR #1036
+* Add - Support for serializing numpy datetime64 types (#1022) PR #1036
 * Update - Add traceback to default logging PR #1036
 
 ### 0.13.6 -- Jun 13, 2022
