@@ -380,3 +380,11 @@ class TestFetch:
         fetched_result = result.fetch(as_dict=True, order_by=("contrast", "brightness"))
         Stimulus.delete_quick()
         assert fetched_result == expected_result
+
+    def test_backslash(self):
+        # https://github.com/datajoint/datajoint-python/issues/999
+        expected = "She\Hulk"
+        Parent.insert([(2, expected)])
+        q = Parent & dict(name=expected)
+        assert q.fetch1("name") == expected
+        q.delete()
