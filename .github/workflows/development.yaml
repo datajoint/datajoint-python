@@ -18,7 +18,7 @@ jobs:
       matrix:
         include:
           - py_ver: 3.8
-            distro: debian
+            distro: alpine
             image: djbase
     env:
       PY_VER: ${{matrix.py_ver}}
@@ -34,7 +34,7 @@ jobs:
           export HOST_UID=$(id -u)
           docker-compose -f docker-compose-build.yaml up --exit-code-from app --build
           echo "DJ_VERSION=${DJ_VERSION}" >> $GITHUB_ENV
-      - if: matrix.py_ver == '3.8' && matrix.distro == 'debian'
+      - if: matrix.py_ver == '3.8' && matrix.distro == 'alpine'
         name: Add pip artifacts
         uses: actions/upload-artifact@v2
         with:

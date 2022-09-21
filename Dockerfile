@@ -1,5 +1,5 @@
 ARG PY_VER=3.8
-ARG DISTRO=debian
+ARG DISTRO=alpine
 ARG IMAGE=djbase
 FROM datajoint/${IMAGE}:py${PY_VER}-${DISTRO}
 WORKDIR /main
