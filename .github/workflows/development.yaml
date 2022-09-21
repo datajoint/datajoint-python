@@ -53,7 +53,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{matrix.py_ver}}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{matrix.py_ver}}
       - name: Install dependencies
@@ -124,10 +124,18 @@ jobs:
       release_upload_url: ${{steps.create_gh_release.outputs.upload_url}}
     steps:
       - uses: actions/checkout@v2
+      - name: Set up Python ${{matrix.py_ver}}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{matrix.py_ver}}
       - name: Determine package version
         run: |
           DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py)
+          RELEASE_BODY=$(python -c \
+            'print(open("./CHANGELOG.md").read().split("\n\n")[1].split("\n", 1)[1])' \
+          )
           echo "DJ_VERSION=${DJ_VERSION}" >> $GITHUB_ENV
+          echo "RELEASE_BODY=${RELEASE_BODY}" >> $GITHUB_ENV
       - name: Create GH release
         id: create_gh_release
         uses: actions/create-release@v1
@@ -136,7 +144,7 @@ jobs:
         with:
           tag_name: ${{env.DJ_VERSION}}
           release_name: Release ${{env.DJ_VERSION}}
-          body: ""
+          body: ${{env.RELEASE_BODY}}
           prerelease: false
           draft: false
       - name: Fetch pip artifacts
