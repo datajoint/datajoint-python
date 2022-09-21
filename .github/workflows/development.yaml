@@ -6,7 +6,7 @@ on:
       - '!gh-pages' # exclude gh-pages branch
       - '!stage*' # exclude branches beginning with stage
     tags:
-      - '[0-9]+\.[0-9]+\.[0-9]+'
+      - '\d+\.\d+\.\d+'
   pull_request:
     branches:
       - '**' # every branch
@@ -18,7 +18,7 @@ jobs:
       matrix:
         include:
           - py_ver: 3.8
-            distro: alpine
+            distro: debian
             image: djbase
     env:
       PY_VER: ${{matrix.py_ver}}
@@ -34,7 +34,7 @@ jobs:
           export HOST_UID=$(id -u)
           docker-compose -f docker-compose-build.yaml up --exit-code-from app --build
           echo "DJ_VERSION=${DJ_VERSION}" >> $GITHUB_ENV
-      - if: matrix.py_ver == '3.8' && matrix.distro == 'alpine'
+      - if: matrix.py_ver == '3.8' && matrix.distro == 'debian'
         name: Add pip artifacts
         uses: actions/upload-artifact@v2
         with:
@@ -95,7 +95,7 @@ jobs:
         run: |
           export MODE=BUILD
           export PACKAGE=datajoint
-          export UPSTREAM_REPO=https://github.com/datajoint/datajoint-python.git
+          export UPSTREAM_REPO=https://github.com/${GITHUB_REPOSITORY}.git
           export HOST_UID=$(id -u)
           docker compose -f docs/docker-compose.yaml up --exit-code-from docs --build
           git push origin gh-pages

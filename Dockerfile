@@ -1,6 +1,6 @@
-ARG PY_VER
-ARG DISTRO
-ARG IMAGE
+ARG PY_VER=3.8
+ARG DISTRO=debian
+ARG IMAGE=djbase
 FROM datajoint/${IMAGE}:py${PY_VER}-${DISTRO}
 WORKDIR /main
 COPY --chown=anaconda:anaconda ./requirements.txt ./setup.py \
