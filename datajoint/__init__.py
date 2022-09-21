@@ -50,6 +50,8 @@ __all__ = [
     "DataJointError",
     "key",
     "key_hash",
+    "logger",
+    "migrate_dj011_external_blob_storage_to_dj012",
 ]
 
 from .logging import logger
