@@ -6,7 +6,7 @@ on:
       - '!gh-pages' # exclude gh-pages branch
       - '!stage*' # exclude branches beginning with stage
     tags:
-      - '*'
+      - '[0-9]+\.[0-9]+\.[0-9]+'
   pull_request:
     branches:
       - '**' # every branch
@@ -90,9 +90,6 @@ jobs:
       DOCKER_CLIENT_TIMEOUT: "120"
       COMPOSE_HTTP_TIMEOUT: "120"
     steps:
-      - name: Verify if release tag
-        run: |
-          echo "${GITHUB_REF#refs/*/}" | grep -oP '\d+\.\d+\.\d+'
       - uses: actions/checkout@v2
       - name: Deploy docs
         run: |
@@ -114,9 +111,6 @@ jobs:
     outputs:
       release_upload_url: ${{steps.create_gh_release.outputs.upload_url}}
     steps:
-      - name: Verify if release tag
-        run: |
-          echo "${GITHUB_REF#refs/*/}" | grep -oP '\d+\.\d+\.\d+'
       - uses: actions/checkout@v2
       - name: Determine package version
         run: |
@@ -164,5 +158,5 @@ jobs:
         run: |
           export HOST_UID=$(id -u)
           docker-compose -f docker-compose-build.yaml run \
-            -e TWINE_USERNAME=${TWINE_USERNAME} -e TWINE_PASSWORD=${TWINE_PASSWORD} datajoint \
+            -e TWINE_USERNAME=${TWINE_USERNAME} -e TWINE_PASSWORD=${TWINE_PASSWORD} app \
             sh -lc "pip install twine && python -m twine upload dist/*"
