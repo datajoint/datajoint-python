@@ -157,7 +157,11 @@ jobs:
       - name: Publish pip release
         run: |
           export HOST_UID=$(id -u)
+          echo one
           docker-compose -f docker-compose-build.yaml build
+          echo two
+          docker images
           docker-compose -f docker-compose-build.yaml run \
             -e TWINE_USERNAME=${TWINE_USERNAME} -e TWINE_PASSWORD=${TWINE_PASSWORD} app \
             sh -lc "pip install twine && python -m twine upload dist/*"
+          echo three
