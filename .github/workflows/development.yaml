@@ -36,7 +36,9 @@ jobs:
             'print(open("./CHANGELOG.md").read().split("\n\n")[1].split("\n", 1)[1])' \
           )
           echo "DJ_VERSION=${DJ_VERSION}" >> $GITHUB_ENV
-          echo "RELEASE_BODY='${RELEASE_BODY}'" >> $GITHUB_ENV
+          echo "RELEASE_BODY<<EOF" >> $GITHUB_ENV
+          echo "$RELEASE_BODY" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
       - name: Build pip artifacts
         run: |
           export HOST_UID=$(id -u)
@@ -143,7 +145,9 @@ jobs:
             'print(open("./CHANGELOG.md").read().split("\n\n")[1].split("\n", 1)[1])' \
           )
           echo "DJ_VERSION=${DJ_VERSION}" >> $GITHUB_ENV
-          echo "RELEASE_BODY='${RELEASE_BODY}'" >> $GITHUB_ENV
+          echo "RELEASE_BODY<<EOF" >> $GITHUB_ENV
+          echo "$RELEASE_BODY" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
       - name: Create GH release
         id: create_gh_release
         uses: actions/create-release@v1
