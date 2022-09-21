@@ -148,7 +148,8 @@ def make_condition(query_expression, condition, columns):
         ):
             return f'{k}="{v}"'
         if isinstance(v, str):
-            return f'{k}="{v.replace("%", "%%").replace("\\", "\\\\")}"'
+            v = v.replace("%", "%%").replace("\\", "\\\\")
+            return f'{k}="{v}"'
         return f"{k}={v}"
 
     def join_conditions(negate, restrictions, operator="AND"):
