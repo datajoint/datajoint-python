@@ -43,7 +43,7 @@ plugins:
       default_handler: python
   - gen-files:
       scripts:
-      - ./src/api/gen_api.py
+      - ./src/api/make_pages.py
   - literate-nav:
       nav_file: navigation.md
   - exclude-search:

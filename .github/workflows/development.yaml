@@ -22,7 +22,7 @@ jobs:
       COMPOSE_HTTP_TIMEOUT: "120"
     steps:
       - uses: actions/checkout@v2
-      - name: Compile image
+      - name: Build pip artifacts
         run: |
           export DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py)
           export HOST_UID=$(id -u)
@@ -73,7 +73,26 @@ jobs:
           flake8 --ignore=E203,E722,F401,W503 datajoint \
                  --count --max-complexity=62 --max-line-length=127 --statistics
           black datajoint --check -v
-          black tests --check -v
+          black tests --check -v          
+  publish-docs:
+    if: |
+      github.event_name == 'push' &&
+      startsWith(github.ref, 'refs/tags')
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_CLIENT_TIMEOUT: "120"
+      COMPOSE_HTTP_TIMEOUT: "120"
+    steps:
+      - uses: actions/checkout@v2
+      - name: Deploy docs
+        run: |
+          export MODE=BUILD
+          export PACKAGE=datajoint
+          export UPSTREAM_REPO=https://github.com/datajoint/datajoint-python.git
+          export HOST_UID=$(id -u)
+          docker compose -f docs/docker-compose.yaml up --exit-code-from docs --build
+          git push origin gh-pages
   publish-release:
     if: |
       github.event_name == 'push' &&

@@ -1,4 +1,5 @@
 # MODE="LIVE|QA|BUILD" PACKAGE=datajoint UPSTREAM_REPO=https://github.com/datajoint/datajoint-python.git HOST_UID=$(id -u) docker compose -f docs/docker-compose.yaml up --build
+#
 # navigate to http://localhost/
 version: "2.4"
 services:
