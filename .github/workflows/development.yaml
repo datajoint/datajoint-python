@@ -6,7 +6,6 @@ on:
       - '!gh-pages' # exclude gh-pages branch
       - '!stage*' # exclude branches beginning with stage
     tags:
-      - '*.*.*'
   pull_request:
     branches:
       - '**' # every branch
@@ -90,6 +89,9 @@ jobs:
       DOCKER_CLIENT_TIMEOUT: "120"
       COMPOSE_HTTP_TIMEOUT: "120"
     steps:
+      - name: Verify if release tag
+        run: |
+          echo "${GITHUB_REF#refs/*/}" | grep -oP '\d+\.\d+\.\d+'
       - uses: actions/checkout@v2
       - name: Deploy docs
         run: |
@@ -111,6 +113,9 @@ jobs:
     outputs:
       release_upload_url: ${{steps.create_gh_release.outputs.upload_url}}
     steps:
+      - name: Verify if release tag
+        run: |
+          echo "${GITHUB_REF#refs/*/}" | grep -oP '\d+\.\d+\.\d+'
       - uses: actions/checkout@v2
       - name: Determine package version
         run: |
