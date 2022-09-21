@@ -10,6 +10,7 @@ on:
   pull_request:
     branches:
       - '**' # every branch
+      - '!gh-pages' # exclude gh-pages branch
       - '!stage*' # exclude branches beginning with stage
 jobs:
   build:
