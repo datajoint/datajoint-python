@@ -1,36 +1,59 @@
+:root {
+    --dj-primary: #00a0df;
+    --dj-secondary: #ff5113;
+    --dj-background: #808285;
+    --dj-black: #000000;
+    --dj-white: #ffffff;
+}
+
 [data-md-color-scheme="datajoint"] {
+    /* ribbon */
+    /* ribbon + markdown heading expansion */
+    --md-primary-fg-color: var(--dj-black);
+    /* ribbon text */
+    --md-primary-bg-color: var(--dj-primary);
 
-    --dj-yellow: #fcb954;
+    /* navigation */
+    /* navigation header + links */
+    --md-typeset-a-color: var(--dj-primary);
+    /* navigation on hover + diagram outline */
+    --md-accent-fg-color: var(--dj-secondary);
 
-    --md-primary-fg-color: var(--dj-yellow);
-    --md-primary-bg-color: #000000;
-    --md-primary-fg-color--dark: var(--dj-yellow);
+    /* main */
+    /* main header + already viewed*/
+    --md-default-fg-color--light: var(--dj-background);
+    /* primary text */
+    --md-typeset-color: var(--dj-black);
+    /* code comments + diagram text */
+    --md-code-fg-color: var(--dj-secondary);
 
-    --md-accent-fg-color: var(--dj-yellow);
-
-    --md-code-bg-color: #e4f3f6;
-
-    --md-footer-fg-color: var(--dj-yellow);
+    /* footer */
+    /* previous/next text */
+    --md-footer-fg-color: var(--dj-primary);
 }
 
 [data-md-color-scheme="slate"] {
+    /* ribbon */
+    /* ribbon + markdown heading expansion */
+    --md-primary-fg-color: var(--dj-primary);
+    /* ribbon text */
+    --md-primary-bg-color: var(--dj-white);
 
-    --dj-yellow: #fcb954;
+    /* navigation */
+    /* navigation header + links */
+    --md-typeset-a-color: var(--dj-primary);
+    /* navigation on hover + diagram outline */
+    --md-accent-fg-color: var(--dj-secondary);
 
-    --md-typeset-color: #e4f3f6;
-    --md-typeset-a-color: #17b2ff;
+    /* main */
+    /* main header + already viewed*/
+    --md-default-fg-color--light: var(--dj-background);
+    /* primary text */
+    --md-typeset-color: var(--dj-white);
+    /* code comments + diagram text */
+    --md-code-fg-color: var(--dj-secondary);
 
-    --md-default-fg-color: #e4f3f6;
-    --md-default-fg-color--light: var(--dj-yellow);
-
-    --md-primary-fg-color: var(--dj-yellow);
-    --md-primary-bg-color: #000000;
-    --md-primary-fg-color--dark: var(--dj-yellow);
-
-    --md-accent-fg-color: var(--dj-yellow);
-
-    --md-code-fg-color: #76c9e9;
-    --md-code-hl-comment-color: #ffd28d;
-
-    --md-footer-fg-color: var(--dj-yellow);
+    /* footer */
+    /* previous/next text */
+    --md-footer-fg-color: var(--dj-white);
 }
