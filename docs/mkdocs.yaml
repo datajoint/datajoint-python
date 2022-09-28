@@ -7,7 +7,8 @@ nav:
   - DataJoint Python: getting_started/index.md
   - Getting Started: getting_started/index.md
   - Concepts: concepts.md
-  - Tutorials: tutorials.md
+  - Tutorials:
+    - tutorials/json.ipynb
   - About:
     - Changelog: about/changelog.md
   - API: api/ # defer to gen-files + literate-nav
@@ -53,6 +54,8 @@ plugins:
   - exclude-search:
       exclude:
         - "*/navigation.md"
+  - mkdocs-jupyter:
+      include: ["*.ipynb"] 
 markdown_extensions:
   - attr_list
   - toc:
