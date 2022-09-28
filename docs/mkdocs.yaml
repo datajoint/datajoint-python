@@ -4,8 +4,8 @@ site_name: DataJoint Python
 repo_url: https://github.com/datajoint/datajoint-python
 repo_name: datajoint/datajoint-python
 nav:
-  - DataJoint Python: getting_started.md
-  - Getting Started: getting_started.md
+  - DataJoint Python: getting_started/index.md
+  - Getting Started: getting_started/index.md
   - Concepts: concepts.md
   - Tutorials: tutorials.md
   - About:
@@ -17,9 +17,13 @@ nav:
 edit_uri: ./edit/master/docs/src
 docs_dir: ./src
 theme:
+  font:
+    text: Roboto Slab
+    code: Source Code Pro
   name: material
   custom_dir: src/.overrides
-  logo: assets/images/project-logo-black.png
+  icon:
+    logo: main/project-logo-black
   favicon: assets/images/project-logo-color.png
   features:
     - toc.integrate
@@ -38,7 +42,7 @@ plugins:
   - search
   - redirects:
       redirect_maps:
-        "index.md": "getting_started.md"
+        "index.md": "getting_started/index.md"
   - mkdocstrings:
       default_handler: python
   - gen-files:
@@ -54,10 +58,16 @@ markdown_extensions:
   - toc:
       permalink: true
   - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
       options:
         custom_icons:
           - .overrides/.icons
   - mdx_truly_sane_lists
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - pymdownx.details
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
@@ -68,8 +78,10 @@ extra:
   version:
     provider: mike
   social:
-    - icon: datajoint/company-logo
+    - icon: main/company-logo
       link: https://www.datajoint.com/
+    - icon: fontawesome/solid/ticket
+      link: https://support.djneuro.io/portal/en/home
     - icon: fontawesome/brands/slack
       link: https://datajoint.slack.com
     - icon: fontawesome/brands/linkedin
@@ -78,6 +90,10 @@ extra:
       link: https://twitter.com/DataJointIO
     - icon: fontawesome/brands/github
       link: https://github.com/datajoint
+    - icon: fontawesome/brands/docker
+      link: https://hub.docker.com/u/datajoint
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/user/datajointbot
     - icon: fontawesome/brands/stack-overflow
       link: https://stackoverflow.com/questions/tagged/datajoint
     - icon: fontawesome/brands/youtube
