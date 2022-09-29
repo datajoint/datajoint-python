@@ -22,6 +22,7 @@ from .errors import (
     UnknownAttributeError,
     IntegrityError,
 )
+from typing import Union
 from .version import __version__ as version
 
 logger = logging.getLogger(__name__.split(".")[0])
@@ -462,7 +463,7 @@ class Table(QueryExpression):
     def delete(
         self,
         transaction: bool = True,
-        safemode: bool = None,
+        safemode: Union[bool, None] = None,
         force_parts: bool = False,
     ) -> int:
         """
