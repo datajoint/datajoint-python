@@ -462,7 +462,7 @@ class Table(QueryExpression):
     def delete(
         self,
         transaction: bool = True,
-        safemode: bool | None = None,
+        safemode: bool = None,
         force_parts: bool = False,
     ) -> int:
         """
