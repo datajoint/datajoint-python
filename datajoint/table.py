@@ -23,6 +23,7 @@ from .errors import (
     UnknownAttributeError,
     IntegrityError,
 )
+from typing import Union
 from .version import __version__ as version
 
 logger = logging.getLogger(__name__.split(".")[0])
@@ -460,15 +461,30 @@ class Table(QueryExpression):
         self._log(query[:255])
         return count
 
-    def delete(self, transaction=True, safemode=None, force_parts=False):
+    def delete(
+        self,
+        transaction: bool = True,
+        safemode: Union[bool, None] = None,
+        force_parts: bool = False,
+    ) -> int:
         """
         Deletes the contents of the table and its dependent tables, recursively.
 
-        :param transaction: if True, use the entire delete becomes an atomic transaction. This is the default and
-                            recommended behavior. Set to False if this delete is nested within another transaction.
-        :param safemode: If True, prohibit nested transactions and prompt to confirm. Default is dj.config['safemode'].
-        :param force_parts: Delete from parts even when not deleting from their masters.
-        :return: number of deleted rows (excluding those from dependent tables)
+        Args:
+            transaction: If `True`, use of the entire delete becomes an atomic transaction.
+                This is the default and recommended behavior. Set to `False` if this delete is
+                nested within another transaction.
+            safemode: If `True`, prohibit nested transactions and prompt to confirm. Default
+                is `dj.config['safemode']`.
+            force_parts: Delete from parts even when not deleting from their masters.
+
+        Returns:
+            Number of deleted rows (excluding those from dependent tables).
+
+        Raises:
+            DataJointError: Delete exceeds maximum number of delete attempts.
+            DataJointError: When deleting within an existing transaction.
+            DataJointError: Deleting a part table before its master.
         """
         deleted = set()
 
