@@ -45,6 +45,11 @@ plugins:
         "index.md": "getting_started/index.md"
   - mkdocstrings:
       default_handler: python
+      handlers:
+        python:
+          selection:
+            filters:
+              - "!^_"
   - gen-files:
       scripts:
       - ./src/api/make_pages.py
