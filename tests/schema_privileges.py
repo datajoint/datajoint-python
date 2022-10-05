@@ -26,3 +26,10 @@ class NoAccess(dj.Lookup):
     definition = """
     string: varchar(10)
     """
+
+
+@schema
+class NoAccessAgain(dj.Manual):
+    definition = """
+    -> NoAccess
+    """
