@@ -1,5 +1,8 @@
 ## Release notes
 
+### 0.14.0 -- TBA
+* Bugfix - Activating a schema requires all tables to exist even if `create_tables=False` PR [#1058](https://github.com/datajoint/datajoint-python/pull/1058)
+
 ### 0.13.8 -- Sep 21, 2022
 * Add - New documentation structure based on markdown PR [#1052](https://github.com/datajoint/datajoint-python/pull/1052)
 * Bugfix - Fix queries with backslashes ([#999](https://github.com/datajoint/datajoint-python/issues/999)) PR [#1052](https://github.com/datajoint/datajoint-python/pull/1052)

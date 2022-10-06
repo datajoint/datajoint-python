@@ -95,6 +95,7 @@ services:
         ## Interactive Jupyter Notebook environment
         jupyter notebook &
         ## Remote debugger
+        set +e
         while true
         do
           python -m ptvsd --host 0.0.0.0 --port 5678 --wait .

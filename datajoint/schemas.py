@@ -47,7 +47,7 @@ class Schema:
         connection=None,
         create_schema=True,
         create_tables=True,
-        add_objects=None
+        add_objects=None,
     ):
         """
         Associate database schema `schema_name`. If the schema does not exist, attempt to
@@ -87,7 +87,7 @@ class Schema:
         connection=None,
         create_schema=None,
         create_tables=None,
-        add_objects=None
+        add_objects=None,
     ):
         """
         Associate database schema `schema_name`. If the schema does not exist, attempt to
@@ -222,9 +222,7 @@ class Schema:
         # instantiate the class, declare the table if not already
         instance = table_class()
         is_declared = instance.is_declared
-        if not is_declared:
-            if not self.create_tables or assert_declared:
-                raise DataJointError("Table `%s` not declared" % instance.table_name)
+        if not is_declared and not assert_declared and self.create_tables:
             instance.declare(context)
             self.connection.dependencies.clear()
         is_declared = is_declared or instance.is_declared
@@ -506,7 +504,7 @@ class VirtualModule(types.ModuleType):
         create_schema=False,
         create_tables=False,
         connection=None,
-        add_objects=None
+        add_objects=None,
     ):
         """
         Creates a python module with the given name from the name of a schema on the server and
