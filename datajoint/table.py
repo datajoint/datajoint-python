@@ -355,7 +355,7 @@ class Table(QueryExpression):
 
         Example:
 
-            >>> relation.insert([
+            >>> Table.insert([
             >>>     dict(subject_id=7, species="mouse", date_of_birth="2014-09-01"),
             >>>     dict(subject_id=8, species="mouse", date_of_birth="2014-09-02")])
         """
@@ -613,8 +613,7 @@ class Table(QueryExpression):
 
     def drop_quick(self):
         """
-        Drops the table associated with this relation without cascading and without user prompt.
-        If the table has any dependent table(s), this call will fail with an error.
+        Drops the table without cascading to dependent tables and without user prompt.
         """
         if self.is_declared:
             query = "DROP TABLE %s" % self.full_table_name
@@ -682,7 +681,7 @@ class Table(QueryExpression):
 
     def describe(self, context=None, printout=True):
         """
-        :return:  the definition string for the relation using DataJoint DDL.
+        :return:  the definition string for the query using DataJoint DDL.
         """
         if context is None:
             frame = inspect.currentframe().f_back
@@ -1005,7 +1004,7 @@ def lookup_class_name(name, context, depth=3):
 
 class FreeTable(Table):
     """
-    A base relation without a dedicated class. Each instance is associated with a table
+    A base table without a dedicated class. Each instance is associated with a table
     specified by full_table_name.
 
     :param conn:  a dj.Connection object

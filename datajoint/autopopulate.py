@@ -43,8 +43,8 @@ def _call_populate1(key):
 
 class AutoPopulate:
     """
-    AutoPopulate is a mixin class that adds the method populate() to a Relation class.
-    Auto-populated relations must inherit from both Relation and AutoPopulate,
+    AutoPopulate is a mixin class that adds the method populate() to a Table class.
+    Auto-populated tables must inherit from both Table and AutoPopulate,
     must define the property `key_source`, and must define the callback method `make`.
     """
 
@@ -117,7 +117,7 @@ class AutoPopulate:
 
     def _jobs_to_do(self, restrictions):
         """
-        :return: the relation containing the keys to be computed (derived from self.key_source)
+        :return: the query yeilding the keys to be computed (derived from self.key_source)
         """
         if self.restriction:
             raise DataJointError(

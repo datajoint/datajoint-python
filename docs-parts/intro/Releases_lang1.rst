@@ -297,7 +297,7 @@ Documentation and tutorials available at https://docs.datajoint.io and https://t
 0.3.4
 -----
 * Added method the ``ERD.add_parts`` method, which adds the part tables of all tables currently in the ERD.
-* ``ERD() + arg`` and ``ERD() - arg`` can now accept relation classes as arg.
+* ``ERD() + arg`` and ``ERD() - arg`` can now accept table classes as arg.
 
 0.3.3
 -----
@@ -309,5 +309,5 @@ Documentation and tutorials available at https://docs.datajoint.io and https://t
 0.3.2
 -----
 * Fixed issue #223:  ``insert`` can insert relations without fetching.
-* ERD() now takes the ``context`` argument, which specifies in which context to look for classes. The default is taken from the argument (schema or relation).
+* ERD() now takes the ``context`` argument, which specifies in which context to look for classes. The default is taken from the argument (schema or table).
 * ERD.draw() no longer has the ``prefix`` argument: class names are shown as found in the context.
