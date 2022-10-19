@@ -84,7 +84,7 @@ class Attribute(namedtuple("_Attribute", default_attribute_properties)):
 
 class Heading:
     """
-    Local class for relations' headings.
+    Local class for table headings.
     Heading contains the property attributes, which is an dict in which the keys are
     the attribute names and the values are Attributes.
     """
