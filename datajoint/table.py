@@ -22,6 +22,7 @@ from .errors import (
     UnknownAttributeError,
     IntegrityError,
 )
+from typing import Union
 from .version import __version__ as version
 
 logger = logging.getLogger(__name__.split(".")[0])
@@ -354,7 +355,7 @@ class Table(QueryExpression):
 
         Example:
 
-            >>> relation.insert([
+            >>> Table.insert([
             >>>     dict(subject_id=7, species="mouse", date_of_birth="2014-09-01"),
             >>>     dict(subject_id=8, species="mouse", date_of_birth="2014-09-02")])
         """
@@ -459,15 +460,30 @@ class Table(QueryExpression):
         self._log(query[:255])
         return count
 
-    def delete(self, transaction=True, safemode=None, force_parts=False):
+    def delete(
+        self,
+        transaction: bool = True,
+        safemode: Union[bool, None] = None,
+        force_parts: bool = False,
+    ) -> int:
         """
         Deletes the contents of the table and its dependent tables, recursively.
 
-        :param transaction: if True, use the entire delete becomes an atomic transaction. This is the default and
-                            recommended behavior. Set to False if this delete is nested within another transaction.
-        :param safemode: If True, prohibit nested transactions and prompt to confirm. Default is dj.config['safemode'].
-        :param force_parts: Delete from parts even when not deleting from their masters.
-        :return: number of deleted rows (excluding those from dependent tables)
+        Args:
+            transaction: If `True`, use of the entire delete becomes an atomic transaction.
+                This is the default and recommended behavior. Set to `False` if this delete is
+                nested within another transaction.
+            safemode: If `True`, prohibit nested transactions and prompt to confirm. Default
+                is `dj.config['safemode']`.
+            force_parts: Delete from parts even when not deleting from their masters.
+
+        Returns:
+            Number of deleted rows (excluding those from dependent tables).
+
+        Raises:
+            DataJointError: Delete exceeds maximum number of delete attempts.
+            DataJointError: When deleting within an existing transaction.
+            DataJointError: Deleting a part table before its master.
         """
         deleted = set()
 
@@ -597,8 +613,7 @@ class Table(QueryExpression):
 
     def drop_quick(self):
         """
-        Drops the table associated with this relation without cascading and without user prompt.
-        If the table has any dependent table(s), this call will fail with an error.
+        Drops the table without cascading to dependent tables and without user prompt.
         """
         if self.is_declared:
             query = "DROP TABLE %s" % self.full_table_name
@@ -666,7 +681,7 @@ class Table(QueryExpression):
 
     def describe(self, context=None, printout=True):
         """
-        :return:  the definition string for the relation using DataJoint DDL.
+        :return:  the definition string for the query using DataJoint DDL.
         """
         if context is None:
             frame = inspect.currentframe().f_back
@@ -989,7 +1004,7 @@ def lookup_class_name(name, context, depth=3):
 
 class FreeTable(Table):
     """
-    A base relation without a dedicated class. Each instance is associated with a table
+    A base table without a dedicated class. Each instance is associated with a table
     specified by full_table_name.
 
     :param conn:  a dj.Connection object

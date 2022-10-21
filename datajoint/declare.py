@@ -5,7 +5,6 @@ declare the corresponding mysql tables.
 import re
 import pyparsing as pp
 import logging
-import warnings
 from .errors import DataJointError, _support_filepath_types, FILEPATH_FEATURE_SWITCH
 from .attribute_adapter import get_adapter
 

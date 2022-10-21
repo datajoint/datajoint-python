@@ -109,7 +109,7 @@ def make_condition(query_expression, condition, columns):
         ):
             return '"%s"' % v
         if isinstance(v, str):
-            return '"%s"' % v.replace("%", "%%")
+            return '"%s"' % v.replace("%", "%%").replace("\\", "\\\\")
         return "%r" % v
 
     negate = False

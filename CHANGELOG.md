@@ -1,8 +1,15 @@
 ## Release notes
 
+### 0.14.0 -- TBA
+* Bugfix - Activating a schema requires all tables to exist even if `create_tables=False` PR [#1058](https://github.com/datajoint/datajoint-python/pull/1058)
+
+### 0.13.8 -- Sep 21, 2022
+* Add - New documentation structure based on markdown PR [#1052](https://github.com/datajoint/datajoint-python/pull/1052)
+* Bugfix - Fix queries with backslashes ([#999](https://github.com/datajoint/datajoint-python/issues/999)) PR [#1052](https://github.com/datajoint/datajoint-python/pull/1052)
+
 ### 0.13.7 -- Jul 13, 2022
-* Bugfix - Fix networkx incompatable change by version pinning to 2.6.3 PR #1036 (#1035)
-* Add - Support for serializing numpy datetime64 types PR #1036 (#1022)
+* Bugfix - Fix networkx incompatable change by version pinning to 2.6.3 (#1035) PR #1036
+* Add - Support for serializing numpy datetime64 types (#1022) PR #1036
 * Update - Add traceback to default logging PR #1036
 
 ### 0.13.6 -- Jun 13, 2022
@@ -266,7 +273,7 @@ Documentation and tutorials available at https://docs.datajoint.io and https://t
 
 ### 0.3.4
 * Added method the `ERD.add_parts` method, which adds the part tables of all tables currently in the ERD.
-* `ERD() + arg` and `ERD() - arg` can now accept relation classes as arg.
+* `ERD() + arg` and `ERD() - arg` can now accept table classes as arg.
 
 ### 0.3.3
 * Suppressed warnings (redirected them to logging).  Previoiusly, scipy would throw warnings in ERD, for example.
@@ -276,5 +283,5 @@ Documentation and tutorials available at https://docs.datajoint.io and https://t
 
 ### 0.3.2.
 * Fixed issue #223:  `insert` can insert relations without fetching.
-* ERD() now takes the `context` argument, which specifies in which context to look for classes. The default is taken from the argument (schema or relation).
+* ERD() now takes the `context` argument, which specifies in which context to look for classes. The default is taken from the argument (schema or table).
 * ERD.draw() no longer has the `prefix` argument: class names are shown as found in the context.

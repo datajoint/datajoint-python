@@ -1,4 +1,4 @@
-# docker-compose -f local-docker-compose.yml --env-file LNX.env up --build
+# docker compose -f local-docker-compose.yml --env-file LNX.env up --build
 version: '2.2'
 x-net: &net
   networks:
@@ -34,7 +34,7 @@ services:
       interval: 1s
   fakeservices.datajoint.io:
     <<: *net
-    image: datajoint/nginx:v0.2.1
+    image: datajoint/nginx:v0.2.3
     environment:
     - ADD_db_TYPE=DATABASE
     - ADD_db_ENDPOINT=db:3306
@@ -82,7 +82,7 @@ services:
       - -c
       - |
         set -e
-        pip install --user nose nose-cov coveralls flake8 ptvsd black
+        pip install --user nose nose-cov coveralls flake8 ptvsd black faker
         pip install -e .
         pip freeze | grep datajoint
         ## You may run the below tests once sh'ed into container i.e. docker exec -it datajoint-python_app_1 sh
@@ -90,11 +90,12 @@ services:
         # nosetests -vs --tests=tests.test_external_class:test_insert_and_fetch; #run specific basic test
         # nosetests -vs --tests=tests.test_fetch:TestFetch.test_getattribute_for_fetch1; #run specific Class test
         # flake8 datajoint --count --select=E9,F63,F7,F82 --show-source --statistics
-        # flake8 --ignore=E203,E722,F401,W503 datajoint --count --max-complexity=62 --max-line-length=127 --statistics
+        # flake8 --ignore=E203,E722,W503 datajoint --count --max-complexity=62 --max-line-length=127 --statistics
         # black datajoint --check -v
         ## Interactive Jupyter Notebook environment
         jupyter notebook &
         ## Remote debugger
+        set +e
         while true
         do
           python -m ptvsd --host 0.0.0.0 --port 5678 --wait .
@@ -103,7 +104,7 @@ services:
     ports:
       - "8888:8888"
       - "5678:5678"
-    user: ${UID}:${GID}
+    user: ${HOST_UID}:${HOST_GID}
     volumes:
       - .:/src
       - /tmp/.X11-unix:/tmp/.X11-unix:rw

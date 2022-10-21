@@ -67,11 +67,11 @@ class TestTransactions:
 
     @classmethod
     def setup_class(cls):
-        cls.relation = cls.Subjects()
+        cls.table = cls.Subjects()
         cls.conn = dj.conn(**CONN_INFO)
 
     def teardown(self):
-        self.relation.delete_quick()
+        self.table.delete_quick()
 
     def test_active(self):
         with self.conn.transaction as conn:
@@ -81,25 +81,25 @@ class TestTransactions:
         """Test transaction cancellation using a with statement"""
         tmp = np.array(
             [(1, "Peter", "mouse"), (2, "Klara", "monkey")],
-            self.relation.heading.as_dtype,
+            self.table.heading.as_dtype,
         )
 
-        self.relation.delete()
+        self.table.delete()
         with self.conn.transaction:
-            self.relation.insert1(tmp[0])
+            self.table.insert1(tmp[0])
         try:
             with self.conn.transaction:
-                self.relation.insert1(tmp[1])
+                self.table.insert1(tmp[1])
                 raise DataJointError("Testing rollback")
         except DataJointError:
             pass
         assert_equal(
-            len(self.relation),
+            len(self.table),
             1,
             "Length is not 1. Expected because rollback should have happened.",
         )
         assert_equal(
-            len(self.relation & "subject_id = 2"),
+            len(self.table & "subject_id = 2"),
             0,
             "Length is not 0. Expected because rollback should have happened.",
         )
@@ -108,20 +108,20 @@ class TestTransactions:
         """Tests cancelling a transaction explicitly"""
         tmp = np.array(
             [(1, "Peter", "mouse"), (2, "Klara", "monkey")],
-            self.relation.heading.as_dtype,
+            self.table.heading.as_dtype,
         )
-        self.relation.delete_quick()
-        self.relation.insert1(tmp[0])
+        self.table.delete_quick()
+        self.table.insert1(tmp[0])
         self.conn.start_transaction()
-        self.relation.insert1(tmp[1])
+        self.table.insert1(tmp[1])
         self.conn.cancel_transaction()
         assert_equal(
-            len(self.relation),
+            len(self.table),
             1,
             "Length is not 1. Expected because rollback should have happened.",
         )
         assert_equal(
-            len(self.relation & "subject_id = 2"),
+            len(self.table & "subject_id = 2"),
             0,
             "Length is not 0. Expected because rollback should have happened.",
         )

@@ -1,4 +1,4 @@
-# docker-compose -f LNX-docker-compose.yml --env-file LNX.env up --exit-code-from app --build
+# docker compose -f LNX-docker-compose.yml --env-file LNX.env up --exit-code-from app --build
 version: '2.2'
 x-net: &net
   networks:
@@ -32,7 +32,7 @@ services:
       interval: 1s
   fakeservices.datajoint.io:
     <<: *net
-    image: datajoint/nginx:v0.2.1
+    image: datajoint/nginx:v0.2.3
     environment:
     - ADD_db_TYPE=DATABASE
     - ADD_db_ENDPOINT=db:3306
@@ -85,7 +85,7 @@ services:
         # jupyter notebook
     # ports:
     #   - "8888:8888"
-    user: ${UID}:${GID}
+    user: ${HOST_UID}:${HOST_GID}
     volumes:
       - .:/src
       - /tmp/.X11-unix:/tmp/.X11-unix:rw

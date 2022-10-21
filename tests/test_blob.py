@@ -230,7 +230,7 @@ def test_insert_longblob():
 
 def test_datetime_serialization_speed():
     # If this fails that means for some reason deserializing/serializing
-    # np arrays of np.datetime64 types is now slower than regular arrays of datetime64
+    # np arrays of np.datetime64 types is now slower than regular arrays of datetime
 
     optimized_exe_time = timeit.timeit(
         setup="myarr=pack(np.array([np.datetime64('2022-10-13 03:03:13') for _ in range(0, 10000)]))",
@@ -247,4 +247,4 @@ def test_datetime_serialization_speed():
     )
     print(f"python time {baseline_exe_time}")
 
-    assert optimized_exe_time * 1000 < baseline_exe_time
+    assert optimized_exe_time * 900 < baseline_exe_time

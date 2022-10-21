@@ -3,31 +3,55 @@ on:
   push:
     branches:
       - '**' # every branch
+      - '!gh-pages' # exclude gh-pages branch
       - '!stage*' # exclude branches beginning with stage
+    tags:
+      - '\d+\.\d+\.\d+' # only semver tags
   pull_request:
     branches:
       - '**' # every branch
+      - '!gh-pages' # exclude gh-pages branch
       - '!stage*' # exclude branches beginning with stage
 jobs:
-  build-docs:
+  build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - py_ver: 3.8
+            distro: alpine
+            image: djbase
     env:
+      PY_VER: ${{matrix.py_ver}}
+      DISTRO: ${{matrix.distro}}
+      IMAGE: ${{matrix.image}}
       DOCKER_CLIENT_TIMEOUT: "120"
       COMPOSE_HTTP_TIMEOUT: "120"
     steps:
       - uses: actions/checkout@v2
-      - name: Compile docs static artifacts
+      - name: Validate version and release notes
+        run: |
+          DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py)
+          RELEASE_BODY=$(python -c \
+            'print(open("./CHANGELOG.md").read().split("\n\n")[1].split("\n", 1)[1])' \
+          )
+          echo "DJ_VERSION=${DJ_VERSION}" >> $GITHUB_ENV
+          echo "RELEASE_BODY<<EOF" >> $GITHUB_ENV
+          echo "$RELEASE_BODY" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+      - name: Build pip artifacts
         run: |
           export HOST_UID=$(id -u)
-          docker-compose -f ./docs-api/docker-compose.yaml up --exit-code-from docs-builder --build 
-      - name: Add docs static artifacts
+          docker-compose -f docker-compose-build.yaml up --exit-code-from app --build
+          echo "DJ_VERSION=${DJ_VERSION}" >> $GITHUB_ENV
+      - if: matrix.py_ver == '3.8' && matrix.distro == 'alpine'
+        name: Add pip artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: docs-api-static
-          path: docs-api/build/html
+          name: pip-datajoint-${{env.DJ_VERSION}}
+          path: dist
           retention-days: 1
   test:
-    if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -39,7 +63,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{matrix.py_ver}}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{matrix.py_ver}}
       - name: Install dependencies
@@ -50,8 +74,6 @@ jobs:
         run: flake8 datajoint --count --select=E9,F63,F7,F82 --show-source --statistics
       - name: Run primary tests
         env:
-          UID: "1001"
-          GID: "121"
           PY_VER: ${{matrix.py_ver}}
           MYSQL_VER: ${{matrix.mysql_ver}}
           ALPINE_VER: "3.10"
@@ -59,49 +81,114 @@ jobs:
           COMPOSE_HTTP_TIMEOUT: "120"
           COVERALLS_SERVICE_NAME: travis-ci
           COVERALLS_REPO_TOKEN: fd0BoXG46TPReEem0uMy7BJO5j0w1MQiY
-        run: docker-compose -f LNX-docker-compose.yml up --build --exit-code-from app
+        run: |
+          export HOST_UID=$(id -u)
+          export HOST_GID=$(id -g)
+          docker-compose -f LNX-docker-compose.yml up --build --exit-code-from app
       - name: Run style tests
         run: |
-          flake8 --ignore=E203,E722,F401,W503 datajoint \
+          flake8 --ignore=E203,E722,W503 datajoint \
                  --count --max-complexity=62 --max-line-length=127 --statistics
           black datajoint --check -v
           black tests --check -v
   publish-docs:
     if: |
       github.event_name == 'push' &&
-      (
-        github.repository_owner == 'datajoint' ||
-        github.repository_owner == 'datajoint-company' ||
-        github.repository_owner == 'dj-sciops'
-      )
-    needs: build-docs
+      startsWith(github.ref, 'refs/tags')
+    needs: test
     runs-on: ubuntu-latest
+    env:
+      DOCKER_CLIENT_TIMEOUT: "120"
+      COMPOSE_HTTP_TIMEOUT: "120"
     steps:
       - uses: actions/checkout@v2
-      - name: Fetch docs static artifacts
+      - name: Deploy docs
+        run: |
+          export MODE=BUILD
+          export PACKAGE=datajoint
+          export UPSTREAM_REPO=https://github.com/${GITHUB_REPOSITORY}.git
+          export HOST_UID=$(id -u)
+          docker compose -f docs/docker-compose.yaml up --exit-code-from docs --build
+          git push origin gh-pages
+  publish-release:
+    if: |
+      github.event_name == 'push' &&
+      startsWith(github.ref, 'refs/tags')
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - py_ver: 3.8
+            distro: alpine
+            image: djbase
+    env:
+      PY_VER: ${{matrix.py_ver}}
+      DISTRO: ${{matrix.distro}}
+      IMAGE: ${{matrix.image}}
+      TWINE_USERNAME: ${{secrets.twine_username}}
+      TWINE_PASSWORD: ${{secrets.twine_password}}
+      DOCKER_CLIENT_TIMEOUT: "120"
+      COMPOSE_HTTP_TIMEOUT: "120"
+    outputs:
+      release_upload_url: ${{steps.create_gh_release.outputs.upload_url}}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{matrix.py_ver}}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{matrix.py_ver}}
+      - name: Determine package version
+        run: |
+          DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py)
+          RELEASE_BODY=$(python -c \
+            'print(open("./CHANGELOG.md").read().split("\n\n")[1].split("\n", 1)[1])' \
+          )
+          echo "DJ_VERSION=${DJ_VERSION}" >> $GITHUB_ENV
+          echo "RELEASE_BODY<<EOF" >> $GITHUB_ENV
+          echo "$RELEASE_BODY" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+      - name: Create GH release
+        id: create_gh_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        with:
+          tag_name: ${{env.DJ_VERSION}}
+          release_name: Release ${{env.DJ_VERSION}}
+          body: ${{env.RELEASE_BODY}}
+          prerelease: false
+          draft: false
+      - name: Fetch pip artifacts
         uses: actions/download-artifact@v2
         with:
-          name: docs-api-static
-          path: docs-api/build/html
-      - name: Commit documentation changes
+          name: pip-datajoint-${{env.DJ_VERSION}}
+          path: dist
+      - name: Determine pip artifact paths
         run: |
-          git clone https://github.com/${GITHUB_REPOSITORY}.git \
-              --branch gh-pages --single-branch gh-pages
-          rm -R gh-pages/*
-          cp -r docs-api/build/html/* gh-pages/
-          cp .gitignore gh-pages/
-          touch gh-pages/.nojekyll
-          echo "docs-api.datajoint.org" > gh-pages/CNAME
-          cd gh-pages
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add . --all
-          git commit -m "Update documentation" -a || true
-          # The above command will fail if no changes were present, so we ignore
-          # the return code.
-      - name: Push changes
-        uses: ad-m/github-push-action@master
+          echo "DJ_WHEEL_PATH=$(ls dist/datajoint-*.whl)" >> $GITHUB_ENV
+          echo "DJ_SDIST_PATH=$(ls dist/datajoint-*.tar.gz)" >> $GITHUB_ENV
+      - name: Upload pip wheel asset to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
         with:
-          branch: gh-pages
-          directory: gh-pages
-          github_token: ${{secrets.GITHUB_TOKEN}}
+          upload_url: ${{steps.create_gh_release.outputs.upload_url}}
+          asset_path: ${{env.DJ_WHEEL_PATH}}
+          asset_name: pip-datajoint-${{env.DJ_VERSION}}.whl
+          asset_content_type: application/zip
+      - name: Upload pip sdist asset to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        with:
+          upload_url: ${{steps.create_gh_release.outputs.upload_url}}
+          asset_path: ${{env.DJ_SDIST_PATH}}
+          asset_name: pip-datajoint-${{env.DJ_VERSION}}.tar.gz
+          asset_content_type: application/gzip
+      - name: Publish pip release
+        run: |
+          export HOST_UID=$(id -u)
+          docker-compose -f docker-compose-build.yaml run \
+            -e TWINE_USERNAME=${TWINE_USERNAME} -e TWINE_PASSWORD=${TWINE_PASSWORD} app \
+            sh -lc "pip install twine && python -m twine upload dist/*"

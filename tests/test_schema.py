@@ -59,7 +59,7 @@ def test_namespace_population():
 @raises(dj.DataJointError)
 def test_undecorated_table():
     """
-    Undecorated user relation classes should raise an informative exception upon first use
+    Undecorated user table classes should raise an informative exception upon first use
     """
 
     class UndecoratedClass(dj.Manual):
