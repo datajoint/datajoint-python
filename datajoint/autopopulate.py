@@ -214,7 +214,7 @@ class AutoPopulate:
 
         keys = keys[:max_calls]
         nkeys = len(keys)
-        
+
         error_list = []
         success_list = []
 
@@ -229,7 +229,9 @@ class AutoPopulate:
 
             if processes == 1:
                 for key in (
-                    tqdm(keys, desc=self.__class__.__name__) if display_progress else keys
+                    tqdm(keys, desc=self.__class__.__name__)
+                    if display_progress
+                    else keys
                 ):
                     status = self._populate1(key, jobs, **populate_kwargs)
                     if status is not None:
