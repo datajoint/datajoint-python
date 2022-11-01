@@ -60,7 +60,7 @@ class TestPopulate:
 
         keys = self.experiment.key_source.fetch("KEY", limit=2)
         for idx, key in enumerate(keys):
-            schema.jobs.insert1(
+            schema.schema.jobs.insert1(
                 {
                     "table_name": self.experiment.table_name,
                     "key_hash": dj.hash.key_hash(key),
