@@ -23,7 +23,8 @@
     !!! note "Pre-Requisites"
 
         - Ensure you have [pip](https://pip.pypa.io/en/stable/installation/) installed.
-        - Install [graphviz](https://graphviz.org/download/#windows) pre-requisite for diagram visualization.
+        - Install [graphviz](https://graphviz.org/download/#windows) pre-requisite for
+          diagram visualization.
 
     To install:
 
@@ -36,7 +37,8 @@
     !!! note "Pre-Requisites"
 
         - Ensure you have [pip](https://pip.pypa.io/en/stable/installation/) installed.
-        - Install [graphviz](https://graphviz.org/download/#mac) pre-requisite for diagram visualization.
+        - Install [graphviz](https://graphviz.org/download/#mac) pre-requisite for
+          diagram visualization.
 
     To install:
 
@@ -49,7 +51,8 @@
     !!! note "Pre-Requisites"
 
         - Ensure you have [pip](https://pip.pypa.io/en/stable/installation/) installed.
-        - Install [graphviz](https://graphviz.org/download/#linux) pre-requisite for diagram visualization.
+        - Install [graphviz](https://graphviz.org/download/#linux) pre-requisite for
+          diagram visualization.
     
     To install:
 
@@ -61,7 +64,10 @@
 
 !!! note
 
-    Although you may connect to any MySQL server of your choice, the DataJoint company offers an online tutorial environment. Simply sign up for a free [DataJoint account](https://accounts.datajoint.io). You will be granted privileges to create schemas that are prefixed as `{user}_`.
+    Although you may connect to any MySQL server of your choice, the DataJoint company
+    offers an online tutorial environment. Simply sign up for a free[DataJoint account]
+    (https://accounts.datajoint.io). You will be granted privileges to create schemas
+    that are prefixed as `{user}_`.
 
 === "environment variables"
 
@@ -87,7 +93,8 @@
 
 === "file"
 
-    Before using `datajoint`, create a file named `dj_local_conf.json` in the current directory like so:
+    Before using `datajoint`, create a file named `dj_local_conf.json` in the current
+    directory like so:
 
     ```json linenums="1"
     {
