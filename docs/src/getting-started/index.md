@@ -233,8 +233,7 @@ respectively, in the pipeline.
 ```
 
 1. Plot all the tables directly downstream from `schema.Rectangle`
-   display: none
-}
+
 
 ```python
 (dj.Diagram('my_schema')-1+1).draw() # (1)

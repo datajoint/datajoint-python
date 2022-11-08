@@ -52,7 +52,7 @@ cond_tuple = ('user = "Alice"', 'session_date = "2022-01-01"') # (2)
 import pandas as pd
 cond_frame = pd.DataFrame(data={'user': ['Alice'], 'session_date': ['2022-01-01']}) # (3)
 
-Student() & ['user = "Alice"', 'session_date = "2022-01-01"']
+Session() & ['user = "Alice"', 'session_date = "2022-01-01"']
 ```
 
 1. A list
@@ -122,7 +122,7 @@ Session.proj('session','session_date',start='session_start_time',end='session_en
 Projection can also be used to to compute new attributes from existing ones.
 
 ```python
-Session.Proj(duration='session_end_time-session_start_time') & 'duration > 10'
+Session.proj(duration='session_end_time-session_start_time') & 'duration > 10'
 ```
 
 ## Aggr
