@@ -4,12 +4,19 @@ site_name: DataJoint Python
 repo_url: https://github.com/datajoint/datajoint-python
 repo_name: datajoint/datajoint-python
 nav:
-  - DataJoint Python: getting_started/index.md
-  - Getting Started: getting_started/index.md
-  - Concepts: concepts.md
+  - DataJoint Python: getting-started/index.md
+  - Getting Started: getting-started/index.md
+  - Existing Pipelines: concepts/existing-pipelines.md
+  - Query Language:
+    - Common Commands:  query-lang/common-commands.md
+    - Operators: query-lang/operators.md
+    - Iteration: query-lang/iteration.md
+    - Query Caching: query-lang/query-caching.md
+  - Reproducibility:
+    - Table Tiers: reproduce/table-tiers.md
+    - Make Method: reproduce/make-method.md
   - Tutorials: tutorials.md
-  - About:
-    - Changelog: about/changelog.md
+  - Changelog: about/changelog.md
   - API: api/ # defer to gen-files + literate-nav
 
 # ---------------------------- STANDARD -----------------------------
@@ -27,6 +34,7 @@ theme:
   favicon: assets/images/project-logo-color.png
   features:
     - toc.integrate
+    - content.code.annotate # Add codeblock annotations
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: datajoint
@@ -42,14 +50,18 @@ plugins:
   - search
   - redirects:
       redirect_maps:
-        "index.md": "getting_started/index.md"
+        "index.md": "getting-started/index.md"
   - mkdocstrings:
       default_handler: python
       handlers:
         python:
-          selection:
+          options:
             filters:
               - "!^_"
+            docstring_style: sphinx # Replaces google default pending docstring updates
+            members_order: source      
+            group_by_category: false
+            line_length: 88
   - gen-files:
       scripts:
       - ./src/api/make_pages.py
@@ -58,6 +70,7 @@ plugins:
   - exclude-search:
       exclude:
         - "*/navigation.md"
+        - "*/archive/*md"
 markdown_extensions:
   - attr_list
   - toc:

@@ -25,7 +25,7 @@
     /* primary text */
     --md-typeset-color: var(--dj-black);
     /* code comments + diagram text */
-    --md-code-fg-color: var(--dj-secondary);
+    --md-code-fg-color: var(--dj-primary);
 
     /* footer */
     /* previous/next text */
@@ -51,9 +51,14 @@
     /* primary text */
     --md-typeset-color: var(--dj-white);
     /* code comments + diagram text */
-    --md-code-fg-color: var(--dj-secondary);
+    --md-code-fg-color: var(--dj-primary);
 
     /* footer */
     /* previous/next text */
     --md-footer-fg-color: var(--dj-white);
+}
+
+
+.md-footer__inner:not([hidden]) {
+    display: none
 }

@@ -1,0 +1,20 @@
+# https://github.com/DavidAnson/markdownlint
+# https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md
+MD009: false # permit trailing spaces
+MD013: 
+    line_length: "88" # Line length limits
+    tables: false # disable for tables
+    headings: false # disable for headings
+    code_blocks: false # disable for code blocks
+MD030: false # Number of spaces after a list
+MD033: # HTML elements allowed
+    allowed_elements: 
+        - "div"
+        - "span"
+        - "a"
+        - "br"
+        - "sup"  
+        - "figure"
+MD034: false # Bare URLs OK
+MD031: false # Spacing w/code blocks. Conflicts with `??? Note` and code tab styling
+MD046: false # Spacing w/code blocks. Conflicts with `??? Note` and code tab styling
