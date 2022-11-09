@@ -234,7 +234,6 @@ respectively, in the pipeline.
 
 1. Plot all the tables directly downstream from `schema.Rectangle`
 
-
 ```python
 (dj.Diagram('my_schema')-1+1).draw() # (1)
 ```

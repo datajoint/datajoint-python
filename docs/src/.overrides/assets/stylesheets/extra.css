@@ -6,6 +6,40 @@
     --dj-white: #ffffff;
 }
 
+/* footer previous/next navigation */
+.md-footer__inner:not([hidden]) {
+    display: none
+}
+
+/* footer social icons */
+html a[title="DataJoint"].md-social__link svg {
+    color: var(--dj-primary);
+}
+html a[title="Slack"].md-social__link svg {
+    color: var(--dj-primary);
+}
+html a[title="LinkedIn"].md-social__link svg {
+    color: var(--dj-primary);
+}
+html a[title="Twitter"].md-social__link svg {
+    color: var(--dj-primary);
+}
+html a[title="GitHub"].md-social__link svg {
+    color: var(--dj-primary);
+}
+html a[title="DockerHub"].md-social__link svg {
+    color: var(--dj-primary);
+}
+html a[title="PyPI"].md-social__link svg {
+    color: var(--dj-primary);
+}
+html a[title="StackOverflow"].md-social__link svg {
+    color: var(--dj-primary);
+}
+html a[title="YouTube"].md-social__link svg {
+    color: var(--dj-primary);
+}
+
 [data-md-color-scheme="datajoint"] {
     /* ribbon */
     /* ribbon + markdown heading expansion */
@@ -29,7 +63,7 @@
 
     /* footer */
     /* previous/next text */
-    --md-footer-fg-color: var(--dj-primary);
+    /* --md-footer-fg-color: var(--dj-primary); */
 }
 
 [data-md-color-scheme="slate"] {
@@ -47,7 +81,7 @@
 
     /* main */
     /* main header + already viewed*/
-    --md-default-fg-color--light: var(--dj-background);
+    /* --md-default-fg-color--light: var(--dj-background); */
     /* primary text */
     --md-typeset-color: var(--dj-white);
     /* code comments + diagram text */
@@ -55,10 +89,5 @@
 
     /* footer */
     /* previous/next text */
-    --md-footer-fg-color: var(--dj-white);
-}
-
-
-.md-footer__inner:not([hidden]) {
-    display: none
+    /* --md-footer-fg-color: var(--dj-white); */
 }
