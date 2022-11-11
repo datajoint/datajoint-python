@@ -5,7 +5,10 @@
 <!-- Area -->
 <g id="node1" class="node">
 <title>Area</title>
-<g id="a_node1"><a xlink:title="→ Rectangle------------------------------shape_area           ">
+<g id="a_node1"><a xlink:title="→ Rectangle
+------------------------------
+shape_area           
+">
 <ellipse fill="#ff0000" fill-opacity="0.125490" stroke="#ff0000" stroke-opacity="0.125490" cx="35.5" cy="-13" rx="13" ry="13"/>
 <text text-anchor="middle" x="35.5" y="-9.9" font-family="arial" font-size="12.00" fill="#7f0000" fill-opacity="0.627451">Area</text>
 </a>
@@ -14,7 +17,11 @@
 <!-- Rectangle -->
 <g id="node2" class="node">
 <title>Rectangle</title>
-<g id="a_node2"><a xlink:title="shape_id             ------------------------------shape_height         shape_width          ">
+<g id="a_node2"><a xlink:title="shape_id             
+------------------------------
+shape_height         
+shape_width          
+">
 <polygon fill="#00ff00" fill-opacity="0.188235" stroke="#00ff00" stroke-opacity="0.188235" points="71,-97 0,-97 0,-62 71,-62 71,-97"/>
 <text text-anchor="start" x="8" y="-77.4" font-family="arial" text-decoration="underline" font-size="12.00" fill="darkgreen">Rectangle</text>
 </a>
