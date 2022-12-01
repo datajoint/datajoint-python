@@ -69,7 +69,7 @@ class TestPopulate:
             restriction, return_success_count=True, suppress_errors=True
         )
         assert_equal(len(self.trial.key_source & self.trial), success_count)
-        
+
     def test_populate_exclude_error_and_ignore_jobs(self):
         # test simple populate
         assert_true(self.subject, "root tables are empty")
