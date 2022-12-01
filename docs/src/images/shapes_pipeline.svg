@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="79pt" height="105pt" viewBox="0.00 0.00 79.00 105.00">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 101)">
+<title>%3</title>
+<polygon fill="white" stroke="transparent" points="-4,4 -4,-101 75,-101 75,4 -4,4"/>
+<!-- Area -->
+<g id="node1" class="node">
+<title>Area</title>
+<g id="a_node1"><a xlink:title="→ Rectangle
+------------------------------
+shape_area           
+">
+<ellipse fill="#ff0000" fill-opacity="0.125490" stroke="#ff0000" stroke-opacity="0.125490" cx="35.5" cy="-13" rx="13" ry="13"/>
+<text text-anchor="middle" x="35.5" y="-9.9" font-family="arial" font-size="12.00" fill="#7f0000" fill-opacity="0.627451">Area</text>
+</a>
+</g>
+</g>
+<!-- Rectangle -->
+<g id="node2" class="node">
+<title>Rectangle</title>
+<g id="a_node2"><a xlink:title="shape_id             
+------------------------------
+shape_height         
+shape_width          
+">
+<polygon fill="#00ff00" fill-opacity="0.188235" stroke="#00ff00" stroke-opacity="0.188235" points="71,-97 0,-97 0,-62 71,-62 71,-97"/>
+<text text-anchor="start" x="8" y="-77.4" font-family="arial" text-decoration="underline" font-size="12.00" fill="darkgreen">Rectangle</text>
+</a>
+</g>
+</g>
+<!-- Rectangle&#45;&gt;Area -->
+<g id="edge1" class="edge">
+<title>Rectangle-&gt;Area</title>
+<path fill="none" stroke="#000000" stroke-width="2" stroke-opacity="0.250980" d="M35.5,-61.89C35.5,-50.69 35.5,-36.17 35.5,-26.07"/>
+</g>
+</g>
+</svg>

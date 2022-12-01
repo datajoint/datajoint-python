@@ -5,6 +5,7 @@ import traceback
 import random
 import inspect
 from tqdm import tqdm
+from .hash import key_hash
 from .expression import QueryExpression, AndList
 from .errors import DataJointError, LostConnectionError
 import signal
@@ -205,6 +206,16 @@ class AutoPopulate:
             old_handler = signal.signal(signal.SIGTERM, handler)
 
         keys = (self._jobs_to_do(restrictions) - self.target).fetch("KEY", limit=limit)
+
+        # exclude "error" or "ignore" jobs
+        if reserve_jobs:
+            exclude_key_hashes = (
+                jobs
+                & {"table_name": self.target.table_name}
+                & 'status in ("error", "ignore")'
+            ).fetch("key_hash")
+            keys = [key for key in keys if key_hash(key) not in exclude_key_hashes]
+
         if order == "reverse":
             keys.reverse()
         elif order == "random":
