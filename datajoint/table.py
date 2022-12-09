@@ -353,10 +353,9 @@ class Table(QueryExpression):
             will be inserted.
         :param replace: If True, replaces the existing tuple.
         :param skip_duplicates: If True, silently skip duplicate inserts.
-        :param ignore_extra_fields: If False, fields that are not in the heading raise
-            error.
-        :param allow_direct_insert: applies only in auto-populated tables. If False
-            (default), insert are allowed only from inside the make callback.
+        :param ignore_extra_fields: If False, fields that are not in the heading raise error.
+        :param allow_direct_insert: Only applies in auto-populated tables. If False (default),
+            insert may only be called from inside the make callback.
 
         Example:
 
