@@ -33,11 +33,9 @@ def test_activate():
         Enroll,
         Grade,
     ):
-        import csv
+        from pathlib import Path
 
-        with open("./data/" + table.__name__ + ".csv") as f:
-            reader = csv.DictReader(f)
-            table().insert(reader)
+        table().insert(Path("./data/" + table.__name__ + ".csv"))
 
 
 def test_fill():

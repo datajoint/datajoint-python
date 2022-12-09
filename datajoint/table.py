@@ -6,6 +6,7 @@ import numpy as np
 import pandas
 import logging
 import uuid
+import csv
 import re
 from pathlib import Path
 from .settings import config
@@ -345,13 +346,17 @@ class Table(QueryExpression):
         """
         Insert a collection of rows.
 
-        :param rows: An iterable where an element is a numpy record, a dict-like object, a
-            pandas.DataFrame, a sequence, or a query expression with the same heading as self.
+        :param rows: Either (a) an iterable where an element is a numpy record, a
+            dict-like object, a pandas.DataFrame, a sequence, or a query expression with
+            the same heading as self, or (b) a pathlib.Path object specifying a path
+            relative to the current directory with a CSV file, the contents of which
+            will be inserted.
         :param replace: If True, replaces the existing tuple.
         :param skip_duplicates: If True, silently skip duplicate inserts.
-        :param ignore_extra_fields: If False, fields that are not in the heading raise error.
-        :param allow_direct_insert: applies only in auto-populated tables. If False (default),
-            insert are allowed only from inside the make callback.
+        :param ignore_extra_fields: If False, fields that are not in the heading raise
+            error.
+        :param allow_direct_insert: applies only in auto-populated tables. If False
+            (default), insert are allowed only from inside the make callback.
 
         Example:
 
@@ -365,6 +370,10 @@ class Table(QueryExpression):
             rows = rows.reset_index(
                 drop=len(rows.index.names) == 1 and not rows.index.names[0]
             ).to_records(index=False)
+
+        if isinstance(rows, Path):
+            with open(rows, newline="") as data_file:
+                rows = list(csv.DictReader(data_file, delimiter=","))
 
         # prohibit direct inserts into auto-populated tables
         if not allow_direct_insert and not getattr(self, "_allow_insert", True):
