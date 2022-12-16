@@ -1,6 +1,70 @@
 
-<!-- ## Insert is present in the general docs here-->
+## Insert
 
+Data entry is as easy as providing the appropriate data structure to a permitted table.
+Given the following table definition, we can insert data as tuples, dicts, pandas
+dataframes, or pathlib `Path` relative paths to local CSV files.
+
+```text      
+    mouse_id: int            # unique mouse id
+    ---
+    dob: date                # mouse date of birth
+    sex: enum('M', 'F', 'U') # sex of mouse - Male, Female, or Unknown
+``` 
+
+=== "Tuple"
+
+    ```python
+    mouse.insert1( (0, '2017-03-01', 'M') ) # Single entry
+    data = [
+        (1, '2016-11-19', 'M'),
+        (2, '2016-11-20', 'U'),
+        (5, '2016-12-25', 'F')
+    ]
+    mouse.insert(data) # Multi-entry
+    ```
+
+=== "Dict"
+
+    ```python
+    mouse.insert1( dict(mouse_id=0, dob='2017-03-01', sex='M') ) # Single entry
+    data = [
+        {'mouse_id':1, 'dob':'2016-11-19', 'sex':'M'},
+        {'mouse_id':2, 'dob':'2016-11-20', 'sex':'U'},
+        {'mouse_id':5, 'dob':'2016-12-25', 'sex':'F'}
+    ]
+    mouse.insert(data) # Multi-entry
+    ```
+
+=== "Pandas"
+
+    ```python
+    import pandas as pd
+    data = pd.DataFrame(
+        [[1, "2016-11-19", "M"], [2, "2016-11-20", "U"], [5, "2016-12-25", "F"]],
+        columns=["mouse_id", "dob", "sex"],
+    )
+    mouse.insert(data)
+    ```
+
+=== "CSV"
+
+    Given the following CSV in the current working directory as `mice.csv`
+    
+    ```console
+    mouse_id,dob,sex
+    1,2016-11-19,M
+    2,2016-11-20,U
+    5,2016-12-25,F
+    ```
+    
+    We can import as follows:
+    
+    ```python
+    from pathlib import Path
+    mouse.insert(Path('./mice.csv'))
+    ```
+    
 ## Make
 
 See the article on [`make` methods](../../reproduce/make-method/)
@@ -31,8 +95,8 @@ data = query.fetch(as_dict=True) # (2)
 ### Separate variables
 
 ``` python
-name, img = query.fetch1('name', 'image')  # when query has exactly one entity
-name, img = query.fetch('name', 'image')   # [name, ...] [image, ...]
+name, img = query.fetch1('mouse_id', 'dob')  # when query has exactly one entity
+name, img = query.fetch('mouse_id', 'dob')   # [mouse_id, ...] [dob, ...]
 ```
 
 ### Primary key values
@@ -51,11 +115,10 @@ primary keys.
 To sort the result, use the `order_by` keyword argument.
 
 ``` python
-data = query.fetch(order_by='name')                 # ascending order
-data = query.fetch(order_by='name desc')            # descending order
-data = query.fetch(order_by=('name desc', 'year'))  # by name first, year second
-data = query.fetch(order_by='KEY')                  # sort by the primary key
-data = query.fetch(order_by=('name', 'KEY desc'))   # sort by name but for same names order by primary key
+data = query.fetch(order_by='mouse_id')                # ascending order
+data = query.fetch(order_by='mouse_id desc')           # descending order
+data = query.fetch(order_by=('mouse_id', 'dob'))       # by ID first, dob second
+data = query.fetch(order_by='KEY')                     # sort by the primary key
 ```
 
 The `order_by` argument can be a string specifying the attribute to sort by. By default
@@ -63,7 +126,7 @@ the sort is in ascending order. Use `'attr desc'` to sort in descending order by
 attribute `attr`. The value can also be a sequence of strings, in which case, the sort
 performed on all the attributes jointly in the order specified.
 
-The special attribute name `'KEY'` represents the primary key attributes in order that
+The special attribute named `'KEY'` represents the primary key attributes in order that
 they appear in the index. Otherwise, this name can be used as any other argument.
 
 If an attribute happens to be a SQL reserved word, it needs to be enclosed in
@@ -82,7 +145,7 @@ Similar to sorting, the `limit` and `offset` arguments can be used to limit the 
 to a subset of entities.
 
 ``` python
-data = query.fetch(order_by='name', limit=10, offset=5)
+data = query.fetch(order_by='mouse_id', limit=10, offset=5)
 ```
 
 Note that an `offset` cannot be used without specifying a `limit` as
