@@ -175,7 +175,7 @@ class TestRelation:
         )
 
     def test_skip_duplicates(self):
-        """test that skip_dublicates works when inserting from another relation"""
+        """test that skip_duplicates works when inserting from another table"""
         self.test_no_extra.delete()
         self.test_no_extra.insert(
             self.test, ignore_extra_fields=True, skip_duplicates=True

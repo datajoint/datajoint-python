@@ -112,15 +112,15 @@ important DataJoint schema or records.
 
 ### API docs
 
-The API documentation can be built using sphinx by running
+The API documentation can be built with mkdocs using the docker compose file in
+`docs/` with the following command:
 
 ``` bash
-pip install sphinx sphinx_rtd_theme 
-(cd docs-api/sphinx && make html)
+MODE="LIVE" PACKAGE=datajoint UPSTREAM_REPO=https://github.com/datajoint/datajoint-python.git HOST_UID=$(id -u) docker compose -f docs/docker-compose.yaml up --build
 ```
 
-Generated docs are written to `docs-api/docs/html/index.html`.
-More details in [docs-api/README.md](docs-api/README.md).
+The site will then be available at `http://localhost/`. When finished, be sure to run
+the same command as above, but replace `up --build` with `down`.
 
 ## Running Tests Locally
 <details>
@@ -141,11 +141,11 @@ HOST_GID=1000
 * Add entry in `/etc/hosts` for `127.0.0.1 fakeservices.datajoint.io`
 * Run desired tests. Some examples are as follows:
 
-| Use Case                     | Shell Code                                                                    |
-| ---------------------------- | ------------------------------------------------------------------------------ |
-| Run all tests                | `nosetests -vsw tests --with-coverage --cover-package=datajoint`                                                              |
-| Run one specific class test       | `nosetests -vs --tests=tests.test_fetch:TestFetch.test_getattribute_for_fetch1`                                                           |
-| Run one specific basic test        | `nosetests -vs --tests=tests.test_external_class:test_insert_and_fetch`                                   |
+| Use Case                     | Shell Code                                                                      |
+| ---------------------------- | ------------------------------------------------------------------------------  |
+| Run all tests                | `nosetests -vsw tests --with-coverage --cover-package=datajoint`                |
+| Run one specific class test  | `nosetests -vs --tests=tests.test_fetch:TestFetch.test_getattribute_for_fetch1` |
+| Run one specific basic test  | `nosetests -vs --tests=tests.test_external_class:test_insert_and_fetch`         |
 
 
 ### Launch Docker Terminal

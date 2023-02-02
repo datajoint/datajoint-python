@@ -6,6 +6,7 @@ import numpy as np
 import pandas
 import logging
 import uuid
+import csv
 import re
 import json
 from pathlib import Path
@@ -346,17 +347,20 @@ class Table(QueryExpression):
         """
         Insert a collection of rows.
 
-        :param rows: An iterable where an element is a numpy record, a dict-like object, a
-            pandas.DataFrame, a sequence, or a query expression with the same heading as self.
+        :param rows: Either (a) an iterable where an element is a numpy record, a
+            dict-like object, a pandas.DataFrame, a sequence, or a query expression with
+            the same heading as self, or (b) a pathlib.Path object specifying a path
+            relative to the current directory with a CSV file, the contents of which
+            will be inserted.
         :param replace: If True, replaces the existing tuple.
         :param skip_duplicates: If True, silently skip duplicate inserts.
         :param ignore_extra_fields: If False, fields that are not in the heading raise error.
-        :param allow_direct_insert: applies only in auto-populated tables. If False (default),
-            insert are allowed only from inside the make callback.
+        :param allow_direct_insert: Only applies in auto-populated tables. If False (default),
+            insert may only be called from inside the make callback.
 
         Example:
 
-            >>> relation.insert([
+            >>> Table.insert([
             >>>     dict(subject_id=7, species="mouse", date_of_birth="2014-09-01"),
             >>>     dict(subject_id=8, species="mouse", date_of_birth="2014-09-02")])
         """
@@ -366,6 +370,10 @@ class Table(QueryExpression):
             rows = rows.reset_index(
                 drop=len(rows.index.names) == 1 and not rows.index.names[0]
             ).to_records(index=False)
+
+        if isinstance(rows, Path):
+            with open(rows, newline="") as data_file:
+                rows = list(csv.DictReader(data_file, delimiter=","))
 
         # prohibit direct inserts into auto-populated tables
         if not allow_direct_insert and not getattr(self, "_allow_insert", True):
@@ -614,8 +622,7 @@ class Table(QueryExpression):
 
     def drop_quick(self):
         """
-        Drops the table associated with this relation without cascading and without user prompt.
-        If the table has any dependent table(s), this call will fail with an error.
+        Drops the table without cascading to dependent tables and without user prompt.
         """
         if self.is_declared:
             query = "DROP TABLE %s" % self.full_table_name
@@ -685,7 +692,7 @@ class Table(QueryExpression):
 
     def describe(self, context=None, printout=False):
         """
-        :return:  the definition string for the relation using DataJoint DDL.
+        :return:  the definition string for the query using DataJoint DDL.
         """
         if context is None:
             frame = inspect.currentframe().f_back
@@ -1010,7 +1017,7 @@ def lookup_class_name(name, context, depth=3):
 
 class FreeTable(Table):
     """
-    A base relation without a dedicated class. Each instance is associated with a table
+    A base table without a dedicated class. Each instance is associated with a table
     specified by full_table_name.
 
     :param conn:  a dj.Connection object

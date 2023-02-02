@@ -1,10 +1,13 @@
 ## Release notes
 
-### 0.14.0 -- TBA
-* Add `json` data type ([#245](https://github.com/datajoint/datajoint-python/issues/245)) PR [#1051](https://github.com/datajoint/datajoint-python/pull/1051)
-- Fix lingering prints by replacing with logs PR [#1051](https://github.com/datajoint/datajoint-python/pull/1051)
-- `table.progress()` defaults to no stdout PR [#1051](https://github.com/datajoint/datajoint-python/pull/1051)
-- `table.describe()` defaults to no stdout PR [#1051](https://github.com/datajoint/datajoint-python/pull/1051)
+### 0.14.0 -- Feb 08, 2023
+* Add - `json` data type ([#245](https://github.com/datajoint/datajoint-python/issues/245)) PR [#1051](https://github.com/datajoint/datajoint-python/pull/1051)
+* Bugfix - Convert lingering prints by replacing with logs PR [#1051](https://github.com/datajoint/datajoint-python/pull/1051)
+* Update - `table.progress()` defaults to no stdout PR [#1051](https://github.com/datajoint/datajoint-python/pull/1051)
+* Update - `table.describe()` defaults to no stdout PR [#1051](https://github.com/datajoint/datajoint-python/pull/1051)
+* Bugfix - Activating a schema requires all tables to exist even if `create_tables=False` PR [#1058](https://github.com/datajoint/datajoint-python/pull/1058)
+* Update - Populate call with `reserve_jobs=True` to exclude `error` and `ignore` keys PR [#1062](https://github.com/datajoint/datajoint-python/pull/1062)
+* Add - Support for inserting data with CSV files PR [#1067](https://github.com/datajoint/datajoint-python/pull/1067)
 
 ### 0.13.8 -- Sep 21, 2022
 * Add - New documentation structure based on markdown PR [#1052](https://github.com/datajoint/datajoint-python/pull/1052)
@@ -276,7 +279,7 @@ Documentation and tutorials available at https://docs.datajoint.io and https://t
 
 ### 0.3.4
 * Added method the `ERD.add_parts` method, which adds the part tables of all tables currently in the ERD.
-* `ERD() + arg` and `ERD() - arg` can now accept relation classes as arg.
+* `ERD() + arg` and `ERD() - arg` can now accept table classes as arg.
 
 ### 0.3.3
 * Suppressed warnings (redirected them to logging).  Previoiusly, scipy would throw warnings in ERD, for example.
@@ -286,5 +289,5 @@ Documentation and tutorials available at https://docs.datajoint.io and https://t
 
 ### 0.3.2.
 * Fixed issue #223:  `insert` can insert relations without fetching.
-* ERD() now takes the `context` argument, which specifies in which context to look for classes. The default is taken from the argument (schema or relation).
+* ERD() now takes the `context` argument, which specifies in which context to look for classes. The default is taken from the argument (schema or table).
 * ERD.draw() no longer has the `prefix` argument: class names are shown as found in the context.

@@ -5,6 +5,7 @@ import traceback
 import random
 import inspect
 from tqdm import tqdm
+from .hash import key_hash
 from .expression import QueryExpression, AndList
 from .errors import DataJointError, LostConnectionError
 import signal
@@ -43,8 +44,8 @@ def _call_populate1(key):
 
 class AutoPopulate:
     """
-    AutoPopulate is a mixin class that adds the method populate() to a Relation class.
-    Auto-populated relations must inherit from both Relation and AutoPopulate,
+    AutoPopulate is a mixin class that adds the method populate() to a Table class.
+    Auto-populated tables must inherit from both Table and AutoPopulate,
     must define the property `key_source`, and must define the callback method `make`.
     """
 
@@ -117,7 +118,7 @@ class AutoPopulate:
 
     def _jobs_to_do(self, restrictions):
         """
-        :return: the relation containing the keys to be computed (derived from self.key_source)
+        :return: the query yeilding the keys to be computed (derived from self.key_source)
         """
         if self.restriction:
             raise DataJointError(
@@ -202,6 +203,16 @@ class AutoPopulate:
             old_handler = signal.signal(signal.SIGTERM, handler)
 
         keys = (self._jobs_to_do(restrictions) - self.target).fetch("KEY", limit=limit)
+
+        # exclude "error" or "ignore" jobs
+        if reserve_jobs:
+            exclude_key_hashes = (
+                jobs
+                & {"table_name": self.target.table_name}
+                & 'status in ("error", "ignore")'
+            ).fetch("key_hash")
+            keys = [key for key in keys if key_hash(key) not in exclude_key_hashes]
+
         if order == "reverse":
             keys.reverse()
         elif order == "random":
