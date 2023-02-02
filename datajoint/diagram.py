@@ -6,7 +6,7 @@ import logging
 import inspect
 from .table import Table
 from .dependencies import unite_master_parts
-from .user_tables import Manual, Imported, Computed, Lookup, Part
+from .user_tables import Manual, Imported, Computed, Lookup, Part, Params
 from .errors import DataJointError
 from .table import lookup_class_name
 
@@ -27,7 +27,7 @@ except:
 
 
 logger = logging.getLogger(__name__.split(".")[0])
-user_table_classes = (Manual, Lookup, Computed, Imported, Part)
+user_table_classes = (Manual, Lookup, Computed, Imported, Part, Params)
 
 
 class _AliasNode:
@@ -340,6 +340,14 @@ else:
                     size=0.4 * scale,
                     fixed=False,
                 ),
+                Params: dict(
+                    shape="plaintext",
+                    color="#00000020",
+                    fontcolor="blue",
+                    fontsize=round(scale * 8),
+                    size=0.4 * scale,
+                    fixed=False,
+                ),
                 Computed: dict(
                     shape="ellipse",
                     color="#FF000020",
@@ -376,9 +384,9 @@ else:
                 name = node.get_name().strip('"')
                 props = node_props[name]
                 node.set_fontsize(props["fontsize"])
-                node.set_fontcolor(props["fontcolor"])
                 node.set_shape(props["shape"])
                 node.set_fontname("arial")
+                node.set_fontcolor(props["fontcolor"])
                 node.set_fixedsize("shape" if props["fixed"] else False)
                 node.set_width(props["size"])
                 node.set_height(props["size"])

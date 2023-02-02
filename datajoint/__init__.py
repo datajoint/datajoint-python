@@ -34,6 +34,7 @@ __all__ = [
     "Lookup",
     "Imported",
     "Computed",
+    "Params",
     "Part",
     "Not",
     "AndList",
@@ -61,7 +62,7 @@ from .connection import conn, Connection
 from .schemas import Schema
 from .schemas import VirtualModule, list_schemas
 from .table import Table, FreeTable
-from .user_tables import Manual, Lookup, Imported, Computed, Part
+from .user_tables import Manual, Lookup, Imported, Computed, Params, Part
 from .expression import Not, AndList, U
 from .diagram import Diagram
 from .admin import set_password, kill

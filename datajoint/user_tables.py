@@ -1,11 +1,15 @@
 """
 Hosts the table tiers, user tables should be derived from.
 """
-
+import collections
+import pandas as pd
+import numpy as np
 from .table import Table
 from .autopopulate import AutoPopulate
-from .utils import from_camel_case, ClassProperty
-from .errors import DataJointError
+from .logging import logger
+from .utils import from_camel_case, ClassProperty, dict_to_uuid
+from .errors import DataJointError, DuplicateError
+from .expression import QueryExpression
 
 _base_regexp = r"[a-z][a-z0-9]*(_[a-z][a-z0-9]*)*"
 
@@ -120,7 +124,7 @@ class UserTable(Table, metaclass=TableMeta):
 
     @ClassProperty
     def full_table_name(cls):
-        if cls not in {Manual, Imported, Lookup, Computed, Part, UserTable}:
+        if cls not in {Manual, Imported, Lookup, Computed, Part, Params, UserTable}:
             # for derived classes only
             if cls.database is None:
                 raise DataJointError(
@@ -150,6 +154,97 @@ class Lookup(UserTable):
     tier_regexp = (
         r"(?P<lookup>" + _prefix + _base_regexp.replace("TIER", "lookup") + ")"
     )
+
+
+class Params(UserTable):
+    """
+    Inherit from this class if the table's values are paramsets. Adds hashing of fields
+    that include 'param' and stores as additional unique index 'paramset hash'
+    """
+
+    _prefix = "##"
+    tier_regexp = (
+        r"(?P<params>" + _prefix + _base_regexp.replace("TIER", "params") + ")"
+    )
+
+    def __init__(self):
+        super().__init__()
+        if "params" not in self.definition:
+            raise DataJointError("Params tables must have at least one params field")
+        self.definition += "paramset_hash: UUID\nunique index (paramset_hash)\n"
+        # self._refresh_hash_table()
+        if self.is_declared:
+            self._refresh_hash_table()
+
+    def _refresh_hash_table(self):
+        paramset_hashes, primary_keys = self.fetch("paramset_hash", "KEY")
+        self._hash_table = {
+            paramset_hash: primary_key
+            for paramset_hash, primary_key in zip(paramset_hashes, primary_keys)
+        }
+
+    def declare(self, context=None):
+        super().declare(context)
+        self._refresh_hash_table()
+
+    def delete(self, **kwargs) -> int:
+        result = super().delete(**kwargs)
+        self._refresh_hash_table()
+        return result
+
+    def delete_quick(self, **kwargs):
+        result = super().delete_quick(**kwargs)
+        self._refresh_hash_table()
+        return result
+
+    def insert(self, rows, **kwargs):
+        if isinstance(rows, QueryExpression):
+            raise NotImplementedError(
+                "Params tables do not yet support insertion via QueryExpression"
+            )
+
+        rows = self._normalize_insert_data(rows)
+
+        new_rows = []
+        for row in rows:
+            if isinstance(row, np.record):
+                row_values = tuple(row)
+            elif isinstance(row, collections.abc.Mapping):
+                row_values = row.values()
+            else:
+                row_values = row
+
+            paramset_hash = dict_to_uuid(
+                {
+                    field: value
+                    for field, value in zip(self.heading, row_values)
+                    if "param" in field and "hash" not in field
+                }
+            )
+
+            if paramset_hash in self._hash_table:
+                logger.warning(
+                    "Paramset already included with the following primary "
+                    + f"key: {self._hash_table[paramset_hash]}"
+                )
+                continue
+
+            self._hash_table.update(
+                {
+                    paramset_hash: value
+                    for value, field in zip(self.heading, row_values)
+                    if field in self.primary_key
+                }
+            )
+
+            if isinstance(row, collections.abc.Mapping):
+                row.update(dict(paramset_hash=paramset_hash))
+            else:
+                row.append(paramset_hash)
+
+            new_rows.append(row)
+
+        super().insert(new_rows, **kwargs)
 
 
 class Imported(UserTable, AutoPopulate):
@@ -185,7 +280,9 @@ class Part(UserTable):
 
     tier_regexp = (
         r"(?P<master>"
-        + "|".join([c.tier_regexp for c in (Manual, Lookup, Imported, Computed)])
+        + "|".join(
+            [c.tier_regexp for c in (Manual, Lookup, Imported, Computed, Params)]
+        )
         + r"){1,1}"
         + "__"
         + r"(?P<part>"

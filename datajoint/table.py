@@ -335,6 +335,28 @@ class Table(QueryExpression):
         """
         self.insert((row,), **kwargs)
 
+    def _normalize_insert_data(self, rows):
+        """Handle types provided to `insert`, including DataFrame, Path and class"""
+
+        if isinstance(rows, pandas.DataFrame):
+            # drop 'extra' synthetic index for 1-field index case -
+            # frames with more advanced indices should be prepared by user.
+            rows_as_recarray = rows.reset_index(
+                drop=len(rows.index.names) == 1 and not rows.index.names[0]
+            ).to_records(index=False)
+            rows = [  # transform recarray above into dict
+                dict(zip(rows_as_recarray.dtype.names, row)) for row in rows_as_recarray
+            ]
+
+        if isinstance(rows, Path):
+            with open(rows, newline="") as data_file:
+                rows = list(csv.DictReader(data_file, delimiter=","))
+
+        if inspect.isclass(rows) and issubclass(rows, QueryExpression):
+            rows = rows()  # instantiate if a class
+
+        return rows
+
     def insert(
         self,
         rows,
@@ -363,17 +385,6 @@ class Table(QueryExpression):
             >>>     dict(subject_id=7, species="mouse", date_of_birth="2014-09-01"),
             >>>     dict(subject_id=8, species="mouse", date_of_birth="2014-09-02")])
         """
-        if isinstance(rows, pandas.DataFrame):
-            # drop 'extra' synthetic index for 1-field index case -
-            # frames with more advanced indices should be prepared by user.
-            rows = rows.reset_index(
-                drop=len(rows.index.names) == 1 and not rows.index.names[0]
-            ).to_records(index=False)
-
-        if isinstance(rows, Path):
-            with open(rows, newline="") as data_file:
-                rows = list(csv.DictReader(data_file, delimiter=","))
-
         # prohibit direct inserts into auto-populated tables
         if not allow_direct_insert and not getattr(self, "_allow_insert", True):
             raise DataJointError(
@@ -382,8 +393,8 @@ class Table(QueryExpression):
                 " To override, set keyword argument allow_direct_insert=True."
             )
 
-        if inspect.isclass(rows) and issubclass(rows, QueryExpression):
-            rows = rows()  # instantiate if a class
+        rows = self._normalize_insert_data(rows)
+
         if isinstance(rows, QueryExpression):
             # insert from select
             if not ignore_extra_fields:

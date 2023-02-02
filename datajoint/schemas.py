@@ -12,7 +12,7 @@ from .jobs import JobTable
 from .external import ExternalMapping
 from .heading import Heading
 from .utils import user_choice, to_camel_case
-from .user_tables import Part, Computed, Imported, Manual, Lookup
+from .user_tables import Part, Computed, Imported, Manual, Lookup, Params
 from .table import lookup_class_name, Log, FreeTable
 import types
 
