@@ -3,8 +3,11 @@ import datajoint as dj
 import os
 from pathlib import Path
 import random
-
 from .schema_external import schema, Filepath, FilepathS3, stores_config
+import logging
+import io
+
+logger = logging.getLogger("datajoint")
 
 
 def setUp(self):
@@ -132,7 +135,9 @@ def test_duplicate_error_s3():
     test_duplicate_error(store="repo-s3")
 
 
-def test_filepath_class(table=Filepath(), store="repo"):
+def test_filepath_class(table=Filepath(), store="repo", verify_checksum=True):
+    if not verify_checksum:
+        dj.config["filepath_checksum_size_limit"] = 0
     dj.errors._switch_filepath_types(True)
     stage_path = dj.config["stores"][store]["stage"]
     # create a mock file
@@ -169,6 +174,7 @@ def test_filepath_class(table=Filepath(), store="repo"):
     # delete from external table
     table.external[store].delete(delete_external_files=True)
     dj.errors._switch_filepath_types(False)
+    dj.config["filepath_checksum_size_limit"] = None
 
 
 def test_filepath_class_again():
@@ -183,6 +189,24 @@ def test_filepath_class_s3():
 def test_filepath_class_s3_again():
     """test_filepath_class_s3 again to deal with existing remote files"""
     test_filepath_class(FilepathS3(), "repo-s3")
+
+
+def test_filepath_class_no_checksum():
+    log_capture = io.StringIO()
+    stream_handler = logging.StreamHandler(log_capture)
+    log_format = logging.Formatter(
+        "[%(asctime)s][%(funcName)s][%(levelname)s]: %(message)s"
+    )
+    stream_handler.setFormatter(log_format)
+    stream_handler.set_name("test_limit_warning")
+    logger.addHandler(stream_handler)
+    test_filepath_class(verify_checksum=False)
+    log_contents = log_capture.getvalue()
+    log_capture.close()
+    for handler in logger.handlers:  # Clean up handler
+        if handler.name == "test_limit_warning":
+            logger.removeHandler(handler)
+    assert "Skipped checksum for file with hash:" in log_contents
 
 
 def test_filepath_cleanup(table=Filepath(), store="repo"):

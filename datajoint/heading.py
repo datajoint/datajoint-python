@@ -14,7 +14,7 @@ from .declare import (
 from .attribute_adapter import get_adapter, AttributeAdapter
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__.split(".")[0])
 
 default_attribute_properties = (
     dict(  # these default values are set in computed attributes
@@ -84,7 +84,7 @@ class Attribute(namedtuple("_Attribute", default_attribute_properties)):
 
 class Heading:
     """
-    Local class for relations' headings.
+    Local class for table headings.
     Heading contains the property attributes, which is an dict in which the keys are
     the attribute names and the values are Attributes.
     """

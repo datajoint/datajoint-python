@@ -53,6 +53,28 @@ class TestPopulate:
         assert_true(self.ephys)
         assert_true(self.channel)
 
+    def test_populate_exclude_error_and_ignore_jobs(self):
+        # test simple populate
+        assert_true(self.subject, "root tables are empty")
+        assert_false(self.experiment, "table already filled?")
+
+        keys = self.experiment.key_source.fetch("KEY", limit=2)
+        for idx, key in enumerate(keys):
+            schema.schema.jobs.insert1(
+                {
+                    "table_name": self.experiment.table_name,
+                    "key_hash": dj.hash.key_hash(key),
+                    "status": "error" if idx == 0 else "ignore",
+                    "key": key,
+                }
+            )
+
+        self.experiment.populate(reserve_jobs=True)
+        assert_equal(
+            len(self.experiment.key_source & self.experiment),
+            len(self.experiment.key_source) - 2,
+        )
+
     def test_allow_direct_insert(self):
         assert_true(self.subject, "root tables are empty")
         key = self.subject.fetch("KEY", limit=1)[0]
@@ -64,6 +86,15 @@ class TestPopulate:
         assert self.subject, "root tables are empty"
         assert not self.experiment, "table already filled?"
         self.experiment.populate(processes=2)
+        assert (
+            len(self.experiment)
+            == len(self.subject) * self.experiment.fake_experiments_per_subject
+        )
+
+    def test_max_multi_processing(self):
+        assert self.subject, "root tables are empty"
+        assert not self.experiment, "table already filled?"
+        self.experiment.populate(processes=None)
         assert (
             len(self.experiment)
             == len(self.subject) * self.experiment.fake_experiments_per_subject

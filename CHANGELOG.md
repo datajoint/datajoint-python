@@ -1,9 +1,32 @@
 ## Release notes
 
-### 0.13.5 -- TBA
-* Update - Switch testing image from `pydev` to `djtest` PR #1012
+### 0.14.0 -- TBA
+* Bugfix - Activating a schema requires all tables to exist even if `create_tables=False` PR [#1058](https://github.com/datajoint/datajoint-python/pull/1058)
+* Update - Populate call with `reserve_jobs=True` to exclude `error` and `ignore` keys - PR [#1062](https://github.com/datajoint/datajoint-python/pull/1062)
+* Add - Support for inserting data with CSV files - PR [#1067](https://github.com/datajoint/datajoint-python/pull/1067)
+* Update - Switch testing image from `pydev` to `djtest` PR [#1012](https://github.com/datajoint/datajoint-python/pull/1012)
 
-### 0.13.4 -- March, 28 2022
+### 0.13.8 -- Sep 21, 2022
+* Add - New documentation structure based on markdown PR [#1052](https://github.com/datajoint/datajoint-python/pull/1052)
+* Bugfix - Fix queries with backslashes ([#999](https://github.com/datajoint/datajoint-python/issues/999)) PR [#1052](https://github.com/datajoint/datajoint-python/pull/1052)
+
+### 0.13.7 -- Jul 13, 2022
+* Bugfix - Fix networkx incompatable change by version pinning to 2.6.3 (#1035) PR #1036
+* Add - Support for serializing numpy datetime64 types (#1022) PR #1036
+* Update - Add traceback to default logging PR #1036
+
+### 0.13.6 -- Jun 13, 2022
+* Add - Config option to set threshold for when to stop using checksums for filepath stores. PR #1025
+* Add - Unified package level logger for package (#667) PR #1031
+* Update - Swap various datajoint messages, warnings, etc. to use the new logger. (#667) PR #1031
+* Bugfix - Fix query caching deleting non-datajoint files PR #1027
+* Update - Minimum Python version for Datajoint-Python is now 3.7 PR #1027
+
+### 0.13.5 -- May 19, 2022
+* Update - Import ABC from collections.abc for Python 3.10 compatibility
+* Bugfix - Fix multiprocessing value error (#1013) PR #1026
+
+### 0.13.4 -- Mar, 28 2022
 * Add - Allow reading blobs produced by legacy 32-bit compiled mYm library for matlab. PR #995
 * Bugfix - Add missing `jobs` argument for multiprocessing PR #997
 * Add - Test for multiprocessing PR #1008
@@ -253,7 +276,7 @@ Documentation and tutorials available at https://docs.datajoint.io and https://t
 
 ### 0.3.4
 * Added method the `ERD.add_parts` method, which adds the part tables of all tables currently in the ERD.
-* `ERD() + arg` and `ERD() - arg` can now accept relation classes as arg.
+* `ERD() + arg` and `ERD() - arg` can now accept table classes as arg.
 
 ### 0.3.3
 * Suppressed warnings (redirected them to logging).  Previoiusly, scipy would throw warnings in ERD, for example.
@@ -263,5 +286,5 @@ Documentation and tutorials available at https://docs.datajoint.io and https://t
 
 ### 0.3.2.
 * Fixed issue #223:  `insert` can insert relations without fetching.
-* ERD() now takes the `context` argument, which specifies in which context to look for classes. The default is taken from the argument (schema or relation).
+* ERD() now takes the `context` argument, which specifies in which context to look for classes. The default is taken from the argument (schema or table).
 * ERD.draw() no longer has the `prefix` argument: class names are shown as found in the context.

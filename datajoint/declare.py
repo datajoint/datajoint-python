@@ -5,7 +5,6 @@ declare the corresponding mysql tables.
 import re
 import pyparsing as pp
 import logging
-import warnings
 from .errors import DataJointError, _support_filepath_types, FILEPATH_FEATURE_SWITCH
 from .attribute_adapter import get_adapter
 
@@ -75,7 +74,7 @@ def match_type(attribute_type):
         )
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__.split(".")[0])
 
 
 def build_foreign_key_parser_old():
@@ -207,7 +206,7 @@ def compile_foreign_key(
         )
 
     if obsolete:
-        warnings.warn(
+        logger.warning(
             'Line "{line}" uses obsolete syntax that will no longer be supported in datajoint 0.14. '
             "For details, see issue #780 https://github.com/datajoint/datajoint-python/issues/780".format(
                 line=line

@@ -12,7 +12,7 @@ TRUNCATION_APPENDIX = "...truncated"
 
 class JobTable(Table):
     """
-    A base relation with no definition. Allows reserving jobs
+    A base table with no definition. Allows reserving jobs
     """
 
     def __init__(self, conn, database):
