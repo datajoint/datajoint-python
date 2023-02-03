@@ -341,12 +341,9 @@ class Table(QueryExpression):
         if isinstance(rows, pandas.DataFrame):
             # drop 'extra' synthetic index for 1-field index case -
             # frames with more advanced indices should be prepared by user.
-            rows_as_recarray = rows.reset_index(
+            rows = rows.reset_index(
                 drop=len(rows.index.names) == 1 and not rows.index.names[0]
             ).to_records(index=False)
-            rows = [  # transform recarray above into dict
-                dict(zip(rows_as_recarray.dtype.names, row)) for row in rows_as_recarray
-            ]
 
         if isinstance(rows, Path):
             with open(rows, newline="") as data_file:

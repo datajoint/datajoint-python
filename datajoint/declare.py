@@ -588,6 +588,11 @@ def compile_attribute(line, in_key, foreign_key_sql, context):
     match = {k: v.strip() for k, v in match.items()}
     match["nullable"] = match["default"].lower() == "null"
 
+    if match["name"].startswith("hide__") and in_key:
+        raise DataJointError(
+            'Primary keys cannot be hidden. Line: "{line}"'.format(line=line)
+        )
+
     if match["nullable"]:
         if in_key:
             raise DataJointError(

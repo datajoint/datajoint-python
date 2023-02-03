@@ -170,32 +170,13 @@ class Params(UserTable):
     def __init__(self):
         super().__init__()
         if "params" not in self.definition:
-            raise DataJointError("Params tables must have at least one params field")
-        self.definition += "paramset_hash: UUID\nunique index (paramset_hash)\n"
-        # self._refresh_hash_table()
-        if self.is_declared:
-            self._refresh_hash_table()
+            raise DataJointError("Params tables must have at least one 'params' field")
 
-    def _refresh_hash_table(self):
-        paramset_hashes, primary_keys = self.fetch("paramset_hash", "KEY")
-        self._hash_table = {
-            paramset_hash: primary_key
-            for paramset_hash, primary_key in zip(paramset_hashes, primary_keys)
-        }
-
-    def declare(self, context=None):
-        super().declare(context)
-        self._refresh_hash_table()
-
-    def delete(self, **kwargs) -> int:
-        result = super().delete(**kwargs)
-        self._refresh_hash_table()
-        return result
-
-    def delete_quick(self, **kwargs):
-        result = super().delete_quick(**kwargs)
-        self._refresh_hash_table()
-        return result
+        # NOTE: Ideally, this would be a UUID, not char(36), but I was having trouble
+        # fetching by UUID - what's the syntax? (self * f"hash='{UUID}'").fetch()
+        self.definition += (
+            "hide__paramset_hash: char(36)\nunique index (hide__paramset_hash)\n"
+        )
 
     def insert(self, rows, **kwargs):
         if isinstance(rows, QueryExpression):
@@ -214,35 +195,30 @@ class Params(UserTable):
             else:
                 row_values = row
 
-            paramset_hash = dict_to_uuid(
-                {
-                    field: value
-                    for field, value in zip(self.heading, row_values)
-                    if "param" in field and "hash" not in field
-                }
+            paramset_hash = str(
+                dict_to_uuid(
+                    {
+                        field: value
+                        for field, value in zip(self.heading, row_values)
+                        if "param" in field and "hash" not in field
+                    }
+                )
             )
 
-            if paramset_hash in self._hash_table:
+            existing_key = (self & f'hide__paramset_hash="{paramset_hash}"').fetch(
+                "KEY"
+            )
+            if existing_key:
                 logger.warning(
                     "Paramset already included with the following primary "
-                    + f"key: {self._hash_table[paramset_hash]}"
+                    + f"key: {existing_key[0]}"
                 )
                 continue
 
-            self._hash_table.update(
-                {
-                    paramset_hash: value
-                    for value, field in zip(self.heading, row_values)
-                    if field in self.primary_key
-                }
-            )
-
             if isinstance(row, collections.abc.Mapping):
-                row.update(dict(paramset_hash=paramset_hash))
+                new_rows.append(dict(**row, hide__paramset_hash=paramset_hash))
             else:
-                row.append(paramset_hash)
-
-            new_rows.append(row)
+                new_rows.append([*row, paramset_hash])
 
         super().insert(new_rows, **kwargs)
 

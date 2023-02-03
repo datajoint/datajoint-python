@@ -13,7 +13,7 @@ def preview(query_expression, limit, width):
     tuples = rel.fetch(limit=limit + 1, format="array")
     has_more = len(tuples) > limit
     tuples = tuples[:limit]
-    columns = heading.names
+    columns = heading.names_shown
     widths = {
         f: min(
             max(
@@ -128,7 +128,7 @@ def repr_html(query_expression):
                 if c in query_expression.primary_key
                 else "nonprimary",
             )
-            for c in heading.names
+            for c in heading.names_shown
         ),
         ellipsis="<p>...</p>" if has_more else "",
         body="</tr><tr>".join(
@@ -137,7 +137,7 @@ def repr_html(query_expression):
                     [
                         "<td>%s</td>"
                         % (tup[name] if name in tup.dtype.names else "=BLOB=")
-                        for name in heading.names
+                        for name in heading.names_shown
                     ]
                 )
                 for tup in tuples

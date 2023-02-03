@@ -257,15 +257,19 @@ class Fetch:
                 as_dict=as_dict, limit=limit, offset=offset, order_by=order_by
             )
             heading = self._expression.heading
+
             if as_dict:
                 ret = [
-                    dict((name, get(heading[name], d[name])) for name in heading.names)
+                    dict(
+                        (name, get(heading[name], d[name]))
+                        for name in heading.names_shown
+                    )
                     for d in cur
                 ]
             else:
                 ret = list(cur.fetchall())
                 record_type = (
-                    heading.as_dtype
+                    heading.as_dtype_shown
                     if not ret
                     else np.dtype(
                         [
@@ -284,9 +288,17 @@ class Fetch:
                     ret = np.array(ret, dtype=record_type)
                 except Exception as e:
                     raise e
+
+                debug_mode = config["loglevel"].lower() == "debug"
+
                 for name in heading:
+                    if not debug_mode and heading[name].hide:
+                        continue
                     # unpack blobs and externals
                     ret[name] = list(map(partial(get, heading[name]), ret[name]))
+                if not debug_mode:
+                    # NOTE: Now formatted slightly different, shows offsets + item size
+                    ret = ret[heading.names_shown]
                 if format == "frame":
                     ret = pandas.DataFrame(ret).set_index(heading.primary_key)
         return ret
@@ -339,7 +351,7 @@ class Fetch1:
                         download_path=download_path,
                     ),
                 )
-                for name in heading.names
+                for name in heading.names_shown
             )
         else:  # fetch some attributes, return as tuple
             attributes = [a for a in attrs if not is_key(a)]

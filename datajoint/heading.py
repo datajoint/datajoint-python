@@ -3,6 +3,7 @@ from collections import namedtuple, defaultdict
 from itertools import chain
 import re
 import logging
+from .settings import config
 from .errors import DataJointError, _support_filepath_types, FILEPATH_FEATURE_SWITCH
 from .declare import (
     UUID_DATA_TYPE,
@@ -28,6 +29,7 @@ default_attribute_properties = (
         numeric=None,
         string=None,
         uuid=False,
+        hide=False,
         is_blob=False,
         is_attachment=False,
         is_filepath=False,
@@ -126,6 +128,12 @@ class Heading:
         return [k for k in self.attributes]
 
     @property
+    def names_shown(self):
+        if config["loglevel"].lower() == "debug":
+            return self.names
+        return [k for k, v in self.attributes.items() if not v.hide]
+
+    @property
     def primary_key(self):
         return [k for k, v in self.attributes.items() if v.in_key]
 
@@ -164,6 +172,8 @@ class Heading:
         if self._table_status is not None:
             ret += "# " + self.table_status["comment"] + "\n"
         for v in self.attributes.values():
+            if v.hide:
+                continue
             if in_key and not v.in_key:
                 ret += "---\n"
                 in_key = False
@@ -185,6 +195,20 @@ class Heading:
         """
         return np.dtype(
             dict(names=self.names, formats=[v.dtype for v in self.attributes.values()])
+        )
+
+    @property
+    def as_dtype_shown(self):
+        """
+        represent the heading as a numpy dtype
+        """
+        if config["loglevel"].lower() == "debug":
+            return self.as_dtype
+        return np.dtype(
+            dict(
+                names=self.names_shown,
+                formats=[v.dtype for v in self.attributes.values() if not v.hide],
+            )
         )
 
     def as_sql(self, fields, include_aliases=True):
@@ -291,6 +315,7 @@ class Heading:
                 ),
                 is_blob=bool(TYPE_PATTERN["INTERNAL_BLOB"].match(attr["type"])),
                 uuid=False,
+                hide=attr["name"].startswith("hide__"),
                 is_attachment=False,
                 is_filepath=False,
                 adapter=None,
