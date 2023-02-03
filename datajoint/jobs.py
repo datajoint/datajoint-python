@@ -29,15 +29,19 @@ class JobTable(Table):
         table_name  :varchar(255)  # className of the table
         key_hash  :char(32)  # key hash
         ---
-        status  :enum('reserved','error','ignore')  # if tuple is missing, the job is available
+        status  :enum('reserved','error','ignore','scheduled','success') 
         key=null  :blob  # structure containing the key
         error_message=""  :varchar({error_message_length})  # error message returned if failed
         error_stack=null  :mediumblob  # error stack if failed
         user="" :varchar(255) # database user
         host=""  :varchar(255)  # system hostname
         pid=0  :int unsigned  # system process id
-        connection_id = 0  : bigint unsigned          # connection_id()
-        timestamp=CURRENT_TIMESTAMP  :timestamp   # automatic timestamp
+        connection_id = 0  : bigint unsigned      # connection_id()
+        timestamp=UTC_TIMESTAMP  :timestamp   # the scheduled time (UTC) for the job to run at or after
+        run_duration=null: float  # run duration in seconds
+        run_version="": varchar(255) # some string representation of the code/env version of a run (e.g. git commit hash)
+        index(table_name, status)
+        index(status)
         """.format(
             database=database, error_message_length=ERROR_MESSAGE_LENGTH
         )
@@ -94,11 +98,16 @@ class JobTable(Table):
 
         :param table_name: `database`.`table_name`
         :param key: the dict of the job's primary key
-        :return: True if ignore job successfully. False = the jobs is already taken
+        :return: True if ignore job successfully. False = the jobs is already processed, too late to "ignore"
         """
+        job_key = dict(table_name=table_name, key_hash=key_hash(key))
+        if self & job_key:
+            current_status = (self & job_key).fetch1("status")
+            if current_status not in ("scheduled", "ignore"):
+                return False
+
         job = dict(
-            table_name=table_name,
-            key_hash=key_hash(key),
+            job_key,
             status="ignore",
             host=platform.node(),
             pid=os.getpid(),
@@ -106,22 +115,38 @@ class JobTable(Table):
             key=key,
             user=self._user,
         )
-        try:
-            with config(enable_python_native_blobs=True):
-                self.insert1(job, ignore_extra_fields=True)
-        except DuplicateError:
-            return False
+
+        with config(enable_python_native_blobs=True):
+            self.insert1(job, replace=True, ignore_extra_fields=True)
+
         return True
 
-    def complete(self, table_name, key):
+    def complete(self, table_name, key, run_duration=None, run_version=""):
         """
         Log a completed job.  When a job is completed, its reservation entry is deleted.
 
         :param table_name: `database`.`table_name`
         :param key: the dict of the job's primary key
+        :param run_duration: duration in second of the job run
+        :param run_version: some string representation of the code/env version of a run (e.g. git commit hash)
         """
-        job_key = dict(table_name=table_name, key_hash=key_hash(key))
-        (self & job_key).delete_quick()
+        with config(enable_python_native_blobs=True):
+            self.insert1(
+                dict(
+                    table_name=table_name,
+                    key_hash=key_hash(key),
+                    status="success",
+                    host=platform.node(),
+                    pid=os.getpid(),
+                    connection_id=self.connection.connection_id,
+                    user=self._user,
+                    key=key,
+                    run_duration=run_duration,
+                    run_version=run_version,
+                ),
+                replace=True,
+                ignore_extra_fields=True,
+            )
 
     def error(self, table_name, key, error_message, error_stack=None):
         """
@@ -155,3 +180,43 @@ class JobTable(Table):
                 replace=True,
                 ignore_extra_fields=True,
             )
+
+
+class JobConfigTable(Table):
+    """
+    A base table with no definition. Allows reserving jobs
+    """
+
+    def __init__(self, conn, database):
+        self.database = database
+        self._connection = conn
+        self._heading = Heading(
+            table_info=dict(
+                conn=conn, database=database, table_name=self.table_name, context=None
+            )
+        )
+        self._support = [self.full_table_name]
+
+        self._definition = """    # job configuration table for `{database}`
+        table_name  :varchar(255)  # className of the table
+        ---
+        key_source  :mediumblob  # sql statement for the key_source of the table - from make_sql()
+        key_source_uuid: UUID # hash of the key_source
+        unique index (key_source_hash)
+        refresh_rate=1: int unsigned # (second) how often should the jobs for the table be refreshed
+        refresh_reserved=0: bool  # is the jobs for the table currently being refreshed
+        last_refresh_time=UTC_TIMESTAMP  :timestamp  # timestamp (UTC) of the last refresh time for the table
+        """.format(
+            database=database
+        )
+        if not self.is_declared:
+            self.declare()
+        self._user = self.connection.get_user()
+
+    @property
+    def definition(self):
+        return self._definition
+
+    @property
+    def table_name(self):
+        return "~jobs_config"

@@ -8,6 +8,8 @@ from tqdm import tqdm
 from .hash import key_hash
 from .expression import QueryExpression, AndList
 from .errors import DataJointError, LostConnectionError
+from .settings import config
+from .utils import user_choice
 import signal
 import multiprocessing as mp
 import contextlib
@@ -348,3 +350,41 @@ class AutoPopulate:
                 flush=True,
             )
         return remaining, total
+
+    @property
+    def jobs(self):
+        return self.connection.schemas[self.target.database].jobs & {
+            "table_name": self.target.table_name
+        }
+
+    def register_key_source(self, safemode=None):
+        key_source_sql = self.key_source.make_sql()
+        key_source_uuid = key_hash({"sql": key_source_sql})
+
+        jobs_config = self.connection.schemas[self.target.database].jobs_config
+
+        entry = {
+            "table_name": self.target.table_name,
+            "key_source": key_source_sql,
+            "key_source_uuid": key_source_uuid,
+        }
+
+        if jobs_config & {"table_name": self.target.table_name}:
+            registered_uuid = (
+                jobs_config & {"table_name": self.target.table_name}
+            ).fetch1("key_source_uuid")
+            if key_source_uuid == registered_uuid:
+                return
+
+            safemode = config["safemode"] if safemode is None else safemode
+            if (
+                not safemode
+                or user_choice(
+                    f"Modified key_source for table {self.target.table_name} - Re-register?",
+                    default="no",
+                )
+                == "yes"
+            ):
+                jobs_config.insert1(entry, replace=True)
+        else:
+            jobs_config.insert1(entry)
