@@ -85,7 +85,6 @@ services:
     volumes:
       - .:/src
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
-      # - ./apk_requirements.txt:/tmp/apk_requirements.txt
       # - ./notebooks:/home/dja/notebooks
 networks:
   main:
