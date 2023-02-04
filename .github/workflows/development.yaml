@@ -18,7 +18,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - py_ver: '3.10'
+          - py_ver: '3.9'
             distro: debian
             image: djbase
     env:
@@ -44,7 +44,7 @@ jobs:
           export HOST_UID=$(id -u)
           docker-compose -f docker-compose-build.yaml up --exit-code-from app --build
           echo "DJ_VERSION=${DJ_VERSION}" >> $GITHUB_ENV
-      - if: matrix.py_ver == '3.10' && matrix.distro == 'debian'
+      - if: matrix.py_ver == '3.9' && matrix.distro == 'debian'
         name: Add pip artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -119,7 +119,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - py_ver: '3.10'
+          - py_ver: '3.9'
             distro: debian
             image: djbase
     env:
@@ -204,7 +204,7 @@ jobs:
           docker push "${IMAGE}:${TAG}"
           docker tag "${IMAGE}:${TAG}" "${IMAGE}:${TAG}-${GITHUB_SHA:0:7}"
           docker push "${IMAGE}:${TAG}-${GITHUB_SHA:0:7}"
-          [ "$PY_VER" == "3.10" ] && [ "$DISTRO" == "debian" ] \
+          [ "$PY_VER" == "3.9" ] && [ "$DISTRO" == "debian" ] \
                   && docker tag "${IMAGE}:${TAG}" "${IMAGE}:latest" \
                   && docker push "${IMAGE}:latest" \
               || echo "skipping 'latest' tag..."
