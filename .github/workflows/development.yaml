@@ -18,8 +18,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - py_ver: 3.8
-            distro: alpine
+          - py_ver: 3.10
+            distro: debian
             image: djbase
     env:
       PY_VER: ${{matrix.py_ver}}
@@ -44,7 +44,7 @@ jobs:
           export HOST_UID=$(id -u)
           docker-compose -f docker-compose-build.yaml up --exit-code-from app --build
           echo "DJ_VERSION=${DJ_VERSION}" >> $GITHUB_ENV
-      - if: matrix.py_ver == '3.8' && matrix.distro == 'alpine'
+      - if: matrix.py_ver == '3.10' && matrix.distro == 'debian'
         name: Add pip artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -55,11 +55,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        py_ver: ["3.11"]
+        py_ver: ["3.10"]
         mysql_ver: ["8.0", "5.7"]
         include:
-          - py_ver: "3.10"
-            mysql_ver: "5.7"
           - py_ver: "3.9"
             mysql_ver: "5.7"
           - py_ver: "3.8"
@@ -123,8 +121,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - py_ver: 3.8
-            distro: alpine
+          - py_ver: 3.10
+            distro: debian
             image: djbase
     env:
       PY_VER: ${{matrix.py_ver}}
