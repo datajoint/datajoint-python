@@ -18,7 +18,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - py_ver: 3.10
+          - py_ver: '3.10'
             distro: debian
             image: djbase
     env:
@@ -121,7 +121,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - py_ver: 3.10
+          - py_ver: '3.10'
             distro: debian
             image: djbase
     env:
