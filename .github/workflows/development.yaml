@@ -28,7 +28,7 @@ jobs:
       DOCKER_CLIENT_TIMEOUT: "120"
       COMPOSE_HTTP_TIMEOUT: "120"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Validate version and release notes
         run: |
           DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py)
@@ -46,7 +46,7 @@ jobs:
           echo "DJ_VERSION=${DJ_VERSION}" >> $GITHUB_ENV
       - if: matrix.py_ver == '3.8' && matrix.distro == 'alpine'
         name: Add pip artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: pip-datajoint-${{env.DJ_VERSION}}
           path: dist
@@ -55,18 +55,19 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # py_ver: ["3.10"]
-        py_ver: ["3.9"]
+        py_ver: ["3.11"]
         mysql_ver: ["8.0", "5.7"]
         include:
-          # - py_ver: "3.9"
-          #   mysql_ver: "5.7"
+          - py_ver: "3.10"
+            mysql_ver: "5.7"
+          - py_ver: "3.9"
+            mysql_ver: "5.7"
           - py_ver: "3.8"
             mysql_ver: "5.7"
           - py_ver: "3.7"
             mysql_ver: "5.7"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python ${{matrix.py_ver}}
         uses: actions/setup-python@v4
         with:
@@ -83,6 +84,7 @@ jobs:
           MYSQL_VER: ${{matrix.mysql_ver}}
           DISTRO: alpine
           MINIO_VER: RELEASE.2021-09-03T03-56-13Z
+          DOCKER_CLIENT_TIMEOUT: "120"
           COMPOSE_HTTP_TIMEOUT: "120"
         run: |
           export HOST_UID=$(id -u)
@@ -103,7 +105,7 @@ jobs:
       DOCKER_CLIENT_TIMEOUT: "120"
       COMPOSE_HTTP_TIMEOUT: "120"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Deploy docs
         run: |
           export MODE=BUILD
@@ -135,7 +137,7 @@ jobs:
     outputs:
       release_upload_url: ${{steps.create_gh_release.outputs.upload_url}}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python ${{matrix.py_ver}}
         uses: actions/setup-python@v4
         with:
@@ -162,7 +164,7 @@ jobs:
           prerelease: false
           draft: false
       - name: Fetch pip artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: pip-datajoint-${{env.DJ_VERSION}}
           path: dist
