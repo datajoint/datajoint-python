@@ -1,14 +1,14 @@
 # PY_VER=3.8 MYSQL_VER=5.7 DISTRO=alpine MINIO_VER=RELEASE.2022-08-11T04-37-28Z HOST_UID=$(id -u) docker compose -f LNX-docker-compose.yml up --exit-code-from app --build
-version: '2.4'
+version: "2.4"
 x-net: &net
   networks:
-      - main
+    - main
 services:
   db:
     <<: *net
     image: datajoint/mysql:${MYSQL_VER}
     environment:
-      - MYSQL_ROOT_PASSWORD=simple
+      - MYSQL_ROOT_PASSWORD=${DJ_PASS}
     # ports:
     #   - "3306:3306"
     # volumes:
@@ -34,12 +34,12 @@ services:
     <<: *net
     image: datajoint/nginx:v0.2.4
     environment:
-    - ADD_db_TYPE=DATABASE
-    - ADD_db_ENDPOINT=db:3306
-    - ADD_minio_TYPE=MINIO
-    - ADD_minio_ENDPOINT=minio:9000
-    - ADD_minio_PORT=80 # allow unencrypted connections
-    - ADD_minio_PREFIX=/datajoint
+      - ADD_db_TYPE=DATABASE
+      - ADD_db_ENDPOINT=db:3306
+      - ADD_minio_TYPE=MINIO
+      - ADD_minio_ENDPOINT=minio:9000
+      - ADD_minio_PORT=80 # allow unencrypted connections
+      - ADD_minio_PREFIX=/datajoint
     # ports:
     #   - "80:80"
     #   - "443:443"
@@ -58,7 +58,7 @@ services:
     environment:
       - DJ_HOST=fakeservices.datajoint.io
       - DJ_USER=root
-      - DJ_PASS=simple
+      - DJ_PASS
       - DJ_TEST_HOST=fakeservices.datajoint.io
       - DJ_TEST_USER=datajoint
       - DJ_TEST_PASSWORD=datajoint

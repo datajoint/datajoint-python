@@ -16,7 +16,7 @@
 		"ghcr.io/guiyomh/features/vim:0": {},
 		"ghcr.io/devcontainers/features/python:1": {
 			"version": "3.7"
-		},
+		}
 	},
 	"postCreateCommand": "pip install flake8 black faker ipykernel nose nose-cov && pip install -e . && MYSQL_VER=5.7 MINIO_VER=RELEASE.2022-08-11T04-37-28Z docker compose -f local-docker-compose.yml up --build -d",
 	"customizations": {
@@ -26,10 +26,4 @@
 			]
 		}
 	}
-	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [80]
-	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "docker --version",
-	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
-	// "remoteUser": "root"
 }

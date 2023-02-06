@@ -1,7 +1,6 @@
 # MYSQL_VER=5.7 MINIO_VER=RELEASE.2022-08-11T04-37-28Z docker compose -f local-docker-compose.yml up --build
-version: '2.4'
-x-net:
-  &net
+version: "2.4"
+x-net: &net
   networks:
     - main
 services:
@@ -9,7 +8,7 @@ services:
     <<: *net
     image: datajoint/mysql:${MYSQL_VER}
     environment:
-      - MYSQL_ROOT_PASSWORD=simple
+      - MYSQL_ROOT_PASSWORD=${DJ_PASS}
     # ports:
     #   - "3306:3306"
     # To persist MySQL data
@@ -29,13 +28,7 @@ services:
     #   - ./minio/config:/root/.minio
     command: server --address ":9000" /data
     healthcheck:
-      test:
-        [
-          "CMD",
-          "curl",
-          "--fail",
-          "http://minio:9000/minio/health/live"
-        ]
+      test: ["CMD", "curl", "--fail", "http://minio:9000/minio/health/live"]
       timeout: 5s
       retries: 60
       interval: 1s
