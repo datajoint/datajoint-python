@@ -12,12 +12,13 @@
 	"features": {
 		"ghcr.io/devcontainers/features/docker-in-docker:2": {},
 		"ghcr.io/devcontainers/features/git:1": {},
-		"ghcr.io/rocker-org/devcontainer-features/apt-packages:1": {},
 		"ghcr.io/eitsupi/devcontainer-features/jq-likes:1": {},
 		"ghcr.io/guiyomh/features/vim:0": {},
-		"ghcr.io/devcontainers/features/python:1": {},
+		"ghcr.io/devcontainers/features/python:1": {
+			"version": "3.7"
+		},
 	},
-	"postCreateCommand": "pip install black",
+	"postCreateCommand": "pip install flake8 black faker ipykernel nose nose-cov && pip install -e . && MYSQL_VER=5.7 MINIO_VER=RELEASE.2022-08-11T04-37-28Z docker compose -f local-docker-compose.yml up --build -d",
 	"customizations": {
 		"vscode": {
 			"extensions": [
