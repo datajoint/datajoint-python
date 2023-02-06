@@ -16,7 +16,7 @@ from .user_tables import Part, Computed, Imported, Manual, Lookup
 from .table import lookup_class_name, Log, FreeTable
 import types
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__.split(".")[0])
 
 
 def ordered_dir(class_):
@@ -47,7 +47,7 @@ class Schema:
         connection=None,
         create_schema=True,
         create_tables=True,
-        add_objects=None
+        add_objects=None,
     ):
         """
         Associate database schema `schema_name`. If the schema does not exist, attempt to
@@ -87,7 +87,7 @@ class Schema:
         connection=None,
         create_schema=None,
         create_tables=None,
-        add_objects=None
+        add_objects=None,
     ):
         """
         Associate database schema `schema_name`. If the schema does not exist, attempt to
@@ -134,7 +134,7 @@ class Schema:
                     )
                 )
             # create database
-            logger.info("Creating schema `{name}`.".format(name=schema_name))
+            logger.debug("Creating schema `{name}`.".format(name=schema_name))
             try:
                 self.connection.query(
                     "CREATE DATABASE `{name}`".format(name=schema_name)
@@ -171,7 +171,7 @@ class Schema:
         context = context or self.context or inspect.currentframe().f_back.f_locals
         if issubclass(cls, Part):
             raise DataJointError(
-                "The schema decorator should not be applied to Part relations"
+                "The schema decorator should not be applied to Part tables."
             )
         if self.is_activated():
             self._decorate_master(cls, context)
@@ -222,9 +222,7 @@ class Schema:
         # instantiate the class, declare the table if not already
         instance = table_class()
         is_declared = instance.is_declared
-        if not is_declared:
-            if not self.create_tables or assert_declared:
-                raise DataJointError("Table `%s` not declared" % instance.table_name)
+        if not is_declared and not assert_declared and self.create_tables:
             instance.declare(context)
             self.connection.dependencies.clear()
         is_declared = is_declared or instance.is_declared
@@ -284,7 +282,7 @@ class Schema:
 
     def spawn_missing_classes(self, context=None):
         """
-        Creates the appropriate python user relation classes from tables in the schema and places them
+        Creates the appropriate python user table classes from tables in the schema and places them
         in the context.
 
         :param context: alternative context to place the missing classes into, e.g. locals()
@@ -321,7 +319,7 @@ class Schema:
                     if re.fullmatch(Part.tier_regexp, table_name):
                         part_tables.append(table_name)
                 else:
-                    # declare and decorate master relation classes
+                    # declare and decorate master table classes
                     context[class_name] = self(
                         type(class_name, (cls,), dict()), context=context
                     )
@@ -360,12 +358,12 @@ class Schema:
             )
             == "yes"
         ):
-            logger.info("Dropping `{database}`.".format(database=self.database))
+            logger.debug("Dropping `{database}`.".format(database=self.database))
             try:
                 self.connection.query(
                     "DROP DATABASE `{database}`".format(database=self.database)
                 )
-                logger.info(
+                logger.debug(
                     "Schema `{database}` was dropped successfully.".format(
                         database=self.database
                     )
@@ -506,7 +504,7 @@ class VirtualModule(types.ModuleType):
         create_schema=False,
         create_tables=False,
         connection=None,
-        add_objects=None
+        add_objects=None,
     ):
         """
         Creates a python module with the given name from the name of a schema on the server and

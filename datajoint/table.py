@@ -6,8 +6,8 @@ import numpy as np
 import pandas
 import logging
 import uuid
+import csv
 import re
-import warnings
 from pathlib import Path
 from .settings import config
 from .declare import declare, alter
@@ -23,9 +23,10 @@ from .errors import (
     UnknownAttributeError,
     IntegrityError,
 )
+from typing import Union
 from .version import __version__ as version
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__.split(".")[0])
 
 foreign_key_error_regexp = re.compile(
     r"[\w\s:]*\((?P<child>`[^`]+`.`[^`]+`), "
@@ -311,7 +312,7 @@ class Table(QueryExpression):
             raise DataJointError("Update cannot be applied to a restricted table.")
         key = {k: row[k] for k in self.primary_key}
         if len(self & key) != 1:
-            raise DataJointError("Update entry must exist.")
+            raise DataJointError("Update can only be applied to one existing entry.")
         # UPDATE query
         row = [
             self.__make_placeholder(k, v)
@@ -345,17 +346,20 @@ class Table(QueryExpression):
         """
         Insert a collection of rows.
 
-        :param rows: An iterable where an element is a numpy record, a dict-like object, a
-            pandas.DataFrame, a sequence, or a query expression with the same heading as self.
+        :param rows: Either (a) an iterable where an element is a numpy record, a
+            dict-like object, a pandas.DataFrame, a sequence, or a query expression with
+            the same heading as self, or (b) a pathlib.Path object specifying a path
+            relative to the current directory with a CSV file, the contents of which
+            will be inserted.
         :param replace: If True, replaces the existing tuple.
         :param skip_duplicates: If True, silently skip duplicate inserts.
         :param ignore_extra_fields: If False, fields that are not in the heading raise error.
-        :param allow_direct_insert: applies only in auto-populated tables. If False (default),
-            insert are allowed only from inside the make callback.
+        :param allow_direct_insert: Only applies in auto-populated tables. If False (default),
+            insert may only be called from inside the make callback.
 
         Example:
 
-            >>> relation.insert([
+            >>> Table.insert([
             >>>     dict(subject_id=7, species="mouse", date_of_birth="2014-09-01"),
             >>>     dict(subject_id=8, species="mouse", date_of_birth="2014-09-02")])
         """
@@ -365,6 +369,10 @@ class Table(QueryExpression):
             rows = rows.reset_index(
                 drop=len(rows.index.names) == 1 and not rows.index.names[0]
             ).to_records(index=False)
+
+        if isinstance(rows, Path):
+            with open(rows, newline="") as data_file:
+                rows = list(csv.DictReader(data_file, delimiter=","))
 
         # prohibit direct inserts into auto-populated tables
         if not allow_direct_insert and not getattr(self, "_allow_insert", True):
@@ -460,15 +468,30 @@ class Table(QueryExpression):
         self._log(query[:255])
         return count
 
-    def delete(self, transaction=True, safemode=None, force_parts=False):
+    def delete(
+        self,
+        transaction: bool = True,
+        safemode: Union[bool, None] = None,
+        force_parts: bool = False,
+    ) -> int:
         """
         Deletes the contents of the table and its dependent tables, recursively.
 
-        :param transaction: if True, use the entire delete becomes an atomic transaction. This is the default and
-                            recommended behavior. Set to False if this delete is nested within another transaction.
-        :param safemode: If True, prohibit nested transactions and prompt to confirm. Default is dj.config['safemode'].
-        :param force_parts: Delete from parts even when not deleting from their masters.
-        :return: number of deleted rows (excluding those from dependent tables)
+        Args:
+            transaction: If `True`, use of the entire delete becomes an atomic transaction.
+                This is the default and recommended behavior. Set to `False` if this delete is
+                nested within another transaction.
+            safemode: If `True`, prohibit nested transactions and prompt to confirm. Default
+                is `dj.config['safemode']`.
+            force_parts: Delete from parts even when not deleting from their masters.
+
+        Returns:
+            Number of deleted rows (excluding those from dependent tables).
+
+        Raises:
+            DataJointError: Delete exceeds maximum number of delete attempts.
+            DataJointError: When deleting within an existing transaction.
+            DataJointError: Deleting a part table before its master.
         """
         deleted = set()
 
@@ -532,7 +555,7 @@ class Table(QueryExpression):
                     cascade(child)
                 else:
                     deleted.add(table.full_table_name)
-                    print(
+                    logger.info(
                         "Deleting {count} rows from {table}".format(
                             count=delete_count, table=table.full_table_name
                         )
@@ -598,8 +621,7 @@ class Table(QueryExpression):
 
     def drop_quick(self):
         """
-        Drops the table associated with this relation without cascading and without user prompt.
-        If the table has any dependent table(s), this call will fail with an error.
+        Drops the table without cascading to dependent tables and without user prompt.
         """
         if self.is_declared:
             query = "DROP TABLE %s" % self.full_table_name
@@ -667,7 +689,7 @@ class Table(QueryExpression):
 
     def describe(self, context=None, printout=True):
         """
-        :return:  the definition string for the relation using DataJoint DDL.
+        :return:  the definition string for the query using DataJoint DDL.
         """
         if context is None:
             frame = inspect.currentframe().f_back
@@ -768,7 +790,7 @@ class Table(QueryExpression):
         >>> (v2p.Mice() & key)._update('mouse_dob', '2011-01-01')
         >>> (v2p.Mice() & key)._update( 'lens')   # set the value to NULL
         """
-        warnings.warn(
+        logger.warning(
             "`_update` is a deprecated function to be removed in datajoint 0.14. "
             "Use `.update1` instead."
         )
@@ -990,7 +1012,7 @@ def lookup_class_name(name, context, depth=3):
 
 class FreeTable(Table):
     """
-    A base relation without a dedicated class. Each instance is associated with a table
+    A base table without a dedicated class. Each instance is associated with a table
     specified by full_table_name.
 
     :param conn:  a dj.Connection object

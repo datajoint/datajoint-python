@@ -5,14 +5,16 @@ import traceback
 import random
 import inspect
 from tqdm import tqdm
+from .hash import key_hash
 from .expression import QueryExpression, AndList
 from .errors import DataJointError, LostConnectionError
 import signal
 import multiprocessing as mp
+import contextlib
 
 # noinspection PyExceptionInherit,PyCallingNonCallable
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__.split(".")[0])
 
 
 # --- helper functions for multiprocessing --
@@ -42,8 +44,8 @@ def _call_populate1(key):
 
 class AutoPopulate:
     """
-    AutoPopulate is a mixin class that adds the method populate() to a Relation class.
-    Auto-populated relations must inherit from both Relation and AutoPopulate,
+    AutoPopulate is a mixin class that adds the method populate() to a Table class.
+    Auto-populated tables must inherit from both Table and AutoPopulate,
     must define the property `key_source`, and must define the callback method `make`.
     """
 
@@ -116,7 +118,7 @@ class AutoPopulate:
 
     def _jobs_to_do(self, restrictions):
         """
-        :return: the relation containing the keys to be computed (derived from self.key_source)
+        :return: the query yeilding the keys to be computed (derived from self.key_source)
         """
         if self.restriction:
             raise DataJointError(
@@ -158,7 +160,7 @@ class AutoPopulate:
         max_calls=None,
         display_progress=False,
         processes=1,
-        make_kwargs=None
+        make_kwargs=None,
     ):
         """
         ``table.populate()`` calls ``table.make(key)`` for every primary key in
@@ -173,8 +175,7 @@ class AutoPopulate:
         :param limit: if not None, check at most this many keys
         :param max_calls: if not None, populate at most this many keys
         :param display_progress: if True, report progress_bar
-        :param processes: number of processes to use. When set to a large number, then
-            uses as many as CPU cores
+        :param processes: number of processes to use. Set to None to use all cores
         :param make_kwargs: Keyword arguments which do not affect the result of computation
             to be passed down to each ``make()`` call. Computation arguments should be
             specified within the pipeline e.g. using a `dj.Lookup` table.
@@ -202,18 +203,29 @@ class AutoPopulate:
             old_handler = signal.signal(signal.SIGTERM, handler)
 
         keys = (self._jobs_to_do(restrictions) - self.target).fetch("KEY", limit=limit)
+
+        # exclude "error" or "ignore" jobs
+        if reserve_jobs:
+            exclude_key_hashes = (
+                jobs
+                & {"table_name": self.target.table_name}
+                & 'status in ("error", "ignore")'
+            ).fetch("key_hash")
+            keys = [key for key in keys if key_hash(key) not in exclude_key_hashes]
+
         if order == "reverse":
             keys.reverse()
         elif order == "random":
             random.shuffle(keys)
 
-        logger.info("Found %d keys to populate" % len(keys))
+        logger.debug("Found %d keys to populate" % len(keys))
 
         keys = keys[:max_calls]
         nkeys = len(keys)
+        if not nkeys:
+            return
 
-        if processes > 1:
-            processes = min(processes, nkeys, mp.cpu_count())
+        processes = min(_ for _ in (processes, nkeys, mp.cpu_count()) if _)
 
         error_list = []
         populate_kwargs = dict(
@@ -235,17 +247,16 @@ class AutoPopulate:
             del self.connection._conn.ctx  # SSLContext is not pickleable
             with mp.Pool(
                 processes, _initialize_populate, (self, jobs, populate_kwargs)
-            ) as pool:
-                if display_progress:
-                    with tqdm(desc="Processes: ", total=nkeys) as pbar:
-                        for error in pool.imap(_call_populate1, keys, chunksize=1):
-                            if error is not None:
-                                error_list.append(error)
-                            pbar.update()
-                else:
-                    for error in pool.imap(_call_populate1, keys):
-                        if error is not None:
-                            error_list.append(error)
+            ) as pool, (
+                tqdm(desc="Processes: ", total=nkeys)
+                if display_progress
+                else contextlib.nullcontext()
+            ) as progress_bar:
+                for error in pool.imap(_call_populate1, keys, chunksize=1):
+                    if error is not None:
+                        error_list.append(error)
+                    if display_progress:
+                        progress_bar.update()
             self.connection.connect()  # reconnect parent process to MySQL server
 
         # restore original signal handler:
@@ -275,7 +286,7 @@ class AutoPopulate:
                 if jobs is not None:
                     jobs.complete(self.target.table_name, self._job_key(key))
             else:
-                logger.info("Populating: " + str(key))
+                logger.debug(f"Making {key} -> {self.target.full_table_name}")
                 self.__class__._allow_insert = True
                 try:
                     make(dict(key), **(make_kwargs or {}))
@@ -287,6 +298,9 @@ class AutoPopulate:
                     error_message = "{exception}{msg}".format(
                         exception=error.__class__.__name__,
                         msg=": " + str(error) if str(error) else "",
+                    )
+                    logger.debug(
+                        f"Error making {key} -> {self.target.full_table_name} - {error_message}"
                     )
                     if jobs is not None:
                         # show error name and error message (if any)
@@ -303,6 +317,9 @@ class AutoPopulate:
                         return key, error if return_exception_objects else error_message
                 else:
                     self.connection.commit_transaction()
+                    logger.debug(
+                        f"Success making {key} -> {self.target.full_table_name}"
+                    )
                     if jobs is not None:
                         jobs.complete(self.target.table_name, self._job_key(key))
                 finally:

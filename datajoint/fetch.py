@@ -1,6 +1,6 @@
 from functools import partial
 from pathlib import Path
-import warnings
+import logging
 import pandas
 import itertools
 import re
@@ -11,6 +11,8 @@ from . import blob, hash
 from .errors import DataJointError
 from .settings import config
 from .utils import safe_write
+
+logger = logging.getLogger(__name__.split(".")[0])
 
 
 class key:
@@ -156,7 +158,7 @@ class Fetch:
         unpacks blob attributes.
 
         :param attrs: zero or more attributes to fetch. If not provided, the call will return all attributes of this
-                        relation. If provided, returns tuples with an entry for each attribute.
+                        table. If provided, returns tuples with an entry for each attribute.
         :param offset: the number of tuples to skip in the returned result
         :param limit: the maximum number of tuples to return
         :param order_by: a single attribute or the list of attributes to order the results. No ordering should be assumed
@@ -168,7 +170,7 @@ class Fetch:
                         True for .fetch('KEY')
         :param squeeze:  if True, remove extra dimensions from arrays
         :param download_path: for fetches that download data, e.g. attachments
-        :return: the contents of the relation in the form of a structured numpy.array or a dict list
+        :return: the contents of the table in the form of a structured numpy.array or a dict list
         """
         if order_by is not None:
             # if 'order_by' passed in a string, make into list
@@ -209,7 +211,7 @@ class Fetch:
                 )
 
         if limit is None and offset is not None:
-            warnings.warn(
+            logger.warning(
                 "Offset set, but no limit. Setting limit to a large number. "
                 "Consider setting a limit explicitly."
             )
@@ -315,7 +317,7 @@ class Fetch1:
                  If attrs is empty, the return result is a dict
         :param squeeze:  When true, remove extra dimensions from arrays in attributes
         :param download_path: for fetches that download data, e.g. attachments
-        :return: the one tuple in the relation in the form of a dict
+        :return: the one tuple in the table in the form of a dict
         """
         heading = self._expression.heading
 

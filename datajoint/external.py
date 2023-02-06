@@ -1,6 +1,7 @@
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from collections.abc import Mapping
 from tqdm import tqdm
+import logging
 from .settings import config
 from .errors import DataJointError, MissingExternalFile
 from .hash import uuid_from_buffer, uuid_from_file
@@ -9,6 +10,8 @@ from .heading import Heading
 from .declare import EXTERNAL_TABLE_ROOT
 from . import s3
 from .utils import safe_write, safe_copy
+
+logger = logging.getLogger(__name__.split(".")[0])
 
 CACHE_SUBFOLDING = (
     2,
@@ -72,9 +75,7 @@ class ExternalTable(Table):
 
     @property
     def table_name(self):
-        return "{external_table_root}_{store}".format(
-            external_table_root=EXTERNAL_TABLE_ROOT, store=self.store
-        )
+        return f"{EXTERNAL_TABLE_ROOT}_{self.store}"
 
     @property
     def s3(self):
@@ -276,9 +277,7 @@ class ExternalTable(Table):
             # the tracking entry exists, check that it's the same file as before
             if contents_hash != check_hash[0]:
                 raise DataJointError(
-                    "A different version of '{file}' has already been placed.".format(
-                        file=relative_filepath
-                    )
+                    f"A different version of '{relative_filepath}' has already been placed."
                 )
         else:
             # upload the file and create its tracking entry
@@ -304,27 +303,43 @@ class ExternalTable(Table):
         :param filepath_hash: The hash (UUID) of the relative_path
         :return: hash (UUID) of the contents of the downloaded file or Nones
         """
+
+        def _need_checksum(local_filepath, expected_size):
+            limit = config.get("filepath_checksum_size_limit")
+            actual_size = Path(local_filepath).stat().st_size
+            if expected_size != actual_size:
+                # this should never happen without outside interference
+                raise DataJointError(
+                    f"'{local_filepath}' downloaded but size did not match."
+                )
+            return limit is None or actual_size < limit
+
         if filepath_hash is not None:
-            relative_filepath, contents_hash = (self & {"hash": filepath_hash}).fetch1(
-                "filepath", "contents_hash"
-            )
+            relative_filepath, contents_hash, size = (
+                self & {"hash": filepath_hash}
+            ).fetch1("filepath", "contents_hash", "size")
             external_path = self._make_external_filepath(relative_filepath)
             local_filepath = Path(self.spec["stage"]).absolute() / relative_filepath
-            file_exists = (
-                Path(local_filepath).is_file()
-                and uuid_from_file(local_filepath) == contents_hash
+
+            file_exists = Path(local_filepath).is_file() and (
+                not _need_checksum(local_filepath, size)
+                or uuid_from_file(local_filepath) == contents_hash
             )
+
             if not file_exists:
                 self._download_file(external_path, local_filepath)
-                checksum = uuid_from_file(local_filepath)
                 if (
-                    checksum != contents_hash
-                ):  # this should never happen without outside interference
+                    _need_checksum(local_filepath, size)
+                    and uuid_from_file(local_filepath) != contents_hash
+                ):
+                    # this should never happen without outside interference
                     raise DataJointError(
-                        "'{file}' downloaded but did not pass checksum'".format(
-                            file=local_filepath
-                        )
+                        f"'{local_filepath}' downloaded but did not pass checksum."
                     )
+            if not _need_checksum(local_filepath, size):
+                logger.warning(
+                    f"Skipped checksum for file with hash: {contents_hash}, and path: {local_filepath}"
+                )
             return str(local_filepath), contents_hash
 
     # --- UTILITIES ---
@@ -402,7 +417,7 @@ class ExternalTable(Table):
         delete_external_files=None,
         limit=None,
         display_progress=True,
-        errors_as_string=True
+        errors_as_string=True,
     ):
         """
 

@@ -1,4 +1,5 @@
 import datajoint as dj
+import timeit
 import numpy as np
 import uuid
 from . import schema
@@ -18,7 +19,6 @@ from nose.tools import (
 
 
 def test_pack():
-
     for x in (
         32,
         -3.7e-2,
@@ -149,6 +149,9 @@ def test_pack():
         x == unpack(pack(x)), "Numpy string array object did not pack/unpack correctly"
     )
 
+    x = np.datetime64("1998").astype("datetime64[us]")
+    assert_true(x == unpack(pack(x)))
+
 
 def test_recarrays():
     x = np.array([(1.0, 2), (3.0, 4)], dtype=[("x", float), ("y", int)])
@@ -162,7 +165,7 @@ def test_recarrays():
 
 
 def test_object_arrays():
-    x = np.array(((1, 2, 3), True))
+    x = np.array(((1, 2, 3), True), dtype="object")
     assert_array_equal(x, unpack(pack(x)), "Object array did not serialize correctly")
 
 
@@ -222,3 +225,25 @@ def test_insert_longblob():
     }
     (schema.Longblob & "id=1").delete()
     dj.blob.use_32bit_dims = False
+
+
+def test_datetime_serialization_speed():
+    # If this fails that means for some reason deserializing/serializing
+    # np arrays of np.datetime64 types is now slower than regular arrays of datetime
+
+    optimized_exe_time = timeit.timeit(
+        setup="myarr=pack(np.array([np.datetime64('2022-10-13 03:03:13') for _ in range(0, 10000)]))",
+        stmt="unpack(myarr)",
+        number=10,
+        globals=globals(),
+    )
+    print(f"np time {optimized_exe_time}")
+    baseline_exe_time = timeit.timeit(
+        setup="myarr2=pack(np.array([datetime(2022,10,13,3,3,13) for _ in range (0, 10000)]))",
+        stmt="unpack(myarr2)",
+        number=10,
+        globals=globals(),
+    )
+    print(f"python time {baseline_exe_time}")
+
+    assert optimized_exe_time * 900 < baseline_exe_time
