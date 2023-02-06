@@ -27,3 +27,6 @@ jupyter_custom.js
 .eggs
 *.code-workspace
 docs/site
+
+
+!.devcontainer/devcontainer.json
