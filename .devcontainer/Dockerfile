@@ -3,7 +3,7 @@ FROM mcr.microsoft.com/devcontainers/base:bullseye
 
 RUN \
     apt update && \
-    apt-get install bash-completion graphviz -y
+    apt-get install bash-completion graphviz default-mysql-client -y
 
 ENV DJ_HOST fakeservices.datajoint.io
 ENV DJ_USER root
