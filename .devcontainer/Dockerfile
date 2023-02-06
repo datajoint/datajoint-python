@@ -1,9 +1,11 @@
 # Note: You can use any Debian/Ubuntu based image you want. 
-FROM mcr.microsoft.com/devcontainers/base:bullseye
+FROM mcr.microsoft.com/devcontainers/python:3.7-bullseye
 
 RUN \
     apt update && \
-    apt-get install bash-completion graphviz default-mysql-client -y
+    apt-get install bash-completion graphviz default-mysql-client -y && \
+    pip install flake8 black faker ipykernel nose nose-cov datajoint && \
+    pip uninstall datajoint -y
 
 ENV DJ_HOST fakeservices.datajoint.io
 ENV DJ_USER root
