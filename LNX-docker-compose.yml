@@ -1,4 +1,4 @@
-# docker compose -f LNX-docker-compose.yml --env-file LNX.env up --exit-code-from app --build
+# PY_VER=3.8 MYSQL_VER=5.7 DISTRO=alpine MINIO_VER=RELEASE.2022-08-11T04-37-28Z HOST_UID=$(id -u) docker compose -f LNX-docker-compose.yml up --exit-code-from app --build
 version: '2.4'
 x-net: &net
   networks:

@@ -21,7 +21,6 @@ build/
 *.env
 docker-compose.yml
 notebook
-.vscode
 __main__.py
 jupyter_custom.js
 .eggs
@@ -29,4 +28,5 @@ jupyter_custom.js
 docs/site
 
 
+!.vscode/settings.json
 !.devcontainer/devcontainer.json
