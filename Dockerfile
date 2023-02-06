@@ -1,13 +1,9 @@
-ARG PY_VER=3.8
-ARG DISTRO=alpine
 ARG IMAGE=djbase
+ARG PY_VER=3.9
+ARG DISTRO=debian
 FROM datajoint/${IMAGE}:py${PY_VER}-${DISTRO}
-WORKDIR /main
-COPY --chown=anaconda:anaconda ./requirements.txt ./setup.py \
-    /main/
-COPY --chown=anaconda:anaconda ./datajoint/*.py /main/datajoint/
+COPY --chown=anaconda:anaconda ./setup.py ./datajoint.pub ./requirements.txt /main/
+COPY --chown=anaconda:anaconda ./datajoint /main/datajoint
 RUN \
-    umask u+rwx,g+rwx,o-rwx && \
-    pip install --no-cache-dir . && \
-    rm -R ./*
-CMD ["python"]
+    pip install --no-cache-dir /main && \
+    rm -r /main/*

@@ -1,4 +1,4 @@
-# PY_VER=3.8 IMAGE=djbase DISTRO=alpine DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py) HOST_UID=$(id -u) docker compose -f docker-compose-build.yaml up --exit-code-from app --build
+# PY_VER=3.9 IMAGE=djbase DISTRO=debian DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py) HOST_UID=$(id -u) docker compose -f docker-compose-build.yaml up --exit-code-from app --build
 #
 # Intended for updating dependencies and docker image.
 # Used to build release artifacts.
@@ -17,7 +17,7 @@ services:
       - .:/main
     command:
       - sh
-      - -lc
+      - -c
       - |
         set -e
         rm -R build dist *.egg-info || echo "No prev build"

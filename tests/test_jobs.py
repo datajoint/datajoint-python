@@ -9,7 +9,6 @@ subjects = schema.Subject()
 
 
 def test_reserve_job():
-
     schema.schema.jobs.delete()
     assert_true(subjects)
     table_name = "fake_table"

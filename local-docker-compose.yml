@@ -1,12 +1,12 @@
 # docker compose -f local-docker-compose.yml --env-file LNX.env up --build
-version: '2.2'
+version: '2.4'
 x-net: &net
   networks:
       - main
 services:
   db:
     <<: *net
-    image: datajoint/mysql:$MYSQL_VER
+    image: datajoint/mysql:${MYSQL_VER}
     environment:
       - MYSQL_ROOT_PASSWORD=simple
     # ports:
@@ -16,7 +16,7 @@ services:
     #   - ./mysql/data:/var/lib/mysql
   minio:
     <<: *net
-    image: minio/minio:$MINIO_VER
+    image: minio/minio:${MINIO_VER}
     environment:
       - MINIO_ACCESS_KEY=datajoint
       - MINIO_SECRET_KEY=datajoint
@@ -57,7 +57,7 @@ services:
         condition: service_healthy
   app:
     <<: *net
-    image: datajoint/pydev:${PY_VER}-alpine${ALPINE_VER}
+    image: datajoint/djtest:py${PY_VER}-${DISTRO}
     depends_on:
       fakeservices.datajoint.io:
         condition: service_healthy
@@ -82,9 +82,9 @@ services:
       - -c
       - |
         set -e
-        pip install --user nose nose-cov coveralls flake8 ptvsd black faker
+        pip install --user nose nose-cov
         pip install -e .
-        pip freeze | grep datajoint
+        pip list --format=freeze | grep datajoint
         ## You may run the below tests once sh'ed into container i.e. docker exec -it datajoint-python_app_1 sh
         # nosetests -vsw tests; #run all tests
         # nosetests -vs --tests=tests.test_external_class:test_insert_and_fetch; #run specific basic test
@@ -92,8 +92,6 @@ services:
         # flake8 datajoint --count --select=E9,F63,F7,F82 --show-source --statistics
         # flake8 --ignore=E203,E722,W503 datajoint --count --max-complexity=62 --max-line-length=127 --statistics
         # black datajoint --check -v
-        ## Interactive Jupyter Notebook environment
-        jupyter notebook &
         ## Remote debugger
         set +e
         while true
@@ -104,7 +102,7 @@ services:
     ports:
       - "8888:8888"
       - "5678:5678"
-    user: ${HOST_UID}:${HOST_GID}
+    user: ${HOST_UID}:anaconda
     volumes:
       - .:/src
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
