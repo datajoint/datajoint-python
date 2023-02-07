@@ -2,6 +2,8 @@ version: "3"
 services:
   app:
     build: .
+    extra_hosts:
+      - fakeservices.datajoint.io:127.0.0.1
     volumes:
       - ../..:/workspaces:cached
     entrypoint: /usr/local/share/docker-init.sh
