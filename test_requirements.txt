@@ -1,4 +1,0 @@
-nose
-nose-cov
-coveralls
-faker

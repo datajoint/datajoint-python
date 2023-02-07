@@ -4,7 +4,6 @@ from .schema import *
 
 @schema
 class Experiment(dj.Imported):
-
     original_definition = """  # information about experiments
     -> Subject
     experiment_id  :smallint  # experiment number for this subject

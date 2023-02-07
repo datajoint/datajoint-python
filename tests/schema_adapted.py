@@ -23,7 +23,6 @@ errors._switch_adapted_types(True)  # enable adapted types for testing only
 
 
 class GraphAdapter(dj.AttributeAdapter):
-
     attribute_type = "longblob"  # this is how the attribute will be declared
 
     @staticmethod

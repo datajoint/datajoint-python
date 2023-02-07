@@ -94,7 +94,6 @@ else:
         """
 
         def __init__(self, source, context=None):
-
             if isinstance(source, Diagram):
                 # copy constructor
                 self.nodes_to_show = set(source.nodes_to_show)
@@ -302,7 +301,6 @@ else:
             return graph
 
         def make_dot(self):
-
             graph = self._make_graph()
             graph.nodes()
 
