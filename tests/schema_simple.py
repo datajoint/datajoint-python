@@ -279,3 +279,18 @@ class OutfitLaunch(dj.Lookup):
         piece: varchar(20)
         """
         contents = [(0, "jeans"), (0, "sneakers"), (0, "polo")]
+
+
+@schema
+class P(dj.Params):
+    definition = """
+    id: int
+    ---
+    desc='' : varchar(2)
+    params_a : longblob
+    params_b=null : longblob
+    """
+
+    def fill(self):
+        if not self:
+            self.insert([dict(id=n, desc="d", params_a=dict(a=n)) for n in range(3)])

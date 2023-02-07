@@ -7,6 +7,7 @@ from nose.tools import (
     assert_set_equal,
 )
 from .schema import *
+from .schema_simple import P
 import datajoint as dj
 import inspect
 from datajoint.declare import declare
@@ -14,6 +15,8 @@ from datajoint.declare import declare
 
 auto = Auto()
 auto.fill()
+params = P()
+params.fill()
 user = User()
 subject = Subject()
 experiment = Experiment()
@@ -98,6 +101,14 @@ class TestDeclare:
         # test autoincrement declaration
         assert_list_equal(auto.heading.names, ["id", "name"])
         assert_true(auto.heading.attributes["id"].autoincrement)
+
+        # hidden uuid attribute declaration
+        assert_true(params.heading.attributes["__paramset_hash"].uuid)
+        assert_true(params.heading.attributes["__paramset_hash"].hide)
+        assert_equal(
+            params.heading.names,
+            ["id", "desc", "params_a", "params_b", "__paramset_hash"],
+        )
 
         # test attribute declarations
         assert_list_equal(

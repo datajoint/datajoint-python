@@ -1,6 +1,6 @@
 from nose.tools import assert_false, assert_true
 import datajoint as dj
-from .schema_simple import A, B, D, E, L, schema, OutfitLaunch
+from .schema_simple import A, B, D, E, L, schema, OutfitLaunch, P
 from . import schema_advanced
 
 namespace = locals()
@@ -21,6 +21,7 @@ class TestERD:
         assert_true(issubclass(B.C, dj.Part))
         assert_true(B.C.database == schema.database)
         assert_true(B.C.master is B and E.F.master is E)
+        assert_true(issubclass(P, dj.Params))
 
     @staticmethod
     def test_dependencies():
@@ -44,7 +45,7 @@ class TestERD:
         erd = dj.ERD(schema, context=namespace)
         graph = erd._make_graph()
         assert_true(
-            set(cls.__name__ for cls in (A, B, D, E, L)).issubset(graph.nodes())
+            set(cls.__name__ for cls in (A, B, D, E, L, P)).issubset(graph.nodes())
         )
 
     @staticmethod
