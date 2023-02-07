@@ -2,13 +2,13 @@
 Hosts the table tiers, user tables should be derived from.
 """
 import collections
-import pandas as pd
 import numpy as np
 from .table import Table
 from .autopopulate import AutoPopulate
 from .logging import logger
-from .utils import from_camel_case, ClassProperty, dict_to_uuid
-from .errors import DataJointError, DuplicateError
+from .hash import uuid_from_buffer
+from .utils import from_camel_case, ClassProperty
+from .errors import DataJointError
 from .expression import QueryExpression
 
 _base_regexp = r"[a-z][a-z0-9]*(_[a-z][a-z0-9]*)*"
@@ -162,6 +162,8 @@ class Params(UserTable):
     that include 'param' and stores as additional unique index 'paramset hash'
     """
 
+    # TODO: ADD TESTS
+
     _prefix = "##"
     tier_regexp = (
         r"(?P<params>" + _prefix + _base_regexp.replace("TIER", "params") + ")"
@@ -171,12 +173,7 @@ class Params(UserTable):
         super().__init__()
         if "params" not in self.definition:
             raise DataJointError("Params tables must have at least one 'params' field")
-
-        # NOTE: Ideally, this would be a UUID, not char(36), but I was having trouble
-        # fetching by UUID - what's the syntax? (self * f"hash='{UUID}'").fetch()
-        self.definition += (
-            "hide__paramset_hash: char(36)\nunique index (hide__paramset_hash)\n"
-        )
+        self.definition += "__paramset_hash: uuid\nunique index (__paramset_hash)\n"
 
     def insert(self, rows, **kwargs):
         if isinstance(rows, QueryExpression):
@@ -195,19 +192,14 @@ class Params(UserTable):
             else:
                 row_values = row
 
-            paramset_hash = str(
-                dict_to_uuid(
-                    {
-                        field: value
-                        for field, value in zip(self.heading, row_values)
-                        if "param" in field and "hash" not in field
-                    }
-                )
-            )
+            paramset_dict = {
+                field: value
+                for field, value in zip(self.heading, row_values)
+                if "param" in field and "hash" not in field
+            }
+            paramset_hash = uuid_from_buffer(f"{paramset_dict}".encode())
 
-            existing_key = (self & f'hide__paramset_hash="{paramset_hash}"').fetch(
-                "KEY"
-            )
+            existing_key = (self & {"__paramset_hash": paramset_hash}).fetch("KEY")
             if existing_key:
                 logger.warning(
                     "Paramset already included with the following primary "
@@ -216,7 +208,7 @@ class Params(UserTable):
                 continue
 
             if isinstance(row, collections.abc.Mapping):
-                new_rows.append(dict(**row, hide__paramset_hash=paramset_hash))
+                new_rows.append(dict(**row, __paramset_hash=paramset_hash))
             else:
                 new_rows.append([*row, paramset_hash])
 

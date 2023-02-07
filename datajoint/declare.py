@@ -115,9 +115,9 @@ def build_foreign_key_parser():
 def build_attribute_parser():
     quoted = pp.QuotedString('"') ^ pp.QuotedString("'")
     colon = pp.Literal(":").suppress()
-    attribute_name = pp.Word(pp.srange("[a-z]"), pp.srange("[a-z0-9_]")).setResultsName(
-        "name"
-    )
+    attribute_name = pp.Word(
+        pp.srange("[a-z_]"), pp.srange("[a-z0-9_]")
+    ).setResultsName("name")
     data_type = (
         pp.Combine(pp.Word(pp.alphas) + pp.SkipTo("#", ignore=quoted))
         ^ pp.QuotedString("<", endQuoteChar=">", unquoteResults=False)
@@ -134,7 +134,7 @@ def build_index_parser():
     right = pp.Literal(")").suppress()
     unique = pp.Optional(pp.CaselessKeyword("unique")).setResultsName("unique")
     index = pp.CaselessKeyword("index").suppress()
-    attribute_name = pp.Word(pp.srange("[a-z]"), pp.srange("[a-z0-9_]"))
+    attribute_name = pp.Word(pp.srange("[a-z_]"), pp.srange("[a-z0-9_]"))
     return (
         unique
         + index
@@ -588,7 +588,7 @@ def compile_attribute(line, in_key, foreign_key_sql, context):
     match = {k: v.strip() for k, v in match.items()}
     match["nullable"] = match["default"].lower() == "null"
 
-    if match["name"].startswith("hide__") and in_key:
+    if match["name"].startswith("__") and in_key:
         raise DataJointError(
             'Primary keys cannot be hidden. Line: "{line}"'.format(line=line)
         )

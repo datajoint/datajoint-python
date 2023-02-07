@@ -172,7 +172,7 @@ class Heading:
         if self._table_status is not None:
             ret += "# " + self.table_status["comment"] + "\n"
         for v in self.attributes.values():
-            if v.hide:
+            if v.hide and config["loglevel"].lower() != "debug":
                 continue
             if in_key and not v.in_key:
                 ret += "---\n"
@@ -315,7 +315,7 @@ class Heading:
                 ),
                 is_blob=bool(TYPE_PATTERN["INTERNAL_BLOB"].match(attr["type"])),
                 uuid=False,
-                hide=attr["name"].startswith("hide__"),
+                hide=attr["name"].startswith("__"),
                 is_attachment=False,
                 is_filepath=False,
                 adapter=None,
