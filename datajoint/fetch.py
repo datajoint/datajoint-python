@@ -5,6 +5,7 @@ import pandas
 import itertools
 import re
 import numpy as np
+from numpy.lib import recfunctions as rfn
 import uuid
 import numbers
 from . import blob, hash
@@ -297,8 +298,9 @@ class Fetch:
                     # unpack blobs and externals
                     ret[name] = list(map(partial(get, heading[name]), ret[name]))
                 if not debug_mode:
-                    # NOTE: Now formatted slightly different, shows offsets + item size
-                    ret = ret[heading.names_shown]
+                    ret_shown = ret[heading.names_shown]
+                    # repack_fields avoids showing expanded dtype format as dict
+                    ret = np.array(ret_shown, dtype=rfn.repack_fields(ret_shown.dtype))
                 if format == "frame":
                     ret = pandas.DataFrame(ret).set_index(heading.primary_key)
         return ret
