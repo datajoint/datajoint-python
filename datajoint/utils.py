@@ -1,12 +1,9 @@
 """General-purpose utilities"""
 
-import hashlib
 import re
 from pathlib import Path
 import shutil
-import uuid
 from .errors import DataJointError
-from .logging import logger
 
 
 class ClassProperty:

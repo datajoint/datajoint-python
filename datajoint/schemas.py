@@ -304,7 +304,7 @@ class Schema:
             )
             is None
         ]
-        master_classes = (Lookup, Manual, Imported, Computed)
+        master_classes = (Lookup, Manual, Imported, Computed, Params)
         part_tables = []
         for table_name in tables:
             class_name = to_camel_case(table_name)
