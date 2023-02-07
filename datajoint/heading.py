@@ -129,6 +129,9 @@ class Heading:
 
     @property
     def names_shown(self):
+        """
+        When not in debug mode only show non-hidden attributes
+        """
         if config["loglevel"].lower() == "debug":
             return self.names
         return [k for k, v in self.attributes.items() if not v.hide]
@@ -200,7 +203,7 @@ class Heading:
     @property
     def as_dtype_shown(self):
         """
-        represent the heading as a numpy dtype
+        When not in debug mode, return all non-hidden attributes
         """
         if config["loglevel"].lower() == "debug":
             return self.as_dtype

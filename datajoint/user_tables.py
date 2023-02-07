@@ -163,8 +163,6 @@ class Params(UserTable):
     that include 'param' and stores as additional unique index 'paramset hash'
     """
 
-    # TODO: ADD TESTS
-
     _prefix = "##"
     tier_regexp = (
         r"(?P<params>" + _prefix + _base_regexp.replace("TIER", "params") + ")"
@@ -177,6 +175,13 @@ class Params(UserTable):
         self.definition += "__paramset_hash: uuid\nunique index (__paramset_hash)\n"
 
     def insert(self, rows, **kwargs):
+        """
+        Insert rows into Params table, ensuring uniqueness for param fields.
+
+        Note: does not accept QueryExpressions as rows. Accepts all other parameters of
+        standard dj.table.insert function including replace, skip_duplicates, etc.
+        """
+
         if isinstance(rows, QueryExpression):
             raise NotImplementedError(
                 "Params tables do not yet support insertion via QueryExpression"
@@ -205,6 +210,8 @@ class Params(UserTable):
 
             existing_key = (self & {"__paramset_hash": paramset_hash}).fetch("KEY")
             if existing_key:
+                # If the key exists (either exact duplicate or duplicate params), return
+                # the existing primary key and move to next row.
                 logger.warning(
                     "Paramset already included with the following primary "
                     + f"key: {existing_key[0]}"
