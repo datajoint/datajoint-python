@@ -18,8 +18,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - py_ver: 3.8
-            distro: alpine
+          - py_ver: '3.9'
+            distro: debian
             image: djbase
     env:
       PY_VER: ${{matrix.py_ver}}
@@ -28,7 +28,7 @@ jobs:
       DOCKER_CLIENT_TIMEOUT: "120"
       COMPOSE_HTTP_TIMEOUT: "120"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Validate version and release notes
         run: |
           DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py)
@@ -44,9 +44,9 @@ jobs:
           export HOST_UID=$(id -u)
           docker-compose -f docker-compose-build.yaml up --exit-code-from app --build
           echo "DJ_VERSION=${DJ_VERSION}" >> $GITHUB_ENV
-      - if: matrix.py_ver == '3.8' && matrix.distro == 'alpine'
+      - if: matrix.py_ver == '3.9' && matrix.distro == 'debian'
         name: Add pip artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: pip-datajoint-${{env.DJ_VERSION}}
           path: dist
@@ -55,13 +55,15 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        py_ver: ["3.8"]
+        py_ver: ["3.9"]
         mysql_ver: ["8.0", "5.7"]
         include:
+          - py_ver: "3.8"
+            mysql_ver: "5.7"
           - py_ver: "3.7"
             mysql_ver: "5.7"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python ${{matrix.py_ver}}
         uses: actions/setup-python@v4
         with:
@@ -76,14 +78,12 @@ jobs:
         env:
           PY_VER: ${{matrix.py_ver}}
           MYSQL_VER: ${{matrix.mysql_ver}}
-          ALPINE_VER: "3.10"
+          DISTRO: alpine
           MINIO_VER: RELEASE.2021-09-03T03-56-13Z
+          DOCKER_CLIENT_TIMEOUT: "120"
           COMPOSE_HTTP_TIMEOUT: "120"
-          COVERALLS_SERVICE_NAME: travis-ci
-          COVERALLS_REPO_TOKEN: fd0BoXG46TPReEem0uMy7BJO5j0w1MQiY
         run: |
           export HOST_UID=$(id -u)
-          export HOST_GID=$(id -g)
           docker-compose -f LNX-docker-compose.yml up --build --exit-code-from app
       - name: Run style tests
         run: |
@@ -101,7 +101,7 @@ jobs:
       DOCKER_CLIENT_TIMEOUT: "120"
       COMPOSE_HTTP_TIMEOUT: "120"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Deploy docs
         run: |
           export MODE=BUILD
@@ -119,8 +119,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - py_ver: 3.8
-            distro: alpine
+          - py_ver: '3.9'
+            distro: debian
             image: djbase
     env:
       PY_VER: ${{matrix.py_ver}}
@@ -133,7 +133,7 @@ jobs:
     outputs:
       release_upload_url: ${{steps.create_gh_release.outputs.upload_url}}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python ${{matrix.py_ver}}
         uses: actions/setup-python@v4
         with:
@@ -160,7 +160,7 @@ jobs:
           prerelease: false
           draft: false
       - name: Fetch pip artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: pip-datajoint-${{env.DJ_VERSION}}
           path: dist
@@ -192,3 +192,19 @@ jobs:
           docker-compose -f docker-compose-build.yaml run \
             -e TWINE_USERNAME=${TWINE_USERNAME} -e TWINE_PASSWORD=${TWINE_PASSWORD} app \
             sh -lc "pip install twine && python -m twine upload dist/*"
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{secrets.docker_username}}
+          password: ${{secrets.docker_password}}
+      - name: Publish image
+        run: |
+          IMAGE=$(docker images --filter "reference=datajoint/datajoint*" --format "{{.Repository}}")
+          TAG=$(docker images --filter "reference=datajoint/datajoint*" --format "{{.Tag}}")
+          docker push "${IMAGE}:${TAG}"
+          docker tag "${IMAGE}:${TAG}" "${IMAGE}:${TAG}-${GITHUB_SHA:0:7}"
+          docker push "${IMAGE}:${TAG}-${GITHUB_SHA:0:7}"
+          [ "$PY_VER" == "3.9" ] && [ "$DISTRO" == "debian" ] \
+                  && docker tag "${IMAGE}:${TAG}" "${IMAGE}:latest" \
+                  && docker push "${IMAGE}:latest" \
+              || echo "skipping 'latest' tag..."

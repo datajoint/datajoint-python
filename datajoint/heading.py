@@ -297,7 +297,6 @@ class Heading:
 
         # additional attribute properties
         for attr in attributes:
-
             attr.update(
                 in_key=(attr["in_key"] == "PRI"),
                 database=database,
