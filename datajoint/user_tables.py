@@ -3,6 +3,7 @@ Hosts the table tiers, user tables should be derived from.
 """
 import collections
 import numpy as np
+from itertools import zip_longest
 from .table import Table
 from .autopopulate import AutoPopulate
 from .logging import logger
@@ -194,7 +195,10 @@ class Params(UserTable):
 
             paramset_dict = {
                 field: value
-                for field, value in zip(self.heading, row_values)
+                # zip_longest accounts for nullable params fields
+                for field, value in zip_longest(
+                    self.heading, row_values, fillvalue=None
+                )
                 if "param" in field and "hash" not in field
             }
             paramset_hash = uuid_from_buffer(f"{paramset_dict}".encode())

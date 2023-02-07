@@ -17,7 +17,7 @@ params.fill()
 entry = params.fetch(as_dict=True, limit=1)[0]
 
 
-class TestDeclare:
+class TestParams:
     @staticmethod
     def test_exact_entry():
         """Test ignoring insertion of the same entry"""
