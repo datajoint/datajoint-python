@@ -213,7 +213,6 @@
 - Implement file-based external storage
 
 ### 0.8.0 -- Jul 26, 2017
-
 Documentation and tutorials available at https://docs.datajoint.io and https://tutorials.datajoint.io
 
 - improved the ERD graphics and features using the graphviz libraries (#207, #333)

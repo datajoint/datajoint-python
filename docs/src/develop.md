@@ -7,7 +7,7 @@ Included with the codebase is the recommended development environment configured
 Here are some options that provide a great developer experience:
 
 - **Cloud-based IDE**: (*recommended*)
-  - Launch using [GitHub Codespaces](https://github.com/features/codespaces) using the option `Create codespace on master` in the codebase repository.
+  - Launch using [GitHub Codespaces](https://github.com/features/codespaces) using the option `Create codespace on master` in the codebase repository on your fork.
   - Build time for a 2-Core codespace is **~5m**. This is done infrequently and cached for convenience.
   - Start time for a 2-Core codespace is **~1m**. This will pull the built codespace from cache when you need it.
   - Tip: GitHub auto names the codespace but you can rename the codespace so that it is easier to identify later.
