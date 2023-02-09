@@ -504,14 +504,14 @@ class TestRelational:
         F.insert1((2, "2019-09-25"))
 
         new_value = None
-        F.update1(dict((F & "id=2").proj().fetch1(), date=new_value))
+        F.update1(dict((F & "id=2").fetch1("KEY"), date=new_value))
         assert_equal((F & "id=2").fetch1("date"), new_value)
 
         new_value = datetime.date(2019, 10, 25)
-        F.update1(dict((F & "id=2").proj().fetch1(), date=new_value))
+        F.update1(dict((F & "id=2").fetch1("KEY"), date=new_value))
         assert_equal((F & "id=2").fetch1("date"), new_value)
 
-        F.update1(dict((F & "id=2").proj().fetch1(), date=None))
+        F.update1(dict((F & "id=2").fetch1("KEY"), date=None))
         assert_equal((F & "id=2").fetch1("date"), None)
 
     @staticmethod
@@ -533,20 +533,20 @@ class TestRelational:
     def test_update_single_key():
         """Test that only one row can be updated"""
         TTestUpdate.update1(
-            dict(TTestUpdate.proj().fetch1(), string_attr="my new string")
+            dict(TTestUpdate.fetch1("KEY"), string_attr="my new string")
         )
 
     @staticmethod
     @raises(dj.DataJointError)
     def test_update_no_primary():
         """Test that no primary key can be updated"""
-        TTestUpdate.update1(dict(TTestUpdate.proj().fetch1(), primary_key=2))
+        TTestUpdate.update1(dict(TTestUpdate.fetch1("KEY"), primary_key=2))
 
     @staticmethod
     @raises(dj.DataJointError)
     def test_update_missing_attribute():
         """Test that attribute is in table"""
-        TTestUpdate.update1(dict(TTestUpdate.proj().fetch1(), not_existing=2))
+        TTestUpdate.update1(dict(TTestUpdate.fetch1("KEY"), not_existing=2))
 
     @staticmethod
     def test_update_string_attribute():
@@ -555,7 +555,7 @@ class TestRelational:
         s = "".join(
             random.choice(string.ascii_uppercase + string.digits) for _ in range(10)
         )
-        TTestUpdate.update1(dict(rel.proj().fetch1(), string_attr=s))
+        TTestUpdate.update1(dict(rel.fetch1("KEY"), string_attr=s))
         assert_equal(s, rel.fetch1("string_attr"), "Updated string does not match")
 
     @staticmethod
@@ -563,9 +563,9 @@ class TestRelational:
         """Test replacing a string value"""
         rel = TTestUpdate() & dict(primary_key=0)
         s = random.randint(0, 10)
-        TTestUpdate.update1(dict(rel.proj().fetch1(), num_attr=s))
+        TTestUpdate.update1(dict(rel.fetch1("KEY"), num_attr=s))
         assert_equal(s, rel.fetch1("num_attr"), "Updated integer does not match")
-        TTestUpdate.update1(dict(rel.proj().fetch1(), num_attr=None))
+        TTestUpdate.update1(dict(rel.fetch1("KEY"), num_attr=None))
         assert_true(np.isnan(rel.fetch1("num_attr")), "Numeric value is not NaN")
 
     @staticmethod
@@ -573,7 +573,7 @@ class TestRelational:
         """Test replacing a string value"""
         rel = TTestUpdate() & dict(primary_key=0)
         s = rel.fetch1("blob_attr")
-        TTestUpdate.update1(dict(rel.proj().fetch1(), blob_attr=s.T))
+        TTestUpdate.update1(dict(rel.fetch1("KEY"), blob_attr=s.T))
         assert_equal(
             s.T.shape, rel.fetch1("blob_attr").shape, "Array dimensions do not match"
         )
