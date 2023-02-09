@@ -25,10 +25,10 @@ def translate_attribute(key):
         return match, match["attr"]
     else:
         return match, "json_value(`{}`, _utf8mb4'$.{}'{})".format(
-            *{
-                k: ((f" returning {v}" if k == "type" else v) if v else "")
+            *[
+                ((f" returning {v}" if k == "type" else v) if v else "")
                 for k, v in match.items()
-            }.values()
+            ]
         )
 
 

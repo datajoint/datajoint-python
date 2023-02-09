@@ -774,58 +774,6 @@ class Table(QueryExpression):
             logger.info("\n" + definition)
         return definition
 
-    def _update(self, attrname, value=None):
-        """
-        This is a deprecated function to be removed in datajoint 0.14.
-        Use ``.update1`` instead.
-
-        Updates a field in one existing tuple. self must be restricted to exactly one entry.
-        In DataJoint the principal way of updating data is to delete and re-insert the
-        entire record and updates are reserved for corrective actions.
-        This is because referential integrity is observed on the level of entire
-        records rather than individual attributes.
-
-        Safety constraints:
-           1. self must be restricted to exactly one tuple
-           2. the update attribute must not be in primary key
-
-        Example:
-        >>> (v2p.Mice() & key)._update('mouse_dob', '2011-01-01')
-        >>> (v2p.Mice() & key)._update( 'lens')   # set the value to NULL
-        """
-        logger.warning(
-            "`_update` is a deprecated function to be removed in datajoint 0.14. "
-            "Use `.update1` instead."
-        )
-        if len(self) != 1:
-            raise DataJointError("Update is only allowed on one tuple at a time")
-        if attrname not in self.heading:
-            raise DataJointError("Invalid attribute name")
-        if attrname in self.heading.primary_key:
-            raise DataJointError("Cannot update a key value.")
-
-        attr = self.heading[attrname]
-
-        if attr.is_blob:
-            value = blob.pack(value)
-            placeholder = "%s"
-        elif attr.numeric:
-            if value is None or np.isnan(float(value)):  # nans are turned into NULLs
-                placeholder = "NULL"
-                value = None
-            else:
-                placeholder = "%s"
-                value = str(int(value) if isinstance(value, bool) else value)
-        else:
-            placeholder = "%s" if value is not None else "NULL"
-        command = "UPDATE {full_table_name} SET `{attrname}`={placeholder} {where_clause}".format(
-            full_table_name=self.from_clause(),
-            attrname=attrname,
-            placeholder=placeholder,
-            where_clause=self.where_clause(),
-        )
-        self.connection.query(command, args=(value,) if value is not None else ())
-
     # --- private helper functions ----
     def __make_placeholder(self, name, value, ignore_extra_fields=False):
         """

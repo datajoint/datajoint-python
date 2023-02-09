@@ -1,6 +1,6 @@
 ## Release notes
 
-### 0.14.0 -- TBA
+### 0.14.0 -- Feb 10, 2023
 - Fixed - Activating a schema requires all tables to exist even if `create_tables=False` PR [#1058](https://github.com/datajoint/datajoint-python/pull/1058)
 - Changed - Populate call with `reserve_jobs=True` to exclude `error` and `ignore` keys - PR [#1062](https://github.com/datajoint/datajoint-python/pull/1062)
 - Added - Support for inserting data with CSV files - PR [#1067](https://github.com/datajoint/datajoint-python/pull/1067)
