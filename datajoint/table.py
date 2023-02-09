@@ -670,7 +670,7 @@ class Table(QueryExpression):
         if do_drop:
             for table in reversed(tables):
                 FreeTable(self.connection, table).drop_quick()
-            logger.info("Tables dropped.  Restart kernel.")
+            logger.info("Tables dropped. Restart kernel.")
 
     @property
     def size_on_disk(self):

@@ -1,6 +1,7 @@
 # PY_VER=3.8 MYSQL_VER=5.7 DISTRO=alpine MINIO_VER=RELEASE.2022-08-11T04-37-28Z HOST_UID=$(id -u) docker compose -f LNX-docker-compose.yml up --exit-code-from app --build
 version: "2.4"
-x-net: &net
+x-net:
+  &net
   networks:
     - main
 services:
@@ -14,7 +15,7 @@ services:
     # volumes:
     #   - ./mysql/data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
       timeout: 30s
       retries: 5
       interval: 15s
@@ -31,7 +32,13 @@ services:
     #   - ./minio/data:/data
     command: server --address ":9000" /data
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://minio:9000/minio/health/live"]
+      test:
+        [
+          "CMD",
+          "curl",
+          "--fail",
+          "http://minio:9000/minio/health/live"
+        ]
       timeout: 30s
       retries: 5
       interval: 15s

@@ -1,15 +1,18 @@
 ## Release notes
 
 ### 0.14.0 -- Feb 10, 2023
+- Added - `json` data type ([#245](https://github.com/datajoint/datajoint-python/issues/245)) PR [#1051](https://github.com/datajoint/datajoint-python/pull/1051)
 - Fixed - Activating a schema requires all tables to exist even if `create_tables=False` PR [#1058](https://github.com/datajoint/datajoint-python/pull/1058)
 - Changed - Populate call with `reserve_jobs=True` to exclude `error` and `ignore` keys - PR [#1062](https://github.com/datajoint/datajoint-python/pull/1062)
 - Added - Support for inserting data with CSV files - PR [#1067](https://github.com/datajoint/datajoint-python/pull/1067)
 - Changed - Switch testing image from `pydev` to `djtest` PR [#1012](https://github.com/datajoint/datajoint-python/pull/1012)
 - Added - DevContainer development environment compatible with GH Codespaces PR [1071](https://github.com/datajoint/datajoint-python/pull/1071)
-- Added - `json` data type ([#245](https://github.com/datajoint/datajoint-python/issues/245)) PR [#1051](https://github.com/datajoint/datajoint-python/pull/1051)
-- Fixed - Convert lingering prints by replacing with logs PR [#1051](https://github.com/datajoint/datajoint-python/pull/1051)
-- Changed - `table.progress()` defaults to no stdout PR [#1051](https://github.com/datajoint/datajoint-python/pull/1051)
-- Changed - `table.describe()` defaults to no stdout PR [#1051](https://github.com/datajoint/datajoint-python/pull/1051)
+- Fixed - Convert lingering prints by replacing with logs PR [#1073](https://github.com/datajoint/datajoint-python/pull/1073)
+- Changed - `table.progress()` defaults to no stdout PR [#1073](https://github.com/datajoint/datajoint-python/pull/1073)
+- Changed - `table.describe()` defaults to no stdout PR [#1073](https://github.com/datajoint/datajoint-python/pull/1073)
+- Deprecated - `table._update()` PR [#1073](https://github.com/datajoint/datajoint-python/pull/1073)
+- Deprecated - old-style foreign key syntax PR [#1073](https://github.com/datajoint/datajoint-python/pull/1073)
+- Deprecated - `dj.migrate_dj011_external_blob_storage_to_dj012()` PR [#1073](https://github.com/datajoint/datajoint-python/pull/1073)
 
 ### 0.13.8 -- Sep 21, 2022
 - Added - New documentation structure based on markdown PR [#1052](https://github.com/datajoint/datajoint-python/pull/1052)
