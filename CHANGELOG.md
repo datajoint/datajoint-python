@@ -9,7 +9,8 @@
 - Fixed - Convert lingering prints by replacing with logs PR [#?](https://github.com/datajoint/datajoint-python/pull/?)
 - Changed - `table.progress()` defaults to no stdout PR [#?](https://github.com/datajoint/datajoint-python/pull/?)
 - Changed - `table.describe()` defaults to no stdout PR [#?](https://github.com/datajoint/datajoint-python/pull/?)
-- Deprecated - `table._update()` and old-style foreign key syntax PR [#?](https://github.com/datajoint/datajoint-python/pull/?)
+- Deprecated - `table._update()` PR [#?](https://github.com/datajoint/datajoint-python/pull/?)
+- Deprecated - old-style foreign key syntax PR [#?](https://github.com/datajoint/datajoint-python/pull/?)
 - Deprecated - `dj.migrate_dj011_external_blob_storage_to_dj012()` PR [#?](https://github.com/datajoint/datajoint-python/pull/?)
 
 ### 0.13.8 -- Sep 21, 2022
