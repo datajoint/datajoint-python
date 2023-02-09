@@ -152,8 +152,8 @@ def make_condition(query_expression, condition, columns):
             return f'{k}="{v}"'
         return f"{k}={v}"
 
-    def join_conditions(negate, restrictions, operator="AND"):
-        return ("NOT (%s)" if negate else "%s") % (
+    def combine_conditions(negate, restrictions, operator="AND"):
+        return ("NOT %s" if negate else "%s") % (
             f"({f') {operator} ('.join(restrictions)})"
         )
 
@@ -165,7 +165,7 @@ def make_condition(query_expression, condition, columns):
     # restrict by string
     if isinstance(condition, str):
         columns.update(extract_column_names(condition))
-        return join_conditions(
+        return combine_conditions(
             negate, restrictions=[condition.strip().replace("%", "%%")]
         )  # escape %, see issue #376
 
@@ -183,7 +183,7 @@ def make_condition(query_expression, condition, columns):
             return negate  # if any item is False, the whole thing is False
         if not items:
             return not negate  # and empty AndList is True
-        return join_conditions(negate, restrictions=items)
+        return combine_conditions(negate, restrictions=items)
 
     # restriction by dj.U evaluates to True
     if isinstance(condition, U):
@@ -201,7 +201,7 @@ def make_condition(query_expression, condition, columns):
         if not common_attributes:
             return not negate  # no matching attributes -> evaluates to True
         columns.update(common_attributes)
-        return join_conditions(
+        return combine_conditions(
             negate,
             restrictions=[
                 prep_value(k, v)
@@ -218,7 +218,7 @@ def make_condition(query_expression, condition, columns):
         if not common_attributes:
             return not negate  # no matching attributes -> evaluate to True
         columns.update(common_attributes)
-        return join_conditions(
+        return combine_conditions(
             negate,
             restrictions=[prep_value(k, condition[k]) for k in common_attributes],
         )
@@ -269,7 +269,7 @@ def make_condition(query_expression, condition, columns):
         if any(item is True for item in or_list):  # if any item is True, entirely True
             return not negate
         return (
-            join_conditions(negate, restrictions=or_list, operator="OR")
+            combine_conditions(negate, restrictions=or_list, operator="OR")
             if or_list
             else negate
         )
