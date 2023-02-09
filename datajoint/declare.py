@@ -177,19 +177,14 @@ def compile_foreign_key(
     from .table import Table
     from .expression import QueryExpression
 
-    obsolete = False  # See issue #436.  Old style to be deprecated in a future release
     try:
         result = foreign_key_parser.parseString(line)
-    except pp.ParseException:
-        try:
-            result = foreign_key_parser_old.parseString(line)
-        except pp.ParseBaseException as err:
-            raise DataJointError('Parsing error in line "%s". %s.' % (line, err))
-        else:
-            obsolete = True
+    except pp.ParseException as err:
+        raise DataJointError('Parsing error in line "%s". %s.' % (line, err))
+
     try:
         ref = eval(result.ref_table, context)
-    except NameError if obsolete else Exception:
+    except Exception:
         raise DataJointError(
             "Foreign key reference %s could not be resolved" % result.ref_table
         )
@@ -205,18 +200,6 @@ def compile_foreign_key(
             'Primary dependencies cannot be nullable in line "{line}"'.format(line=line)
         )
 
-    if obsolete:
-        logger.warning(
-            'Line "{line}" uses obsolete syntax that will no longer be supported in datajoint 0.14. '
-            "For details, see issue #780 https://github.com/datajoint/datajoint-python/issues/780".format(
-                line=line
-            )
-        )
-        if not isinstance(ref, type) or not issubclass(ref, Table):
-            raise DataJointError(
-                "Foreign key reference %r must be a valid query" % result.ref_table
-            )
-
     if isinstance(ref, type) and issubclass(ref, Table):
         ref = ref()
 
@@ -231,55 +214,6 @@ def compile_foreign_key(
             'Dependency "%s" is not supported (yet). Use a base table or its projection.'
             % result.ref_table
         )
-
-    if obsolete:
-        # for backward compatibility with old-style dependency declarations.  See issue #436
-        if not isinstance(ref, Table):
-            DataJointError(
-                'Dependency "%s" is not supported. Check documentation.'
-                % result.ref_table
-            )
-        if not all(r in ref.primary_key for r in result.ref_attrs):
-            raise DataJointError('Invalid foreign key attributes in "%s"' % line)
-        try:
-            raise DataJointError(
-                'Duplicate attributes "{attr}" in "{line}"'.format(
-                    attr=next(attr for attr in result.new_attrs if attr in attributes),
-                    line=line,
-                )
-            )
-        except StopIteration:
-            pass  # the normal outcome
-
-        # Match the primary attributes of the referenced table to local attributes
-        new_attrs = list(result.new_attrs)
-        ref_attrs = list(result.ref_attrs)
-
-        # special case, the renamed attribute is implicit
-        if new_attrs and not ref_attrs:
-            if len(new_attrs) != 1:
-                raise DataJointError(
-                    'Renamed foreign key must be mapped to the primary key in "%s"'
-                    % line
-                )
-            if len(ref.primary_key) == 1:
-                # if the primary key has one attribute, allow implicit renaming
-                ref_attrs = ref.primary_key
-            else:
-                # if only one primary key attribute remains, then allow implicit renaming
-                ref_attrs = [attr for attr in ref.primary_key if attr not in attributes]
-                if len(ref_attrs) != 1:
-                    raise DataJointError(
-                        'Could not resolve which primary key attribute should be referenced in "%s"'
-                        % line
-                    )
-
-        if len(new_attrs) != len(ref_attrs):
-            raise DataJointError('Mismatched attributes in foreign key "%s"' % line)
-
-        if ref_attrs:
-            # convert to projected dependency
-            ref = ref.proj(**dict(zip(new_attrs, ref_attrs)))
 
     # declare new foreign key attributes
     for attr in ref.primary_key:

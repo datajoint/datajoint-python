@@ -7,5 +7,9 @@
     "python.formatting.provider": "black",
     "[python]": {
         "editor.defaultFormatter": null
-    }
+    },
+    "[markdown]": {
+        "editor.defaultFormatter": "disable"
+    },
+    "files.autoSave": "off"
 }

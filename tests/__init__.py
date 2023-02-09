@@ -44,13 +44,6 @@ S3_CONN_INFO = dict(
     bucket=environ.get("S3_BUCKET", "datajoint.test"),
 )
 
-S3_MIGRATE_BUCKET = [
-    path.name
-    for path in Path(
-        Path(__file__).resolve().parent, "external-legacy-data", "s3"
-    ).iterdir()
-][0]
-
 # Prefix for all databases used during testing
 PREFIX = environ.get("DJ_TEST_DB_PREFIX", "djtest")
 conn_root = dj.conn(**CONN_INFO_ROOT)
@@ -129,65 +122,13 @@ def setup_package():
             """
         )
 
-    # Add old MySQL
-    source = Path(Path(__file__).resolve().parent, "external-legacy-data")
-    db_name = "djtest_blob_migrate"
-    db_file = "v0_11.sql"
-    conn_root.query(
-        """
-        CREATE DATABASE IF NOT EXISTS {};
-        """.format(
-            db_name
-        )
-    )
-
-    statements = parse_sql(Path(source, db_file))
-    for s in statements:
-        conn_root.query(s)
-
-    # Add old S3
-    source = Path(Path(__file__).resolve().parent, "external-legacy-data", "s3")
     region = "us-east-1"
-    try:
-        minioClient.make_bucket(S3_MIGRATE_BUCKET, location=region)
-    except minio.error.S3Error as e:
-        if e.code != "BucketAlreadyOwnedByYou":
-            raise e
-
-    pathlist = Path(source).glob("**/*")
-    for path in pathlist:
-        if os.path.isfile(str(path)) and ".sql" not in str(path):
-            minioClient.fput_object(
-                S3_MIGRATE_BUCKET,
-                str(
-                    Path(
-                        os.path.relpath(str(path), str(Path(source, S3_MIGRATE_BUCKET)))
-                    ).as_posix()
-                ),
-                str(path),
-            )
     # Add S3
     try:
         minioClient.make_bucket(S3_CONN_INFO["bucket"], location=region)
     except minio.error.S3Error as e:
         if e.code != "BucketAlreadyOwnedByYou":
             raise e
-
-    # Add old File Content
-    try:
-        shutil.copytree(
-            str(
-                Path(
-                    Path(__file__).resolve().parent,
-                    "external-legacy-data",
-                    "file",
-                    "temp",
-                )
-            ),
-            str(Path(os.path.expanduser("~"), "temp")),
-        )
-    except FileExistsError:
-        pass
 
 
 def teardown_package():
@@ -210,14 +151,6 @@ def teardown_package():
     conn_root.query("DROP USER `djview`")
     conn_root.query("DROP USER `djssl`")
 
-    # Remove old S3
-    objs = list(minioClient.list_objects(S3_MIGRATE_BUCKET, recursive=True))
-    objs = [
-        minioClient.remove_object(S3_MIGRATE_BUCKET, o.object_name.encode("utf-8"))
-        for o in objs
-    ]
-    minioClient.remove_bucket(S3_MIGRATE_BUCKET)
-
     # Remove S3
     objs = list(minioClient.list_objects(S3_CONN_INFO["bucket"], recursive=True))
     objs = [
@@ -225,6 +158,3 @@ def teardown_package():
         for o in objs
     ]
     minioClient.remove_bucket(S3_CONN_INFO["bucket"])
-
-    # Remove old File Content
-    shutil.rmtree(str(Path(os.path.expanduser("~"), "temp")))
