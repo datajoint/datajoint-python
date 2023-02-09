@@ -29,4 +29,5 @@ docs/site
 
 
 !.vscode/settings.json
+!.vscode/launch.json
 !.devcontainer/devcontainer.json

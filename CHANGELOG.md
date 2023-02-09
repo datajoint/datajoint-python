@@ -6,6 +6,11 @@
 - Added - Support for inserting data with CSV files - PR [#1067](https://github.com/datajoint/datajoint-python/pull/1067)
 - Changed - Switch testing image from `pydev` to `djtest` PR [#1012](https://github.com/datajoint/datajoint-python/pull/1012)
 - Added - DevContainer development environment compatible with GH Codespaces PR [1071](https://github.com/datajoint/datajoint-python/pull/1071)
+- Fixed - Convert lingering prints by replacing with logs PR [#?](https://github.com/datajoint/datajoint-python/pull/?)
+- Changed - `table.progress()` defaults to no stdout PR [#?](https://github.com/datajoint/datajoint-python/pull/?)
+- Changed - `table.describe()` defaults to no stdout PR [#?](https://github.com/datajoint/datajoint-python/pull/?)
+- Deprecated - `table._update()` and old-style foreign key syntax PR [#?](https://github.com/datajoint/datajoint-python/pull/?)
+- Deprecated - `dj.migrate_dj011_external_blob_storage_to_dj012()` PR [#?](https://github.com/datajoint/datajoint-python/pull/?)
 
 ### 0.13.8 -- Sep 21, 2022
 - Added - New documentation structure based on markdown PR [#1052](https://github.com/datajoint/datajoint-python/pull/1052)

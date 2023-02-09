@@ -45,7 +45,7 @@ class Parent(dj.Manual):
     -> Person
     parent_sex  : enum('M','F')
     ---
-    (parent) -> Person
+    -> Person.proj(parent='person_id')
     """
 
     def fill(self):
@@ -132,8 +132,8 @@ class InputCell(dj.Manual):
 @schema
 class LocalSynapse(dj.Manual):
     definition = """  # a synapse within the slice
-    (presynaptic) -> Cell(cell)
-    (postsynaptic)-> Cell
+    -> Cell.proj(presynaptic='cell')
+    -> Cell.proj(postsynaptic='cell')
     """
 
 
@@ -143,5 +143,5 @@ class GlobalSynapse(dj.Manual):
     definition = """
     # a synapse within the slice
     -> Cell.proj(pre_slice="slice", pre_cell="cell")
-    (post_slice, post_cell)-> Cell(slice, cell)
+    -> Cell.proj(post_slice="slice", post_cell="cell")
     """

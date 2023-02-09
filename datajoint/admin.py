@@ -3,6 +3,9 @@ from getpass import getpass
 from .connection import conn
 from .settings import config
 from .utils import user_choice
+import logging
+
+logger = logging.getLogger(__name__.split(".")[0])
 
 
 def set_password(
@@ -13,10 +16,10 @@ def set_password(
         new_password = getpass("New password: ")
         confirm_password = getpass("Confirm password: ")
         if new_password != confirm_password:
-            print("Failed to confirm the password! Aborting password change.")
+            logger.warn("Failed to confirm the password! Aborting password change.")
             return
     connection.query("SET PASSWORD = PASSWORD('%s')" % new_password)
-    print("Password updated.")
+    logger.info("Password updated.")
 
     if update_config or (
         update_config is None and user_choice("Update local setting?") == "yes"
@@ -81,7 +84,7 @@ def kill(restriction=None, connection=None, order_by=None):  # pragma: no cover
                 try:
                     connection.query("kill %d" % pid)
                 except pymysql.err.InternalError:
-                    print("Process not found")
+                    logger.warn("Process not found")
 
 
 def kill_quick(restriction=None, connection=None):
