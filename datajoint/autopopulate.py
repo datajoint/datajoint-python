@@ -175,6 +175,7 @@ class AutoPopulate:
         max_calls=None,
         display_progress=False,
         processes=1,
+        return_success_count=False,
         make_kwargs=None,
     ):
         """
@@ -191,6 +192,8 @@ class AutoPopulate:
         :param max_calls: if not None, populate at most this many keys
         :param display_progress: if True, report progress_bar
         :param processes: number of processes to use. Set to None to use all cores
+        :param return_success_count: if True, return the count of successful `make()` calls.
+            If suppress_errors is also True, returns a tuple: (success_count, errors)
         :param make_kwargs: Keyword arguments which do not affect the result of computation
             to be passed down to each ``make()`` call. Computation arguments should be
             specified within the pipeline e.g. using a `dj.Lookup` table.
@@ -237,49 +240,62 @@ class AutoPopulate:
 
         keys = keys[:max_calls]
         nkeys = len(keys)
-        if not nkeys:
-            return
-
-        processes = min(_ for _ in (processes, nkeys, mp.cpu_count()) if _)
 
         error_list = []
-        populate_kwargs = dict(
-            suppress_errors=suppress_errors,
-            return_exception_objects=return_exception_objects,
-            make_kwargs=make_kwargs,
-        )
+        success_list = []
 
-        if processes == 1:
-            for key in (
-                tqdm(keys, desc=self.__class__.__name__) if display_progress else keys
-            ):
-                error = self._populate1(key, jobs, **populate_kwargs)
-                if error is not None:
-                    error_list.append(error)
-        else:
-            # spawn multiple processes
-            self.connection.close()  # disconnect parent process from MySQL server
-            del self.connection._conn.ctx  # SSLContext is not pickleable
-            with mp.Pool(
-                processes, _initialize_populate, (self, jobs, populate_kwargs)
-            ) as pool, (
-                tqdm(desc="Processes: ", total=nkeys)
-                if display_progress
-                else contextlib.nullcontext()
-            ) as progress_bar:
-                for error in pool.imap(_call_populate1, keys, chunksize=1):
-                    if error is not None:
-                        error_list.append(error)
-                    if display_progress:
-                        progress_bar.update()
-            self.connection.connect()  # reconnect parent process to MySQL server
+        if nkeys:
+            processes = min(_ for _ in (processes, nkeys, mp.cpu_count()) if _)
+
+            populate_kwargs = dict(
+                suppress_errors=suppress_errors,
+                return_exception_objects=return_exception_objects,
+                make_kwargs=make_kwargs,
+            )
+
+            if processes == 1:
+                for key in (
+                    tqdm(keys, desc=self.__class__.__name__)
+                    if display_progress
+                    else keys
+                ):
+                    status = self._populate1(key, jobs, **populate_kwargs)
+                    if status is not None:
+                        if isinstance(status, tuple):
+                            error_list.append(status)
+                        elif status:
+                            success_list.append(1)
+            else:
+                # spawn multiple processes
+                self.connection.close()  # disconnect parent process from MySQL server
+                del self.connection._conn.ctx  # SSLContext is not pickleable
+                with mp.Pool(
+                    processes, _initialize_populate, (self, jobs, populate_kwargs)
+                ) as pool, (
+                    tqdm(desc="Processes: ", total=nkeys)
+                    if display_progress
+                    else contextlib.nullcontext()
+                ) as progress_bar:
+                    for status in pool.imap(_call_populate1, keys, chunksize=1):
+                        if status is not None:
+                            if isinstance(status, tuple):
+                                error_list.append(status)
+                            elif status:
+                                success_list.append(1)
+                        if display_progress:
+                            progress_bar.update()
+                self.connection.connect()  # reconnect parent process to MySQL server
 
         # restore original signal handler:
         if reserve_jobs:
             signal.signal(signal.SIGTERM, old_handler)
 
+        if suppress_errors and return_success_count:
+            return sum(success_list), error_list
         if suppress_errors:
             return error_list
+        if return_success_count:
+            return sum(success_list)
 
     def _populate1(
         self, key, jobs, suppress_errors, return_exception_objects, make_kwargs=None
@@ -337,6 +353,7 @@ class AutoPopulate:
                     )
                     if jobs is not None:
                         jobs.complete(self.target.table_name, self._job_key(key))
+                    return True
                 finally:
                     self.__class__._allow_insert = False
 
