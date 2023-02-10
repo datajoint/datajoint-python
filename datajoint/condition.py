@@ -152,10 +152,8 @@ def make_condition(query_expression, condition, columns):
             return f'{k}="{v}"'
         return f"{k}={v}"
 
-    def combine_conditions(negate, restrictions, operator="AND"):
-        return ("NOT %s" if negate else "%s") % (
-            f"({f') {operator} ('.join(restrictions)})"
-        )
+    def combine_conditions(negate, restrictions):
+        return f"{'NOT ' if negate else ''} ({')AND('.join(restrictions)})"
 
     negate = False
     while isinstance(condition, Not):
@@ -269,7 +267,7 @@ def make_condition(query_expression, condition, columns):
         if any(item is True for item in or_list):  # if any item is True, entirely True
             return not negate
         return (
-            combine_conditions(negate, restrictions=or_list, operator="OR")
+            f"{'NOT ' if negate else ''} ({' OR '.join(or_list)})"
             if or_list
             else negate
         )
