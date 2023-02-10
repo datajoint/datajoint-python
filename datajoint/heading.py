@@ -28,6 +28,7 @@ default_attribute_properties = (
         numeric=None,
         string=None,
         uuid=False,
+        json=None,
         is_blob=False,
         is_attachment=False,
         is_filepath=False,
@@ -142,7 +143,7 @@ class Heading:
         return [
             k
             for k, v in self.attributes.items()
-            if not v.is_blob and not v.is_attachment and not v.is_filepath
+            if not (v.is_blob or v.is_attachment or v.is_filepath or v.json)
         ]
 
     @property
@@ -290,6 +291,7 @@ class Heading:
                 ),
                 is_blob=bool(TYPE_PATTERN["INTERNAL_BLOB"].match(attr["type"])),
                 uuid=False,
+                json=bool(TYPE_PATTERN["JSON"].match(attr["type"])),
                 is_attachment=False,
                 is_filepath=False,
                 adapter=None,
@@ -375,10 +377,15 @@ class Heading:
                 )
 
             if attr["in_key"] and any(
-                (attr["is_blob"], attr["is_attachment"], attr["is_filepath"])
+                (
+                    attr["is_blob"],
+                    attr["is_attachment"],
+                    attr["is_filepath"],
+                    attr["json"],
+                )
             ):
                 raise DataJointError(
-                    "Blob, attachment, or filepath attributes are not allowed in the primary key"
+                    "Json, Blob, attachment, or filepath attributes are not allowed in the primary key"
                 )
 
             if (
@@ -419,7 +426,8 @@ class Heading:
         ):
             if item["Key_name"] != "PRIMARY":
                 keys[item["Key_name"]][item["Seq_in_index"]] = dict(
-                    column=item["Column_name"],
+                    column=item["Column_name"]
+                    or f"({item['Expression']})".replace(r"\'", "'"),
                     unique=(item["Non_unique"] == 0),
                     nullable=item["Null"].lower() == "yes",
                 )

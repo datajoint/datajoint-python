@@ -7,6 +7,7 @@ import pyparsing as pp
 import logging
 from .errors import DataJointError, _support_filepath_types, FILEPATH_FEATURE_SWITCH
 from .attribute_adapter import get_adapter
+from .condition import translate_attribute
 
 UUID_DATA_TYPE = "binary(16)"
 MAX_TABLE_NAME_LENGTH = 64
@@ -23,6 +24,7 @@ TYPE_PATTERN = {
         DECIMAL=r"(decimal|numeric)(\s*\(.+\))?(\s+unsigned)?$",
         FLOAT=r"(double|float|real)(\s*\(.+\))?(\s+unsigned)?$",
         STRING=r"(var)?char\s*\(.+\)$",
+        JSON=r"json$",
         ENUM=r"enum\s*\(.+\)$",
         BOOL=r"bool(ean)?$",  # aliased to tinyint(1)
         TEMPORAL=r"(date|datetime|time|timestamp|year)(\s*\(.+\))?$",
@@ -129,25 +131,9 @@ def build_attribute_parser():
     return attribute_name + pp.Optional(default) + colon + data_type + comment
 
 
-def build_index_parser():
-    left = pp.Literal("(").suppress()
-    right = pp.Literal(")").suppress()
-    unique = pp.Optional(pp.CaselessKeyword("unique")).setResultsName("unique")
-    index = pp.CaselessKeyword("index").suppress()
-    attribute_name = pp.Word(pp.srange("[a-z]"), pp.srange("[a-z0-9_]"))
-    return (
-        unique
-        + index
-        + left
-        + pp.delimitedList(attribute_name).setResultsName("attr_list")
-        + right
-    )
-
-
 foreign_key_parser_old = build_foreign_key_parser_old()
 foreign_key_parser = build_foreign_key_parser()
 attribute_parser = build_attribute_parser()
-index_parser = build_index_parser()
 
 
 def is_foreign_key(line):
@@ -275,7 +261,7 @@ def prepare_declare(definition, context):
                 foreign_key_sql,
                 index_sql,
             )
-        elif re.match(r"^(unique\s+)?index[^:]*$", line, re.I):  # index
+        elif re.match(r"^(unique\s+)?index\s*.*$", line, re.I):  # index
             compile_index(line, index_sql)
         else:
             name, sql, store = compile_attribute(line, in_key, foreign_key_sql, context)
@@ -449,10 +435,22 @@ def alter(definition, old_definition, context):
 
 
 def compile_index(line, index_sql):
-    match = index_parser.parseString(line)
+    def format_attribute(attr):
+        match, attr = translate_attribute(attr)
+        if match is None:
+            return attr
+        if match["path"] is None:
+            return f"`{attr}`"
+        return f"({attr})"
+
+    match = re.match(
+        r"(?P<unique>unique\s+)?index\s*\(\s*(?P<args>.*)\)", line, re.I
+    ).groupdict()
+    attr_list = re.findall(r"(?:[^,(]|\([^)]*\))+", match["args"])
     index_sql.append(
-        "{unique} index ({attrs})".format(
-            unique=match.unique, attrs=",".join("`%s`" % a for a in match.attr_list)
+        "{unique}index ({attrs})".format(
+            unique="unique " if match["unique"] else "",
+            attrs=",".join(format_attribute(a.strip()) for a in attr_list),
         )
     )
 

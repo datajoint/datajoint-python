@@ -8,6 +8,7 @@ import logging
 import uuid
 import csv
 import re
+import json
 from pathlib import Path
 from .settings import config
 from .declare import declare, alter
@@ -831,6 +832,8 @@ class Table(QueryExpression):
                 value = self.external[attr.store].upload_filepath(value).bytes
             elif attr.numeric:
                 value = str(int(value) if isinstance(value, bool) else value)
+            elif attr.json:
+                value = json.dumps(value)
         return name, placeholder, value
 
     def __make_row_to_insert(self, row, field_list, ignore_extra_fields):

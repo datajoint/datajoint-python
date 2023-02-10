@@ -15,7 +15,8 @@ nav:
   - Reproducibility:
       - Table Tiers: reproduce/table-tiers.md
       - Make Method: reproduce/make-method.md
-  - Tutorials: tutorials.md
+  - Tutorials:
+      - tutorials/json.ipynb
   - Develop: develop.md
   - Changelog: about/changelog.md
   - API: api/ # defer to gen-files + literate-nav
@@ -72,6 +73,8 @@ plugins:
       exclude:
         - "*/navigation.md"
         - "*/archive/*md"
+  - mkdocs-jupyter:
+      include: ["*.ipynb"]
 markdown_extensions:
   - attr_list
   - toc:
