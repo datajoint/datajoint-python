@@ -1,4 +1,5 @@
 import os
+import datetime
 from .hash import key_hash
 import platform
 from .table import Table
@@ -65,10 +66,44 @@ class JobTable(Table):
         """bypass interactive prompts and dependencies"""
         self.drop_quick()
 
+    def schedule(self, table_name, key, seconds_delay=0, force=False):
+        """
+        Schedule a job for computation.
+
+        :param table_name: `database`.`table_name`
+        :param key: the dict of the job's primary key
+        :param seconds_delay: add time delay (in second) in scheduling this job
+        :param force: force scheduling this job (even if it is in error/ignore status)
+        :return: True if schedule job successfully. False = the jobs already exists with a different status
+        """
+        job_key = dict(table_name=table_name, key_hash=key_hash(key))
+        if self & job_key:
+            current_status = (self & job_key).fetch1("status")
+            if current_status in ("scheduled", "reserved", "success"):
+                return True
+            if current_status in ("error", "ignore") and not force:
+                return False
+
+        job = dict(
+            job_key,
+            status="scheduled",
+            host=platform.node(),
+            pid=os.getpid(),
+            connection_id=self.connection.connection_id,
+            key=key,
+            user=self._user,
+            timestamp=datetime.datetime.utcnow()
+            + datetime.timedelta(seconds=seconds_delay),
+        )
+
+        with config(enable_python_native_blobs=True):
+            self.insert1(job, replace=True, ignore_extra_fields=True)
+
+        return True
+
     def reserve(self, table_name, key):
         """
-        Reserve a job for computation.  When a job is reserved, the job table contains an entry for the
-        job key, identified by its hash. When jobs are completed, the entry is removed.
+        Reserve a job for computation.
 
         :param table_name: `database`.`table_name`
         :param key: the dict of the job's primary key
@@ -83,6 +118,7 @@ class JobTable(Table):
             connection_id=self.connection.connection_id,
             key=key,
             user=self._user,
+            timestamp=datetime.datetime.utcnow(),
         )
         try:
             with config(enable_python_native_blobs=True):
@@ -114,6 +150,7 @@ class JobTable(Table):
             connection_id=self.connection.connection_id,
             key=key,
             user=self._user,
+            timestamp=datetime.datetime.utcnow(),
         )
 
         with config(enable_python_native_blobs=True):
@@ -143,6 +180,7 @@ class JobTable(Table):
                     key=key,
                     run_duration=run_duration,
                     run_version=run_version,
+                    timestamp=datetime.datetime.utcnow(),
                 ),
                 replace=True,
                 ignore_extra_fields=True,
@@ -176,6 +214,7 @@ class JobTable(Table):
                     key=key,
                     error_message=error_message,
                     error_stack=error_stack,
+                    timestamp=datetime.datetime.utcnow(),
                 ),
                 replace=True,
                 ignore_extra_fields=True,

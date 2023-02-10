@@ -146,7 +146,7 @@ class AutoPopulate:
         if inspect.isclass(todo) and issubclass(todo, QueryExpression):
             todo = todo()
 
-        if not isinstance(todo, QueryExpression):
+        if not isinstance(todo, (QueryExpression, _SQLExpression)):
             raise DataJointError("Invalid key_source value")
 
         try:
@@ -402,3 +402,67 @@ class AutoPopulate:
                 jobs_config.insert1(entry, replace=True)
         else:
             jobs_config.insert1(entry)
+
+    def refresh_jobs(self):
+        jobs_config = self.connection.schemas[self.target.database].jobs_config
+        key_source_query = jobs_config & {"table_name": self.target.table_name}
+        if not key_source_query:
+            self.register_key_source()
+
+        if key_source_query.fetch1("refresh_reserved"):
+            # jobs for this table is currently being freshed
+            return
+
+        last_refresh_time, refresh_rate = key_source_query.fetch1(
+            "last_refresh_time", "refresh_rate"
+        )
+        new_refresh_time = last_refresh_time + datetime.timedelta(seconds=refresh_rate)
+        if datetime.datetime.utcnow() < new_refresh_time:
+            # not yet time to refresh jobs
+            return
+
+        # add new scheduled jobs to JobTable
+        jobs = self.connection.schemas[self.target.database].jobs
+        jobs_config.update1(
+            {"table_name": self.target.table_name, "refresh_reserved": 1}
+        )
+        try:
+            with self.connection.transaction:
+                schedule_count = 0
+                for key in (self._jobs_to_do({}) - self.target).fetch("KEY"):
+                    schedule_count += jobs.schedule(self.target.table_name, key)
+        except Exception as e:
+            logger.exception(str(e))
+        else:
+            logger.info(
+                f"{schedule_count} new jobs scheduled for `{to_camel_case(self.target.table_name)}`"
+            )
+        finally:
+            # purge invalid jobs
+            self.purge_invalid_jobs()
+            jobs_config.update1(
+                {"table_name": self.target.table_name, "refresh_reserved": 0}
+            )
+
+    def purge_invalid_jobs(self):
+        """
+        Check and remove any invalid/outdated jobs in the JobTable for this autopopulate table
+        Job keys that are in the JobTable (regardless of status) but are no longer in the `key_source`
+        (e.g. jobs added but upstream table(s) got deleted)
+        This is potentially a time-consuming process - but should not expect to have to run very often
+        """
+
+        jobs = self.connection.schemas[self.target.database].jobs
+        jobs_query = jobs & {"table_name": self.target.table_name}
+
+        invalid_count = len(jobs_query) - len(self._jobs_to_do({}))
+        invalid_removed = 0
+        if invalid_count > 0:
+            for key, job_key in jobs_query.fetch("KEY", "key"):
+                if not (self._jobs_to_do({}) & job_key):
+                    (jobs_query & key).delete()
+                    invalid_removed += 1
+
+        logger.info(
+            f"{invalid_removed}/{invalid_count} invalid jobs removed for `{to_camel_case(self.target.table_name)}`"
+        )

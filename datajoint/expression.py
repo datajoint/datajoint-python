@@ -935,6 +935,14 @@ class _SQLExpression:
         self.make_sql = lambda: sql
         self._expression.cursor = self.cursor
 
+        self._select, self._from_where = re.match(
+            r"SELECT (.*) FROM (.*)", sql
+        ).groups()
+
+        assert set(self._expression.heading.names) == set(
+            v.strip("`") for v in self._select.split(",")
+        )
+
     def cursor(self, offset=0, limit=None, order_by=None, as_dict=False):
         """
         See expression.fetch() for input description.
@@ -951,6 +959,10 @@ class _SQLExpression:
         return self._expression.connection.query(sql, as_dict=as_dict)
 
     @property
+    def heading(self):
+        return self._expression.heading
+
+    @property
     def fetch1(self):
         return Fetch1(self._expression)
 
@@ -960,14 +972,10 @@ class _SQLExpression:
 
     def __len__(self):
         """:return: number of elements in the result set e.g. ``len(q1)``."""
-        select, from_where = re.search(
-            r"SELECT (.*) FROM (.*)", self.make_sql()
-        ).groups()
-
         return self._expression.connection.query(
             "SELECT {select_} FROM {from_where}".format(
-                select_=f"count(DISTINCT {select})",
-                from_where=from_where,
+                select_=f"count(DISTINCT {self._select})",
+                from_where=self._from_where,
             )
         ).fetchone()[0]
 
