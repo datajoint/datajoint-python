@@ -6,10 +6,10 @@ import random
 import inspect
 from tqdm import tqdm
 from .hash import key_hash
-from .expression import QueryExpression, AndList
+from .expression import QueryExpression, AndList, _SQLExpression
 from .errors import DataJointError, LostConnectionError
 from .settings import config
-from .utils import user_choice
+from .utils import user_choice, to_camel_case
 import signal
 import multiprocessing as mp
 import contextlib
@@ -89,6 +89,19 @@ class AutoPopulate:
             self._key_source = _rename_attributes(*parents[0])
             for q in parents[1:]:
                 self._key_source *= _rename_attributes(*q)
+
+        jobs_config = self.connection.schemas[self.target.database].jobs_config
+        key_source_query = jobs_config & {"table_name": self.target.table_name}
+        if key_source_query:
+            key_source_uuid = key_hash({"sql": self._key_source.make_sql()})
+            if not (key_source_query & {"key_source_uuid": key_source_uuid}):
+                # different key_source stored in jobs_config
+                return _SQLExpression(
+                    self._key_source.proj(), key_source_query.fetch1("key_source")
+                )
+        else:
+            self.register_key_source(self._key_source.proj().make_sql())
+
         return self._key_source
 
     def make(self, key):
@@ -357,8 +370,8 @@ class AutoPopulate:
             "table_name": self.target.table_name
         }
 
-    def register_key_source(self, safemode=None):
-        key_source_sql = self.key_source.make_sql()
+    def register_key_source(self, sql=None, safemode=None):
+        key_source_sql = sql or self.key_source.proj().make_sql()
         key_source_uuid = key_hash({"sql": key_source_sql})
 
         jobs_config = self.connection.schemas[self.target.database].jobs_config
@@ -367,20 +380,21 @@ class AutoPopulate:
             "table_name": self.target.table_name,
             "key_source": key_source_sql,
             "key_source_uuid": key_source_uuid,
+            "last_refresh_time": datetime.datetime.utcnow(),
         }
 
         if jobs_config & {"table_name": self.target.table_name}:
-            registered_uuid = (
-                jobs_config & {"table_name": self.target.table_name}
-            ).fetch1("key_source_uuid")
-            if key_source_uuid == registered_uuid:
+            if jobs_config & {
+                "table_name": self.target.table_name,
+                "key_source_uuid": key_source_uuid,
+            }:
                 return
 
             safemode = config["safemode"] if safemode is None else safemode
             if (
                 not safemode
                 or user_choice(
-                    f"Modified key_source for table {self.target.table_name} - Re-register?",
+                    f"Modified key_source for table `{to_camel_case(self.target.table_name)}`,  Re-register?",
                     default="no",
                 )
                 == "yes"

@@ -37,7 +37,7 @@ class JobTable(Table):
         host=""  :varchar(255)  # system hostname
         pid=0  :int unsigned  # system process id
         connection_id = 0  : bigint unsigned      # connection_id()
-        timestamp=UTC_TIMESTAMP  :timestamp   # the scheduled time (UTC) for the job to run at or after
+        timestamp=CURRENT_TIMESTAMP  :timestamp   # the scheduled time (UTC) for the job to run at or after
         run_duration=null: float  # run duration in seconds
         run_version="": varchar(255) # some string representation of the code/env version of a run (e.g. git commit hash)
         index(table_name, status)
@@ -184,7 +184,7 @@ class JobTable(Table):
 
 class JobConfigTable(Table):
     """
-    A base table with no definition. Allows reserving jobs
+    A base table with no definition. Allows job configuration for imported/computed tables
     """
 
     def __init__(self, conn, database):
@@ -200,12 +200,14 @@ class JobConfigTable(Table):
         self._definition = """    # job configuration table for `{database}`
         table_name  :varchar(255)  # className of the table
         ---
-        key_source  :mediumblob  # sql statement for the key_source of the table - from make_sql()
         key_source_uuid: UUID # hash of the key_source
-        unique index (key_source_hash)
+        key_source  :mediumblob  # sql statement for the key_source of the table - from make_sql()
+        unique index (table_name, key_source_uuid)
+        unique index (key_source_uuid)
         refresh_rate=1: int unsigned # (second) how often should the jobs for the table be refreshed
         refresh_reserved=0: bool  # is the jobs for the table currently being refreshed
-        last_refresh_time=UTC_TIMESTAMP  :timestamp  # timestamp (UTC) of the last refresh time for the table
+        last_refresh_time: datetime  # timestamp (UTC) of the last refresh time for the table
+        additional_config=null: longblob  # (TODO: change to json) any additional configuration (e.g. retries, docker image, etc.)
         """.format(
             database=database
         )
