@@ -152,8 +152,8 @@ def make_condition(query_expression, condition, columns):
             return f'{k}="{v}"'
         return f"{k}={v}"
 
-    def combine_conditions(negate, restrictions):
-        return f"{'NOT ' if negate else ''} ({')AND('.join(restrictions)})"
+    def combine_conditions(negate, conditions):
+        return f"{'NOT ' if negate else ''} ({')AND('.join(conditions)})"
 
     negate = False
     while isinstance(condition, Not):
@@ -164,7 +164,7 @@ def make_condition(query_expression, condition, columns):
     if isinstance(condition, str):
         columns.update(extract_column_names(condition))
         return combine_conditions(
-            negate, restrictions=[condition.strip().replace("%", "%%")]
+            negate, conditions=[condition.strip().replace("%", "%%")]
         )  # escape %, see issue #376
 
     # restrict by AndList
@@ -181,7 +181,7 @@ def make_condition(query_expression, condition, columns):
             return negate  # if any item is False, the whole thing is False
         if not items:
             return not negate  # and empty AndList is True
-        return combine_conditions(negate, restrictions=items)
+        return combine_conditions(negate, conditions=items)
 
     # restriction by dj.U evaluates to True
     if isinstance(condition, U):
@@ -201,7 +201,7 @@ def make_condition(query_expression, condition, columns):
         columns.update(common_attributes)
         return combine_conditions(
             negate,
-            restrictions=[
+            conditions=[
                 prep_value(k, v)
                 for k, v in condition.items()
                 if k.split(".", 1)[0] in common_attributes
@@ -218,7 +218,7 @@ def make_condition(query_expression, condition, columns):
         columns.update(common_attributes)
         return combine_conditions(
             negate,
-            restrictions=[prep_value(k, condition[k]) for k in common_attributes],
+            conditions=[prep_value(k, condition[k]) for k in common_attributes],
         )
 
     # restrict by a QueryExpression subclass -- trigger instantiation and move on
