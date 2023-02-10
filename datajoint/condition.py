@@ -204,7 +204,7 @@ def make_condition(query_expression, condition, columns):
             conditions=[
                 prep_value(k, v)
                 for k, v in condition.items()
-                if k.split(".", 1)[0] in common_attributes
+                if k.split(".", 1)[0] in common_attributes  # handle json indexing
             ],
         )
 
