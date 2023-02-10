@@ -439,10 +439,9 @@ def compile_index(line, index_sql):
         match, attr = translate_attribute(attr)
         if match is None:
             return attr
-        elif match["path"] is None:
+        if match["path"] is None:
             return f"`{attr}`"
-        else:
-            return f"({attr})"
+        return f"({attr})"
 
     match = re.match(
         r"(?P<unique>unique\s+)?index\s*\(\s*(?P<args>.*)\)", line, re.I
