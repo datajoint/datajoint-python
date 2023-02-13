@@ -4,6 +4,7 @@
 * Bugfix - Activating a schema requires all tables to exist even if `create_tables=False` PR [#1058](https://github.com/datajoint/datajoint-python/pull/1058)
 * Update - Populate call with `reserve_jobs=True` to exclude `error` and `ignore` keys - PR [#1062](https://github.com/datajoint/datajoint-python/pull/1062)
 * Add - Support for inserting data with CSV files - PR [#1067](https://github.com/datajoint/datajoint-python/pull/1067)
+* Add - Method to set job keys to "ignore" status - PR [#1068](https://github.com/datajoint/datajoint-python/pull/1068)
 
 ### 0.13.8 -- Sep 21, 2022
 * Add - New documentation structure based on markdown PR [#1052](https://github.com/datajoint/datajoint-python/pull/1052)
