@@ -12,7 +12,6 @@ from datajoint.blob import pack
 class TestS3:
     @staticmethod
     def test_connection():
-
         # Initialize httpClient with relevant timeout.
         http_client = urllib3.PoolManager(
             timeout=30,
@@ -36,7 +35,6 @@ class TestS3:
 
     @staticmethod
     def test_connection_secure():
-
         # Initialize httpClient with relevant timeout.
         http_client = urllib3.PoolManager(
             timeout=30,

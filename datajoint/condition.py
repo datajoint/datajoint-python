@@ -8,7 +8,28 @@ import datetime
 import decimal
 import numpy
 import pandas
+import json
 from .errors import DataJointError
+
+JSON_PATTERN = re.compile(
+    r"^(?P<attr>\w+)(\.(?P<path>[\w.*\[\]]+))?(:(?P<type>[\w(,\s)]+))?$"
+)
+
+
+def translate_attribute(key):
+    match = JSON_PATTERN.match(key)
+    if match is None:
+        return match, key
+    match = match.groupdict()
+    if match["path"] is None:
+        return match, match["attr"]
+    else:
+        return match, "json_value(`{}`, _utf8mb4'$.{}'{})".format(
+            *[
+                ((f" returning {v}" if k == "type" else v) if v else "")
+                for k, v in match.items()
+            ]
+        )
 
 
 class PromiscuousOperand:
@@ -94,8 +115,19 @@ def make_condition(query_expression, condition, columns):
     from .expression import QueryExpression, Aggregation, U
 
     def prep_value(k, v):
-        """prepare value v for inclusion as a string in an SQL condition"""
-        if query_expression.heading[k].uuid:
+        """prepare SQL condition"""
+        key_match, k = translate_attribute(k)
+        if key_match["path"] is None:
+            k = f"`{k}`"
+        if (
+            query_expression.heading[key_match["attr"]].json
+            and key_match["path"] is not None
+            and isinstance(v, dict)
+        ):
+            return f"{k}='{json.dumps(v)}'"
+        if v is None:
+            return f"{k} IS NULL"
+        if query_expression.heading[key_match["attr"]].uuid:
             if not isinstance(v, uuid.UUID):
                 try:
                     v = uuid.UUID(v)
@@ -103,26 +135,36 @@ def make_condition(query_expression, condition, columns):
                     raise DataJointError(
                         "Badly formed UUID {v} in restriction by `{k}`".format(k=k, v=v)
                     )
-            return "X'%s'" % v.bytes.hex()
+            return f"{k}=X'{v.bytes.hex()}'"
         if isinstance(
-            v, (datetime.date, datetime.datetime, datetime.time, decimal.Decimal)
+            v,
+            (
+                datetime.date,
+                datetime.datetime,
+                datetime.time,
+                decimal.Decimal,
+                list,
+            ),
         ):
-            return '"%s"' % v
+            return f'{k}="{v}"'
         if isinstance(v, str):
-            return '"%s"' % v.replace("%", "%%").replace("\\", "\\\\")
-        return "%r" % v
+            v = v.replace("%", "%%").replace("\\", "\\\\")
+            return f'{k}="{v}"'
+        return f"{k}={v}"
+
+    def combine_conditions(negate, conditions):
+        return f"{'NOT ' if negate else ''} ({')AND('.join(conditions)})"
 
     negate = False
     while isinstance(condition, Not):
         negate = not negate
         condition = condition.restriction
-    template = "NOT (%s)" if negate else "%s"
 
     # restrict by string
     if isinstance(condition, str):
         columns.update(extract_column_names(condition))
-        return template % condition.strip().replace(
-            "%", "%%"
+        return combine_conditions(
+            negate, conditions=[condition.strip().replace("%", "%%")]
         )  # escape %, see issue #376
 
     # restrict by AndList
@@ -139,7 +181,7 @@ def make_condition(query_expression, condition, columns):
             return negate  # if any item is False, the whole thing is False
         if not items:
             return not negate  # and empty AndList is True
-        return template % ("(" + ") AND (".join(items) + ")")
+        return combine_conditions(negate, conditions=items)
 
     # restriction by dj.U evaluates to True
     if isinstance(condition, U):
@@ -151,23 +193,19 @@ def make_condition(query_expression, condition, columns):
 
     # restrict by a mapping/dict -- convert to an AndList of string equality conditions
     if isinstance(condition, collections.abc.Mapping):
-        common_attributes = set(condition).intersection(query_expression.heading.names)
+        common_attributes = set(c.split(".", 1)[0] for c in condition).intersection(
+            query_expression.heading.names
+        )
         if not common_attributes:
             return not negate  # no matching attributes -> evaluates to True
         columns.update(common_attributes)
-        return template % (
-            "("
-            + ") AND (".join(
-                "`%s`%s"
-                % (
-                    k,
-                    " IS NULL"
-                    if condition[k] is None
-                    else f"={prep_value(k, condition[k])}",
-                )
-                for k in common_attributes
-            )
-            + ")"
+        return combine_conditions(
+            negate,
+            conditions=[
+                prep_value(k, v)
+                for k, v in condition.items()
+                if k.split(".", 1)[0] in common_attributes  # handle json indexing
+            ],
         )
 
     # restrict by a numpy record -- convert to an AndList of string equality conditions
@@ -178,12 +216,9 @@ def make_condition(query_expression, condition, columns):
         if not common_attributes:
             return not negate  # no matching attributes -> evaluate to True
         columns.update(common_attributes)
-        return template % (
-            "("
-            + ") AND (".join(
-                "`%s`=%s" % (k, prep_value(k, condition[k])) for k in common_attributes
-            )
-            + ")"
+        return combine_conditions(
+            negate,
+            conditions=[prep_value(k, condition[k]) for k in common_attributes],
         )
 
     # restrict by a QueryExpression subclass -- trigger instantiation and move on
@@ -231,7 +266,11 @@ def make_condition(query_expression, condition, columns):
         ]  # ignore False conditions
         if any(item is True for item in or_list):  # if any item is True, entirely True
             return not negate
-        return template % ("(%s)" % " OR ".join(or_list)) if or_list else negate
+        return (
+            f"{'NOT ' if negate else ''} ({' OR '.join(or_list)})"
+            if or_list
+            else negate
+        )
 
 
 def extract_column_names(sql_expression):

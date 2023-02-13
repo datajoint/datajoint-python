@@ -94,7 +94,6 @@ else:
         """
 
         def __init__(self, source, context=None):
-
             if isinstance(source, Diagram):
                 # copy constructor
                 self.nodes_to_show = set(source.nodes_to_show)
@@ -302,7 +301,6 @@ else:
             return graph
 
         def make_dot(self):
-
             graph = self._make_graph()
             graph.nodes()
 
@@ -385,9 +383,7 @@ else:
                 if name.split(".")[0] in self.context:
                     cls = eval(name, self.context)
                     assert issubclass(cls, Table)
-                    description = (
-                        cls().describe(context=self.context, printout=False).split("\n")
-                    )
+                    description = cls().describe(context=self.context).split("\n")
                     description = (
                         "-" * 30
                         if q.startswith("---")
