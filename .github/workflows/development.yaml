@@ -192,7 +192,7 @@ jobs:
           export HOST_UID=$(id -u)
           docker-compose -f docker-compose-build.yaml run \
             -e TWINE_USERNAME=${TWINE_USERNAME} -e TWINE_PASSWORD=${TWINE_PASSWORD} app \
-            sh -lc "pip install twine && python -m twine upload dist/*"
+            sh -c "pip install twine && python -m twine upload dist/*"
       - name: Login to DockerHub
         uses: docker/login-action@v1
         with:
