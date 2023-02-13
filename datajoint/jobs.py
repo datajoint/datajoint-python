@@ -92,9 +92,14 @@ class JobTable(Table):
         Set a job to be ignored for computation.  When a job is ignored, the job table contains an entry for the
         job key, identified by its hash, with status "ignore".
 
-        :param table_name: `database`.`table_name`
-        :param key: the dict of the job's primary key
-        :return: True if ignore job successfully. False = the jobs is already taken
+        Args:
+        table_name:
+            Table name (str) - `database`.`table_name`
+        key:
+            The dict of the job's primary key
+
+        Returns:
+            True if ignore job successfully. False = the jobs is already taken
         """
         job = dict(
             table_name=table_name,
