@@ -2,15 +2,15 @@
 
 Included with the codebase is the recommended development environment configured using [DevContainer](https://containers.dev/).
 
-## Launch Development Environment
+## Launch Environment
 
 Here are some options that provide a great developer experience:
 
 - **Cloud-based IDE**: (*recommended*)
   - Launch using [GitHub Codespaces](https://github.com/features/codespaces) using the option `Create codespace on master` in the codebase repository on your fork.
-  - Build time for a 2-Core codespace is **~5m**. This is done infrequently and cached for convenience.
-  - Start time for a 2-Core codespace is **~1m**. This will pull the built codespace from cache when you need it.
-  - Tip: GitHub auto names the codespace but you can rename the codespace so that it is easier to identify later.
+  - Build time for a 2-Core codespace is **~6m**. This is done infrequently and cached for convenience.
+  - Start time for a 2-Core codespace is **~2m**. This will pull the built codespace from cache when you need it.
+  - *Tip*: GitHub auto names the codespace but you can rename the codespace so that it is easier to identify later.
 - **Local IDE**:
   - Ensure you have [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
   - Ensure you have [Docker](https://docs.docker.com/get-docker/)
@@ -18,11 +18,12 @@ Here are some options that provide a great developer experience:
   - Install the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
   - `git clone` the codebase repository and open it in VSCode
   - Use the `Dev Containers extension` to `Reopen in Container` (More info in the `Getting started` included with the extension)
-  - Your environment will finish loading once the file tree is populated and the terminal become active
+
+You will know your environment has finished loading once you see a terminal open related to `Running postStartCommand` with a final message: `Done`.
 
 ## Features
 
-Once you've successfully launched the development environment, you'll be able to take advantage of our developer tooling to help improve productivity.
+Once you've successfully launched the development environment, you'll be able to take advantage of our developer tooling to help improve productivity and quality.
 
 ### Syntax Tests
 
