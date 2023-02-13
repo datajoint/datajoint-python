@@ -60,14 +60,10 @@ class TestPopulate:
 
         keys = self.experiment.key_source.fetch("KEY", limit=2)
         for idx, key in enumerate(keys):
-            schema.schema.jobs.insert1(
-                {
-                    "table_name": self.experiment.table_name,
-                    "key_hash": dj.hash.key_hash(key),
-                    "status": "error" if idx == 0 else "ignore",
-                    "key": key,
-                }
-            )
+            if idx == 0:
+                schema.schema.jobs.ignore(self.experiment.table_name, key)
+            else:
+                schema.schema.jobs.error(self.experiment.table_name, key, "")
 
         self.experiment.populate(reserve_jobs=True)
         assert_equal(

@@ -13,6 +13,7 @@
 - Deprecated - `table._update()` PR [#1073](https://github.com/datajoint/datajoint-python/pull/1073)
 - Deprecated - old-style foreign key syntax PR [#1073](https://github.com/datajoint/datajoint-python/pull/1073)
 - Deprecated - `dj.migrate_dj011_external_blob_storage_to_dj012()` PR [#1073](https://github.com/datajoint/datajoint-python/pull/1073)
+* Added - Method to set job keys to "ignore" status - PR [#1068](https://github.com/datajoint/datajoint-python/pull/1068)
 
 ### 0.13.8 -- Sep 21, 2022
 - Added - New documentation structure based on markdown PR [#1052](https://github.com/datajoint/datajoint-python/pull/1052)
