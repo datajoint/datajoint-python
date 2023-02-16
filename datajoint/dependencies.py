@@ -127,7 +127,7 @@ class Dependencies(nx.DiGraph):
                 self.add_edge(fk["referenced_table"], alias_node, **props)
                 self.add_edge(alias_node, fk["referencing_table"], **props)
 
-        if not nx.is_directed_acyclic_graph(self):  # pragma: no cover
+        if not nx.is_directed_acyclic_graph(self):
             raise DataJointError("DataJoint can only work with acyclic dependencies")
         self._loaded = True
 
