@@ -6,7 +6,32 @@ import datajoint as dj
 from datajoint import DataJointError
 import numpy as np
 from . import CONN_INFO_ROOT, connection_root, connection_test
-from .schemas.connection import schema, Subjects
+
+from . import PREFIX
+import pytest
+
+
+@pytest.fixture
+def schema(connection_test):
+    schema = dj.Schema(PREFIX + "_transactions", locals(), connection=connection_test)
+    yield schema
+    schema.drop()
+
+
+@pytest.fixture
+def Subjects(schema):
+    @schema
+    class Subjects(dj.Manual):
+        definition = """
+        #Basic subject
+        subject_id                  : int      # unique subject id
+        ---
+        real_id                     :  varchar(40)    #  real-world name
+        species = "mouse"           : enum('mouse', 'monkey', 'human')   # species
+        """
+
+    yield Subjects
+    Subjects.drop()
 
 
 def test_dj_conn():
