@@ -92,6 +92,7 @@ jobs:
                  --count --max-complexity=62 --max-line-length=127 --statistics
           black datajoint --check -v
           black tests --check -v
+          black tests_old --check -v
   publish-docs:
     if: |
       github.event_name == 'push' &&

@@ -1,5 +1,5 @@
 import datajoint as dj
-from distutils.version import LooseVersion
+from packaging import version
 import pytest
 import os
 
@@ -36,9 +36,9 @@ def connection_test(connection_root):
     permission = "ALL PRIVILEGES"
 
     # Create MySQL users
-    if LooseVersion(
+    if version.parse(
         connection_root.query("select @@version;").fetchone()[0]
-    ) >= LooseVersion("8.0.0"):
+    ) >= version.parse("8.0.0"):
         # create user if necessary on mysql8
         connection_root.query(
             f"""
