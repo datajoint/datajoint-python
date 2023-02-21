@@ -91,3 +91,7 @@ html a[title="YouTube"].md-social__link svg {
     /* previous/next text */
     /* --md-footer-fg-color: var(--dj-white); */
 }
+
+[data-md-color-scheme="slate"] .jupyter-wrapper .Table td {
+    color: var(--dj-primary);
+}

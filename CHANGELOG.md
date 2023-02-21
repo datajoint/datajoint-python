@@ -1,5 +1,8 @@
 ## Release notes
 
+### 0.14.1 -- Feb 21, 2023
+- Fixed - .ipynb output in tutorials is not visible in dark mode ([#1078](https://github.com/datajoint/datajoint-python/issues/1078))
+ 
 ### 0.14.0 -- Feb 13, 2023
 - Added - `json` data type ([#245](https://github.com/datajoint/datajoint-python/issues/245)) PR [#1051](https://github.com/datajoint/datajoint-python/pull/1051)
 - Fixed - Activating a schema requires all tables to exist even if `create_tables=False` PR [#1058](https://github.com/datajoint/datajoint-python/pull/1058)
