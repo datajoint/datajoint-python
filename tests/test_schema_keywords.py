@@ -3,7 +3,7 @@ import datajoint as dj
 from nose.tools import assert_true
 
 
-schema = dj.Schema(PREFIX + '_keywords', connection=dj.conn(**CONN_INFO))
+schema = dj.Schema(PREFIX + "_keywords", connection=dj.conn(**CONN_INFO))
 
 
 @schema
@@ -39,8 +39,8 @@ class D(B):
 
 
 def test_inherited_part_table():
-    assert_true('a_id' in D().heading.attributes)
-    assert_true('b_id' in D().heading.attributes)
-    assert_true('a_id' in D.C().heading.attributes)
-    assert_true('b_id' in D.C().heading.attributes)
-    assert_true('name' in D.C().heading.attributes)
+    assert_true("a_id" in D().heading.attributes)
+    assert_true("b_id" in D().heading.attributes)
+    assert_true("a_id" in D.C().heading.attributes)
+    assert_true("b_id" in D.C().heading.attributes)
+    assert_true("name" in D.C().heading.attributes)

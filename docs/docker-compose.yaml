@@ -1,0 +1,38 @@
+# MODE="LIVE|QA|BUILD" PACKAGE=datajoint UPSTREAM_REPO=https://github.com/datajoint/datajoint-python.git HOST_UID=$(id -u) docker compose -f docs/docker-compose.yaml up --build
+version: "2.4"
+services:
+  docs:
+    build:
+      dockerfile: docs/.docker/Dockerfile
+      context: ../
+      args:
+        - PACKAGE
+    image: ${PACKAGE}-docs
+    environment:
+      - PACKAGE
+      - UPSTREAM_REPO
+      - MODE
+    volumes:
+      - ..:/main
+    user: ${HOST_UID}:anaconda
+    ports:
+      - 8080:80
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        if echo "$${MODE}" | grep -i live &>/dev/null; then
+            mkdocs serve --config-file ./docs/mkdocs.yaml -a 0.0.0.0:80
+        elif echo "$${MODE}" | grep -iE "qa|build" &>/dev/null; then
+            git branch -D gh-pages || true
+            git fetch $${UPSTREAM_REPO} gh-pages:gh-pages || true
+            mike deploy --config-file ./docs/mkdocs.yaml -u $$(grep -oE '\d+\.\d+' /main/$${PACKAGE}/version.py) latest
+            mike set-default --config-file ./docs/mkdocs.yaml latest
+            if echo "$${MODE}" | grep -i qa &>/dev/null; then
+                mike serve --config-file ./docs/mkdocs.yaml -a 0.0.0.0:80
+            fi
+        else
+            echo "Unexpected mode..."
+            exit 1
+        fi

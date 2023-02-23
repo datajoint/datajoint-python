@@ -1,0 +1,134 @@
+# ---------------------- PROJECT SPECIFIC ---------------------------
+
+site_name: DataJoint Python
+repo_url: https://github.com/datajoint/datajoint-python
+repo_name: datajoint/datajoint-python
+nav:
+  - DataJoint Python: getting-started/index.md
+  - Getting Started: getting-started/index.md
+  - Existing Pipelines: concepts/existing-pipelines.md
+  - Query Language:
+      - Common Commands: query-lang/common-commands.md
+      - Operators: query-lang/operators.md
+      - Iteration: query-lang/iteration.md
+      - Query Caching: query-lang/query-caching.md
+  - Reproducibility:
+      - Table Tiers: reproduce/table-tiers.md
+      - Make Method: reproduce/make-method.md
+  - Tutorials:
+      - tutorials/json.ipynb
+  - Develop: develop.md
+  - Changelog: about/changelog.md
+  - API: api/ # defer to gen-files + literate-nav
+
+# ---------------------------- STANDARD -----------------------------
+
+edit_uri: ./edit/master/docs/src
+docs_dir: ./src
+theme:
+  font:
+    text: Roboto Slab
+    code: Source Code Pro
+  name: material
+  custom_dir: src/.overrides
+  icon:
+    logo: main/company-logo
+  favicon: assets/images/company-logo-blue.png
+  features:
+    - toc.integrate
+    - content.code.annotate # Add codeblock annotations
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: datajoint
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+plugins:
+  - search
+  - redirects:
+      redirect_maps:
+        "index.md": "getting-started/index.md"
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          options:
+            filters:
+              - "!^_"
+            docstring_style: sphinx # Replaces google default pending docstring updates
+            members_order: source
+            group_by_category: false
+            line_length: 88
+  - gen-files:
+      scripts:
+        - ./src/api/make_pages.py
+  - literate-nav:
+      nav_file: navigation.md
+  - exclude-search:
+      exclude:
+        - "*/navigation.md"
+        - "*/archive/*md"
+  - mkdocs-jupyter:
+      include: ["*.ipynb"]
+markdown_extensions:
+  - attr_list
+  - toc:
+      permalink: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+      options:
+        custom_icons:
+          - .overrides/.icons
+  - mdx_truly_sane_lists
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+extra:
+  generator: false # Disable watermark
+  analytics:
+    provider: google
+    property: !ENV GOOGLE_ANALYTICS_KEY
+  version:
+    provider: mike
+  social:
+    - icon: main/company-logo
+      link: https://www.datajoint.com
+      name: DataJoint
+    - icon: fontawesome/brands/slack
+      link: https://datajoint.slack.com
+      name: Slack
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/company/datajoint
+      name: LinkedIn
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/datajoint
+      name: Twitter
+    - icon: fontawesome/brands/github
+      link: https://github.com/datajoint
+      name: GitHub
+    - icon: fontawesome/brands/docker
+      link: https://hub.docker.com/u/datajoint
+      name: DockerHub
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/user/datajointbot
+      name: PyPI
+    - icon: fontawesome/brands/stack-overflow
+      link: https://stackoverflow.com/questions/tagged/datajoint
+      name: StackOverflow
+    - icon: fontawesome/brands/youtube
+      link: https://www.youtube.com/channel/UCdeCuFOTCXlVMRzh6Wk-lGg
+      name: YouTube
+extra_css:
+  - assets/stylesheets/extra.css

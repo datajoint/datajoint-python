@@ -21,8 +21,13 @@ build/
 *.env
 docker-compose.yml
 notebook
-.vscode
 __main__.py
 jupyter_custom.js
-apk_requirements.txt
 .eggs
+*.code-workspace
+docs/site
+
+
+!.vscode/settings.json
+!.vscode/launch.json
+!.devcontainer/devcontainer.json

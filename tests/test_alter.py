@@ -5,7 +5,6 @@ from .schema import *
 
 @schema
 class Experiment(dj.Imported):
-
     original_definition = """  # information about experiments
     -> Subject
     experiment_id  :smallint  # experiment number for this subject
@@ -57,14 +56,20 @@ class Parent(dj.Manual):
 
 
 def test_alter():
-    original = schema.connection.query("SHOW CREATE TABLE " + Experiment.full_table_name).fetchone()[1]
+    original = schema.connection.query(
+        "SHOW CREATE TABLE " + Experiment.full_table_name
+    ).fetchone()[1]
     Experiment.definition = Experiment.definition1
     Experiment.alter(prompt=False)
-    altered = schema.connection.query("SHOW CREATE TABLE " + Experiment.full_table_name).fetchone()[1]
+    altered = schema.connection.query(
+        "SHOW CREATE TABLE " + Experiment.full_table_name
+    ).fetchone()[1]
     assert_not_equal(original, altered)
     Experiment.definition = Experiment.original_definition
     Experiment().alter(prompt=False)
-    restored = schema.connection.query("SHOW CREATE TABLE " + Experiment.full_table_name).fetchone()[1]
+    restored = schema.connection.query(
+        "SHOW CREATE TABLE " + Experiment.full_table_name
+    ).fetchone()[1]
     assert_not_equal(altered, restored)
     assert_equal(original, restored)
 
