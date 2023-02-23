@@ -2,7 +2,6 @@
 Hosts the table tiers, user relations should be derived from.
 """
 
-import inspect
 from .table import Table
 from .autopopulate import AutoPopulate
 from .utils import from_camel_case, ClassProperty
@@ -189,14 +188,5 @@ class Part(UserTable):
             raise DataJointError('Cannot drop a Part directly.  Delete from master instead')
 
     def alter(self, prompt=True, context=None):
-        """
-        Alter the table definition from self.definition
-        """
-        # map "master" keyword to master table in context
-        if context is None:
-            frame = inspect.currentframe().f_back
-            context = dict(frame.f_globals, **frame.f_locals)
-            del frame
-        if self.master:
-            context['master'] = self.master
-        super().alter(prompt, context)
+        # when there is no context, map "master" keyword to master table
+        super().alter(prompt=prompt, context=context or self.declaration_context)

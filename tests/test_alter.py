@@ -1,4 +1,5 @@
 from nose.tools import assert_equal, assert_not_equal
+import re
 from .schema import *
 
 
@@ -28,6 +29,33 @@ class Experiment(dj.Imported):
     """
 
 
+@schema
+class Parent(dj.Manual):
+    definition = """
+    parent_id: int
+    """
+
+    class Child(dj.Part):
+        definition = """
+        -> Parent
+        """
+        definition_new = """
+        -> master
+        ---
+        child_id=null: int
+        """
+
+    class Grandchild(dj.Part):
+        definition = """
+        -> master.Child
+        """
+        definition_new = """
+        -> master.Child
+        ---
+        grandchild_id=null: int
+        """
+
+
 def test_alter():
     original = schema.connection.query("SHOW CREATE TABLE " + Experiment.full_table_name).fetchone()[1]
     Experiment.definition = Experiment.definition1
@@ -41,24 +69,23 @@ def test_alter():
     assert_equal(original, restored)
 
 
-@schema
-class AlterMaster(dj.Manual):
-    definition = """
-    master_id : int
-    """
+def test_alter_part():
+    # https://github.com/datajoint/datajoint-python/issues/936
 
-    class AlterPart(dj.Part):
-        definition = """
-        -> master
-        """
+    def verify_alter(table, attribute_sql):
+        definition_original = schema.connection.query(
+            f"SHOW CREATE TABLE {table.full_table_name}"
+        ).fetchone()[1]
+        table.definition = table.definition_new
+        table.alter(prompt=False)
+        definition_new = schema.connection.query(
+            f"SHOW CREATE TABLE {table.full_table_name}"
+        ).fetchone()[1]
+        assert (
+            re.sub(f"{attribute_sql},\n  ", "", definition_new) == definition_original
+        )
 
-        definition1 = """
-        -> AlterMaster
-        """
-
-def test_alter_part_master_keyword():
-    original = schema.connection.query("SHOW CREATE TABLE " + AlterMaster.AlterPart.full_table_name).fetchone()[1]
-    AlterMaster.AlterPart.definition = AlterMaster.AlterPart.definition1
-    AlterMaster.AlterPart.alter(prompt=False)
-    altered = schema.connection.query("SHOW CREATE TABLE " + AlterMaster.AlterPart.full_table_name).fetchone()[1]
-    assert_equal(original, altered)
+    verify_alter(table=Parent.Child, attribute_sql="`child_id` .* DEFAULT NULL")
+    verify_alter(
+        table=Parent.Grandchild, attribute_sql="`grandchild_id` .* DEFAULT NULL"
+    )
