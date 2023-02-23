@@ -240,5 +240,5 @@ class Part(UserTable):
             )
 
     def alter(self, prompt=True, context=None):
-        # when there is no context, map "master" keyword to master table
+        # without context, use declaration context which maps master keyword to master table
         super().alter(prompt=prompt, context=context or self.declaration_context)
