@@ -1,21 +1,27 @@
-# docker compose -f LNX-docker-compose.yml --env-file LNX.env up --exit-code-from app --build
-version: '2.2'
-x-net: &net
+# PY_VER=3.8 MYSQL_VER=5.7 DISTRO=alpine MINIO_VER=RELEASE.2022-08-11T04-37-28Z HOST_UID=$(id -u) docker compose -f LNX-docker-compose.yml up --exit-code-from app --build
+version: "2.4"
+x-net:
+  &net
   networks:
-      - main
+    - main
 services:
   db:
     <<: *net
-    image: datajoint/mysql:$MYSQL_VER
+    image: datajoint/mysql:${MYSQL_VER}
     environment:
-      - MYSQL_ROOT_PASSWORD=simple
+      - MYSQL_ROOT_PASSWORD=${DJ_PASS}
     # ports:
     #   - "3306:3306"
     # volumes:
     #   - ./mysql/data:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      timeout: 30s
+      retries: 5
+      interval: 15s
   minio:
     <<: *net
-    image: minio/minio:$MINIO_VER
+    image: minio/minio:${MINIO_VER}
     environment:
       - MINIO_ACCESS_KEY=datajoint
       - MINIO_SECRET_KEY=datajoint
@@ -26,39 +32,44 @@ services:
     #   - ./minio/data:/data
     command: server --address ":9000" /data
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://minio:9000/minio/health/live"]
-      timeout: 5s
-      retries: 60
-      interval: 1s
+      test:
+        [
+          "CMD",
+          "curl",
+          "--fail",
+          "http://minio:9000/minio/health/live"
+        ]
+      timeout: 30s
+      retries: 5
+      interval: 15s
   fakeservices.datajoint.io:
     <<: *net
-    image: datajoint/nginx:v0.2.3
+    image: datajoint/nginx:v0.2.4
     environment:
-    - ADD_db_TYPE=DATABASE
-    - ADD_db_ENDPOINT=db:3306
-    - ADD_minio_TYPE=MINIO
-    - ADD_minio_ENDPOINT=minio:9000
-    - ADD_minio_PORT=80 # allow unencrypted connections
-    - ADD_minio_PREFIX=/datajoint
+      - ADD_db_TYPE=DATABASE
+      - ADD_db_ENDPOINT=db:3306
+      - ADD_minio_TYPE=MINIO
+      - ADD_minio_ENDPOINT=minio:9000
+      - ADD_minio_PORT=80 # allow unencrypted connections
+      - ADD_minio_PREFIX=/datajoint
     # ports:
     #   - "80:80"
     #   - "443:443"
     #   - "3306:3306"
+  app:
+    <<: *net
+    image: datajoint/djtest:py${PY_VER}-${DISTRO}
     depends_on:
       db:
         condition: service_healthy
       minio:
         condition: service_healthy
-  app:
-    <<: *net
-    image: datajoint/pydev:${PY_VER}-alpine${ALPINE_VER}
-    depends_on:
       fakeservices.datajoint.io:
         condition: service_healthy
     environment:
       - DJ_HOST=fakeservices.datajoint.io
       - DJ_USER=root
-      - DJ_PASS=simple
+      - DJ_PASS
       - DJ_TEST_HOST=fakeservices.datajoint.io
       - DJ_TEST_USER=datajoint
       - DJ_TEST_PASSWORD=datajoint
@@ -69,23 +80,19 @@ services:
       - PYTHON_USER=dja
       - JUPYTER_PASSWORD=datajoint
       - DISPLAY
-      - COVERALLS_SERVICE_NAME
-      - COVERALLS_REPO_TOKEN
     working_dir: /src
     command:
       - sh
       - -c
       - |
         set -e
-        pip install --user -r test_requirements.txt
+        pip install --user nose nose-cov
         pip install -e .
-        pip freeze | grep datajoint
+        pip list --format=freeze | grep datajoint
         nosetests -vsw tests --with-coverage --cover-package=datajoint
-        coveralls
-        # jupyter notebook
     # ports:
     #   - "8888:8888"
-    user: ${HOST_UID}:${HOST_GID}
+    user: ${HOST_UID}:anaconda
     volumes:
       - .:/src
       - /tmp/.X11-unix:/tmp/.X11-unix:rw

@@ -87,6 +87,37 @@ class JobTable(Table):
             return False
         return True
 
+    def ignore(self, table_name, key):
+        """
+        Set a job to be ignored for computation.  When a job is ignored, the job table contains an entry for the
+        job key, identified by its hash, with status "ignore".
+
+        Args:
+        table_name:
+            Table name (str) - `database`.`table_name`
+        key:
+            The dict of the job's primary key
+
+        Returns:
+            True if ignore job successfully. False = the jobs is already taken
+        """
+        job = dict(
+            table_name=table_name,
+            key_hash=key_hash(key),
+            status="ignore",
+            host=platform.node(),
+            pid=os.getpid(),
+            connection_id=self.connection.connection_id,
+            key=key,
+            user=self._user,
+        )
+        try:
+            with config(enable_python_native_blobs=True):
+                self.insert1(job, ignore_extra_fields=True)
+        except DuplicateError:
+            return False
+        return True
+
     def complete(self, table_name, key):
         """
         Log a completed job.  When a job is completed, its reservation entry is deleted.

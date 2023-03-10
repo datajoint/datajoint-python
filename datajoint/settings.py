@@ -62,7 +62,6 @@ log_levels = {
 
 
 class Config(collections.abc.MutableMapping):
-
     instance = None
 
     def __init__(self, *args, **kwargs):
