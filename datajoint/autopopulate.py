@@ -372,7 +372,7 @@ class AutoPopulate:
                 finally:
                     self.__class__._allow_insert = False
 
-    def progress(self, *restrictions, display=True):
+    def progress(self, *restrictions, display=False):
         """
         Report the progress of populating the table.
         :return: (remaining, total) -- numbers of tuples to be populated
@@ -381,9 +381,9 @@ class AutoPopulate:
         total = len(todo)
         remaining = len(todo - self.target)
         if display:
-            print(
-                "%-20s" % self.__class__.__name__,
-                "Completed %d of %d (%2.1f%%)   %s"
+            logger.info(
+                "%-20s" % self.__class__.__name__
+                + " Completed %d of %d (%2.1f%%)   %s"
                 % (
                     total - remaining,
                     total,
@@ -392,7 +392,6 @@ class AutoPopulate:
                         datetime.datetime.now(), "%Y-%m-%d %H:%M:%S"
                     ),
                 ),
-                flush=True,
             )
         return remaining, total
 

@@ -8,14 +8,16 @@ nav:
   - Getting Started: getting-started/index.md
   - Existing Pipelines: concepts/existing-pipelines.md
   - Query Language:
-    - Common Commands:  query-lang/common-commands.md
-    - Operators: query-lang/operators.md
-    - Iteration: query-lang/iteration.md
-    - Query Caching: query-lang/query-caching.md
+      - Common Commands: query-lang/common-commands.md
+      - Operators: query-lang/operators.md
+      - Iteration: query-lang/iteration.md
+      - Query Caching: query-lang/query-caching.md
   - Reproducibility:
-    - Table Tiers: reproduce/table-tiers.md
-    - Make Method: reproduce/make-method.md
-  - Tutorials: tutorials.md
+      - Table Tiers: reproduce/table-tiers.md
+      - Make Method: reproduce/make-method.md
+  - Tutorials:
+      - tutorials/json.ipynb
+  - Develop: develop.md
   - Changelog: about/changelog.md
   - API: api/ # defer to gen-files + literate-nav
 
@@ -59,18 +61,20 @@ plugins:
             filters:
               - "!^_"
             docstring_style: sphinx # Replaces google default pending docstring updates
-            members_order: source      
+            members_order: source
             group_by_category: false
             line_length: 88
   - gen-files:
       scripts:
-      - ./src/api/make_pages.py
+        - ./src/api/make_pages.py
   - literate-nav:
       nav_file: navigation.md
   - exclude-search:
       exclude:
         - "*/navigation.md"
         - "*/archive/*md"
+  - mkdocs-jupyter:
+      include: ["*.ipynb"]
 markdown_extensions:
   - attr_list
   - toc:

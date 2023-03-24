@@ -4,6 +4,7 @@ import logging
 import pandas
 import itertools
 import re
+import json
 import numpy as np
 import uuid
 import numbers
@@ -47,6 +48,8 @@ def _get(connection, attr, data, squeeze, download_path):
     """
     if data is None:
         return
+    if attr.json:
+        return json.loads(data)
 
     extern = (
         connection.schemas[attr.database].external[attr.store]
@@ -59,7 +62,6 @@ def _get(connection, attr, data, squeeze, download_path):
 
     if attr.is_filepath:
         return adapt(extern.download_filepath(uuid.UUID(bytes=data))[0])
-
     if attr.is_attachment:
         # Steps:
         # 1. get the attachment filename

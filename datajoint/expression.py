@@ -14,6 +14,7 @@ from .condition import (
     assert_join_compatibility,
     extract_column_names,
     PromiscuousOperand,
+    translate_attribute,
 )
 from .declare import CONSTANT_LITERALS
 
@@ -342,6 +343,9 @@ class QueryExpression:
         from other attributes available before the projection.
         Each attribute name can only be used once.
         """
+        named_attributes = {
+            k: translate_attribute(v)[1] for k, v in named_attributes.items()
+        }
         # new attributes in parentheses are included again with the new name without removing original
         duplication_pattern = re.compile(
             rf'^\s*\(\s*(?!{"|".join(CONSTANT_LITERALS)})(?P<name>[a-zA-Z_]\w*)\s*\)\s*$'

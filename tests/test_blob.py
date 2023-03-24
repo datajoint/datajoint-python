@@ -19,7 +19,6 @@ from nose.tools import (
 
 
 def test_pack():
-
     for x in (
         32,
         -3.7e-2,
@@ -166,7 +165,7 @@ def test_recarrays():
 
 
 def test_object_arrays():
-    x = np.array(((1, 2, 3), True))
+    x = np.array(((1, 2, 3), True), dtype="object")
     assert_array_equal(x, unpack(pack(x)), "Object array did not serialize correctly")
 
 

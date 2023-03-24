@@ -7,8 +7,6 @@ import itertools
 import hashlib
 import uuid
 import faker
-
-
 from . import PREFIX, CONN_INFO
 import numpy as np
 from datetime import date, timedelta
