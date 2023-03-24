@@ -420,7 +420,7 @@ class AutoPopulate:
         else:
             jobs_config.insert1(entry)
 
-    def refresh_jobs(self):
+    def schedule_jobs(self):
         jobs_config = self.connection.schemas[self.target.database].jobs_config
         key_source_query = jobs_config & {"table_name": self.target.table_name}
         if not key_source_query:
