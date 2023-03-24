@@ -22,14 +22,14 @@ logger = logging.getLogger(__name__.split(".")[0])
 # --- helper functions for multiprocessing --
 
 
-def _initialize_populate(table, jobs, populate_kwargs):
+def _initialize_populate(table, reserve_jobs, populate_kwargs):
     """
     Initialize the process for mulitprocessing.
     Saves the unpickled copy of the table to the current process and reconnects.
     """
     process = mp.current_process()
     process.table = table
-    process.jobs = jobs
+    process.reserve_jobs = reserve_jobs
     process.populate_kwargs = populate_kwargs
     table.connection.connect()  # reconnect
 
@@ -177,6 +177,7 @@ class AutoPopulate:
         processes=1,
         return_success_count=False,
         make_kwargs=None,
+        schedule_jobs=True,
     ):
         """
         ``table.populate()`` calls ``table.make(key)`` for every primary key in
@@ -198,6 +199,8 @@ class AutoPopulate:
             to be passed down to each ``make()`` call. Computation arguments should be
             specified within the pipeline e.g. using a `dj.Lookup` table.
         :type make_kwargs: dict, optional
+        :param schedule_jobs: if True, run schedule_jobs before doing populate (default: True),
+            only applicable if reserved_jobs is True
         """
         if self.connection.in_transaction:
             raise DataJointError("Populate cannot be called during a transaction.")
@@ -207,10 +210,6 @@ class AutoPopulate:
             raise DataJointError(
                 "The order argument must be one of %s" % str(valid_order)
             )
-        jobs = (
-            self.connection.schemas[self.target.database].jobs if reserve_jobs else None
-        )
-
         # define and set up signal handler for SIGTERM:
         if reserve_jobs:
 
@@ -220,16 +219,18 @@ class AutoPopulate:
 
             old_handler = signal.signal(signal.SIGTERM, handler)
 
-        keys = (self._jobs_to_do(restrictions) - self.target).fetch("KEY", limit=limit)
+            if schedule_jobs:
+                self.schedule_jobs()
 
-        # exclude "error" or "ignore" jobs
-        if reserve_jobs:
-            exclude_key_hashes = (
-                jobs
+            keys = (
+                self._Jobs
                 & {"table_name": self.target.table_name}
-                & 'status in ("error", "ignore")'
-            ).fetch("key_hash")
-            keys = [key for key in keys if key_hash(key) not in exclude_key_hashes]
+                & 'status = "scheduled"'
+            ).fetch("KEY", limit=limit)
+        else:
+            keys = (self._jobs_to_do(restrictions) - self.target).fetch(
+                "KEY", limit=limit
+            )
 
         if order == "reverse":
             keys.reverse()
@@ -259,7 +260,7 @@ class AutoPopulate:
                     if display_progress
                     else keys
                 ):
-                    status = self._populate1(key, jobs, **populate_kwargs)
+                    status = self._populate1(key, reserve_jobs, **populate_kwargs)
                     if status is not None:
                         if isinstance(status, tuple):
                             error_list.append(status)
@@ -270,7 +271,9 @@ class AutoPopulate:
                 self.connection.close()  # disconnect parent process from MySQL server
                 del self.connection._conn.ctx  # SSLContext is not pickleable
                 with mp.Pool(
-                    processes, _initialize_populate, (self, jobs, populate_kwargs)
+                    processes,
+                    _initialize_populate,
+                    (self, reserve_jobs, populate_kwargs),
                 ) as pool, (
                     tqdm(desc="Processes: ", total=nkeys)
                     if display_progress
@@ -298,11 +301,16 @@ class AutoPopulate:
             return sum(success_list)
 
     def _populate1(
-        self, key, jobs, suppress_errors, return_exception_objects, make_kwargs=None
+        self,
+        key,
+        reserve_jobs,
+        suppress_errors,
+        return_exception_objects,
+        make_kwargs=None,
     ):
         """
         populates table for one source key, calling self.make inside a transaction.
-        :param jobs: the jobs table or None if not reserve_jobs
+        :param reserve_jobs: if True, reserve jobs to populate in asynchronous fashion
         :param key: dict specifying job to populate
         :param suppress_errors: bool if errors should be suppressed and returned
         :param return_exception_objects: if True, errors must be returned as objects
@@ -310,15 +318,17 @@ class AutoPopulate:
         """
         make = self._make_tuples if hasattr(self, "_make_tuples") else self.make
 
-        if jobs is None or jobs.reserve(self.target.table_name, self._job_key(key)):
+        if not reserve_jobs or self._Jobs.reserve(
+            self.target.table_name, self._job_key(key)
+        ):
             self.connection.start_transaction()
             if key in self.target:  # already populated
                 self.connection.cancel_transaction()
-                if jobs is not None:
-                    jobs.complete(self.target.table_name, self._job_key(key))
+                self._Jobs.complete(self.target.table_name, self._job_key(key))
             else:
                 logger.debug(f"Making {key} -> {self.target.full_table_name}")
                 self.__class__._allow_insert = True
+                make_start = datetime.datetime.utcnow()
                 try:
                     make(dict(key), **(make_kwargs or {}))
                 except (KeyboardInterrupt, SystemExit, Exception) as error:
@@ -333,9 +343,9 @@ class AutoPopulate:
                     logger.debug(
                         f"Error making {key} -> {self.target.full_table_name} - {error_message}"
                     )
-                    if jobs is not None:
+                    if reserve_jobs:
                         # show error name and error message (if any)
-                        jobs.error(
+                        self._Jobs.error(
                             self.target.table_name,
                             self._job_key(key),
                             error_message=error_message,
@@ -348,11 +358,16 @@ class AutoPopulate:
                         return key, error if return_exception_objects else error_message
                 else:
                     self.connection.commit_transaction()
+                    self._Jobs.complete(
+                        self.target.table_name,
+                        self._job_key(key),
+                        run_duration=(
+                            datetime.datetime.utcnow() - make_start
+                        ).total_seconds(),
+                    )
                     logger.debug(
                         f"Success making {key} -> {self.target.full_table_name}"
                     )
-                    if jobs is not None:
-                        jobs.complete(self.target.table_name, self._job_key(key))
                     return True
                 finally:
                     self.__class__._allow_insert = False
@@ -382,10 +397,12 @@ class AutoPopulate:
         return remaining, total
 
     @property
+    def _Jobs(self):
+        return self.connection.schemas[self.target.database].jobs
+
+    @property
     def jobs(self):
-        return self.connection.schemas[self.target.database].jobs & {
-            "table_name": self.target.table_name
-        }
+        return self._Jobs & {"table_name": self.target.table_name}
 
     def register_key_source(self, sql=None, safemode=None):
         key_source_sql = sql or self.key_source.proj().make_sql()
@@ -420,14 +437,19 @@ class AutoPopulate:
         else:
             jobs_config.insert1(entry)
 
-    def schedule_jobs(self):
+    def schedule_jobs(self, purge_invalid_jobs=True):
+        """
+        Schedule new jobs for this autopopulate table
+        :param purge_invalid_jobs: if True, remove invalid entry from the jobs table (potentially expensive operation)
+        :return:
+        """
         jobs_config = self.connection.schemas[self.target.database].jobs_config
         key_source_query = jobs_config & {"table_name": self.target.table_name}
         if not key_source_query:
             self.register_key_source()
 
         if key_source_query.fetch1("refresh_reserved"):
-            # jobs for this table is currently being freshed
+            # scheduling is ongoing
             return
 
         last_refresh_time, refresh_rate = key_source_query.fetch1(
@@ -439,7 +461,6 @@ class AutoPopulate:
             return
 
         # add new scheduled jobs to JobTable
-        jobs = self.connection.schemas[self.target.database].jobs
         jobs_config.update1(
             {"table_name": self.target.table_name, "refresh_reserved": 1}
         )
@@ -447,7 +468,7 @@ class AutoPopulate:
             with self.connection.transaction:
                 schedule_count = 0
                 for key in (self._jobs_to_do({}) - self.target).fetch("KEY"):
-                    schedule_count += jobs.schedule(self.target.table_name, key)
+                    schedule_count += self._Jobs.schedule(self.target.table_name, key)
         except Exception as e:
             logger.exception(str(e))
         else:
@@ -455,8 +476,8 @@ class AutoPopulate:
                 f"{schedule_count} new jobs scheduled for `{to_camel_case(self.target.table_name)}`"
             )
         finally:
-            # purge invalid jobs
-            self.purge_invalid_jobs()
+            if purge_invalid_jobs:
+                self.purge_invalid_jobs()
             jobs_config.update1(
                 {"table_name": self.target.table_name, "refresh_reserved": 0}
             )
@@ -469,8 +490,7 @@ class AutoPopulate:
         This is potentially a time-consuming process - but should not expect to have to run very often
         """
 
-        jobs = self.connection.schemas[self.target.database].jobs
-        jobs_query = jobs & {"table_name": self.target.table_name}
+        jobs_query = self._Jobs & {"table_name": self.target.table_name}
 
         invalid_count = len(jobs_query) - len(self._jobs_to_do({}))
         invalid_removed = 0

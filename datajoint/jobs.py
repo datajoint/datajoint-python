@@ -38,9 +38,9 @@ class JobTable(Table):
         host=""  :varchar(255)  # system hostname
         pid=0  :int unsigned  # system process id
         connection_id = 0  : bigint unsigned      # connection_id()
-        timestamp=CURRENT_TIMESTAMP  :timestamp   # the scheduled time (UTC) for the job to run at or after
-        run_duration=null: float  # run duration in seconds
-        run_version="": varchar(255) # some string representation of the code/env version of a run (e.g. git commit hash)
+        timestamp  :timestamp   # the scheduled time (UTC) for the job to run at or after
+        run_duration=null  : float  # run duration in seconds
+        run_version=""  : varchar(255) # some string representation of the code/env version of a run (e.g. git commit hash)
         index(table_name, status)
         index(status)
         """.format(
@@ -127,13 +127,14 @@ class JobTable(Table):
             return False
         return True
 
-    def ignore(self, table_name, key):
+    def ignore(self, table_name, key, message=""):
         """
         Set a job to be ignored for computation.  When a job is ignored, the job table contains an entry for the
         job key, identified by its hash, with status "ignore".
 
         :param table_name: `database`.`table_name`
         :param key: the dict of the job's primary key
+        :param message: optional message for why the key is to be ignored
         :return: True if ignore job successfully. False = the jobs is already processed, too late to "ignore"
         """
         job_key = dict(table_name=table_name, key_hash=key_hash(key))
@@ -149,6 +150,7 @@ class JobTable(Table):
             pid=os.getpid(),
             connection_id=self.connection.connection_id,
             key=key,
+            error_message=message,
             user=self._user,
             timestamp=datetime.datetime.utcnow(),
         )
@@ -167,6 +169,12 @@ class JobTable(Table):
         :param run_duration: duration in second of the job run
         :param run_version: some string representation of the code/env version of a run (e.g. git commit hash)
         """
+        job_key = dict(table_name=table_name, key_hash=key_hash(key))
+        if self & job_key:
+            current_status = (self & job_key).fetch1("status")
+            if current_status == "success":
+                return
+
         with config(enable_python_native_blobs=True):
             self.insert1(
                 dict(
