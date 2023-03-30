@@ -71,7 +71,6 @@ class Schema:
         self.create_schema = create_schema
         self.create_tables = create_tables
         self._jobs = None
-        self._jobs_config = None
         self.external = ExternalMapping(self)
         self.add_objects = add_objects
         self.declare_list = []
@@ -401,18 +400,6 @@ class Schema:
         if self._jobs is None:
             self._jobs = JobTable(self.connection, self.database)
         return self._jobs
-
-    @property
-    def jobs_config(self):
-        """
-        schema.jobs provides a view of the job reservation table for the schema
-
-        :return: jobs table
-        """
-        self._assert_exists()
-        if self._jobs_config is None:
-            self._jobs_config = JobConfigTable(self.connection, self.database)
-        return self._jobs_config
 
     @property
     def code(self):

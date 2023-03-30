@@ -428,7 +428,7 @@ class AutoPopulate:
         """
         Check and remove any invalid/outdated jobs in the JobTable for this autopopulate table
         Job keys that are in the JobTable (regardless of status) but are no longer in the `key_source`
-        (e.g. jobs added but upstream table(s) got deleted)
+        (e.g. jobs added but entries in upstream table(s) got deleted)
         This is potentially a time-consuming process - but should not expect to have to run very often
         """
 
