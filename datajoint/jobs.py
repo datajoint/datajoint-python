@@ -79,9 +79,9 @@ class JobTable(Table):
         job_key = dict(table_name=table_name, key_hash=key_hash(key))
         if self & job_key:
             current_status = (self & job_key).fetch1("status")
-            if current_status in ("scheduled", "reserved", "success"):
-                return True
-            if current_status in ("error", "ignore") and not force:
+            if current_status in ("scheduled", "reserved", "success") or (
+                current_status in ("error", "ignore") and not force
+            ):
                 return False
 
         job = dict(
@@ -109,9 +109,14 @@ class JobTable(Table):
         :param key: the dict of the job's primary key
         :return: True if reserved job successfully. False = the jobs is already taken
         """
+        job_key = dict(table_name=table_name, key_hash=key_hash(key))
+        if self & job_key:
+            current_status = (self & job_key).fetch1("status")
+            if current_status != "scheduled":
+                return False
+
         job = dict(
-            table_name=table_name,
-            key_hash=key_hash(key),
+            job_key,
             status="reserved",
             host=platform.node(),
             pid=os.getpid(),
@@ -120,11 +125,10 @@ class JobTable(Table):
             user=self._user,
             timestamp=datetime.datetime.utcnow(),
         )
-        try:
-            with config(enable_python_native_blobs=True):
-                self.insert1(job, ignore_extra_fields=True)
-        except DuplicateError:
-            return False
+
+        with config(enable_python_native_blobs=True):
+            self.insert1(job, replace=True, ignore_extra_fields=True)
+
         return True
 
     def ignore(self, table_name, key, message=""):

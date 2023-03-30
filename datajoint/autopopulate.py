@@ -41,7 +41,9 @@ def _call_populate1(key):
     :return: key, error if error, otherwise None
     """
     process = mp.current_process()
-    return process.table._populate1(key, process.jobs, **process.populate_kwargs)
+    return process.table._populate1(
+        key, process.reserve_jobs, **process.populate_kwargs
+    )
 
 
 class AutoPopulate:
@@ -208,13 +210,18 @@ class AutoPopulate:
             old_handler = signal.signal(signal.SIGTERM, handler)
 
             if schedule_jobs:
-                self.schedule_jobs()
+                self.schedule_jobs(*restrictions)
 
             keys = (
                 self._Jobs
                 & {"table_name": self.target.table_name}
                 & 'status = "scheduled"'
-            ).fetch("KEY", limit=limit)
+            ).fetch("key", limit=limit)
+
+            if restrictions:
+                # hitting the `key_source` again to apply the restrictions
+                # this is expensive/suboptimal
+                keys = (self._jobs_to_do(restrictions) & keys).fetch("KEY", limit=limit)
         else:
             keys = (self._jobs_to_do(restrictions) - self.target).fetch(
                 "KEY", limit=limit
@@ -338,6 +345,9 @@ class AutoPopulate:
                             self._job_key(key),
                             error_message=error_message,
                             error_stack=traceback.format_exc(),
+                            run_duration=(
+                                datetime.datetime.utcnow() - make_start
+                            ).total_seconds(),
                         )
                     if not suppress_errors or isinstance(error, SystemExit):
                         raise
@@ -391,16 +401,18 @@ class AutoPopulate:
     def jobs(self):
         return self._Jobs & {"table_name": self.target.table_name}
 
-    def schedule_jobs(self, purge_invalid_jobs=True):
+    def schedule_jobs(self, *restrictions, purge_invalid_jobs=True):
         """
         Schedule new jobs for this autopopulate table
+        :param restrictions: a list of restrictions each restrict
+            (table.key_source - target.proj())
         :param purge_invalid_jobs: if True, remove invalid entry from the jobs table (potentially expensive operation)
         :return:
         """
         try:
             with self.connection.transaction:
                 schedule_count = 0
-                for key in (self._jobs_to_do({}) - self.target).fetch("KEY"):
+                for key in (self._jobs_to_do(restrictions) - self.target).fetch("KEY"):
                     schedule_count += self._Jobs.schedule(self.target.table_name, key)
         except Exception as e:
             logger.exception(str(e))
@@ -425,11 +437,11 @@ class AutoPopulate:
         invalid_count = len(jobs_query) - len(self._jobs_to_do({}))
         invalid_removed = 0
         if invalid_count > 0:
-            for key, job_key in jobs_query.fetch("KEY", "key"):
+            for key, job_key in zip(*jobs_query.fetch("KEY", "key")):
                 if not (self._jobs_to_do({}) & job_key):
                     (jobs_query & key).delete()
                     invalid_removed += 1
 
-        logger.info(
-            f"{invalid_removed}/{invalid_count} invalid jobs removed for `{to_camel_case(self.target.table_name)}`"
-        )
+            logger.info(
+                f"{invalid_removed}/{invalid_count} invalid jobs removed for `{to_camel_case(self.target.table_name)}`"
+            )

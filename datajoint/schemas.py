@@ -8,7 +8,7 @@ from .connection import conn
 from .diagram import Diagram, _get_tier
 from .settings import config
 from .errors import DataJointError, AccessError
-from .jobs import JobTable, JobConfigTable
+from .jobs import JobTable
 from .external import ExternalMapping
 from .heading import Heading
 from .utils import user_choice, to_camel_case

@@ -24,6 +24,7 @@ class TestPopulate:
         self.trial.Condition.delete_quick()
         self.trial.delete_quick()
         self.experiment.delete_quick()
+        schema.schema.jobs.delete_quick()
 
     def test_populate(self):
         # test simple populate
@@ -69,6 +70,73 @@ class TestPopulate:
             restriction, return_success_count=True, suppress_errors=True
         )
         assert_equal(len(self.trial.key_source & self.trial), success_count)
+
+    def test_schedule_jobs(self):
+        assert_true(self.subject, "root tables are empty")
+        assert_false(self.experiment, "table already filled?")
+        # test schedule jobs
+        self.experiment.schedule_jobs()
+        assert_true(
+            len(
+                schema.schema.jobs
+                & {"table_name": self.experiment.table_name, "status": "scheduled"}
+            )
+            == len(self.experiment.key_source),
+            "failed scheduling jobs",
+        )
+        # test executing jobs
+        self.experiment.populate(reserve_jobs=True, schedule_jobs=False)
+        assert_true(
+            len(
+                schema.schema.jobs
+                & {"table_name": self.experiment.table_name, "status": "success"}
+            )
+            == len(self.experiment.key_source),
+            "failed executing jobs",
+        )
+        # test schedule and execute jobs with restriction
+        restriction = self.subject.proj(animal="subject_id").fetch("KEY")[0]
+        self.trial.schedule_jobs(restriction)
+        assert_true(
+            len(
+                schema.schema.jobs
+                & {"table_name": self.trial.table_name, "status": "scheduled"}
+            )
+            == len(self.trial.key_source & restriction),
+            "failed scheduling jobs",
+        )
+        self.trial.schedule_jobs()
+        assert_true(
+            len(
+                schema.schema.jobs
+                & {"table_name": self.trial.table_name, "status": "scheduled"}
+            )
+            == len(self.trial.key_source),
+            "failed scheduling jobs",
+        )
+        self.trial.populate(restriction, reserve_jobs=True, schedule_jobs=False)
+        assert_equal(
+            len(self.trial.key_source & self.trial),
+            len(self.trial.key_source & restriction),
+        )
+        assert_equal(
+            len(self.trial.key_source - self.trial),
+            len(self.trial.key_source - restriction),
+        )
+        self.trial.populate(reserve_jobs=True, schedule_jobs=False)
+        assert_equal(
+            len(self.trial.key_source & self.trial), len(self.trial.key_source)
+        )
+        # test purge invalid jobs
+        restriction["subject_id"] = restriction.pop("animal")
+        with dj.config(safemode=False):
+            (self.experiment & restriction).delete()
+        self.trial.purge_invalid_jobs()
+        assert_true(
+            len(schema.schema.jobs & {"table_name": self.trial.table_name})
+            == len(self.trial.key_source),
+            "failed purging invalid jobs",
+        )
 
     def test_populate_exclude_error_and_ignore_jobs(self):
         # test simple populate
