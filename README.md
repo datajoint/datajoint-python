@@ -1,8 +1,6 @@
 [![DOI](https://zenodo.org/badge/16774/datajoint/datajoint-python.svg)](https://zenodo.org/badge/latestdoi/16774/datajoint/datajoint-python)
-[![Build Status](https://travis-ci.org/datajoint/datajoint-python.svg?branch=master)](https://travis-ci.org/datajoint/datajoint-python)
 [![Coverage Status](https://coveralls.io/repos/datajoint/datajoint-python/badge.svg?branch=master&service=github)](https://coveralls.io/github/datajoint/datajoint-python?branch=master)
 [![PyPI version](https://badge.fury.io/py/datajoint.svg)](http://badge.fury.io/py/datajoint)
-[![Requirements Status](https://requires.io/github/datajoint/datajoint-python/requirements.svg?branch=master)](https://requires.io/github/datajoint/datajoint-python/requirements/?branch=master)
 [![Slack](https://img.shields.io/badge/slack-chat-green.svg)](https://datajoint.slack.com/)
 
 # Welcome to DataJoint for Python!
