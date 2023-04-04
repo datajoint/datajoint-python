@@ -11,8 +11,9 @@ DataJoint was initially developed in 2009 by Dimitri Yatsenko in Andreas Tolias'
 Presently, the primary developer of DataJoint open-source software is the company DataJoint (https://datajoint.com).
 
 - [Getting Started](https://datajoint.com/docs/core/datajoint-python/latest/getting-started/)
-- [DataJoint Elements](https://datajoint.com/docs/elements/) - Catalog of example pipelines
-- [DataJoint CodeBook](https://codebook.datajoint.io) - Interactive online tutorials
+- [DataJoint Tutorials](https://github.com/datajoint/datajoint-tutorials) - Interactive tutorials on GitHub Codespaces
+- [DataJoint Elements](https://datajoint.com/docs/elements/) - Catalog of example pipelines for neuroscience experiments
+
 - Contribute
 
   - [Development Environment](https://datajoint.com/docs/core/datajoint-python/latest/develop/)
@@ -22,10 +23,3 @@ Presently, the primary developer of DataJoint open-source software is the compan
   - [Documentation](https://docs.datajoint.org)
   - [Tutorials](https://tutorials.datajoint.org)
 
-## Citation
-
-- If your work uses DataJoint for Python, please cite the following Research Resource Identifier (RRID) and manuscript.
-
-- DataJoint ([RRID:SCR_014543](https://scicrunch.org/resolver/SCR_014543)) - DataJoint for Python (version `<Enter version number>`)
-
-- Yatsenko D, Reimer J, Ecker AS, Walker EY, Sinz F, Berens P, Hoenselaar A, Cotton RJ, Siapas AS, Tolias AS. DataJoint: managing big scientific data using MATLAB or Python. bioRxiv. 2015 Jan 1:031658. doi: https://doi.org/10.1101/031658
