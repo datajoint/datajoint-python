@@ -238,3 +238,7 @@ class Part(UserTable):
             raise DataJointError(
                 "Cannot drop a Part directly.  Delete from master instead"
             )
+
+    def alter(self, prompt=True, context=None):
+        # without context, use declaration context which maps master keyword to master table
+        super().alter(prompt=prompt, context=context or self.declaration_context)
