@@ -1,4 +1,3 @@
-typing-extensions
 mkdocs-material
 mkdocs-redirects
 mkdocstrings
