@@ -7,11 +7,12 @@ services:
       context: ../
       args:
         - PACKAGE
-    image: ${PACKAGE}-docs
+    image: ${PACKAGE}_python-docs
     environment:
       - PACKAGE
       - UPSTREAM_REPO
       - MODE
+      - PATCH_VERSION
     volumes:
       - ..:/main
     user: ${HOST_UID}:anaconda
@@ -22,6 +23,7 @@ services:
       - -c
       - |
         set -e
+        export PATCH_VERSION=$$(cat /main/$${PACKAGE}/version.py | grep -oE '\d+\.\d+\.[a-z0-9]+')
         if echo "$${MODE}" | grep -i live &>/dev/null; then
             mkdocs serve --config-file ./docs/mkdocs.yaml -a 0.0.0.0:80
         elif echo "$${MODE}" | grep -iE "qa|build" &>/dev/null; then
