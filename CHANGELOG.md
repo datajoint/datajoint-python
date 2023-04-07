@@ -3,8 +3,9 @@
 ### Upcoming
 - Fixed - Fix altering a part table that uses the "master" keyword - PR [#991](https://github.com/datajoint/datajoint-python/pull/991)
 
-### Unreleased -- April 4, 2023
-- Changed - Documentation and readme for latest links and to improve navigation
+### Unreleased -- April 7, 2023
+- Changed - Readme to update links and include example pipeline image
+- Changed - Docs to add landing page and update navigation
 
 ### 0.14.0 -- Feb 13, 2023
 - Added - `json` data type ([#245](https://github.com/datajoint/datajoint-python/issues/245)) PR [#1051](https://github.com/datajoint/datajoint-python/pull/1051)
