@@ -24,7 +24,7 @@ Presently, the primary developer of DataJoint open-source software is the compan
      pip install datajoint
      ```
 
-- [Getting Started](https://datajoint.com/docs/core/datajoint-python/latest/getting-started/)
+- [Documentation](https://datajoint.com/docs/core/datajoint-python/)
 
 - [DataJoint Tutorials](https://github.com/datajoint/datajoint-tutorials) - Interactive tutorials on GitHub Codespaces
 
