@@ -10,14 +10,32 @@ DataJoint for Python is a framework for scientific workflow management based on 
 DataJoint was initially developed in 2009 by Dimitri Yatsenko in Andreas Tolias' Lab at Baylor College of Medicine for the distributed processing and management of large volumes of data streaming from regular experiments. Starting in 2011, DataJoint has been available as an open-source project adopted by other labs and improved through contributions from several developers.
 Presently, the primary developer of DataJoint open-source software is the company DataJoint (https://datajoint.com).
 
+## Data Pipeline Example
+
+![pipeline](https://raw.githubusercontent.com/datajoint/datajoint-python/main/images/pipeline.png)
+
+[Yatsenko et al., bioRxiv 2021](https://doi.org/10.1101/2021.03.30.437358)
+
+## Getting Started
+
+- Install from PyPI
+
+     ```bash
+     pip install datajoint
+     ```
+
 - [Getting Started](https://datajoint.com/docs/core/datajoint-python/latest/getting-started/)
+
 - [DataJoint Tutorials](https://github.com/datajoint/datajoint-tutorials) - Interactive tutorials on GitHub Codespaces
+
 - [DataJoint Elements](https://datajoint.com/docs/elements/) - Catalog of example pipelines for neuroscience experiments
 
 - Contribute
   - [Development Environment](https://datajoint.com/docs/core/datajoint-python/latest/develop/)
+
   - [Guidelines](https://datajoint.com/docs/community/contribute/)
 
 - Legacy Resources (To be replaced by above)
   - [Documentation](https://docs.datajoint.org)
+
   - [Tutorials](https://tutorials.datajoint.org)
