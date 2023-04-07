@@ -7,7 +7,7 @@ Presently, the primary developer of DataJoint open-source software is the compan
 
 ## Data Pipeline Example
 
-![pipeline](https://raw.githubusercontent.com/datajoint/datajoint-python/main/images/pipeline.png)
+![pipeline](https://raw.githubusercontent.com/datajoint/datajoint-python/master/images/pipeline.jpg)
 
 [Yatsenko et al., bioRxiv 2021](https://doi.org/10.1101/2021.03.30.437358)
 
@@ -19,9 +19,9 @@ Presently, the primary developer of DataJoint open-source software is the compan
      pip install datajoint
      ```
 
-- [Getting Started](./getting-started) - Detailed instructions
+- [Detailed Getting Started Guide](./getting-started)
 
-- [Interactive Tutorials](https://github.com/datajoint/datajoint-tutorials){:target="_blank"} - On GitHub Codespaces
+- [Interactive Tutorials](https://github.com/datajoint/datajoint-tutorials){:target="_blank"} on GitHub Codespaces
 
 - [DataJoint Elements](../../elements/) - Catalog of example pipelines for neuroscience experiments
 
