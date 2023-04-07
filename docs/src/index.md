@@ -9,7 +9,7 @@ Presently, the primary developer of DataJoint open-source software is the compan
 
 ![pipeline](https://raw.githubusercontent.com/datajoint/datajoint-python/master/images/pipeline.jpg)
 
-[Yatsenko et al., bioRxiv 2021](https://doi.org/10.1101/2021.03.30.437358)
+[Yatsenko et al., bioRxiv 2021](https://doi.org/10.1101/2021.03.30.437358){:target="_blank"}
 
 ## Getting Started
 
