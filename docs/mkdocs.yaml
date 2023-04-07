@@ -94,7 +94,6 @@ markdown_extensions:
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
 extra:
-  PATCH_VERSION: !ENV PATCH_VERSION
   generator: false # Disable watermark
   version:
     provider: mike
