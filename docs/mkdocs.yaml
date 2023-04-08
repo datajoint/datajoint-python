@@ -93,6 +93,9 @@ markdown_extensions:
         - name: mermaid
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.magiclink # Displays bare URLs as links
+  - pymdownx.tasklist: # Renders check boxes in tasks lists
+      custom_checkbox: true
 extra:
   generator: false # Disable watermark
   version:
