@@ -15,27 +15,35 @@
 html a[title="DataJoint"].md-social__link svg {
     color: var(--dj-primary);
 }
+
 html a[title="Slack"].md-social__link svg {
     color: var(--dj-primary);
 }
+
 html a[title="LinkedIn"].md-social__link svg {
     color: var(--dj-primary);
 }
+
 html a[title="Twitter"].md-social__link svg {
     color: var(--dj-primary);
 }
+
 html a[title="GitHub"].md-social__link svg {
     color: var(--dj-primary);
 }
+
 html a[title="DockerHub"].md-social__link svg {
     color: var(--dj-primary);
 }
+
 html a[title="PyPI"].md-social__link svg {
     color: var(--dj-primary);
 }
+
 html a[title="StackOverflow"].md-social__link svg {
     color: var(--dj-primary);
 }
+
 html a[title="YouTube"].md-social__link svg {
     color: var(--dj-primary);
 }
@@ -90,4 +98,8 @@ html a[title="YouTube"].md-social__link svg {
     /* footer */
     /* previous/next text */
     /* --md-footer-fg-color: var(--dj-white); */
+}
+
+[data-md-color-scheme="slate"] .jupyter-wrapper .Table Td {
+    color: var(--dj-black)
 }
