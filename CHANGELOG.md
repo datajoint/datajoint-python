@@ -4,9 +4,10 @@
 - Fixed - Fix altering a part table that uses the "master" keyword - PR [#991](https://github.com/datajoint/datajoint-python/pull/991)
 
 ### Unreleased -- April 7, 2023
+- Fixed - `.ipynb` output in tutorials is not visible in dark mode ([#1078](https://github.com/datajoint/datajoint-python/issues/1078)) PR [#1080](https://github.com/datajoint/datajoint-python/pull/1080)
 - Changed - Readme to update links and include example pipeline image
 - Changed - Docs to add landing page and update navigation
-
+ 
 ### 0.14.0 -- Feb 13, 2023
 - Added - `json` data type ([#245](https://github.com/datajoint/datajoint-python/issues/245)) PR [#1051](https://github.com/datajoint/datajoint-python/pull/1051)
 - Fixed - Activating a schema requires all tables to exist even if `create_tables=False` PR [#1058](https://github.com/datajoint/datajoint-python/pull/1058)
@@ -20,7 +21,7 @@
 - Deprecated - `table._update()` PR [#1073](https://github.com/datajoint/datajoint-python/pull/1073)
 - Deprecated - old-style foreign key syntax PR [#1073](https://github.com/datajoint/datajoint-python/pull/1073)
 - Deprecated - `dj.migrate_dj011_external_blob_storage_to_dj012()` PR [#1073](https://github.com/datajoint/datajoint-python/pull/1073)
-* Added - Method to set job keys to "ignore" status - PR [#1068](https://github.com/datajoint/datajoint-python/pull/1068)
+- Added - Method to set job keys to "ignore" status - PR [#1068](https://github.com/datajoint/datajoint-python/pull/1068)
 
 ### 0.13.8 -- Sep 21, 2022
 - Added - New documentation structure based on markdown PR [#1052](https://github.com/datajoint/datajoint-python/pull/1052)
