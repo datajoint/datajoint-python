@@ -2,8 +2,6 @@
 
 ### Upcoming
 - Fixed - Fix altering a part table that uses the "master" keyword - PR [#991](https://github.com/datajoint/datajoint-python/pull/991)
-
-### Unreleased -- April 7, 2023
 - Fixed - `.ipynb` output in tutorials is not visible in dark mode ([#1078](https://github.com/datajoint/datajoint-python/issues/1078)) PR [#1080](https://github.com/datajoint/datajoint-python/pull/1080)
 - Changed - Readme to update links and include example pipeline image
 - Changed - Docs to add landing page and update navigation
