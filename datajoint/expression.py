@@ -9,6 +9,7 @@ from .fetch import Fetch, Fetch1
 from .preview import preview, repr_html
 from .condition import (
     AndList,
+    Top,
     Not,
     make_condition,
     assert_join_compatibility,
@@ -119,17 +120,34 @@ class QueryExpression:
             else " WHERE (%s)" % ")AND(".join(str(s) for s in self.restriction)
         )
 
-    def make_sql(self, fields=None):
+    def sorting_clauses(self, limit=None, offset=None, order_by=None, no_offset=False):
+        if hasattr(self, "top_restriction") and self.top_restriction:
+            limit = self.top_restriction["limit"]
+            offset = self.top_restriction["offset"]
+            order_by = self.top_restriction["order_by"]
+        if offset and limit is None:
+            raise DataJointError("limit is required when offset is set")
+        clause = ""
+        if order_by is not None:
+            clause += " ORDER BY " + ", ".join(order_by)
+        if limit is not None:
+            clause += " LIMIT %d" % limit + (
+                " OFFSET %d" % offset if offset and not no_offset else ""
+            )
+        return clause
+
+    def make_sql(self, fields=None, sorting_params={}):
         """
         Make the SQL SELECT statement.
 
         :param fields: used to explicitly set the select attributes
         """
-        return "SELECT {distinct}{fields} FROM {from_}{where}".format(
+        return "SELECT {distinct}{fields} FROM {from_}{where}{sorting}".format(
             distinct="DISTINCT " if self._distinct else "",
             fields=self.heading.as_sql(fields or self.heading.names),
             from_=self.from_clause(),
             where=self.where_clause(),
+            sorting=self.sorting_clauses(**sorting_params),
         )
 
     # --------- query operators -----------
@@ -624,11 +642,9 @@ class QueryExpression:
         """
         if offset and limit is None:
             raise DataJointError("limit is required when offset is set")
-        sql = self.make_sql()
-        if order_by is not None:
-            sql += " ORDER BY " + ", ".join(order_by)
-        if limit is not None:
-            sql += " LIMIT %d" % limit + (" OFFSET %d" % offset if offset else "")
+        sql = self.make_sql(
+            sorting_params=dict(offset=offset, limit=limit, order_by=order_by)
+        )
         logger.debug(sql)
         return self.connection.query(sql, as_dict=as_dict)
 
@@ -695,25 +711,28 @@ class Aggregation(QueryExpression):
             else " WHERE (%s)" % ")AND(".join(str(s) for s in self._left_restrict)
         )
 
-    def make_sql(self, fields=None):
+    def make_sql(self, fields=None, sorting_params={}):
         fields = self.heading.as_sql(fields or self.heading.names)
         assert self._grouping_attributes or not self.restriction
         distinct = set(self.heading.names) == set(self.primary_key)
-        return "SELECT {distinct}{fields} FROM {from_}{where}{group_by}".format(
-            distinct="DISTINCT " if distinct else "",
-            fields=fields,
-            from_=self.from_clause(),
-            where=self.where_clause(),
-            group_by=""
-            if not self.primary_key
-            else (
-                " GROUP BY `%s`" % "`,`".join(self._grouping_attributes)
-                + (
-                    ""
-                    if not self.restriction
-                    else " HAVING (%s)" % ")AND(".join(self.restriction)
-                )
-            ),
+        return (
+            "SELECT {distinct}{fields} FROM {from_}{where}{group_by}{sorting}".format(
+                distinct="DISTINCT " if distinct else "",
+                fields=fields,
+                from_=self.from_clause(),
+                where=self.where_clause(),
+                group_by=""
+                if not self.primary_key
+                else (
+                    " GROUP BY `%s`" % "`,`".join(self._grouping_attributes)
+                    + (
+                        ""
+                        if not self.restriction
+                        else " HAVING (%s)" % ")AND(".join(self.restriction)
+                    )
+                ),
+                sorting=self.sorting_clauses(**sorting_params),
+            )
         )
 
     def __len__(self):
@@ -764,7 +783,7 @@ class Union(QueryExpression):
         result._support = [arg1, arg2]
         return result
 
-    def make_sql(self):
+    def make_sql(self, sorting_params={}):
         arg1, arg2 = self._support
         if (
             not arg1.heading.secondary_attributes
@@ -772,7 +791,7 @@ class Union(QueryExpression):
         ):
             # no secondary attributes: use UNION DISTINCT
             fields = arg1.primary_key
-            return "SELECT * FROM (({sql1}) UNION ({sql2})) as `_u{alias}`".format(
+            return "SELECT * FROM (({sql1}) UNION ({sql2})) as `_u{alias}`{sorting}".format(
                 sql1=arg1.make_sql()
                 if isinstance(arg1, Union)
                 else arg1.make_sql(fields),
@@ -780,6 +799,7 @@ class Union(QueryExpression):
                 if isinstance(arg2, Union)
                 else arg2.make_sql(fields),
                 alias=next(self.__count),
+                sorting=self.sorting_clauses(**sorting_params),
             )
         # with secondary attributes, use union of left join with antijoin
         fields = self.heading.names

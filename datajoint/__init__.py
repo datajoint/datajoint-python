@@ -37,6 +37,7 @@ __all__ = [
     "Part",
     "Not",
     "AndList",
+    "Top",
     "U",
     "Diagram",
     "Di",
@@ -61,7 +62,7 @@ from .schemas import Schema
 from .schemas import VirtualModule, list_schemas
 from .table import Table, FreeTable
 from .user_tables import Manual, Lookup, Imported, Computed, Part
-from .expression import Not, AndList, U
+from .expression import Not, AndList, U, Top
 from .diagram import Diagram
 from .admin import set_password, kill
 from .blob import MatCell, MatStruct

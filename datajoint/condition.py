@@ -61,6 +61,13 @@ class AndList(list):
             super().append(restriction)
 
 
+class Top:
+    def __init__(self, order_by, limit, offset=0):
+        self.order_by = order_by
+        self.limit = limit
+        self.offset = offset
+
+
 class Not:
     """invert restriction"""
 
@@ -182,6 +189,17 @@ def make_condition(query_expression, condition, columns):
         if not items:
             return not negate  # and empty AndList is True
         return combine_conditions(negate, conditions=items)
+
+    # restrict by Top
+    if isinstance(condition, Top):
+        query_expression.top_restriction = dict(
+            limit=condition.limit,
+            offset=condition.offset,
+            order_by=[condition.order_by]
+            if isinstance(condition.order_by, str)
+            else condition.order_by,
+        )
+        return True
 
     # restriction by dj.U evaluates to True
     if isinstance(condition, U):
