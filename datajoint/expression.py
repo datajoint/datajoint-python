@@ -593,11 +593,13 @@ class QueryExpression:
         """:return: number of elements in the result set e.g. ``len(q1)``."""
         subquery = None
         if hasattr(self, "top_restriction") and self.top_restriction:
-            subquery = "(SELECT DISTINCT {fields} FROM {from_}{where}{sorting}) AS subquery".format(
-                fields=self.heading.as_sql(self.heading.names),
-                from_=self.from_clause(),
-                sorting=self.sorting_clauses(),
-                where=self.where_clause(),
+            subquery = (
+                "(SELECT {fields} FROM {from_}{where}{sorting}) AS subquery".format(
+                    fields=self.heading.as_sql(self.heading.names),
+                    from_=self.from_clause(),
+                    sorting=self.sorting_clauses(),
+                    where=self.where_clause(),
+                )
             )
         return self.connection.query(
             "SELECT {select_} FROM {from_}{where}".format(
