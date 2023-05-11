@@ -192,6 +192,13 @@ def make_condition(query_expression, condition, columns):
 
     # restrict by Top
     if isinstance(condition, Top):
+        if (
+            hasattr(query_expression, "top_restriction")
+            and query_expression.top_restriction
+        ):
+            raise DataJointError(
+                "A QueryExpression may only contain a single dj.Top restriction"
+            )
         query_expression.top_restriction = dict(
             limit=condition.limit,
             offset=condition.offset,
