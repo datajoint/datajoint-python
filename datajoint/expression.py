@@ -120,7 +120,7 @@ class QueryExpression:
             else " WHERE (%s)" % ")AND(".join(str(s) for s in self.restriction)
         )
 
-    def sorting_clauses(self, limit=None, offset=None, order_by=None, no_offset=False):
+    def sorting_clauses(self, limit=None, offset=None, order_by=None):
         if hasattr(self, "top_restriction") and self.top_restriction:
             limit = self.top_restriction["limit"]
             offset = self.top_restriction["offset"]
@@ -131,9 +131,7 @@ class QueryExpression:
         if order_by is not None:
             clause += " ORDER BY " + ", ".join(order_by)
         if limit is not None:
-            clause += " LIMIT %d" % limit + (
-                " OFFSET %d" % offset if offset and not no_offset else ""
-            )
+            clause += " LIMIT %d" % limit + (" OFFSET %d" % offset if offset else "")
         return clause
 
     def make_sql(self, fields=None, sorting_params={}):
@@ -142,12 +140,21 @@ class QueryExpression:
 
         :param fields: used to explicitly set the select attributes
         """
-        return "SELECT {distinct}{fields} FROM {from_}{where}{sorting}".format(
+        subquery = None
+        if hasattr(self, "top_restriction") and self.top_restriction:
+            subquery = (
+                "(SELECT {distinct}{fields} FROM {from_}{sorting}) AS subquery".format(
+                    distinct="DISTINCT " if self._distinct else "",
+                    fields=self.heading.as_sql(fields or self.heading.names),
+                    from_=self.from_clause(),
+                    sorting=self.sorting_clauses(),
+                )
+            )
+        return "SELECT {distinct}{fields} FROM {from_}{where}".format(
             distinct="DISTINCT " if self._distinct else "",
             fields=self.heading.as_sql(fields or self.heading.names),
-            from_=self.from_clause(),
+            from_=subquery or self.from_clause(),
             where=self.where_clause(),
-            sorting=self.sorting_clauses(**sorting_params),
         )
 
     # --------- query operators -----------
@@ -555,6 +562,15 @@ class QueryExpression:
 
     def __len__(self):
         """:return: number of elements in the result set e.g. ``len(q1)``."""
+        subquery = None
+        if hasattr(self, "top_restriction") and self.top_restriction:
+            subquery = (
+                "(SELECT DISTINCT {fields} FROM {from_}{sorting}) AS subquery".format(
+                    fields=self.heading.as_sql(self.heading.names),
+                    from_=self.from_clause(),
+                    sorting=self.sorting_clauses(),
+                )
+            )
         return self.connection.query(
             "SELECT {select_} FROM {from_}{where}".format(
                 select_=(
@@ -566,7 +582,7 @@ class QueryExpression:
                         )
                     )
                 ),
-                from_=self.from_clause(),
+                from_=subquery or self.from_clause(),
                 where=self.where_clause(),
             )
         ).fetchone()[0]
