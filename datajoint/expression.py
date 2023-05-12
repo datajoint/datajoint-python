@@ -45,11 +45,10 @@ class QueryExpression:
     """
 
     _restriction = None
-    _restriction_right = None
     _restriction_attributes = None
-    _restriction_right_attributes = None
     _left = []  # list of booleans True for left joins, False for inner joins
     _original_heading = None  # heading before projections
+    _top_restriction = None
 
     # subclasses or instantiators must provide values
     _connection = None
@@ -89,13 +88,6 @@ class QueryExpression:
         return self._restriction
 
     @property
-    def restriction_right(self):
-        """a AndList object of restrictions applied to a dj.Top to produce the result"""
-        if self._restriction_right is None:
-            self._restriction_right = AndList()
-        return self._restriction_right
-
-    @property
     def restriction_attributes(self):
         """the set of attribute names invoked in the WHERE clause"""
         if self._restriction_attributes is None:
@@ -103,11 +95,11 @@ class QueryExpression:
         return self._restriction_attributes
 
     @property
-    def restriction_right_attributes(self):
-        """the set of attribute names invoked in the WHERE clause"""
-        if self._restriction_right_attributes is None:
-            self._restriction_right_attributes = set()
-        return self._restriction_right_attributes
+    def top_restriction(self):
+        """the list of top restrictions to be subqeuried"""
+        if self._top_restriction is None:
+            self._top_restriction = AndList()
+        return self._top_restriction
 
     @property
     def primary_key(self):
@@ -129,22 +121,16 @@ class QueryExpression:
             )
         return clause
 
-    def where_clause(self, right=False):
+    def where_clause(self, restriction_list=None):
         return (
-            ""
-            if right and not self.restriction_right
-            else " WHERE (%s)" % ")AND(".join(str(s) for s in self.restriction_right)
-            if right
-            else ""
-            if not self.restriction
+            " WHERE (%s)" % ")AND(".join(str(s) for s in restriction_list)
+            if restriction_list
             else " WHERE (%s)" % ")AND(".join(str(s) for s in self.restriction)
+            if self.restriction
+            else ""
         )
 
     def sorting_clauses(self, limit=None, offset=None, order_by=None):
-        if hasattr(self, "top_restriction") and self.top_restriction:
-            limit = self.top_restriction["limit"]
-            offset = self.top_restriction["offset"]
-            order_by = self.top_restriction["order_by"]
         if offset and limit is None:
             raise DataJointError("limit is required when offset is set")
         clause = ""
@@ -154,28 +140,50 @@ class QueryExpression:
             clause += " LIMIT %d" % limit + (" OFFSET %d" % offset if offset else "")
         return clause
 
+    def make_top_subquery(self, tops, fields=None, i=0):
+        if not tops:
+            return self.from_clause()
+        top = tops.pop()
+        if tops:
+            start = tops[-1]["restriction_index"]
+        else:
+            start = 0
+        return "(SELECT {distinct}{fields} FROM {from_}{where}{sorting}) AS top_subquery_{i}".format(
+            distinct="DISTINCT " if self._distinct else "",
+            fields=self.heading.as_sql(fields or self.heading.names),
+            from_=self.make_top_subquery(tops, fields, i + 1),
+            where=self.where_clause(self.restriction[start : top["restriction_index"]])
+            if top["restriction_index"]
+            else "",
+            sorting=self.sorting_clauses(
+                limit=top["limit"], offset=top["offset"], order_by=top["order_by"]
+            ),
+            i=i,
+        )
+
     def make_sql(self, fields=None, sorting_params={}):
         """
         Make the SQL SELECT statement.
 
         :param fields: used to explicitly set the select attributes
         """
-        subquery = None
-        if hasattr(self, "top_restriction") and self.top_restriction:
-            subquery = "(SELECT {distinct}{fields} FROM {from_}{where}{sorting}) AS subquery".format(
-                distinct="DISTINCT " if self._distinct else "",
-                fields=self.heading.as_sql(fields or self.heading.names),
-                from_=self.from_clause(),
-                sorting=self.sorting_clauses(),
-                where=self.where_clause(),
+        top_subquery = None
+        if self.top_restriction:
+            top_subquery = self.make_top_subquery(
+                copy.copy(self.top_restriction), fields
             )
-        return "SELECT {distinct}{fields} FROM {from_}{where}".format(
+        return "SELECT {distinct}{fields} FROM {from_}{where}{sorting}".format(
             distinct="DISTINCT " if self._distinct else "",
             fields=self.heading.as_sql(fields or self.heading.names),
-            from_=subquery or self.from_clause(),
+            from_=top_subquery or self.from_clause(),
             where=self.where_clause()
-            if not subquery
-            else self.where_clause(right=True),
+            if not top_subquery
+            else self.where_clause(
+                self.restriction[self.top_restriction[-1]["restriction_index"] : :]
+            )
+            if self.top_restriction[-1]["restriction_index"] < len(self.restriction)
+            else "",
+            sorting=self.sorting_clauses(**sorting_params),
         )
 
     # --------- query operators -----------
@@ -256,16 +264,8 @@ class QueryExpression:
             result._restriction = AndList(
                 self.restriction
             )  # copy to preserve the original
-            result._restriction_right = AndList(
-                self.restriction_right
-            )  # copy to preserve the original
-        # Distinguish between inner and outer restrictions for queries involving dj.Top
-        if hasattr(self, "top_restriction") and self.top_restriction:
-            result.restriction_right.append(new_condition)
-            result.restriction_right_attributes.update(attributes)
-        else:
-            result.restriction.append(new_condition)
-            result.restriction_attributes.update(attributes)
+        result.restriction.append(new_condition)
+        result.restriction_attributes.update(attributes)
         return result
 
     def restrict_in_place(self, restriction):
@@ -591,15 +591,10 @@ class QueryExpression:
 
     def __len__(self):
         """:return: number of elements in the result set e.g. ``len(q1)``."""
-        subquery = None
-        if hasattr(self, "top_restriction") and self.top_restriction:
-            subquery = (
-                "(SELECT {fields} FROM {from_}{where}{sorting}) AS subquery".format(
-                    fields=self.heading.as_sql(self.heading.names),
-                    from_=self.from_clause(),
-                    sorting=self.sorting_clauses(),
-                    where=self.where_clause(),
-                )
+        top_subquery = None
+        if self.top_restriction:
+            top_subquery = self.make_top_subquery(
+                copy.copy(self.top_restriction),
             )
         return self.connection.query(
             "SELECT {select_} FROM {from_}{where}".format(
@@ -612,10 +607,8 @@ class QueryExpression:
                         )
                     )
                 ),
-                from_=subquery or self.from_clause(),
-                where=self.where_clause()
-                if not subquery
-                else self.where_clause(right=True),
+                from_=top_subquery or self.from_clause(),
+                where=self.where_clause(),
             )
         ).fetchone()[0]
 
