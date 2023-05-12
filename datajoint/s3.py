@@ -68,7 +68,9 @@ class Folder:
     def get(self, name):
         logger.debug("get: {}:{}".format(self.bucket, name))
         try:
-            return self.client.get_object(self.bucket, str(name)).data
+            with self.client.get_object(self.bucket, str(name)) as result:
+                data = [d for d in result.stream()]
+            return b"".join(data)
         except minio.error.S3Error as e:
             if e.code == "NoSuchKey":
                 raise errors.MissingExternalFile("Missing s3 key %s" % name)
