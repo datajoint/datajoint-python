@@ -5,6 +5,7 @@
 - Fixed - `.ipynb` output in tutorials is not visible in dark mode ([#1078](https://github.com/datajoint/datajoint-python/issues/1078)) PR [#1080](https://github.com/datajoint/datajoint-python/pull/1080)
 - Changed - Readme to update links and include example pipeline image
 - Changed - Docs to add landing page and update navigation
+- Changed - `.data` method to `.stream` in the `get()` method for S3 (external) objects PR [#1085](https://github.com/datajoint/datajoint-python/pull/1085)
 - Fixed - Docs to rename `create_virtual_module` to `VirtualModule`
 
 ### 0.14.0 -- Feb 13, 2023
