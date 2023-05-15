@@ -48,12 +48,12 @@ class QueryExpression:
     _restriction_attributes = None
     _left = []  # list of booleans True for left joins, False for inner joins
     _original_heading = None  # heading before projections
-    _top_restriction = None
 
     # subclasses or instantiators must provide values
     _connection = None
     _heading = None
     _support = None
+    _top = None
 
     # If the query will be using distinct
     _distinct = False
@@ -76,6 +76,11 @@ class QueryExpression:
         return self._heading
 
     @property
+    def top(self):
+        """a dj.top object, reflects the effects of order by, limit, and offset"""
+        return self._top
+
+    @property
     def original_heading(self):
         """a dj.Heading object reflecting the attributes before projection"""
         return self._original_heading or self.heading
@@ -95,13 +100,6 @@ class QueryExpression:
         return self._restriction_attributes
 
     @property
-    def top_restriction(self):
-        """the list of top restrictions to be subqeuried"""
-        if self._top_restriction is None:
-            self._top_restriction = AndList()
-        return self._top_restriction
-
-    @property
     def primary_key(self):
         return self.heading.primary_key
 
@@ -109,7 +107,17 @@ class QueryExpression:
 
     def from_clause(self):
         support = (
-            "(" + src.make_sql() + ") as `$%x`" % next(self._subquery_alias_count)
+            "("
+            + src.make_sql(
+                sorting_params=dict(
+                    order_by=self.top["order_by"],
+                    limit=self.top["limit"],
+                    offset=self.top["offset"],
+                )
+                if self.top
+                else {}
+            )
+            + ") as `$%x`" % next(self._subquery_alias_count)
             if isinstance(src, QueryExpression)
             else src
             for src in self.support
@@ -121,13 +129,11 @@ class QueryExpression:
             )
         return clause
 
-    def where_clause(self, restriction_list=None):
+    def where_clause(self):
         return (
-            " WHERE (%s)" % ")AND(".join(str(s) for s in restriction_list)
-            if restriction_list
+            ""
+            if not self.restriction
             else " WHERE (%s)" % ")AND(".join(str(s) for s in self.restriction)
-            if self.restriction
-            else ""
         )
 
     def sorting_clauses(self, limit=None, offset=None, order_by=None):
@@ -140,59 +146,35 @@ class QueryExpression:
             clause += " LIMIT %d" % limit + (" OFFSET %d" % offset if offset else "")
         return clause
 
-    def make_top_subquery(self, tops, fields=None, i=0):
-        if not tops:
-            return self.from_clause()
-        top = tops.pop()
-        if tops:
-            start = tops[-1]["restriction_index"]
-        else:
-            start = 0
-        return "(SELECT {distinct}{fields} FROM {from_}{where}{sorting}) AS top_subquery_{i}".format(
-            distinct="DISTINCT " if self._distinct else "",
-            fields=self.heading.as_sql(fields or self.heading.names),
-            from_=self.make_top_subquery(tops, fields, i + 1),
-            where=self.where_clause(self.restriction[start : top["restriction_index"]])
-            if top["restriction_index"]
-            else "",
-            sorting=self.sorting_clauses(
-                limit=top["limit"], offset=top["offset"], order_by=top["order_by"]
-            ),
-            i=i,
-        )
-
     def make_sql(self, fields=None, sorting_params={}):
         """
         Make the SQL SELECT statement.
 
         :param fields: used to explicitly set the select attributes
         """
-        top_subquery = None
-        if self.top_restriction:
-            top_subquery = self.make_top_subquery(
-                copy.copy(self.top_restriction), fields
-            )
         return "SELECT {distinct}{fields} FROM {from_}{where}{sorting}".format(
             distinct="DISTINCT " if self._distinct else "",
             fields=self.heading.as_sql(fields or self.heading.names),
-            from_=top_subquery or self.from_clause(),
-            where=self.where_clause()
-            if not top_subquery
-            else self.where_clause(
-                self.restriction[self.top_restriction[-1]["restriction_index"] : :]
-            )
-            if self.top_restriction[-1]["restriction_index"] < len(self.restriction)
-            else "",
+            from_=self.from_clause(),
+            where=self.where_clause(),
             sorting=self.sorting_clauses(**sorting_params),
         )
 
     # --------- query operators -----------
-    def make_subquery(self):
+    def make_subquery(self, top_restriction={}):
         """create a new SELECT statement where self is the FROM clause"""
         result = QueryExpression()
         result._connection = self.connection
         result._support = [self]
         result._heading = self.heading.make_subquery_heading()
+        if top_restriction:
+            result._top = dict(
+                limit=top_restriction.limit,
+                offset=top_restriction.offset,
+                order_by=[top_restriction.order_by]
+                if isinstance(top_restriction.order_by, str)
+                else top_restriction.order_by,
+            )
         return result
 
     def restrict(self, restriction):
@@ -242,6 +224,8 @@ class QueryExpression:
         """
         attributes = set()
         new_condition = make_condition(self, restriction, attributes)
+        if isinstance(new_condition, QueryExpression):
+            return new_condition
         if new_condition is True:
             return self  # restriction has no effect, return the same object
         # check that all attributes in condition are present in the query
@@ -591,11 +575,6 @@ class QueryExpression:
 
     def __len__(self):
         """:return: number of elements in the result set e.g. ``len(q1)``."""
-        top_subquery = None
-        if self.top_restriction:
-            top_subquery = self.make_top_subquery(
-                copy.copy(self.top_restriction),
-            )
         return self.connection.query(
             "SELECT {select_} FROM {from_}{where}".format(
                 select_=(
@@ -607,7 +586,7 @@ class QueryExpression:
                         )
                     )
                 ),
-                from_=top_subquery or self.from_clause(),
+                from_=self.from_clause(),
                 where=self.where_clause(),
             )
         ).fetchone()[0]
