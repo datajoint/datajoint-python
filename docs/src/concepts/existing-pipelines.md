@@ -63,7 +63,7 @@ the `VirtualModule` class object:
 
 ```python
 import datajoint as dj
-subject = dj.create_virtual_module(module_name='subject', schema_name='db_subject')
+subject = dj.VirtualModule(module_name='subject', schema_name='db_subject')
 ```
 
 Now, `subject` behaves as an imported module complete with the schema object and all the
