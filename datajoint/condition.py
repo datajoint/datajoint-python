@@ -10,6 +10,8 @@ import numpy
 import pandas
 import json
 from .errors import DataJointError
+from typing import Union, List
+from dataclasses import dataclass
 
 JSON_PATTERN = re.compile(
     r"^(?P<attr>\w+)(\.(?P<path>[\w.*\[\]]+))?(:(?P<type>[\w(,\s)]+))?$"
@@ -61,11 +63,11 @@ class AndList(list):
             super().append(restriction)
 
 
+@dataclass
 class Top:
-    def __init__(self, order_by=None, limit=None, offset=0):
-        self.order_by = order_by
-        self.limit = limit
-        self.offset = offset
+    order_by: Union[str, List[str]] = None
+    limit: int = None
+    offset: int = 0
 
 
 class Not:
