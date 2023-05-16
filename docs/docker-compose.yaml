@@ -7,7 +7,7 @@ services:
       context: ../
       args:
         - PACKAGE
-    image: ${PACKAGE}-docs
+    image: ${PACKAGE}_python-docs
     environment:
       - PACKAGE
       - UPSTREAM_REPO
@@ -16,7 +16,7 @@ services:
       - ..:/main
     user: ${HOST_UID}:anaconda
     ports:
-      - 8080:80
+      - 80:80
     command:
       - sh
       - -c
