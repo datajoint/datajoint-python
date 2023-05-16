@@ -211,9 +211,16 @@ class QueryExpression:
         string, or an AndList.
         """
         attributes = set()
+        if isinstance(restriction, Top):
+            self._top = dict(
+                limit=restriction.limit,
+                offset=restriction.offset,
+                order_by=[restriction.order_by]
+                if isinstance(restriction.order_by, str)
+                else restriction.order_by,
+            )
+            return self.make_subquery()
         new_condition = make_condition(self, restriction, attributes)
-        if isinstance(new_condition, QueryExpression):
-            return new_condition
         if new_condition is True:
             return self  # restriction has no effect, return the same object
         # check that all attributes in condition are present in the query

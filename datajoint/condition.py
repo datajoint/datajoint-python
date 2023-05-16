@@ -190,17 +190,6 @@ def make_condition(query_expression, condition, columns):
             return not negate  # and empty AndList is True
         return combine_conditions(negate, conditions=items)
 
-    # restrict by Top
-    if isinstance(condition, Top):
-        query_expression._top = dict(
-            limit=condition.limit,
-            offset=condition.offset,
-            order_by=[condition.order_by]
-            if isinstance(condition.order_by, str)
-            else condition.order_by,
-        )
-        return query_expression.make_subquery()
-
     # restriction by dj.U evaluates to True
     if isinstance(condition, U):
         return not negate
