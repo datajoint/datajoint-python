@@ -107,17 +107,7 @@ class QueryExpression:
 
     def from_clause(self):
         support = (
-            "("
-            + src.make_sql(
-                sorting_params=dict(
-                    order_by=self.top["order_by"],
-                    limit=self.top["limit"],
-                    offset=self.top["offset"],
-                )
-                if self.top
-                else {}
-            )
-            + ") as `$%x`" % next(self._subquery_alias_count)
+            "(" + src.make_sql() + ") as `$%x`" % next(self._subquery_alias_count)
             if isinstance(src, QueryExpression)
             else src
             for src in self.support
@@ -137,6 +127,10 @@ class QueryExpression:
         )
 
     def sorting_clauses(self, limit=None, offset=None, order_by=None):
+        if self.top and not (limit or offset or order_by):
+            limit = self.top["limit"]
+            offset = self.top["offset"]
+            order_by = self.top["order_by"]
         if offset and limit is None:
             raise DataJointError("limit is required when offset is set")
         clause = ""
@@ -168,7 +162,7 @@ class QueryExpression:
         result._support = [self]
         result._heading = self.heading.make_subquery_heading()
         if top_restriction:
-            result._top = dict(
+            self._top = dict(
                 limit=top_restriction.limit,
                 offset=top_restriction.offset,
                 order_by=[top_restriction.order_by]
