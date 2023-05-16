@@ -157,20 +157,12 @@ class QueryExpression:
         )
 
     # --------- query operators -----------
-    def make_subquery(self, top_restriction={}):
+    def make_subquery(self):
         """create a new SELECT statement where self is the FROM clause"""
         result = QueryExpression()
         result._connection = self.connection
         result._support = [self]
         result._heading = self.heading.make_subquery_heading()
-        if top_restriction:
-            self._top = dict(
-                limit=top_restriction.limit,
-                offset=top_restriction.offset,
-                order_by=[top_restriction.order_by]
-                if isinstance(top_restriction.order_by, str)
-                else top_restriction.order_by,
-            )
         return result
 
     def restrict(self, restriction):

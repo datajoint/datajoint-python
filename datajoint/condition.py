@@ -192,7 +192,14 @@ def make_condition(query_expression, condition, columns):
 
     # restrict by Top
     if isinstance(condition, Top):
-        return query_expression.make_subquery(top_restriction=condition)
+        query_expression._top = dict(
+            limit=condition.limit,
+            offset=condition.offset,
+            order_by=[condition.order_by]
+            if isinstance(condition.order_by, str)
+            else condition.order_by,
+        )
+        return query_expression.make_subquery()
 
     # restriction by dj.U evaluates to True
     if isinstance(condition, U):
