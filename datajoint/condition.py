@@ -62,7 +62,7 @@ class AndList(list):
 
 
 class Top:
-    def __init__(self, order_by, limit=None, offset=0):
+    def __init__(self, order_by=None, limit=None, offset=0):
         self.order_by = order_by
         self.limit = limit
         self.offset = offset
