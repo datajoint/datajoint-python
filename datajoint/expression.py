@@ -77,7 +77,7 @@ class QueryExpression:
 
     @property
     def top(self):
-        """a dj.top object, reflects the effects of order by, limit, and offset"""
+        """a top object to form the ORDER BY, LIMIT, and OFFSET clauses"""
         if self._top and self._top["order_by"]:
             if isinstance(self._top["order_by"], str):
                 self._top["order_by"] = [self._top["order_by"]]
