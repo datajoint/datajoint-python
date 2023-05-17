@@ -65,8 +65,12 @@ class AndList(list):
 
 @dataclass
 class Top:
-    order_by: Union[str, List[str]] = None
-    limit: int = None
+    """
+    doc string
+    """
+
+    limit: int = 10
+    order_by: Union[str, List[str]] = "KEY"
     offset: int = 0
 
 

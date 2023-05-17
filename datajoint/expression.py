@@ -78,6 +78,12 @@ class QueryExpression:
     @property
     def top(self):
         """a dj.top object, reflects the effects of order by, limit, and offset"""
+        if self._top and self._top["order_by"]:
+            if isinstance(self._top["order_by"], str):
+                self._top["order_by"] = [self._top["order_by"]]
+            if "KEY" in self._top["order_by"]:
+                i = self._top["order_by"].index("KEY")
+                self._top["order_by"][i : i + 1] = self.primary_key
         return self._top
 
     @property
@@ -215,9 +221,7 @@ class QueryExpression:
             self._top = dict(
                 limit=restriction.limit,
                 offset=restriction.offset,
-                order_by=[restriction.order_by]
-                if isinstance(restriction.order_by, str)
-                else restriction.order_by,
+                order_by=restriction.order_by,
             )
             return self.make_subquery()
         new_condition = make_condition(self, restriction, attributes)

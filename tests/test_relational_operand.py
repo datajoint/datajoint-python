@@ -14,6 +14,7 @@ from nose.tools import (
 )
 
 import datajoint as dj
+from datajoint.errors import DataJointError
 from .schema_simple import (
     A,
     B,
@@ -486,6 +487,72 @@ class TestRelational:
             len(w), len(w & y), "incorrect restriction without common attributes"
         )
         assert_true(len(w - y) == 0, "incorrect restriction without common attributes")
+
+    @staticmethod
+    def test_restrictions_by_top():
+        a = L() & dj.Top()
+        b = L() & dj.Top(order_by=["cond_in_l", "KEY"])
+        x = L() & dj.Top(5, "id_l desc", 4) & "cond_in_l=1"
+        y = L() & "cond_in_l=1" & dj.Top(5, "id_l desc", 4)
+        z = (
+            L()
+            & dj.Top(None, order_by="id_l desc")
+            & "cond_in_l=1"
+            & dj.Top(5, "id_l desc")
+            & ("id_l=20", "id_l=16", "id_l=17")
+            & dj.Top(2, "id_l asc", 1)
+        )
+        assert len(a) == 10
+        assert len(b) == 10
+        assert len(x) == 1
+        assert len(y) == 5
+        assert len(z) == 2
+        assert a.fetch(as_dict=True) == [
+            {"id_l": 0, "cond_in_l": 1},
+            {"id_l": 1, "cond_in_l": 1},
+            {"id_l": 2, "cond_in_l": 1},
+            {"id_l": 3, "cond_in_l": 0},
+            {"id_l": 4, "cond_in_l": 0},
+            {"id_l": 5, "cond_in_l": 1},
+            {"id_l": 6, "cond_in_l": 0},
+            {"id_l": 7, "cond_in_l": 0},
+            {"id_l": 8, "cond_in_l": 0},
+            {"id_l": 9, "cond_in_l": 0},
+        ]
+        assert b.fetch(as_dict=True) == [
+            {"id_l": 3, "cond_in_l": 0},
+            {"id_l": 4, "cond_in_l": 0},
+            {"id_l": 6, "cond_in_l": 0},
+            {"id_l": 7, "cond_in_l": 0},
+            {"id_l": 8, "cond_in_l": 0},
+            {"id_l": 9, "cond_in_l": 0},
+            {"id_l": 12, "cond_in_l": 0},
+            {"id_l": 13, "cond_in_l": 0},
+            {"id_l": 14, "cond_in_l": 0},
+            {"id_l": 18, "cond_in_l": 0},
+        ]
+        assert x.fetch(as_dict=True) == [{"id_l": 25, "cond_in_l": 1}]
+        assert y.fetch(as_dict=True) == [
+            {"id_l": 16, "cond_in_l": 1},
+            {"id_l": 15, "cond_in_l": 1},
+            {"id_l": 11, "cond_in_l": 1},
+            {"id_l": 10, "cond_in_l": 1},
+            {"id_l": 5, "cond_in_l": 1},
+        ]
+        assert z.fetch(as_dict=True) == [
+            {"id_l": 17, "cond_in_l": 1},
+            {"id_l": 20, "cond_in_l": 1},
+        ]
+
+    @staticmethod
+    @raises(DataJointError)
+    def test_top_in_or_list_fails():
+        L() & ("cond_in_l=1", dj.Top())
+
+    @staticmethod
+    @raises(DataJointError)
+    def test_top_in_and_list_fails():
+        L() & dj.AndList(["cond_in_l=1", dj.Top()])
 
     @staticmethod
     def test_datetime():
