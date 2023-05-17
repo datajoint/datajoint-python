@@ -653,7 +653,7 @@ class QueryExpression:
     def cursor(self, offset=0, limit=None, order_by=None, as_dict=False):
         """
         See expression.fetch() for input description.
-        :return: query cursor`
+        :return: query cursor
         """
         if offset and limit is None:
             raise DataJointError("limit is required when offset is set")
