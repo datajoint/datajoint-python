@@ -66,7 +66,8 @@ class AndList(list):
 @dataclass
 class Top:
     """
-    doc string
+    A "restriction" to set the sorting clauses of a query. Since it is not a true
+    restriction, it has no effect on the WHERE clause.
     """
 
     limit: int = 10
