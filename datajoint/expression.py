@@ -78,12 +78,12 @@ class QueryExpression:
     @property
     def top(self):
         """a top object to form the ORDER BY, LIMIT, and OFFSET clauses"""
-        if self._top and self._top["order_by"]:
-            if isinstance(self._top["order_by"], str):
-                self._top["order_by"] = [self._top["order_by"]]
-            if "KEY" in self._top["order_by"]:
-                i = self._top["order_by"].index("KEY")
-                self._top["order_by"][i : i + 1] = self.primary_key
+        if self._top and self._top.order_by:
+            if isinstance(self._top.order_by, str):
+                self._top.order_by = [self._top.order_by]
+            if "KEY" in self._top.order_by:
+                i = self._top.order_by.index("KEY")
+                self._top.order_by[i : i + 1] = self.primary_key
         return self._top
 
     @property
@@ -134,9 +134,9 @@ class QueryExpression:
 
     def sorting_clauses(self):
         if self.top:
-            limit = self.top["limit"]
-            offset = self.top["offset"]
-            order_by = self.top["order_by"]
+            limit = self.top.limit
+            offset = self.top.offset
+            order_by = self.top.order_by
         else:
             return ""
         if offset and limit is None:
@@ -218,10 +218,10 @@ class QueryExpression:
         """
         attributes = set()
         if isinstance(restriction, Top):
-            self._top = dict(
-                limit=restriction.limit,
-                offset=restriction.offset,
-                order_by=restriction.order_by,
+            self._top = Top(
+                restriction.limit,
+                restriction.order_by,
+                restriction.offset,
             )
             return self.make_subquery()
         new_condition = make_condition(self, restriction, attributes)
@@ -661,10 +661,10 @@ class QueryExpression:
         """
         if offset and limit is None:
             raise DataJointError("limit is required when offset is set")
-        self._top = dict(
-            offset=offset,
-            limit=limit,
-            order_by=order_by,
+        self._top = Top(
+            limit,
+            order_by,
+            offset,
         )
         sql = self.make_sql()
         logger.debug(sql)
