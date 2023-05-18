@@ -218,11 +218,7 @@ class QueryExpression:
         """
         attributes = set()
         if isinstance(restriction, Top):
-            self._top = Top(
-                restriction.limit,
-                restriction.order_by,
-                restriction.offset,
-            )
+            self._top = restriction
             return self.make_subquery()
         new_condition = make_condition(self, restriction, attributes)
         if new_condition is True:
