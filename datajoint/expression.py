@@ -76,17 +76,6 @@ class QueryExpression:
         return self._heading
 
     @property
-    def top(self):
-        """a top object to form the ORDER BY, LIMIT, and OFFSET clauses"""
-        if self._top and self._top.order_by:
-            if isinstance(self._top.order_by, str):
-                self._top.order_by = [self._top.order_by]
-            if "KEY" in self._top.order_by:
-                i = self._top.order_by.index("KEY")
-                self._top.order_by[i : i + 1] = self.primary_key
-        return self._top
-
-    @property
     def original_heading(self):
         """a dj.Heading object reflecting the attributes before projection"""
         return self._original_heading or self.heading
@@ -133,17 +122,26 @@ class QueryExpression:
         )
 
     def sorting_clauses(self):
-        if self.top:
-            limit = self.top.limit
-            offset = self.top.offset
-            order_by = self.top.order_by
-        else:
+        if not self._top:
             return ""
+        limit = self._top.limit
+        order_by = self._top.order_by or ["KEY"]
+        offset = self._top.offset or 0
+
+        if order_by and not (
+            isinstance(order_by, str) or all(isinstance(r, str) for r in order_by)
+        ):
+            raise DataJointError("All order_by attributes must be strings")
         if offset and limit is None:
             raise DataJointError("limit is required when offset is set")
-        clause = ""
-        if order_by is not None:
-            clause += " ORDER BY " + ", ".join(order_by)
+
+        # if 'order_by' passed in a string, make into list
+        if isinstance(order_by, str):
+            order_by = [order_by]
+        # expand "KEY" or "KEY DESC"
+        order_by = list(_flatten_attribute_list(self.primary_key, order_by))
+
+        clause = " ORDER BY " + ", ".join(order_by)
         if limit is not None:
             clause += " LIMIT %d" % limit + (" OFFSET %d" % offset if offset else "")
         return clause
@@ -219,7 +217,7 @@ class QueryExpression:
         attributes = set()
         if isinstance(restriction, Top):
             self._top = restriction
-            return self.make_subquery()
+            return self
         new_condition = make_condition(self, restriction, attributes)
         if new_condition is True:
             return self  # restriction has no effect, return the same object
@@ -233,8 +231,10 @@ class QueryExpression:
             pass  # all ok
         # If the new condition uses any new attributes, a subquery is required.
         # However, Aggregation's HAVING statement works fine with aliased attributes.
-        need_subquery = isinstance(self, Union) or (
-            not isinstance(self, Aggregation) and self.heading.new_attributes
+        need_subquery = (
+            isinstance(self, Union)
+            or (not isinstance(self, Aggregation) and self.heading.new_attributes)
+            or self._top
         )
         if need_subquery:
             result = self.make_subquery()
@@ -570,19 +570,20 @@ class QueryExpression:
 
     def __len__(self):
         """:return: number of elements in the result set e.g. ``len(q1)``."""
-        return self.connection.query(
+        result = self.make_subquery() if self._top else copy.copy(self)
+        return result.connection.query(
             "SELECT {select_} FROM {from_}{where}".format(
                 select_=(
                     "count(*)"
-                    if any(self._left)
+                    if any(result._left)
                     else "count(DISTINCT {fields})".format(
-                        fields=self.heading.as_sql(
-                            self.primary_key, include_aliases=False
+                        fields=result.heading.as_sql(
+                            result.primary_key, include_aliases=False
                         )
                     )
                 ),
-                from_=self.from_clause(),
-                where=self.where_clause(),
+                from_=result.from_clause(),
+                where=result.where_clause(),
             )
         ).fetchone()[0]
 
@@ -657,14 +658,18 @@ class QueryExpression:
         """
         if offset and limit is None:
             raise DataJointError("limit is required when offset is set")
-        self._top = Top(
-            limit,
-            order_by,
-            offset,
-        )
-        sql = self.make_sql()
+        if offset or order_by or limit:
+            result = self.make_subquery() if self._top else copy.copy(self)
+            result._top = Top(
+                limit,
+                order_by,
+                offset,
+            )
+        else:
+            result = copy.copy(self)
+        sql = result.make_sql()
         logger.debug(sql)
-        return self.connection.query(sql, as_dict=as_dict)
+        return result.connection.query(sql, as_dict=as_dict)
 
     def __repr__(self):
         """
@@ -969,3 +974,18 @@ class U:
         )
 
     aggregate = aggr  # alias for aggr
+
+
+def _flatten_attribute_list(primary_key, attrs):
+    """
+    :param primary_key: list of attributes in primary key
+    :param attrs: list of attribute names, which may include "KEY", "KEY DESC" or "KEY ASC"
+    :return: generator of attributes where "KEY" is replaces with its component attributes
+    """
+    for a in attrs:
+        if re.match(r"^\s*KEY(\s+[aA][Ss][Cc])?\s*$", a):
+            yield from primary_key
+        elif re.match(r"^\s*KEY\s+[Dd][Ee][Ss][Cc]\s*$", a):
+            yield from (q + " DESC" for q in primary_key)
+        else:
+            yield a

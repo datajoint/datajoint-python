@@ -66,11 +66,11 @@ class AndList(list):
 @dataclass
 class Top:
     """
-    A "restriction" to set the sorting clauses of a query. Since it is not a true
-    restriction, it has no effect on the WHERE clause.
+    A restriction to the top entities of a query.
+    In SQL, this corresponds to ORDER BY ... LIMIT ... OFFSET
     """
 
-    limit: int = 10
+    limit: Union[int, None] = 1
     order_by: Union[str, List[str]] = "KEY"
     offset: int = 0
 
