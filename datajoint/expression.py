@@ -134,14 +134,13 @@ class QueryExpression:
             raise DataJointError("All order_by attributes must be strings")
         if offset and limit is None:
             raise DataJointError("limit is required when offset is set")
-
         # if 'order_by' passed in a string, make into list
         if isinstance(order_by, str):
             order_by = [order_by]
-        # expand "KEY" or "KEY DESC"
-        order_by = _flatten_attribute_list(self.primary_key, order_by)
 
-        clause = " ORDER BY " + ", ".join(order_by)
+        clause = " ORDER BY " + ", ".join(
+            _flatten_attribute_list(self.primary_key, order_by)
+        )
         if limit is not None:
             clause += " LIMIT %d" % limit + (" OFFSET %d" % offset if offset else "")
         return clause
