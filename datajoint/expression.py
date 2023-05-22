@@ -666,7 +666,7 @@ class QueryExpression:
                 offset,
             )
         else:
-            result = copy.copy(self)
+            result = self
         sql = result.make_sql()
         logger.debug(sql)
         return result.connection.query(sql, as_dict=as_dict)
