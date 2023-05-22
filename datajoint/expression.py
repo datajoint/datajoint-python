@@ -139,7 +139,7 @@ class QueryExpression:
         if isinstance(order_by, str):
             order_by = [order_by]
         # expand "KEY" or "KEY DESC"
-        order_by = list(_flatten_attribute_list(self.primary_key, order_by))
+        order_by = _flatten_attribute_list(self.primary_key, order_by)
 
         clause = " ORDER BY " + ", ".join(order_by)
         if limit is not None:
