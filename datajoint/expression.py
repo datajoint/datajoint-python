@@ -138,8 +138,13 @@ class QueryExpression:
         if isinstance(order_by, str):
             order_by = [order_by]
 
-        clause = " ORDER BY " + ", ".join(
-            _flatten_attribute_list(self.primary_key, order_by)
+        clause = (
+            (
+                " ORDER BY "
+                + ", ".join(_flatten_attribute_list(self.primary_key, order_by))
+            )
+            if self.primary_key
+            else ""
         )
         if limit is not None:
             clause += " LIMIT %d" % limit + (" OFFSET %d" % offset if offset else "")
