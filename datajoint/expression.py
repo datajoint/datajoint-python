@@ -128,10 +128,6 @@ class QueryExpression:
         order_by = self._top.order_by or ["KEY"]
         offset = self._top.offset or 0
 
-        if order_by and not (
-            isinstance(order_by, str) or all(isinstance(r, str) for r in order_by)
-        ):
-            raise DataJointError("All order_by attributes must be strings")
         if offset and limit is None:
             raise DataJointError("limit is required when offset is set")
         # if 'order_by' passed in a string, make into list

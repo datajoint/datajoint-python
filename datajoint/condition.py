@@ -74,6 +74,20 @@ class Top:
     order_by: Union[str, List[str]] = "KEY"
     offset: int = 0
 
+    def __post_init__(self):
+        if self.limit is not None and not (isinstance(self.limit, int)):
+            raise DataJointError("Limit must be an integer")
+        if not (
+            isinstance(self.order_by, str)
+            or (
+                hasattr(self.order_by, "__iter__")
+                and all(isinstance(r, str) for r in self.order_by)
+            )
+        ):
+            raise DataJointError("All order_by attributes must be strings")
+        if not (isinstance(self.offset, int)):
+            raise DataJointError("Offset must be an integer")
+
 
 class Not:
     """invert restriction"""
