@@ -75,6 +75,9 @@ class Top:
     offset: int = 0
 
     def __post_init__(self):
+        self.order_by = self.order_by or ["KEY"]
+        self.offset = self.offset or 0
+
         if self.limit is not None and not (isinstance(self.limit, int)):
             raise DataJointError("Limit must be an integer")
         if not (

@@ -125,8 +125,8 @@ class QueryExpression:
         if not self._top:
             return ""
         limit = self._top.limit
-        order_by = self._top.order_by or ["KEY"]
-        offset = self._top.offset or 0
+        order_by = self._top.order_by
+        offset = self._top.offset
 
         if offset and limit is None:
             raise DataJointError("limit is required when offset is set")
