@@ -79,7 +79,7 @@ class Top:
         self.offset = self.offset or 0
 
         if self.limit is not None and not (isinstance(self.limit, int)):
-            raise DataJointError("Limit must be an integer")
+            raise DataJointError("Top limit must be an integer")
         if not (
             isinstance(self.order_by, str)
             or (
@@ -87,9 +87,9 @@ class Top:
                 and all(isinstance(r, str) for r in self.order_by)
             )
         ):
-            raise DataJointError("All order_by attributes must be strings")
+            raise DataJointError("Top order_by attributes must all be strings")
         if not (isinstance(self.offset, int)):
-            raise DataJointError("Offset must be an integer")
+            raise DataJointError("Top offset must be an integer")
 
 
 class Not:
