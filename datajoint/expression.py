@@ -214,8 +214,13 @@ class QueryExpression:
         """
         attributes = set()
         if isinstance(restriction, Top):
-            self._top = restriction
-            return self
+            result = (
+                self.make_subquery()
+                if self._top and not self._top.__eq__(restriction)
+                else copy.copy(self)
+            )  # make subquery to avoid overwriting existing Top
+            result._top = restriction
+            return result
         new_condition = make_condition(self, restriction, attributes)
         if new_condition is True:
             return self  # restriction has no effect, return the same object
@@ -649,23 +654,14 @@ class QueryExpression:
                     # -- move on to next entry.
                     return next(self)
 
-    def cursor(self, offset=0, limit=None, order_by=None, as_dict=False):
+    def cursor(self, as_dict=False):
         """
         See expression.fetch() for input description.
         :return: query cursor
         """
-        if offset or order_by or limit:
-            result = self.make_subquery() if self._top else copy.copy(self)
-            result._top = Top(
-                limit,
-                order_by,
-                offset,
-            )
-        else:
-            result = self
-        sql = result.make_sql()
+        sql = self.make_sql()
         logger.debug(sql)
-        return result.connection.query(sql, as_dict=as_dict)
+        return self.connection.query(sql, as_dict=as_dict)
 
     def __repr__(self):
         """
