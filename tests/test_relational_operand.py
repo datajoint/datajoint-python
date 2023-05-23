@@ -537,6 +537,21 @@ class TestRelational:
         L() & dj.AndList(["cond_in_l=1", dj.Top()])
 
     @staticmethod
+    @raises(DataJointError)
+    def test_incorrect_limit_type():
+        L() & dj.Top(limit="1")
+
+    @staticmethod
+    @raises(DataJointError)
+    def test_incorrect_order_type():
+        L() & dj.Top(order_by=1)
+
+    @staticmethod
+    @raises(DataJointError)
+    def test_incorrect_offset_type():
+        L() & dj.Top(offset="1")
+
+    @staticmethod
     def test_datetime():
         """Test date retrieval"""
         date = Experiment().fetch("experiment_date")[0]
