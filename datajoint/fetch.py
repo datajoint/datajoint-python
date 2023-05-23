@@ -1,6 +1,5 @@
 from functools import partial
 from pathlib import Path
-import logging
 import pandas
 import itertools
 import json
@@ -13,8 +12,6 @@ from . import blob, hash
 from .errors import DataJointError
 from .settings import config
 from .utils import safe_write
-
-logger = logging.getLogger(__name__.split(".")[0])
 
 
 class key:

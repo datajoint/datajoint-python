@@ -98,7 +98,7 @@ class Top:
                 "Offset set, but no limit. Setting limit to a large number. "
                 "Consider setting a limit explicitly."
             )
-            self.limit = 18446744073709551615  # Some large number
+            self.limit = 999999999999  # arbitrary large number to allow query
 
 
 class Not:
