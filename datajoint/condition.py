@@ -2,6 +2,7 @@
 
 import inspect
 import collections
+import logging
 import re
 import uuid
 import datetime
@@ -12,6 +13,8 @@ import json
 from .errors import DataJointError
 from typing import Union, List
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__.split(".")[0])
 
 JSON_PATTERN = re.compile(
     r"^(?P<attr>\w+)(\.(?P<path>[\w.*\[\]]+))?(:(?P<type>[\w(,\s)]+))?$"
@@ -91,7 +94,11 @@ class Top:
         if not (isinstance(self.offset, int)):
             raise DataJointError("Top offset must be an integer")
         if self.offset and self.limit is None:
-            raise DataJointError("Top limit is required when offset is set")
+            logger.warning(
+                "Offset set, but no limit. Setting limit to a large number. "
+                "Consider setting a limit explicitly."
+            )
+            self.limit = 18446744073709551615  # Some large number
 
 
 class Not:

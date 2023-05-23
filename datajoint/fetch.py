@@ -199,13 +199,6 @@ class Fetch:
                     'use "array" or "frame"'.format(format)
                 )
 
-        if limit is None and offset is not None:
-            logger.warning(
-                "Offset set, but no limit. Setting limit to a large number. "
-                "Consider setting a limit explicitly."
-            )
-            limit = 8000000000  # just a very large number to effect no limit
-
         get = partial(
             _get,
             self._expression.connection,
