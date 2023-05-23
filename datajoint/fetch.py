@@ -3,7 +3,6 @@ from pathlib import Path
 import logging
 import pandas
 import itertools
-import re
 import json
 import numpy as np
 import uuid
