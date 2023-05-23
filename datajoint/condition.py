@@ -90,6 +90,8 @@ class Top:
             raise DataJointError("Top order_by attributes must all be strings")
         if not (isinstance(self.offset, int)):
             raise DataJointError("Top offset must be an integer")
+        if self.offset and self.limit is None:
+            raise DataJointError("Top limit is required when offset is set")
 
 
 class Not:

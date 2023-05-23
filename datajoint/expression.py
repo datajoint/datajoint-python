@@ -128,8 +128,6 @@ class QueryExpression:
         order_by = self._top.order_by
         offset = self._top.offset
 
-        if offset and limit is None:
-            raise DataJointError("limit is required when offset is set")
         # if 'order_by' passed in a string, make into list
         if isinstance(order_by, str):
             order_by = [order_by]
@@ -656,8 +654,6 @@ class QueryExpression:
         See expression.fetch() for input description.
         :return: query cursor
         """
-        if offset and limit is None:
-            raise DataJointError("limit is required when offset is set")
         if offset or order_by or limit:
             result = self.make_subquery() if self._top else copy.copy(self)
             result._top = Top(
