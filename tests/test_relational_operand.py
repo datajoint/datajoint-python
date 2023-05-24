@@ -547,7 +547,7 @@ class TestRelational:
         )
         assert "Top limit must be an integer" == str(err3.exception)
         assert "Top order_by attributes must all be strings" == str(err4.exception)
-        assert "Top offset must be an integer" == str(err5.exception)
+        assert "The offset argument must be an integer" == str(err5.exception)
 
     @staticmethod
     def test_datetime():

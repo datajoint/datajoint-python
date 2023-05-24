@@ -88,7 +88,7 @@ class Top:
         ):
             raise TypeError("Top order_by attributes must all be strings")
         if not isinstance(self.offset, int):
-            raise TypeError("Top offset must be an integer")
+            raise TypeError("The offset argument must be an integer")
         if self.offset and self.limit is None:
             self.limit = 999999999999  # arbitrary large number to allow query
 
