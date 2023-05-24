@@ -83,12 +83,8 @@ class Top:
 
         if self.limit is not None and not isinstance(self.limit, int):
             raise TypeError("Top limit must be an integer")
-        if not (
-            isinstance(self.order_by, str)
-            or (
-                hasattr(self.order_by, "__iter__")
-                and all(isinstance(r, str) for r in self.order_by)
-            )
+        if not isinstance(self.order_by, (str, collections.abc.Sequence)) or not all(
+            isinstance(r, str) for r in self.order_by
         ):
             raise TypeError("Top order_by attributes must all be strings")
         if not isinstance(self.offset, int):
