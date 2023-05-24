@@ -533,11 +533,11 @@ class TestRelational:
             L() & ("cond_in_l=1", dj.Top())
         with assert_raises(DataJointError) as err2:
             L() & dj.AndList(["cond_in_l=1", dj.Top()])
-        with assert_raises(DataJointError) as err3:
+        with assert_raises(TypeError) as err3:
             L() & dj.Top(limit="1")
-        with assert_raises(DataJointError) as err4:
+        with assert_raises(TypeError) as err4:
             L() & dj.Top(order_by=1)
-        with assert_raises(DataJointError) as err5:
+        with assert_raises(TypeError) as err5:
             L() & dj.Top(offset="1")
         assert "Invalid restriction type Top(limit=1, order_by='KEY', offset=0)" == str(
             err1.exception
