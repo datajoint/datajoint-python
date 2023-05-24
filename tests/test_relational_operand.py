@@ -1,4 +1,5 @@
 import random
+import re
 import string
 import pandas
 import datetime
@@ -11,6 +12,7 @@ from nose.tools import (
     raises,
     assert_set_equal,
     assert_list_equal,
+    assert_raises,
 )
 
 import datajoint as dj
@@ -527,29 +529,26 @@ class TestRelational:
         ]
 
     @staticmethod
-    @raises(DataJointError)
-    def test_top_in_or_list_fails():
-        L() & ("cond_in_l=1", dj.Top())
-
-    @staticmethod
-    @raises(DataJointError)
-    def test_top_in_and_list_fails():
-        L() & dj.AndList(["cond_in_l=1", dj.Top()])
-
-    @staticmethod
-    @raises(DataJointError)
-    def test_incorrect_limit_type():
-        L() & dj.Top(limit="1")
-
-    @staticmethod
-    @raises(DataJointError)
-    def test_incorrect_order_type():
-        L() & dj.Top(order_by=1)
-
-    @staticmethod
-    @raises(DataJointError)
-    def test_incorrect_offset_type():
-        L() & dj.Top(offset="1")
+    def test_top_errors():
+        with assert_raises(DataJointError) as err1:
+            L() & ("cond_in_l=1", dj.Top())
+        with assert_raises(DataJointError) as err2:
+            L() & dj.AndList(["cond_in_l=1", dj.Top()])
+        with assert_raises(DataJointError) as err3:
+            L() & dj.Top(limit="1")
+        with assert_raises(DataJointError) as err4:
+            L() & dj.Top(order_by=1)
+        with assert_raises(DataJointError) as err5:
+            L() & dj.Top(offset="1")
+        assert "Invalid restriction type Top(limit=1, order_by='KEY', offset=0)" == str(
+            err1.exception
+        )
+        assert "Invalid restriction type Top(limit=1, order_by='KEY', offset=0)" == str(
+            err2.exception
+        )
+        assert "Top limit must be an integer" == str(err3.exception)
+        assert "Top order_by attributes must all be strings" == str(err4.exception)
+        assert "Top offset must be an integer" == str(err5.exception)
 
     @staticmethod
     def test_datetime():
