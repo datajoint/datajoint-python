@@ -94,10 +94,6 @@ class Top:
         if not (isinstance(self.offset, int)):
             raise DataJointError("Top offset must be an integer")
         if self.offset and self.limit is None:
-            logger.warning(
-                "Offset set, but no limit. Setting limit to a large number. "
-                "Consider setting a limit explicitly."
-            )
             self.limit = 999999999999  # arbitrary large number to allow query
 
 
