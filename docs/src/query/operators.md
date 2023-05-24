@@ -120,9 +120,6 @@ The condition `cond` may be one of the following:
     -   a `Not` object
     -   a query expression
 
-For more examples on each of these in Python and Matlab, please visit the documentation
-for the respective API.
-
 ??? Warning "Permissive Operators"
 
     To circumvent compatibility checks, DataJoint offers permissive operators for 
@@ -144,9 +141,6 @@ another the coordinator, both referencing the common personnel pool.
 3. Projection can also perform calculations (as available in 
 [MySQL](https://dev.mysql.com/doc/refman/5.7/en/functions.html)) on a single attribute.
 
-For examples of each of these in Python and Matlab, please visit the documentation for
-the respective API.
-
 ## Aggr
 
 **Aggregation** is a special form of `proj` with the added feature of allowing
@@ -156,8 +150,7 @@ the respective API.
   in the matching entities of `other`.
 
 Aggregation functions include `count`, `sum`, `min`, `max`, `avg`, `std`, `variance`,
-and others. For examples in Python and Matlab, please visit the documentation for the
-respective API.
+and others.
 
 ## Union
 
@@ -220,9 +213,6 @@ not come from the same initial source.
 Universal sets should be used sparingly when no suitable base tables already exist. In
 some cases, defining a new base table can make queries clearer and more semantically
 constrained.
-
-For examples in Python and Matlab, please visit the documentation for the respective
-API.
 
 The examples below will use the table definitions in [table tiers](../../reproduce/table-tiers).
 

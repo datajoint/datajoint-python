@@ -6,8 +6,7 @@ some minor departures fom this standard.
 
 Here, tables are depicted as nodes and [dependencies](../dependencies) as directed edges
 between them. The `draw` method plots the graph, with many other methods (
-[Python](https://datajoint.com/docs/core/datajoint-python/latest/api/datajoint/diagram/),
-[Matlab](https://github.com/datajoint/datajoint-matlab/blob/master/%2Bdj/ERD.m)) to
+[Python](https://datajoint.com/docs/core/datajoint-python/latest/api/datajoint/diagram/)) to
 save or adjust the output.
 
 Because DataJoint pipelines are directional (see [DAG](../../../glossary#dag)), the
@@ -23,8 +22,7 @@ DataJoint uses the following conventions:
 -   [Tables](../table-definitions) are indicated as nodes in the graph. The
     corresponding class name is indicated by each node.
 
--   [Table type](../../reproduce/table-tiers) is indicated by colors and symbols, with some
-    differences across Python and Matlab: 
+-   [Table type](../../reproduce/table-tiers) is indicated by colors and symbols: 
 
     - **Lookup**: gray, rectangle or asterisk
     
@@ -75,6 +73,3 @@ Here, we see ...
 6. Several Computed tables: *Segmentation*, *Trace*, and *RF*
 
 7. A part table: *Field*
- 
-For examples calling `Diagram` in Python and Matlab, please visit the documentation for
-the respective API.

@@ -49,8 +49,6 @@ call.
 data = query.fetch()
 ```
 
-For more examples in Python or Matlab, please visit the respective API documentation. 
-
 ## Drop
 
 The `drop` method completely removes a table from the database, including its
@@ -78,4 +76,3 @@ dj.Diagram(schema).draw()
 ```
 
 For more information about diagrams, see [this article](../../getting-started/diagrams).
-For more examples in Python or Matlab, please visit the respective API documentation. 

@@ -9,8 +9,7 @@ entered using the `insert` method directly.
 [Automation](../tabletiers#automation-imported-and-computed).
 
 The `make` method receives one argument: the *key*, which represents the upstream table
-entries that need populating. The `key` is a `dict` or `struct` in Python and Matlab,
-respectively. 
+entries that need populating. The `key` is a `dict` in Python. 
 
 A `make` function should do three things:
 
@@ -30,20 +29,6 @@ the class method called to run the `make` method on all relevant keys[^2].
 [^2]: For information on reprocessing keys that resulted in an error, see information
 on the [Jobs table](../../ref-integrity/distributed-computing). 
 
-=== "Python"
-
-    ``` python
-    Segmentation.populate()
-    ```    
-
-=== "Matlab"
-
-    In Matlab, the `key` is a `struct`. 
-    ``` matlab
-    populate(Segmentation)
-    ```
-
-For more information on the `populate` options in each language, please visit the 
-[Python and Matlab](../../../) documentation pages.
-
-<!-- TODO: Replace above with respective links when live -->
+``` python
+Segmentation.populate()
+```    

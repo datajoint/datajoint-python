@@ -10,17 +10,9 @@
 For example, if given a `Session` table, you can
 create a query object to retrieve its entire contents as follows:
 
-=== "Python"
-
-    ``` python
-    query  = Session()
-    ```
-
-=== "Matlab"
-
-    ``` matlab
-    query = Session;
-    ```
+``` python
+query  = Session()
+```
 
 More generally, a query object may be formed as a **query expression**
 constructed by applying [operators](./operators.md) to other query objects.
@@ -28,35 +20,19 @@ constructed by applying [operators](./operators.md) to other query objects.
 For example, the following query retrieves information about all
 experiments and scans for mouse 001:
 
-=== "Python"
+``` python
+query = Session * Scan & 'animal_id = 001'
+```
 
-    ``` python
-    query = Session * Scan & 'animal_id = 001'
-    ```
-
-    Note that for brevity, query operators can be applied directly to class, as
-    `Session` instead of `Session()`.
-
-=== "Matlab"
-
-    ``` matlab
-    query = Session * Scan & 'animal_id = 001';
-    ```
+Note that for brevity, query operators can be applied directly to class, as
+`Session` instead of `Session()`.
 
 Alternatively, we could query all scans with a sample rate over 1000, and preview the
 contents of the query simply displaying the object. 
 
-=== "Python"
-
-    ``` python
-    Scan & 'sample_rate > 1000'
-    ```
-
-=== "Matlab"
-
-    ``` matlab
-    Session * Scan & 'sample_rate > 1000';
-    ```
+``` python
+Scan & 'sample_rate > 1000'
+```
 
 The above command shows the following table:
 
@@ -81,25 +57,13 @@ Once the desired query object is formed, the query can be executed using its [fe
 (./fetch) methods. To **fetch** means to transfer the data represented by the query
 object from the database server into the workspace of the host language.
 
-=== "Python"
-    
-    ```python
-    query = Scan & 'sample_rate > 1000'
-    s = query.fetch()
-    ```
+```python
+query = Scan & 'sample_rate > 1000'
+s = query.fetch()
+```
 
-    Here fetching from the `query` object produces the NumPy record array
-    `s` of the queried data.
-
-=== "Matlab"
-
-    ``` matlab
-    query = Session * Scan & 'sample_rate > 1000';
-    s = query.fetch();
-    ```
-
-    Here fetching from the `query` object produces the struct array `s` of
-    the queried data.
+Here fetching from the `query` object produces the NumPy record array
+`s` of the queried data.
 
 ## Checking for entities
 
@@ -109,31 +73,16 @@ returned. It can be useful to know the number of entities returned by a query, o
 whether a query will return any entities at all, without having to fetch all the data
 themselves.
 
-=== "Python"
+The `bool` function applied to a query object evaluates to `True` if the
+query returns any entities and to `False` if the query result is empty.
 
-    The `bool` function applied to a query object evaluates to `True` if the
-    query returns any entities and to `False` if the query result is empty.
+The `len` function applied to a query object determines the number of
+entities returned by the query.
 
-    The `len` function applied to a query object determines the number of
-    entities returned by the query.
-
-    ``` python
-    # number of sessions since the start of 2018.
-    n = len(Session & 'session_date >= "2018-01-01"')
-    ```
-
-=== "Matlab"
-
-    The `exists` method applied to a query object evaluates to `true` if the
-    query returns any entities and to `false` if the query result is empty.
-
-    The `count` method applied to a query object determines the number of
-    entities returned by the query.
-
-    ``` matlab
-    % number of ephys sessions since the start of 2018.
-    n = count(ephys.Session & 'session_date >= "2018-01-01"')
-    ```
+``` python
+# number of sessions since the start of 2018.
+n = len(Session & 'session_date >= "2018-01-01"')
+```
 
 ## Normalization in queries
 

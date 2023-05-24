@@ -32,9 +32,7 @@ Lookup tables contain basic facts that are not specific to an experiment and are
 persistent. In GUIs, lookup tables are often used for drop-down menus or radio buttons.
 In Computed tables, the contents of Lookup tables are often used to specify alternative
 methods for computations. Unlike Manual tables, Lookup tables can specify contents in
-the schema definition. For syntax, please visit the 
-[Python](https://datajoint.com/docs/core/datajoint-python/) and 
-[Matlab](https://datajoint.com/docs/core/datajoint-matlab/) documentation pages.
+the schema definition.
 
 Lookup tables are especially useful for entities with many unique features. Rather than
 adding many primary keys, this information can be retrieved through an index. For an
