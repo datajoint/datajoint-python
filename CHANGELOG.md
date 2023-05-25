@@ -7,7 +7,7 @@
 - Changed - Docs to add landing page and update navigation
 - Changed - `.data` method to `.stream` in the `get()` method for S3 (external) objects PR [#1085](https://github.com/datajoint/datajoint-python/pull/1085)
 - Fixed - Docs to rename `create_virtual_module` to `VirtualModule`
-- Added - Skeleton for docs migration
+- Added - Skeleton from `datajoint-company/datajoint-docs` repository for docs migration
 
 ### 0.14.0 -- Feb 13, 2023
 - Added - `json` data type ([#245](https://github.com/datajoint/datajoint-python/issues/245)) PR [#1051](https://github.com/datajoint/datajoint-python/pull/1051)
