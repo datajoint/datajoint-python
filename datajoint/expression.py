@@ -974,9 +974,8 @@ def _flatten_attribute_list(primary_key, attrs):
         if re.match(r"^\s*KEY(\s+[aA][Ss][Cc])?\s*$", a):
             if primary_key:
                 yield from primary_key
-            else:
-                continue
         elif re.match(r"^\s*KEY\s+[Dd][Ee][Ss][Cc]\s*$", a):
-            yield from (q + " DESC" for q in primary_key)
+            if primary_key:
+                yield from (q + " DESC" for q in primary_key)
         else:
             yield a
