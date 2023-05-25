@@ -6,20 +6,72 @@ repo_name: datajoint/datajoint-python
 nav:
   - DataJoint Python: index.md
   - Getting Started: getting-started/index.md
-  - Existing Pipelines: concepts/existing-pipelines.md
-  - Query Language:
-      - Common Commands: query-lang/common-commands.md
-      - Operators: query-lang/operators.md
-      - Iteration: query-lang/iteration.md
-      - Query Caching: query-lang/query-caching.md
+  - Concepts: 
+    - Principles: concepts/principles.md
+    - Glossary: concepts/glossary.md
+  - System Administration: 
+    - Database Administration: sysadmin/dba.md
+    - File Storage: sysadmin/filestore.md
+  - Client Configuration: 
+    - Install: client/install.md
+    - Credentials: client/creds.md
+    - Settings: client/settings.md
+    - File Stores: client/stores.md
+  - Schema Design:
+    - Schema Creation: design/schema.md
+    - Table Definition:
+      - Table Tiers: design/tables/tiers.md
+      - Declaration Syntax: design/tables/declare.md
+      - Primary Key: design/tables/primary.md
+      - Attributes: design/tables/attributes.md
+      - Lookup Tables: design/tables/lookup.md
+      - Blobs: design/tables/blobs.md
+      - Attachments: design/tables/attach.md
+      - Filepaths: design/tables/filepath.md
+      - Custom Datatypes: design/tables/customtype.md
+      - Dependencies: design/tables/dependencies.md
+      - Indexes: design/tables/indexes.md
+      - Master-Part Relationships: design/tables/master-part.md
+    - Schema Diagrams: design/diagrams.md
+    - Entity Normalization: design/normalization.md 
+    - Data Integrity: design/integrity.md
+    - Schema Recall: design/recall.md
+    - Schema Drop: design/drop.md
+    - Schema Modification: design/alter.md
+  - Data Manipulations:
+    - Insert: manipulation/insert.md
+    - Delete: manipulation/delete.md
+    - Update: manipulation/update.md
+    - Transactions: manipulation/transactions.md
+  - Data Queries:
+    - Common Commands: query/common-commands.md
+    - Fetch: query/fetch.md
+    - Iteration: query/iteration.md
+    - Operators: query/operators.md
+    - Restrict: query/restrict.md
+    - Projection: query/project.md
+    - Join: query/join.md
+    - Aggregation: query/aggregation.md
+    - Union: query/union.md
+    - Universal Sets: query/universals.md
+    - Query Caching: query/query-caching.md
+  - Computations:
+    - Make Method: compute/make.md
+    - Populate: compute/populate.md
+    - Key Source: compute/key-source.md
+    - Distributed Computing: compute/distributed.md
+  - Internals:
+    - SQL Transpilation: internal/transpilation.md
   - Reproducibility:
       - Table Tiers: reproduce/table-tiers.md
       - Make Method: reproduce/make-method.md
+  - Existing Pipelines: existing-pipelines.md
   - Tutorials:
       - tutorials/json.ipynb
+  - FAQ: faq.md
   - Develop: develop.md
   - Citation: citation.md
-  - Changelog: about/changelog.md
+  - Changelog: changelog.md
   - API: api/ # defer to gen-files + literate-nav
 
 # ---------------------------- STANDARD -----------------------------
