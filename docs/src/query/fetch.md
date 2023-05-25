@@ -86,7 +86,7 @@ n = len(Session & 'session_date >= "2018-01-01"')
 
 ## Normalization in queries
 
-Query objects adhere to entity [entity normalization](../normalization). The result of a
+Query objects adhere to entity [entity normalization](../design/normalization). The result of a
 query will include the uniquely defining attributes jointly distinguish any two
-entities from each other. The query [operators](../operators) are designed to keep the
+entities from each other. The query [operators](./operators) are designed to keep the
 result normalized even in complex query expressions.
