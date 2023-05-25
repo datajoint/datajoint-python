@@ -4,6 +4,7 @@ import inspect
 import re
 import itertools
 import collections
+import pandas as pd
 from .connection import conn
 from .diagram import Diagram, _get_tier
 from .settings import config
@@ -14,6 +15,7 @@ from .heading import Heading
 from .utils import user_choice, to_camel_case
 from .user_tables import Part, Computed, Imported, Manual, Lookup
 from .table import lookup_class_name, Log, FreeTable
+from .expression import U
 import types
 
 logger = logging.getLogger(__name__.split(".")[0])
@@ -488,6 +490,51 @@ class Schema:
             )
             if d == self.database
         ]
+
+    def progress(self):
+        """
+        Function to retrieve the processing status of this schema
+        Return a dataframe with all Imported/Computed tables, and their corresponding processing status:
+            + total - number of entries in key_source
+            + in queue - subset of the key_source that is not yet populated
+            + reserved - number of reserved jobs
+            + error - number of error jobs
+            + ignore - number of ignore jobs
+            + remaining - number of remaining jobs to be worked on
+        (note: tables not topologically sorted)
+        :return: pandas DataFrame of the table's progress
+        """
+        # get job status from jobs table
+        job_status = {status: U('table_name').aggr(
+            self.jobs & f'status = "{status}"',
+            **{status: 'count(table_name)'}).fetch(format='frame')
+                         for status in ('reserved', 'error', 'ignore')}
+        # get imported/computed tables
+        _tables = {}
+        self.spawn_missing_classes(context=_tables)
+        process_tables = {process.table_name: process
+                          for process in _tables.values() if process.table_name.startswith('_')}
+        # analyse progress of the schema
+        schema_progress = pd.DataFrame(list(process_tables), columns=['table_name'])
+        schema_progress.set_index('table_name', inplace=True)
+
+        schema_progress['total'] = [len(process_tables[t].key_source)
+                                    for t in schema_progress.index]
+        schema_progress['in_queue'] = [len(process_tables[t].key_source
+                                           - process_tables[t].proj())
+                                       for t in schema_progress.index]
+
+        schema_progress = schema_progress.join(job_status['reserved'].join(
+            job_status['error'], how='outer').join(
+            job_status['ignore'], how='outer'), how='left')
+        schema_progress.fillna(0, inplace=True)
+
+        schema_progress['remaining'] = (schema_progress.in_queue
+                                        - schema_progress.reserved
+                                        - schema_progress.error
+                                        - schema_progress.ignore)
+
+        return schema_progress
 
 
 class VirtualModule(types.ModuleType):

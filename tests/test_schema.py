@@ -1,5 +1,6 @@
 from nose.tools import assert_false, assert_true, raises
 import datajoint as dj
+import pandas as pd
 from inspect import getmembers
 from . import schema
 from . import schema_empty
@@ -29,6 +30,48 @@ def test_schema_size_on_disk():
 def test_schema_list():
     schemas = dj.list_schemas()
     assert_true(schema.schema.database in schemas)
+
+
+def test_schema_progress():
+    expected_progress = pd.DataFrame({
+        '__error_class': {'total': 13,
+                          'in_queue': 13,
+                          'reserved': 0,
+                          'error': 0,
+                          'ignore': 0,
+                          'remaining': 13},
+        '__sig_int_table': {'total': 10,
+                            'in_queue': 10,
+                            'reserved': 0,
+                            'error': 0,
+                            'ignore': 0,
+                            'remaining': 10},
+        '__sig_term_table': {'total': 10,
+                             'in_queue': 10,
+                             'reserved': 0,
+                             'error': 0,
+                             'ignore': 0,
+                             'remaining': 10},
+        '_ephys': {'total': 0,
+                   'in_queue': 0,
+                   'reserved': 0,
+                   'error': 0,
+                   'ignore': 0,
+                   'remaining': 0},
+        '_experiment': {'total': 4,
+                        'in_queue': 4,
+                        'reserved': 0,
+                        'error': 0,
+                        'ignore': 0,
+                        'remaining': 4},
+        '_trial': {'total': 0,
+                   'in_queue': 0,
+                   'reserved': 0,
+                   'error': 0,
+                   'ignore': 0,
+                   'remaining': 0}}).T
+    schema_progress = schema.schema.progress()
+    assert expected_progress.equals(schema_progress)
 
 
 @raises(dj.errors.AccessError)
