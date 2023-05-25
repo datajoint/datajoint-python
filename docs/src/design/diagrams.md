@@ -4,12 +4,11 @@ Diagrams are a great way to visualize all or part of a pipeline and understand t
 of data. DataJoint diagrams are based on **entity relationship diagram** (ERD), with
 some minor departures fom this standard. 
 
-Here, tables are depicted as nodes and [dependencies](../dependencies) as directed edges
-between them. The `draw` method plots the graph, with many other methods (
-[Python](https://datajoint.com/docs/core/datajoint-python/latest/api/datajoint/diagram/)) to
+Here, tables are depicted as nodes and [dependencies](./tables/dependencies) as directed edges
+between them. The `draw` method plots the graph, with many other methods ([Python](https://datajoint.com/docs/core/datajoint-python/latest/api/datajoint/diagram/)) to
 save or adjust the output.
 
-Because DataJoint pipelines are directional (see [DAG](../../../glossary#dag)), the
+Because DataJoint pipelines are directional (see [DAG](../concepts/glossary#dag)), the
 tables at the top will need to be populated first, followed by those tables one step
 below and so forth until the last table is populated at the bottom of the pipeline. The
 top of the pipeline tends to be dominated by Lookup and manual tables. The middle has
@@ -22,7 +21,7 @@ DataJoint uses the following conventions:
 -   [Tables](../table-definitions) are indicated as nodes in the graph. The
     corresponding class name is indicated by each node.
 
--   [Table type](../../reproduce/table-tiers) is indicated by colors and symbols: 
+-   [Table type](./tables/tiers) is indicated by colors and symbols: 
 
     - **Lookup**: gray, rectangle or asterisk
     
@@ -34,22 +33,22 @@ DataJoint uses the following conventions:
     
     - **Part**: black dot with smaller font or black text
 
--   [Dependencies](../dependencies) indicated as edges in the graph and always
-    directed downward (see [DAG](../../glossary#dag))
+-   [Dependencies](./tables/dependencies) indicated as edges in the graph and always
+    directed downward (see [DAG](../concepts/glossary#dag))
 
 -   Dependency type is indicated by the line.
 
-    - **Solid lines**: The [foreign key](../../glossary#foreign-key) in the
-      [primary key](../../glossary#primary-key).
+    - **Solid lines**: The [foreign key](../concepts/glossary#foreign-key) in the
+      [primary key](../concepts/glossary#primary-key).
 
-    - **Dashed lines**: The [foreign key](../../glossary#foreign-key) outside the
-      [primary key](../../glossary#primary-key). 
+    - **Dashed lines**: The [foreign key](../concepts/glossary#foreign-key) outside the
+      [primary key](../concepts/glossary#primary-key). 
 
-    - **Thick line**: The [foreign key](../../glossary#foreign-key) the only item in
-      the [primary key](../../glossary#primary-key). This is a 1-to-1 relationship.
+    - **Thick line**: The [foreign key](../concepts/glossary#foreign-key) the only item in
+      the [primary key](../concepts/glossary#primary-key). This is a 1-to-1 relationship.
 
-    - **Dot on the line**: The [foreign key](../../glossary#foreign-key) was renamed
-      via the [projection](../../query-lang/operators#proj)
+    - **Dot on the line**: The [foreign key](../concepts/glossary#foreign-key) was renamed
+      via the [projection](../query/operators#proj)
 
 ## Example
 
