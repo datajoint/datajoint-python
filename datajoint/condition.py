@@ -2,7 +2,6 @@
 
 import inspect
 import collections
-import logging
 import re
 import uuid
 import datetime
@@ -13,8 +12,6 @@ import json
 from .errors import DataJointError
 from typing import Union, List
 from dataclasses import dataclass
-
-logger = logging.getLogger(__name__.split(".")[0])
 
 JSON_PATTERN = re.compile(
     r"^(?P<attr>\w+)(\.(?P<path>[\w.*\[\]]+))?(:(?P<type>[\w(,\s)]+))?$"
