@@ -87,7 +87,7 @@ process as one transaction. Either (a) all data are inserted/committed or delete
 appear in the database.
 
 As an example, Element Calcium Imaging features a *MotionCorrection* computed table
-segmenting an image into masks. The resulting correctoion is inseparable from the rigid
+segmenting an image into masks. The resulting correction is inseparable from the rigid
 and nonrigid correction parameters that it produces, with
 *MotionCorrection.RigidMotionCorrection* and *MotionCorrection.NonRigidMotionCorrection*
  part tables. 
@@ -113,5 +113,5 @@ visual stimulus information.
 
 For more information on table dependencies and diagrams, see their respective articles:
 
-- [Dependencies](../../getting-started/dependencies)
-- [Diagrams](../../getting-started/diagrams)
+- [Dependencies](./dependencies)
+- [Diagrams](../diagrams)
