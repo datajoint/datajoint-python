@@ -128,10 +128,6 @@ class QueryExpression:
         order_by = self._top.order_by
         offset = self._top.offset
 
-        # if 'order_by' passed in a string, make into list
-        if isinstance(order_by, str):
-            order_by = [order_by]
-
         clause = (
             (
                 " ORDER BY "

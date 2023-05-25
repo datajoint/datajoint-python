@@ -539,11 +539,13 @@ class TestRelational:
             L() & dj.Top(order_by=1)
         with assert_raises(TypeError) as err5:
             L() & dj.Top(offset="1")
-        assert "Invalid restriction type Top(limit=1, order_by='KEY', offset=0)" == str(
-            err1.exception
+        assert (
+            "Invalid restriction type Top(limit=1, order_by=['KEY'], offset=0)"
+            == str(err1.exception)
         )
-        assert "Invalid restriction type Top(limit=1, order_by='KEY', offset=0)" == str(
-            err2.exception
+        assert (
+            "Invalid restriction type Top(limit=1, order_by=['KEY'], offset=0)"
+            == str(err2.exception)
         )
         assert "Top limit must be an integer" == str(err3.exception)
         assert "Top order_by attributes must all be strings" == str(err4.exception)
