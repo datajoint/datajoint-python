@@ -2,7 +2,7 @@
 
 [Data queries](../query-objs) make use of operators to derive the desired table. They
 represent the desired data symbolically, but do not contain any data. Once a query is
-formed, we can [fetch](../common-commands#fetch) the data into the local workspace. Since
+formed, we can [fetch](./common-commands#fetch) the data into the local workspace. Since
 the expressions are only symbolic, repeated `fetch` calls may yield different results as
 the state of the database is modified.
 
@@ -50,7 +50,7 @@ In order for these operators to be applied to tables, they must also be
 <span id="join-compatible">**join-compatible**</span>, which means that:
 
 1.  All fields in both tables must be part of either the 
-[primary key](../../../glossary#primary-key) or a [foreign key](../../../glossary#foreign-key).
+[primary key](../concepts/glossary#primary-key) or a [foreign key](../concepts/glossary#foreign-key).
 
 2.  All common fields must be of a compatible datatype for equality comparisons.
 
@@ -65,23 +65,23 @@ In order for these operators to be applied to tables, they must also be
 
 The Join operator `A * B` combines the matching information in `A` and `B`. The result
 contains all matching combinations of entities from both arguments, including all
-unique [primary keys](../../../glossary#primary-key) from both arguments. 
+unique [primary keys](../concepts/glossary#primary-key) from both arguments. 
 
 In the example below, we look at the union of (A) a table pairing sessions with users
 and (B) a table pairing sessions with scan. 
 
 <figure markdown>
-![Join example](../../../images/concepts-operators-join1.png){: style="height:200px"}
+![Join example](../images/concepts-operators-join1.png){: style="height:200px"}
 </figure>
 
 This has all the primary keys of both tables (a union thereof, shown in bold) as well as
-all [secondary attributes](../../../glossary#seconday-attribute) (i.e., user and
+all [secondary attributes](../concepts/glossary#seconday-attribute) (i.e., user and
 duration). This also excludes the session for which we don't have a scan.
 
 We can also join based on secondary attributes, as shown in the example below.
 
 <figure markdown>
-![Join example](../../../images/concepts-operators-join2.png){: style="height:200px"}
+![Join example](../images/concepts-operators-join2.png){: style="height:200px"}
 </figure>
 
 ??? notes "Additional join properties" 
@@ -131,7 +131,7 @@ The `proj` operator represents **projection** and is used to select attributes
 (columns) from a table, to rename them, or to create new calculated attributes.
 
 1. A simple projection *selects a subset of attributes* of the original
-table, which may not include the [primary key](../../../glossary#primary-key).
+table, which may not include the [primary key](../concepts/glossary#primary-key).
 
 2. A more complex projection *renames an attribute* in another table. This could be
 useful when one table should be referenced multiple times in another. A user table,
@@ -156,8 +156,8 @@ and others.
 
 The result of the union operator `A + B` contains all the entities from both operands. 
 
-[Entity normalization](../normalization) requires that `A` and `B` are of the same type,
-with with the same [primary key](../../../glossary#primary-key), using homologous
+[Entity normalization](../design/normalization) requires that `A` and `B` are of the same type,
+with with the same [primary key](../concepts/glossary#primary-key), using homologous
 attributes. Without secondary attributes, the result is the simple set union. With
 secondary attributes, they must have the same names and datatypes. The two operands
 must also be **disjoint**, without any duplicate primary key values across both inputs.
@@ -214,7 +214,7 @@ Universal sets should be used sparingly when no suitable base tables already exi
 some cases, defining a new base table can make queries clearer and more semantically
 constrained.
 
-The examples below will use the table definitions in [table tiers](../../reproduce/table-tiers).
+The examples below will use the table definitions in [table tiers](../reproduce/table-tiers).
 
 <!-- ## Join appears here in the general docs -->
 
@@ -224,7 +224,7 @@ The examples below will use the table definitions in [table tiers](../../reprodu
 
 ### By a mapping
 
-For a [Session table](../../reproduce/table-tiers#manual-tables), that has the attribute
+For a [Session table](../reproduce/table-tiers#manual-tables), that has the attribute
 `session_date`, we can restrict to sessions from January 1st, 2022:
 
 ```python
