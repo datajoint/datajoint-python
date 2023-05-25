@@ -129,12 +129,12 @@ class QueryExpression:
         offset = self._top.offset
 
         clause = (
-            (
+            ""
+            if not self.primary_key and order_by == ["KEY"]
+            else (
                 " ORDER BY "
                 + ", ".join(_flatten_attribute_list(self.primary_key, order_by))
             )
-            if self.primary_key
-            else ""
         )
         if limit is not None:
             clause += " LIMIT %d" % limit + (" OFFSET %d" % offset if offset else "")
@@ -968,11 +968,14 @@ def _flatten_attribute_list(primary_key, attrs):
     """
     :param primary_key: list of attributes in primary key
     :param attrs: list of attribute names, which may include "KEY", "KEY DESC" or "KEY ASC"
-    :return: generator of attributes where "KEY" is replaces with its component attributes
+    :return: generator of attributes where "KEY" is replaced with its component attributes
     """
     for a in attrs:
         if re.match(r"^\s*KEY(\s+[aA][Ss][Cc])?\s*$", a):
-            yield from primary_key
+            if primary_key:
+                yield from primary_key
+            else:
+                continue
         elif re.match(r"^\s*KEY\s+[Dd][Ee][Ss][Cc]\s*$", a):
             yield from (q + " DESC" for q in primary_key)
         else:
