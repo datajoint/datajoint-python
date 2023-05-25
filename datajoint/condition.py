@@ -89,9 +89,7 @@ class Top:
         if self.offset and self.limit is None:
             self.limit = 999999999999  # arbitrary large number to allow query
         if isinstance(self.order_by, str):
-            self.order_by = [
-                self.order_by
-            ]  # if 'order_by' passed in a string, make into list
+            self.order_by = [self.order_by]
 
 
 class Not:
