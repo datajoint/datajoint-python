@@ -89,7 +89,8 @@ services:
         pip install --user nose nose-cov
         pip install -e .
         pip list --format=freeze | grep datajoint
-        nosetests -vsw tests --with-coverage --cover-package=datajoint
+        pytest -sv --cov-report term-missing --cov=datajoint tests
+        nosetests -vsw tests_old --with-coverage --cover-package=datajoint
     # ports:
     #   - "8888:8888"
     user: ${HOST_UID}:anaconda

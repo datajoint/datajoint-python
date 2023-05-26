@@ -8,9 +8,7 @@ import logging
 logger = logging.getLogger(__name__.split(".")[0])
 
 
-def set_password(
-    new_password=None, connection=None, update_config=None
-):  # pragma: no cover
+def set_password(new_password=None, connection=None, update_config=None):
     connection = conn() if connection is None else connection
     if new_password is None:
         new_password = getpass("New password: ")
@@ -28,7 +26,7 @@ def set_password(
         config.save_local(verbose=True)
 
 
-def kill(restriction=None, connection=None, order_by=None):  # pragma: no cover
+def kill(restriction=None, connection=None, order_by=None):
     """
     view and kill database connections.
 

@@ -11,5 +11,11 @@
     "[markdown]": {
         "editor.defaultFormatter": "disable"
     },
+    "[yaml]": {
+        "editor.defaultFormatter": "disable"
+    },
+    "[dockercompose]": {
+        "editor.defaultFormatter": "disable"
+    },
     "files.autoSave": "off"
 }
