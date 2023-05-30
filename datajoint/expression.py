@@ -126,12 +126,7 @@ class QueryExpression:
             return ""
         clause = (
             ""
-            if not self.primary_key
-            and all(
-                re.match(r"^\s*KEY(\s+[aA][Ss][Cc])?\s*$", a)
-                or re.match(r"^\s*KEY\s+[Dd][Ee][Ss][Cc]\s*$", a)
-                for a in self._top.order_by
-            )
+            if not any(_flatten_attribute_list(self.primary_key, self._top.order_by))
             else f" ORDER BY \
                 {', '.join(_flatten_attribute_list(self.primary_key, self._top.order_by))}"
         )
