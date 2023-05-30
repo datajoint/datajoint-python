@@ -124,10 +124,6 @@ class QueryExpression:
     def sorting_clauses(self):
         if not self._top:
             return ""
-        limit = self._top.limit
-        order_by = self._top.order_by
-        offset = self._top.offset
-
         clause = (
             ""
             if not self.primary_key and order_by == ["KEY"]
@@ -135,9 +131,13 @@ class QueryExpression:
                 " ORDER BY "
                 + ", ".join(_flatten_attribute_list(self.primary_key, order_by))
             )
+            else f" ORDER BY \
+                {', '.join(_flatten_attribute_list(self.primary_key, self._top.order_by))}"
         )
-        if limit is not None:
-            clause += " LIMIT %d" % limit + (" OFFSET %d" % offset if offset else "")
+        if self._top.limit is not None:
+            clause += f" LIMIT {self._top.limit} \
+                {f' OFFSET {self._top.offset}' if self._top.offset else ''}"
+
         return clause
 
     def make_sql(self, fields=None):
@@ -739,7 +739,7 @@ class Aggregation(QueryExpression):
                     + (
                         ""
                         if not self.restriction
-                        else " HAVING (%s)" % ")AND(".join(self.restriction)
+                        else f" HAVING ({')AND('.join(self.restriction)})"
                     )
                 ),
                 sorting=self.sorting_clauses(),
