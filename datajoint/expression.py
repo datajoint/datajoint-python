@@ -124,12 +124,11 @@ class QueryExpression:
     def sorting_clauses(self):
         if not self._top:
             return ""
-        clause = (
-            ""
-            if not any(_flatten_attribute_list(self.primary_key, self._top.order_by))
-            else f" ORDER BY \
-                {', '.join(_flatten_attribute_list(self.primary_key, self._top.order_by))}"
+        clause = ", ".join(
+            _flatten_attribute_list(self.primary_key, self._top.order_by)
         )
+        if clause:
+            clause = f" ORDER BY {clause}"
         if self._top.limit is not None:
             clause += f" LIMIT {self._top.limit} \
                 {f' OFFSET {self._top.offset}' if self._top.offset else ''}"
