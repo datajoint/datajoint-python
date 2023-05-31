@@ -714,6 +714,8 @@ class Table(QueryExpression):
             if in_key and not attr.in_key:
                 definition += "---\n"
                 in_key = False
+            if attr.is_hidden:
+                continue
             attributes_thus_far.add(attr.name)
             do_include = True
             for parent_name, fk_props in parents:

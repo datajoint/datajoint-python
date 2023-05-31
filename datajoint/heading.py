@@ -33,6 +33,7 @@ default_attribute_properties = (
         is_attachment=False,
         is_filepath=False,
         is_external=False,
+        is_hidden=True,
         adapter=None,
         store=None,
         unsupported=False,
@@ -298,6 +299,7 @@ class Heading:
                 store=None,
                 is_external=False,
                 attribute_expression=None,
+                is_hidden=attr["name"].startswith("_"),
             )
 
             if any(TYPE_PATTERN[t].match(attr["type"]) for t in ("INTEGER", "FLOAT")):
