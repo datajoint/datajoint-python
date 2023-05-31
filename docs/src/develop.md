@@ -39,15 +39,24 @@ The following will verify there are no regression errors by running our test sui
 
 - Entire test suite:
   ```
-  nosetests -vw tests
+  nosetests -vw tests_old
   ```
+  > Note: We are in the process of upgrading to `pytest` tests. To run those, use:
+  > ```
+  > pytest -sv --cov-report term-missing --cov=datajoint tests
+  > ```
+
 - A single functional test:
   ```
-  nosetests -vs --tests=tests.test_external_class:test_insert_and_fetch
+  nosetests -vs --tests=tests_old.test_external_class:test_insert_and_fetch
   ```
+  > Note: We are in the process of upgrading to `pytest` tests. To run those, use:
+  > ```
+  > pytest -sv tests/test_connection.py::test_dj_conn
+  > ```
 - A single class test:
   ```
-  nosetests -vs --tests=tests.test_fetch:TestFetch.test_getattribute_for_fetch1
+  nosetests -vs --tests=tests_old.test_fetch:TestFetch.test_getattribute_for_fetch1
   ```
 
 ### Style Tests
