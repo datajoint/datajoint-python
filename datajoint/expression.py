@@ -964,6 +964,53 @@ def _flatten_attribute_list(primary_key, attrs):
     :param attrs: list of attribute names, which may include "KEY", "KEY DESC" or "KEY ASC"
     :return: generator of attributes where "KEY" is replaced with its component attributes
     """
+    sql_keywords = [
+        "SELECT",
+        "FROM",
+        "WHERE",
+        "AND",
+        "OR",
+        "INSERT",
+        "INTO",
+        "VALUES",
+        "UPDATE",
+        "SET",
+        "DELETE",
+        "CREATE",
+        "TABLE",
+        "ALTER",
+        "DROP",
+        "INDEX",
+        "JOIN",
+        "LEFT",
+        "RIGHT",
+        "INNER",
+        "OUTER",
+        "UNION",
+        "GROUP",
+        "BY",
+        "HAVING",
+        "ORDER",
+        "ASC",
+        "DESC",
+        "LIMIT",
+        "OFFSET",
+        "DISTINCT",
+        "CASE",
+        "WHEN",
+        "THEN",
+        "ELSE",
+        "END",
+        "NULL",
+        "NOT",
+        "IN",
+        "LIKE",
+        "KEY",
+    ]
+    keyword_pattern = (
+        r"\b(" + "|".join(re.escape(keyword) for keyword in sql_keywords) + r")\b"
+    )
+
     for a in attrs:
         if re.match(r"^\s*KEY(\s+[aA][Ss][Cc])?\s*$", a):
             if primary_key:
@@ -971,5 +1018,7 @@ def _flatten_attribute_list(primary_key, attrs):
         elif re.match(r"^\s*KEY\s+[Dd][Ee][Ss][Cc]\s*$", a):
             if primary_key:
                 yield from (q + " DESC" for q in primary_key)
+        elif re.match(keyword_pattern, a, re.I):
+            yield f"`{a}`"
         else:
             yield a
