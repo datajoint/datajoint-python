@@ -225,8 +225,13 @@ class Fetch:
             squeeze=squeeze,
             download_path=download_path,
         )
+        heading = self._expression.heading
         if attrs:  # a list of attributes provided
-            attributes = [a for a in attrs if not is_key(a)]
+            attributes = [
+                a
+                for a in attrs
+                if not is_key(a) and not heading.attributes[a].is_hidden
+            ]
             ret = self._expression.proj(*attributes)
             ret = ret.fetch(
                 offset=offset,
@@ -239,7 +244,12 @@ class Fetch:
             )
             if attrs_as_dict:
                 ret = [
-                    {k: v for k, v in zip(ret.dtype.names, x) if k in attrs}
+                    {
+                        k: v
+                        for k, v in zip(ret.dtype.names, x)
+                        if k in attrs
+                        if not heading.attributes[k].is_hidden
+                    }
                     for x in ret
                 ]
             else:
@@ -252,16 +262,20 @@ class Fetch:
                     if is_key(attribute)
                     else ret[attribute]
                     for attribute in attrs
+                    if not heading.attributes[attribute].is_hidden
                 ]
                 ret = return_values[0] if len(attrs) == 1 else return_values
         else:  # fetch all attributes as a numpy.record_array or pandas.DataFrame
             cur = self._expression.cursor(
                 as_dict=as_dict, limit=limit, offset=offset, order_by=order_by
             )
-            heading = self._expression.heading
             if as_dict:
                 ret = [
-                    dict((name, get(heading[name], d[name])) for name in heading.names)
+                    dict(
+                        (name, get(heading[name], d[name]))
+                        for name in heading.names
+                        if not heading.attributes[name].is_hidden
+                    )
                     for d in cur
                 ]
             else:
