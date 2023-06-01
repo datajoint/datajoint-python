@@ -227,11 +227,7 @@ class Fetch:
         )
         heading = self._expression.heading
         if attrs:  # a list of attributes provided
-            attributes = [
-                a
-                for a in attrs
-                if not is_key(a) and not heading.attributes[a].is_hidden
-            ]
+            attributes = [a for a in attrs if not is_key(a)]
             ret = self._expression.proj(*attributes)
             ret = ret.fetch(
                 offset=offset,
