@@ -978,6 +978,5 @@ def _flatten_attribute_list(primary_key, attrs):
 
 
 def _wrap_attributes(attr):
-    for entry in attr:
-        wrapped_entry = re.sub(r"\b((?!asc|desc)\w+)\b", r"`\1`", entry, re.IGNORECASE)
-        yield wrapped_entry  # wrap attribute names in backquotes
+    for entry in attr:  # wrap attribute names in backquotes
+        yield re.sub(r"\b((?!asc|desc)\w+)\b", r"`\1`", entry, flags=re.IGNORECASE)
