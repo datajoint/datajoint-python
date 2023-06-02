@@ -263,19 +263,18 @@ class Fetch:
                 ret = return_values[0] if len(attrs) == 1 else return_values
         else:  # fetch all attributes as a numpy.record_array or pandas.DataFrame
             cur = self._expression.cursor(
-                as_dict=as_dict, limit=limit, offset=offset, order_by=order_by
+                as_dict=True, limit=limit, offset=offset, order_by=order_by
             )
-            if as_dict:
-                ret = [
-                    dict(
-                        (name, get(heading[name], d[name]))
-                        for name in heading.names
-                        if not heading.attributes[name].is_hidden
-                    )
-                    for d in cur
-                ]
-            else:
-                ret = list(cur.fetchall())
+            ret = [
+                dict(
+                    (name, get(heading[name], d[name]))
+                    for name in heading.names
+                    if not heading.attributes[name].is_hidden
+                )
+                for d in cur
+            ]
+            if not as_dict:
+                ret = [tuple(d.values()) for d in ret]
                 record_type = (
                     heading.as_dtype
                     if not ret
@@ -298,7 +297,8 @@ class Fetch:
                     raise e
                 for name in heading:
                     # unpack blobs and externals
-                    ret[name] = list(map(partial(get, heading[name]), ret[name]))
+                    if name in ret:
+                        ret[name] = list(map(partial(get, heading[name]), ret[name]))
                 if format == "frame":
                     ret = pandas.DataFrame(ret).set_index(heading.primary_key)
         return ret
