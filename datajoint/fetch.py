@@ -287,7 +287,14 @@ class Fetch:
                             if heading[name].is_blob
                             and isinstance(value, numbers.Number)
                             else (name, heading.as_dtype[name])
-                            for value, name in zip(ret[0], heading.as_dtype.names)
+                            for value, name in zip(
+                                ret[0],
+                                [
+                                    name
+                                    for name in heading.as_dtype.names
+                                    if not heading.attributes[name].is_hidden
+                                ],
+                            )
                         ]
                     )
                 )
@@ -297,7 +304,7 @@ class Fetch:
                     raise e
                 for name in heading:
                     # unpack blobs and externals
-                    if name in ret:
+                    if name in ret.dtype.names:
                         ret[name] = list(map(partial(get, heading[name]), ret[name]))
                 if format == "frame":
                     ret = pandas.DataFrame(ret).set_index(heading.primary_key)
