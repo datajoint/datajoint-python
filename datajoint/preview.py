@@ -25,19 +25,35 @@ def preview(query_expression, limit, width):
             width,
         )
         for f in columns
+        if not rel.heading.attributes[f].is_hidden
     }
-    templates = {f: "%%-%d.%ds" % (widths[f], widths[f]) for f in columns}
+    templates = {
+        f: "%%-%d.%ds" % (widths[f], widths[f])
+        for f in columns
+        if not rel.heading.attributes[f].is_hidden
+    }
     return (
         " ".join(
-            [templates[f] % ("*" + f if f in rel.primary_key else f) for f in columns]
+            [
+                templates[f] % ("*" + f if f in rel.primary_key else f)
+                for f in columns
+                if not rel.heading.attributes[f].is_hidden
+            ]
         )
         + "\n"
-        + " ".join(["+" + "-" * (widths[column] - 2) + "+" for column in columns])
+        + " ".join(
+            [
+                "+" + "-" * (widths[column] - 2) + "+"
+                for column in columns
+                if not rel.heading.attributes[column].is_hidden
+            ]
+        )
         + "\n"
         + "\n".join(
             " ".join(
                 templates[f] % (tup[f] if f in tup.dtype.names else "=BLOB=")
                 for f in columns
+                if not rel.heading.attributes[f].is_hidden
             )
             for tup in tuples
         )
