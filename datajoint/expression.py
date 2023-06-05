@@ -284,10 +284,29 @@ class QueryExpression:
             raise DataJointError("The argument of join must be a QueryExpression")
         if semantic_check:
             assert_join_compatibility(self, other)
-        join_attributes = set(n for n in self.heading.names if n in other.heading.names)
+        join_attributes = set(
+            n
+            for n in self.heading.names
+            if n in other.heading.names and not self.heading.attributes[n].is_hidden
+        )
         # needs subquery if self's FROM clause has common attributes with other's FROM clause
         need_subquery1 = need_subquery2 = bool(
-            (set(self.original_heading.names) & set(other.original_heading.names))
+            (
+                set(
+                    [
+                        n
+                        for n in self.original_heading.names
+                        if not self.original_heading.attributes[n].is_hidden
+                    ]
+                )
+                & set(
+                    [
+                        n
+                        for n in other.original_heading.names
+                        if not other.original_heading.attributes[n].is_hidden
+                    ]
+                )
+            )
             - join_attributes
         )
         # need subquery if any of the join attributes are derived
