@@ -25,6 +25,8 @@ from .schema_simple import (
     L,
     DataA,
     DataB,
+    SelectPK,
+    KeyPK,
     TTestUpdate,
     IJ,
     JI,
@@ -525,6 +527,33 @@ class TestRelational:
         assert z.fetch(as_dict=True) == [
             {"id_l": 17, "cond_in_l": 1},
             {"id_l": 20, "cond_in_l": 1},
+        ]
+
+    @staticmethod
+    def test_top_restriction_with_keywords():
+        select = SelectPK() & dj.Top(limit=9, order_by=["select desc"])
+        key = KeyPK() & dj.Top(limit=9, order_by="key desc")
+        assert select.fetch(as_dict=True) == [
+            {"id": 2, "select": 8},
+            {"id": 2, "select": 6},
+            {"id": 1, "select": 4},
+            {"id": 2, "select": 4},
+            {"id": 1, "select": 3},
+            {"id": 1, "select": 2},
+            {"id": 2, "select": 2},
+            {"id": 1, "select": 1},
+            {"id": 0, "select": 0},
+        ]
+        assert key.fetch(as_dict=True) == [
+            {"id": 2, "key": 6},
+            {"id": 2, "key": 5},
+            {"id": 1, "key": 5},
+            {"id": 0, "key": 4},
+            {"id": 1, "key": 4},
+            {"id": 2, "key": 4},
+            {"id": 0, "key": 3},
+            {"id": 1, "key": 3},
+            {"id": 2, "key": 3},
         ]
 
     @staticmethod

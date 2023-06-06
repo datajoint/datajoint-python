@@ -443,9 +443,13 @@ def compile_index(line, index_sql):
             return f"`{attr}`"
         return f"({attr})"
 
-    match = re.match(
-        r"(?P<unique>unique\s+)?index\s*\(\s*(?P<args>.*)\)", line, re.I
-    ).groupdict()
+    try:
+        match = re.match(
+            r"(?P<unique>unique\s+)?index\s*\(\s*(?P<args>.*)\)", line, re.I
+        ).groupdict()
+    except AttributeError:
+        raise DataJointError(f'Table definition syntax error in line "{line}"')
+
     attr_list = re.findall(r"(?:[^,(]|\([^)]*\))+", match["args"])
     index_sql.append(
         "{unique}index ({attrs})".format(
