@@ -480,21 +480,25 @@ class Heading:
         It assumes that self and other are headings that share no common dependent attributes.
         """
         return Heading(
-            [self.attributes[name].todict() for name in self.primary_key]
+            [
+                self.attributes[name].todict()
+                for name in self.primary_key
+                if not self.attributes[name].is_hidden
+            ]
             + [
                 other.attributes[name].todict()
                 for name in other.primary_key
-                if name not in self.primary_key
+                if name not in self.primary_key and not other.attributes[name].is_hidden
             ]
             + [
                 self.attributes[name].todict()
                 for name in self.secondary_attributes
-                if name not in other.primary_key
+                if name not in other.primary_key and not self.attributes[name].is_hidden
             ]
             + [
                 other.attributes[name].todict()
                 for name in other.secondary_attributes
-                if name not in self.primary_key
+                if name not in self.primary_key and not other.attributes[name].is_hidden
             ]
         )
 
