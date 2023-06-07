@@ -1,0 +1,2564 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../iteration/">
+      
+      
+        <link rel="next" href="../restrict/">
+      
+      <link rel="icon" href="../../assets/images/company-logo-blue.png">
+      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.15">
+    
+    
+      
+        <title>Operators - DataJoint Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.26e3688c.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ecc896b0.min.css">
+      
+      
+
+    
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto+Slab:300,300i,400,400i,700,700i%7CSource+Code+Pro:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto Slab";--md-code-font:"Source Code Pro"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="datajoint" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&"object"==typeof palette.color)for(var key of Object.keys(palette.color))document.body.setAttribute("data-md-color-"+key,palette.color[key])</script>
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#operators" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="DataJoint Documentation" class="md-header__button md-logo" aria-label="DataJoint Documentation" data-md-component="logo">
+      
+  
+  <?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 15.1.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 width="260.479px" height="365.463px" viewBox="0 0 260.479 365.463" enable-background="new 0 0 260.479 365.463"
+	 xml:space="preserve">
+<g>
+	<path d="M4.638,361.434c0,0,124.071-124.072,135.896-357.434c0,0,29.555,189.053,115.266,256.988
+		C255.799,260.988,173.038,249.174,4.638,361.434z"/>
+</g>
+</svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            DataJoint Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Operators
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+          
+            
+            
+            
+            <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="datajoint" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+            
+              <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+              </label>
+            
+          
+            
+            
+            
+            <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_2">
+            
+              <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12c0-2.42-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+              </label>
+            
+          
+        </form>
+      
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/datajoint/datajoint-python" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    datajoint/datajoint-python
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="" data-md-level="0">
+    <label class="md-nav__title" for="__drawer">
+        <a href="../.." title="DataJoint Documentation"
+            class="md-nav__button md-logo" aria-label="DataJoint Documentation" data-md-component="logo">
+            
+  
+  <?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 15.1.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 width="260.479px" height="365.463px" viewBox="0 0 260.479 365.463" enable-background="new 0 0 260.479 365.463"
+	 xml:space="preserve">
+<g>
+	<path d="M4.638,361.434c0,0,124.071-124.072,135.896-357.434c0,0,29.555,189.053,115.266,256.988
+		C255.799,260.988,173.038,249.174,4.638,361.434z"/>
+</g>
+</svg>
+
+        </a><a href="https://datajoint.com/docs/core/" title="DataJoint">
+            ⬅ Home
+        </a>
+    </label>
+    
+    <div class="md-nav__source">
+        <a href="https://github.com/datajoint/datajoint-python" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    datajoint/datajoint-python
+  </div>
+</a>
+    </div>
+    
+    <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+        
+        
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        DataJoint Python
+      </a>
+    </li>
+  
+
+        
+        
+        
+        
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        Getting Started
+      </a>
+    </li>
+  
+
+        
+        
+        
+        
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+          Concepts
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_3">
+          <span class="md-nav__icon md-icon"></span>
+          Concepts
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/principles/" class="md-nav__link">
+        Principles
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/glossary/" class="md-nav__link">
+        Glossary
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+        
+        
+        
+        
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          System Administration
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_4">
+          <span class="md-nav__icon md-icon"></span>
+          System Administration
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../sysadmin/dba/" class="md-nav__link">
+        Database Administration
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../sysadmin/filestore/" class="md-nav__link">
+        File Storage
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+        
+        
+        
+        
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          Client Configuration
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_5">
+          <span class="md-nav__icon md-icon"></span>
+          Client Configuration
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../client/install/" class="md-nav__link">
+        Install
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../client/creds/" class="md-nav__link">
+        Credentials
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../client/settings/" class="md-nav__link">
+        Settings
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../client/stores/" class="md-nav__link">
+        File Stores
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+        
+        
+        
+        
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+          Schema Design
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_6">
+          <span class="md-nav__icon md-icon"></span>
+          Schema Design
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/schema/" class="md-nav__link">
+        Schema Creation
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_2" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_6_2" id="__nav_6_2_label" tabindex="0">
+          Table Definition
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_2_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_6_2">
+          <span class="md-nav__icon md-icon"></span>
+          Table Definition
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/tables/tiers/" class="md-nav__link">
+        Table Tiers
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/tables/declare/" class="md-nav__link">
+        Declaration Syntax
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/tables/primary/" class="md-nav__link">
+        Primary Key
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/tables/attributes/" class="md-nav__link">
+        Attributes
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/tables/lookup/" class="md-nav__link">
+        Lookup Tables
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/tables/blobs/" class="md-nav__link">
+        Blobs
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/tables/attach/" class="md-nav__link">
+        Attachments
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/tables/filepath/" class="md-nav__link">
+        Filepaths
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/tables/customtype/" class="md-nav__link">
+        Custom Datatypes
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/tables/dependencies/" class="md-nav__link">
+        Dependencies
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/tables/indexes/" class="md-nav__link">
+        Indexes
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/tables/master-part/" class="md-nav__link">
+        Master-Part Relationships
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/diagrams/" class="md-nav__link">
+        Schema Diagrams
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/normalization/" class="md-nav__link">
+        Entity Normalization
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/integrity/" class="md-nav__link">
+        Data Integrity
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/recall/" class="md-nav__link">
+        Schema Recall
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/drop/" class="md-nav__link">
+        Schema Drop
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/alter/" class="md-nav__link">
+        Schema Modification
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+        
+        
+        
+        
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+          Data Manipulations
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_7">
+          <span class="md-nav__icon md-icon"></span>
+          Data Manipulations
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../manipulation/insert/" class="md-nav__link">
+        Insert
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../manipulation/delete/" class="md-nav__link">
+        Delete
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../manipulation/update/" class="md-nav__link">
+        Update
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../manipulation/transactions/" class="md-nav__link">
+        Transactions
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+        
+        
+        
+        
+
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
+      
+      
+      
+        <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+          Data Queries
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
+        <label class="md-nav__title" for="__nav_8">
+          <span class="md-nav__icon md-icon"></span>
+          Data Queries
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../common-commands/" class="md-nav__link">
+        Common Commands
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../fetch/" class="md-nav__link">
+        Fetch
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../iteration/" class="md-nav__link">
+        Iteration
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Operators
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        Operators
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#join" class="md-nav__link">
+    Join
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#restriction" class="md-nav__link">
+    Restriction
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#proj" class="md-nav__link">
+    Proj
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#aggr" class="md-nav__link">
+    Aggr
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#union" class="md-nav__link">
+    Union
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#universal-set" class="md-nav__link">
+    Universal Set
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#restriction_1" class="md-nav__link">
+    Restriction
+  </a>
+  
+    <nav class="md-nav" aria-label="Restriction">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#by-a-mapping" class="md-nav__link">
+    By a mapping
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#by-a-string" class="md-nav__link">
+    By a string
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#by-a-collection" class="md-nav__link">
+    By a collection
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#by-a-not-object" class="md-nav__link">
+    By a Not object
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#by-a-query" class="md-nav__link">
+    By a query
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#proj_1" class="md-nav__link">
+    Proj
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#aggr_1" class="md-nav__link">
+    Aggr
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#universal-set_1" class="md-nav__link">
+    Universal set
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../restrict/" class="md-nav__link">
+        Restrict
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../project/" class="md-nav__link">
+        Projection
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../join/" class="md-nav__link">
+        Join
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aggregation/" class="md-nav__link">
+        Aggregation
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../union/" class="md-nav__link">
+        Union
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../universals/" class="md-nav__link">
+        Universal Sets
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../query-caching/" class="md-nav__link">
+        Query Caching
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+        
+        
+        
+        
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+          Computations
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_9">
+          <span class="md-nav__icon md-icon"></span>
+          Computations
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../compute/make/" class="md-nav__link">
+        Make Method
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../compute/populate/" class="md-nav__link">
+        Populate
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../compute/key-source/" class="md-nav__link">
+        Key Source
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../compute/distributed/" class="md-nav__link">
+        Distributed Computing
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+        
+        
+        
+        
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
+          Internals
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_10">
+          <span class="md-nav__icon md-icon"></span>
+          Internals
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../internal/transpilation/" class="md-nav__link">
+        SQL Transpilation
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+        
+        
+        
+        
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
+          Reproducibility
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_11">
+          <span class="md-nav__icon md-icon"></span>
+          Reproducibility
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reproduce/table-tiers/" class="md-nav__link">
+        Table Tiers
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reproduce/make-method/" class="md-nav__link">
+        Make Method
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+        
+        
+        
+        
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../existing-pipelines/" class="md-nav__link">
+        Existing Pipelines
+      </a>
+    </li>
+  
+
+        
+        
+        
+        
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="0">
+          Tutorials
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_13">
+          <span class="md-nav__icon md-icon"></span>
+          Tutorials
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/json/" class="md-nav__link">
+        Using the json type
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+        
+        
+        
+        
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../faq/" class="md-nav__link">
+        FAQ
+      </a>
+    </li>
+  
+
+        
+        
+        
+        
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../develop/" class="md-nav__link">
+        Develop
+      </a>
+    </li>
+  
+
+        
+        
+        
+        
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../citation/" class="md-nav__link">
+        Citation
+      </a>
+    </li>
+  
+
+        
+        
+        
+        
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/" class="md-nav__link">
+        Changelog
+      </a>
+    </li>
+  
+
+        
+        
+        
+        
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_18" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_18" id="__nav_18_label" tabindex="0">
+          API
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_18_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_18">
+          <span class="md-nav__icon md-icon"></span>
+          API
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_18_1" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_18_1" id="__nav_18_1_label" tabindex="0">
+          datajoint
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_18_1_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_18_1">
+          <span class="md-nav__icon md-icon"></span>
+          datajoint
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/datajoint/__init__/" class="md-nav__link">
+        __init__.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/datajoint/admin/" class="md-nav__link">
+        admin.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/datajoint/attribute_adapter/" class="md-nav__link">
+        attribute_adapter.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/datajoint/autopopulate/" class="md-nav__link">
+        autopopulate.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/datajoint/blob/" class="md-nav__link">
+        blob.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/datajoint/condition/" class="md-nav__link">
+        condition.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/datajoint/connection/" class="md-nav__link">
+        connection.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/datajoint/declare/" class="md-nav__link">
+        declare.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/datajoint/dependencies/" class="md-nav__link">
+        dependencies.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/datajoint/diagram/" class="md-nav__link">
+        diagram.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/datajoint/errors/" class="md-nav__link">
+        errors.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/datajoint/expression/" class="md-nav__link">
+        expression.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/datajoint/external/" class="md-nav__link">
+        external.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/datajoint/fetch/" class="md-nav__link">
+        fetch.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/datajoint/hash/" class="md-nav__link">
+        hash.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/datajoint/heading/" class="md-nav__link">
+        heading.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/datajoint/jobs/" class="md-nav__link">
+        jobs.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/datajoint/logging/" class="md-nav__link">
+        logging.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/datajoint/plugin/" class="md-nav__link">
+        plugin.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/datajoint/preview/" class="md-nav__link">
+        preview.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/datajoint/s3/" class="md-nav__link">
+        s3.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/datajoint/schemas/" class="md-nav__link">
+        schemas.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/datajoint/settings/" class="md-nav__link">
+        settings.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/datajoint/table/" class="md-nav__link">
+        table.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/datajoint/user_tables/" class="md-nav__link">
+        user_tables.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/datajoint/utils/" class="md-nav__link">
+        utils.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/datajoint/version/" class="md-nav__link">
+        version.py
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+        
+    </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+<h1 id="operators">Operators<a class="headerlink" href="#operators" title="Permanent link">&para;</a></h1>
+<p><a href="../query-objs">Data queries</a> make use of operators to derive the desired table. They
+represent the desired data symbolically, but do not contain any data. Once a query is
+formed, we can <a href="./common-commands#fetch">fetch</a> the data into the local workspace. Since
+the expressions are only symbolic, repeated <code>fetch</code> calls may yield different results as
+the state of the database is modified.</p>
+<p>DataJoint implements a complete algebra of operators on tables:</p>
+<table>
+<thead>
+<tr>
+<th>operator</th>
+<th>notation</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="#join">join</a></td>
+<td>A * B</td>
+<td>All matching information from A and B</td>
+</tr>
+<tr>
+<td><a href="#restriction">restriction</a></td>
+<td>A &amp; cond</td>
+<td>The subset of entities from A that meet the condition</td>
+</tr>
+<tr>
+<td><a href="#restriction">restriction</a></td>
+<td>A - cond</td>
+<td>The subset of entities from A that do not meet the condition</td>
+</tr>
+<tr>
+<td><a href="#proj">proj</a></td>
+<td>A.proj(...)</td>
+<td>Selects and renames attributes from A or computes new attributes</td>
+</tr>
+<tr>
+<td><a href="#aggr">aggr</a></td>
+<td>A.aggr(B, ...)</td>
+<td>Same as projection with computations based on matching information in B</td>
+</tr>
+<tr>
+<td><a href="#union">union</a></td>
+<td>A + B</td>
+<td>All unique entities from both A and B</td>
+</tr>
+<tr>
+<td><a href="#universal-set">universal set</a>*</td>
+<td>dj.U()</td>
+<td>All unique entities from both A and B</td>
+</tr>
+</tbody>
+</table>
+<p>*While not technically a query operator, it is useful to discuss Universal Set in the 
+same context.</p>
+<details class="note">
+<summary>Notes on relational algebra</summary>
+<p>DataJoint's algebra improves upon the classical
+relational algebra and upon other query languages to simplify and enhance the
+construction and interpretation of precise and efficient data queries.</p>
+<ol>
+<li>
+<p><strong>Entity integrity</strong>: Data are represented and manipulated in the form of tables
+representing well-formed entity sets. This applies to the inputs and outputs of
+query operators. The output of a query operator is an entity set with a
+well-defined entity type, a primary key, unique attribute names, etc.</p>
+</li>
+<li>
+<p><strong>Algebraic closure</strong>: All operators operate on entity sets and yield entity
+sets. Thus query expressions may be used as operands in other expressions or may be
+assigned to variables to be used in other expressions.</p>
+</li>
+<li>
+<p><strong>Attributes are identified by names</strong>: All attributes have explicit names. This
+includes results of queries. Operators use attribute names to determine how to
+perform the operation. The order of the attributes is not significant.</p>
+</li>
+</ol>
+</details>
+<p>These operators are based on the concept of <strong>matching entities</strong>. Two
+entities <strong>match</strong> when they have no shared fields, or when their shared fields contain
+the same values. Any shared fields should have compatible datatypes to allow equality
+comparisons. Matching entities can be <strong>merged</strong> into a single entity without any
+conflicts of attribute names and values.</p>
+<p>In order for these operators to be applied to tables, they must also be 
+<span id="join-compatible"><strong>join-compatible</strong></span>, which means that:</p>
+<ol>
+<li>
+<p>All fields in both tables must be part of either the 
+<a href="../concepts/glossary#primary-key">primary key</a> or a <a href="../concepts/glossary#foreign-key">foreign key</a>.</p>
+</li>
+<li>
+<p>All common fields must be of a compatible datatype for equality comparisons.</p>
+</li>
+</ol>
+<details class="note">
+<summary>Why join compatibility restrictions?</summary>
+<p>These restrictions are introduced both for performance reasons and for conceptual
+reasons. For performance, they encourage queries that rely on indexes. For
+conceptual reasons, they encourage database design in which entities in different
+tables are related to each other by the use of primary keys and foreign keys.</p>
+</details>
+<h2 id="join">Join<a class="headerlink" href="#join" title="Permanent link">&para;</a></h2>
+<p>The Join operator <code>A * B</code> combines the matching information in <code>A</code> and <code>B</code>. The result
+contains all matching combinations of entities from both arguments, including all
+unique <a href="../concepts/glossary#primary-key">primary keys</a> from both arguments. </p>
+<p>In the example below, we look at the union of (A) a table pairing sessions with users
+and (B) a table pairing sessions with scan. </p>
+<figure markdown>
+![Join example](../images/concepts-operators-join1.png){: style="height:200px"}
+</figure>
+
+<p>This has all the primary keys of both tables (a union thereof, shown in bold) as well as
+all <a href="../concepts/glossary#seconday-attribute">secondary attributes</a> (i.e., user and
+duration). This also excludes the session for which we don't have a scan.</p>
+<p>We can also join based on secondary attributes, as shown in the example below.</p>
+<figure markdown>
+![Join example](../images/concepts-operators-join2.png){: style="height:200px"}
+</figure>
+
+<details class="notes">
+<summary>Additional join properties</summary>
+<p>When the operands have no common attributes, the result is the cross product --
+all combinations of entities. In all cases, however ...</p>
+<ol>
+<li>When <code>A</code> and <code>B</code> have the same attributes, the join <code>A * B</code> becomes equivalent to
+the set intersection <code>A</code> ∩ <code>B</code>. Hence, DataJoint does not need a separate intersection
+operator.</li>
+<li>Commutativity: <code>A * B</code> is equivalent to <code>B * A</code>.</li>
+<li>Associativity: <code>(A * B) * C</code> is equivalent to <code>A * (B * C)</code>.</li>
+</ol>
+</details>
+<h2 id="restriction">Restriction<a class="headerlink" href="#restriction" title="Permanent link">&para;</a></h2>
+<p>The restriction operator <code>A &amp; cond</code> selects the subset of entities from <code>A</code> that meet
+the condition <code>cond</code>. The exclusion operator <code>A - cond</code> selects the complement of
+restriction, i.e. the subset of entities from <code>A</code> that do not meet the condition
+<code>cond</code>. This means that the restriction and exclusion operators are complementary.
+The same query could be constructed using either <code>A &amp; cond</code> or <code>A - Not(cond)</code>.</p>
+<figure markdown>
+![Restriction and exclusion.](../../../images/concepts-operators-restriction.png){: style="height:200px"}
+</figure>
+
+<p>The condition <code>cond</code> may be one of the following:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:1"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Python</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<ul>
+<li>another table</li>
+<li>a mapping, e.g. <code>dict</code></li>
+<li>an expression in a character string</li>
+<li>a collection of conditions as a <code>list</code>, <code>tuple</code>, or Pandas <code>DataFrame</code></li>
+<li>a Boolean expression (<code>True</code> or <code>False</code>)</li>
+<li>an <code>AndList</code></li>
+<li>a <code>Not</code> object</li>
+<li>a query expression</li>
+</ul>
+</div>
+</div>
+</div>
+<details class="warning">
+<summary>Permissive Operators</summary>
+<p>To circumvent compatibility checks, DataJoint offers permissive operators for 
+Restriction (<code>^</code>) and Join (<code>@</code>). Use with Caution.</p>
+</details>
+<h2 id="proj">Proj<a class="headerlink" href="#proj" title="Permanent link">&para;</a></h2>
+<p>The <code>proj</code> operator represents <strong>projection</strong> and is used to select attributes
+(columns) from a table, to rename them, or to create new calculated attributes.</p>
+<ol>
+<li>
+<p>A simple projection <em>selects a subset of attributes</em> of the original
+table, which may not include the <a href="../concepts/glossary#primary-key">primary key</a>.</p>
+</li>
+<li>
+<p>A more complex projection <em>renames an attribute</em> in another table. This could be
+useful when one table should be referenced multiple times in another. A user table,
+could contain all personnel. A project table references one person for the lead and
+another the coordinator, both referencing the common personnel pool.</p>
+</li>
+<li>
+<p>Projection can also perform calculations (as available in 
+<a href="https://dev.mysql.com/doc/refman/5.7/en/functions.html">MySQL</a>) on a single attribute.</p>
+</li>
+</ol>
+<h2 id="aggr">Aggr<a class="headerlink" href="#aggr" title="Permanent link">&para;</a></h2>
+<p><strong>Aggregation</strong> is a special form of <code>proj</code> with the added feature of allowing
+  aggregation calculations on another table. It has the form <code>table.aggr
+  (other, ...)</code> where <code>other</code> is another table. Aggregation allows adding calculated
+  attributes to each entity in <code>table</code> based on aggregation functions over attributes
+  in the matching entities of <code>other</code>.</p>
+<p>Aggregation functions include <code>count</code>, <code>sum</code>, <code>min</code>, <code>max</code>, <code>avg</code>, <code>std</code>, <code>variance</code>,
+and others.</p>
+<h2 id="union">Union<a class="headerlink" href="#union" title="Permanent link">&para;</a></h2>
+<p>The result of the union operator <code>A + B</code> contains all the entities from both operands. </p>
+<p><a href="../design/normalization">Entity normalization</a> requires that <code>A</code> and <code>B</code> are of the same type,
+with with the same <a href="../concepts/glossary#primary-key">primary key</a>, using homologous
+attributes. Without secondary attributes, the result is the simple set union. With
+secondary attributes, they must have the same names and datatypes. The two operands
+must also be <strong>disjoint</strong>, without any duplicate primary key values across both inputs.
+These requirements prevent ambiguity of attribute values and preserve entity identity.</p>
+<details class="note">
+<summary>Principles of union</summary>
+<ol>
+<li>
+<p>As in all operators, the order of the attributes in the operands is not
+significant.</p>
+</li>
+<li>
+<p>Operands <code>A</code> and <code>B</code> must have the same primary key attributes. Otherwise, an
+error will be raised.</p>
+</li>
+<li>
+<p>Operands <code>A</code> and <code>B</code> may not have any common non-key attributes. Otherwise, an
+error will be raised.</p>
+</li>
+<li>
+<p>The result <code>A + B</code> will have the same primary key as <code>A</code> and <code>B</code>.</p>
+</li>
+<li>
+<p>The result <code>A + B</code> will have all the non-key attributes from both <code>A</code> and <code>B</code>.</p>
+</li>
+<li>
+<p>For entities that are found in both <code>A</code> and <code>B</code> (based on the primary key), the
+secondary attributes will be filled from the corresponding entities in <code>A</code> and
+<code>B</code>.</p>
+</li>
+<li>
+<p>For entities that are only found in either <code>A</code> or <code>B</code>, the other operand's
+secondary attributes will filled with null values.</p>
+</li>
+</ol>
+</details>
+<p>For union, order does not matter.</p>
+<figure markdown>
+![Union Example 1](../../../images/concepts-operators-union1.png){: style="height:200px"}
+</figure>
+<figure markdown>
+![Union Example 2](../../../images/concepts-operators-union2.png){: style="height:200px"}
+</figure>
+
+<details class="note">
+<summary>Properties of union</summary>
+<ol>
+<li>Commutative: <code>A + B</code> is equivalent to <code>B + A</code>.</li>
+<li>Associative: <code>(A + B) + C</code> is equivalent to <code>A + (B + C)</code>.</li>
+</ol>
+</details>
+<h2 id="universal-set">Universal Set<a class="headerlink" href="#universal-set" title="Permanent link">&para;</a></h2>
+<p>All of the above operators are designed to preserve their input type. Some queries may
+require creating a new entity type not already represented by existing tables. This
+means that the new type must be defined as part of the query. </p>
+<p>Universal sets fulfill this role using <code>dj.U</code> notation. They denote the set of all
+possible entities with given attributes of any possible datatype. Attributes of
+universal sets are allowed to be matched to any namesake attributes, even those that do
+not come from the same initial source.</p>
+<p>Universal sets should be used sparingly when no suitable base tables already exist. In
+some cases, defining a new base table can make queries clearer and more semantically
+constrained.</p>
+<p>The examples below will use the table definitions in <a href="../reproduce/table-tiers">table tiers</a>.</p>
+<!-- ## Join appears here in the general docs -->
+
+<h2 id="restriction_1">Restriction<a class="headerlink" href="#restriction_1" title="Permanent link">&para;</a></h2>
+<p><code>&amp;</code> and <code>-</code> operators permit restriction.</p>
+<h3 id="by-a-mapping">By a mapping<a class="headerlink" href="#by-a-mapping" title="Permanent link">&para;</a></h3>
+<p>For a <a href="../reproduce/table-tiers#manual-tables">Session table</a>, that has the attribute
+<code>session_date</code>, we can restrict to sessions from January 1st, 2022:</p>
+<div class="highlight"><pre><span></span><code><span class="n">Session</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s1">&#39;session_date&#39;</span><span class="p">:</span> <span class="s2">&quot;2022-01-01&quot;</span><span class="p">}</span>
+</code></pre></div>
+<p>If there were any typos (e.g., using <code>sess_date</code> instead of <code>session_date</code>), our query
+will return all of the entities of <code>Session</code>.</p>
+<h3 id="by-a-string">By a string<a class="headerlink" href="#by-a-string" title="Permanent link">&para;</a></h3>
+<p>Conditions may include arithmetic operations, functions, range tests, etc. Restriction
+of table <code>A</code> by a string containing an attribute not found in table <code>A</code> produces an
+error.</p>
+<div class="highlight"><pre><span></span><code><span class="n">Session</span> <span class="o">&amp;</span> <span class="s1">&#39;user = &quot;Alice&quot;&#39;</span> <span class="c1"># (1)</span>
+<span class="n">Session</span> <span class="o">&amp;</span> <span class="s1">&#39;session_date &gt;= &quot;2022-01-01&quot;&#39;</span> <span class="c1"># (2)</span>
+</code></pre></div>
+<ol>
+<li>All the sessions performed by Alice</li>
+<li>All of the sessions on or after January 1st, 2022</li>
+</ol>
+<h3 id="by-a-collection">By a collection<a class="headerlink" href="#by-a-collection" title="Permanent link">&para;</a></h3>
+<p>When <code>cond</code> is a collection of conditions, the conditions are applied by logical
+disjunction (logical OR). Restricting a table by a collection will return all entities
+that meet <em>any</em> of the conditions in the collection. </p>
+<p>For example, if we restrict the <code>Session</code> table by a collection containing two
+conditions, one for user and one for date, the query will return any sessions with a
+matching user <em>or</em> date.</p>
+<p>A collection can be a list, a tuple, or a Pandas <code>DataFrame</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="n">cond_list</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;user = &quot;Alice&quot;&#39;</span><span class="p">,</span> <span class="s1">&#39;session_date = &quot;2022-01-01&quot;&#39;</span><span class="p">]</span> <span class="c1"># (1)</span>
+<span class="n">cond_tuple</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;user = &quot;Alice&quot;&#39;</span><span class="p">,</span> <span class="s1">&#39;session_date = &quot;2022-01-01&quot;&#39;</span><span class="p">)</span> <span class="c1"># (2)</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="n">cond_frame</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;Alice&#39;</span><span class="p">],</span> <span class="s1">&#39;session_date&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;2022-01-01&#39;</span><span class="p">]})</span> <span class="c1"># (3)</span>
+
+<span class="n">Session</span><span class="p">()</span> <span class="o">&amp;</span> <span class="p">[</span><span class="s1">&#39;user = &quot;Alice&quot;&#39;</span><span class="p">,</span> <span class="s1">&#39;session_date = &quot;2022-01-01&quot;&#39;</span><span class="p">]</span>
+</code></pre></div>
+<ol>
+<li>A list</li>
+<li>A tuple</li>
+<li>A data frame</li>
+</ol>
+<p><code>dj.AndList</code> represents logical conjunction(logical AND). Restricting a table by an
+<code>AndList</code> will return all entities that meet <em>all</em> of the conditions in the list. <code>A &amp;
+dj.AndList([c1, c2, c3])</code> is equivalent to <code>A &amp; c1 &amp; c2 &amp; c3</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="n">Student</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">dj</span><span class="o">.</span><span class="n">AndList</span><span class="p">([</span><span class="s1">&#39;user = &quot;Alice&quot;&#39;</span><span class="p">,</span> <span class="s1">&#39;session_date = &quot;2022-01-01&quot;&#39;</span><span class="p">])</span>
+</code></pre></div>
+<p>The above will show all the sessions that Alice conducted on the given day.</p>
+<h3 id="by-a-not-object">By a <code>Not</code> object<a class="headerlink" href="#by-a-not-object" title="Permanent link">&para;</a></h3>
+<p>The special function <code>dj.Not</code> represents logical negation, such that <code>A &amp; dj.Not
+(cond)</code> is equivalent to <code>A - cond</code>.</p>
+<h3 id="by-a-query">By a query<a class="headerlink" href="#by-a-query" title="Permanent link">&para;</a></h3>
+<p>Restriction by a query object is a generalization of restriction by a table. The example
+below creates a query object corresponding to all the users named Alice. The <code>Session</code>
+table is then restricted by the query object, returning all the sessions performed by
+Alice.</p>
+<div class="highlight"><pre><span></span><code><span class="n">query</span> <span class="o">=</span> <span class="n">User</span> <span class="o">&amp;</span> <span class="s1">&#39;user = &quot;Alice&quot;&#39;</span>
+<span class="n">Session</span> <span class="o">&amp;</span> <span class="n">query</span>
+</code></pre></div>
+<h2 id="proj_1">Proj<a class="headerlink" href="#proj_1" title="Permanent link">&para;</a></h2>
+<p>Renaming an attribute in python can be done via keyword arguments: </p>
+<div class="highlight"><pre><span></span><code><span class="n">table</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="n">new_attr</span><span class="o">=</span><span class="s1">&#39;old_attr&#39;</span><span class="p">)</span>
+</code></pre></div>
+<p>This can be done in the context of a table definition:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@schema</span>
+<span class="k">class</span> <span class="nc">Session</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
+    <span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    # Experiment Session</span>
+<span class="s2">    -&gt; Animal</span>
+<span class="s2">    session             : smallint  # session number for the animal</span>
+<span class="s2">    ---</span>
+<span class="s2">    session_datetime    : datetime  # YYYY-MM-DD HH:MM:SS</span>
+<span class="s2">    session_start_time  : float     # seconds relative to session_datetime</span>
+<span class="s2">    session_end_time    : float     # seconds relative to session_datetime</span>
+<span class="s2">    -&gt; User.proj(experimenter=&#39;username&#39;)</span>
+<span class="s2">    -&gt; User.proj(supervisor=&#39;username&#39;)</span>
+<span class="s2">    &quot;&quot;&quot;</span>
+</code></pre></div>
+<p>Or to rename multiple values in a table with the following syntax: 
+<code>Table.proj(*existing_attributes,*renamed_attributes)</code></p>
+<div class="highlight"><pre><span></span><code><span class="n">Session</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="s1">&#39;session&#39;</span><span class="p">,</span><span class="s1">&#39;session_date&#39;</span><span class="p">,</span><span class="n">start</span><span class="o">=</span><span class="s1">&#39;session_start_time&#39;</span><span class="p">,</span><span class="n">end</span><span class="o">=</span><span class="s1">&#39;session_end_time&#39;</span><span class="p">)</span>
+</code></pre></div>
+<p>Projection can also be used to to compute new attributes from existing ones.</p>
+<div class="highlight"><pre><span></span><code><span class="n">Session</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="n">duration</span><span class="o">=</span><span class="s1">&#39;session_end_time-session_start_time&#39;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="s1">&#39;duration &gt; 10&#39;</span>
+</code></pre></div>
+<h2 id="aggr_1">Aggr<a class="headerlink" href="#aggr_1" title="Permanent link">&para;</a></h2>
+<p>For more complicated calculations, we can use aggregation.</p>
+<div class="highlight"><pre><span></span><code><span class="n">Subject</span><span class="o">.</span><span class="n">aggr</span><span class="p">(</span><span class="n">Session</span><span class="p">,</span><span class="n">n</span><span class="o">=</span><span class="s2">&quot;count(*)&quot;</span><span class="p">)</span> <span class="c1"># (1)</span>
+<span class="n">Subject</span><span class="o">.</span><span class="n">aggr</span><span class="p">(</span><span class="n">Session</span><span class="p">,</span><span class="n">average_start</span><span class="o">=</span><span class="s2">&quot;avg(session_start_time)&quot;</span><span class="p">)</span> <span class="c1"># (2)</span>
+</code></pre></div>
+<ol>
+<li>Number of sessions per subject.</li>
+<li>Average <code>session_start_time</code> for each subject</li>
+</ol>
+<!-- ## Union appears here in the general docs -->
+
+<h2 id="universal-set_1">Universal set<a class="headerlink" href="#universal-set_1" title="Permanent link">&para;</a></h2>
+<p>Universal sets offer the complete list of combinations of attributes.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># All home cities of students</span>
+<span class="n">dj</span><span class="o">.</span><span class="n">U</span><span class="p">(</span><span class="s1">&#39;laser_wavelength&#39;</span><span class="p">,</span> <span class="s1">&#39;laser_power&#39;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">Scan</span> <span class="c1"># (1)</span>
+<span class="n">dj</span><span class="o">.</span><span class="n">U</span><span class="p">(</span><span class="s1">&#39;laser_wavelength&#39;</span><span class="p">,</span> <span class="s1">&#39;laser_power&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">aggr</span><span class="p">(</span><span class="n">Scan</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="s2">&quot;count(*)&quot;</span><span class="p">)</span> <span class="c1"># (2)</span>
+<span class="n">dj</span><span class="o">.</span><span class="n">U</span><span class="p">()</span><span class="o">.</span><span class="n">aggr</span><span class="p">(</span><span class="n">Session</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="s2">&quot;max(session)&quot;</span><span class="p">)</span> <span class="c1"># (3)</span>
+</code></pre></div>
+<ol>
+<li>All combinations of wavelength and power.</li>
+<li>Total number of scans for each combination.</li>
+<li>Largest session number.</li>
+</ol>
+<p><code>dj.U()</code>, as shown in the last example above, is often useful for integer IDs.
+For an example of this process, see the source code for 
+<a href="https://datajoint.com/docs/elements/element-array-ephys/latest/api/element_array_ephys/ephys_acute/#element_array_ephys.ephys_acute.ClusteringParamSet.insert_new_params">Element Array Electrophysiology's <code>insert_new_params</code></a>.</p>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+</div>
+      
+        <div class="md-social">
+  
+    
+    
+    
+    
+    <a href="https://www.datajoint.com" target="_blank" rel="noopener" title="DataJoint" class="md-social__link">
+      <?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 15.1.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 width="260.479px" height="365.463px" viewBox="0 0 260.479 365.463" enable-background="new 0 0 260.479 365.463"
+	 xml:space="preserve">
+<g>
+	<path d="M4.638,361.434c0,0,124.071-124.072,135.896-357.434c0,0,29.555,189.053,115.266,256.988
+		C255.799,260.988,173.038,249.174,4.638,361.434z"/>
+</g>
+</svg>
+    </a>
+  
+    
+    
+    
+    
+    <a href="https://datajoint.slack.com" target="_blank" rel="noopener" title="Slack" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M94.12 315.1c0 25.9-21.16 47.06-47.06 47.06S0 341 0 315.1c0-25.9 21.16-47.06 47.06-47.06h47.06v47.06zm23.72 0c0-25.9 21.16-47.06 47.06-47.06s47.06 21.16 47.06 47.06v117.84c0 25.9-21.16 47.06-47.06 47.06s-47.06-21.16-47.06-47.06V315.1zm47.06-188.98c-25.9 0-47.06-21.16-47.06-47.06S139 32 164.9 32s47.06 21.16 47.06 47.06v47.06H164.9zm0 23.72c25.9 0 47.06 21.16 47.06 47.06s-21.16 47.06-47.06 47.06H47.06C21.16 243.96 0 222.8 0 196.9s21.16-47.06 47.06-47.06H164.9zm188.98 47.06c0-25.9 21.16-47.06 47.06-47.06 25.9 0 47.06 21.16 47.06 47.06s-21.16 47.06-47.06 47.06h-47.06V196.9zm-23.72 0c0 25.9-21.16 47.06-47.06 47.06-25.9 0-47.06-21.16-47.06-47.06V79.06c0-25.9 21.16-47.06 47.06-47.06 25.9 0 47.06 21.16 47.06 47.06V196.9zM283.1 385.88c25.9 0 47.06 21.16 47.06 47.06 0 25.9-21.16 47.06-47.06 47.06-25.9 0-47.06-21.16-47.06-47.06v-47.06h47.06zm0-23.72c-25.9 0-47.06-21.16-47.06-47.06 0-25.9 21.16-47.06 47.06-47.06h117.84c25.9 0 47.06 21.16 47.06 47.06 0 25.9-21.16 47.06-47.06 47.06H283.1z"/></svg>
+    </a>
+  
+    
+    
+    
+    
+    <a href="https://www.linkedin.com/company/datajoint" target="_blank" rel="noopener" title="LinkedIn" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3zM135.4 416H69V202.2h66.5V416zm-33.2-243c-21.3 0-38.5-17.3-38.5-38.5S80.9 96 102.2 96c21.2 0 38.5 17.3 38.5 38.5 0 21.3-17.2 38.5-38.5 38.5zm282.1 243h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9V416z"/></svg>
+    </a>
+  
+    
+    
+    
+    
+    <a href="https://twitter.com/datajoint" target="_blank" rel="noopener" title="Twitter" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.4.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M459.37 151.716c.325 4.548.325 9.097.325 13.645 0 138.72-105.583 298.558-298.558 298.558-59.452 0-114.68-17.219-161.137-47.106 8.447.974 16.568 1.299 25.34 1.299 49.055 0 94.213-16.568 130.274-44.832-46.132-.975-84.792-31.188-98.112-72.772 6.498.974 12.995 1.624 19.818 1.624 9.421 0 18.843-1.3 27.614-3.573-48.081-9.747-84.143-51.98-84.143-102.985v-1.299c13.969 7.797 30.214 12.67 47.431 13.319-28.264-18.843-46.781-51.005-46.781-87.391 0-19.492 5.197-37.36 14.294-52.954 51.655 63.675 129.3 105.258 216.365 109.807-1.624-7.797-2.599-15.918-2.599-24.04 0-57.828 46.782-104.934 104.934-104.934 30.213 0 57.502 12.67 76.67 33.137 23.715-4.548 46.456-13.32 66.599-25.34-7.798 24.366-24.366 44.833-46.132 57.827 21.117-2.273 41.584-8.122 60.426-16.243-14.292 20.791-32.161 39.308-52.628 54.253z"/></svg>
+    </a>
+  
+    
+    
+    
+    
+    <a href="https://github.com/datajoint" target="_blank" rel="noopener" title="GitHub" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.4.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+    </a>
+  
+    
+    
+    
+    
+    <a href="https://hub.docker.com/u/datajoint" target="_blank" rel="noopener" title="DockerHub" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.4.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M349.9 236.3h-66.1v-59.4h66.1v59.4zm0-204.3h-66.1v60.7h66.1V32zm78.2 144.8H362v59.4h66.1v-59.4zm-156.3-72.1h-66.1v60.1h66.1v-60.1zm78.1 0h-66.1v60.1h66.1v-60.1zm276.8 100c-14.4-9.7-47.6-13.2-73.1-8.4-3.3-24-16.7-44.9-41.1-63.7l-14-9.3-9.3 14c-18.4 27.8-23.4 73.6-3.7 103.8-8.7 4.7-25.8 11.1-48.4 10.7H2.4c-8.7 50.8 5.8 116.8 44 162.1 37.1 43.9 92.7 66.2 165.4 66.2 157.4 0 273.9-72.5 328.4-204.2 21.4.4 67.6.1 91.3-45.2 1.5-2.5 6.6-13.2 8.5-17.1l-13.3-8.9zm-511.1-27.9h-66v59.4h66.1v-59.4zm78.1 0h-66.1v59.4h66.1v-59.4zm78.1 0h-66.1v59.4h66.1v-59.4zm-78.1-72.1h-66.1v60.1h66.1v-60.1z"/></svg>
+    </a>
+  
+    
+    
+    
+    
+    <a href="https://pypi.org/user/datajointbot" target="_blank" rel="noopener" title="PyPI" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6zM286.2 404c11.1 0 20.1 9.1 20.1 20.3 0 11.3-9 20.4-20.1 20.4-11 0-20.1-9.2-20.1-20.4.1-11.3 9.1-20.3 20.1-20.3zM167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4zm-6.7-142.6c-11.1 0-20.1-9.1-20.1-20.3.1-11.3 9-20.4 20.1-20.4 11 0 20.1 9.2 20.1 20.4s-9 20.3-20.1 20.3z"/></svg>
+    </a>
+  
+    
+    
+    
+    
+    <a href="https://stackoverflow.com/questions/tagged/datajoint" target="_blank" rel="noopener" title="StackOverflow" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.4.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M290.7 311 95 269.7 86.8 309l195.7 41zm51-87L188.2 95.7l-25.5 30.8 153.5 128.3zm-31.2 39.7L129.2 179l-16.7 36.5L293.7 300zM262 32l-32 24 119.3 160.3 32-24zm20.5 328h-200v39.7h200zm39.7 80H42.7V320h-40v160h359.5V320h-40z"/></svg>
+    </a>
+  
+    
+    
+    
+    
+    <a href="https://www.youtube.com/channel/UCdeCuFOTCXlVMRzh6Wk-lGg" target="_blank" rel="noopener" title="YouTube" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.4.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M549.655 124.083c-6.281-23.65-24.787-42.276-48.284-48.597C458.781 64 288 64 288 64S117.22 64 74.629 75.486c-23.497 6.322-42.003 24.947-48.284 48.597-11.412 42.867-11.412 132.305-11.412 132.305s0 89.438 11.412 132.305c6.281 23.65 24.787 41.5 48.284 47.821C117.22 448 288 448 288 448s170.78 0 213.371-11.486c23.497-6.321 42.003-24.171 48.284-47.821 11.412-42.867 11.412-132.305 11.412-132.305s0-89.438-11.412-132.305zm-317.51 213.508V175.185l142.739 81.205-142.739 81.201z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.b4d07000.min.js"></script>
+      
+    
+  </body>
+</html>
