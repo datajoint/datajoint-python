@@ -286,7 +286,7 @@ class Fetch:
                     ret = np.array(ret, dtype=record_type)
                 except Exception as e:
                     raise e
-                for name in heading:
+                for name in heading.names:
                     # unpack blobs and externals
                     ret[name] = list(map(partial(get, heading[name]), ret[name]))
                 if format == "frame":

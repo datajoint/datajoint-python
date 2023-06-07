@@ -33,6 +33,7 @@ default_attribute_properties = (
         is_attachment=False,
         is_filepath=False,
         is_external=False,
+        is_hidden=False,
         adapter=None,
         store=None,
         unsupported=False,
@@ -124,19 +125,21 @@ class Heading:
 
     @property
     def names(self):
-        return [k for k in self.attributes]
+        return [k for k in self.attributes if not self.attributes[k].is_hidden]
 
     @property
     def primary_key(self):
-        return [k for k, v in self.attributes.items() if v.in_key]
+        return [k for k, v in self.attributes.items() if v.in_key and not v.is_hidden]
 
     @property
     def secondary_attributes(self):
-        return [k for k, v in self.attributes.items() if not v.in_key]
+        return [
+            k for k, v in self.attributes.items() if not v.in_key and not v.is_hidden
+        ]
 
     @property
     def blobs(self):
-        return [k for k, v in self.attributes.items() if v.is_blob]
+        return [k for k, v in self.attributes.items() if v.is_blob and not v.is_hidden]
 
     @property
     def non_blobs(self):
@@ -144,12 +147,15 @@ class Heading:
             k
             for k, v in self.attributes.items()
             if not (v.is_blob or v.is_attachment or v.is_filepath or v.json)
+            and not v.is_hidden
         ]
 
     @property
     def new_attributes(self):
         return [
-            k for k, v in self.attributes.items() if v.attribute_expression is not None
+            k
+            for k, v in self.attributes.items()
+            if v.attribute_expression is not None and not v.is_hidden
         ]
 
     def __getitem__(self, name):
@@ -165,6 +171,8 @@ class Heading:
         if self._table_status is not None:
             ret += "# " + self.table_status["comment"] + "\n"
         for v in self.attributes.values():
+            if v.is_hidden:
+                continue
             if in_key and not v.in_key:
                 ret += "---\n"
                 in_key = False
@@ -298,6 +306,7 @@ class Heading:
                 store=None,
                 is_external=False,
                 attribute_expression=None,
+                is_hidden=attr["name"].startswith("_"),
             )
 
             if any(TYPE_PATTERN[t].match(attr["type"]) for t in ("INTEGER", "FLOAT")):

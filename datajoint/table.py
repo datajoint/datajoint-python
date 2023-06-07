@@ -711,6 +711,8 @@ class Table(QueryExpression):
         attributes_declared = set()
         indexes = self.heading.indexes.copy()
         for attr in self.heading.attributes.values():
+            if attr.is_hidden:
+                continue
             if in_key and not attr.in_key:
                 definition += "---\n"
                 in_key = False
@@ -857,7 +859,7 @@ class Table(QueryExpression):
                             raise KeyError(
                                 "`{0:s}` is not in the table heading".format(field)
                             )
-            elif set(field_list) != set(fields).intersection(self.heading.names):
+            elif set(field_list) != set(fields).intersection(self.heading):
                 raise DataJointError("Attempt to insert rows with different fields.")
 
         if isinstance(row, np.void):  # np.array
