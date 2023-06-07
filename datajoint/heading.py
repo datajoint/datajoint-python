@@ -206,6 +206,7 @@ class Heading:
             else self.attributes[name].attribute_expression
             + (" as `%s`" % name if include_aliases else "")
             for name in fields
+            if not self.attributes[name].is_hidden
         )
 
     def __iter__(self):
