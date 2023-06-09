@@ -114,12 +114,12 @@ def build_foreign_key_parser():
     return arrow + options + ref_table
 
 
-def build_attribute_parser():
+def build_attribute_parser(parse_metadata=False):
     quoted = pp.QuotedString('"') ^ pp.QuotedString("'")
     colon = pp.Literal(":").suppress()
-    attribute_name = pp.Word(pp.srange("[a-z]"), pp.srange("[a-z0-9_]")).setResultsName(
-        "name"
-    )
+    attribute_name = pp.Word(
+        pp.srange(f"[a-z{'_' if parse_metadata else ''}]"), pp.srange("[a-z0-9_]")
+    ).setResultsName("name")
     data_type = (
         pp.Combine(pp.Word(pp.alphas) + pp.SkipTo("#", ignore=quoted))
         ^ pp.QuotedString("<", endQuoteChar=">", unquoteResults=False)
@@ -134,6 +134,7 @@ def build_attribute_parser():
 foreign_key_parser_old = build_foreign_key_parser_old()
 foreign_key_parser = build_foreign_key_parser()
 attribute_parser = build_attribute_parser()
+metadata_attribute_parser = build_attribute_parser(parse_metadata=True)
 
 
 def is_foreign_key(line):
@@ -245,6 +246,7 @@ def prepare_declare(definition, context):
     foreign_key_sql = []
     index_sql = []
     external_stores = []
+    metadata_attributes = ["_timestamp = CURRENT_TIMESTAMP : timestamp"]
 
     for line in definition:
         if not line or line.startswith("#"):  # ignore additional comments
@@ -272,6 +274,12 @@ def prepare_declare(definition, context):
             if name not in attributes:
                 attributes.append(name)
                 attribute_sql.append(sql)
+    for line in metadata_attributes:
+        name, sql, store = compile_attribute(
+            line, in_key, foreign_key_sql, context, is_metadata=True
+        )
+        attributes.append(name)
+        attribute_sql.append(sql)
 
     return (
         table_comment,
@@ -496,7 +504,7 @@ def substitute_special_type(match, category, foreign_key_sql, context):
         assert False, "Unknown special type"
 
 
-def compile_attribute(line, in_key, foreign_key_sql, context):
+def compile_attribute(line, in_key, foreign_key_sql, context, is_metadata=False):
     """
     Convert attribute definition from DataJoint format to SQL
 
@@ -504,10 +512,14 @@ def compile_attribute(line, in_key, foreign_key_sql, context):
     :param in_key: set to True if attribute is in primary key set
     :param foreign_key_sql: the list of foreign key declarations to add to
     :param context: context in which to look up user-defined attribute type adapterss
+    :param is_metadata: flag to use an alternate parser for metadata attributes
     :returns: (name, sql, is_external) -- attribute name and sql code for its declaration
     """
     try:
-        match = attribute_parser.parseString(line + "#", parseAll=True)
+        if is_metadata:
+            match = metadata_attribute_parser.parseString(line + "#", parseAll=True)
+        else:
+            match = attribute_parser.parseString(line + "#", parseAll=True)
     except pp.ParseException as err:
         raise DataJointError(
             "Declaration error in position {pos} in line:\n  {line}\n{msg}".format(

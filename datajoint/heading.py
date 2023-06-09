@@ -121,25 +121,23 @@ class Heading:
     def attributes(self):
         if self._attributes is None:
             self._init_from_database()  # lazy loading from database
-        return self._attributes
+        return {k: v for k, v in self._attributes.items() if not v.is_hidden}
 
     @property
     def names(self):
-        return [k for k in self.attributes if not self.attributes[k].is_hidden]
+        return [k for k in self.attributes]
 
     @property
     def primary_key(self):
-        return [k for k, v in self.attributes.items() if v.in_key and not v.is_hidden]
+        return [k for k, v in self.attributes.items() if v.in_key]
 
     @property
     def secondary_attributes(self):
-        return [
-            k for k, v in self.attributes.items() if not v.in_key and not v.is_hidden
-        ]
+        return [k for k, v in self.attributes.items() if not v.in_key]
 
     @property
     def blobs(self):
-        return [k for k, v in self.attributes.items() if v.is_blob and not v.is_hidden]
+        return [k for k, v in self.attributes.items() if v.is_blob]
 
     @property
     def non_blobs(self):
@@ -147,15 +145,12 @@ class Heading:
             k
             for k, v in self.attributes.items()
             if not (v.is_blob or v.is_attachment or v.is_filepath or v.json)
-            and not v.is_hidden
         ]
 
     @property
     def new_attributes(self):
         return [
-            k
-            for k, v in self.attributes.items()
-            if v.attribute_expression is not None and not v.is_hidden
+            k for k, v in self.attributes.items() if v.attribute_expression is not None
         ]
 
     def __getitem__(self, name):
@@ -171,8 +166,6 @@ class Heading:
         if self._table_status is not None:
             ret += "# " + self.table_status["comment"] + "\n"
         for v in self.attributes.values():
-            if v.is_hidden:
-                continue
             if in_key and not v.in_key:
                 ret += "---\n"
                 in_key = False
@@ -206,7 +199,6 @@ class Heading:
             else self.attributes[name].attribute_expression
             + (" as `%s`" % name if include_aliases else "")
             for name in fields
-            if not self.attributes[name].is_hidden
         )
 
     def __iter__(self):
