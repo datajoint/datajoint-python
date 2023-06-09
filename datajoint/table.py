@@ -859,7 +859,7 @@ class Table(QueryExpression):
                             raise KeyError(
                                 "`{0:s}` is not in the table heading".format(field)
                             )
-            elif set(field_list) != set(fields).intersection(self.heading):
+            elif set(field_list) != set(fields).intersection(self.heading.names):
                 raise DataJointError("Attempt to insert rows with different fields.")
 
         if isinstance(row, np.void):  # np.array
