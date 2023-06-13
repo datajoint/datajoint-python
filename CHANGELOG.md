@@ -83,7 +83,7 @@
 - Fixed - `schema.list_tables()` is not topologically sorted (#838) PR #893
 - Fixed - Diagram part tables do not show proper class name (#882) PR #893
 - Fixed - Error in complex restrictions (#892) PR #893
-- Fixed - WHERE and GROUP BY clases are dropped on joins with aggregation (#898, #899) PR #893
+- Fixed - WHERE and GROUP BY classes are dropped on joins with aggregation (#898, #899) PR #893
 
 ### 0.13.0 -- Mar 24, 2021
 - Re-implement query transpilation into SQL, fixing issues (#386, #449, #450, #484, #558). PR #754
