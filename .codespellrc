@@ -1,4 +1,5 @@
 [codespell]
 skip = .git,*.pdf,*.svg,*.csv,*.ipynb,*.drawio
 # Rever -- nobody knows
-ignore-words-list = rever
+# numer -- numerator variable
+ignore-words-list = rever,numer
