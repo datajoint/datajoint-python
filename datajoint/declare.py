@@ -16,6 +16,7 @@ CONSTANT_LITERALS = {
     "NULL",
 }  # SQL literals to be used without quotes (case insensitive)
 EXTERNAL_TABLE_ROOT = "~external"
+METADATA_ATTRIBUTES_SQL = ["`_timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP"]
 
 TYPE_PATTERN = {
     k: re.compile(v, re.I)
@@ -308,7 +309,7 @@ def declare(full_table_name, definition, context):
         index_sql,
         external_stores,
     ) = prepare_declare(definition, context)
-    attribute_sql.extend(["`_timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP"])
+    attribute_sql.extend(METADATA_ATTRIBUTES_SQL)
 
     if not primary_key:
         raise DataJointError("Table must have a primary key")
@@ -411,6 +412,7 @@ def alter(definition, old_definition, context):
         index_sql,
         external_stores,
     ) = prepare_declare(definition, context)
+    attribute_sql.extend(METADATA_ATTRIBUTES_SQL)
     (
         table_comment_,
         primary_key_,
@@ -419,6 +421,7 @@ def alter(definition, old_definition, context):
         index_sql_,
         external_stores_,
     ) = prepare_declare(old_definition, context)
+    attribute_sql_.extend(METADATA_ATTRIBUTES_SQL)
 
     # analyze differences between declarations
     sql = list()
