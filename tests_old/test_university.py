@@ -77,9 +77,9 @@ def test_restrict():
     assert_true(len(s1) == 11)
     assert_list_equal(s1, s2)
 
-    millenials = Student & 'date_of_birth between "1981-01-01" and "1996-12-31"'
-    assert_true(len(millenials) == 170)
-    millenials_no_math = millenials - (Enroll & 'dept="MATH"')
+    millennials = Student & 'date_of_birth between "1981-01-01" and "1996-12-31"'
+    assert_true(len(millennials) == 170)
+    millenials_no_math = millennials - (Enroll & 'dept="MATH"')
     assert_true(len(millenials_no_math) == 53)
 
     inactive_students = Student - (Enroll & CurrentTerm)

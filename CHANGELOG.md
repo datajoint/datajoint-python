@@ -31,7 +31,7 @@
 - Fixed - Fix queries with backslashes ([#999](https://github.com/datajoint/datajoint-python/issues/999)) PR [#1052](https://github.com/datajoint/datajoint-python/pull/1052)
 
 ### 0.13.7 -- Jul 13, 2022
-- Fixed - Fix networkx incompatable change by version pinning to 2.6.3 (#1035) PR #1036
+- Fixed - Fix networkx incompatible change by version pinning to 2.6.3 (#1035) PR #1036
 - Added - Support for serializing numpy datetime64 types (#1022) PR #1036
 - Changed - Add traceback to default logging PR #1036
 

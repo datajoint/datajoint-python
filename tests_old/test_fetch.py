@@ -360,7 +360,7 @@ class TestFetch:
 
     def test_dj_u_distinct(self):
         # Test developed to see if removing DISTINCT from the select statement
-        # generation breakes the dj.U universal set imlementation
+        # generation breaks the dj.U universal set implementation
 
         # Contents to be inserted
         contents = [(1, 2, 3), (2, 2, 3), (3, 3, 2), (4, 5, 5)]
