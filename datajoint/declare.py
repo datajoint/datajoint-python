@@ -16,7 +16,10 @@ CONSTANT_LITERALS = {
     "NULL",
 }  # SQL literals to be used without quotes (case insensitive)
 EXTERNAL_TABLE_ROOT = "~external"
-METADATA_ATTRIBUTES_SQL = ["`_timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP"]
+METADATA_ATTRIBUTES_SQL = [
+    "`_{full_table_name}_timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP"
+]
+LONGEST_METADATA_ATTRIBUTE = len("__timestamp")
 
 TYPE_PATTERN = {
     k: re.compile(v, re.I)
@@ -293,11 +296,14 @@ def declare(full_table_name, definition, context):
     :param context: dictionary of objects that might be referred to in the table
     :return: SQL CREATE TABLE statement, list of external stores used
     """
-    table_name = full_table_name.strip("`").split(".")[1]
-    if len(table_name) > MAX_TABLE_NAME_LENGTH:
+    if (
+        len(full_table_name.replace("`", "")) + LONGEST_METADATA_ATTRIBUTE
+        > MAX_TABLE_NAME_LENGTH
+    ):
         raise DataJointError(
             "Table name `{name}` exceeds the max length of {max_length}".format(
-                name=table_name, max_length=MAX_TABLE_NAME_LENGTH
+                name=full_table_name.replace("`", ""),
+                max_length=MAX_TABLE_NAME_LENGTH - LONGEST_METADATA_ATTRIBUTE,
             )
         )
 
@@ -309,7 +315,12 @@ def declare(full_table_name, definition, context):
         index_sql,
         external_stores,
     ) = prepare_declare(definition, context)
-    attribute_sql.extend(METADATA_ATTRIBUTES_SQL)
+    attribute_sql.extend(
+        [
+            attr.format(full_table_name=full_table_name.replace("`", ""))
+            for attr in METADATA_ATTRIBUTES_SQL
+        ]
+    )
 
     if not primary_key:
         raise DataJointError("Table must have a primary key")
@@ -412,7 +423,6 @@ def alter(definition, old_definition, context):
         index_sql,
         external_stores,
     ) = prepare_declare(definition, context)
-    attribute_sql.extend(METADATA_ATTRIBUTES_SQL)
     (
         table_comment_,
         primary_key_,
@@ -421,7 +431,6 @@ def alter(definition, old_definition, context):
         index_sql_,
         external_stores_,
     ) = prepare_declare(old_definition, context)
-    attribute_sql_.extend(METADATA_ATTRIBUTES_SQL)
 
     # analyze differences between declarations
     sql = list()

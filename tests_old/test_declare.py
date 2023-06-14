@@ -6,6 +6,8 @@ from nose.tools import (
     raises,
     assert_set_equal,
 )
+
+from tests_old.schema_simple import IJ, JI
 from .schema import *
 import datajoint as dj
 import inspect
@@ -332,7 +334,7 @@ class TestDeclare:
         """
 
         @schema
-        class WhyWouldAnyoneCreateATableNameThisLong(dj.Manual):
+        class WhyWouldAnyoneCreateATableNameThis(dj.Manual):
             definition = """
             master : int
             """
@@ -341,3 +343,14 @@ class TestDeclare:
                 definition = """
                 -> (master)
                 """
+
+    @staticmethod
+    def test_hidden_attributes():
+        assert (
+            list(JI().heading._attributes.keys())[-1]
+            == "_djtest_relational.#j_i_timestamp"
+        )
+        assert (
+            list(JI().heading.attributes.keys())[-1]
+            != "_djtest_relational.#j_i_timestamp"
+        )
