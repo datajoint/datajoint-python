@@ -334,7 +334,7 @@ class TestDeclare:
         """
 
         @schema
-        class WhyWouldAnyoneCreateATableNameThis(dj.Manual):
+        class WhyWouldAnyoneCreateATableNameThisLong(dj.Manual):
             definition = """
             master : int
             """
