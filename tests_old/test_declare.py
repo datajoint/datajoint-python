@@ -6,7 +6,6 @@ from nose.tools import (
     raises,
     assert_set_equal,
 )
-
 from .schema import *
 import datajoint as dj
 import inspect
