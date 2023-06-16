@@ -7,7 +7,6 @@ from nose.tools import (
     assert_set_equal,
 )
 
-from tests_old.schema_simple import IJ, JI
 from .schema import *
 import datajoint as dj
 import inspect
@@ -347,10 +346,10 @@ class TestDeclare:
     @staticmethod
     def test_hidden_attributes():
         assert (
-            list(JI().heading._attributes.keys())[-1]
-            == "_djtest_relational.#j_i_timestamp"
+            list(Experiment().heading._attributes.keys())[-1]
+            == "_djtest_test1._experiment_timestamp"
         )
         assert (
-            list(JI().heading.attributes.keys())[-1]
-            != "_djtest_relational.#j_i_timestamp"
+            list(Experiment().heading.attributes.keys())[-1]
+            != "_djtest_test1._experiment_timestamp"
         )
