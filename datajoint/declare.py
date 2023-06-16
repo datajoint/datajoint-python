@@ -296,14 +296,11 @@ def declare(full_table_name, definition, context):
     :param context: dictionary of objects that might be referred to in the table
     :return: SQL CREATE TABLE statement, list of external stores used
     """
-    if (
-        len(full_table_name.replace("`", "")) + LONGEST_METADATA_ATTRIBUTE
-        > MAX_TABLE_NAME_LENGTH
-    ):
+    table_name = full_table_name.strip("`").split(".")[1]
+    if len(table_name) > MAX_TABLE_NAME_LENGTH:
         raise DataJointError(
             "Table name `{name}` exceeds the max length of {max_length}".format(
-                name=full_table_name.replace("`", ""),
-                max_length=MAX_TABLE_NAME_LENGTH - LONGEST_METADATA_ATTRIBUTE,
+                name=table_name, max_length=MAX_TABLE_NAME_LENGTH
             )
         )
 
@@ -317,7 +314,11 @@ def declare(full_table_name, definition, context):
     ) = prepare_declare(definition, context)
     attribute_sql.extend(
         [
-            attr.format(full_table_name=full_table_name.replace("`", ""))
+            attr.format(
+                full_table_name=full_table_name.replace("`", "")[
+                    0 : 64 - LONGEST_METADATA_ATTRIBUTE
+                ]
+            )
             for attr in METADATA_ATTRIBUTES_SQL
         ]
     )
