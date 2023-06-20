@@ -39,6 +39,9 @@ setup(
         "automated research workflows",
     ],
     packages=find_packages(exclude=["contrib", "docs", "tests*"]),
+    entry_points={
+        "console_scripts": ["dj=datajoint.cli:datajoint"],
+    },
     install_requires=requirements,
     python_requires="~={}.{}".format(*min_py_version),
     setup_requires=["otumat"],  # maybe remove due to conflicts?
