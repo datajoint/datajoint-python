@@ -1,8 +1,7 @@
 import argparse
-import sys
 from code import interact
 from collections import ChainMap
-from datajoint import __version__ as version, config, create_virtual_module
+import datajoint as dj
 
 
 def dj_cli(args: list = None):
@@ -18,13 +17,13 @@ def dj_cli(args: list = None):
         conflict_handler="resolve",
     )
     parser.add_argument(
-        "-V", "--version", action="version", version=f"datajoint {version}"
+        "-V", "--version", action="version", version=f"datajoint {dj.__version__}"
     )
     parser.add_argument(
         "-u",
         "--user",
         type=str,
-        default=config["database.user"],
+        default=dj.config["database.user"],
         required=False,
         help="Datajoint username",
     )
@@ -32,7 +31,7 @@ def dj_cli(args: list = None):
         "-p",
         "--password",
         type=str,
-        default=config["database.password"],
+        default=dj.config["database.password"],
         required=False,
         help="Datajoint password",
     )
@@ -40,7 +39,7 @@ def dj_cli(args: list = None):
         "-h",
         "--host",
         type=str,
-        default=config["database.host"],
+        default=dj.config["database.host"],
         required=False,
         help="Datajoint host",
     )
@@ -48,22 +47,22 @@ def dj_cli(args: list = None):
         "-s",
         "--schemas",
         nargs="+",
-        type=[str],
-        default=[],
+        type=str,
         required=False,
         help="A list of virtual module mappings in `db:schema ...` format",
     )
-    kwargs = vars(parser.parse_args(args if sys.argv[1:] else ["--help"]))
+    kwargs = vars(parser.parse_args(args))
     mods = {}
     if kwargs["user"]:
-        config["database.user"] = kwargs["user"]
+        dj.config["database.user"] = kwargs["user"]
     if kwargs["password"]:
-        config["database.password"] = kwargs["password"]
+        dj.config["database.password"] = kwargs["password"]
     if kwargs["host"]:
-        config["database.host"] = kwargs["host"]
+        dj.config["database.host"] = kwargs["host"]
     if kwargs["schemas"]:
-        d, m = kwargs["schemas"].split(":")
-        mods[m] = create_virtual_module(m, d)
+        for vm in kwargs["schemas"]:
+            d, m = vm.split(":")
+            mods[m] = dj.create_virtual_module(m, d)
 
     banner = "dj repl\n"
     if mods:
