@@ -40,7 +40,7 @@ setup(
     ],
     packages=find_packages(exclude=["contrib", "docs", "tests*"]),
     entry_points={
-        "console_scripts": ["dj=datajoint.cli:dj_cli"],
+        "console_scripts": ["dj=datajoint.cli:cli", "datajoint=datajoint.cli:cli"],
     },
     install_requires=requirements,
     python_requires="~={}.{}".format(*min_py_version),

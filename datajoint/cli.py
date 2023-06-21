@@ -4,7 +4,7 @@ from collections import ChainMap
 import datajoint as dj
 
 
-def dj_cli(args: list = None):
+def cli(args: list = None):
     """
     Console interface for DataJoint Python
 
@@ -17,7 +17,7 @@ def dj_cli(args: list = None):
         conflict_handler="resolve",
     )
     parser.add_argument(
-        "-V", "--version", action="version", version=f"datajoint {dj.__version__}"
+        "-V", "--version", action="version", version=f"{dj.__name__} {dj.__version__}"
     )
     parser.add_argument(
         "-u",
@@ -74,4 +74,4 @@ def dj_cli(args: list = None):
 
 
 if __name__ == "__main__":
-    dj_cli()
+    cli()
