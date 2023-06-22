@@ -28,29 +28,23 @@ def test_cli_help(capsys):
     captured_output = capsys.readouterr().out
 
     assert (
-        "usage: datajoint [--help] [-V] [-u USER] [-p PASSWORD] [-h HOST]\n\
-                 [-s SCHEMAS [SCHEMAS ...]]"
-        in captured_output
-    )
-    assert "DataJoint console interface." in captured_output
-    assert "optional arguments:" in captured_output
-    assert "--help                show this help message and exit" in captured_output
-    assert (
-        "-V, --version         show program's version number and exit"
-        in captured_output
-    )
-    assert "-u USER, --user USER  Datajoint username" in captured_output
-    assert (
-        "-p PASSWORD, --password PASSWORD\n\
-                        Datajoint password"
-        in captured_output
-    )
-    assert "-h HOST, --host HOST  Datajoint host" in captured_output
-    assert (
-        "-s SCHEMAS [SCHEMAS ...], --schemas SCHEMAS [SCHEMAS ...]\n\
+        "\
+usage: datajoint [--help] [-V] [-u USER] [-p PASSWORD] [-h HOST]\n\
+                 [-s SCHEMAS [SCHEMAS ...]]\n\n\
+\
+DataJoint console interface.\n\n\
+\
+optional arguments:\n\
+  --help                show this help message and exit\n\
+  -V, --version         show program's version number and exit\n\
+  -u USER, --user USER  Datajoint username\n\
+  -p PASSWORD, --password PASSWORD\n\
+                        Datajoint password\n\
+  -h HOST, --host HOST  Datajoint host\n\
+  -s SCHEMAS [SCHEMAS ...], --schemas SCHEMAS [SCHEMAS ...]\n\
                         A list of virtual module mappings in `db:schema ...`\n\
-                        format"
-        in captured_output
+                        format\n"
+        == captured_output
     )
 
 
@@ -68,7 +62,13 @@ def test_cli_config():
 
     stdout, stderr = process.communicate()
 
-    assert f"{dj.config}" in stdout
+    assert dj.config == json.loads(
+        stdout[4:519]
+        .replace("'", '"')
+        .replace("None", "null")
+        .replace("True", "true")
+        .replace("False", "false")
+    )
 
 
 def test_cli_args():
@@ -86,9 +86,9 @@ def test_cli_args():
     process.stdin.flush()
 
     stdout, stderr = process.communicate()
-    assert "test_user" in stdout
-    assert "test_pass" in stdout
-    assert "test_host" in stdout
+    assert "test_user" == stdout[5:14]
+    assert "test_pass" == stdout[21:30]
+    assert "test_host" == stdout[37:46]
 
 
 def test_cli_schemas():
@@ -118,7 +118,10 @@ def test_cli_schemas():
         {"key": 8, "value": 16},
         {"key": 9, "value": 18},
     ]
-    assert "dj repl\n\nschema modules:\n\n  - test_schema1\n  - test_schema2" in stderr
+    assert (
+        "dj repl\n\nschema modules:\n\n  - test_schema1\n  - test_schema2"
+        == stderr[159:218]
+    )
     assert "'test_schema1'" == stdout[4:18]
     assert "Schema `djtest_test1`" == stdout[23:44]
     assert fetch_res == json.loads(stdout[50:295].replace("'", '"'))
