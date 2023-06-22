@@ -17,8 +17,9 @@ DataJoint implements a complete algebra of operators on tables:
 | [aggr](#aggr)                | A.aggr(B, ...) | Same as projection with computations based on matching information in B |
 | [union](#union)              | A + B          | All unique entities from both A and B                                   |
 | [universal set](#universal-set)\*| dj.U()     | All unique entities from both A and B                                   |
+| [top](#top)\*| dj.Top()     | The top rows of A
 
-\*While not technically a query operator, it is useful to discuss Universal Set in the 
+\*While not technically query operators, it is useful to discuss Universal Set and Top in the 
 same context.
 
 ??? note "Notes on relational algebra" 
@@ -217,6 +218,20 @@ constrained.
 The examples below will use the table definitions in [table tiers](../reproduce/table-tiers).
 
 <!-- ## Join appears here in the general docs -->
+
+## Top
+
+Similar to the univeral set operator, the top operator uses `dj.top` notation. It is used to 
+restrict a query by the given `limit`, `order_by`, and `offset` parameters:
+
+```python
+Session & dj.top(limit=10, order_by='session_date')
+```
+
+The result of this expression returns the first 10 rows of `Session` and sorts them 
+by their `session_date` in ascending order. If the `order_by` argument was instead: `session_date DESC`, then it would be sorted in descending order.
+
+The default values for `dj.top` parameters are `limit=1`, `order_by=["KEY"]`, and `offset=0`.
 
 ## Restriction
 

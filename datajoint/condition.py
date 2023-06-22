@@ -71,7 +71,7 @@ class Top:
     """
 
     limit: Union[int, None] = 1
-    order_by: Union[str, List[str]] = "KEY"
+    order_by: Union[str, List[str]] = ["KEY"]
     offset: int = 0
 
     def __post_init__(self):
