@@ -6,7 +6,7 @@ import json
 import subprocess
 import pytest
 import datajoint as dj
-from .schema_simple import schema
+from . import CONN_INFO_ROOT, PREFIX
 
 
 def test_cli_version(capsys):
@@ -92,8 +92,18 @@ def test_cli_args():
 
 
 def test_cli_schemas():
+    schema = dj.Schema(PREFIX + "_cli", locals(), connection=dj.conn(**CONN_INFO_ROOT))
+
+    @schema
+    class IJ(dj.Lookup):
+        definition = """  # tests restrictions
+        i  : int
+        j  : int
+        """
+        contents = list(dict(i=i, j=j + 2) for i in range(3) for j in range(3))
+
     process = subprocess.Popen(
-        ["dj", "-s", "djtest_relational:test_schema"],
+        ["dj", "-s", "djtest_cli:test_schema"],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -126,5 +136,5 @@ schema modules:\n\n\
         == stderr[159:200]
     )
     assert "'test_schema'" == stdout[4:17]
-    assert "Schema `djtest_relational`" == stdout[22:48]
-    assert fetch_res == json.loads(stdout[54:216].replace("'", '"'))
+    assert "Schema `djtest_cli`" == stdout[22:41]
+    assert fetch_res == json.loads(stdout[47:209].replace("'", '"'))
