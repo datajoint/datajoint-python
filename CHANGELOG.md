@@ -1,5 +1,8 @@
 ## Release notes
 
+### Upcoming
+- Added - Datajoint python CLI ([#940](https://github.com/datajoint/datajoint-python/issues/940)) PR [#1095](https://github.com/datajoint/datajoint-python/pull/1095)
+
 ### 0.14.1 -- Jun 02, 2023
 - Fixed - Fix altering a part table that uses the "master" keyword - PR [#991](https://github.com/datajoint/datajoint-python/pull/991)
 - Fixed - `.ipynb` output in tutorials is not visible in dark mode ([#1078](https://github.com/datajoint/datajoint-python/issues/1078)) PR [#1080](https://github.com/datajoint/datajoint-python/pull/1080)
