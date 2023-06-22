@@ -119,7 +119,12 @@ def test_cli_schemas():
         {"key": 9, "value": 18},
     ]
     assert (
-        "dj repl\n\nschema modules:\n\n  - test_schema1\n  - test_schema2"
+        "\
+dj repl\n\n\
+\
+schema modules:\n\n\
+  - test_schema1\n\
+  - test_schema2"
         == stderr[159:218]
     )
     assert "'test_schema1'" == stdout[4:18]
