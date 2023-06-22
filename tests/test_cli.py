@@ -6,7 +6,7 @@ import json
 import subprocess
 import pytest
 import datajoint as dj
-from .schema_simple import *
+from .schema_simple import schema
 
 
 def test_cli_version(capsys):
@@ -93,40 +93,38 @@ def test_cli_args():
 
 def test_cli_schemas():
     process = subprocess.Popen(
-        ["dj", "-s", "djtest_test1:test_schema1", "djtest_relational:test_schema2"],
+        ["dj", "-s", "djtest_relational:test_schema"],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
     )
 
-    process.stdin.write("test_schema1.__dict__['__name__']\n")
-    process.stdin.write("test_schema1.__dict__['schema']\n")
-    process.stdin.write("test_schema1.TTest.fetch(as_dict=True)\n")
+    process.stdin.write("test_schema.__dict__['__name__']\n")
+    process.stdin.write("test_schema.__dict__['schema']\n")
+    process.stdin.write("test_schema.IJ.fetch(as_dict=True)\n")
     process.stdin.flush()
 
     stdout, stderr = process.communicate()
     fetch_res = [
-        {"key": 0, "value": 0},
-        {"key": 1, "value": 2},
-        {"key": 2, "value": 4},
-        {"key": 3, "value": 6},
-        {"key": 4, "value": 8},
-        {"key": 5, "value": 10},
-        {"key": 6, "value": 12},
-        {"key": 7, "value": 14},
-        {"key": 8, "value": 16},
-        {"key": 9, "value": 18},
+        {"i": 0, "j": 2},
+        {"i": 0, "j": 3},
+        {"i": 0, "j": 4},
+        {"i": 1, "j": 2},
+        {"i": 1, "j": 3},
+        {"i": 1, "j": 4},
+        {"i": 2, "j": 2},
+        {"i": 2, "j": 3},
+        {"i": 2, "j": 4},
     ]
     assert (
         "\
 dj repl\n\n\
 \
 schema modules:\n\n\
-  - test_schema1\n\
-  - test_schema2"
-        == stderr[159:218]
+  - test_schema"
+        == stderr[159:200]
     )
-    assert "'test_schema1'" == stdout[4:18]
-    assert "Schema `djtest_test1`" == stdout[23:44]
-    assert fetch_res == json.loads(stdout[50:295].replace("'", '"'))
+    assert "'test_schema'" == stdout[4:17]
+    assert "Schema `djtest_relational`" == stdout[22:48]
+    assert fetch_res == json.loads(stdout[54:216].replace("'", '"'))
