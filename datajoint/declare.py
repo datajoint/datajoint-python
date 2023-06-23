@@ -17,9 +17,6 @@ CONSTANT_LITERALS = {
     "NULL",
 }  # SQL literals to be used without quotes (case insensitive)
 EXTERNAL_TABLE_ROOT = "~external"
-METADATA_ATTRIBUTES_SQL = [
-    "`_{full_table_name}_timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP"
-]
 
 TYPE_PATTERN = {
     k: re.compile(v, re.I)
@@ -312,6 +309,10 @@ def declare(full_table_name, definition, context):
         index_sql,
         external_stores,
     ) = prepare_declare(definition, context)
+
+    metadata_attr_sql = [
+        "`_{full_table_name}_timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP"
+    ]
     attribute_sql.extend(
         [
             attr.format(
@@ -319,7 +320,7 @@ def declare(full_table_name, definition, context):
                     full_table_name.replace("`", "").encode("utf-8")
                 ).hexdigest()
             )
-            for attr in METADATA_ATTRIBUTES_SQL
+            for attr in metadata_attr_sql
         ]
     )
 
