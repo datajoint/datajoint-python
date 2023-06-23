@@ -229,7 +229,15 @@ Session & dj.top(limit=10, order_by='session_date')
 ```
 
 The result of this expression returns the first 10 rows of `Session` and sorts them 
-by their `session_date` in ascending order. If the `order_by` argument was instead: `session_date DESC`, then it would be sorted in descending order.
+by their `session_date` in ascending order. 
+
+### `order_by`
+
+| Example                                   | Description                                                                       |
+|-------------------------------------------|-----------------------------------------------------------------------------------|
+| `order_by="session_date DESC"`            | Sorts by `session_date` in *descending* order                                     |
+| `order_by="KEY"`                          | Sorts by the primary key(s)                                                       |
+| `order_by=["subject_id", "session_date"]` | Sorts by `subject_id`, then sorts matching `subject_id`s by their `session_date`  |
 
 The default values for `dj.top` parameters are `limit=1`, `order_by="KEY"`, and `offset=0`.
 
