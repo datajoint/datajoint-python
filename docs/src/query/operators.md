@@ -221,7 +221,7 @@ The examples below will use the table definitions in [table tiers](../reproduce/
 
 ## Top
 
-Similar to the univeral set operator, the top operator uses `dj.Top` notation. It is used to 
+Similar to the universal set operator, the top operator uses `dj.Top` notation. It is used to 
 restrict a query by the given `limit`, `order_by`, and `offset` parameters:
 
 ```python
