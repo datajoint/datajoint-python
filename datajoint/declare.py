@@ -5,6 +5,7 @@ declare the corresponding mysql tables.
 import re
 import pyparsing as pp
 import logging
+from hashlib import sha1
 from .errors import DataJointError, _support_filepath_types, FILEPATH_FEATURE_SWITCH
 from .attribute_adapter import get_adapter
 from .condition import translate_attribute
@@ -19,7 +20,6 @@ EXTERNAL_TABLE_ROOT = "~external"
 METADATA_ATTRIBUTES_SQL = [
     "`_{full_table_name}_timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP"
 ]
-LONGEST_METADATA_ATTRIBUTE = len("__timestamp")
 
 TYPE_PATTERN = {
     k: re.compile(v, re.I)
@@ -315,9 +315,9 @@ def declare(full_table_name, definition, context):
     attribute_sql.extend(
         [
             attr.format(
-                full_table_name=full_table_name.replace("`", "")[
-                    0 : 64 - LONGEST_METADATA_ATTRIBUTE
-                ]
+                full_table_name=sha1(
+                    full_table_name.replace("`", "").encode("utf-8")
+                ).hexdigest()
             )
             for attr in METADATA_ATTRIBUTES_SQL
         ]
