@@ -237,7 +237,7 @@ by their `session_date` in ascending order.
 |-------------------------------------------|---------------------------------------------------------------------------------|
 | `order_by="session_date DESC"`            | Sort by `session_date` in *descending* order                                    |
 | `order_by="KEY"`                          | Sort by the primary key                                                         |
-| `order_by="KEY DESC"`                     | Sort by the primary key in descending order                                     |
+| `order_by="KEY DESC"`                     | Sort by the primary key in *descending* order                                     |
 | `order_by=["subject_id", "session_date"]` | Sort by `subject_id`, then sort matching `subject_id`s by their `session_date`  |
 
 The default values for `dj.Top` parameters are `limit=1`, `order_by="KEY"`, and `offset=0`.
