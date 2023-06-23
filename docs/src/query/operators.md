@@ -221,11 +221,11 @@ The examples below will use the table definitions in [table tiers](../reproduce/
 
 ## Top
 
-Similar to the univeral set operator, the top operator uses `dj.top` notation. It is used to 
+Similar to the univeral set operator, the top operator uses `dj.Top` notation. It is used to 
 restrict a query by the given `limit`, `order_by`, and `offset` parameters:
 
 ```python
-Session & dj.top(limit=10, order_by='session_date')
+Session & dj.Top(limit=10, order_by='session_date')
 ```
 
 The result of this expression returns the first 10 rows of `Session` and sorts them 
@@ -233,13 +233,14 @@ by their `session_date` in ascending order.
 
 ### `order_by`
 
-| Example                                   | Description                                                                       |
-|-------------------------------------------|-----------------------------------------------------------------------------------|
-| `order_by="session_date DESC"`            | Sorts by `session_date` in *descending* order                                     |
-| `order_by="KEY"`                          | Sorts by the primary key(s)                                                       |
-| `order_by=["subject_id", "session_date"]` | Sorts by `subject_id`, then sorts matching `subject_id`s by their `session_date`  |
+| Example                                   | Description                                                                     |
+|-------------------------------------------|---------------------------------------------------------------------------------|
+| `order_by="session_date DESC"`            | Sort by `session_date` in *descending* order                                    |
+| `order_by="KEY"`                          | Sort by the primary key                                                         |
+| `order_by="KEY DESC"`                     | Sort by the primary key in descending order                                     |
+| `order_by=["subject_id", "session_date"]` | Sort by `subject_id`, then sort matching `subject_id`s by their `session_date`  |
 
-The default values for `dj.top` parameters are `limit=1`, `order_by="KEY"`, and `offset=0`.
+The default values for `dj.Top` parameters are `limit=1`, `order_by="KEY"`, and `offset=0`.
 
 ## Restriction
 
