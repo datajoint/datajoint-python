@@ -46,7 +46,7 @@ services:
       interval: 15s
   fakeservices.datajoint.io:
     <<: *net
-    image: datajoint/nginx:v0.2.5
+    image: datajoint/nginx:v0.2.6
     environment:
       - ADD_db_TYPE=DATABASE
       - ADD_db_ENDPOINT=db:3306

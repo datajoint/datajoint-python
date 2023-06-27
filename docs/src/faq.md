@@ -23,7 +23,7 @@ languages must comply to the same data model and computation approach as defined
 ## Can I use DataJoint with my current database?
 
 Researchers use many different tools to keep records, from simple formalized file
-heirarchies to complete software packages for colony management and standard file types
+hierarchies to complete software packages for colony management and standard file types
 like NWB. Existing projects have built interfaces with many such tools, such as
 [PyRAT](https://github.com/SFB1089/adamacs/blob/main/notebooks/03_pyrat_insert.ipynb).
 The only requirement for interface is that tool has an open API. Contact

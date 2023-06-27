@@ -31,7 +31,7 @@
 - Fixed - Fix queries with backslashes ([#999](https://github.com/datajoint/datajoint-python/issues/999)) PR [#1052](https://github.com/datajoint/datajoint-python/pull/1052)
 
 ### 0.13.7 -- Jul 13, 2022
-- Fixed - Fix networkx incompatable change by version pinning to 2.6.3 (#1035) PR #1036
+- Fixed - Fix networkx incompatible change by version pinning to 2.6.3 (#1035) PR #1036
 - Added - Support for serializing numpy datetime64 types (#1022) PR #1036
 - Changed - Add traceback to default logging PR #1036
 
@@ -83,7 +83,7 @@
 - Fixed - `schema.list_tables()` is not topologically sorted (#838) PR #893
 - Fixed - Diagram part tables do not show proper class name (#882) PR #893
 - Fixed - Error in complex restrictions (#892) PR #893
-- Fixed - WHERE and GROUP BY clases are dropped on joins with aggregation (#898, #899) PR #893
+- Fixed - WHERE and GROUP BY classes are dropped on joins with aggregation (#898, #899) PR #893
 
 ### 0.13.0 -- Mar 24, 2021
 - Re-implement query transpilation into SQL, fixing issues (#386, #449, #450, #484, #558). PR #754

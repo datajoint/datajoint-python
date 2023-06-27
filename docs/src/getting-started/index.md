@@ -225,7 +225,7 @@ dj.Diagram(schema.Rectangle) + dj.Diagram(schema.Area)
 
 ### Customize
 
-Adding or substracting a number to a diagram object adds nodes downstream or upstream,
+Adding or subtracting a number to a diagram object adds nodes downstream or upstream,
 respectively, in the pipeline.
 
 ``` python

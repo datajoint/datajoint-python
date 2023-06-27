@@ -58,7 +58,7 @@ schema.spawn_missing_classes()
 
 While `spawn_missing_classes` creates the new classes in the local namespace, it is
 often more convenient to import a schema with its Python module, equivalent to the
-Python command. We can mimmick this import without having access to the schema using
+Python command. We can mimic this import without having access to the schema using
 the `VirtualModule` class object:
 
 ```python

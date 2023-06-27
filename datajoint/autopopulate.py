@@ -118,7 +118,7 @@ class AutoPopulate:
 
     def _jobs_to_do(self, restrictions):
         """
-        :return: the query yeilding the keys to be computed (derived from self.key_source)
+        :return: the query yielding the keys to be computed (derived from self.key_source)
         """
         if self.restriction:
             raise DataJointError(

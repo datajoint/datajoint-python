@@ -83,7 +83,7 @@ black tests --check -v
 
 Jupyter notebooks are supported in this environment. This means that when you `import datajoint`, it will use the current state of the source.
 
-Be sure to see the reference documenation if you are new to [running Jupyter notebooks w/ VSCode](https://code.visualstudio.com/docs/datascience/jupyter-notebooks#_create-or-open-a-jupyter-notebook).
+Be sure to see the reference documentation if you are new to [running Jupyter notebooks w/ VSCode](https://code.visualstudio.com/docs/datascience/jupyter-notebooks#_create-or-open-a-jupyter-notebook).
 
 ### Debugger
 
