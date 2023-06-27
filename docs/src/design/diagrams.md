@@ -2,7 +2,7 @@
 
 Diagrams are a great way to visualize all or part of a pipeline and understand the flow
 of data. DataJoint diagrams are based on **entity relationship diagram** (ERD), with
-some minor departures fom this standard. 
+some minor departures from this standard. 
 
 Here, tables are depicted as nodes and [dependencies](./tables/dependencies) as directed edges
 between them. The `draw` method plots the graph, with many other methods ([Python](https://datajoint.com/docs/core/datajoint-python/latest/api/datajoint/diagram/)) to

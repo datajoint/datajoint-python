@@ -100,7 +100,7 @@ def test_pack():
     y = unpack(pack(x))
     assert_dict_equal(x, y, "Dict do not match!")
     assert_false(
-        isinstance(["range"][0], np.ndarray), "Scalar int was coerced into arrray."
+        isinstance(["range"][0], np.ndarray), "Scalar int was coerced into array."
     )
 
     x = uuid.uuid4()
