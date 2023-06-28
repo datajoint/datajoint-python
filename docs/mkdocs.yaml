@@ -8,6 +8,7 @@ nav:
   - Getting Started: getting-started/index.md
   - Concepts: 
     - Principles: concepts/principles.md
+    - Data Model: concepts/data-model.md
     - Glossary: concepts/glossary.md
   - System Administration: 
     - Database Administration: sysadmin/dba.md
