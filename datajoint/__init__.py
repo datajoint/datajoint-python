@@ -51,6 +51,7 @@ __all__ = [
     "key",
     "key_hash",
     "logger",
+    "cli",
 ]
 
 from .logging import logger
@@ -70,6 +71,7 @@ from .hash import key_hash
 from .attribute_adapter import AttributeAdapter
 from . import errors
 from .errors import DataJointError
+from .cli import cli
 
 ERD = Di = Diagram  # Aliases for Diagram
 schema = Schema  # Aliases for Schema
