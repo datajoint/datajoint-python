@@ -4,14 +4,14 @@
 
 1. The DataJoint Works platform is set up as a fully managed service to host and execute data pipelines.
 
-2. [LabBook](https://github.com/datajoint/datajoint-labbook) is an open source project
-for data entry.
+2. [DataJoint LabBook](https://github.com/datajoint/datajoint-labbook) is an open 
+source project for data entry.
 
 ## Does DataJoint support other programming languages?
 
-DataJoint [Python](https://datajoint.com/docs/core/datajoint-python/) and [Matlab]
-(https://datajoint.com/docs/core/datajoint-matlab/) APIs are both actively supported.
-Previous projects implemented some DataJoint features in
+DataJoint [Python](https://datajoint.com/docs/core/datajoint-python/) and 
+[Matlab](https://datajoint.com/docs/core/datajoint-matlab/) APIs are both actively 
+supported.  Previous projects implemented some DataJoint features in
 [Julia](https://github.com/BrainCOGS/neuronex_workshop_2018/tree/julia/julia) and
 [Rust](https://github.com/datajoint/datajoint-core). DataJoint's data model and data
 representation are largely language independent, which means that any language with a
@@ -27,7 +27,7 @@ hierarchies to complete software packages for colony management and standard fil
 like NWB. Existing projects have built interfaces with many such tools, such as
 [PyRAT](https://github.com/SFB1089/adamacs/blob/main/notebooks/03_pyrat_insert.ipynb).
 The only requirement for interface is that tool has an open API. Contact
-[Support@DataJoint.com](mailto:Support@DataJoint.com) with inquiries. The DataJoint
+[support@DataJoint.com](mailto:Support@DataJoint.com) with inquiries. The DataJoint
 team will consider development requests based on community demand.
 
 ## Is DataJoint an ORM?
