@@ -1,11 +1,11 @@
 # Make Method
 
-For auto-populated *Imported* and *Computed* tables[^1], a `make` method gives exact
+For auto-populated *Imported* and *Computed* tables, a `make` method gives exact
 instructions for generating the content. By making these steps explicit, we keep a
 careful record of data provenance and ensure reproducibility. Data should never be
 entered using the `insert` method directly.
 
-[^1]: For information on differentiating these data tiers, see the Table Tier section on
+For information on differentiating these data tiers, see the Table Tier section on
 [Automation](../design/tables/tiers#automation-imported-and-computed).
 
 The `make` method receives one argument: the *key*, which represents the upstream table
@@ -24,9 +24,9 @@ triggering table.
 ## Populate
 
 The `make` method is sometimes referred to as the `populate` function because this is
-the class method called to run the `make` method on all relevant keys[^2].
+the class method called to run the `make` method on all relevant keys.
 
-[^2]: For information on reprocessing keys that resulted in an error, see information
+For information on reprocessing keys that resulted in an error, see information
 on the [Jobs table](./distributed). 
 
 ``` python
