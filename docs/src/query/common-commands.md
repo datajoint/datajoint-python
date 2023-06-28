@@ -5,11 +5,11 @@ Data entry is as easy as providing the appropriate data structure to a permitted
 Given the following table definition, we can insert data as tuples, dicts, pandas
 dataframes, or pathlib `Path` relative paths to local CSV files.
 
-```text      
-    mouse_id: int            # unique mouse id
-    ---
-    dob: date                # mouse date of birth
-    sex: enum('M', 'F', 'U') # sex of mouse - Male, Female, or Unknown
+```python      
+mouse_id: int            # unique mouse id
+---
+dob: date                # mouse date of birth
+sex: enum('M', 'F', 'U') # sex of mouse - Male, Female, or Unknown
 ``` 
 
 === "Tuple"
@@ -85,12 +85,10 @@ data = query.fetch(as_dict=True) # (2)
 1. NumPy recarray
 2. List of `dict`:
 
-??? Note "For very large tables..."
-
-    In some cases, the amount of data returned by fetch can be quite large; it can be
-    useful to use the `size_on_disk` attribute to determine if running a bare fetch
-    would be wise. Please note that it is only currently possible to query the size of
-    entire tables stored directly in the database at this time.
+In some cases, the amount of data returned by fetch can be quite large; it can be
+useful to use the `size_on_disk` attribute to determine if running a bare fetch
+would be wise. Please note that it is only currently possible to query the size of
+entire tables stored directly in the database at this time.
 
 ### Separate variables
 
