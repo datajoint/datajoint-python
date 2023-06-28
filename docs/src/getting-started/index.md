@@ -9,10 +9,9 @@ Next, please install DataJoint via one of the following:
 
 === "conda"
 
-    !!! note "Pre-Requisites"
-
-        - Ensure you have [conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html#regular-installation)
-        installed.
+    Pre-Requisites
+    - Ensure you have [conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html#regular-installation)
+    installed.
 
     To add the `conda-forge` channel:
 
@@ -28,11 +27,10 @@ Next, please install DataJoint via one of the following:
 
 === "pip + :fontawesome-brands-windows:"
 
-    !!! note "Pre-Requisites"
-
-        - Ensure you have [pip](https://pip.pypa.io/en/stable/installation/) installed.
-        - Install [graphviz](https://graphviz.org/download/#windows) pre-requisite for
-          diagram visualization.
+    Pre-Requisites
+    - Ensure you have [pip](https://pip.pypa.io/en/stable/installation/) installed.
+    - Install [graphviz](https://graphviz.org/download/#windows) pre-requisite for
+        diagram visualization.
 
     To install:
 
@@ -42,11 +40,10 @@ Next, please install DataJoint via one of the following:
 
 === "pip + :fontawesome-brands-apple:"
 
-    !!! note "Pre-Requisites"
-
-        - Ensure you have [pip](https://pip.pypa.io/en/stable/installation/) installed.
-        - Install [graphviz](https://graphviz.org/download/#mac) pre-requisite for
-          diagram visualization.
+    Pre-Requisites
+    - Ensure you have [pip](https://pip.pypa.io/en/stable/installation/) installed.
+    - Install [graphviz](https://graphviz.org/download/#mac) pre-requisite for
+        diagram visualization.
 
     To install:
 
@@ -56,11 +53,10 @@ Next, please install DataJoint via one of the following:
 
 === "pip + :fontawesome-brands-linux:"
 
-    !!! note "Pre-Requisites"
-
-        - Ensure you have [pip](https://pip.pypa.io/en/stable/installation/) installed.
-        - Install [graphviz](https://graphviz.org/download/#linux) pre-requisite for
-          diagram visualization.
+    Pre-Requisites
+    - Ensure you have [pip](https://pip.pypa.io/en/stable/installation/) installed.
+    - Install [graphviz](https://graphviz.org/download/#linux) pre-requisite for
+        diagram visualization.
     
     To install:
 
@@ -70,20 +66,12 @@ Next, please install DataJoint via one of the following:
 
 ## Connection
 
-!!! note
-
-    Although you may connect to any MySQL server of your choice, the DataJoint company
-    offers an online tutorial environment. Simply sign up for a free
-    [DataJoint account](https://accounts.datajoint.io). 
-    You will be granted privileges to create schemas
-    that are prefixed as `{user}_`.
-
 === "environment variables"
 
     Before using `datajoint`, set the following environment variables like so:
 
     ```bash linenums="1"
-    DJ_HOST=tutorial-db.datajoint.io
+    DJ_HOST={host_address}
     DJ_USER={user}
     DJ_PASS={password}
     ```
@@ -95,7 +83,7 @@ Next, please install DataJoint via one of the following:
     ```python linenums="1"
     import datajoint as dj
 
-    dj.config["database.host"] = "tutorial-db.datajoint.io"
+    dj.config["database.host"] = "{host_address}"
     dj.config["database.user"] = "{user}"
     dj.config["database.password"] = "{password}"
     ```
@@ -114,7 +102,7 @@ Next, please install DataJoint via one of the following:
 
     ```json linenums="1"
     {
-        "database.host": "tutorial-db.datajoint.io",
+        "database.host": "{host_address}",
         "database.user": "{user}",
         "database.password": "{password}"
     }
@@ -209,19 +197,19 @@ dj.Diagram(schema.Rectangle)
 dj.Diagram(schema.Rectangle) + dj.Diagram(schema.Area)
 ```
 
-??? Note "What if I don't see the diagram?"
+What if I don't see the diagram?
 
-    Some Python interfaces may require additional `draw` method.
+Some Python interfaces may require additional `draw` method.
 
-    ```python
-    dj.Diagram(schema).draw()
-    ```
+```python
+dj.Diagram(schema).draw()
+```
 
-    Calling the `.draw()` method is not necessary when working in a Jupyter notebook by
-    entering `dj.Diagram(schema)` in a notebook cell. The Diagram will automatically
-    render in the notebook by calling its `_repr_html_` method. A Diagram displayed
-    without `.draw()` will be rendered as an SVG, and hovering the mouse over a table
-    will reveal a compact version of the output of the `.describe()` method.
+Calling the `.draw()` method is not necessary when working in a Jupyter notebook by
+entering `dj.Diagram(schema)` in a notebook cell. The Diagram will automatically
+render in the notebook by calling its `_repr_html_` method. A Diagram displayed
+without `.draw()` will be rendered as an SVG, and hovering the mouse over a table
+will reveal a compact version of the output of the `.describe()` method.
 
 ### Customize
 
