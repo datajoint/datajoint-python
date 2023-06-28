@@ -14,11 +14,8 @@ with its tables:
 
 ``` python
 import datajoint as dj
-from element_calcium_imaging import scan # (1)
+from element_calcium_imaging import scan # This and other [DataJoint Elements](https://datajoint.com/docs/elements/) are installable via `pip` or downloadable via their respective GitHub repositories.
 ```
-
-1. This and other [DataJoint Elements](https://datajoint.com/docs/elements/) are 
-installable via `pip` or downloadable via their respective GitHub repositories.
 
 To visualize an unfamiliar schema, see commands for generating [diagrams](../../getting-started/#diagram).
 
@@ -31,16 +28,10 @@ use the `dj.list_schemas` function to list the available database schemas.
 
 ``` python
 import datajoint as dj
-dj.conn() # (1)
-dj.list_schemas() # (2)
-dj.Schema('schema_name').list_tables() # (3)
+dj.conn() # Establish a connection to the server.
+dj.list_schemas() # List the available schemas on the server.
+dj.Schema('schema_name').list_tables() # List the tables for a given schema from the previous step. These will appear in their raw database form, with underscores instead of camelcase and special characters for Part tables.
 ```
-
-1. Establish a connection to the server.
-2. List the available schemas on the server.
-3. List the tables for a given schema from the previous step. These will appear in their
-raw database form, with underscores instead of camelcase and special characters for Part
-tables.
 
 Just as with a new schema, we can create a schema object to connect to the chosen
 database schema. If the schema already exists, `dj.Schema` is initialized as usual.
