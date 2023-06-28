@@ -10,6 +10,8 @@ import numpy
 import pandas
 import json
 from .errors import DataJointError
+from typing import Union, List
+from dataclasses import dataclass
 
 JSON_PATTERN = re.compile(
     r"^(?P<attr>\w+)(\.(?P<path>[\w.*\[\]]+))?(:(?P<type>[\w(,\s)]+))?$"
@@ -59,6 +61,35 @@ class AndList(list):
             self.extend(restriction)
         else:
             super().append(restriction)
+
+
+@dataclass
+class Top:
+    """
+    A restriction to the top entities of a query.
+    In SQL, this corresponds to ORDER BY ... LIMIT ... OFFSET
+    """
+
+    limit: Union[int, None] = 1
+    order_by: Union[str, List[str]] = "KEY"
+    offset: int = 0
+
+    def __post_init__(self):
+        self.order_by = self.order_by or ["KEY"]
+        self.offset = self.offset or 0
+
+        if self.limit is not None and not isinstance(self.limit, int):
+            raise TypeError("Top limit must be an integer")
+        if not isinstance(self.order_by, (str, collections.abc.Sequence)) or not all(
+            isinstance(r, str) for r in self.order_by
+        ):
+            raise TypeError("Top order_by attributes must all be strings")
+        if not isinstance(self.offset, int):
+            raise TypeError("The offset argument must be an integer")
+        if self.offset and self.limit is None:
+            self.limit = 999999999999  # arbitrary large number to allow query
+        if isinstance(self.order_by, str):
+            self.order_by = [self.order_by]
 
 
 class Not:

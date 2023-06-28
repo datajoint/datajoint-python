@@ -11,9 +11,11 @@ from nose.tools import (
     raises,
     assert_set_equal,
     assert_list_equal,
+    assert_raises,
 )
 
 import datajoint as dj
+from datajoint.errors import DataJointError
 from .schema_simple import (
     A,
     B,
@@ -23,6 +25,8 @@ from .schema_simple import (
     L,
     DataA,
     DataB,
+    SelectPK,
+    KeyPK,
     TTestUpdate,
     IJ,
     JI,
@@ -486,6 +490,95 @@ class TestRelational:
             len(w), len(w & y), "incorrect restriction without common attributes"
         )
         assert_true(len(w - y) == 0, "incorrect restriction without common attributes")
+
+    @staticmethod
+    def test_restrictions_by_top():
+        a = L() & dj.Top()
+        b = L() & dj.Top(order_by=["cond_in_l", "KEY"])
+        x = L() & dj.Top(5, "id_l desc", 4) & "cond_in_l=1"
+        y = L() & "cond_in_l=1" & dj.Top(5, "id_l desc", 4)
+        z = (
+            L()
+            & dj.Top(None, order_by="id_l desc")
+            & "cond_in_l=1"
+            & dj.Top(5, "id_l desc")
+            & ("id_l=20", "id_l=16", "id_l=17")
+            & dj.Top(2, "id_l asc", 1)
+        )
+        assert len(a) == 1
+        assert len(b) == 1
+        assert len(x) == 1
+        assert len(y) == 5
+        assert len(z) == 2
+        assert a.fetch(as_dict=True) == [
+            {"id_l": 0, "cond_in_l": 1},
+        ]
+        assert b.fetch(as_dict=True) == [
+            {"id_l": 3, "cond_in_l": 0},
+        ]
+        assert x.fetch(as_dict=True) == [{"id_l": 25, "cond_in_l": 1}]
+        assert y.fetch(as_dict=True) == [
+            {"id_l": 16, "cond_in_l": 1},
+            {"id_l": 15, "cond_in_l": 1},
+            {"id_l": 11, "cond_in_l": 1},
+            {"id_l": 10, "cond_in_l": 1},
+            {"id_l": 5, "cond_in_l": 1},
+        ]
+        assert z.fetch(as_dict=True) == [
+            {"id_l": 17, "cond_in_l": 1},
+            {"id_l": 20, "cond_in_l": 1},
+        ]
+
+    @staticmethod
+    def test_top_restriction_with_keywords():
+        select = SelectPK() & dj.Top(limit=9, order_by=["select desc"])
+        key = KeyPK() & dj.Top(limit=9, order_by="key desc")
+        assert select.fetch(as_dict=True) == [
+            {"id": 2, "select": 8},
+            {"id": 2, "select": 6},
+            {"id": 1, "select": 4},
+            {"id": 2, "select": 4},
+            {"id": 1, "select": 3},
+            {"id": 1, "select": 2},
+            {"id": 2, "select": 2},
+            {"id": 1, "select": 1},
+            {"id": 0, "select": 0},
+        ]
+        assert key.fetch(as_dict=True) == [
+            {"id": 2, "key": 6},
+            {"id": 2, "key": 5},
+            {"id": 1, "key": 5},
+            {"id": 0, "key": 4},
+            {"id": 1, "key": 4},
+            {"id": 2, "key": 4},
+            {"id": 0, "key": 3},
+            {"id": 1, "key": 3},
+            {"id": 2, "key": 3},
+        ]
+
+    @staticmethod
+    def test_top_errors():
+        with assert_raises(DataJointError) as err1:
+            L() & ("cond_in_l=1", dj.Top())
+        with assert_raises(DataJointError) as err2:
+            L() & dj.AndList(["cond_in_l=1", dj.Top()])
+        with assert_raises(TypeError) as err3:
+            L() & dj.Top(limit="1")
+        with assert_raises(TypeError) as err4:
+            L() & dj.Top(order_by=1)
+        with assert_raises(TypeError) as err5:
+            L() & dj.Top(offset="1")
+        assert (
+            "Invalid restriction type Top(limit=1, order_by=['KEY'], offset=0)"
+            == str(err1.exception)
+        )
+        assert (
+            "Invalid restriction type Top(limit=1, order_by=['KEY'], offset=0)"
+            == str(err2.exception)
+        )
+        assert "Top limit must be an integer" == str(err3.exception)
+        assert "Top order_by attributes must all be strings" == str(err4.exception)
+        assert "The offset argument must be an integer" == str(err5.exception)
 
     @staticmethod
     def test_datetime():

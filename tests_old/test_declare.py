@@ -341,3 +341,12 @@ class TestDeclare:
                 definition = """
                 -> (master)
                 """
+
+    @staticmethod
+    @raises(dj.DataJointError)
+    def test_regex_mismatch():
+        @schema
+        class IndexAttribute(dj.Manual):
+            definition = """
+            index: int
+            """

@@ -213,26 +213,6 @@ class TestFetch:
                 np.all([cc == ll for cc, ll in zip(c, l)]), "Sorting order is different"
             )
 
-    def test_limit_warning(self):
-        """Tests whether warning is raised if offset is used without limit."""
-        log_capture = io.StringIO()
-        stream_handler = logging.StreamHandler(log_capture)
-        log_format = logging.Formatter(
-            "[%(asctime)s][%(funcName)s][%(levelname)s]: %(message)s"
-        )
-        stream_handler.setFormatter(log_format)
-        stream_handler.set_name("test_limit_warning")
-        logger.addHandler(stream_handler)
-        self.lang.fetch(offset=1)
-
-        log_contents = log_capture.getvalue()
-        log_capture.close()
-
-        for handler in logger.handlers:  # Clean up handler
-            if handler.name == "test_limit_warning":
-                logger.removeHandler(handler)
-        assert "[WARNING]: Offset set, but no limit." in log_contents
-
     def test_len(self):
         """Tests __len__"""
         assert_equal(
