@@ -36,19 +36,19 @@ Scan & 'sample_rate > 1000'
 
 The above command shows the following table:
 
-    ```text
-    | id* |    start_time*      | sample_rate | signal |  times | duration |
-    |-----|---------------------|-------------|--------|--------|----------| 
-    |  1  | 2020-01-02 22:15:00 |   1893.00   | =BLOB= | =BLOB= |  1981.29 |
-    |  2  | 2020-01-03 00:15:00 |   4800.00   | =BLOB= | =BLOB= |   548.0  |
-    |  3  | 2020-01-19 14:03:03 |   4800.00   | =BLOB= | =BLOB= |   336.0  |
-    |  4  | 2020-01-19 14:13:03 |   4800.00   | =BLOB= | =BLOB= |  2501.0  |
-    |  5  | 2020-01-23 11:05:23 |   4800.00   | =BLOB= | =BLOB= |  1800.0  |
-    |  6  | 2020-01-27 14:03:03 |   4800.00   | =BLOB= | =BLOB= |   600.0  |
-    |  7  | 2020-01-31 20:15:00 |   4800.00   | =BLOB= | =BLOB= |   600.0  |
-    ...
-    11 tuples
-    ```
+```text
+| id* |    start_time*      | sample_rate | signal |  times | duration |
+|-----|---------------------|-------------|--------|--------|----------| 
+|  1  | 2020-01-02 22:15:00 |   1893.00   | =BLOB= | =BLOB= |  1981.29 |
+|  2  | 2020-01-03 00:15:00 |   4800.00   | =BLOB= | =BLOB= |   548.0  |
+|  3  | 2020-01-19 14:03:03 |   4800.00   | =BLOB= | =BLOB= |   336.0  |
+|  4  | 2020-01-19 14:13:03 |   4800.00   | =BLOB= | =BLOB= |  2501.0  |
+|  5  | 2020-01-23 11:05:23 |   4800.00   | =BLOB= | =BLOB= |  1800.0  |
+|  6  | 2020-01-27 14:03:03 |   4800.00   | =BLOB= | =BLOB= |   600.0  |
+|  7  | 2020-01-31 20:15:00 |   4800.00   | =BLOB= | =BLOB= |   600.0  |
+...
+11 tuples
+```
 
 Note that this preview (a) only lists a few of the entities that will be returned and 
 (b) does not contain any data for attributes of datatype `blob`.
