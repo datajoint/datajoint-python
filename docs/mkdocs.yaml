@@ -45,6 +45,7 @@ nav:
     - Update: manipulation/update.md
     - Transactions: manipulation/transactions.md
   - Data Queries:
+    - Query Objects: query/query-objects.md
     - Common Commands: query/common-commands.md
     - Fetch: query/fetch.md
     - Iteration: query/iteration.md
