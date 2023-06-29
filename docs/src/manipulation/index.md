@@ -1,4 +1,4 @@
-# Manipulation
+# Data Manipulation
 
 Data **manipulation** operations change the state of the data stored in the database 
 without modifying the structure of the stored data.
