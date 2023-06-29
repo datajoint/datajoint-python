@@ -10,7 +10,7 @@
 For example, if given a `Session` table, you can
 create a query object to retrieve its entire contents as follows:
 
-``` python
+```python
 query  = Session()
 ```
 
@@ -20,7 +20,7 @@ constructed by applying [operators](./operators.md) to other query objects.
 For example, the following query retrieves information about all
 experiments and scans for mouse 001:
 
-``` python
+```python
 query = Session * Scan & 'animal_id = 001'
 ```
 
@@ -30,7 +30,7 @@ Note that for brevity, query operators can be applied directly to class, as
 Alternatively, we could query all scans with a sample rate over 1000, and preview the
 contents of the query simply displaying the object. 
 
-``` python
+```python
 Scan & 'sample_rate > 1000'
 ```
 
@@ -79,7 +79,7 @@ query returns any entities and to `False` if the query result is empty.
 The `len` function applied to a query object determines the number of
 entities returned by the query.
 
-``` python
+```python
 # number of sessions since the start of 2018.
 n = len(Session & 'session_date >= "2018-01-01"')
 ```

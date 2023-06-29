@@ -12,7 +12,7 @@ defines a schema object that is used to link classes declared in the module to t
 in the database schema. With the module installed, you can simply import it to interact
 with its tables:
 
-``` python
+```python
 import datajoint as dj
 from element_calcium_imaging import scan # This and other [DataJoint Elements](https://datajoint.com/docs/elements/) are installable via `pip` or downloadable via their respective GitHub repositories.
 ```
@@ -26,7 +26,7 @@ Now, imagine we do not have access to the
 or we're unsure if the version on our server matches the definition available. We can
 use the `dj.list_schemas` function to list the available database schemas.
 
-``` python
+```python
 import datajoint as dj
 dj.conn() # Establish a connection to the server.
 dj.list_schemas() # List the available schemas on the server.
@@ -41,7 +41,7 @@ If a diagram will shows a mixture of class names and database table names, the
 tables missing their classes. This will allow us to interact with all tables as if
 they were declared in the current namespace.
 
-``` python
+```python
 schema.spawn_missing_classes()
 ```
 
@@ -84,13 +84,13 @@ all the table classes already declared inside it.
 `create_schema=False` may be useful if we want to make sure that the schema already 
 exists.  If none exists, `create_schema=True` will create an empty schema.
 
-``` python
+```python
 dj.VirtualModule('what', 'nonexistent')
 ```
 
 Returns
 
-``` python
+```python
 DataJointError: Database named `nonexistent` was not defined. Set argument create_schema=True to create it.
 ```
 
@@ -105,11 +105,11 @@ However, you if do decide to create new tables in an existing tables using the v
 module, you may do so by using the schema object from the module as the decorator for
 declaring new tables:
 
-``` python
+```python
 uni = dj.VirtualModule('university.py', 'dimitri_university', create_tables=True)
 ```
 
-``` python
+```python
 @uni.schema
 class Example(dj.Manual):
     definition = """
@@ -119,6 +119,6 @@ class Example(dj.Manual):
     """
 ```
 
-``` python
+```python
 dj.Diagram(uni)
 ```

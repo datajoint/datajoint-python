@@ -45,7 +45,7 @@ may change between two sequential invocations unless they are wrapped in a trans
 Therefore, if you wish to fetch matching pairs of attributes, do so in one `fetch`
 call.
 
-``` python
+```python
 data = query.fetch()
 ```
 
@@ -59,7 +59,7 @@ the user for confirmation to proceed.
 The `drop` method is often used during initial design to allow altered
 table definitions to take effect.
 
-``` python
+```python
 # drop the Person table from its schema
 Person.drop()
 ```
@@ -69,7 +69,7 @@ Person.drop()
 The `Diagram` command can help you visualize your pipeline, or understand
 an existing pipeline. 
 
-``` python
+```python
 import datajoint as dj
 schema = dj.Schema('my_database')
 dj.Diagram(schema).draw()

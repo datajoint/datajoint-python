@@ -216,7 +216,7 @@ will reveal a compact version of the output of the `.describe()` method.
 Adding or subtracting a number to a diagram object adds nodes downstream or upstream,
 respectively, in the pipeline.
 
-``` python
+```python
 (dj.Diagram(schema.Rectangle)+1).draw() # (1)
 ```
 

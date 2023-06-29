@@ -29,6 +29,6 @@ the class method called to run the `make` method on all relevant keys.
 For information on reprocessing keys that resulted in an error, see information
 on the [Jobs table](./distributed). 
 
-``` python
+```python
 Segmentation.populate()
 ```    

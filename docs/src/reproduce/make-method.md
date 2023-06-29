@@ -1,9 +1,9 @@
 # Make Method
 
 Consider the following table definition from the article on 
-[table tiers](./table-tiers):
+[table tiers](table-tiers):
 
-``` python
+```python
 @schema
 class FilteredImage(dj.Computed):
     definition = """ # Filtered image
@@ -20,7 +20,7 @@ class FilteredImage(dj.Computed):
 
 The `FilteredImage` table can be populated as
 
-``` python
+```python
 FilteredImage.populate()
 ```
 
@@ -43,7 +43,7 @@ and allow greater control over the method's behavior.
 | `max_calls`               | `None`     | If not `None`, populates at most this many keys. Defaults to no limit.
 | `display_progress`        | `False`    | If `True`, displays a progress bar. |
 | `processes`               | `1`        | Number of processes to use. Set to `None` to use all cores |
-| `make_kwargs`             | `None`     | Keyword arguments which do not affect the result of computation to be passed down to each ``make()`` call. Computation arguments should be specified within the pipeline e.g. using a `dj.Lookup` table. |
+| `make_kwargs`             | `None`     | Keyword arguments which do not affect the result of computation to be passed down to each `make()` call. Computation arguments should be specified within the pipeline e.g. using a `dj.Lookup` table. |
 
 ## Progress
 

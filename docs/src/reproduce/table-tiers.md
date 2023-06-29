@@ -25,7 +25,7 @@ methods called on instances.
 
 The following code defines two manual tables, `Animal` and `Session`:
 
-``` python
+```python
 @schema
 class Animal(dj.Manual):
     definition = """
@@ -61,7 +61,7 @@ Lookup tables are commonly populated from their `contents` property.
 The table below is declared as a lookup table with its contents property
 provided to generate entities.
 
-``` python
+```python
 @schema
 class User(dj.Lookup):
     definition = """
@@ -101,7 +101,7 @@ Imagine that there is a table `test.Image` that contains 2D grayscale images in 
 `image` attribute. We can define the Computed table, `test.FilteredImage` that filters
 the image in some way and saves the result in its `filtered_image` attribute.
 
-``` python
+```python
 @schema
 class FilteredImage(dj.Computed):
     definition = """ # Filtered image

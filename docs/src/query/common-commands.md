@@ -77,7 +77,7 @@ A `fetch` command can either retrieve table data as a NumPy
 [recarray](https://docs.scipy.org/doc/numpy/reference/generated/numpy.recarray.html)
 or a as a list of `dict`
 
-``` python
+```python
 data = query.fetch() # (1)
 data = query.fetch(as_dict=True) # (2)
 ```
@@ -92,14 +92,14 @@ entire tables stored directly in the database at this time.
 
 ### Separate variables
 
-``` python
+```python
 name, img = query.fetch1('mouse_id', 'dob')  # when query has exactly one entity
 name, img = query.fetch('mouse_id', 'dob')   # [mouse_id, ...] [dob, ...]
 ```
 
 ### Primary key values
 
-``` python
+```python
 keydict = tab.fetch1("KEY")  # single key dict when tab has exactly one entity
 keylist = tab.fetch("KEY")   # list of key dictionaries [{}, ...]
 ```
@@ -112,7 +112,7 @@ primary keys.
 
 To sort the result, use the `order_by` keyword argument.
 
-``` python
+```python
 data = query.fetch(order_by='mouse_id')                # ascending order
 data = query.fetch(order_by='mouse_id desc')           # descending order
 data = query.fetch(order_by=('mouse_id', 'dob'))       # by ID first, dob second
@@ -130,7 +130,7 @@ they appear in the index. Otherwise, this name can be used as any other argument
 If an attribute happens to be a SQL reserved word, it needs to be enclosed in
 backquotes. For example:
 
-``` python
+```python
 data = query.fetch(order_by='`select` desc')
 ```
 
@@ -142,7 +142,7 @@ The `order_by` value is eventually passed to the `ORDER BY`
 Similar to sorting, the `limit` and `offset` arguments can be used to limit the result
 to a subset of entities.
 
-``` python
+```python
 data = query.fetch(order_by='mouse_id', limit=10, offset=5)
 ```
 
@@ -157,7 +157,7 @@ returned by `fetch()` are contained within a `numpy.recarray`, they can be easil
 converted to `pandas.DataFrame` objects by passing them into the `pandas.DataFrame`
 constructor. For example:
 
-``` python
+```python
 import pandas as pd
 frame = pd.DataFrame(tab.fetch())
 ```
@@ -165,7 +165,7 @@ frame = pd.DataFrame(tab.fetch())
 Calling `fetch()` with the argument `format="frame"` returns results as
 `pandas.DataFrame` objects indexed by the table's primary key attributes.
 
-``` python
+```python
 frame = tab.fetch(format="frame")
 ```
 
