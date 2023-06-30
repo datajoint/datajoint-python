@@ -1,6 +1,6 @@
 # Filepath Datatype
 
-## Filepath datatype configuration & usage
+## Configuration & usage
 
 https://github.com/datajoint/datajoint-python/issues/481
 

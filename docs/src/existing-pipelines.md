@@ -1,4 +1,4 @@
-# Existing Pipelines
+# Work with Existing Pipelines
 
 This section describes how to work with database schemas without access to the original
 code that generated the schema. These situations often arise when the database is

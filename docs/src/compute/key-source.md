@@ -5,7 +5,8 @@
 **Key source** refers to the set of primary key values over which 
 [autopopulate](./populate.md) iterates, calling the `make` method at each iteration.
 Each `key` from the key source is passed to the table's `make` call.
-By default, the key source for a table is the [join](../query/join.md) of its primary [dependencies](../design/tables/dependencies.md).
+By default, the key source for a table is the [join](../query/join.md) of its primary 
+[dependencies](../design/tables/dependencies.md).
 
 For example, consider a schema with three tables.
 The `Stimulus` table contains one attribute `stimulus_type` with one of two values, 
@@ -26,7 +27,8 @@ table class, after the `definition` string.
 
 Any [query object](../query/fetch.md) can be used as the key source.
 In most cases the new key source will be some alteration of the default key source.
-Custom key sources often involve restriction to limit the key source to only relevant entities.
+Custom key sources often involve restriction to limit the key source to only relevant 
+entities.
 Other designs may involve using only one of a table's primary dependencies.
 
 In the example below, the `EEG` table depends on the `Recording` table that lists all 

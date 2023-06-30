@@ -1,7 +1,7 @@
 # Make Method
 
 Consider the following table definition from the article on 
-[table tiers](table-tiers):
+[table tiers](table-tiers.md):
 
 ```python
 @schema
