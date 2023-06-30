@@ -93,6 +93,16 @@ jobs:
           black datajoint --check -v
           black tests --check -v
           black tests_old --check -v
+  codespell:
+    name: Check for spelling errors
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Codespell
+        uses: codespell-project/actions-codespell@v2
   publish-docs:
     if: |
       github.event_name == 'push' &&
