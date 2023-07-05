@@ -107,9 +107,10 @@ with bulk storage systems for storing large contiguous data objects.
 DataJoint comprises:
 
 - a schema :ref:`definition <definitions>` language
-- a data :ref:`manipulation <manipulation>` language
-- a data :ref:`query <query-objects>` language
-- a :ref:`diagramming <erd>` notation for visualizing relationships between modeled entities
+- a data [manipulation](../manipulation/index.md) language
+- a data [query](../query/query-objects.md) language
+- a [diagramming](../design/diagrams.md) notation for visualizing relationships between 
+modeled entities
 
 The key refinement of DataJoint over other relational data models and their 
 implementations is DataJoint's support of 
