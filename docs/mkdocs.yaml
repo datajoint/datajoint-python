@@ -13,6 +13,7 @@ nav:
   - System Administration: 
     - Database Administration: sysadmin/dba.md
     - File Storage: sysadmin/filestore.md
+    - Backups and Recovery: sysadmin/backup.md
   - Client Configuration: 
     - Install: client/install.md
     - Credentials: client/creds.md
