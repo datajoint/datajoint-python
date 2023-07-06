@@ -17,7 +17,8 @@ those that do not come from the same initial source.
 
 For example, you may like to query the university database for the complete list of 
 students' home cities, along with the number of students from each city.
-The :ref:`schema <query-example>` for the university database does not have a table for cities and states.
+The [schema](example-schema.md) for the university database does not have a table for 
+cities and states.
 A virtual table can fill the role of the nonexistent base table, allowing queries that 
 would not be possible otherwise.
 

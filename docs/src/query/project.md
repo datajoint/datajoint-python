@@ -8,7 +8,8 @@ The `proj` operator represents **projection** and is used to select attributes
 The simple projection selects a subset of attributes of the original table.
 However, the primary key attributes are always included.
 
-Using the :ref:`example schema <query-example>`, let table `department` have attributes **dept**, *dept_name*, *dept_address*, and *dept_phone*.
+Using the [example schema](example-schema.md), let table `department` have attributes 
+**dept**, *dept_name*, *dept_address*, and *dept_phone*.
 The primary key attribute is in bold.
 
 Then `department.proj()` will have attribute **dept**.
@@ -38,7 +39,7 @@ tab.proj(animal='mouse', 'stimulus')
 
 will have attributes **animal**, **session**, and *stimulus*.
 
-Renaming is often used to control the outcome of a :ref:`join <join>`.
+Renaming is often used to control the outcome of a [join](join.md).
 For example, let `tab` have attributes **slice**, and **cell**.
 Then `tab * tab` will simply yield `tab`.
 However,
