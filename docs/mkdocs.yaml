@@ -17,7 +17,7 @@ nav:
     - Database Server Hosting: sysadmin/hosting.md
   - Client Configuration: 
     - Install: client/install.md
-    - Credentials: client/creds.md
+    - Credentials: client/credentials.md
     - Settings: client/settings.md
     - File Stores: client/stores.md
   - Schema Design:
