@@ -70,7 +70,6 @@ nav:
   - Reproducibility:
       - Table Tiers: reproduce/table-tiers.md
       - Make Method: reproduce/make-method.md
-  - Existing Pipelines: existing-pipelines.md
   - Tutorials:
       - tutorials/json.ipynb
   - FAQ: faq.md
