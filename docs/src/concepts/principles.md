@@ -50,15 +50,19 @@ These formal terms have more common (even if less precise) variants:
 A collection of *stored tables* make up a *database*.
 *Derived tables* are formed through *query expressions*.
 
-### Table Definition 
+### Table Definition
+
 DataJoint introduces a streamlined syntax for defining a stored table.
 
-Each line in the definition defines an attribute with its name, data type, an optional default value, and an optional comment in the format:
-```
+Each line in the definition defines an attribute with its name, data type, an optional 
+default value, and an optional comment in the format:
+
+```python
 name [=default] : type [# comment]
 ```
 
-Primary attributes come first and are separated from the rest of the attributes with the divider `---`.
+Primary attributes come first and are separated from the rest of the attributes with 
+the divider `---`.
 
 For example, the following code defines the entity set for entities of class `Employee`:
 
@@ -73,7 +77,9 @@ primary_phone="" : varchar(12)
 ```
 
 ### Data Tiers
-Stored tables are designated into one of four *tiers* indicating how their data originates.
+
+Stored tables are designated into one of four *tiers* indicating how their data 
+originates.
 
 |  table tier | data origin |
 | --- | --- |
@@ -99,7 +105,8 @@ Stored tables are named and grouped into namespaces called *schemas*.
 A collection of schemas make up a *database*. 
 A *database* has a globally unique address or name. 
 A *schema* has a unique name within its database. 
-Within a *connection* to a particular database, a stored table is identified as `schema.Table`.
+Within a *connection* to a particular database, a stored table is identified as 
+`schema.Table`.
 A schema typically groups tables that are logically related.
 
 ## Dependencies 
