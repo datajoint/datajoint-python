@@ -9,6 +9,7 @@ nav:
   - Concepts: 
     - Principles: concepts/principles.md
     - Data Model: concepts/data-model.md
+    - Data Pipelines: concepts/data-pipelines.md
     - Glossary: concepts/glossary.md
   - System Administration: 
     - Database Administration: sysadmin/dba.md
