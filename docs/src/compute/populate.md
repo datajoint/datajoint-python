@@ -17,7 +17,7 @@ Otherwise it is **computed**.
 
 Auto-populated tables are defined and queried exactly as other tables.
 (See :ref:`example`.)
-Their data definition follows the same :ref:`definition syntax <definition-syntax>`.
+Their data definition follows the same [definition syntax](../design/tables/declare.md).
 
 ## Make
 

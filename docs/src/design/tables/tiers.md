@@ -4,18 +4,13 @@ The key to reproducibility in DataJoint is clear data provenance. In any experim
 there are stages for data entry, ingestion, and processing or analysis. DataJoint
 helps make these stages explicit with data tiers, indicating data origin.
 
-| Table Type   | Description                                                            | Example                                         |
-|--------------|------------------------------------------------------------------------| ------------------------------------------------|
-| **Lookup**   | Small reference tables containing general information or settings.     | Analysis parameter set.                         |
-| **Manual**   | Data entered entered with by hand or with external helper scripts.     | Manual subject metadata entry.                  |
-| **Imported** | Data ingested automatically from outside files.                        | Loading a raw data file.                        |
-| **Computed** | Data computed automatically entirely inside the pipeline.              | Running analyses and storing results.           |  
-| **Part**\*   | Data in a many-to-one relationship with the corresponding master table.| Independent unit results from a given analysis. |
-
-<!--??? is note block, + means open on page load -->
-???+ Note "\*Part tables"
-    While all other types correspond to their data tier, Part tables inherit the
-    tier of their master table.
+| Table Type | Description | Example |
+| -- | -- | -- |
+| Lookup | Small reference tables containing general information or settings. | Analysis parameter set. |
+| Manual | Data entered entered with by hand or with external helper scripts. | Manual subject metadata entry. |
+| Imported | Data ingested automatically from outside files. | Loading a raw data file. |
+| Computed | Data computed automatically entirely inside the pipeline. | Running analyses and storing results. |  
+| Part\* | Data in a many-to-one relationship with the corresponding master table. While all other types correspond to their data tier, Part tables inherit the tier of their master table. | Independent unit results from a given analysis. |
 
 Lookup and Manual tables generally handle manually added data. Imported and Computed
 tables both allow for automation, but differ in the source of information. And Part
@@ -100,7 +95,7 @@ part tables that depend on each other. See link above.
 
 ## Example
 
---8<-- "src/images/concepts-table-tiers-diagram.md"
+<!-- "src/images/concepts-table-tiers-diagram.md"-->
 
 In this example, the experimenter first enters information into the Manual tables, shown
 in green. They enter information about a mouse, then a session, and then each scan
