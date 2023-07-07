@@ -28,8 +28,8 @@ in this role, albeit with less DataJoint-centric customization.
 
 ## Self hosting
 
-In the most basic configuration, the relational database software and DataJoint are 
-installed onto a single computer which is used by an individual user.
+In the most basic configuration, the relational database management system (database server) is 
+installed on an individual user's personal computer.
 To support a small group of users, a larger computer can be used instead and configured 
 for remote access.
 As the number of users grows, individual workstations can be installed with the 
