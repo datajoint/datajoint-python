@@ -14,6 +14,7 @@ nav:
     - Glossary: concepts/glossary.md
   - System Administration: 
     - Database Administration: sysadmin/dba.md
+    - Bulk Storage Systems: sysadmin/bulk-storage.md
     - File Storage: sysadmin/filestore.md
     - Backups and Recovery: sysadmin/backup.md
     - Database Server Hosting: sysadmin/hosting.md
