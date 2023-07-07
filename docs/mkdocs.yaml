@@ -67,6 +67,7 @@ nav:
     - Populate: compute/populate.md
     - Key Source: compute/key-source.md
     - Distributed Computing: compute/distributed.md
+  - Publish Data: publish-data.md
   - Internals:
     - SQL Transpilation: internal/transpilation.md
   - Reproducibility:
