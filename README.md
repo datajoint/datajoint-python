@@ -47,9 +47,4 @@ DataJoint (https://datajoint.com).
 - Contribute
   - [Development Environment](https://datajoint.com/docs/core/datajoint-python/latest/develop/)
 
-  - [Guidelines](https://datajoint.com/docs/community/contribute/)
-
-- Legacy Resources (To be replaced by above)
-  - [Documentation](https://docs.datajoint.org)
-
-  - [Tutorials](https://tutorials.datajoint.org)
+  - [Guidelines](https://datajoint.com/docs/about/contribute/)
