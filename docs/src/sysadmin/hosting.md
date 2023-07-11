@@ -30,11 +30,8 @@ in this role, albeit with less DataJoint-centric customization.
 
 In the most basic configuration, the relational database management system (database server) is 
 installed on an individual user's personal computer.
-To support a small group of users, a larger computer can be used instead and configured 
-for remote access.
-As the number of users grows, individual workstations can be installed with the 
-DataJoint software and used to connect to a larger and more specialized centrally 
-located database server machine.
+To support a group of users, a specialized machine can be configured as a dedicated database server.
+This server can be accessed by multiple DataJoint clients to query the data and perform computations. 
 
 For even larger groups or multi-site collaborations, multiple database servers may be 
 configured in a replicated fashion to support larger workloads and simultaneous 
