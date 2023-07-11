@@ -5,7 +5,7 @@ repo_url: https://github.com/datajoint/datajoint-python
 repo_name: datajoint/datajoint-python
 nav:
   - DataJoint Python: index.md
-  - Getting Started: getting-started/index.md
+  - Quick Start Guide: quick-start.md
   - Concepts: 
     - Principles: concepts/principles.md
     - Data Model: concepts/data-model.md
