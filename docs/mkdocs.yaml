@@ -44,7 +44,8 @@ nav:
     - Schema Recall: design/recall.md
     - Schema Drop: design/drop.md
     - Schema Modification: design/alter.md
-  - Data Manipulations: manipulation/index.md
+  - Data Manipulations:
+    - manipulation/index.md
     - Insert: manipulation/insert.md
     - Delete: manipulation/delete.md
     - Update: manipulation/update.md
