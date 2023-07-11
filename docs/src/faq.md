@@ -181,7 +181,7 @@ pipelines and entering new data.
 Matt Dean develops and maintains Helium under the direction of members of Karel 
 Svoboda's lab at Janelia Research Campus and Vathes LLC.
 
-Data may also be imported or  synchronized into a DataJoint pipeline from exising LIMS 
+Data may also be imported or synchronized into a DataJoint pipeline from existing LIMS 
 (laboratory information management systems). 
 For example, the [International Brain Lab](https://internationalbrainlab.com) 
 synchronizes data from an [Alyx database](https://github.com/cortex-lab/alyx). 
