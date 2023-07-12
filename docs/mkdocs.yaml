@@ -15,9 +15,7 @@ nav:
   - System Administration: 
     - Database Administration: sysadmin/dba.md
     - Bulk Storage Systems: sysadmin/bulk-storage.md
-    - File Storage: sysadmin/filestore.md
-    - Backups and Recovery: sysadmin/backup.md
-    - Database Server Hosting: sysadmin/hosting.md
+    - External Store: sysadmin/external-store.md
   - Client Configuration: 
     - Install: client/install.md
     - Credentials: client/credentials.md
