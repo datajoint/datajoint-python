@@ -44,6 +44,6 @@ database and will raise errors when accessing missing tables.
 
 ## Working with existing data
 
-See the chapter [existing](../existing-pipelines.md) for how to work with data in 
+See the chapter [recall](recall.md) for how to work with data in 
 existing pipelines, including accessing a pipeline from one language when the pipeline 
 was developed using another.

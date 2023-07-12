@@ -189,7 +189,7 @@ This can be done for an entire schema:
 dj.Diagram(schema)
 ```
 
-![pipeline](../images/shapes_pipeline.svg)
+![pipeline](./images/shapes_pipeline.svg)
 
 Or for individual or sets of tables:
 ```python

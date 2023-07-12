@@ -3,7 +3,7 @@
 Data queries in DataJoint comprise two distinct steps:
 
 1. Construct the `query` object to represent the required data using tables and 
-[operators](operators.m`).
+[operators](operators.md).
 2. Fetch the data from `query` into the workspace of the host language -- described in 
 this section.
 
