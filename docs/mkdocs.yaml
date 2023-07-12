@@ -31,6 +31,7 @@ nav:
       - Primary Key: design/tables/primary.md
       - Attributes: design/tables/attributes.md
       - Lookup Tables: design/tables/lookup.md
+      - Manual Tables: design/tables/manual.md
       - Blobs: design/tables/blobs.md
       - Attachments: design/tables/attach.md
       - Filepaths: design/tables/filepath.md
