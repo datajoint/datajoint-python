@@ -11,7 +11,7 @@ nav:
     - Data Model: concepts/data-model.md
     - Data Pipelines: concepts/data-pipelines.md
     - Teamwork: concepts/teamwork.md
-    - Glossary: concepts/glossary.md
+    - Terminology: concepts/terminology.md
   - System Administration: 
     - Database Administration: sysadmin/dba.md
     - Bulk Storage Systems: sysadmin/bulk-storage.md
