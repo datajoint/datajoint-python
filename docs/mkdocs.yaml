@@ -53,7 +53,6 @@ nav:
   - Data Queries:
     - Query Objects: query/query-objects.md
     - Example Schema: query/example-schema.md
-    - Common Commands: query/common-commands.md
     - Fetch: query/fetch.md
     - Iteration: query/iteration.md
     - Operators: query/operators.md
