@@ -129,6 +129,7 @@ plugins:
         - "*/archive/*md"
   - mkdocs-jupyter:
       include: ["*.ipynb"]
+  - section-index
 markdown_extensions:
   - attr_list
   - toc:
