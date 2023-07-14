@@ -120,9 +120,9 @@ def conn(
         host = host if host is not None else config["database.host"]
         user = user if user is not None else config["database.user"]
         password = password if password is not None else config["database.password"]
-        if user is None:  # pragma: no cover
+        if user is None:
             user = input("Please enter DataJoint username: ")
-        if password is None:  # pragma: no cover
+        if password is None:
             password = getpass(prompt="Please enter DataJoint password: ")
         init_fun = (
             init_fun if init_fun is not None else config["connection.init_function"]
