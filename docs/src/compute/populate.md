@@ -16,7 +16,7 @@ part of the database, the table is designated as **imported**.
 Otherwise it is **computed**.
 
 Auto-populated tables are defined and queried exactly as other tables.
-(See :ref:`example`.)
+(See [Manual Tables](../design/tables/manual.md).)
 Their data definition follows the same [definition syntax](../design/tables/declare.md).
 
 ## Make
