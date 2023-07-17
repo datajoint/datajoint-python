@@ -17,7 +17,7 @@ database by creating and interacting with DataJoint classes.
 
 The table class must inherit from one of the following superclasses to indicate its 
 data tier: `dj.Lookup`, `dj.Manual`, `dj.Imported`, `dj.Computed`, or `dj.Part`.
-See :ref:`tiers` and :ref:`master-part`.
+See [tiers](tiers.md) and [master-part](./master-part.md).
 
 ### Defining a table
 
@@ -26,11 +26,11 @@ To define a DataJoint table in Python:
 1. Define a class inheriting from the appropriate DataJoint class: `dj.Lookup`, 
 `dj.Manual`, `dj.Imported` or `dj.Computed`.
 
-2. Decorate the class with the schema object (see :ref:`schema`)
+2. Decorate the class with the schema object (see [schema](../schema.md))
 
 3. Define the class property `definition` to define the table heading.
 
-For example, the following code defines the table ``Person``:
+For example, the following code defines the table `Person`:
 
 ```python
 import datajoint as dj
@@ -53,7 +53,8 @@ definition property.
 The decorator attaches the information about the table to the class, and then returns 
 the class.
 
-The class will become usable after you define the `definition` property as described in :ref:`definitions`.
+The class will become usable after you define the `definition` property as described in 
+[Table definition](#table-definition).
 
 #### DataJoint classes in Python
 
@@ -168,7 +169,8 @@ Each line can be one of the following:
 
 - The optional first line starting with a `#` provides a description of the table's purpose.
   It may also be thought of as the table's long title.
-- A new attribute definition in any of the following forms (see :ref:`datatypes` for valid datatypes):
+- A new attribute definition in any of the following forms (see 
+[Attributes](./attributes.md) for valid datatypes):
   ``name : datatype``
   ``name : datatype # comment``
   ``name = default : datatype``

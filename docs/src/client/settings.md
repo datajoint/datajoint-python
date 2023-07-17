@@ -2,7 +2,8 @@
 
 If you are not using DataJoint on your own, or are setting up a DataJoint
 system for other users, some additional configuration options may be required
-to support [TLS](#tls-configuration) or :ref:`external storage <external>` .
+to support [TLS](#tls-configuration) or 
+[external storage](../sysadmin/external-store.md).
 
 ## TLS Configuration
 

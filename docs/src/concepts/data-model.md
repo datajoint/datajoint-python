@@ -106,7 +106,7 @@ with bulk storage systems for storing large contiguous data objects.
 
 DataJoint comprises:
 
-- a schema :ref:`definition <definitions>` language
+- a schema [definition](../design/tables/declare.md) language
 - a data [manipulation](../manipulation/index.md) language
 - a data [query](../query/principles.md) language
 - a [diagramming](../design/diagrams.md) notation for visualizing relationships between 

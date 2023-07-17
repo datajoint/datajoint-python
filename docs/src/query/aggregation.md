@@ -5,7 +5,8 @@ the additional feature of allowing aggregation calculations on another table.
 It has the form `tab.aggr(other, ...)` where `other` is another table.
 Without the argument `other`, `aggr` and `proj` are exactly equivalent.
 Aggregation allows adding calculated attributes to each entity in `tab` based on 
-aggregation functions over attributes in the :ref:`matching <matching>` entities of `other`.
+aggregation functions over attributes in the 
+[matching](./operators.md#matching-entities) entities of `other`.
 
 Aggregation functions include `count`, `sum`, `min`, `max`, `avg`, `std`, `variance`, 
 and others.

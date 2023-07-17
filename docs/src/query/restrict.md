@@ -83,7 +83,8 @@ Restriction by an empty mapping or by a mapping with no keys matching the attrib
 `A` will return all the entities in `A`.
 Exclusion by an empty mapping or by a mapping with no matches will return no entities.
 
-For example, let's say that table `Session` has the attribute `session_date` of :ref:`datatype <datatypes>` `datetime`.
+For example, let's say that table `Session` has the attribute `session_date` of 
+[datatype](../design/tables/attributes.md) `datetime`.
 You are interested in sessions from January 1st, 2018, so you write the following 
 restriction query using a mapping.
 
