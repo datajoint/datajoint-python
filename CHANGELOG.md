@@ -1,7 +1,8 @@
 ## Release notes
 
-### 0.14.2 -- Jun 30, 2023
+### Upcoming
 - Added - Codespell GitHub Actions workflow
+- Added - GitHub Actions workflow to manually release docs
 - Changed - Update `datajoint/nginx` to `v0.2.6`
 - Changed - Migrate docs from `https://docs.datajoint.org/python` to `https://datajoint.com/docs/core/datajoint-python`
 
