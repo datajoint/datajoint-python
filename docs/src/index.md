@@ -32,7 +32,7 @@ Presently, the primary developer of DataJoint open-source software is the compan
      pip install datajoint
      ```
 
-- [Detailed Getting Started Guide](./getting-started)
+- [Quick Start Guide](./quick-start.md)
 
 - [Interactive Tutorials](https://github.com/datajoint/datajoint-tutorials){:target="_blank"} on GitHub Codespaces
 
