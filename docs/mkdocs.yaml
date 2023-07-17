@@ -16,6 +16,7 @@ nav:
     - Database Administration: sysadmin/database-admin.md
     - Bulk Storage Systems: sysadmin/bulk-storage.md
     - External Store: sysadmin/external-store.md
+    - Database Server Hosting: sysadmin/hosting.md
   - Client Configuration: 
     - Install: client/install.md
     - Credentials: client/credentials.md
@@ -71,9 +72,9 @@ nav:
   - Internals:
     - SQL Transpilation: internal/transpilation.md
   - Tutorials:
-      - tutorials/json.ipynb
+      - JSON Datatype: tutorials/json.ipynb
   - FAQ: faq.md
-  - Develop: develop.md
+  - Developer Guide: develop.md
   - Citation: citation.md
   - Changelog: changelog.md
   - API: api/ # defer to gen-files + literate-nav
