@@ -13,7 +13,7 @@ nav:
     - Teamwork: concepts/teamwork.md
     - Terminology: concepts/terminology.md
   - System Administration: 
-    - Database Administration: sysadmin/dba.md
+    - Database Administration: sysadmin/database-admin.md
     - Bulk Storage Systems: sysadmin/bulk-storage.md
     - External Store: sysadmin/external-store.md
   - Client Configuration: 
