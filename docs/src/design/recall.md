@@ -113,15 +113,18 @@ Student - StudentMajor
 
 ### Creating a virtual module
 
-Now `spawn_missing_classes` creates the new classes in the local namespace.
+Virtual modules provide a way to access the classes corresponding to tables in a 
+DataJoint schema without having to create local files.
+
+`spawn_missing_classes` creates the new classes in the local namespace.
 However, it is often more convenient to import a schema with its Python module,
-equivalent to the Python command
+equivalent to the Python command:
 
 ```python
 import university as uni
 ```
 
-We can mimick this import without having access to `university.py` using the
+We can mimic this import without having access to `university.py` using the 
 `VirtualModule` class object:
 
 ```python
@@ -145,7 +148,13 @@ uni.Student - uni.StudentMajor
 
 ![query object preview](../images/StudentTable.png){: style="align:center"}
 
-`dj.VirtualModule` takes optional arguments.
+`dj.VirtualModule` takes required arguments
+
+- `module_name`: displayed module name.
+
+- `schema_name`: name of the database in MySQL.
+
+And `dj.VirtualModule` takes optional arguments.
 
 First, `create_schema=False` assures that an error is raised when the schema
 does not already exist. Set it to `True` if you want to create an empty schema.
