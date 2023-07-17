@@ -1,6 +1,6 @@
 # Operators
 
-[Data queries](query-objects.md) have the form of expressions using operators to derive 
+[Data queries](principles.md) have the form of expressions using operators to derive 
 the desired table.
 The expressions themselves do not contain any data.
 They represent the desired data symbolically.

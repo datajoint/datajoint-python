@@ -74,7 +74,7 @@ In such cases, data can be [fetched](../query/fetch.md) from the first table and
 inserted into another table, but this results in transfers back and forth between the 
 database and the local system.
 Instead, data can be inserted from one table into another without transfers between the 
-database and the local system using [queries](../query/query-objects.md).
+database and the local system using [queries](../query/principles.md).
 
 In the example below, a new schema has been created in preparation for phase two of a 
 project.
