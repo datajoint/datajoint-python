@@ -8,3 +8,4 @@ mkdocs-gen-files
 mkdocs-literate-nav
 mkdocs-exclude-search
 mkdocs-jupyter
+mkdocs-section-index

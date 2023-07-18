@@ -1,92 +1,126 @@
-# Query Objects
+# Fetch
 
-**Data queries** retrieve data from the database. A data query is performed with the
-  help of a **query object**, which is a symbolic representation of the query that does
-  not in itself contain any actual data. The simplest query object is an instance of
-  a **table class**, representing the contents of an entire table.
+Data queries in DataJoint comprise two distinct steps:
 
-## Querying a database
+1. Construct the `query` object to represent the required data using tables and 
+[operators](operators.md).
+2. Fetch the data from `query` into the workspace of the host language -- described in 
+this section.
 
-For example, if given a `Session` table, you can
-create a query object to retrieve its entire contents as follows:
+Note that entities returned by `fetch` methods are not guaranteed to be sorted in any 
+particular order unless specifically requested.
+Furthermore, the order is not guaranteed to be the same in any two queries, and the 
+contents of two identical queries may change between two sequential invocations unless 
+they are wrapped in a transaction.
+Therefore, if you wish to fetch matching pairs of attributes, do so in one `fetch` call.
 
-``` python
-query  = Session()
-```
+The examples below are based on the [example schema](example-schema.md) for this part 
+of the documentation.
 
-More generally, a query object may be formed as a **query expression**
-constructed by applying [operators](./operators.md) to other query objects.
+## Entire table
 
-For example, the following query retrieves information about all
-experiments and scans for mouse 001:
-
-``` python
-query = Session * Scan & 'animal_id = 001'
-```
-
-Note that for brevity, query operators can be applied directly to class, as
-`Session` instead of `Session()`.
-
-Alternatively, we could query all scans with a sample rate over 1000, and preview the
-contents of the query simply displaying the object. 
-
-``` python
-Scan & 'sample_rate > 1000'
-```
-
-The above command shows the following table:
-
-    ```text
-    | id* |    start_time*      | sample_rate | signal |  times | duration |
-    |-----|---------------------|-------------|--------|--------|----------| 
-    |  1  | 2020-01-02 22:15:00 |   1893.00   | =BLOB= | =BLOB= |  1981.29 |
-    |  2  | 2020-01-03 00:15:00 |   4800.00   | =BLOB= | =BLOB= |   548.0  |
-    |  3  | 2020-01-19 14:03:03 |   4800.00   | =BLOB= | =BLOB= |   336.0  |
-    |  4  | 2020-01-19 14:13:03 |   4800.00   | =BLOB= | =BLOB= |  2501.0  |
-    |  5  | 2020-01-23 11:05:23 |   4800.00   | =BLOB= | =BLOB= |  1800.0  |
-    |  6  | 2020-01-27 14:03:03 |   4800.00   | =BLOB= | =BLOB= |   600.0  |
-    |  7  | 2020-01-31 20:15:00 |   4800.00   | =BLOB= | =BLOB= |   600.0  |
-    ...
-    11 tuples
-    ```
-
-Note that this preview (a) only lists a few of the entities that will be returned and 
-(b) does not contain any data for attributes of datatype `blob`.
-
-Once the desired query object is formed, the query can be executed using its [fetch]
-(./fetch) methods. To **fetch** means to transfer the data represented by the query
-object from the database server into the workspace of the host language.
+The following statement retrieves the entire table as a NumPy 
+[recarray](https://docs.scipy.org/doc/numpy/reference/generated/numpy.recarray.html).
 
 ```python
-query = Scan & 'sample_rate > 1000'
-s = query.fetch()
+data = query.fetch()
 ```
 
-Here fetching from the `query` object produces the NumPy record array
-`s` of the queried data.
+To retrieve the data as a list of `dict`:
 
-## Checking for entities
-
-The preview of the query object shown above displayed only a few of the entities
-returned by the query but also displayed the total number of entities that would be
-returned. It can be useful to know the number of entities returned by a query, or even
-whether a query will return any entities at all, without having to fetch all the data
-themselves.
-
-The `bool` function applied to a query object evaluates to `True` if the
-query returns any entities and to `False` if the query result is empty.
-
-The `len` function applied to a query object determines the number of
-entities returned by the query.
-
-``` python
-# number of sessions since the start of 2018.
-n = len(Session & 'session_date >= "2018-01-01"')
+```python
+data = query.fetch(as_dict=True)
 ```
 
-## Normalization in queries
+In some cases, the amount of data returned by fetch can be quite large; in these cases 
+it can be useful to use the `size_on_disk` attribute to determine if running a bare 
+fetch would be wise.
+Please note that it is only currently possible to query the size of entire tables 
+stored directly in the database at this time.
 
-Query objects adhere to entity [entity normalization](../design/normalization). The result of a
-query will include the uniquely defining attributes jointly distinguish any two
-entities from each other. The query [operators](./operators) are designed to keep the
-result normalized even in complex query expressions.
+## As separate variables
+
+```python
+name, img = query.fetch1('name', 'image')  # when query has exactly one entity
+name, img = query.fetch('name', 'image')  # [name, ...] [image, ...]
+```
+
+## Primary key values
+
+```python
+keydict = tab.fetch1("KEY")  # single key dict when tab has exactly one entity
+keylist = tab.fetch("KEY")  # list of key dictionaries [{}, ...]
+```
+
+`KEY` can also used when returning attribute values as separate variables, such that 
+one of the returned variables contains the entire primary keys.
+
+## Sorting and limiting the results
+
+To sort the result, use the `order_by` keyword argument.
+
+```python
+# ascending order:
+data = query.fetch(order_by='name')
+# descending order:
+data = query.fetch(order_by='name desc')  
+# by name first, year second:
+data = query.fetch(order_by=('name desc', 'year'))
+# sort by the primary key:
+data = query.fetch(order_by='KEY')
+# sort by name but for same names order by primary key:
+data = query.fetch(order_by=('name', 'KEY desc'))
+```
+
+The `order_by` argument can be a string specifying the attribute to sort by. By default 
+the sort is in ascending order. Use `'attr desc'` to sort in descending order by 
+attribute `attr`.  The value can also be a sequence of strings, in which case, the sort 
+performed on all the attributes jointly in the order specified.
+
+The special attribute name `'KEY'` represents the primary key attributes in order that 
+they appear in the index. Otherwise, this name can be used as any other argument.
+
+If an attribute happens to be a SQL reserved word, it needs to be enclosed in 
+backquotes.  For example:
+
+```python
+data = query.fetch(order_by='`select` desc')
+```
+
+The `order_by` value is eventually passed to the `ORDER BY` 
+[clause](https://dev.mysql.com/doc/refman/5.7/en/order-by-optimization.html).
+
+Similarly, the `limit` and `offset` arguments can be used to limit the result to a 
+subset of entities.
+
+For example, one could do the following:
+
+```python
+data = query.fetch(order_by='name', limit=10, offset=5)
+```
+
+Note that an `offset` cannot be used without specifying a `limit` as well. 
+
+## Usage with Pandas
+
+The [pandas library](http://pandas.pydata.org/) is a popular library for data analysis 
+in Python which can easily be used with DataJoint query results.
+Since the records returned by `fetch()` are contained within a `numpy.recarray`, they 
+can be easily converted to `pandas.DataFrame` objects by passing them into the 
+`pandas.DataFrame` constructor.
+For example:
+
+```python
+import pandas as pd
+frame = pd.DataFrame(tab.fetch())
+```
+
+Calling `fetch()` with the argument `format="frame"` returns results as 
+`pandas.DataFrame` objects indexed by the table's primary key attributes.
+
+```python
+frame = tab.fetch(format="frame")
+```
+
+Returning results as a `DataFrame` is not possible when fetching a particular subset of 
+attributes or when `as_dict` is set to `True`.

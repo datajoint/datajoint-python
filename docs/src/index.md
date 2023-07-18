@@ -1,8 +1,15 @@
-# Welcome to the DataJoint API for Python!
+# Welcome to the DataJoint for Python!
 
-The DataJoint API for Python is a framework for scientific workflow management based on relational principles. DataJoint is built on the foundation of the relational data model and prescribes a consistent method for organizing, populating, computing, and querying data.
+The DataJoint for Python is a framework for scientific workflow management based on 
+relational principles. DataJoint is built on the foundation of the relational data 
+model and prescribes a consistent method for organizing, populating, computing, and 
+querying data.
 
-DataJoint was initially developed in 2009 by Dimitri Yatsenko in Andreas Tolias' Lab at Baylor College of Medicine for the distributed processing and management of large volumes of data streaming from regular experiments. Starting in 2011, DataJoint has been available as an open-source project adopted by other labs and improved through contributions from several developers.
+DataJoint was initially developed in 2009 by Dimitri Yatsenko in Andreas Tolias' Lab at 
+Baylor College of Medicine for the distributed processing and management of large 
+volumes of data streaming from regular experiments. Starting in 2011, DataJoint has 
+been available as an open-source project adopted by other labs and improved through 
+contributions from several developers.
 Presently, the primary developer of DataJoint open-source software is the company [DataJoint](https://datajoint.com){:target="_blank"}.
 
 ## Data Pipeline Example
@@ -13,13 +20,19 @@ Presently, the primary developer of DataJoint open-source software is the compan
 
 ## Getting Started
 
-- Install from PyPI
+- Install with Conda
+
+     ```bash
+     conda install -c conda-forge datajoint
+     ```
+
+- Install with pip
 
      ```bash
      pip install datajoint
      ```
 
-- [Detailed Getting Started Guide](./getting-started)
+- [Quick Start Guide](./quick-start.md)
 
 - [Interactive Tutorials](https://github.com/datajoint/datajoint-tutorials){:target="_blank"} on GitHub Codespaces
 

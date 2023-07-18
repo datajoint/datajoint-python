@@ -6,29 +6,28 @@ locally for faster retrieval.
 To enable queries, set the query cache local path in `dj.config`, create the directory,
 and activate the query caching.
 
-``` python
-dj.config['query_cache'] = os.path.expanduser('~/dj_query_cache') # (1)
-# (2)
-conn = dj.conn()                # if queries co-located with tables
-conn = module.schema.connection # if schema co-located with tables
-conn = module.table.connection  # most flexible
+```python
+# set the query cache path
+dj.config['query_cache'] = os.path.expanduser('~/dj_query_cache')
 
-conn.set_query_cache(query_cache='main') # (3)
+# access the active connection object for the tables
+conn = dj.conn() # if queries co-located with tables
+conn = module.schema.connection # if schema co-located with tables
+conn = module.table.connection # most flexible
+
+# activate query caching for a namespace called 'main'
+conn.set_query_cache(query_cache='main')
 ```
 
-1. Set the query cache path
-2. Access the active connection object for the tables
-3. Activate query caching for a namespace called 'main'
-
-The `query_cache` argument is an arbitrary string serving to differentiate cache states;
-setting a new value will effectively start a new cache, triggering retrieval of new
-values once.
+The `query_cache` argument is an arbitrary string serving to differentiate cache
+states; setting a new value will effectively start a new cache, triggering retrieval of
+new values once.
 
 To turn off query caching, use the following:
 
-``` python
+```python
 conn.set_query_cache(query_cache=None)
-## OR
+# or
 conn.set_query_cache()
 ```
 
@@ -38,6 +37,6 @@ updating the database in violation of data integrity.
 
 To clear and remove the query cache, use the following:
 
-``` python
-conn.purge_query_cache() # Purge the cached queries
+```python
+conn.purge_query_cache()
 ```

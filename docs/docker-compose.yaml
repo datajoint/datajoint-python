@@ -16,7 +16,7 @@ services:
       - ..:/main
     user: ${HOST_UID}:anaconda
     ports:
-      - 8080:80
+      - 80:80
     command:
       - sh
       - -c

@@ -1,5 +1,11 @@
 ## Release notes
 
+### Upcoming
+- Added - Codespell GitHub Actions workflow
+- Added - GitHub Actions workflow to manually release docs
+- Changed - Update `datajoint/nginx` to `v0.2.6`
+- Changed - Migrate docs from `https://docs.datajoint.org/python` to `https://datajoint.com/docs/core/datajoint-python`
+
 ### 0.14.1 -- Jun 02, 2023
 - Fixed - Fix altering a part table that uses the "master" keyword - PR [#991](https://github.com/datajoint/datajoint-python/pull/991)
 - Fixed - `.ipynb` output in tutorials is not visible in dark mode ([#1078](https://github.com/datajoint/datajoint-python/issues/1078)) PR [#1080](https://github.com/datajoint/datajoint-python/pull/1080)

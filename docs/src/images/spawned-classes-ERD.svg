@@ -1,0 +1,147 @@
+
+<svg height="327pt" viewBox="0.00 0.00 337.50 327.00" width="338pt" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g class="graph" id="graph0" transform="scale(1 1) rotate(0) translate(4 323)">
+<title>%3</title>
+<polygon fill="#ffffff" points="-4,4 -4,-323 333.5,-323 333.5,4 -4,4" stroke="transparent"/>
+<!-- Course -->
+<g class="node" id="node1">
+<title>Course</title>
+<g id="a_node1"><a xlink:title="→ Departmentcourse               ------------------------------course_name          credits              ">
+<polygon fill="#00ff00" fill-opacity="0.188235" points="233,-248 177,-248 177,-213 233,-213 233,-248" stroke="#00ff00" stroke-opacity="0.188235"/>
+<text fill="#006400" font-family="arial" font-size="12.00" text-anchor="start" text-decoration="underline" x="185" y="-228.4">Course</text>
+</a>
+</g>
+</g>
+<!-- Section -->
+<g class="node" id="node7">
+<title>Section</title>
+<g id="a_node7"><a xlink:title="→ Course→ Termsection              ------------------------------auditorium           ">
+<polygon fill="#00ff00" fill-opacity="0.188235" points="228.5,-177 171.5,-177 171.5,-142 228.5,-142 228.5,-177" stroke="#00ff00" stroke-opacity="0.188235"/>
+<text fill="#006400" font-family="arial" font-size="12.00" text-anchor="start" text-decoration="underline" x="179.5" y="-157.4">Section</text>
+</a>
+</g>
+</g>
+<!-- Course&#45;&gt;Section -->
+<g class="edge" id="edge1">
+<title>Course-&gt;Section</title>
+<path d="M203.764,-212.9494C203.0006,-202.1083 202.0237,-188.2366 201.2565,-177.3418" fill="none" stroke="#000000" stroke-opacity="0.250980" stroke-width=".75"/>
+</g>
+<!-- Department -->
+<g class="node" id="node2">
+<title>Department</title>
+<g id="a_node2"><a xlink:title="dept                 ------------------------------dept_name            dept_address         dept_phone           ">
+<polygon fill="#00ff00" fill-opacity="0.188235" points="224.5,-319 145.5,-319 145.5,-284 224.5,-284 224.5,-319" stroke="#00ff00" stroke-opacity="0.188235"/>
+<text fill="#006400" font-family="arial" font-size="12.00" text-anchor="start" text-decoration="underline" x="153.5" y="-299.4">Department</text>
+</a>
+</g>
+</g>
+<!-- Department&#45;&gt;Course -->
+<g class="edge" id="edge2">
+<title>Department-&gt;Course</title>
+<path d="M189.9438,-283.9494C192.9976,-273.1083 196.9052,-259.2366 199.9741,-248.3418" fill="none" stroke="#000000" stroke-opacity="0.250980" stroke-width=".75"/>
+</g>
+<!-- StudentMajor -->
+<g class="node" id="node8">
+<title>StudentMajor</title>
+<g id="a_node8"><a xlink:title="→ Student------------------------------→ Departmentdeclare_date         ">
+<polygon fill="#00ff00" fill-opacity="0.188235" points="159,-248 71,-248 71,-213 159,-213 159,-248" stroke="#00ff00" stroke-opacity="0.188235"/>
+<text fill="#006400" font-family="arial" font-size="12.00" text-anchor="middle" x="115" y="-227.4">StudentMajor</text>
+</a>
+</g>
+</g>
+<!-- Department&#45;&gt;StudentMajor -->
+<g class="edge" id="edge3">
+<title>Department-&gt;StudentMajor</title>
+<path d="M167.6966,-283.9494C157.0082,-273.1083 143.3318,-259.2366 132.5905,-248.3418" fill="none" stroke="#000000" stroke-dasharray="5,2" stroke-opacity="0.250980" stroke-width=".75"/>
+</g>
+<!-- Term -->
+<g class="node" id="node3">
+<title>Term</title>
+<g id="a_node3"><a xlink:title="term_year            term                 ">
+<polygon fill="#00ff00" fill-opacity="0.188235" points="304.5,-248 261.5,-248 261.5,-213 304.5,-213 304.5,-248" stroke="#00ff00" stroke-opacity="0.188235"/>
+<text fill="#006400" font-family="arial" font-size="12.00" text-anchor="start" text-decoration="underline" x="269.5" y="-228.4">Term</text>
+</a>
+</g>
+</g>
+<!-- Term&#45;&gt;Section -->
+<g class="edge" id="edge4">
+<title>Term-&gt;Section</title>
+<path d="M262.4831,-212.9494C249.7138,-202.0262 233.3476,-188.0262 220.5685,-177.0947" fill="none" stroke="#000000" stroke-opacity="0.250980" stroke-width=".75"/>
+</g>
+<!-- CurrentTerm -->
+<g class="node" id="node9">
+<title>CurrentTerm</title>
+<g id="a_node9"><a xlink:title="omega                ------------------------------→ Term">
+<polygon fill="#00ff00" fill-opacity="0.188235" points="329.5,-177 246.5,-177 246.5,-142 329.5,-142 329.5,-177" stroke="#00ff00" stroke-opacity="0.188235"/>
+<text fill="#006400" font-family="arial" font-size="12.00" text-anchor="start" text-decoration="underline" x="254.5" y="-157.4">CurrentTerm</text>
+</a>
+</g>
+</g>
+<!-- Term&#45;&gt;CurrentTerm -->
+<g class="edge" id="edge5">
+<title>Term-&gt;CurrentTerm</title>
+<path d="M284.236,-212.9494C284.9994,-202.1083 285.9763,-188.2366 286.7435,-177.3418" fill="none" stroke="#000000" stroke-dasharray="5,2" stroke-opacity="0.250980" stroke-width=".75"/>
+</g>
+<!-- LetterGrade -->
+<g class="node" id="node4">
+<title>LetterGrade</title>
+<g id="a_node4"><a xlink:title="grade                ------------------------------points               ">
+<polygon fill="#00ff00" fill-opacity="0.188235" points="80,-106 0,-106 0,-71 80,-71 80,-106" stroke="#00ff00" stroke-opacity="0.188235"/>
+<text fill="#006400" font-family="arial" font-size="12.00" text-anchor="start" text-decoration="underline" x="8" y="-86.4">LetterGrade</text>
+</a>
+</g>
+</g>
+<!-- Grade -->
+<g class="node" id="node10">
+<title>Grade</title>
+<g id="a_node10"><a xlink:title="→ Enroll------------------------------→ LetterGrade">
+<polygon fill="#00ff00" fill-opacity="0.188235" points="106,-35 56,-35 56,0 106,0 106,-35" stroke="#00ff00" stroke-opacity="0.188235"/>
+<text fill="#006400" font-family="arial" font-size="12.00" text-anchor="middle" x="81" y="-14.4">Grade</text>
+</a>
+</g>
+</g>
+<!-- LetterGrade&#45;&gt;Grade -->
+<g class="edge" id="edge6">
+<title>LetterGrade-&gt;Grade</title>
+<path d="M50.1348,-70.9494C56.3952,-60.1083 64.4056,-46.2366 70.697,-35.3418" fill="none" stroke="#000000" stroke-dasharray="5,2" stroke-opacity="0.250980" stroke-width=".75"/>
+</g>
+<!-- Enroll -->
+<g class="node" id="node5">
+<title>Enroll</title>
+<g id="a_node5"><a xlink:title="→ Student→ Section">
+<polygon fill="#00ff00" fill-opacity="0.188235" points="146,-106 98,-106 98,-71 146,-71 146,-106" stroke="#00ff00" stroke-opacity="0.188235"/>
+<text fill="#006400" font-family="arial" font-size="12.00" text-anchor="middle" x="122" y="-85.4">Enroll</text>
+</a>
+</g>
+</g>
+<!-- Enroll&#45;&gt;Grade -->
+<g class="edge" id="edge7">
+<title>Enroll-&gt;Grade</title>
+<path d="M111.8652,-70.9494C105.6048,-60.1083 97.5944,-46.2366 91.303,-35.3418" fill="none" stroke="#000000" stroke-opacity="0.250980" stroke-width="2"/>
+</g>
+<!-- Student -->
+<g class="node" id="node6">
+<title>Student</title>
+<g id="a_node6"><a xlink:title="student_id           ------------------------------first_name           last_name            sex                  date_of_birth        home_address         home_city            home_state           home_zip             home_phone           ">
+<polygon fill="#00ff00" fill-opacity="0.188235" points="108,-319 50,-319 50,-284 108,-284 108,-319" stroke="#00ff00" stroke-opacity="0.188235"/>
+<text fill="#006400" font-family="arial" font-size="12.00" text-anchor="start" text-decoration="underline" x="58" y="-299.4">Student</text>
+</a>
+</g>
+</g>
+<!-- Student&#45;&gt;Enroll -->
+<g class="edge" id="edge8">
+<title>Student-&gt;Enroll</title>
+<path d="M71.2696,-283.7936C64.4603,-265.8736 56.4262,-237.4043 62,-213 71.2959,-172.299 95.6737,-129.4101 110.3369,-106.1102" fill="none" stroke="#000000" stroke-opacity="0.250980" stroke-width=".75"/>
+</g>
+<!-- Student&#45;&gt;StudentMajor -->
+<g class="edge" id="edge9">
+<title>Student-&gt;StudentMajor</title>
+<path d="M87.8989,-283.9494C93.3958,-273.1083 100.4293,-259.2366 105.9534,-248.3418" fill="none" stroke="#000000" stroke-opacity="0.250980" stroke-width="2"/>
+</g>
+<!-- Section&#45;&gt;Enroll -->
+<g class="edge" id="edge10">
+<title>Section-&gt;Enroll</title>
+<path d="M180.7191,-141.9494C168.7189,-131.0262 153.3387,-117.0262 141.3294,-106.0947" fill="none" stroke="#000000" stroke-opacity="0.250980" stroke-width=".75"/>
+</g>
+</g>
+</svg>

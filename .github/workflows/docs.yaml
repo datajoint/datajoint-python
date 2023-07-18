@@ -1,0 +1,19 @@
+name: Manual docs release
+on:
+  workflow_dispatch:
+jobs:
+  publish-docs:
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_CLIENT_TIMEOUT: "120"
+      COMPOSE_HTTP_TIMEOUT: "120"
+    steps:
+      - uses: actions/checkout@v3
+      - name: Deploy docs
+        run: |
+          export MODE=BUILD
+          export PACKAGE=datajoint
+          export UPSTREAM_REPO=https://github.com/${GITHUB_REPOSITORY}.git
+          export HOST_UID=$(id -u)
+          docker compose -f docs/docker-compose.yaml up --exit-code-from docs --build
+          git push origin gh-pages
