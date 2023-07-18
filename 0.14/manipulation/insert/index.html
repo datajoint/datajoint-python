@@ -9,13 +9,13 @@
       
       
       
-        <link rel="prev" href="../../design/alter/">
+        <link rel="prev" href="../">
       
       
         <link rel="next" href="../delete/">
       
       <link rel="icon" href="../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.15">
+      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.19">
     
     
       
@@ -23,7 +23,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.26e3688c.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.eebd395e.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ecc896b0.min.css">
@@ -75,7 +75,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#common-commands" class="md-skip">
+        <a href="#insert" class="md-skip">
           Skip to content
         </a>
       
@@ -247,7 +247,7 @@
 </g>
 </svg>
 
-        </a><a href="https://datajoint.com/docs/core/" title="DataJoint">
+        </a><a href="https://datajoint.com/docs/" title="DataJoint">
             ⬅ Home
         </a>
     </label>
@@ -289,8 +289,8 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting-started/" class="md-nav__link">
-        Getting Started
+      <a href="../../quick-start/" class="md-nav__link">
+        Quick Start Guide
       </a>
     </li>
   
@@ -345,8 +345,50 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/glossary/" class="md-nav__link">
-        Glossary
+      <a href="../../concepts/data-model/" class="md-nav__link">
+        Data Model
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/data-pipelines/" class="md-nav__link">
+        Data Pipelines
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/teamwork/" class="md-nav__link">
+        Teamwork
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/terminology/" class="md-nav__link">
+        Terminology
       </a>
     </li>
   
@@ -394,7 +436,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../sysadmin/dba/" class="md-nav__link">
+      <a href="../../sysadmin/database-admin/" class="md-nav__link">
         Database Administration
       </a>
     </li>
@@ -408,8 +450,22 @@
   
   
     <li class="md-nav__item">
-      <a href="../../sysadmin/filestore/" class="md-nav__link">
-        File Storage
+      <a href="../../sysadmin/bulk-storage/" class="md-nav__link">
+        Bulk Storage Systems
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../sysadmin/external-store/" class="md-nav__link">
+        External Store
       </a>
     </li>
   
@@ -471,7 +527,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../client/creds/" class="md-nav__link">
+      <a href="../../client/credentials/" class="md-nav__link">
         Credentials
       </a>
     </li>
@@ -647,6 +703,20 @@
     <li class="md-nav__item">
       <a href="../../design/tables/lookup/" class="md-nav__link">
         Lookup Tables
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/tables/manual/" class="md-nav__link">
+        Manual Tables
       </a>
     </li>
   
@@ -867,10 +937,16 @@
       
       
       
-        <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
-          Data Manipulations
-          <span class="md-nav__icon md-icon"></span>
-        </label>
+        
+        
+        <div class="md-nav__link md-nav__link--index ">
+          <a href="../">Data Manipulations</a>
+          
+            <label for="__nav_7">
+              <span class="md-nav__icon md-icon"></span>
+            </label>
+          
+        </div>
       
       <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
         <label class="md-nav__title" for="__nav_7">
@@ -919,36 +995,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#insert" class="md-nav__link">
-    Insert
+  <a href="#batched-inserts" class="md-nav__link">
+    Batched inserts
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#make" class="md-nav__link">
-    Make
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#fetch" class="md-nav__link">
-    Fetch
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#drop" class="md-nav__link">
-    Drop
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#diagrams" class="md-nav__link">
-    Diagrams
+  <a href="#server-side-inserts" class="md-nav__link">
+    Server-side inserts
   </a>
   
 </li>
@@ -1045,8 +1100,22 @@
   
   
     <li class="md-nav__item">
-      <a href="../../query/common-commands/" class="md-nav__link">
-        Common Commands
+      <a href="../../query/principles/" class="md-nav__link">
+        Principles
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../query/example-schema/" class="md-nav__link">
+        Example Schema
       </a>
     </li>
   
@@ -1297,23 +1366,38 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../publish-data/" class="md-nav__link">
+        Publish Data
+      </a>
+    </li>
+  
+
+        
+        
+        
+        
+
+  
+  
+  
     
     <li class="md-nav__item md-nav__item--nested">
       
       
       
       
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
       
       
       
-        <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
+        <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
           Internals
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_10">
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_11">
           <span class="md-nav__icon md-icon"></span>
           Internals
         </label>
@@ -1352,95 +1436,17 @@
       
       
       
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" >
       
       
       
-        <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
-          Reproducibility
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_11">
-          <span class="md-nav__icon md-icon"></span>
-          Reproducibility
-        </label>
-        <ul class="md-nav__list" data-md-scrollfix>
-          
-            
-              
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reproduce/table-tiers/" class="md-nav__link">
-        Table Tiers
-      </a>
-    </li>
-  
-
-            
-          
-            
-              
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reproduce/make-method/" class="md-nav__link">
-        Make Method
-      </a>
-    </li>
-  
-
-            
-          
-        </ul>
-      </nav>
-    </li>
-  
-
-        
-        
-        
-        
-
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../existing-pipelines/" class="md-nav__link">
-        Existing Pipelines
-      </a>
-    </li>
-  
-
-        
-        
-        
-        
-
-  
-  
-  
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-      
-      
-      
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13" >
-      
-      
-      
-        <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="0">
+        <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="0">
           Tutorials
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_13">
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_12">
           <span class="md-nav__icon md-icon"></span>
           Tutorials
         </label>
@@ -1490,7 +1496,7 @@
   
     <li class="md-nav__item">
       <a href="../../develop/" class="md-nav__link">
-        Develop
+        Developer Guide
       </a>
     </li>
   
@@ -1539,17 +1545,17 @@
       
       
       
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_18" >
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_17" >
       
       
       
-        <label class="md-nav__link" for="__nav_18" id="__nav_18_label" tabindex="0">
+        <label class="md-nav__link" for="__nav_17" id="__nav_17_label" tabindex="0">
           API
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_18_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_18">
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_17_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_17">
           <span class="md-nav__icon md-icon"></span>
           API
         </label>
@@ -1566,17 +1572,17 @@
       
       
       
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_18_1" >
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_17_1" >
       
       
       
-        <label class="md-nav__link" for="__nav_18_1" id="__nav_18_1_label" tabindex="0">
+        <label class="md-nav__link" for="__nav_17_1" id="__nav_17_1_label" tabindex="0">
           datajoint
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_18_1_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_18_1">
+      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_17_1_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_17_1">
           <span class="md-nav__icon md-icon"></span>
           datajoint
         </label>
@@ -1991,61 +1997,77 @@
   
 
 
-<h1 id="common-commands">Common Commands<a class="headerlink" href="#common-commands" title="Permanent link">&para;</a></h1>
-<h2 id="insert">Insert<a class="headerlink" href="#insert" title="Permanent link">&para;</a></h2>
-<p>Data entry is as easy as providing the appropriate data structure to a permitted
-<a href="../../reproduce/table-tiers/">table</a>.</p>
-<p>Given the following <a href="../getting-started/table-definitions.md">table definition</a>, we can
-insert data as follows.</p>
-<div class="highlight"><pre><span></span><code>    mouse_id: int            # unique mouse id
-    ---
-    dob: date                # mouse date of birth
-    sex: enum(&#39;M&#39;, &#39;F&#39;, &#39;U&#39;) # sex of mouse - Male, Female, or Unknown
+<h1 id="insert">Insert<a class="headerlink" href="#insert" title="Permanent link">&para;</a></h1>
+<p>The <code>insert</code> method of DataJoint table objects inserts entities into the table.</p>
+<p>In Python there is a separate method <code>insert1</code> to insert one entity at a time.
+The entity may have the form of a Python dictionary with key names matching the 
+attribute names in the table.</p>
+<div class="highlight"><pre><span></span><code><span class="n">lab</span><span class="o">.</span><span class="n">Person</span><span class="o">.</span><span class="n">insert1</span><span class="p">(</span>
+          <span class="nb">dict</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="s1">&#39;alice&#39;</span><span class="p">,</span>
+               <span class="n">first_name</span><span class="o">=</span><span class="s1">&#39;Alice&#39;</span><span class="p">,</span>
+               <span class="n">last_name</span><span class="o">=</span><span class="s1">&#39;Cooper&#39;</span><span class="p">))</span>
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><span class="n">mouse</span><span class="o">.</span><span class="n">insert1</span><span class="p">(</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;2017-03-01&#39;</span><span class="p">,</span> <span class="s1">&#39;M&#39;</span><span class="p">)</span> <span class="p">)</span> <span class="c1"># Single entry</span>
-<span class="n">data</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;2016-11-19&#39;</span><span class="p">,</span> <span class="s1">&#39;M&#39;</span><span class="p">),</span>
-    <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;2016-11-20&#39;</span><span class="p">,</span> <span class="s1">&#39;U&#39;</span><span class="p">),</span>
-    <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="s1">&#39;2016-12-25&#39;</span><span class="p">,</span> <span class="s1">&#39;F&#39;</span><span class="p">)</span>
-<span class="p">]</span>
-<span class="n">mouse</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="c1"># Multi-entry</span>
+<p>The entity also may take the form of a sequence of values in the same order as the 
+attributes in the table.</p>
+<div class="highlight"><pre><span></span><code><span class="n">lab</span><span class="o">.</span><span class="n">Person</span><span class="o">.</span><span class="n">insert1</span><span class="p">([</span><span class="s1">&#39;alice&#39;</span><span class="p">,</span> <span class="s1">&#39;Alice&#39;</span><span class="p">,</span> <span class="s1">&#39;Cooper&#39;</span><span class="p">])</span>
 </code></pre></div>
-<h2 id="make">Make<a class="headerlink" href="#make" title="Permanent link">&para;</a></h2>
-<p>The <code>make</code> method populates automated tables from inserted data. Read more in the
-full article <a href="../../reproduce/make-method/">here</a></p>
-<h2 id="fetch">Fetch<a class="headerlink" href="#fetch" title="Permanent link">&para;</a></h2>
-<p>Data queries in DataJoint comprise two distinct steps:</p>
+<p>Additionally, the entity may be inserted as a 
+<a href="https://docs.scipy.org/doc/numpy/reference/generated/numpy.record.html#numpy.record">NumPy record array</a>
+ or <a href="https://pandas.pydata.org/pandas-docs/stable/generated/pandas.DataFrame.html">Pandas DataFrame</a>.</p>
+<p>The <code>insert</code> method accepts a sequence or a generator of multiple entities and is used 
+to insert multiple entities at once.</p>
+<div class="highlight"><pre><span></span><code><span class="n">lab</span><span class="o">.</span><span class="n">Person</span><span class="o">.</span><span class="n">insert</span><span class="p">([</span>
+          <span class="p">[</span><span class="s1">&#39;alice&#39;</span><span class="p">,</span>   <span class="s1">&#39;Alice&#39;</span><span class="p">,</span>   <span class="s1">&#39;Cooper&#39;</span><span class="p">],</span>
+          <span class="p">[</span><span class="s1">&#39;bob&#39;</span><span class="p">,</span>     <span class="s1">&#39;Bob&#39;</span><span class="p">,</span>     <span class="s1">&#39;Dylan&#39;</span><span class="p">],</span>
+          <span class="p">[</span><span class="s1">&#39;carol&#39;</span><span class="p">,</span>   <span class="s1">&#39;Carol&#39;</span><span class="p">,</span>   <span class="s1">&#39;Douglas&#39;</span><span class="p">]])</span>
+</code></pre></div>
+<p>Several optional parameters can be used with <code>insert</code>:</p>
+<p><code>replace</code> If <code>True</code>, replaces the existing entity.
+  (Default <code>False</code>.)</p>
+<p><code>skip_duplicates</code> If <code>True</code>, silently skip duplicate inserts.
+  (Default <code>False</code>.)</p>
+<p><code>ignore_extra_fields</code> If <code>False</code>, fields that are not in the heading raise an error.
+  (Default <code>False</code>.)</p>
+<p><code>allow_direct_insert</code> If <code>True</code>, allows inserts outside of populate calls.
+  Applies only in auto-populated tables.
+  (Default <code>None</code>.)</p>
+<h2 id="batched-inserts">Batched inserts<a class="headerlink" href="#batched-inserts" title="Permanent link">&para;</a></h2>
+<p>Inserting a set of entities in a single <code>insert</code> differs from inserting the same set of 
+entities one-by-one in a <code>for</code> loop in two ways:</p>
 <ol>
-<li>Construct the <code>query</code> object to represent the required data using
-    tables and <a href="../query/operators">operators</a>.</li>
-<li>Fetch the data from <code>query</code> into the workspace of the host language.</li>
+<li>Network overhead is reduced.
+   Network overhead can be tens of milliseconds per query.
+   Inserting 1000 entities in a single <code>insert</code> call may save a few seconds over 
+   inserting them individually.</li>
+<li>The insert is performed as an all-or-nothing transaction.
+   If even one insert fails because it violates any constraint, then none of the 
+   entities in the set are inserted.</li>
 </ol>
-<p>Note that entities returned by <code>fetch</code> methods are not guaranteed to be sorted in any
-particular order unless specifically requested. Furthermore, the order is not
-guaranteed to be the same in any two queries, and the contents of two identical queries
-may change between two sequential invocations unless they are wrapped in a transaction.
-Therefore, if you wish to fetch matching pairs of attributes, do so in one <code>fetch</code>
-call.</p>
-<div class="highlight"><pre><span></span><code><span class="n">data</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">fetch</span><span class="p">()</span>
+<p>However, inserting too many entities in a single query may run against buffer size or 
+packet size limits of the database server.
+Due to these limitations, performing inserts of very large numbers of entities should 
+be broken up into moderately sized batches, such as a few hundred at a time.</p>
+<h2 id="server-side-inserts">Server-side inserts<a class="headerlink" href="#server-side-inserts" title="Permanent link">&para;</a></h2>
+<p>Data inserted into a table often come from other tables already present on the database server.
+In such cases, data can be <a href="../../query/fetch/">fetched</a> from the first table and then 
+inserted into another table, but this results in transfers back and forth between the 
+database and the local system.
+Instead, data can be inserted from one table into another without transfers between the 
+database and the local system using <a href="../../query/principles/">queries</a>.</p>
+<p>In the example below, a new schema has been created in preparation for phase two of a 
+project.
+Experimental protocols from the first phase of the project will be reused in the second 
+phase.
+Since the entities are already present on the database in the <code>Protocol</code> table of the 
+<code>phase_one</code> schema, we can perform a server-side insert into <code>phase_two.Protocol</code> 
+without fetching a local copy.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Server-side inserts are faster...</span>
+<span class="n">phase_two</span><span class="o">.</span><span class="n">Protocol</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">phase_one</span><span class="o">.</span><span class="n">Protocol</span><span class="p">)</span>
+
+<span class="c1"># ...than fetching before inserting</span>
+<span class="n">protocols</span> <span class="o">=</span> <span class="n">phase_one</span><span class="o">.</span><span class="n">Protocol</span><span class="o">.</span><span class="n">fetch</span><span class="p">()</span>
+<span class="n">phase_two</span><span class="o">.</span><span class="n">Protocol</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">protocols</span><span class="p">)</span>
 </code></pre></div>
-<h2 id="drop">Drop<a class="headerlink" href="#drop" title="Permanent link">&para;</a></h2>
-<p>The <code>drop</code> method completely removes a table from the database, including its
-definition. It also removes all dependent tables, recursively. DataJoint will first
-display the tables being dropped and the number of entities in each before prompting
-the user for confirmation to proceed.</p>
-<p>The <code>drop</code> method is often used during initial design to allow altered
-table definitions to take effect.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># drop the Person table from its schema</span>
-<span class="n">Person</span><span class="o">.</span><span class="n">drop</span><span class="p">()</span>
-</code></pre></div>
-<h2 id="diagrams">Diagrams<a class="headerlink" href="#diagrams" title="Permanent link">&para;</a></h2>
-<p>The <code>Diagram</code> command can help you visualize your pipeline, or understand
-an existing pipeline. </p>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">datajoint</span> <span class="k">as</span> <span class="nn">dj</span>
-<span class="n">schema</span> <span class="o">=</span> <span class="n">dj</span><span class="o">.</span><span class="n">Schema</span><span class="p">(</span><span class="s1">&#39;my_database&#39;</span><span class="p">)</span>
-<span class="n">dj</span><span class="o">.</span><span class="n">Diagram</span><span class="p">(</span><span class="n">schema</span><span class="p">)</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
-</code></pre></div>
-<p>For more information about diagrams, see <a href="../design/diagrams">this article</a>.</p>
 
 
 
@@ -2164,10 +2186,10 @@ an existing pipeline. </p>
       <div class="md-dialog__inner md-typeset"></div>
     </div>
     
-    <script id="__config" type="application/json">{"base": "../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": "../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.74e28a9f.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.b4d07000.min.js"></script>
+      <script src="../../assets/javascripts/bundle.220ee61c.min.js"></script>
       
     
   </body>

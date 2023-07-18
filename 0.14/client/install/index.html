@@ -9,13 +9,13 @@
       
       
       
-        <link rel="prev" href="../../sysadmin/filestore/">
+        <link rel="prev" href="../../sysadmin/external-store/">
       
       
-        <link rel="next" href="../creds/">
+        <link rel="next" href="../credentials/">
       
       <link rel="icon" href="../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.15">
+      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.19">
     
     
       
@@ -23,7 +23,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.26e3688c.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.eebd395e.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ecc896b0.min.css">
@@ -75,7 +75,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#work-in-progress" class="md-skip">
+        <a href="#install-and-connect" class="md-skip">
           Skip to content
         </a>
       
@@ -247,7 +247,7 @@
 </g>
 </svg>
 
-        </a><a href="https://datajoint.com/docs/core/" title="DataJoint">
+        </a><a href="https://datajoint.com/docs/" title="DataJoint">
             ⬅ Home
         </a>
     </label>
@@ -289,8 +289,8 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting-started/" class="md-nav__link">
-        Getting Started
+      <a href="../../quick-start/" class="md-nav__link">
+        Quick Start Guide
       </a>
     </li>
   
@@ -345,8 +345,50 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/glossary/" class="md-nav__link">
-        Glossary
+      <a href="../../concepts/data-model/" class="md-nav__link">
+        Data Model
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/data-pipelines/" class="md-nav__link">
+        Data Pipelines
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/teamwork/" class="md-nav__link">
+        Teamwork
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/terminology/" class="md-nav__link">
+        Terminology
       </a>
     </li>
   
@@ -394,7 +436,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../sysadmin/dba/" class="md-nav__link">
+      <a href="../../sysadmin/database-admin/" class="md-nav__link">
         Database Administration
       </a>
     </li>
@@ -408,8 +450,22 @@
   
   
     <li class="md-nav__item">
-      <a href="../../sysadmin/filestore/" class="md-nav__link">
-        File Storage
+      <a href="../../sysadmin/bulk-storage/" class="md-nav__link">
+        Bulk Storage Systems
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../sysadmin/external-store/" class="md-nav__link">
+        External Store
       </a>
     </li>
   
@@ -465,6 +521,8 @@
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
+        
+      
       
         <label class="md-nav__link md-nav__link--active" for="__toc">
           Install
@@ -481,6 +539,8 @@
   
   
   
+    
+  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
@@ -489,9 +549,98 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#work-in-progress" class="md-nav__link">
-    Work in progress
+  <a href="#datajoint-python-windows-install-guide" class="md-nav__link">
+    DataJoint Python Windows Install Guide
   </a>
+  
+    <nav class="md-nav" aria-label="DataJoint Python Windows Install Guide">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#quick-steps" class="md-nav__link">
+    Quick steps
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-1-install-python" class="md-nav__link">
+    Step 1: install Python
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-verify-installation" class="md-nav__link">
+    Step 2: verify installation
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-install-datajoint" class="md-nav__link">
+    Step 3: install DataJoint
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optional-step-4-install-packages-for-erd-support" class="md-nav__link">
+    (Optional) step 4: install packages for ERD support
+  </a>
+  
+    <nav class="md-nav" aria-label="(Optional) step 4: install packages for ERD support">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#install-graphviz" class="md-nav__link">
+    Install Graphviz
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-pydotplus" class="md-nav__link">
+    Install PyDotPlus
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-matplotlib" class="md-nav__link">
+    Install Matplotlib
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optional-step-5-install-jupyter-notebook" class="md-nav__link">
+    (Optional) step 5: install Jupyter Notebook
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#git-for-windows" class="md-nav__link">
+    Git for Windows
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mysql-for-windows" class="md-nav__link">
+    MySQL for Windows
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -510,7 +659,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../creds/" class="md-nav__link">
+      <a href="../credentials/" class="md-nav__link">
         Credentials
       </a>
     </li>
@@ -686,6 +835,20 @@
     <li class="md-nav__item">
       <a href="../../design/tables/lookup/" class="md-nav__link">
         Lookup Tables
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../design/tables/manual/" class="md-nav__link">
+        Manual Tables
       </a>
     </li>
   
@@ -904,10 +1067,16 @@
       
       
       
-        <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
-          Data Manipulations
-          <span class="md-nav__icon md-icon"></span>
-        </label>
+        
+        
+        <div class="md-nav__link md-nav__link--index ">
+          <a href="../../manipulation/">Data Manipulations</a>
+          
+            <label for="__nav_7">
+              <span class="md-nav__icon md-icon"></span>
+            </label>
+          
+        </div>
       
       <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
         <label class="md-nav__title" for="__nav_7">
@@ -1013,8 +1182,22 @@
   
   
     <li class="md-nav__item">
-      <a href="../../query/common-commands/" class="md-nav__link">
-        Common Commands
+      <a href="../../query/principles/" class="md-nav__link">
+        Principles
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../query/example-schema/" class="md-nav__link">
+        Example Schema
       </a>
     </li>
   
@@ -1265,23 +1448,38 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../publish-data/" class="md-nav__link">
+        Publish Data
+      </a>
+    </li>
+  
+
+        
+        
+        
+        
+
+  
+  
+  
     
     <li class="md-nav__item md-nav__item--nested">
       
       
       
       
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
       
       
       
-        <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
+        <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
           Internals
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_10">
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_11">
           <span class="md-nav__icon md-icon"></span>
           Internals
         </label>
@@ -1320,95 +1518,17 @@
       
       
       
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" >
       
       
       
-        <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
-          Reproducibility
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_11">
-          <span class="md-nav__icon md-icon"></span>
-          Reproducibility
-        </label>
-        <ul class="md-nav__list" data-md-scrollfix>
-          
-            
-              
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reproduce/table-tiers/" class="md-nav__link">
-        Table Tiers
-      </a>
-    </li>
-  
-
-            
-          
-            
-              
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reproduce/make-method/" class="md-nav__link">
-        Make Method
-      </a>
-    </li>
-  
-
-            
-          
-        </ul>
-      </nav>
-    </li>
-  
-
-        
-        
-        
-        
-
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../existing-pipelines/" class="md-nav__link">
-        Existing Pipelines
-      </a>
-    </li>
-  
-
-        
-        
-        
-        
-
-  
-  
-  
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-      
-      
-      
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13" >
-      
-      
-      
-        <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="0">
+        <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="0">
           Tutorials
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_13">
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_12">
           <span class="md-nav__icon md-icon"></span>
           Tutorials
         </label>
@@ -1458,7 +1578,7 @@
   
     <li class="md-nav__item">
       <a href="../../develop/" class="md-nav__link">
-        Develop
+        Developer Guide
       </a>
     </li>
   
@@ -1507,17 +1627,17 @@
       
       
       
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_18" >
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_17" >
       
       
       
-        <label class="md-nav__link" for="__nav_18" id="__nav_18_label" tabindex="0">
+        <label class="md-nav__link" for="__nav_17" id="__nav_17_label" tabindex="0">
           API
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_18_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_18">
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_17_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_17">
           <span class="md-nav__icon md-icon"></span>
           API
         </label>
@@ -1534,17 +1654,17 @@
       
       
       
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_18_1" >
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_17_1" >
       
       
       
-        <label class="md-nav__link" for="__nav_18_1" id="__nav_18_1_label" tabindex="0">
+        <label class="md-nav__link" for="__nav_17_1" id="__nav_17_1_label" tabindex="0">
           datajoint
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_18_1_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_18_1">
+      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_17_1_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_17_1">
           <span class="md-nav__icon md-icon"></span>
           datajoint
         </label>
@@ -1959,11 +2079,140 @@
   
 
 
-  <h1>Install</h1>
-
-<h2 id="work-in-progress">Work in progress<a class="headerlink" href="#work-in-progress" title="Permanent link">&para;</a></h2>
-<p>You may ask questions in the chat window below or
-refer to <a href="https://docs.datajoint.org/">legacy documentation</a></p>
+<h1 id="install-and-connect">Install and Connect<a class="headerlink" href="#install-and-connect" title="Permanent link">&para;</a></h1>
+<p>DataJoint is implemented for Python 3.4+.
+You may install it from <a href="https://pypi.python.org/pypi/datajoint">PyPI</a>:</p>
+<div class="highlight"><pre><span></span><code>pip3<span class="w"> </span>install<span class="w"> </span>datajoint
+</code></pre></div>
+<p>or upgrade</p>
+<div class="highlight"><pre><span></span><code>pip3<span class="w"> </span>install<span class="w"> </span>--upgrade<span class="w"> </span>datajoint
+</code></pre></div>
+<h2 id="datajoint-python-windows-install-guide">DataJoint Python Windows Install Guide<a class="headerlink" href="#datajoint-python-windows-install-guide" title="Permanent link">&para;</a></h2>
+<p>This document outlines the steps necessary to install DataJoint on Windows for use in 
+connecting to a remote server hosting a DataJoint database.
+Some limited discussion of installing MySQL is discussed in <code>MySQL for Windows</code>, but is 
+not covered in-depth since this is an uncommon usage scenario and not strictly required 
+to connect to DataJoint pipelines.</p>
+<h3 id="quick-steps">Quick steps<a class="headerlink" href="#quick-steps" title="Permanent link">&para;</a></h3>
+<p>Quick install steps for advanced users are as follows:</p>
+<ul>
+<li>Install latest Python 3.x and ensure it is in <code>PATH</code> (3.6.3 current at time of writing)
+  <div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>datajoint
+</code></pre></div></li>
+</ul>
+<p>For ERD drawing support:</p>
+<ul>
+<li>Install Graphviz for Windows and ensure it is in <code>PATH</code> (64 bit builds currently 
+tested; URL below.)
+  <div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>pydotplus<span class="w"> </span>matplotlib
+</code></pre></div></li>
+</ul>
+<p>Detailed instructions follow.</p>
+<h3 id="step-1-install-python">Step 1: install Python<a class="headerlink" href="#step-1-install-python" title="Permanent link">&para;</a></h3>
+<p>Python for Windows is available from:</p>
+<p><a href="https://www.python.org/downloads/windows">https://www.python.org/downloads/windows</a></p>
+<p>The latest 64 bit 3.x version, currently 3.6.3, is available from the <a href="https://www.python.org/ftp/python/3.6.3/python-3.6.3-amd64.exe">Python site</a>.</p>
+<p>From here run the installer to install Python.</p>
+<p>For a single-user machine, the regular installation process is sufficient - be sure to 
+select the <code>Add Python to PATH</code> option:</p>
+<p><img alt="install-python-simple" src="../../images/install-python-simple.png" style="align:left" /></p>
+<p>For a shared machine, run the installer as administrator (right-click, run as 
+administrator) and select the advanced installation.
+Be sure to select options as follows:</p>
+<p><img alt="install-python-advanced-1" src="../../images/install-python-advanced-1.png" style="align:left" />
+<img alt="install-python-advanced-2" src="../../images/install-python-advanced-2.png" style="align:left" /></p>
+<h3 id="step-2-verify-installation">Step 2: verify installation<a class="headerlink" href="#step-2-verify-installation" title="Permanent link">&para;</a></h3>
+<p>To verify the Python installation and make sure that your system is ready to install 
+DataJoint, open a command window by entering <code>cmd</code> into the Windows search bar:</p>
+<p><img alt="install-cmd-prompt" src="../../images/install-cmd-prompt.png" style="align:left" /></p>
+<p>From here <code>python</code> and the Python package manager <code>pip</code> can be verified by running 
+<code>python -V</code> and <code>pip -V</code>, respectively:</p>
+<p><img alt="install-verify-python" src="../../images/install-verify-python.png" style="align:left" /></p>
+<p>If you receive the error message that either <code>pip</code> or <code>python</code> is not a recognized 
+command, please uninstall Python and ensure that the option to add Python to the <code>PATH</code> 
+variable was properly configured.</p>
+<h3 id="step-3-install-datajoint">Step 3: install DataJoint<a class="headerlink" href="#step-3-install-datajoint" title="Permanent link">&para;</a></h3>
+<p>DataJoint (and other Python modules) can be easily installed using the <code>pip</code> Python 
+package manager which is installed as a part of Python and was verified in the previous 
+step.</p>
+<p>To install DataJoint simply run <code>pip install datajoint</code>:</p>
+<p><img alt="install-datajoint-1" src="../../images/install-datajoint-1.png" style="align:left" /></p>
+<p>This will proceed to install DataJoint, along with several other required packages from 
+the PIP repository.
+When finished, a summary of the activity should be presented:</p>
+<p><img alt="install-datajoint-2" src="../../images/install-datajoint-2.png" style="align:left" /></p>
+<p>Note: You can find out more about the packages installed here and many other freely 
+available open source packages via <a href="https://pypi.python.org/pypi">pypi</a>, the Python 
+package index site.</p>
+<h3 id="optional-step-4-install-packages-for-erd-support">(Optional) step 4: install packages for ERD support<a class="headerlink" href="#optional-step-4-install-packages-for-erd-support" title="Permanent link">&para;</a></h3>
+<p>To draw diagrams of your DataJoint schema, the following additional steps should be 
+followed.</p>
+<h4 id="install-graphviz">Install Graphviz<a class="headerlink" href="#install-graphviz" title="Permanent link">&para;</a></h4>
+<p>DataJoint currently utilizes <a href="http://graphviz.org">Graphviz</a> to generate the ERD 
+visualizations.
+Although a Windows version of Graphviz is available from the main site, it is an older 
+and out of date 32-bit version.
+The recommended pre-release builds of the 64 bit version are available here:</p>
+<p><a href="https://ci.appveyor.com/project/ellson/graphviz-pl238">https://ci.appveyor.com/project/ellson/graphviz-pl238</a></p>
+<p>More specifically, the build artifacts from the <code>Win64; Configuration: Release</code> are 
+recommended, available 
+<a href="https://ci.appveyor.com/api/buildjobs/hlkclpfhf6gnakjq/artifacts/build%2FGraphviz-install.exe">here</a>.</p>
+<p>This is a regular Windows installer executable, and will present a dialog when starting:</p>
+<p><img alt="install-graphviz-1" src="../../images/install-graphviz-1.png" style="align:left" /></p>
+<p>It is important that an option to place Graphviz in the <code>PATH</code> be selected.</p>
+<p>For a personal installation:</p>
+<p><img alt="install-graphviz-2a" src="../../images/install-graphviz-2a.png" style="align:left" /></p>
+<p>To install system wide:</p>
+<p><img alt="install-graphviz-2b" src="../../images/install-graphviz-2b.png" style="align:left" /></p>
+<p>Once installed, Graphviz can be verified from a fresh command window as follows:</p>
+<p><img alt="install-verify-graphviz" src="../../images/install-verify-graphviz.png" style="align:left" /></p>
+<p>If you receive the error message that the <code>dot</code> program is not a recognized command, 
+please uninstall Graphviz and ensure that the
+option to add Python to the PATH variable was properly configured.</p>
+<p>Important: in some cases, running the <code>dot -c</code> command in a command prompt is required 
+to properly initialize the Graphviz installation.</p>
+<h4 id="install-pydotplus">Install PyDotPlus<a class="headerlink" href="#install-pydotplus" title="Permanent link">&para;</a></h4>
+<p>The PyDotPlus library links the Graphviz installation to DataJoint and is easily 
+installed via <code>pip</code>:</p>
+<p><img alt="install-pydotplus" src="../../images/install-pydotplus.png" style="align:left" /></p>
+<h4 id="install-matplotlib">Install Matplotlib<a class="headerlink" href="#install-matplotlib" title="Permanent link">&para;</a></h4>
+<p>The Matplotlib library provides useful plotting utilities which are also used by 
+DataJoint's <code>Diagram</code> drawing facility.
+The package is easily installed via <code>pip</code>:</p>
+<p><img alt="install-matplotlib" src="../../images/install-matplotlib.png" style="align:left" /></p>
+<h3 id="optional-step-5-install-jupyter-notebook">(Optional) step 5: install Jupyter Notebook<a class="headerlink" href="#optional-step-5-install-jupyter-notebook" title="Permanent link">&para;</a></h3>
+<p>As described on the <a href="http://www.jupyter.org">www.jupyter.org</a> website:</p>
+<p>'''
+The Jupyter Notebook is an open-source web application that allows
+you to create and share documents that contain live code, equations,
+visualizations and narrative text.
+'''</p>
+<p>Although not a part of DataJoint, Jupyter Notebook can be a very useful tool for 
+building and interacting with DataJoint pipelines.
+It is easily installed from <code>pip</code> as well:</p>
+<p><img alt="install-jupyter-1" src="../../images/install-jupyter-1.png" style="align:left" />
+<img alt="install-jupyter-2" src="../../images/install-jupyter-2.png" style="align:left" /></p>
+<p>Once installed, Jupyter Notebook can be started via the <code>jupyter notebook</code> command, 
+which should now be on your path:</p>
+<p><img alt="install-verify-jupyter" src="../../images/install-verify-jupyter.png" style="align:left" /></p>
+<p>By default Jupyter Notebook will start a local private web server session from the 
+directory where it was started and start a web browser session connected to the session.</p>
+<p><img alt="install-run-jupyter-1" src="../../images/install-run-jupyter-1.png" style="align:left" />
+<img alt="install-run-jupyter-2" src="../../images/install-run-jupyter-2.png" style="align:left" /></p>
+<p>You now should be able to use the notebook viewer to navigate the filesystem and to 
+create new project folders and interactive Jupyter/Python/DataJoint notebooks.</p>
+<h3 id="git-for-windows">Git for Windows<a class="headerlink" href="#git-for-windows" title="Permanent link">&para;</a></h3>
+<p>The <a href="https://git-scm.com/">Git</a> version control system is not a part of DataJoint but 
+is recommended for interacting with the broader Python/Git/GitHub sharing ecosystem.</p>
+<p>The Git for Windows installer is available from <a href="https://git-scm.com/download/win">https://git-scm.com/download/win</a>.</p>
+<p><img alt="install-git-1" src="../../images/install-git-1.png" style="align:left" /></p>
+<p>The default settings should be sufficient and correct in most cases.</p>
+<h3 id="mysql-for-windows">MySQL for Windows<a class="headerlink" href="#mysql-for-windows" title="Permanent link">&para;</a></h3>
+<p>For hosting pipelines locally, the MySQL server package is required.</p>
+<p>MySQL for windows can be installed via the installers available from the 
+<a href="https://dev.mysql.com/downloads/windows/">MySQL website</a>.
+Please note that although DataJoint should be fully compatible with a Windows MySQL 
+server installation, this mode of operation is not tested by the DataJoint team.</p>
 
 
 
@@ -2082,10 +2331,10 @@ refer to <a href="https://docs.datajoint.org/">legacy documentation</a></p>
       <div class="md-dialog__inner md-typeset"></div>
     </div>
     
-    <script id="__config" type="application/json">{"base": "../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": "../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.74e28a9f.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.b4d07000.min.js"></script>
+      <script src="../../assets/javascripts/bundle.220ee61c.min.js"></script>
       
     
   </body>

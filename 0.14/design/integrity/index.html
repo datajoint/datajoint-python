@@ -15,7 +15,7 @@
         <link rel="next" href="../recall/">
       
       <link rel="icon" href="../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.15">
+      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.19">
     
     
       
@@ -23,7 +23,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.26e3688c.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.eebd395e.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ecc896b0.min.css">
@@ -75,7 +75,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#work-in-progress" class="md-skip">
+        <a href="#data-integrity" class="md-skip">
           Skip to content
         </a>
       
@@ -247,7 +247,7 @@
 </g>
 </svg>
 
-        </a><a href="https://datajoint.com/docs/core/" title="DataJoint">
+        </a><a href="https://datajoint.com/docs/" title="DataJoint">
             ⬅ Home
         </a>
     </label>
@@ -289,8 +289,8 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting-started/" class="md-nav__link">
-        Getting Started
+      <a href="../../quick-start/" class="md-nav__link">
+        Quick Start Guide
       </a>
     </li>
   
@@ -345,8 +345,50 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/glossary/" class="md-nav__link">
-        Glossary
+      <a href="../../concepts/data-model/" class="md-nav__link">
+        Data Model
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/data-pipelines/" class="md-nav__link">
+        Data Pipelines
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/teamwork/" class="md-nav__link">
+        Teamwork
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/terminology/" class="md-nav__link">
+        Terminology
       </a>
     </li>
   
@@ -394,7 +436,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../sysadmin/dba/" class="md-nav__link">
+      <a href="../../sysadmin/database-admin/" class="md-nav__link">
         Database Administration
       </a>
     </li>
@@ -408,8 +450,22 @@
   
   
     <li class="md-nav__item">
-      <a href="../../sysadmin/filestore/" class="md-nav__link">
-        File Storage
+      <a href="../../sysadmin/bulk-storage/" class="md-nav__link">
+        Bulk Storage Systems
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../sysadmin/external-store/" class="md-nav__link">
+        External Store
       </a>
     </li>
   
@@ -471,7 +527,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../client/creds/" class="md-nav__link">
+      <a href="../../client/credentials/" class="md-nav__link">
         Credentials
       </a>
     </li>
@@ -661,6 +717,20 @@
   
   
     <li class="md-nav__item">
+      <a href="../tables/manual/" class="md-nav__link">
+        Manual Tables
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../tables/blobs/" class="md-nav__link">
         Blobs
       </a>
@@ -800,6 +870,8 @@
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
+        
+      
       
         <label class="md-nav__link md-nav__link--active" for="__toc">
           Data Integrity
@@ -816,6 +888,8 @@
   
   
   
+    
+  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
@@ -824,8 +898,29 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#work-in-progress" class="md-nav__link">
-    Work in progress
+  <a href="#entity-integrity" class="md-nav__link">
+    Entity integrity
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#referential-integrity" class="md-nav__link">
+    Referential integrity
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#group-integrity" class="md-nav__link">
+    Group integrity
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#relationships" class="md-nav__link">
+    Relationships
   </a>
   
 </li>
@@ -904,10 +999,16 @@
       
       
       
-        <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
-          Data Manipulations
-          <span class="md-nav__icon md-icon"></span>
-        </label>
+        
+        
+        <div class="md-nav__link md-nav__link--index ">
+          <a href="../../manipulation/">Data Manipulations</a>
+          
+            <label for="__nav_7">
+              <span class="md-nav__icon md-icon"></span>
+            </label>
+          
+        </div>
       
       <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
         <label class="md-nav__title" for="__nav_7">
@@ -1013,8 +1114,22 @@
   
   
     <li class="md-nav__item">
-      <a href="../../query/common-commands/" class="md-nav__link">
-        Common Commands
+      <a href="../../query/principles/" class="md-nav__link">
+        Principles
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../query/example-schema/" class="md-nav__link">
+        Example Schema
       </a>
     </li>
   
@@ -1265,23 +1380,38 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../publish-data/" class="md-nav__link">
+        Publish Data
+      </a>
+    </li>
+  
+
+        
+        
+        
+        
+
+  
+  
+  
     
     <li class="md-nav__item md-nav__item--nested">
       
       
       
       
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
       
       
       
-        <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
+        <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
           Internals
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_10">
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_11">
           <span class="md-nav__icon md-icon"></span>
           Internals
         </label>
@@ -1320,95 +1450,17 @@
       
       
       
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" >
       
       
       
-        <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
-          Reproducibility
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_11">
-          <span class="md-nav__icon md-icon"></span>
-          Reproducibility
-        </label>
-        <ul class="md-nav__list" data-md-scrollfix>
-          
-            
-              
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reproduce/table-tiers/" class="md-nav__link">
-        Table Tiers
-      </a>
-    </li>
-  
-
-            
-          
-            
-              
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reproduce/make-method/" class="md-nav__link">
-        Make Method
-      </a>
-    </li>
-  
-
-            
-          
-        </ul>
-      </nav>
-    </li>
-  
-
-        
-        
-        
-        
-
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../existing-pipelines/" class="md-nav__link">
-        Existing Pipelines
-      </a>
-    </li>
-  
-
-        
-        
-        
-        
-
-  
-  
-  
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-      
-      
-      
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13" >
-      
-      
-      
-        <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="0">
+        <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="0">
           Tutorials
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_13">
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_12">
           <span class="md-nav__icon md-icon"></span>
           Tutorials
         </label>
@@ -1458,7 +1510,7 @@
   
     <li class="md-nav__item">
       <a href="../../develop/" class="md-nav__link">
-        Develop
+        Developer Guide
       </a>
     </li>
   
@@ -1507,17 +1559,17 @@
       
       
       
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_18" >
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_17" >
       
       
       
-        <label class="md-nav__link" for="__nav_18" id="__nav_18_label" tabindex="0">
+        <label class="md-nav__link" for="__nav_17" id="__nav_17_label" tabindex="0">
           API
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_18_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_18">
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_17_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_17">
           <span class="md-nav__icon md-icon"></span>
           API
         </label>
@@ -1534,17 +1586,17 @@
       
       
       
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_18_1" >
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_17_1" >
       
       
       
-        <label class="md-nav__link" for="__nav_18_1" id="__nav_18_1_label" tabindex="0">
+        <label class="md-nav__link" for="__nav_17_1" id="__nav_17_1_label" tabindex="0">
           datajoint
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_18_1_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_18_1">
+      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_17_1_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_17_1">
           <span class="md-nav__icon md-icon"></span>
           datajoint
         </label>
@@ -1959,11 +2011,194 @@
   
 
 
-  <h1>Data Integrity</h1>
+<h1 id="data-integrity">Data Integrity<a class="headerlink" href="#data-integrity" title="Permanent link">&para;</a></h1>
+<p>The term <strong>data integrity</strong> describes  guarantees made by the data management process 
+that prevent errors and corruption in data due to technical failures and human errors 
+arising in the course of continuous use by multiple agents.
+DataJoint pipelines respect the following forms of data integrity: <strong>entity 
+integrity</strong>, <strong>referential integrity</strong>, and <strong>group integrity</strong> as described in more 
+detail below.</p>
+<h2 id="entity-integrity">Entity integrity<a class="headerlink" href="#entity-integrity" title="Permanent link">&para;</a></h2>
+<p>In a proper relational design, each table represents a collection of discrete 
+real-world entities of some kind.
+<strong>Entity integrity</strong> is the guarantee made by the data management process that entities 
+from the real world are reliably and uniquely represented in the database system.
+Entity integrity states that the data management process must prevent duplicate 
+representations or misidentification of entities.
+DataJoint enforces entity integrity through the use of 
+<a href="../tables/primary/">primary keys</a>.</p>
+<p>Entity integrity breaks down when a process allows data pertaining to the same 
+real-world entity to be entered into the database system multiple times.
+For example, a school database system may use unique ID numbers to distinguish students.
+Suppose the system automatically generates an ID number each time a student record is 
+entered into the database without checking whether a record already exists for that 
+student.
+Such a system violates entity integrity, because the same student may be assigned 
+multiple ID numbers.
+The ID numbers succeed in uniquely identifying each student record but fail to do so 
+for the actual students.</p>
+<p>Note that a database cannot guarantee or enforce entity integrity by itself.
+Entity integrity is a property of the entire data management process as a whole, 
+including institutional practices and user actions in addition to database 
+configurations.</p>
+<h2 id="referential-integrity">Referential integrity<a class="headerlink" href="#referential-integrity" title="Permanent link">&para;</a></h2>
+<p><strong>Referential integrity</strong> is the guarantee made by the data management process that 
+related data across the database remain present, correctly associated, and mutually 
+consistent.
+Guaranteeing referential integrity means enforcing the constraint that no entity can 
+exist in the database without all the other entities on which it depends.
+Referential integrity cannot exist without entity integrity: references to entity 
+cannot be validated if the identity of the entity itself is not guaranteed.</p>
+<p>Referential integrity fails when a data management process allows new data to be 
+entered that refers to other data missing from the database.
+For example, assume that each electrophysiology recording must refer to the mouse 
+subject used during data collection.
+Perhaps an experimenter attempts to insert ephys data into the database that refers to 
+a nonexistent mouse, due to a misspelling.
+A system guaranteeing referential integrity, such as DataJoint, will refuse the 
+erroneous data.</p>
+<p>Enforcement of referential integrity does not stop with data ingest.
+<a href="../../manipulation/delete/">Deleting</a> data in DataJoint also deletes any dependent 
+downstream data.
+Such cascading deletions are necessary to maintain referential integrity.
+Consider the deletion of a mouse subject without the deletion of the experimental 
+sessions involving that mouse.
+A database that allows such deletion will break referential integrity, as the 
+experimental sessions for the removed mouse depend on missing data.
+Any data management process that allows data to be deleted with no consideration of 
+dependent data cannot maintain referential integrity.</p>
+<p><a href="../../manipulation/update/">Updating</a> data already present in a database system also 
+jeopardizes referential integrity.
+For this reason, the DataJoint workflow does not include updates to entities once they 
+have been ingested into a pipeline.
+Allowing updates to upstream entities would break the referential integrity of any 
+dependent data downstream.
+For example, permitting a user to change the name of a mouse subject would invalidate 
+any experimental sessions that used that mouse, presuming the mouse name was part of 
+the primary key.
+The proper way to change data in DataJoint is to delete the existing entities and to 
+insert corrected ones, preserving referential integrity.</p>
+<h2 id="group-integrity">Group integrity<a class="headerlink" href="#group-integrity" title="Permanent link">&para;</a></h2>
+<p><strong>Group integrity</strong> denotes the guarantee made by the data management process that 
+entities composed of multiple parts always appear in their complete form.
+Group integrity in DataJoint is formalized through 
+<a href="../tables/master-part/">master-part</a> relationships.
+The master-part relationship has important implications for dependencies, because a 
+downstream entity depending on a master entity set may be considered to depend on the 
+parts as well.</p>
+<h2 id="relationships">Relationships<a class="headerlink" href="#relationships" title="Permanent link">&para;</a></h2>
+<p>In DataJoint, the term <strong>relationship</strong> is used rather generally to describe the 
+effects of particular configurations of <a href="../tables/dependencies/">dependencies</a> 
+between multiple entity sets.
+It is often useful to classify relationships as one-to-one, many-to-one, one-to-many, 
+and many-to-many.</p>
+<p>In a <strong>one-to-one relationship</strong>, each entity in a downstream table has exactly one 
+corresponding entity in the upstream table.
+A dependency of an entity set containing the death dates of mice on an entity set 
+describing the mice themselves would obviously be a one-to-one relationship, as in the 
+example below.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@schema</span>
+<span class="k">class</span> <span class="nc">Mouse</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
+<span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">mouse_name : varchar(64)</span>
+<span class="s2">---</span>
+<span class="s2">mouse_dob : datetime</span>
+<span class="s2">&quot;&quot;&quot;</span>
 
-<h2 id="work-in-progress">Work in progress<a class="headerlink" href="#work-in-progress" title="Permanent link">&para;</a></h2>
-<p>You may ask questions in the chat window below or
-refer to <a href="https://docs.datajoint.org/">legacy documentation</a></p>
+<span class="nd">@schema</span>
+<span class="k">class</span> <span class="nc">MouseDeath</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
+<span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">-&gt; Mouse</span>
+<span class="s2">---</span>
+<span class="s2">death_date : datetime</span>
+<span class="s2">&quot;&quot;&quot;</span>
+</code></pre></div>
+<p><img alt="doc_1-1" src="../../images/doc_1-1.png" style="align:center" /></p>
+<p>In a <strong>one-to-many relationship</strong>, multiple entities in a downstream table may depend 
+on the same entity in the upstream table.
+The example below shows a table containing individual channel data from multi-channel 
+recordings, representing a one-to-many relationship.</p>
+<p><div class="highlight"><pre><span></span><code><span class="nd">@schema</span>
+<span class="k">class</span> <span class="nc">EEGRecording</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
+<span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">-&gt; Session</span>
+<span class="s2">eeg_recording_id : int</span>
+<span class="s2">---</span>
+<span class="s2">eeg_system : varchar(64)</span>
+<span class="s2">num_channels : int</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<span class="nd">@schema</span>
+<span class="k">class</span> <span class="nc">ChannelData</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Imported</span><span class="p">):</span>
+<span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">-&gt; EEGRecording</span>
+<span class="s2">channel_idx : int</span>
+<span class="s2">---</span>
+<span class="s2">channel_data : longblob</span>
+<span class="s2">&quot;&quot;&quot;</span>
+</code></pre></div>
+<img alt="doc_1-many" src="../../images/doc_1-many.png" style="align:center" /></p>
+<p>In a <strong>many-to-one relationship</strong>, each entity in a table is associated with multiple 
+entities from another table.
+Many-to-one relationships between two tables are usually established using a separate 
+membership table.
+The example below includes a table of mouse subjects, a table of subject groups, and a 
+membership <a href="../tables/master-part/">part table</a> listing the subjects in each group.
+A many-to-one relationship exists between the <code>Mouse</code> table and the <code>SubjectGroup</code> 
+table, with is expressed through entities in <code>GroupMember</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@schema</span>
+<span class="k">class</span> <span class="nc">Mouse</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
+<span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">mouse_name : varchar(64)</span>
+<span class="s2">---</span>
+<span class="s2">mouse_dob : datetime</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<span class="nd">@schema</span>
+<span class="k">class</span> <span class="nc">SubjectGroup</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
+<span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">group_number : int</span>
+<span class="s2">---</span>
+<span class="s2">group_name : varchar(64)</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<span class="k">class</span> <span class="nc">GroupMember</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Part</span><span class="p">):</span>
+     <span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">     -&gt; master</span>
+<span class="s2">     -&gt; Mouse</span>
+<span class="s2">     &quot;&quot;&quot;</span>
+</code></pre></div>
+<p><img alt="doc_many-1" src="../../images/doc_many-1.png" style="align:center" /></p>
+<p>In a <strong>many-to-many relationship</strong>, multiple entities in one table may each relate to 
+multiple entities in another upstream table.
+Many-to-many relationships between two tables are usually established using a separate 
+association table.
+Each entity in the association table links one entity from each of the two upstream 
+tables it depends on.
+The below example of a many-to-many relationship contains a table of recording 
+modalities and a table of multimodal recording sessions.
+Entities in a third table represent the modes used for each session.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@schema</span>
+<span class="k">class</span> <span class="nc">RecordingModality</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Lookup</span><span class="p">):</span>
+<span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">modality : varchar(64)</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<span class="nd">@schema</span>
+<span class="k">class</span> <span class="nc">MultimodalSession</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
+<span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">-&gt; Session</span>
+<span class="s2">modes : int</span>
+<span class="s2">&quot;&quot;&quot;</span>
+<span class="k">class</span> <span class="nc">SessionMode</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Part</span><span class="p">):</span>
+     <span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">     -&gt; master</span>
+<span class="s2">     -&gt; RecordingModality</span>
+<span class="s2">     &quot;&quot;&quot;</span>
+</code></pre></div>
+<p><img alt="doc_many-many" src="../../images/doc_many-many.png" style="align:center" /></p>
+<p>The types of relationships between entity sets are expressed in the 
+<a href="../diagrams/">Diagram</a> of a schema.</p>
 
 
 
@@ -2082,10 +2317,10 @@ refer to <a href="https://docs.datajoint.org/">legacy documentation</a></p>
       <div class="md-dialog__inner md-typeset"></div>
     </div>
     
-    <script id="__config" type="application/json">{"base": "../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": "../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.74e28a9f.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.b4d07000.min.js"></script>
+      <script src="../../assets/javascripts/bundle.220ee61c.min.js"></script>
       
     
   </body>

@@ -15,7 +15,7 @@
         <link rel="next" href="../integrity/">
       
       <link rel="icon" href="../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.15">
+      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.19">
     
     
       
@@ -23,7 +23,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.26e3688c.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.eebd395e.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ecc896b0.min.css">
@@ -75,7 +75,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#work-in-progress" class="md-skip">
+        <a href="#entity-normalization" class="md-skip">
           Skip to content
         </a>
       
@@ -247,7 +247,7 @@
 </g>
 </svg>
 
-        </a><a href="https://datajoint.com/docs/core/" title="DataJoint">
+        </a><a href="https://datajoint.com/docs/" title="DataJoint">
             ⬅ Home
         </a>
     </label>
@@ -289,8 +289,8 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting-started/" class="md-nav__link">
-        Getting Started
+      <a href="../../quick-start/" class="md-nav__link">
+        Quick Start Guide
       </a>
     </li>
   
@@ -345,8 +345,50 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/glossary/" class="md-nav__link">
-        Glossary
+      <a href="../../concepts/data-model/" class="md-nav__link">
+        Data Model
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/data-pipelines/" class="md-nav__link">
+        Data Pipelines
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/teamwork/" class="md-nav__link">
+        Teamwork
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/terminology/" class="md-nav__link">
+        Terminology
       </a>
     </li>
   
@@ -394,7 +436,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../sysadmin/dba/" class="md-nav__link">
+      <a href="../../sysadmin/database-admin/" class="md-nav__link">
         Database Administration
       </a>
     </li>
@@ -408,8 +450,22 @@
   
   
     <li class="md-nav__item">
-      <a href="../../sysadmin/filestore/" class="md-nav__link">
-        File Storage
+      <a href="../../sysadmin/bulk-storage/" class="md-nav__link">
+        Bulk Storage Systems
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../sysadmin/external-store/" class="md-nav__link">
+        External Store
       </a>
     </li>
   
@@ -471,7 +527,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../client/creds/" class="md-nav__link">
+      <a href="../../client/credentials/" class="md-nav__link">
         Credentials
       </a>
     </li>
@@ -661,6 +717,20 @@
   
   
     <li class="md-nav__item">
+      <a href="../tables/manual/" class="md-nav__link">
+        Manual Tables
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../tables/blobs/" class="md-nav__link">
         Blobs
       </a>
@@ -786,6 +856,8 @@
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
+        
+      
       
         <label class="md-nav__link md-nav__link--active" for="__toc">
           Entity Normalization
@@ -802,6 +874,8 @@
   
   
   
+    
+  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
@@ -810,9 +884,64 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#work-in-progress" class="md-nav__link">
-    Work in progress
+  <a href="#criteria-of-a-well-formed-entity-set" class="md-nav__link">
+    Criteria of a well-formed entity set
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#entity-normalization-in-schema-design" class="md-nav__link">
+    Entity normalization in schema design
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#entity-normalization-in-data-queries" class="md-nav__link">
+    Entity normalization in data queries
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples-of-poor-normalization" class="md-nav__link">
+    Examples of poor normalization
+  </a>
+  
+    <nav class="md-nav" aria-label="Examples of poor normalization">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#indirect-attributes" class="md-nav__link">
+    Indirect attributes
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#repeated-attributes" class="md-nav__link">
+    Repeated attributes
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#attributes-that-do-not-apply-to-all-entities" class="md-nav__link">
+    Attributes that do not apply to all entities
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transient-attributes" class="md-nav__link">
+    Transient attributes
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -904,10 +1033,16 @@
       
       
       
-        <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
-          Data Manipulations
-          <span class="md-nav__icon md-icon"></span>
-        </label>
+        
+        
+        <div class="md-nav__link md-nav__link--index ">
+          <a href="../../manipulation/">Data Manipulations</a>
+          
+            <label for="__nav_7">
+              <span class="md-nav__icon md-icon"></span>
+            </label>
+          
+        </div>
       
       <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
         <label class="md-nav__title" for="__nav_7">
@@ -1013,8 +1148,22 @@
   
   
     <li class="md-nav__item">
-      <a href="../../query/common-commands/" class="md-nav__link">
-        Common Commands
+      <a href="../../query/principles/" class="md-nav__link">
+        Principles
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../query/example-schema/" class="md-nav__link">
+        Example Schema
       </a>
     </li>
   
@@ -1265,23 +1414,38 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../publish-data/" class="md-nav__link">
+        Publish Data
+      </a>
+    </li>
+  
+
+        
+        
+        
+        
+
+  
+  
+  
     
     <li class="md-nav__item md-nav__item--nested">
       
       
       
       
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
       
       
       
-        <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
+        <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
           Internals
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_10">
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_11">
           <span class="md-nav__icon md-icon"></span>
           Internals
         </label>
@@ -1320,95 +1484,17 @@
       
       
       
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" >
       
       
       
-        <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
-          Reproducibility
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_11">
-          <span class="md-nav__icon md-icon"></span>
-          Reproducibility
-        </label>
-        <ul class="md-nav__list" data-md-scrollfix>
-          
-            
-              
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reproduce/table-tiers/" class="md-nav__link">
-        Table Tiers
-      </a>
-    </li>
-  
-
-            
-          
-            
-              
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../reproduce/make-method/" class="md-nav__link">
-        Make Method
-      </a>
-    </li>
-  
-
-            
-          
-        </ul>
-      </nav>
-    </li>
-  
-
-        
-        
-        
-        
-
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../existing-pipelines/" class="md-nav__link">
-        Existing Pipelines
-      </a>
-    </li>
-  
-
-        
-        
-        
-        
-
-  
-  
-  
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-      
-      
-      
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13" >
-      
-      
-      
-        <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="0">
+        <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="0">
           Tutorials
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_13">
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_12">
           <span class="md-nav__icon md-icon"></span>
           Tutorials
         </label>
@@ -1458,7 +1544,7 @@
   
     <li class="md-nav__item">
       <a href="../../develop/" class="md-nav__link">
-        Develop
+        Developer Guide
       </a>
     </li>
   
@@ -1507,17 +1593,17 @@
       
       
       
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_18" >
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_17" >
       
       
       
-        <label class="md-nav__link" for="__nav_18" id="__nav_18_label" tabindex="0">
+        <label class="md-nav__link" for="__nav_17" id="__nav_17_label" tabindex="0">
           API
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_18_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_18">
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_17_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_17">
           <span class="md-nav__icon md-icon"></span>
           API
         </label>
@@ -1534,17 +1620,17 @@
       
       
       
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_18_1" >
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_17_1" >
       
       
       
-        <label class="md-nav__link" for="__nav_18_1" id="__nav_18_1_label" tabindex="0">
+        <label class="md-nav__link" for="__nav_17_1" id="__nav_17_1_label" tabindex="0">
           datajoint
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_18_1_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_18_1">
+      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_17_1_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_17_1">
           <span class="md-nav__icon md-icon"></span>
           datajoint
         </label>
@@ -1959,11 +2045,106 @@
   
 
 
-  <h1>Entity Normalization</h1>
-
-<h2 id="work-in-progress">Work in progress<a class="headerlink" href="#work-in-progress" title="Permanent link">&para;</a></h2>
-<p>You may ask questions in the chat window below or
-refer to <a href="https://docs.datajoint.org/">legacy documentation</a></p>
+<h1 id="entity-normalization">Entity Normalization<a class="headerlink" href="#entity-normalization" title="Permanent link">&para;</a></h1>
+<p>DataJoint uses a uniform way of representing any data.
+It does so in the form of <strong>entity sets</strong>, unordered collections of entities of the 
+same type.
+The term <strong>entity normalization</strong> describes the commitment to represent all data as 
+well-formed entity sets.
+Entity normalization is a conceptual refinement of the 
+<a href="../../concepts/data-model/">relational data model</a> and is the central principle of the 
+DataJoint model (<a href="https://arxiv.org/abs/1807.11104">Yatsenko et al., 2018</a>).
+Entity normalization leads to clear and logical database designs and to easily 
+comprehensible data queries.</p>
+<p>Entity sets are a type of <strong>relation</strong> 
+(from the <a href="../../concepts/data-model/">relational data model</a>) and are often visualized 
+as <strong>tables</strong>.
+Hence the terms <strong>relation</strong>, <strong>entity set</strong>, and <strong>table</strong> can be used interchangeably 
+when entity normalization is assumed.</p>
+<h2 id="criteria-of-a-well-formed-entity-set">Criteria of a well-formed entity set<a class="headerlink" href="#criteria-of-a-well-formed-entity-set" title="Permanent link">&para;</a></h2>
+<ol>
+<li>All elements of an entity set belong to the same well-defined and readily identified 
+<strong>entity type</strong> from the model world.</li>
+<li>All attributes of an entity set are applicable directly to each of its elements, 
+although some attribute values may be missing (set to null).</li>
+<li>All elements of an entity set must be distinguishable form each other by the same 
+primary key.</li>
+<li>Primary key attribute values cannot be missing, i.e. set to null.</li>
+<li>All elements of an entity set participate in the same types of relationships with 
+other entity sets.</li>
+</ol>
+<h2 id="entity-normalization-in-schema-design">Entity normalization in schema design<a class="headerlink" href="#entity-normalization-in-schema-design" title="Permanent link">&para;</a></h2>
+<p>Entity normalization applies to schema design in that the designer is responsible for 
+the identification of the essential entity types in their model world and of the 
+dependencies among the entity types.</p>
+<p>The term entity normalization may also apply to a procedure for refactoring a schema 
+design that does not meet the above criteria into one that does.
+In some cases, this may require breaking up some entity sets into multiple entity sets, 
+which may cause some entities to be represented across multiple entity sets.
+In other cases, this may require converting attributes into their own entity sets.
+Technically speaking, entity normalization entails compliance with the 
+<a href="https://en.wikipedia.org/wiki/Boyce%E2%80%93Codd_normal_form">Boyce-Codd normal form</a> 
+while lacking the representational power for the applicability of more complex normal 
+forms (<a href="https://dl.acm.org/citation.cfm?id=358054">Kent, 1983</a>).
+Adherence to entity normalization prevents redundancies in storage and data 
+manipulation anomalies.
+The same criteria originally motivated the formulation of the classical relational 
+normal forms.</p>
+<h2 id="entity-normalization-in-data-queries">Entity normalization in data queries<a class="headerlink" href="#entity-normalization-in-data-queries" title="Permanent link">&para;</a></h2>
+<p>Entity normalization applies to data queries as well.
+DataJoint's <a href="../../query/operators/">query operators</a> are designed to preserve the 
+entity normalization of their inputs.
+For example, the outputs of operators <a href="../../query/restrict/">restriction</a>, 
+<a href="../../query/project/">proj</a>, and <a href="../../query/aggregation/">aggr</a> retain the same entity 
+type as the (first) input.
+The <a href="../../query/join/">join</a> operator produces a new entity type comprising the pairing 
+of the entity types of its inputs.
+<a href="../../query/universals/">Universal sets</a> explicitly introduce virtual entity sets when 
+necessary to accomplish a query.</p>
+<h2 id="examples-of-poor-normalization">Examples of poor normalization<a class="headerlink" href="#examples-of-poor-normalization" title="Permanent link">&para;</a></h2>
+<p>Design choices lacking entity normalization may lead to data inconsistencies or 
+anomalies.
+Below are several examples of poorly normalized designs and their normalized 
+alternatives.</p>
+<h3 id="indirect-attributes">Indirect attributes<a class="headerlink" href="#indirect-attributes" title="Permanent link">&para;</a></h3>
+<p>All attributes should apply to the entity itself.
+Avoid attributes that actually apply to one of the entity's other attributes.
+For example, consider the table <code>Author</code> with attributes <code>author_name</code>, <code>institution</code>, 
+and <code>institution_address</code>.
+The attribute <code>institution_address</code> should really be held in a separate <code>Institution</code> 
+table that <code>Author</code> depends on.</p>
+<h3 id="repeated-attributes">Repeated attributes<a class="headerlink" href="#repeated-attributes" title="Permanent link">&para;</a></h3>
+<p>Avoid tables with repeated attributes of the same category.
+A better solution is to create a separate table that depends on the first (often a 
+<a href="../tables/master-part/">part table</a>), with multiple individual entities 
+rather than repeated attributes.
+For example, consider the table <code>Protocol</code> that includes the attributes <code>equipment1</code>, 
+<code>equipment2</code>, and <code>equipment3</code>.
+A better design would be to create a <code>ProtocolEquipment</code> table that links each entity 
+in <code>Protocol</code> with multiple entities in <code>Equipment</code> through 
+<a href="../tables/dependencies/">dependencies</a>.</p>
+<h3 id="attributes-that-do-not-apply-to-all-entities">Attributes that do not apply to all entities<a class="headerlink" href="#attributes-that-do-not-apply-to-all-entities" title="Permanent link">&para;</a></h3>
+<p>All attributes should be relevant to every entity in a table.
+Attributes that apply only to a subset of entities in a table likely belong in a 
+separate table containing only that subset of entities.
+For example, a table <code>Protocol</code> should include the attribute <code>stimulus</code> only if all 
+experiment protocols include stimulation.
+If the not all entities in <code>Protocol</code> involve stimulation, then the <code>stimulus</code> 
+attribute should be moved to a part table that has <code>Protocol</code> as its master.
+Only protocols using stimulation will have an entry in this part table.</p>
+<h3 id="transient-attributes">Transient attributes<a class="headerlink" href="#transient-attributes" title="Permanent link">&para;</a></h3>
+<p>Attributes should be relevant to all entities in a table at all times.
+Attributes that do not apply to all entities should be moved to another dependent table 
+containing only the appropriate entities.
+This principle also applies to attributes that have not yet become meaningful for some 
+entities or that will not remain meaningful indefinitely.
+For example, consider the table <code>Mouse</code> with attributes <code>birth_date</code> and <code>death_date</code>, 
+where <code>death_date</code> is set to <code>NULL</code> for living mice.
+Since the <code>death_date</code> attribute is not meaningful for mice that are still living, 
+the proper design would include a separate table <code>DeceasedMouse</code> that depends on 
+<code>Mouse</code>.
+<code>DeceasedMouse</code> would only contain entities for dead mice, which improves integrity and 
+averts the need for <a href="../../manipulation/update/">updates</a>.</p>
 
 
 
@@ -2082,10 +2263,10 @@ refer to <a href="https://docs.datajoint.org/">legacy documentation</a></p>
       <div class="md-dialog__inner md-typeset"></div>
     </div>
     
-    <script id="__config" type="application/json">{"base": "../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": "../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.74e28a9f.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.b4d07000.min.js"></script>
+      <script src="../../assets/javascripts/bundle.220ee61c.min.js"></script>
       
     
   </body>

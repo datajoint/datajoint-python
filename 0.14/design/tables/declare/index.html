@@ -15,7 +15,7 @@
         <link rel="next" href="../primary/">
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.15">
+      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.19">
     
     
       
@@ -23,7 +23,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.26e3688c.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.eebd395e.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ecc896b0.min.css">
@@ -75,7 +75,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#work-in-progress" class="md-skip">
+        <a href="#declaration-syntax" class="md-skip">
           Skip to content
         </a>
       
@@ -247,7 +247,7 @@
 </g>
 </svg>
 
-        </a><a href="https://datajoint.com/docs/core/" title="DataJoint">
+        </a><a href="https://datajoint.com/docs/" title="DataJoint">
             ⬅ Home
         </a>
     </label>
@@ -289,8 +289,8 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../getting-started/" class="md-nav__link">
-        Getting Started
+      <a href="../../../quick-start/" class="md-nav__link">
+        Quick Start Guide
       </a>
     </li>
   
@@ -345,8 +345,50 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../concepts/glossary/" class="md-nav__link">
-        Glossary
+      <a href="../../../concepts/data-model/" class="md-nav__link">
+        Data Model
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/data-pipelines/" class="md-nav__link">
+        Data Pipelines
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/teamwork/" class="md-nav__link">
+        Teamwork
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/terminology/" class="md-nav__link">
+        Terminology
       </a>
     </li>
   
@@ -394,7 +436,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../sysadmin/dba/" class="md-nav__link">
+      <a href="../../../sysadmin/database-admin/" class="md-nav__link">
         Database Administration
       </a>
     </li>
@@ -408,8 +450,22 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../sysadmin/filestore/" class="md-nav__link">
-        File Storage
+      <a href="../../../sysadmin/bulk-storage/" class="md-nav__link">
+        Bulk Storage Systems
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../sysadmin/external-store/" class="md-nav__link">
+        External Store
       </a>
     </li>
   
@@ -471,7 +527,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../client/creds/" class="md-nav__link">
+      <a href="../../../client/credentials/" class="md-nav__link">
         Credentials
       </a>
     </li>
@@ -613,6 +669,8 @@
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
+        
+      
       
         <label class="md-nav__link md-nav__link--active" for="__toc">
           Declaration Syntax
@@ -629,6 +687,8 @@
   
   
   
+    
+  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
@@ -637,9 +697,123 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#work-in-progress" class="md-nav__link">
-    Work in progress
+  <a href="#creating-tables" class="md-nav__link">
+    Creating Tables
   </a>
+  
+    <nav class="md-nav" aria-label="Creating Tables">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#classes-represent-tables" class="md-nav__link">
+    Classes represent tables
+  </a>
+  
+    <nav class="md-nav" aria-label="Classes represent tables">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#data-tiers" class="md-nav__link">
+    Data tiers
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#defining-a-table" class="md-nav__link">
+    Defining a table
+  </a>
+  
+    <nav class="md-nav" aria-label="Defining a table">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#datajoint-classes-in-python" class="md-nav__link">
+    DataJoint classes in Python
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#valid-class-names" class="md-nav__link">
+    Valid class names
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#table-definition" class="md-nav__link">
+    Table Definition
+  </a>
+  
+    <nav class="md-nav" aria-label="Table Definition">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#table-creation-on-the-database-server" class="md-nav__link">
+    Table creation on the database server
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changing-the-definition-of-an-existing-table" class="md-nav__link">
+    Changing the definition of an existing table
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reverse-engineering-the-table-definition" class="md-nav__link">
+    Reverse-engineering the table definition
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#definition-syntax" class="md-nav__link">
+    Definition Syntax
+  </a>
+  
+    <nav class="md-nav" aria-label="Definition Syntax">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attribute-names" class="md-nav__link">
+    Attribute names
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#default-values" class="md-nav__link">
+    Default values
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -688,6 +862,20 @@
     <li class="md-nav__item">
       <a href="../lookup/" class="md-nav__link">
         Lookup Tables
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../manual/" class="md-nav__link">
+        Manual Tables
       </a>
     </li>
   
@@ -906,10 +1094,16 @@
       
       
       
-        <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
-          Data Manipulations
-          <span class="md-nav__icon md-icon"></span>
-        </label>
+        
+        
+        <div class="md-nav__link md-nav__link--index ">
+          <a href="../../../manipulation/">Data Manipulations</a>
+          
+            <label for="__nav_7">
+              <span class="md-nav__icon md-icon"></span>
+            </label>
+          
+        </div>
       
       <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
         <label class="md-nav__title" for="__nav_7">
@@ -1015,8 +1209,22 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../query/common-commands/" class="md-nav__link">
-        Common Commands
+      <a href="../../../query/principles/" class="md-nav__link">
+        Principles
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../query/example-schema/" class="md-nav__link">
+        Example Schema
       </a>
     </li>
   
@@ -1267,23 +1475,38 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../../publish-data/" class="md-nav__link">
+        Publish Data
+      </a>
+    </li>
+  
+
+        
+        
+        
+        
+
+  
+  
+  
     
     <li class="md-nav__item md-nav__item--nested">
       
       
       
       
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
       
       
       
-        <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
+        <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
           Internals
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_10">
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_11">
           <span class="md-nav__icon md-icon"></span>
           Internals
         </label>
@@ -1322,95 +1545,17 @@
       
       
       
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" >
       
       
       
-        <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
-          Reproducibility
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_11">
-          <span class="md-nav__icon md-icon"></span>
-          Reproducibility
-        </label>
-        <ul class="md-nav__list" data-md-scrollfix>
-          
-            
-              
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../../reproduce/table-tiers/" class="md-nav__link">
-        Table Tiers
-      </a>
-    </li>
-  
-
-            
-          
-            
-              
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../../reproduce/make-method/" class="md-nav__link">
-        Make Method
-      </a>
-    </li>
-  
-
-            
-          
-        </ul>
-      </nav>
-    </li>
-  
-
-        
-        
-        
-        
-
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../../existing-pipelines/" class="md-nav__link">
-        Existing Pipelines
-      </a>
-    </li>
-  
-
-        
-        
-        
-        
-
-  
-  
-  
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-      
-      
-      
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13" >
-      
-      
-      
-        <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="0">
+        <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="0">
           Tutorials
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_13">
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_12">
           <span class="md-nav__icon md-icon"></span>
           Tutorials
         </label>
@@ -1460,7 +1605,7 @@
   
     <li class="md-nav__item">
       <a href="../../../develop/" class="md-nav__link">
-        Develop
+        Developer Guide
       </a>
     </li>
   
@@ -1509,17 +1654,17 @@
       
       
       
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_18" >
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_17" >
       
       
       
-        <label class="md-nav__link" for="__nav_18" id="__nav_18_label" tabindex="0">
+        <label class="md-nav__link" for="__nav_17" id="__nav_17_label" tabindex="0">
           API
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_18_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_18">
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_17_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_17">
           <span class="md-nav__icon md-icon"></span>
           API
         </label>
@@ -1536,17 +1681,17 @@
       
       
       
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_18_1" >
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_17_1" >
       
       
       
-        <label class="md-nav__link" for="__nav_18_1" id="__nav_18_1_label" tabindex="0">
+        <label class="md-nav__link" for="__nav_17_1" id="__nav_17_1_label" tabindex="0">
           datajoint
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_18_1_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_18_1">
+      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_17_1_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_17_1">
           <span class="md-nav__icon md-icon"></span>
           datajoint
         </label>
@@ -1961,11 +2106,200 @@
   
 
 
-  <h1>Declaration Syntax</h1>
+<h1 id="declaration-syntax">Declaration Syntax<a class="headerlink" href="#declaration-syntax" title="Permanent link">&para;</a></h1>
+<h2 id="creating-tables">Creating Tables<a class="headerlink" href="#creating-tables" title="Permanent link">&para;</a></h2>
+<h3 id="classes-represent-tables">Classes represent tables<a class="headerlink" href="#classes-represent-tables" title="Permanent link">&para;</a></h3>
+<p>To make it easy to work with tables in MATLAB and Python, DataJoint programs create a 
+separate class for each table.
+Computer programmers refer to this concept as 
+<a href="https://en.wikipedia.org/wiki/Object-relational_mapping">object-relational mapping</a>.
+For example, the class <code>experiment.Subject</code> in the DataJoint client language may 
+correspond to the table called <code>subject</code> on the database server.
+Users never need to see the database directly; they only interact with data in the 
+database by creating and interacting with DataJoint classes.</p>
+<h4 id="data-tiers">Data tiers<a class="headerlink" href="#data-tiers" title="Permanent link">&para;</a></h4>
+<p>The table class must inherit from one of the following superclasses to indicate its 
+data tier: <code>dj.Lookup</code>, <code>dj.Manual</code>, <code>dj.Imported</code>, <code>dj.Computed</code>, or <code>dj.Part</code>.
+See <a href="../tiers/">tiers</a> and <a href="../master-part/">master-part</a>.</p>
+<h3 id="defining-a-table">Defining a table<a class="headerlink" href="#defining-a-table" title="Permanent link">&para;</a></h3>
+<p>To define a DataJoint table in Python:</p>
+<ol>
+<li>
+<p>Define a class inheriting from the appropriate DataJoint class: <code>dj.Lookup</code>, 
+<code>dj.Manual</code>, <code>dj.Imported</code> or <code>dj.Computed</code>.</p>
+</li>
+<li>
+<p>Decorate the class with the schema object (see <a href="../../schema/">schema</a>)</p>
+</li>
+<li>
+<p>Define the class property <code>definition</code> to define the table heading.</p>
+</li>
+</ol>
+<p>For example, the following code defines the table <code>Person</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">datajoint</span> <span class="k">as</span> <span class="nn">dj</span>
+<span class="n">schema</span> <span class="o">=</span> <span class="n">dj</span><span class="o">.</span><span class="n">Schema</span><span class="p">(</span><span class="s1">&#39;alice_experiment&#39;</span><span class="p">)</span>
 
-<h2 id="work-in-progress">Work in progress<a class="headerlink" href="#work-in-progress" title="Permanent link">&para;</a></h2>
-<p>You may ask questions in the chat window below or
-refer to <a href="https://docs.datajoint.org/">legacy documentation</a></p>
+<span class="nd">@schema</span>
+<span class="k">class</span> <span class="nc">Person</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
+     <span class="n">definition</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">          username : varchar(20)   # unique user name</span>
+<span class="s1">     ---</span>
+<span class="s1">     first_name : varchar(30)</span>
+<span class="s1">     last_name  : varchar(30)</span>
+<span class="s1">     &#39;&#39;&#39;</span>
+</code></pre></div>
+<p>The <code>@schema</code> decorator uses the class name and the data tier to check whether an 
+appropriate table exists on the database.
+If a table does not already exist, the decorator creates one on the database using the 
+definition property.
+The decorator attaches the information about the table to the class, and then returns 
+the class.</p>
+<p>The class will become usable after you define the <code>definition</code> property as described in 
+<a href="#table-definition">Table definition</a>.</p>
+<h4 id="datajoint-classes-in-python">DataJoint classes in Python<a class="headerlink" href="#datajoint-classes-in-python" title="Permanent link">&para;</a></h4>
+<p>DataJoint for Python is implemented through the use of classes providing access to the 
+actual tables stored on the database.
+Since only a single table exists on the database for any class, interactions with all 
+instances of the class are equivalent.
+As such, most methods can be called on the classes themselves rather than on an object, 
+for convenience.
+Whether calling a DataJoint method on a class or on an instance, the result will only 
+depend on or apply to the corresponding table.
+All of the basic functionality of DataJoint is built to operate on the classes 
+themselves, even when called on an instance.
+For example, calling <code>Person.insert(...)</code> (on the class) and <code>Person.insert(...)</code> (on 
+an instance) both have the identical effect of inserting data into the table on the 
+database server.
+DataJoint does not prevent a user from working with instances, but the workflow is 
+complete without the need for instantiation.
+It is up to the user whether to implement additional functionality as class methods or 
+methods called on instances.</p>
+<h3 id="valid-class-names">Valid class names<a class="headerlink" href="#valid-class-names" title="Permanent link">&para;</a></h3>
+<p>Note that in both MATLAB and Python, the class names must follow the CamelCase compound 
+word notation:</p>
+<ul>
+<li>start with a capital letter and</li>
+<li>contain only alphanumerical characters (no underscores).</li>
+</ul>
+<p>Examples of valid class names:</p>
+<p><code>TwoPhotonScan</code>, <code>Scan2P</code>, <code>Ephys</code>, <code>MembraneVoltage</code></p>
+<p>Invalid class names:</p>
+<p><code>Two_photon_Scan</code>, <code>twoPhotonScan</code>, <code>2PhotonScan</code>, <code>membranePotential</code>, <code>membrane_potential</code></p>
+<h2 id="table-definition">Table Definition<a class="headerlink" href="#table-definition" title="Permanent link">&para;</a></h2>
+<p>DataJoint models data as sets of <strong>entities</strong> with shared <strong>attributes</strong>, often 
+visualized as tables with rows and columns.
+Each row represents a single entity and the values of all of its attributes.
+Each column represents a single attribute with a name and a datatype, applicable to 
+entity in the table.
+Unlike rows in a spreadsheet, entities in DataJoint don't have names or numbers: they 
+can only be identified by the values of their attributes.
+Defining a table means defining the names and datatypes of the attributes as well as 
+the constraints to be applied to those attributes.
+Both MATLAB and Python use the same syntax define tables.</p>
+<p>For example, the following code in defines the table <code>User</code>, that contains users of the 
+database:</p>
+<p>The table definition is contained in the <code>definition</code> property of the class.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@schema</span>
+<span class="k">class</span> <span class="nc">User</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
+     <span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">     # database users</span>
+<span class="s2">     username : varchar(20)   # unique user name</span>
+<span class="s2">     ---</span>
+<span class="s2">     first_name : varchar(30)</span>
+<span class="s2">     last_name  : varchar(30)</span>
+<span class="s2">     role : enum(&#39;admin&#39;, &#39;contributor&#39;, &#39;viewer&#39;)</span>
+<span class="s2">     &quot;&quot;&quot;</span>
+</code></pre></div>
+<p>This defines the class <code>User</code> that creates the table in the database and provides all 
+its data manipulation functionality.</p>
+<h3 id="table-creation-on-the-database-server">Table creation on the database server<a class="headerlink" href="#table-creation-on-the-database-server" title="Permanent link">&para;</a></h3>
+<p>Users do not need to do anything special to have a table created in the database.
+Tables are created at the time of class definition.
+In fact, table creation on the database is one of the jobs performed by the decorator 
+<code>@schema</code> of the class.</p>
+<h3 id="changing-the-definition-of-an-existing-table">Changing the definition of an existing table<a class="headerlink" href="#changing-the-definition-of-an-existing-table" title="Permanent link">&para;</a></h3>
+<p>Once the table is created in the database, the definition string has no further effect.
+In other words, changing the definition string in the class of an existing table will 
+not actually update the table definition.
+To change the table definition, one must first <a href="../../drop/">drop</a> the existing table.
+This means that all the data will be lost, and the new definition will be applied to 
+create the new empty table.</p>
+<p>Therefore, in the initial phases of designing a DataJoint pipeline, it is common to 
+experiment with variations of the design before populating it with substantial amounts 
+of data.</p>
+<p>It is possible to modify a table without dropping it.
+This topic is covered separately.</p>
+<h3 id="reverse-engineering-the-table-definition">Reverse-engineering the table definition<a class="headerlink" href="#reverse-engineering-the-table-definition" title="Permanent link">&para;</a></h3>
+<p>DataJoint objects provide the <code>describe</code> method, which displays the table definition 
+used to define the table when it was created in the database.
+This definition may differ from the definition string of the class if the definition 
+string has been edited after creation of the table.</p>
+<p>Examples</p>
+<div class="highlight"><pre><span></span><code><span class="n">s</span> <span class="o">=</span> <span class="n">lab</span><span class="o">.</span><span class="n">User</span><span class="o">.</span><span class="n">describe</span><span class="p">()</span>
+</code></pre></div>
+<h2 id="definition-syntax">Definition Syntax<a class="headerlink" href="#definition-syntax" title="Permanent link">&para;</a></h2>
+<p>The table definition consists of one or more lines.
+Each line can be one of the following:</p>
+<ul>
+<li>The optional first line starting with a <code>#</code> provides a description of the table's purpose.
+  It may also be thought of as the table's long title.</li>
+<li>A new attribute definition in any of the following forms (see 
+<a href="../attributes/">Attributes</a> for valid datatypes):
+  <code>name : datatype</code>
+  <code>name : datatype # comment</code>
+  <code>name = default : datatype</code>
+  <code>name = default : datatype  # comment</code></li>
+<li>The divider <code>---</code> (at least three hyphens) separating primary key attributes above 
+from secondary attributes below.</li>
+<li>A foreign key in the format <code>-&gt; ReferencedTable</code>.
+  (See <a href="../dependencies/">Dependencies</a>.)</li>
+</ul>
+<p>For example, the table for Persons may have the following definition:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Persons in the lab</span>
+<span class="n">username</span> <span class="p">:</span>  <span class="n">varchar</span><span class="p">(</span><span class="mi">16</span><span class="p">)</span>   <span class="c1">#  username in the database</span>
+<span class="o">---</span>
+<span class="n">full_name</span>  <span class="p">:</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">255</span><span class="p">)</span>
+<span class="n">start_date</span> <span class="p">:</span>  <span class="n">date</span>   <span class="c1"># date when joined the lab</span>
+</code></pre></div>
+<p>This will define the table with attributes <code>username</code>, <code>full_name</code>, and <code>start_date</code>, 
+in which <code>username</code> is the <a href="../primary/">primary key</a>.</p>
+<h3 id="attribute-names">Attribute names<a class="headerlink" href="#attribute-names" title="Permanent link">&para;</a></h3>
+<p>Attribute names must be in lowercase and must start with a letter.
+They can only contain alphanumerical characters and underscores.
+The attribute name cannot exceed 64 characters.</p>
+<p>Valid attribute names
+   <code>first_name</code>, <code>two_photon_scan</code>, <code>scan_2p</code>, <code>two_photon_scan</code></p>
+<p>Invalid attribute names
+   <code>firstName</code>, <code>first name</code>, <code>2photon_scan</code>, <code>two-photon_scan</code>, <code>TwoPhotonScan</code></p>
+<p>Ideally, attribute names should be unique across all tables that are likely to be used 
+in queries together.
+For example, tables often have attributes representing the start times of sessions, 
+recordings, etc.
+Such attributes must be uniquely named in each table, such as <code>session_start_time</code> or 
+<code>recording_start_time</code>.</p>
+<h3 id="default-values">Default values<a class="headerlink" href="#default-values" title="Permanent link">&para;</a></h3>
+<p>Secondary attributes can be given default values.
+A default value will be used for an attribute if no other value is given at the time 
+the entity is <a href="../../../manipulation/insert/">inserted</a> into the table.
+Generally, default values are numerical values or character strings.
+Default values for dates must be given as strings as well, contained within quotes 
+(with the exception of <code>CURRENT_TIMESTAMP</code>).
+Note that default values can only be used when inserting as a mapping.
+Primary key attributes cannot have default values (with the exceptions of 
+<code>auto_increment</code> and <code>CURRENT_TIMESTAMP</code> attributes; see <a href="../primary/">primary-key</a>).</p>
+<p>An attribute with a default value of <code>NULL</code> is called a <strong>nullable attribute</strong>.
+A nullable attribute can be thought of as applying to all entities in a table but 
+having an optional <em>value</em> that may be absent in some entities.
+Nullable attributes should <em>not</em> be used to indicate that an attribute is inapplicable 
+to some entities in a table (see <a href="../../normalization/">normalization</a>).
+Nullable attributes should be used sparingly to indicate optional rather than 
+inapplicable attributes that still apply to all entities in the table.
+<code>NULL</code> is a special literal value and does not need to be enclosed in quotes.</p>
+<p>Here are some examples of attributes with default values:</p>
+<div class="highlight"><pre><span></span><code><span class="n">failures</span> <span class="o">=</span> <span class="mi">0</span> <span class="p">:</span> <span class="nb">int</span>
+<span class="n">due_date</span> <span class="o">=</span> <span class="s2">&quot;2020-05-31&quot;</span> <span class="p">:</span> <span class="n">date</span>
+<span class="n">additional_comments</span> <span class="o">=</span> <span class="n">NULL</span> <span class="p">:</span> <span class="n">varchar</span><span class="p">(</span><span class="mi">256</span><span class="p">)</span>
+</code></pre></div>
 
 
 
@@ -2084,10 +2418,10 @@ refer to <a href="https://docs.datajoint.org/">legacy documentation</a></p>
       <div class="md-dialog__inner md-typeset"></div>
     </div>
     
-    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.74e28a9f.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.b4d07000.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.220ee61c.min.js"></script>
       
     
   </body>

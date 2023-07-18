@@ -15,7 +15,7 @@
         <link rel="next" href="../lookup/">
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.15">
+      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.19">
     
     
       
@@ -23,7 +23,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.26e3688c.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.eebd395e.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ecc896b0.min.css">
@@ -75,7 +75,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#work-in-progress" class="md-skip">
+        <a href="#datatypes" class="md-skip">
           Skip to content
         </a>
       
@@ -247,7 +247,7 @@
 </g>
 </svg>
 
-        </a><a href="https://datajoint.com/docs/core/" title="DataJoint">
+        </a><a href="https://datajoint.com/docs/" title="DataJoint">
             ⬅ Home
         </a>
     </label>
@@ -289,8 +289,8 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../getting-started/" class="md-nav__link">
-        Getting Started
+      <a href="../../../quick-start/" class="md-nav__link">
+        Quick Start Guide
       </a>
     </li>
   
@@ -345,8 +345,50 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../concepts/glossary/" class="md-nav__link">
-        Glossary
+      <a href="../../../concepts/data-model/" class="md-nav__link">
+        Data Model
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/data-pipelines/" class="md-nav__link">
+        Data Pipelines
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/teamwork/" class="md-nav__link">
+        Teamwork
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/terminology/" class="md-nav__link">
+        Terminology
       </a>
     </li>
   
@@ -394,7 +436,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../sysadmin/dba/" class="md-nav__link">
+      <a href="../../../sysadmin/database-admin/" class="md-nav__link">
         Database Administration
       </a>
     </li>
@@ -408,8 +450,22 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../sysadmin/filestore/" class="md-nav__link">
-        File Storage
+      <a href="../../../sysadmin/bulk-storage/" class="md-nav__link">
+        Bulk Storage Systems
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../sysadmin/external-store/" class="md-nav__link">
+        External Store
       </a>
     </li>
   
@@ -471,7 +527,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../client/creds/" class="md-nav__link">
+      <a href="../../../client/credentials/" class="md-nav__link">
         Credentials
       </a>
     </li>
@@ -641,6 +697,8 @@
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
+        
+      
       
         <label class="md-nav__link md-nav__link--active" for="__toc">
           Attributes
@@ -657,6 +715,8 @@
   
   
   
+    
+  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
@@ -665,8 +725,29 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#work-in-progress" class="md-nav__link">
-    Work in progress
+  <a href="#most-common-datatypes" class="md-nav__link">
+    Most common datatypes
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#less-common-but-supported-datatypes" class="md-nav__link">
+    Less common (but supported) datatypes
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#special-datajoint-only-datatypes" class="md-nav__link">
+    Special DataJoint-only datatypes
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#datatypes-not-yet-supported" class="md-nav__link">
+    Datatypes not (yet) supported
   </a>
   
 </li>
@@ -688,6 +769,20 @@
     <li class="md-nav__item">
       <a href="../lookup/" class="md-nav__link">
         Lookup Tables
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../manual/" class="md-nav__link">
+        Manual Tables
       </a>
     </li>
   
@@ -906,10 +1001,16 @@
       
       
       
-        <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
-          Data Manipulations
-          <span class="md-nav__icon md-icon"></span>
-        </label>
+        
+        
+        <div class="md-nav__link md-nav__link--index ">
+          <a href="../../../manipulation/">Data Manipulations</a>
+          
+            <label for="__nav_7">
+              <span class="md-nav__icon md-icon"></span>
+            </label>
+          
+        </div>
       
       <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
         <label class="md-nav__title" for="__nav_7">
@@ -1015,8 +1116,22 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../query/common-commands/" class="md-nav__link">
-        Common Commands
+      <a href="../../../query/principles/" class="md-nav__link">
+        Principles
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../query/example-schema/" class="md-nav__link">
+        Example Schema
       </a>
     </li>
   
@@ -1267,23 +1382,38 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../../publish-data/" class="md-nav__link">
+        Publish Data
+      </a>
+    </li>
+  
+
+        
+        
+        
+        
+
+  
+  
+  
     
     <li class="md-nav__item md-nav__item--nested">
       
       
       
       
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
       
       
       
-        <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
+        <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
           Internals
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_10">
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_11">
           <span class="md-nav__icon md-icon"></span>
           Internals
         </label>
@@ -1322,95 +1452,17 @@
       
       
       
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" >
       
       
       
-        <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="0">
-          Reproducibility
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_11">
-          <span class="md-nav__icon md-icon"></span>
-          Reproducibility
-        </label>
-        <ul class="md-nav__list" data-md-scrollfix>
-          
-            
-              
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../../reproduce/table-tiers/" class="md-nav__link">
-        Table Tiers
-      </a>
-    </li>
-  
-
-            
-          
-            
-              
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../../reproduce/make-method/" class="md-nav__link">
-        Make Method
-      </a>
-    </li>
-  
-
-            
-          
-        </ul>
-      </nav>
-    </li>
-  
-
-        
-        
-        
-        
-
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../../existing-pipelines/" class="md-nav__link">
-        Existing Pipelines
-      </a>
-    </li>
-  
-
-        
-        
-        
-        
-
-  
-  
-  
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-      
-      
-      
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13" >
-      
-      
-      
-        <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="0">
+        <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="0">
           Tutorials
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_13">
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_12">
           <span class="md-nav__icon md-icon"></span>
           Tutorials
         </label>
@@ -1460,7 +1512,7 @@
   
     <li class="md-nav__item">
       <a href="../../../develop/" class="md-nav__link">
-        Develop
+        Developer Guide
       </a>
     </li>
   
@@ -1509,17 +1561,17 @@
       
       
       
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_18" >
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_17" >
       
       
       
-        <label class="md-nav__link" for="__nav_18" id="__nav_18_label" tabindex="0">
+        <label class="md-nav__link" for="__nav_17" id="__nav_17_label" tabindex="0">
           API
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_18_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_18">
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_17_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_17">
           <span class="md-nav__icon md-icon"></span>
           API
         </label>
@@ -1536,17 +1588,17 @@
       
       
       
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_18_1" >
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_17_1" >
       
       
       
-        <label class="md-nav__link" for="__nav_18_1" id="__nav_18_1_label" tabindex="0">
+        <label class="md-nav__link" for="__nav_17_1" id="__nav_17_1_label" tabindex="0">
           datajoint
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_18_1_label" aria-expanded="false">
-        <label class="md-nav__title" for="__nav_18_1">
+      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_17_1_label" aria-expanded="false">
+        <label class="md-nav__title" for="__nav_17_1">
           <span class="md-nav__icon md-icon"></span>
           datajoint
         </label>
@@ -1961,11 +2013,96 @@
   
 
 
-  <h1>Attributes</h1>
-
-<h2 id="work-in-progress">Work in progress<a class="headerlink" href="#work-in-progress" title="Permanent link">&para;</a></h2>
-<p>You may ask questions in the chat window below or
-refer to <a href="https://docs.datajoint.org/">legacy documentation</a></p>
+<h1 id="datatypes">Datatypes<a class="headerlink" href="#datatypes" title="Permanent link">&para;</a></h1>
+<p>DataJoint supports the following datatypes.
+To conserve database resources, use the smallest and most restrictive datatype 
+sufficient for your data.
+This also ensures that only valid data are entered into the pipeline.</p>
+<h2 id="most-common-datatypes">Most common datatypes<a class="headerlink" href="#most-common-datatypes" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>tinyint</code>: an 8-bit integer number, ranging from -128 to 127.</li>
+<li><code>tinyint unsigned</code>: an 8-bit positive integer number, ranging from 0 to 255.</li>
+<li><code>smallint</code>: a 16-bit integer number, ranging from -32,768 to 32,767.</li>
+<li><code>smallint unsigned</code>: a 16-bit positive integer, ranging from 0 to 65,535.</li>
+<li><code>int</code>: a 32-bit integer number, ranging from -2,147,483,648 to 2,147,483,647.</li>
+<li><code>int unsigned</code>: a 32-bit positive integer, ranging from 0 to 4,294,967,295.</li>
+<li><code>enum</code>: one of several explicitly enumerated values specified as strings.
+   Use this datatype instead of text strings to avoid spelling variations and to save 
+   storage space.
+   For example, the datatype for an anesthesia attribute could be 
+   <code>enum("urethane", "isoflurane", "fentanyl")</code>.
+   Do not use enums in primary keys due to the difficulty of changing their definitions 
+   consistently in multiple tables.</li>
+</ul>
+<ul>
+<li><code>date</code>: date as <code>'YYYY-MM-DD'</code>.</li>
+<li><code>time</code>: time as <code>'HH:MM:SS'</code>.</li>
+<li><code>datetime</code>: Date and time to the second as <code>'YYYY-MM-DD HH:MM:SS'</code></li>
+<li><code>timestamp</code>: Date and time to the second as <code>'YYYY-MM-DD HH:MM:SS'</code>.
+   The default value may be set to <code>CURRENT_TIMESTAMP</code>.
+   Unlike <code>datetime</code>, a <code>timestamp</code> value will be adjusted to the local time zone.</li>
+</ul>
+<ul>
+<li><code>char(N)</code>: a character string up to <em>N</em> characters (but always takes the entire <em>N</em> 
+bytes to store).</li>
+<li><code>varchar(N)</code>: a text string of arbitrary length up to <em>N</em> characters that takes 
+<em>M+1</em> or <em>M+2</em> bytes of storage, where <em>M</em> is the actual length of each stored string.</li>
+<li><code>float</code>: a single-precision floating-point number.
+   Takes 4 bytes.
+   Single precision is sufficient for many measurements.</li>
+</ul>
+<ul>
+<li><code>double</code>: a double-precision floating-point number.
+   Takes 8 bytes.
+   Because equality comparisons are error-prone, neither <code>float</code> nor <code>double</code> should be 
+   used in primary keys.</li>
+<li><code>decimal(N,F)</code>: a fixed-point number with <em>N</em> total decimal digits and <em>F</em> 
+fractional digits.
+   This datatype is well suited to represent numbers whose magnitude is well defined 
+   and does not warrant the use of floating-point representation or requires precise 
+   decimal representations (e.g. dollars and cents).
+   Because of its well-defined precision, <code>decimal</code> values can be used in equality 
+   comparison and be included in primary keys.</li>
+</ul>
+<ul>
+<li><code>longblob</code>: arbitrary numeric array (e.g. matrix, image, structure), up to 4 
+<a href="http://en.wikipedia.org/wiki/Gibibyte">GiB</a> in size.
+   Numeric arrays are compatible between MATLAB and Python (NumPy).
+   The <code>longblob</code> and other <code>blob</code> datatypes can be configured to store data 
+   <a href="../../../sysadmin/external-store/">externally</a> by using the <code>blob@store</code> syntax.</li>
+</ul>
+<h2 id="less-common-but-supported-datatypes">Less common (but supported) datatypes<a class="headerlink" href="#less-common-but-supported-datatypes" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>decimal(N,F) unsigned</code>: same as <code>decimal</code>, but limited to nonnegative values.</li>
+<li><code>mediumint</code> a 24-bit integer number, ranging from -8,388,608 to 8,388,607.</li>
+<li><code>mediumint unsigned</code>: a 24-bit positive integer, ranging from 0 to 16,777,216.</li>
+<li><code>mediumblob</code>: arbitrary numeric array, up to 16 
+<a href="http://en.wikipedia.org/wiki/Mibibyte">MiB</a></li>
+<li><code>blob</code>: arbitrary numeric array, up to 64 
+<a href="http://en.wikipedia.org/wiki/Kibibyte">KiB</a></li>
+<li><code>tinyblob</code>: arbitrary numeric array, up to 256 bytes (actually smaller due to header 
+info).</li>
+</ul>
+<h2 id="special-datajoint-only-datatypes">Special DataJoint-only datatypes<a class="headerlink" href="#special-datajoint-only-datatypes" title="Permanent link">&para;</a></h2>
+<p>These types abstract certain kinds of non-database data to facilitate use
+together with DataJoint.</p>
+<ul>
+<li><code>attach</code>: a <a href="../attach/">file attachment</a> similar to email attachments facillitating 
+sending/receiving an opaque data file to/from a DataJoint pipeline.</li>
+</ul>
+<ul>
+<li><code>filepath@store</code>: a <a href="../filepath/">filepath</a> used to link non-DataJoint managed files 
+into a DataJoint pipeline.</li>
+</ul>
+<h2 id="datatypes-not-yet-supported">Datatypes not (yet) supported<a class="headerlink" href="#datatypes-not-yet-supported" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>binary</code></li>
+<li><code>text</code></li>
+<li><code>longtext</code></li>
+<li><code>bit</code></li>
+</ul>
+<p>For additional information about these datatypes, see 
+<a href="http://dev.mysql.com/doc/refman/5.6/en/data-types.html">http://dev.mysql.com/doc/refman/5.6/en/data-types.html</a></p>
 
 
 
@@ -2084,10 +2221,10 @@ refer to <a href="https://docs.datajoint.org/">legacy documentation</a></p>
       <div class="md-dialog__inner md-typeset"></div>
     </div>
     
-    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.74e28a9f.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.b4d07000.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.220ee61c.min.js"></script>
       
     
   </body>
