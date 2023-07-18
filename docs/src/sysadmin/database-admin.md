@@ -30,17 +30,15 @@ in this role, albeit with less DataJoint-centric customization.
 
 ### Self hosting
 
-In the most basic configuration, the relational database software and DataJoint are 
-installed onto a single computer which is used by an individual user.
-To support a small group of users, a larger computer can be used instead and configured 
-for remote access.
-As the number of users grows, individual workstations can be installed with the 
-DataJoint software and used to connect to a larger and more specialized centrally 
-located database server machine.
+In the most basic configuration, the relational database management system (database 
+server) is installed on an individual user's personal computer.
+To support a group of users, a specialized machine can be configured as a dedicated 
+database server.
+This server can be accessed by multiple DataJoint clients to query the data and perform 
+computations. 
 
-For even larger groups or multi-site collaborations, multiple database servers may be 
-configured in a replicated fashion to support larger workloads and simultaneous 
-multi-site access.
+For larger groups and multi-site collaborations with heavy workloads, the database 
+server cluster may be configured in the cloud or on premises.
 The following section provides some basic guidelines for these configurations here and 
 in the subsequent sections of the documentation.
 
