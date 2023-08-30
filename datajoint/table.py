@@ -230,7 +230,7 @@ class Table(QueryExpression):
 
     def parts(self, as_objects=False):
         """
-        return part tables either as entries in a dict with foreign key informaiton or a list of objects
+        return part tables either as entries in a dict with foreign key information or a list of objects
 
         :param as_objects: if False (default), the output is a dict describing the foreign keys. If True, return table objects.
         """

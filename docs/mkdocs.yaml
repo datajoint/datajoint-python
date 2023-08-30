@@ -5,16 +5,20 @@ repo_url: https://github.com/datajoint/datajoint-python
 repo_name: datajoint/datajoint-python
 nav:
   - DataJoint Python: index.md
-  - Getting Started: getting-started/index.md
+  - Quick Start Guide: quick-start.md
   - Concepts: 
     - Principles: concepts/principles.md
-    - Glossary: concepts/glossary.md
+    - Data Model: concepts/data-model.md
+    - Data Pipelines: concepts/data-pipelines.md
+    - Teamwork: concepts/teamwork.md
+    - Terminology: concepts/terminology.md
   - System Administration: 
-    - Database Administration: sysadmin/dba.md
-    - File Storage: sysadmin/filestore.md
+    - Database Administration: sysadmin/database-admin.md
+    - Bulk Storage Systems: sysadmin/bulk-storage.md
+    - External Store: sysadmin/external-store.md
   - Client Configuration: 
     - Install: client/install.md
-    - Credentials: client/creds.md
+    - Credentials: client/credentials.md
     - Settings: client/settings.md
     - File Stores: client/stores.md
   - Schema Design:
@@ -25,6 +29,7 @@ nav:
       - Primary Key: design/tables/primary.md
       - Attributes: design/tables/attributes.md
       - Lookup Tables: design/tables/lookup.md
+      - Manual Tables: design/tables/manual.md
       - Blobs: design/tables/blobs.md
       - Attachments: design/tables/attach.md
       - Filepaths: design/tables/filepath.md
@@ -39,12 +44,14 @@ nav:
     - Schema Drop: design/drop.md
     - Schema Modification: design/alter.md
   - Data Manipulations:
+    - manipulation/index.md
     - Insert: manipulation/insert.md
     - Delete: manipulation/delete.md
     - Update: manipulation/update.md
     - Transactions: manipulation/transactions.md
   - Data Queries:
-    - Common Commands: query/common-commands.md
+    - Principles: query/principles.md
+    - Example Schema: query/example-schema.md
     - Fetch: query/fetch.md
     - Iteration: query/iteration.md
     - Operators: query/operators.md
@@ -60,16 +67,13 @@ nav:
     - Populate: compute/populate.md
     - Key Source: compute/key-source.md
     - Distributed Computing: compute/distributed.md
+  - Publish Data: publish-data.md
   - Internals:
     - SQL Transpilation: internal/transpilation.md
-  - Reproducibility:
-      - Table Tiers: reproduce/table-tiers.md
-      - Make Method: reproduce/make-method.md
-  - Existing Pipelines: existing-pipelines.md
   - Tutorials:
-      - tutorials/json.ipynb
+      - JSON Datatype: tutorials/json.ipynb
   - FAQ: faq.md
-  - Develop: develop.md
+  - Developer Guide: develop.md
   - Citation: citation.md
   - Changelog: changelog.md
   - API: api/ # defer to gen-files + literate-nav
@@ -125,6 +129,7 @@ plugins:
         - "*/archive/*md"
   - mkdocs-jupyter:
       include: ["*.ipynb"]
+  - section-index
 markdown_extensions:
   - attr_list
   - toc:
@@ -148,6 +153,7 @@ markdown_extensions:
   - pymdownx.magiclink # Displays bare URLs as links
   - pymdownx.tasklist: # Renders check boxes in tasks lists
       custom_checkbox: true
+  - md_in_html
 extra:
   generator: false # Disable watermark
   version:

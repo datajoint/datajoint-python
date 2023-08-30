@@ -5,10 +5,18 @@
 
 # Welcome to DataJoint for Python!
 
-DataJoint for Python is a framework for scientific workflow management based on relational principles. DataJoint is built on the foundation of the relational data model and prescribes a consistent method for organizing, populating, computing, and querying data.
+DataJoint for Python is a framework for scientific workflow management based on 
+relational principles. DataJoint is built on the foundation of the relational data 
+model and prescribes a consistent method for organizing, populating, computing, and 
+querying data.
 
-DataJoint was initially developed in 2009 by Dimitri Yatsenko in Andreas Tolias' Lab at Baylor College of Medicine for the distributed processing and management of large volumes of data streaming from regular experiments. Starting in 2011, DataJoint has been available as an open-source project adopted by other labs and improved through contributions from several developers.
-Presently, the primary developer of DataJoint open-source software is the company DataJoint (https://datajoint.com).
+DataJoint was initially developed in 2009 by Dimitri Yatsenko in Andreas Tolias' Lab at 
+Baylor College of Medicine for the distributed processing and management of large 
+volumes of data streaming from regular experiments. Starting in 2011, DataJoint has 
+been available as an open-source project adopted by other labs and improved through 
+contributions from several developers.
+Presently, the primary developer of DataJoint open-source software is the company 
+DataJoint (https://datajoint.com).
 
 ## Data Pipeline Example
 
@@ -18,7 +26,13 @@ Presently, the primary developer of DataJoint open-source software is the compan
 
 ## Getting Started
 
-- Install from PyPI
+- Install with Conda
+
+     ```bash
+     conda install -c conda-forge datajoint
+     ```
+
+- Install with pip
 
      ```bash
      pip install datajoint
@@ -33,9 +47,4 @@ Presently, the primary developer of DataJoint open-source software is the compan
 - Contribute
   - [Development Environment](https://datajoint.com/docs/core/datajoint-python/latest/develop/)
 
-  - [Guidelines](https://datajoint.com/docs/community/contribute/)
-
-- Legacy Resources (To be replaced by above)
-  - [Documentation](https://docs.datajoint.org)
-
-  - [Tutorials](https://tutorials.datajoint.org)
+  - [Guidelines](https://datajoint.com/docs/about/contribute/)

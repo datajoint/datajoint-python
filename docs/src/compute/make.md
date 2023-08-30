@@ -1,34 +1,25 @@
-# Make Method
+# Transactions in Make
 
-For auto-populated *Imported* and *Computed* tables[^1], a `make` method gives exact
-instructions for generating the content. By making these steps explicit, we keep a
-careful record of data provenance and ensure reproducibility. Data should never be
-entered using the `insert` method directly.
+Each call of the [make](../compute/make.md) method is enclosed in a transaction.
+DataJoint users do not need to explicitly manage transactions but must be aware of 
+their use.
 
-[^1]: For information on differentiating these data tiers, see the Table Tier section on
-[Automation](../design/tables/tiers#automation-imported-and-computed).
+Transactions produce two effects:
 
-The `make` method receives one argument: the *key*, which represents the upstream table
-entries that need populating. The `key` is a `dict` in Python. 
+First, the state of the database appears stable within the `make` call  throughout the 
+transaction:
+two executions of the same query  will yield identical results within the same `make` 
+call.
 
-A `make` function should do three things:
+Second, any changes to the database (inserts) produced by the `make` method will not 
+become visible to other processes until the `make` call completes execution.
+If the `make` method raises an exception, all changes made so far will be discarded and 
+will never become visible to other processes.
 
-1.  [Fetch](../query/common-commands#fetch) data from tables upstream in the
-pipeline using the key for restriction.
-
-2.  Compute and add any missing attributes to the fields already in the key.
-
-3.  [Inserts](../query/common-commands#insert) the entire entity into the
-triggering table.
-
-## Populate
-
-The `make` method is sometimes referred to as the `populate` function because this is
-the class method called to run the `make` method on all relevant keys[^2].
-
-[^2]: For information on reprocessing keys that resulted in an error, see information
-on the [Jobs table](./distributed). 
-
-``` python
-Segmentation.populate()
-```    
+Transactions are particularly important in maintaining 
+[group integrity](../design/integrity.md#group-integrity) with 
+[master-part relationships](../design/tables/master-part.md).
+The `make` call of a master table first inserts the master entity and then inserts all 
+the matching part entities in the part tables.
+None of the entities become visible to other processes until the entire `make` call 
+completes, at which point they all become visible.
