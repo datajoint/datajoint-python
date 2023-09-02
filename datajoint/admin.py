@@ -15,7 +15,7 @@ def set_password(new_password=None, connection=None, update_config=None):
         new_password = getpass("New password: ")
         confirm_password = getpass("Confirm password: ")
         if new_password != confirm_password:
-            logger.warn("Failed to confirm the password! Aborting password change.")
+            logger.warning("Failed to confirm the password! Aborting password change.")
             return
 
     if version.parse(
