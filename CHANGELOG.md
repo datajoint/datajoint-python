@@ -5,6 +5,7 @@
 - Added - GitHub Actions workflow to manually release docs
 - Changed - Update `datajoint/nginx` to `v0.2.6`
 - Changed - Migrate docs from `https://docs.datajoint.org/python` to `https://datajoint.com/docs/core/datajoint-python`
+- Fixed - `Autopopulate.populate` excludes `reserved` jobs in addition to `ignore` and `error` jobs 
 
 ### 0.14.1 -- Jun 02, 2023
 - Fixed - Fix altering a part table that uses the "master" keyword - PR [#991](https://github.com/datajoint/datajoint-python/pull/991)
