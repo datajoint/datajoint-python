@@ -1,6 +1,6 @@
-# Welcome to the DataJoint for Python!
+# Welcome to DataJoint for Python!
 
-The DataJoint for Python is a framework for scientific workflow management based on 
+DataJoint for Python is a framework for scientific workflow management based on 
 relational principles. DataJoint is built on the foundation of the relational data 
 model and prescribes a consistent method for organizing, populating, computing, and 
 querying data.
