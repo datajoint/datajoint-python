@@ -67,15 +67,15 @@ of the pipeline, or, if they are, that records in the pipeline are
 updated accordingly. A safe method of changing `filepath` data is
 as follows:
 
-  1. Delete the `filepath` database record.
-     This will ensure that any downstream records in the pipeline depending
-     on the `filepath` record are purged from the database.
-  2. Modify `filepath` data.
-  3. Re-insert corresponding the `filepath` record.
-     This will add the record back to DataJoint with an updated file checksum.
-  4. Compute any downstream dependencies, if needed.
-     This will ensure that downstream results dependent on the `filepath`
-     record are updated to reflect the newer `filepath` contents.
+1. Delete the `filepath` database record.
+    This will ensure that any downstream records in the pipeline depending
+    on the `filepath` record are purged from the database.
+2. Modify `filepath` data.
+3. Re-insert corresponding the `filepath` record.
+    This will add the record back to DataJoint with an updated file checksum.
+4. Compute any downstream dependencies, if needed.
+    This will ensure that downstream results dependent on the `filepath`
+    record are updated to reflect the newer `filepath` contents.
 
 ### Disable Fetch Verification
 
