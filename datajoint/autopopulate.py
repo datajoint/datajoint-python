@@ -182,7 +182,7 @@ class AutoPopulate:
         :type make_kwargs: dict, optional
         :return: a dict with two keys
             "success_count": the count of successful ``make()`` calls in this ``populate()`` call
-            "error_list": the error list if "suppress_errors" is set to True, otherwise None
+            "error_list": the error list that is filled if `suppress_errors` is True
         """
         if self.connection.in_transaction:
             raise DataJointError("Populate cannot be called during a transaction.")
@@ -277,7 +277,7 @@ class AutoPopulate:
 
         return {
             "success_count": sum(success_list),
-            "error_list": error_list if suppress_errors else None,
+            "error_list": error_list,
         }
 
     def _populate1(
