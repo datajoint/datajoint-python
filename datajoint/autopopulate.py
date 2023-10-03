@@ -160,7 +160,6 @@ class AutoPopulate:
         max_calls=None,
         display_progress=False,
         processes=1,
-        return_success_count=False,
         make_kwargs=None,
     ):
         """
@@ -177,12 +176,13 @@ class AutoPopulate:
         :param max_calls: if not None, populate at most this many keys
         :param display_progress: if True, report progress_bar
         :param processes: number of processes to use. Set to None to use all cores
-        :param return_success_count: if True, return the count of successful `make()` calls.
-            If suppress_errors is also True, returns a tuple: (success_count, errors)
         :param make_kwargs: Keyword arguments which do not affect the result of computation
             to be passed down to each ``make()`` call. Computation arguments should be
             specified within the pipeline e.g. using a `dj.Lookup` table.
         :type make_kwargs: dict, optional
+        :return: a dict with two keys
+            "success_count": the count of successful ``make()`` calls in this ``populate()`` call
+            "error_list": the error list if "suppress_errors" is set to True, otherwise None
         """
         if self.connection.in_transaction:
             raise DataJointError("Populate cannot be called during a transaction.")
@@ -275,12 +275,10 @@ class AutoPopulate:
         if reserve_jobs:
             signal.signal(signal.SIGTERM, old_handler)
 
-        if suppress_errors and return_success_count:
-            return sum(success_list), error_list
-        if suppress_errors:
-            return error_list
-        if return_success_count:
-            return sum(success_list)
+        return {
+            "success_count": sum(success_list),
+            "error_list": error_list if suppress_errors else None,
+        }
 
     def _populate1(
         self, key, jobs, suppress_errors, return_exception_objects, make_kwargs=None
@@ -291,7 +289,8 @@ class AutoPopulate:
         :param key: dict specifying job to populate
         :param suppress_errors: bool if errors should be suppressed and returned
         :param return_exception_objects: if True, errors must be returned as objects
-        :return: (key, error) when suppress_errors=True, otherwise None
+        :return: (key, error) when suppress_errors=True,
+            True if successfully invoke one `make()` call, otherwise None
         """
         make = self._make_tuples if hasattr(self, "_make_tuples") else self.make
 

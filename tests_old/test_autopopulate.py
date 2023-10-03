@@ -57,7 +57,8 @@ class TestPopulate:
         # test simple populate
         assert_true(self.subject, "root tables are empty")
         assert_false(self.experiment, "table already filled?")
-        success_count = self.experiment.populate(return_success_count=True)
+        ret = self.experiment.populate()
+        success_count = ret["success_count"]
         assert_equal(len(self.experiment.key_source & self.experiment), success_count)
 
         # test restricted populate
@@ -65,9 +66,8 @@ class TestPopulate:
         restriction = self.subject.proj(animal="subject_id").fetch("KEY")[0]
         d = self.trial.connection.dependencies
         d.load()
-        success_count, _ = self.trial.populate(
-            restriction, return_success_count=True, suppress_errors=True
-        )
+        ret = self.trial.populate(restriction, suppress_errors=True)
+        success_count = ret["success_count"]
         assert_equal(len(self.trial.key_source & self.trial), success_count)
 
     def test_populate_exclude_error_and_ignore_jobs(self):
