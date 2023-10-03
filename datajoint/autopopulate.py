@@ -290,7 +290,7 @@ class AutoPopulate:
         :param suppress_errors: bool if errors should be suppressed and returned
         :param return_exception_objects: if True, errors must be returned as objects
         :return: (key, error) when suppress_errors=True,
-            True if successfully invoke one `make()` call, otherwise None
+            True if successfully invoke one `make()` call, otherwise False
         """
         make = self._make_tuples if hasattr(self, "_make_tuples") else self.make
 
@@ -340,6 +340,8 @@ class AutoPopulate:
                     return True
                 finally:
                     self.__class__._allow_insert = False
+
+        return False
 
     def progress(self, *restrictions, display=False):
         """
