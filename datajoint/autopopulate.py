@@ -245,11 +245,12 @@ class AutoPopulate:
                     else keys
                 ):
                     status = self._populate1(key, jobs, **populate_kwargs)
-                    if status is not None:
-                        if isinstance(status, tuple):
-                            error_list.append(status)
-                        elif status:
-                            success_list.append(1)
+                    if status is True:
+                        success_list.append(1)
+                    elif isinstance(status, tuple):
+                        error_list.append(status)
+                    else:
+                        assert status is False
             else:
                 # spawn multiple processes
                 self.connection.close()  # disconnect parent process from MySQL server
@@ -262,11 +263,12 @@ class AutoPopulate:
                     else contextlib.nullcontext()
                 ) as progress_bar:
                     for status in pool.imap(_call_populate1, keys, chunksize=1):
-                        if status is not None:
-                            if isinstance(status, tuple):
-                                error_list.append(status)
-                            elif status:
-                                success_list.append(1)
+                        if status is True:
+                            success_list.append(1)
+                        elif isinstance(status, tuple):
+                            error_list.append(status)
+                        else:
+                            assert status is False
                         if display_progress:
                             progress_bar.update()
                 self.connection.connect()  # reconnect parent process to MySQL server
