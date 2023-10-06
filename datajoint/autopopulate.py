@@ -296,54 +296,55 @@ class AutoPopulate:
         """
         make = self._make_tuples if hasattr(self, "_make_tuples") else self.make
 
-        if jobs is None or jobs.reserve(self.target.table_name, self._job_key(key)):
-            self.connection.start_transaction()
-            if key in self.target:  # already populated
-                self.connection.cancel_transaction()
-                if jobs is not None:
-                    jobs.complete(self.target.table_name, self._job_key(key))
-            else:
-                logger.debug(f"Making {key} -> {self.target.full_table_name}")
-                self.__class__._allow_insert = True
-                try:
-                    make(dict(key), **(make_kwargs or {}))
-                except (KeyboardInterrupt, SystemExit, Exception) as error:
-                    try:
-                        self.connection.cancel_transaction()
-                    except LostConnectionError:
-                        pass
-                    error_message = "{exception}{msg}".format(
-                        exception=error.__class__.__name__,
-                        msg=": " + str(error) if str(error) else "",
-                    )
-                    logger.debug(
-                        f"Error making {key} -> {self.target.full_table_name} - {error_message}"
-                    )
-                    if jobs is not None:
-                        # show error name and error message (if any)
-                        jobs.error(
-                            self.target.table_name,
-                            self._job_key(key),
-                            error_message=error_message,
-                            error_stack=traceback.format_exc(),
-                        )
-                    if not suppress_errors or isinstance(error, SystemExit):
-                        raise
-                    else:
-                        logger.error(error)
-                        return key, error if return_exception_objects else error_message
-                else:
-                    self.connection.commit_transaction()
-                    logger.debug(
-                        f"Success making {key} -> {self.target.full_table_name}"
-                    )
-                    if jobs is not None:
-                        jobs.complete(self.target.table_name, self._job_key(key))
-                    return True
-                finally:
-                    self.__class__._allow_insert = False
+        if jobs is not None and not jobs.reserve(
+            self.target.table_name, self._job_key(key)
+        ):
+            return False
 
-        return False
+        self.connection.start_transaction()
+        if key in self.target:  # already populated
+            self.connection.cancel_transaction()
+            if jobs is not None:
+                jobs.complete(self.target.table_name, self._job_key(key))
+            return False
+
+        logger.debug(f"Making {key} -> {self.target.full_table_name}")
+        self.__class__._allow_insert = True
+        try:
+            make(dict(key), **(make_kwargs or {}))
+        except (KeyboardInterrupt, SystemExit, Exception) as error:
+            try:
+                self.connection.cancel_transaction()
+            except LostConnectionError:
+                pass
+            error_message = "{exception}{msg}".format(
+                exception=error.__class__.__name__,
+                msg=": " + str(error) if str(error) else "",
+            )
+            logger.debug(
+                f"Error making {key} -> {self.target.full_table_name} - {error_message}"
+            )
+            if jobs is not None:
+                # show error name and error message (if any)
+                jobs.error(
+                    self.target.table_name,
+                    self._job_key(key),
+                    error_message=error_message,
+                    error_stack=traceback.format_exc(),
+                )
+            if not suppress_errors or isinstance(error, SystemExit):
+                raise
+            else:
+                logger.error(error)
+                return key, error if return_exception_objects else error_message
+        else:
+            self.connection.commit_transaction()
+            logger.debug(f"Success making {key} -> {self.target.full_table_name}")
+            if jobs is not None:
+                jobs.complete(self.target.table_name, self._job_key(key))
+            return True
+        finally:
+            self.__class__._allow_insert = False
 
     def progress(self, *restrictions, display=False):
         """
