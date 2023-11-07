@@ -79,6 +79,8 @@ def translate_query_error(client_error, query):
     # Integrity errors
     if err == 1062:
         return errors.DuplicateError(*args)
+    if err == 1217:  # MySQL 8 error code
+        return errors.IntegrityError(*args)
     if err == 1451:
         return errors.IntegrityError(*args)
     if err == 1452:
