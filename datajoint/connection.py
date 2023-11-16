@@ -79,6 +79,8 @@ def translate_query_error(client_error, query):
     # Integrity errors
     if err == 1062:
         return errors.DuplicateError(*args)
+    if err == 1217:  # MySQL 8 error code
+        return errors.IntegrityError(*args)
     if err == 1451:
         return errors.IntegrityError(*args)
     if err == 1452:
@@ -113,7 +115,7 @@ def conn(
     :param init_fun: initialization function
     :param reset: whether the connection should be reset or not
     :param use_tls: TLS encryption option. Valid options are: True (required), False
-        (required no TLS), None (TLS prefered, default), dict (Manually specify values per
+        (required no TLS), None (TLS preferred, default), dict (Manually specify values per
         https://dev.mysql.com/doc/refman/5.7/en/connection-options.html#encrypted-connection-options).
     """
     if not hasattr(conn, "connection") or reset:

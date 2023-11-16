@@ -1,117 +1,68 @@
-# Table Tiers
+# Data Tiers
 
-The key to reproducibility in DataJoint is clear data provenance. In any experiment,
-there are stages for data entry, ingestion, and processing or analysis. DataJoint
-helps make these stages explicit with data tiers, indicating data origin.
+DataJoint assigns all tables to one of the following data tiers that differentiate how 
+the data originate.
 
-| Table Type   | Description                                                            | Example                                         |
-|--------------|------------------------------------------------------------------------| ------------------------------------------------|
-| **Lookup**   | Small reference tables containing general information or settings.     | Analysis parameter set.                         |
-| **Manual**   | Data entered entered with by hand or with external helper scripts.     | Manual subject metadata entry.                  |
-| **Imported** | Data ingested automatically from outside files.                        | Loading a raw data file.                        |
-| **Computed** | Data computed automatically entirely inside the pipeline.              | Running analyses and storing results.           |  
-| **Part**\*   | Data in a many-to-one relationship with the corresponding master table.| Independent unit results from a given analysis. |
+## Table tiers
 
-<!--??? is note block, + means open on page load -->
-???+ Note "\*Part tables"
-    While all other types correspond to their data tier, Part tables inherit the
-    tier of their master table.
+| Tier | Superclass | Description |
+| -- | -- | -- |
+| Lookup | `dj.Lookup` | Small tables containing general facts and settings of the data pipeline; not specific to any experiment or dataset. |
+| Manual | `dj.Manual` | Data entered from outside the pipeline, either by hand or with external helper scripts. |
+| Imported | `dj.Imported` | Data ingested automatically inside the pipeline but requiring access to data outside the pipeline. |
+| Computed | `dj.Computed` | Data computed automatically entirely inside the pipeline. |
 
-Lookup and Manual tables generally handle manually added data. Imported and Computed
-tables both allow for automation, but differ in the source of information. And Part
-tables have a unique relationship to their corresponding Master table.
+Table data tiers indicate to database administrators how valuable the data are.
+Manual data are the most valuable, as re-entry may be tedious or impossible.
+Computed data are safe to delete, as the data can always be recomputed from within DataJoint.
+Imported data are safer than manual data but less safe than computed data because of 
+dependency on external data sources.
+With these considerations, database administrators may opt not to back up computed 
+data, for example, or to back up imported data less frequently than manual data.
 
-## Data Entry: Lookup and Manual
+The data tier of a table is specified by the superclass of its class.
+For example, the User class in [definitions](declare.md) uses the `dj.Manual` 
+superclass.
+Therefore, the corresponding User table on the database would be of the Manual tier.
+Furthermore, the classes for **imported** and **computed** tables have additional 
+capabilities for automated processing as described in 
+[Auto-populate](../../compute/populate.md).
 
-Manual tables are populated during experiments through a variety of interfaces. Not all
-manual information is entered by typing. Automated software can enter it directly into
-the database. What makes a manual table manual is that it does not perform any
-computations within the DataJoint pipeline. 
+## Internal conventions for naming tables
 
-Lookup tables contain basic facts that are not specific to an experiment and are fairly
-persistent. In GUIs, lookup tables are often used for drop-down menus or radio buttons.
-In Computed tables, the contents of Lookup tables are often used to specify alternative
-methods for computations. Unlike Manual tables, Lookup tables can specify contents in
-the schema definition.
+On the server side, DataJoint uses a naming scheme to generate a table name 
+corresponding to a given class.
+The naming scheme includes prefixes specifying each table's data tier.
 
-Lookup tables are especially useful for entities with many unique features. Rather than
-adding many primary keys, this information can be retrieved through an index. For an
-example, see *ClusteringParamSet* in Element Array Ephys.
+First, the name of the class is converted from `CamelCase` to `snake_case` 
+([separation by underscores](https://en.wikipedia.org/wiki/Snake_case)).
+Then the name is prefixed according to the data tier.
 
-<!-- TODO: Add link to ephys ClusteringParamSet -->
+- `Manual` tables have no prefix.
+- `Lookup` tables are prefixed with `#`.
+- `Imported` tables are prefixed with `_`, a single underscore.
+- `Computed` tables are prefixed with `__`, two underscores.
 
-While this distinction is useful for structuring a pipeline, it is not enforced, and
-left to the best judgement of the researcher.
+For example:
 
-## Automation: Imported and Computed
+The table for the class `StructuralScan` subclassing `dj.Manual` will be named 
+`structural_scan`.
 
-Auto-populated tables are used to define, execute, and coordinate computations in a
-DataJoint pipeline. These tables belong to one of the two auto-populated data tiers:
-*Imported* and *Computed*. The difference is not strictly enforced, but the convention
-helps researchers understand data provenance at a glance.
+The table for the class `SpatialFilter` subclassing `dj.Lookup` will be named 
+`#spatial_filter`.
 
-*Imported* tables require access to external files, such as raw storage, outside the
- database. If a entry were deleted, it could be retrieved from the raw files on disk.
- An *EphysRecording* table, for example, would load metadata and raw data from
- experimental recordings. 
+Again, the internal table names including prefixes are used only on the server side.
+These are never visible to the user, and DataJoint users do not need to know these 
+conventions
+However, database administrators may use these naming patterns to set backup policies 
+or to restrict access based on data tiers.
 
-<!-- TODO: Add link to EphysRecording -->
+## Part tables
 
-*Computed* tables only require to other data within the pipeline. If an entry were
- deleted, it could could be recovered by simply running the relevant command. For 
- analysis, many pipelines feature a task table that pairs sets of primary keys ready
- for computation. The
- [*PoseEstimationTask*](https://datajoint.com/docs/elements/element-deeplabcut/0.2/api/element_deeplabcut/model/#element_deeplabcut.model.PoseEstimationTask)
- in Element DeepLabCut pairs videos and models. The 
- [*PoseEstimation*](https://datajoint.com/docs/elements/element-deeplabcut/0.2/api/element_deeplabcut/model/#element_deeplabcut.model.PoseEstimationTask)
- table executes these computations and stores the results.
+[Part tables](master-part.md) do not have their own tier.
+Instead, they share the same tier as their master table.
+The prefix for part tables also differs from the other tiers.
+They are prefixed by the name of their master table, separated by two underscores.
 
-Data should never be directly inserted into auto-populated tables. Instead, these tables
-specify a [`make` method](../make-method). 
-
-## Master-Part Relationship
-
-An entity in one table might be inseparably associated with a group of entities in
-another, forming a **master-part** relationship, with two important features.
-
-1. Part tables permit a many-to-one relationship with the master. 
-
-2. Data entry and deletion should impact all part tables as well as the master. 
-
-If you're considering adding a Part table, consider whether or not there could be a
-reason to modify the part but not the master. If so, Manual and/or Lookup tables are
-likely more appropriate. Populate and delete commands should always target the master,
-and never individual parts. This facilitates data integrity by treating the entire
-process as one transaction. Either (a) all data are inserted/committed or deleted, or
-(b) the entire transaction is rolled back. This ensures that partial results never
-appear in the database.
-
-As an example, Element Calcium Imaging features a *MotionCorrection* computed table
-segmenting an image into masks. The resulting correction is inseparable from the rigid
-and nonrigid correction parameters that it produces, with
-*MotionCorrection.RigidMotionCorrection* and *MotionCorrection.NonRigidMotionCorrection*
- part tables. 
-
-<!-- TODO: Add calcium imaging link -->
-
-The master-part relationship cannot be chained or nested. DataJoint does not allow part
-tables of other part tables. However, it is common to have a master table with multiple
-part tables that depend on each other. See link above.
-
-## Example
-
---8<-- "src/images/concepts-table-tiers-diagram.md"
-
-In this example, the experimenter first enters information into the Manual tables, shown
-in green. They enter information about a mouse, then a session, and then each scan
-performed, with the stimuli. Next the automated portion of the pipeline takes over,
-Importing the raw data and performing image alignment, shown in blue. Computed tables
-are shown in red. Image segmentation identifies cells in the images, and extraction of
-calcium traces. In grey, the segmentation method is a Lookup table. Finally, the
-receptive field (RF) computation is performed by relating the imaging signals to the
-visual stimulus information.
-
-For more information on table dependencies and diagrams, see their respective articles:
-
-- [Dependencies](./dependencies)
-- [Diagrams](../diagrams)
+For example, the table for the class `Channel(dj.Part)` with the master 
+`Ephys(dj.Imported)` will be named `_ephys__channel`.
