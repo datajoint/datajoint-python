@@ -341,3 +341,18 @@ class TestDeclare:
                 definition = """
                 -> (master)
                 """
+
+    @staticmethod
+    def test_hidden_attributes():
+        assert (
+            list(Experiment().heading._attributes.keys())[-1].split("_")[2]
+            == "timestamp"
+        )
+        assert (
+            len([a for a in Experiment().heading._attributes.values() if a.is_hidden])
+            != 0
+        )
+        assert (
+            len([a for a in Experiment().heading.attributes.values() if a.is_hidden])
+            == 0
+        )
