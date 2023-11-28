@@ -1,20 +1,15 @@
-"""
-Regression tests for issues 386, 449, 484, and 558 — all related to processing complex aggregations and projections.
-"""
-
 import itertools
-from nose.tools import assert_equal
 import datajoint as dj
-from . import PREFIX, CONN_INFO
+from . import PREFIX, CONN_INFO_ROOT
 import uuid
 from .schema_uuid import Topic, Item, top_level_namespace_id
 
-schema = dj.Schema(PREFIX + "_aggr_regress", connection=dj.conn(**CONN_INFO))
+schema = dj.Schema(PREFIX + "_aggr_regress", connection=dj.conn(**CONN_INFO_ROOT))
 
 # --------------- ISSUE 386 -------------------
 # Issue 386 resulted from the loss of aggregated attributes when the aggregation was used as the restrictor
-#     Q & (R.aggr(S, n='count(*)') & 'n=2')
-#     Error: Unknown column 'n' in HAVING
+# Q & (R.aggr(S, n='count(*)') & 'n=2')
+# Error: Unknown column 'n' in HAVING
 
 
 @schema
@@ -69,8 +64,8 @@ def test_issue484():
 
 
 # ---------------  ISSUE 558 ------------------
-#  Issue 558 resulted from the fact that DataJoint saves subqueries and often combines a restriction followed
-#  by a projection into a single SELECT statement, which in several unusual cases produces unexpected results.
+# Issue 558 resulted from the fact that DataJoint saves subqueries and often combines a restriction followed
+# by a projection into a single SELECT statement, which in several unusual cases produces unexpected results.
 
 
 @schema
@@ -100,19 +95,16 @@ class X(dj.Lookup):
 
 def test_issue558_part1():
     q = (A - B).proj(id2="3")
-    assert_equal(len(A - B), len(q))
+    assert len(A - B) == len(q)
 
 
 def test_issue558_part2():
     d = dict(id=3, id2=5)
-    assert_equal(len(X & d), len((X & d).proj(id2="3")))
+    assert len(X & d) == len((X & d).proj(id2="3"))
 
 
 def test_left_join_len():
-    Topic().add("jeff")
     Item.populate()
-    Topic().add("jeff2")
-    Topic().add("jeff3")
     q = Topic.join(
         Item - dict(topic_id=uuid.uuid5(top_level_namespace_id, "jeff")), left=True
     )
@@ -122,8 +114,8 @@ def test_left_join_len():
 
 def test_union_join():
     # https://github.com/datajoint/datajoint-python/issues/930
-    A.insert(zip([100, 200, 300, 400, 500, 600]))
-    B.insert([(100, 11), (200, 22), (300, 33), (400, 44)])
+    A.insert(zip([100, 200, 300, 400, 500, 600]), skip_duplicates=True)
+    B.insert([(100, 11), (200, 22), (300, 33), (400, 44)], skip_duplicates=True)
     q1 = B & "id < 300"
     q2 = B & "id > 300"
 
