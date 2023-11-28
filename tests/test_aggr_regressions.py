@@ -1,3 +1,7 @@
+"""
+Regression tests for issues 386, 449, 484, and 558 — all related to processing complex aggregations and projections.
+"""
+
 import itertools
 import datajoint as dj
 from . import PREFIX, CONN_INFO_ROOT
@@ -8,8 +12,8 @@ schema = dj.Schema(PREFIX + "_aggr_regress", connection=dj.conn(**CONN_INFO_ROOT
 
 # --------------- ISSUE 386 -------------------
 # Issue 386 resulted from the loss of aggregated attributes when the aggregation was used as the restrictor
-# Q & (R.aggr(S, n='count(*)') & 'n=2')
-# Error: Unknown column 'n' in HAVING
+#     Q & (R.aggr(S, n='count(*)') & 'n=2')
+#     Error: Unknown column 'n' in HAVING
 
 
 @schema
@@ -64,8 +68,8 @@ def test_issue484():
 
 
 # ---------------  ISSUE 558 ------------------
-# Issue 558 resulted from the fact that DataJoint saves subqueries and often combines a restriction followed
-# by a projection into a single SELECT statement, which in several unusual cases produces unexpected results.
+#  Issue 558 resulted from the fact that DataJoint saves subqueries and often combines a restriction followed
+#  by a projection into a single SELECT statement, which in several unusual cases produces unexpected results.
 
 
 @schema
