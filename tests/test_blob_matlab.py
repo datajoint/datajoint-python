@@ -1,8 +1,6 @@
 import numpy as np
 import datajoint as dj
 from datajoint.blob import pack, unpack
-
-from nose.tools import assert_equal, assert_true, assert_tuple_equal, assert_false
 from numpy.testing import assert_array_equal
 
 from . import PREFIX, CONN_INFO
@@ -58,7 +56,8 @@ def insert_blobs():
 class TestFetch:
     @classmethod
     def setup_class(cls):
-        assert_false(dj.config["safemode"], "safemode must be disabled")
+        dj.config["safemode"] = False  # temp
+        assert not dj.config["safemode"], "safemode must be disabled"
         Blob().delete()
         insert_blobs()
 
@@ -70,43 +69,43 @@ class TestFetch:
         blobs = Blob().fetch("blob", order_by="KEY")
 
         blob = blobs[0]  # 'simple string'    'character string'
-        assert_equal(blob[0], "character string")
+        assert blob[0] == "character string"
 
         blob = blobs[1]  # '1D vector'        1:15:180
         assert_array_equal(blob, np.r_[1:180:15][None, :])
         assert_array_equal(blob, unpack(pack(blob)))
 
         blob = blobs[2]  # 'string array'     {'string1'  'string2'}
-        assert_true(isinstance(blob, dj.MatCell))
+        assert isinstance(blob, dj.MatCell)
         assert_array_equal(blob, np.array([["string1", "string2"]]))
         assert_array_equal(blob, unpack(pack(blob)))
 
         blob = blobs[
             3
         ]  # 'struct array'     struct('a', {1,2},  'b', {struct('c', magic(3)), struct('C', magic(5))})
-        assert_true(isinstance(blob, dj.MatStruct))
-        assert_tuple_equal(blob.dtype.names, ("a", "b"))
+        assert isinstance(blob, dj.MatStruct)
+        assert tuple(blob.dtype.names) == ("a", "b")
         assert_array_equal(blob.a[0, 0], np.array([[1.0]]))
         assert_array_equal(blob.a[0, 1], np.array([[2.0]]))
-        assert_true(isinstance(blob.b[0, 1], dj.MatStruct))
-        assert_tuple_equal(blob.b[0, 1].C[0, 0].shape, (5, 5))
+        assert isinstance(blob.b[0, 1], dj.MatStruct)
+        assert tuple(blob.b[0, 1].C[0, 0].shape) == (5, 5)
         b = unpack(pack(blob))
         assert_array_equal(b[0, 0].b[0, 0].c, blob[0, 0].b[0, 0].c)
         assert_array_equal(b[0, 1].b[0, 0].C, blob[0, 1].b[0, 0].C)
 
         blob = blobs[4]  # '3D double array'  reshape(1:24, [2,3,4])
         assert_array_equal(blob, np.r_[1:25].reshape((2, 3, 4), order="F"))
-        assert_true(blob.dtype == "float64")
+        assert blob.dtype == "float64"
         assert_array_equal(blob, unpack(pack(blob)))
 
         blob = blobs[5]  # reshape(uint8(1:24), [2,3,4])
-        assert_true(np.array_equal(blob, np.r_[1:25].reshape((2, 3, 4), order="F")))
-        assert_true(blob.dtype == "uint8")
+        assert np.array_equal(blob, np.r_[1:25].reshape((2, 3, 4), order="F"))
+        assert blob.dtype == "uint8"
         assert_array_equal(blob, unpack(pack(blob)))
 
         blob = blobs[6]  # fftn(reshape(1:24, [2,3,4]))
-        assert_tuple_equal(blob.shape, (2, 3, 4))
-        assert_true(blob.dtype == "complex128")
+        assert tuple(blob.shape) == (2, 3, 4)
+        assert blob.dtype == "complex128"
         assert_array_equal(blob, unpack(pack(blob)))
 
     @staticmethod
@@ -117,7 +116,7 @@ class TestFetch:
         blob = (Blob & "id=1").fetch1(
             "blob", squeeze=True
         )  # 'simple string'    'character string'
-        assert_equal(blob, "character string")
+        assert blob == "character string"
 
         blob = (Blob & "id=2").fetch1(
             "blob", squeeze=True
@@ -127,14 +126,14 @@ class TestFetch:
         blob = (Blob & "id=3").fetch1(
             "blob", squeeze=True
         )  # 'string array'     {'string1'  'string2'}
-        assert_true(isinstance(blob, dj.MatCell))
+        assert isinstance(blob, dj.MatCell)
         assert_array_equal(blob, np.array(["string1", "string2"]))
 
         blob = (Blob & "id=4").fetch1(
             "blob", squeeze=True
         )  # 'struct array' struct('a', {1,2},  'b', {struct('c', magic(3)), struct('C', magic(5))})
-        assert_true(isinstance(blob, dj.MatStruct))
-        assert_tuple_equal(blob.dtype.names, ("a", "b"))
+        assert isinstance(blob, dj.MatStruct)
+        assert tuple(blob.dtype.names) == ("a", "b")
         assert_array_equal(
             blob.a,
             np.array(
@@ -144,32 +143,31 @@ class TestFetch:
                 ]
             ),
         )
-        assert_true(isinstance(blob[1].b, dj.MatStruct))
-        assert_tuple_equal(blob[1].b.C.item().shape, (5, 5))
+        assert isinstance(blob[1].b, dj.MatStruct)
+        assert tuple(blob[1].b.C.item().shape) == (5, 5)
 
         blob = (Blob & "id=5").fetch1(
             "blob", squeeze=True
         )  # '3D double array'  reshape(1:24, [2,3,4])
-        assert_true(np.array_equal(blob, np.r_[1:25].reshape((2, 3, 4), order="F")))
-        assert_true(blob.dtype == "float64")
+        assert np.array_equal(blob, np.r_[1:25].reshape((2, 3, 4), order="F"))
+        assert blob.dtype == "float64"
 
         blob = (Blob & "id=6").fetch1(
             "blob", squeeze=True
         )  # reshape(uint8(1:24), [2,3,4])
-        assert_true(np.array_equal(blob, np.r_[1:25].reshape((2, 3, 4), order="F")))
-        assert_true(blob.dtype == "uint8")
+        assert np.array_equal(blob, np.r_[1:25].reshape((2, 3, 4), order="F"))
+        assert blob.dtype == "uint8"
 
         blob = (Blob & "id=7").fetch1(
             "blob", squeeze=True
         )  # fftn(reshape(1:24, [2,3,4]))
-        assert_tuple_equal(blob.shape, (2, 3, 4))
-        assert_true(blob.dtype == "complex128")
+        assert tuple(blob.shape) == (2, 3, 4)
+        assert blob.dtype == "complex128"
 
-    @staticmethod
-    def test_iter():
+    def test_iter(self):
         """
         test iterator over the entity set
         """
         from_iter = {d["id"]: d for d in Blob()}
-        assert_equal(len(from_iter), len(Blob()))
-        assert_equal(from_iter[1]["blob"], "character string")
+        assert len(from_iter) == len(Blob())
+        assert from_iter[1]["blob"] == "character string"
