@@ -169,7 +169,7 @@ def test_complex():
     assert_array_equal(x, unpack(pack(x)), "Arrays do not match!")
 
 
-def test_insert_longblob():
+def test_insert_longblob(schema_fixture):
     insert_dj_blob = {"id": 1, "data": [1, 2, 3]}
     schema.Longblob.insert1(insert_dj_blob)
     assert (schema.Longblob & "id=1").fetch1() == insert_dj_blob

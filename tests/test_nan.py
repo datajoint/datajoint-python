@@ -12,7 +12,7 @@ class NanTest(dj.Manual):
 
 @pytest.fixture(scope="module")
 def schema(connection_test):
-    schema = dj.Schema(PREFIX + "_nantest", locals(), connection=dj.conn(connection_test))
+    schema = dj.Schema(PREFIX + "_nantest", locals(), connection=connection_test)
     schema(NanTest)
     yield schema
     schema.drop()

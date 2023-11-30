@@ -18,7 +18,7 @@ class Blob(dj.Manual):
 
 @pytest.fixture(scope="module")
 def schema(connection_test):
-    schema = dj.Schema(PREFIX + "_test1", locals(), connection=dj.conn(connection_test))
+    schema = dj.Schema(PREFIX + "_test1", locals(), connection=connection_test)
     schema(Blob)
     yield schema
     schema.drop()

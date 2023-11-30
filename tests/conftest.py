@@ -1,8 +1,15 @@
+import sys
 import datajoint as dj
 from packaging import version
 import os
 import pytest
-from . import schema, PREFIX
+import inspect
+from . import PREFIX
+from .schema import *
+
+# all_classes = []
+# for _, obj in inspect.getmembers(sys.modules[__name__], inspect.isclass):
+#     all_classes.append(obj)
 
 @pytest.fixture(scope="session")
 def connection_root():
@@ -59,3 +66,46 @@ def connection_test(connection_root):
     yield connection
     connection_root.query(f"""DROP USER `{credentials["user"]}`""")
     connection.close()
+
+@pytest.fixture
+def schema_fixture(connection_test):
+    schema = dj.Schema(PREFIX + "_test1", connection=connection_test)
+    schema(TTest)
+    schema(TTest)
+    schema(TTest2)
+    schema(TTest3)
+    schema(NullableNumbers)
+    schema(TTestExtra)
+    schema(TTestNoExtra)
+    schema(Auto)
+    schema(User)
+    schema(Subject)
+    schema(Language)
+    schema(Experiment)
+    schema(Trial)
+    schema(Ephys)
+    schema(Image)
+    schema(UberTrash)
+    schema(UnterTrash)
+    schema(SimpleSource)
+    schema(SigIntTable)
+    schema(SigTermTable)
+    schema(DjExceptionName)
+    schema(ErrorClass)
+    schema(DecimalPrimaryKey)
+    schema(IndexRich)
+    schema(ThingA)
+    schema(ThingB)
+    schema(ThingC)
+    schema(Parent)
+    schema(Child)
+    schema(ComplexParent)
+    schema(ComplexChild)
+    schema(SubjectA)
+    schema(SessionA)
+    schema(SessionStatusA)
+    schema(SessionDateA)
+    schema(Stimulus)
+    schema(Longblob)
+    yield schema
+    schema.drop()

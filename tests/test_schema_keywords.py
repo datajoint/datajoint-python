@@ -35,7 +35,7 @@ class D(B):
 
 @pytest.fixture(scope="module")
 def schema(connection_test):
-    schema = dj.Schema(PREFIX + "_keywords", connection=dj.conn(connection_test))
+    schema = dj.Schema(PREFIX + "_keywords", connection=connection_test)
     schema(A)
     schema(D)
     yield schema
