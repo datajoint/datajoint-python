@@ -1,10 +1,8 @@
-from . import PREFIX, CONN_INFO
+from . import PREFIX
 import datajoint as dj
+import pytest
 
-schema = dj.Schema(PREFIX + "_keywords", connection=dj.conn(**CONN_INFO))
 
-
-@schema
 class A(dj.Manual):
     definition = """
     a_id: int   # a id
@@ -31,12 +29,20 @@ class B(dj.Manual):
         """
 
 
-@schema
 class D(B):
     source = A
 
 
-def test_inherited_part_table():
+@pytest.fixture(scope="module")
+def schema(connection_test):
+    schema = dj.Schema(PREFIX + "_keywords", connection=dj.conn(connection_test))
+    schema(A)
+    schema(D)
+    yield schema
+    schema.drop()
+
+
+def test_inherited_part_table(schema):
     assert "a_id" in D().heading.attributes
     assert "b_id" in D().heading.attributes
     assert "a_id" in D.C().heading.attributes

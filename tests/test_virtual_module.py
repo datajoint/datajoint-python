@@ -1,10 +1,9 @@
 import datajoint as dj
 from datajoint.user_tables import UserTable
-from . import CONN_INFO
 
 
-def test_virtual_module(schema_obj):
+def test_virtual_module(schema_obj, connection_test):
     module = dj.VirtualModule(
-        "module", schema_obj.schema.database, connection=dj.conn(**CONN_INFO)
+        "module", schema_obj.schema.database, connection=dj.conn(connection_test)
     )
     assert issubclass(module.Experiment, UserTable)

@@ -5,7 +5,7 @@ Collection of test cases to test connection module.
 import datajoint as dj
 from datajoint import DataJointError
 import numpy as np
-from . import CONN_INFO_ROOT, connection_root, connection_test
+from . import CONN_INFO_ROOT
 
 from . import PREFIX
 import pytest
