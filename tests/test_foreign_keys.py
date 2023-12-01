@@ -1,11 +1,10 @@
 from datajoint.declare import declare
+from .schema_advanced import *
 
-from . import schema_advanced
 
-
-def test_aliased_fk():
-    person = schema_advanced.Person()
-    parent = schema_advanced.Parent()
+def test_aliased_fk(schema_adv):
+    person = Person()
+    parent = Parent()
     person.delete()
     assert not person
     assert not parent
@@ -21,21 +20,21 @@ def test_aliased_fk():
     assert delete_count == 16
 
 
-def test_describe():
+def test_describe(schema_adv):
     """real_definition should match original definition"""
-    for rel in (schema_advanced.LocalSynapse, schema_advanced.GlobalSynapse):
+    for rel in (LocalSynapse, GlobalSynapse):
         describe = rel.describe()
-        s1 = declare(
-            rel.full_table_name, rel.definition, schema_advanced.schema.context
-        )[0].split("\n")
+        s1 = declare(rel.full_table_name, rel.definition, schema_adv.context)[0].split(
+            "\n"
+        )
         s2 = declare(rel.full_table_name, describe, globals())[0].split("\n")
         for c1, c2 in zip(s1, s2):
             assert c1 == c2
 
 
-def test_delete():
-    person = schema_advanced.Person()
-    parent = schema_advanced.Parent()
+def test_delete(schema_adv):
+    person = Person()
+    parent = Parent()
     person.delete()
     assert not person
     assert not parent

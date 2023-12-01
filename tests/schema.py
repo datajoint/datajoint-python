@@ -7,6 +7,8 @@ import numpy as np
 import datajoint as dj
 import inspect
 
+LOCALS_ANY = locals()
+
 
 class TTest(dj.Lookup):
     """

@@ -1,9 +1,8 @@
 import datajoint as dj
 from datajoint import errors
 from pytest import raises
-
-from .schema import *
 from datajoint.dependencies import unite_master_parts
+from .schema import *
 
 
 def test_unite_master_parts():
@@ -51,7 +50,7 @@ def test_unite_master_parts():
     ]
 
 
-def test_nullable_dependency():
+def test_nullable_dependency(schema_any):
     """test nullable unique foreign key"""
     # Thing C has a nullable dependency on B whose primary key is composite
     a = ThingA()
@@ -80,7 +79,7 @@ def test_nullable_dependency():
     assert len(c) == len(c.fetch()) == 5
 
 
-def test_unique_dependency():
+def test_unique_dependency(schema_any):
     """test nullable unique foreign key"""
 
     # Thing C has a nullable dependency on B whose primary key is composite

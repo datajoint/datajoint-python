@@ -1,7 +1,7 @@
 from .schema_simple import A, D
 
 
-def test_aggr_with_proj():
+def test_aggr_with_proj(schema_simp):
     # issue #944 - only breaks with MariaDB
     # MariaDB implements the SQL:1992 standard that prohibits fields in the select statement that are
     # not also in the GROUP BY statement.

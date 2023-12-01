@@ -1,10 +1,8 @@
 import datajoint as dj
-from . import PREFIX, CONN_INFO
 
-schema = dj.Schema(PREFIX + "_advanced", locals(), connection=dj.conn(**CONN_INFO))
+LOCALS_ADVANCED = locals()
 
 
-@schema
 class Person(dj.Manual):
     definition = """
     person_id : int
@@ -39,7 +37,6 @@ class Person(dj.Manual):
         )
 
 
-@schema
 class Parent(dj.Manual):
     definition = """
     -> Person
@@ -89,7 +86,6 @@ class Parent(dj.Manual):
         )
 
 
-@schema
 class Subject(dj.Manual):
     definition = """
     subject : int
@@ -98,14 +94,12 @@ class Subject(dj.Manual):
     """
 
 
-@schema
 class Prep(dj.Manual):
     definition = """
     prep   : int
     """
 
 
-@schema
 class Slice(dj.Manual):
     definition = """
     -> Prep
@@ -113,7 +107,6 @@ class Slice(dj.Manual):
     """
 
 
-@schema
 class Cell(dj.Manual):
     definition = """
     -> Slice
@@ -121,7 +114,6 @@ class Cell(dj.Manual):
     """
 
 
-@schema
 class InputCell(dj.Manual):
     definition = """  # a synapse within the slice
     -> Cell
@@ -129,7 +121,6 @@ class InputCell(dj.Manual):
     """
 
 
-@schema
 class LocalSynapse(dj.Manual):
     definition = """  # a synapse within the slice
     -> Cell.proj(presynaptic='cell')
@@ -137,7 +128,6 @@ class LocalSynapse(dj.Manual):
     """
 
 
-@schema
 class GlobalSynapse(dj.Manual):
     # Mix old-style and new-style projected foreign keys
     definition = """

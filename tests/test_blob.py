@@ -1,13 +1,14 @@
+import pytest
 import datajoint as dj
 import timeit
 import numpy as np
 import uuid
-from . import schema
 from decimal import Decimal
 from datetime import datetime
 from datajoint.blob import pack, unpack
 from numpy.testing import assert_array_equal
 from pytest import approx
+from .schema import *
 
 
 def test_pack():
@@ -169,18 +170,16 @@ def test_complex():
     assert_array_equal(x, unpack(pack(x)), "Arrays do not match!")
 
 
-def test_insert_longblob(schema_fixture):
+def test_insert_longblob(schema_any):
     insert_dj_blob = {"id": 1, "data": [1, 2, 3]}
-    schema.Longblob.insert1(insert_dj_blob)
-    assert (schema.Longblob & "id=1").fetch1() == insert_dj_blob
-    (schema.Longblob & "id=1").delete()
+    Longblob.insert1(insert_dj_blob)
+    assert (Longblob & "id=1").fetch1() == insert_dj_blob
+    (Longblob & "id=1").delete()
 
     query_mym_blob = {"id": 1, "data": np.array([1, 2, 3])}
-    schema.Longblob.insert1(query_mym_blob)
-    assert (schema.Longblob & "id=1").fetch1()["data"].all() == query_mym_blob[
-        "data"
-    ].all()
-    (schema.Longblob & "id=1").delete()
+    Longblob.insert1(query_mym_blob)
+    assert (Longblob & "id=1").fetch1()["data"].all() == query_mym_blob["data"].all()
+    (Longblob & "id=1").delete()
 
     query_32_blob = (
         "INSERT INTO djtest_test1.longblob (id, data) VALUES (1, "
@@ -193,7 +192,7 @@ def test_insert_longblob(schema_fixture):
     )
     dj.conn().query(query_32_blob).fetchall()
     dj.blob.use_32bit_dims = True
-    assert (schema.Longblob & "id=1").fetch1() == {
+    assert (Longblob & "id=1").fetch1() == {
         "id": 1,
         "data": np.rec.array(
             [
@@ -209,7 +208,7 @@ def test_insert_longblob(schema_fixture):
             dtype=[("hits", "O"), ("sides", "O"), ("tasks", "O"), ("stage", "O")],
         ),
     }
-    (schema.Longblob & "id=1").delete()
+    (Longblob & "id=1").delete()
     dj.blob.use_32bit_dims = False
 
 

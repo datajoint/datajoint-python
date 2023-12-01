@@ -3,6 +3,7 @@ import datajoint as dj
 from . import PREFIX
 import pytest
 
+
 class NanTest(dj.Manual):
     definition = """
     id :int
@@ -10,12 +11,14 @@ class NanTest(dj.Manual):
     value=null :double
     """
 
+
 @pytest.fixture(scope="module")
 def schema(connection_test):
-    schema = dj.Schema(PREFIX + "_nantest", locals(), connection=connection_test)
+    schema = dj.Schema(PREFIX + "_nantest", connection=connection_test)
     schema(NanTest)
     yield schema
     schema.drop()
+
 
 @pytest.fixture(scope="class")
 def setup_class(request, schema):
@@ -26,6 +29,7 @@ def setup_class(request, schema):
     rel.insert(((i, value) for i, value in enumerate(a)))
     request.cls.rel = rel
     request.cls.a = a
+
 
 class TestNaNInsert:
     def test_insert_nan(self, setup_class):
