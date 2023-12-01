@@ -2,12 +2,10 @@ import inspect
 from datajoint.declare import declare
 import datajoint as dj
 import numpy as np
-from distutils.version import LooseVersion
+from packaging.version import Version
 from . import PREFIX
 
-if LooseVersion(dj.conn().query("select @@version;").fetchone()[0]) >= LooseVersion(
-    "8.0.0"
-):
+if Version(dj.conn().query("select @@version;").fetchone()[0]) >= Version("8.0.0"):
     schema = dj.Schema(PREFIX + "_json")
     Team = None
 

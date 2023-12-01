@@ -1,8 +1,8 @@
 import pprint
 import random
 import string
-from datajoint import settings
-from nose.tools import assert_true, assert_equal, raises
+import pytest
+from datajoint import DataJointError, settings
 import datajoint as dj
 import os
 
@@ -14,7 +14,7 @@ def test_load_save():
     dj.config.save("tmp.json")
     conf = settings.Config()
     conf.load("tmp.json")
-    assert_true(conf == dj.config, "Two config files do not match.")
+    assert conf == dj.config
     os.remove("tmp.json")
 
 
@@ -25,7 +25,7 @@ def test_singleton():
     conf.load("tmp.json")
     conf["dummy.val"] = 2
 
-    assert_true(conf == dj.config, "Config does not behave like a singleton.")
+    assert conf == dj.config
     os.remove("tmp.json")
 
 
@@ -34,36 +34,36 @@ def test_singleton2():
     conf = settings.Config()
     conf["dummy.val"] = 2
     _ = settings.Config()  # a new instance should not delete dummy.val
-    assert_true(conf["dummy.val"] == 2, "Config does not behave like a singleton.")
+    assert conf["dummy.val"] == 2
 
 
-@raises(dj.DataJointError)
 def test_validator():
     """Testing validator"""
-    dj.config["database.port"] = "harbor"
+    with pytest.raises(DataJointError):
+        dj.config["database.port"] = "harbor"
 
 
 def test_del():
     """Testing del"""
     dj.config["peter"] = 2
-    assert_true("peter" in dj.config)
+    assert "peter" in dj.config
     del dj.config["peter"]
-    assert_true("peter" not in dj.config)
+    assert "peter" not in dj.config
 
 
 def test_len():
     """Testing len"""
-    assert_equal(len(dj.config), len(dj.config._conf))
+    len(dj.config) == len(dj.config._conf)
 
 
 def test_str():
     """Testing str"""
-    assert_equal(str(dj.config), pprint.pformat(dj.config._conf, indent=4))
+    str(dj.config) == pprint.pformat(dj.config._conf, indent=4)
 
 
 def test_repr():
     """Testing repr"""
-    assert_equal(repr(dj.config), pprint.pformat(dj.config._conf, indent=4))
+    repr(dj.config) == pprint.pformat(dj.config._conf, indent=4)
 
 
 def test_save():
@@ -76,7 +76,7 @@ def test_save():
         os.rename(settings.LOCALCONFIG, tmpfile)
         moved = True
     dj.config.save_local()
-    assert_true(os.path.isfile(settings.LOCALCONFIG))
+    assert os.path.isfile(settings.LOCALCONFIG)
     if moved:
         os.rename(tmpfile, settings.LOCALCONFIG)
 
@@ -101,5 +101,5 @@ def test_contextmanager():
     """Testing context manager"""
     dj.config["arbitrary.stuff"] = 7
     with dj.config(arbitrary__stuff=10):
-        assert_true(dj.config["arbitrary.stuff"] == 10)
-    assert_true(dj.config["arbitrary.stuff"] == 7)
+        assert dj.config["arbitrary.stuff"] == 10
+    assert dj.config["arbitrary.stuff"] == 7
