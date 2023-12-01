@@ -4,8 +4,6 @@ import os
 import pytest
 from . import PREFIX, schema, schema_simple, schema_advanced
 
-namespace = locals()
-
 
 @pytest.fixture(scope="session")
 def connection_root():
@@ -64,11 +62,12 @@ def connection_test(connection_root):
     connection.close()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def schema_any(connection_test):
     schema_any = dj.Schema(
-        PREFIX + "_test1", schema.__dict__, connection=connection_test
+        PREFIX + "_test1", schema.LOCALS_ANY, connection=connection_test
     )
+    assert schema.LOCALS_ANY, "LOCALS_ANY is empty"
     schema_any(schema.TTest)
     schema_any(schema.TTest2)
     schema_any(schema.TTest3)
@@ -109,10 +108,10 @@ def schema_any(connection_test):
     schema_any.drop()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def schema_simp(connection_test):
     schema = dj.Schema(
-        PREFIX + "_relational", schema_simple.__dict__, connection=connection_test
+        PREFIX + "_relational", schema_simple.LOCALS_SIMPLE, connection=connection_test
     )
     schema(schema_simple.IJ)
     schema(schema_simple.JI)
@@ -136,10 +135,10 @@ def schema_simp(connection_test):
     schema.drop()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def schema_adv(connection_test):
     schema = dj.Schema(
-        PREFIX + "_advanced", schema_advanced.__dict__, connection=connection_test
+        PREFIX + "_advanced", schema_advanced.LOCALS_ADVANCED, connection=connection_test
     )
     schema(schema_advanced.Person)
     schema(schema_advanced.Parent)

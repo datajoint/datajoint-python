@@ -9,8 +9,7 @@ import uuid
 import faker
 import numpy as np
 from datetime import date, timedelta
-
-LOCALS_SIMPLE = locals()
+import inspect
 
 
 class IJ(dj.Lookup):
@@ -237,8 +236,8 @@ class ReservedWord(dj.Manual):
     # Test of SQL reserved words
     key : int
     ---
-    in    :  varchar(25)    
-    from  :  varchar(25)   
+    in    :  varchar(25)
+    from  :  varchar(25)
     int   :  int
     select : varchar(25)
     """
@@ -260,3 +259,6 @@ class OutfitLaunch(dj.Lookup):
         piece: varchar(20)
         """
         contents = [(0, "jeans"), (0, "sneakers"), (0, "polo")]
+
+
+LOCALS_SIMPLE = {k: v for k, v in locals().items() if inspect.isclass(v)}

@@ -7,8 +7,6 @@ import numpy as np
 import datajoint as dj
 import inspect
 
-LOCALS_ANY = locals()
-
 
 class TTest(dj.Lookup):
     """
@@ -33,7 +31,7 @@ class TTest2(dj.Manual):
 
 class TTest3(dj.Manual):
     definition = """
-    key : int 
+    key : int
     ---
     value : varchar(300)
     """
@@ -41,7 +39,7 @@ class TTest3(dj.Manual):
 
 class NullableNumbers(dj.Manual):
     definition = """
-    key : int 
+    key : int
     ---
     fvalue = null : float
     dvalue = null : double
@@ -450,3 +448,7 @@ class Longblob(dj.Manual):
     ---
     data: longblob
     """
+
+
+LOCALS_ANY = {k: v for k, v in locals().items() if inspect.isclass(v)}
+
