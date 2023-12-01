@@ -6,7 +6,6 @@ import datajoint as dj
 from datajoint import DataJointError
 import numpy as np
 from . import CONN_INFO_ROOT
-
 from . import PREFIX
 import pytest
 

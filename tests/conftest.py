@@ -1,9 +1,7 @@
-import sys
 import datajoint as dj
 from packaging import version
 import os
 import pytest
-import inspect
 from . import PREFIX, schema, schema_simple, schema_advanced
 
 namespace = locals()

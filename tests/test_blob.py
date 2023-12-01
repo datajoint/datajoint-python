@@ -1,4 +1,3 @@
-import pytest
 import datajoint as dj
 import timeit
 import numpy as np
