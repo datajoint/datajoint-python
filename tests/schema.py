@@ -451,4 +451,4 @@ class Longblob(dj.Manual):
 
 
 LOCALS_ANY = {k: v for k, v in locals().items() if inspect.isclass(v)}
-
+__all__ = list(LOCALS_ANY.keys())
