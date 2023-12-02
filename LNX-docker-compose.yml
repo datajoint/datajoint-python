@@ -7,7 +7,7 @@ x-net:
 services:
   db:
     <<: *net
-    image: datajoint/mysql:${MYSQL_VER}
+    image: datajoint/mysql:${MYSQL_VER:-5.7}
     environment:
       - MYSQL_ROOT_PASSWORD=${DJ_PASS}
     # ports:
@@ -21,7 +21,7 @@ services:
       interval: 15s
   minio:
     <<: *net
-    image: minio/minio:${MINIO_VER}
+    image: minio/minio:${MINIO_VER:-RELEASE.2022-08-11T04-37-28Z}
     environment:
       - MINIO_ACCESS_KEY=datajoint
       - MINIO_SECRET_KEY=datajoint
@@ -58,7 +58,7 @@ services:
     #   - "3306:3306"
   app:
     <<: *net
-    image: datajoint/djtest:py${PY_VER}-${DISTRO}
+    image: datajoint/djtest:py${PY_VER:-3.8}-${DISTRO:-alpine}
     depends_on:
       db:
         condition: service_healthy
@@ -93,7 +93,7 @@ services:
         nosetests -vsw tests_old --with-coverage --cover-package=datajoint
     # ports:
     #   - "8888:8888"
-    user: ${HOST_UID}:anaconda
+    user: ${HOST_UID:-1000}:anaconda
     volumes:
       - .:/src
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
