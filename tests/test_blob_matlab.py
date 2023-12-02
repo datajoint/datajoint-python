@@ -16,15 +16,15 @@ class Blob(dj.Manual):
     """
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def schema(connection_test):
-    schema = dj.Schema(PREFIX + "_test1", locals(), connection=connection_test)
+    schema = dj.Schema(PREFIX + "_test1", dict(Blob=Blob), connection=connection_test)
     schema(Blob)
     yield schema
     schema.drop()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def insert_blobs_func(schema):
     def insert_blobs():
         """
@@ -63,7 +63,7 @@ def insert_blobs_func(schema):
     yield insert_blobs
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture
 def setup_class(schema, insert_blobs_func):
     assert not dj.config["safemode"], "safemode must be disabled"
     Blob().delete()
