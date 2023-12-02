@@ -33,7 +33,7 @@ class D(B):
     source = A
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def schema(connection_test):
     schema = dj.Schema(PREFIX + "_keywords", connection=connection_test)
     schema(A)

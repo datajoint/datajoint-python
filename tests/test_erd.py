@@ -45,13 +45,13 @@ def test_erd_algebra(schema_simp):
 
 
 def test_repr_svg(schema_adv):
-    erd = dj.ERD(schema_adv, context=locals())
+    erd = dj.ERD(schema_adv, context=dict())
     svg = erd._repr_svg_()
     assert svg.startswith("<svg") and svg.endswith("svg>")
 
 
 def test_make_image(schema_simp):
-    erd = dj.ERD(schema_simp, context=locals())
+    erd = dj.ERD(schema_simp, context=dict())
     img = erd.make_image()
     assert img.ndim == 3 and img.shape[2] in (3, 4)
 

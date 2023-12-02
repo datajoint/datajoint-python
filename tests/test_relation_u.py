@@ -5,25 +5,24 @@ from .schema import *
 from .schema_simple import *
 
 
-@pytest.fixture(scope="class")
-def setup_class(request, schema_any):
-    request.cls.user = User()
-    request.cls.language = Language()
-    request.cls.subject = Subject()
-    request.cls.experiment = Experiment()
-    request.cls.trial = Trial()
-    request.cls.ephys = Ephys()
-    request.cls.channel = Ephys.Channel()
-    request.cls.img = Image()
-    request.cls.trash = UberTrash()
-
-@pytest.mark.skip(reason="temporary")
 class TestU:
     """
     Test tables: insert, delete
     """
 
-    def test_restriction(self, setup_class):
+    @classmethod
+    def setup_class(cls):
+        cls.user = User()
+        cls.language = Language()
+        cls.subject = Subject()
+        cls.experiment = Experiment()
+        cls.trial = Trial()
+        cls.ephys = Ephys()
+        cls.channel = Ephys.Channel()
+        cls.img = Image()
+        cls.trash = UberTrash()
+
+    def test_restriction(self, schema_any):
         language_set = {s[1] for s in self.language.contents}
         rel = dj.U("language") & self.language
         assert list(rel.heading.names) == ["language"]
@@ -35,15 +34,15 @@ class TestU:
         assert list(rel.primary_key) == list((rel & "trial_id>3").primary_key)
         assert list((dj.U("start_time") & self.trial).primary_key) == ["start_time"]
 
-    def test_invalid_restriction(self, setup_class):
+    def test_invalid_restriction(self, schema_any):
         with raises(dj.DataJointError):
             result = dj.U("color") & dict(color="red")
 
-    def test_ineffective_restriction(self, setup_class):
+    def test_ineffective_restriction(self, schema_any):
         rel = self.language & dj.U("language")
         assert rel.make_sql() == self.language.make_sql()
 
-    def test_join(self, setup_class):
+    def test_join(self, schema_any):
         rel = self.experiment * dj.U("experiment_date")
         assert self.experiment.primary_key == ["subject_id", "experiment_id"]
         assert rel.primary_key == self.experiment.primary_key + ["experiment_date"]
@@ -52,16 +51,16 @@ class TestU:
         assert self.experiment.primary_key == ["subject_id", "experiment_id"]
         assert rel.primary_key == self.experiment.primary_key + ["experiment_date"]
 
-    def test_invalid_join(self, setup_class):
+    def test_invalid_join(self, schema_any):
         with raises(dj.DataJointError):
             rel = dj.U("language") * dict(language="English")
 
-    def test_repr_without_attrs(self, setup_class):
+    def test_repr_without_attrs(self, schema_any):
         """test dj.U() display"""
         query = dj.U().aggr(Language, n="count(*)")
         repr(query)
 
-    def test_aggregations(self, setup_class):
+    def test_aggregations(self, schema_any):
         lang = Language()
         # test total aggregation on expression object
         n1 = dj.U().aggr(lang, n="count(*)").fetch1("n")
@@ -73,13 +72,13 @@ class TestU:
         assert len(rel) == len(set(l[1] for l in Language.contents))
         assert (rel & 'language="English"').fetch1("number_of_speakers") == 3
 
-    def test_argmax(self, setup_class):
+    def test_argmax(self, schema_any):
         rel = TTest()
         # get the tuples corresponding to the maximum value
         mx = (rel * dj.U().aggr(rel, mx="max(value)")) & "mx=value"
         assert mx.fetch("value")[0] == max(rel.fetch("value"))
 
-    def test_aggr(self, setup_class, schema_simp):
+    def test_aggr(self, schema_any, schema_simp):
         rel = ArgmaxTest()
         amax1 = (dj.U("val") * rel) & dj.U("secondary_key").aggr(rel, val="min(val)")
         amax2 = (dj.U("val") * rel) * dj.U("secondary_key").aggr(rel, val="min(val)")
