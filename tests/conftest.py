@@ -1,8 +1,21 @@
 import datajoint as dj
 from packaging import version
 import os
+import minio
+import urllib3
+import certifi
+import shutil
 import pytest
-from . import PREFIX, schema, schema_simple, schema_advanced
+import networkx as nx
+import json
+from pathlib import Path
+import tempfile
+from datajoint import errors
+from . import (
+    PREFIX, CONN_INFO, S3_CONN_INFO,
+    schema, schema_simple, schema_advanced, schema_adapted
+)
+
 
 
 @pytest.fixture(scope="session")
@@ -151,3 +164,73 @@ def schema_adv(connection_test):
     schema(schema_advanced.GlobalSynapse)
     yield schema
     schema.drop()
+
+
+@pytest.fixture
+def adapted_graph_instance():
+    yield schema_adapted.GraphAdapter()
+
+@pytest.fixture
+def enable_adapted_types(monkeypatch):
+    monkeypatch.setenv('ADAPTED_TYPE_SWITCH', 'TRUE')
+    yield
+    monkeypatch.delenv('ADAPTED_TYPE_SWITCH', raising=True)
+
+@pytest.fixture
+def enable_filepath_feature(monkeypatch):
+    monkeypatch.setenv('FILEPATH_FEATURE_SWITCH', 'TRUE')
+    yield
+    monkeypatch.delenv('FILEPATH_FEATURE_SWITCH', raising=True)
+
+@pytest.fixture
+def schema_ad(monkeypatch, connection_test, adapted_graph_instance, enable_adapted_types, enable_filepath_feature):
+    stores_config = {
+        "repo-s3": dict(
+            S3_CONN_INFO, protocol="s3", location="adapted/repo", stage=tempfile.mkdtemp()
+        )
+    }
+    dj.config["stores"] = stores_config
+    schema_name = PREFIX + "_test_custom_datatype"
+    layout_to_filepath = schema_adapted.LayoutToFilepath()
+    context = {
+        **schema_adapted.LOCALS_ADAPTED,
+        'graph': adapted_graph_instance,
+        'layout_to_filepath': layout_to_filepath,
+    }
+    schema = dj.schema(schema_name, context=context, connection=connection_test)
+
+
+    # instantiate for use as a datajoint type
+    # TODO: remove?
+    graph = adapted_graph_instance
+
+    schema(schema_adapted.Connectivity)
+    # errors._switch_filepath_types(True)
+    schema(schema_adapted.Layout)
+    yield schema
+    # errors._switch_filepath_types(False)
+
+@pytest.fixture
+def httpClient():
+    # Initialize httpClient with relevant timeout.
+    httpClient = urllib3.PoolManager(
+        timeout=30,
+        cert_reqs="CERT_REQUIRED",
+        ca_certs=certifi.where(),
+        retries=urllib3.Retry(
+            total=3, backoff_factor=0.2, status_forcelist=[500, 502, 503, 504]
+        ),
+    )
+    yield httpClient
+
+@pytest.fixture
+def minioClient():
+    # Initialize minioClient with an endpoint and access/secret keys.
+    minioClient = minio.Minio(
+        S3_CONN_INFO["endpoint"],
+        access_key=S3_CONN_INFO["access_key"],
+        secret_key=S3_CONN_INFO["secret_key"],
+        secure=True,
+        http_client=httpClient,
+    )
+    yield minioClient
