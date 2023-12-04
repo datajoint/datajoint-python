@@ -186,35 +186,6 @@ def enable_filepath_feature(monkeypatch):
     yield
     monkeypatch.delenv(FILEPATH_FEATURE_SWITCH, raising=True)
 
-@pytest.fixture
-def schema_ad(monkeypatch, connection_test, adapted_graph_instance, enable_adapted_types, enable_filepath_feature):
-    assert os.environ.get(ADAPTED_TYPE_SWITCH) == 'TRUE', 'must have adapted types enabled in environment'
-    stores_config = {
-        "repo-s3": dict(
-            S3_CONN_INFO, protocol="s3", location="adapted/repo", stage=tempfile.mkdtemp()
-        )
-    }
-    dj.config["stores"] = stores_config
-    schema_name = PREFIX + "_test_custom_datatype"
-    layout_to_filepath = schema_adapted.LayoutToFilepath()
-    context = {
-        **schema_adapted.LOCALS_ADAPTED,
-        'graph': adapted_graph_instance,
-        'layout_to_filepath': layout_to_filepath,
-    }
-    schema = dj.schema(schema_name, context=context, connection=connection_test)
-
-
-    # instantiate for use as a datajoint type
-    # TODO: remove?
-    graph = adapted_graph_instance
-
-    schema(schema_adapted.Connectivity)
-    # errors._switch_filepath_types(True)
-    schema(schema_adapted.Layout)
-    yield schema
-    # errors._switch_filepath_types(False)
-    schema.drop()
 
 @pytest.fixture
 def httpClient():

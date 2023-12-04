@@ -1,11 +1,44 @@
 import os
 import pytest
+import tempfile
 import datajoint as dj
+from datajoint.errors import ADAPTED_TYPE_SWITCH
 import networkx as nx
 from itertools import zip_longest
-# from . import schema_adapted as adapted
+from . import schema_adapted
 from .schema_adapted import Connectivity, Layout
+from . import PREFIX, S3_CONN_INFO
 
+
+@pytest.fixture
+def schema_ad(monkeypatch, connection_test, adapted_graph_instance, enable_adapted_types, enable_filepath_feature):
+    assert os.environ.get(ADAPTED_TYPE_SWITCH) == 'TRUE', 'must have adapted types enabled in environment'
+    stores_config = {
+        "repo-s3": dict(
+            S3_CONN_INFO, protocol="s3", location="adapted/repo", stage=tempfile.mkdtemp()
+        )
+    }
+    dj.config["stores"] = stores_config
+    schema_name = PREFIX + "_test_custom_datatype"
+    layout_to_filepath = schema_adapted.LayoutToFilepath()
+    context = {
+        **schema_adapted.LOCALS_ADAPTED,
+        'graph': adapted_graph_instance,
+        'layout_to_filepath': layout_to_filepath,
+    }
+    schema = dj.schema(schema_name, context=context, connection=connection_test)
+
+
+    # instantiate for use as a datajoint type
+    # TODO: remove?
+    graph = adapted_graph_instance
+
+    schema(schema_adapted.Connectivity)
+    # errors._switch_filepath_types(True)
+    schema(schema_adapted.Layout)
+    yield schema
+    # errors._switch_filepath_types(False)
+    schema.drop()
 
 def test_adapted_type(schema_ad):
     assert os.environ[dj.errors.ADAPTED_TYPE_SWITCH] == 'TRUE'
@@ -26,6 +59,7 @@ def test_adapted_type(schema_ad):
 
 
 # adapted_graph_instance?
+# @pytest.mark.skip(reason='misconfigured s3 fixtures')
 def test_adapted_filepath_type(schema_ad):
     # https://github.com/datajoint/datajoint-python/issues/684
 
