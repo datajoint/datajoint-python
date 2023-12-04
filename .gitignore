@@ -31,3 +31,5 @@ docs/site
 !.vscode/settings.json
 !.vscode/launch.json
 !.devcontainer/devcontainer.json
+!.devcontainer/docker-compose.yml
+
