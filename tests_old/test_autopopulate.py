@@ -62,7 +62,7 @@ class TestPopulate:
         for idx, key in enumerate(keys):
             if idx == 0:
                 schema.schema.jobs.ignore(self.experiment.table_name, key)
-            elif:
+            elif idx == 1:
                 schema.schema.jobs.error(self.experiment.table_name, key, "")
             else:
                 schema.schema.jobs.reserve(self.experiment.table_name, key)
