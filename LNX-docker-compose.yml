@@ -7,7 +7,7 @@ x-net:
 services:
   db:
     <<: *net
-    image: datajoint/mysql:${MYSQL_VER:-5.7}
+    image: datajoint/mysql:${MYSQL_VER:-8.0}
     environment:
       - MYSQL_ROOT_PASSWORD=${DJ_PASS:-simple}
     # ports:
