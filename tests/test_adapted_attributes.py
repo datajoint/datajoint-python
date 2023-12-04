@@ -122,9 +122,8 @@ def local_schema(schema_ad, schema_name_custom_datatype):
     local_schema.drop()
 
 
-# @pytest.mark.skip(reason='temp')
-def test_adapted_spawned(local_schema, enable_adapted_types):
-    c = Connectivity()  # a spawned class
+def test_adapted_spawned(local_schema, enable_adapted_types, c):
+    # c = Connectivity()  # a spawned class
     graphs = [
         nx.lollipop_graph(4, 2),
         nx.star_graph(5),
@@ -140,17 +139,20 @@ def test_adapted_spawned(local_schema, enable_adapted_types):
     c.delete()
 
 
-# test with virtual module
-# TODO: separate fixture
-# virtual_module = dj.VirtualModule(
-#     "virtual_module", adapted.schema_name, add_objects={"graph": graph}
-# )
+@pytest.fixture
+def schema_virtual_module(schema_ad, schema_name_custom_datatype, adapted_graph_instance):
+    """Fixture for testing virtual modules"""
+    # virtual_module = dj.VirtualModule(
+    #     "virtual_module", adapted.schema_name, add_objects={"graph": graph}
+    # )
+    schema_virtual_module = dj.VirtualModule(
+        "virtual_module", schema_name_custom_datatype, add_objects={"graph": adapted_graph_instance}
+    )
+    return schema_virtual_module
 
 
-@pytest.mark.skip(reason='temp')
-def test_adapted_virtual():
-    dj.errors._switch_adapted_types(True)
-    c = virtual_module.Connectivity()
+def test_adapted_virtual(schema_virtual_module):
+    c = schema_virtual_module.Connectivity()
     graphs = [
         nx.lollipop_graph(4, 2),
         nx.star_graph(5),
@@ -168,4 +170,3 @@ def test_adapted_virtual():
             assert len(g1.edges) == len(g2.edges)
             assert 0 == len(nx.symmetric_difference(g1, g2).edges)
     c.delete()
-    dj.errors._switch_adapted_types(False)
