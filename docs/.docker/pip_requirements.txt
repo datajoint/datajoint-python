@@ -1,4 +1,4 @@
-mkdocs-material
+mkdocs-material==9.1.17
 mkdocs-redirects
 mkdocstrings
 mkdocstrings-python
