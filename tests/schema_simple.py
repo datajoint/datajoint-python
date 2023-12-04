@@ -262,4 +262,4 @@ class OutfitLaunch(dj.Lookup):
 
 
 LOCALS_SIMPLE = {k: v for k, v in locals().items() if inspect.isclass(v)}
-__all__ = list(LOCALS_SIMPLE.keys())
+__all__ = list(LOCALS_SIMPLE)
