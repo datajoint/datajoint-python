@@ -9,7 +9,7 @@ services:
     <<: *net
     image: datajoint/mysql:${MYSQL_VER:-5.7}
     environment:
-      - MYSQL_ROOT_PASSWORD=${DJ_PASS}
+      - MYSQL_ROOT_PASSWORD=${DJ_PASS:-simple}
     # ports:
     #   - "3306:3306"
     # volumes:
@@ -69,7 +69,7 @@ services:
     environment:
       - DJ_HOST=fakeservices.datajoint.io
       - DJ_USER=root
-      - DJ_PASS
+      - DJ_PASS=simple
       - DJ_TEST_HOST=fakeservices.datajoint.io
       - DJ_TEST_USER=datajoint
       - DJ_TEST_PASSWORD=datajoint
