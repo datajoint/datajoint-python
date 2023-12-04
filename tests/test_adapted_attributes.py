@@ -10,42 +10,47 @@ from .schema_adapted import Connectivity, Layout
 from . import PREFIX, S3_CONN_INFO
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture
 def adapted_graph_instance():
     yield schema_adapted.GraphAdapter()
 
 
-@pytest.fixture(scope='module')
-def enable_adapted_types(monkeymodule):
-    monkeymodule.setenv(ADAPTED_TYPE_SWITCH, 'TRUE')
+@pytest.fixture
+def enable_adapted_types(monkeypatch):
+    monkeypatch.setenv(ADAPTED_TYPE_SWITCH, 'TRUE')
     yield
-    monkeymodule.delenv(ADAPTED_TYPE_SWITCH, raising=True)
+    monkeypatch.delenv(ADAPTED_TYPE_SWITCH, raising=True)
 
 
-@pytest.fixture(scope='module')
-def enable_filepath_feature(monkeymodule):
-    monkeymodule.setenv(FILEPATH_FEATURE_SWITCH, 'TRUE')
+@pytest.fixture
+def enable_filepath_feature(monkeypatch):
+    monkeypatch.setenv(FILEPATH_FEATURE_SWITCH, 'TRUE')
     yield
-    monkeymodule.delenv(FILEPATH_FEATURE_SWITCH, raising=True)
+    monkeypatch.delenv(FILEPATH_FEATURE_SWITCH, raising=True)
 
 
+@pytest.fixture
+def schema_name_custom_datatype():
+    schema_name = PREFIX + "_test_custom_datatype"
+    return schema_name
 
-@pytest.fixture(scope='module')
-def schema_ad(connection_test, adapted_graph_instance, enable_adapted_types, enable_filepath_feature):
+@pytest.fixture
+def schema_ad(
+    schema_name_custom_datatype, connection_test, adapted_graph_instance, enable_adapted_types, enable_filepath_feature
+):
     stores_config = {
         "repo-s3": dict(
             S3_CONN_INFO, protocol="s3", location="adapted/repo", stage=tempfile.mkdtemp()
         )
     }
     dj.config["stores"] = stores_config
-    schema_name = PREFIX + "_test_custom_datatype"
     layout_to_filepath = schema_adapted.LayoutToFilepath()
     context = {
         **schema_adapted.LOCALS_ADAPTED,
         'graph': adapted_graph_instance,
         'layout_to_filepath': layout_to_filepath,
     }
-    schema = dj.schema(schema_name, context=context, connection=connection_test)
+    schema = dj.schema(schema_name_custom_datatype, context=context, connection=connection_test)
 
 
     # instantiate for use as a datajoint type
@@ -59,7 +64,7 @@ def schema_ad(connection_test, adapted_graph_instance, enable_adapted_types, ena
     # errors._switch_filepath_types(False)
     schema.drop()
 
-@pytest.fixture(scope='module')
+@pytest.fixture
 def c(schema_ad):
     yield Connectivity()
 
@@ -81,7 +86,7 @@ def test_adapted_type(schema_ad, c):
 
 
 # adapted_graph_instance?
-# @pytest.mark.skip(reason='misconfigured s3 fixtures')
+@pytest.mark.skip(reason='misconfigured s3 fixtures')
 def test_adapted_filepath_type(schema_ad):
     # https://github.com/datajoint/datajoint-python/issues/684
 
@@ -108,14 +113,17 @@ def test_adapted_filepath_type(schema_ad):
     # dj.errors._switch_adapted_types(False)
 
 
-# test spawned classes
-# TODO: separate fixture
-# local_schema = dj.Schema(adapted.schema_name)
-# local_schema.spawn_missing_classes()
+@pytest.fixture
+def local_schema(schema_ad, schema_name_custom_datatype):
+    """Fixture for testing spawned classes"""
+    local_schema = dj.Schema(schema_name_custom_datatype)
+    local_schema.spawn_missing_classes()
+    yield local_schema
+    local_schema.drop()
 
-@pytest.mark.skip(reason='temp')
-def test_adapted_spawned():
-    dj.errors._switch_adapted_types(True)
+
+# @pytest.mark.skip(reason='temp')
+def test_adapted_spawned(local_schema, enable_adapted_types):
     c = Connectivity()  # a spawned class
     graphs = [
         nx.lollipop_graph(4, 2),
@@ -130,7 +138,6 @@ def test_adapted_spawned():
         assert len(g1.edges) == len(g2.edges)
         assert 0 == len(nx.symmetric_difference(g1, g2).edges)
     c.delete()
-    dj.errors._switch_adapted_types(False)
 
 
 # test with virtual module
