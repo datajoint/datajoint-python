@@ -34,9 +34,11 @@ def schema_name_custom_datatype():
     schema_name = PREFIX + "_test_custom_datatype"
     return schema_name
 
+
 @pytest.fixture
 def schema_ad(
-    schema_name_custom_datatype, connection_test, adapted_graph_instance, enable_adapted_types, enable_filepath_feature
+    schema_name_custom_datatype, connection_test, adapted_graph_instance,
+    enable_adapted_types, enable_filepath_feature
 ):
     stores_config = {
         "repo-s3": dict(
@@ -51,25 +53,33 @@ def schema_ad(
         'layout_to_filepath': layout_to_filepath,
     }
     schema = dj.schema(schema_name_custom_datatype, context=context, connection=connection_test)
-
-
-    # instantiate for use as a datajoint type
-    # TODO: remove?
     graph = adapted_graph_instance
-
     schema(schema_adapted.Connectivity)
-    # errors._switch_filepath_types(True)
     schema(schema_adapted.Layout)
     yield schema
-    # errors._switch_filepath_types(False)
     schema.drop()
 
-@pytest.fixture
-def c(schema_ad):
-    yield Connectivity()
 
-def test_adapted_type(schema_ad, c):
-    assert os.environ[dj.errors.ADAPTED_TYPE_SWITCH] == 'TRUE'
+@pytest.fixture
+def local_schema(schema_ad, schema_name_custom_datatype):
+    """Fixture for testing spawned classes"""
+    local_schema = dj.Schema(schema_name_custom_datatype)
+    local_schema.spawn_missing_classes()
+    yield local_schema
+    local_schema.drop()
+
+
+@pytest.fixture
+def schema_virtual_module(schema_ad, schema_name_custom_datatype, adapted_graph_instance):
+    """Fixture for testing virtual modules"""
+    schema_virtual_module = dj.VirtualModule(
+        "virtual_module", schema_name_custom_datatype, add_objects={"graph": adapted_graph_instance}
+    )
+    return schema_virtual_module
+
+
+def test_adapted_type(schema_ad):
+    c = Connectivity()
     graphs = [
         nx.lollipop_graph(4, 2),
         nx.star_graph(5),
@@ -85,14 +95,9 @@ def test_adapted_type(schema_ad, c):
     c.delete()
 
 
-# adapted_graph_instance?
 @pytest.mark.skip(reason='misconfigured s3 fixtures')
 def test_adapted_filepath_type(schema_ad):
-    # https://github.com/datajoint/datajoint-python/issues/684
-
-    # dj.errors._switch_adapted_types(True)
-    # dj.errors._switch_filepath_types(True)
-
+    """https://github.com/datajoint/datajoint-python/issues/684"""
     c = Connectivity()
     c.delete()
     c.insert1((0, nx.lollipop_graph(4, 2)))
@@ -105,25 +110,12 @@ def test_adapted_filepath_type(schema_ad):
     result = t.fetch1("layout")
     # TODO: may fail, used to be assert_dict_equal
     assert result == layout
-
     t.delete()
     c.delete()
 
-    # dj.errors._switch_filepath_types(False)
-    # dj.errors._switch_adapted_types(False)
 
-
-@pytest.fixture
-def local_schema(schema_ad, schema_name_custom_datatype):
-    """Fixture for testing spawned classes"""
-    local_schema = dj.Schema(schema_name_custom_datatype)
-    local_schema.spawn_missing_classes()
-    yield local_schema
-    local_schema.drop()
-
-
-def test_adapted_spawned(local_schema, enable_adapted_types, c):
-    # c = Connectivity()  # a spawned class
+def test_adapted_spawned(local_schema, enable_adapted_types):
+    c = Connectivity()  # a spawned class
     graphs = [
         nx.lollipop_graph(4, 2),
         nx.star_graph(5),
@@ -138,17 +130,6 @@ def test_adapted_spawned(local_schema, enable_adapted_types, c):
         assert 0 == len(nx.symmetric_difference(g1, g2).edges)
     c.delete()
 
-
-@pytest.fixture
-def schema_virtual_module(schema_ad, schema_name_custom_datatype, adapted_graph_instance):
-    """Fixture for testing virtual modules"""
-    # virtual_module = dj.VirtualModule(
-    #     "virtual_module", adapted.schema_name, add_objects={"graph": graph}
-    # )
-    schema_virtual_module = dj.VirtualModule(
-        "virtual_module", schema_name_custom_datatype, add_objects={"graph": adapted_graph_instance}
-    )
-    return schema_virtual_module
 
 
 def test_adapted_virtual(schema_virtual_module):
