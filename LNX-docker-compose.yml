@@ -10,6 +10,7 @@ services:
     image: datajoint/mysql:${MYSQL_VER:-8.0}
     environment:
       - MYSQL_ROOT_PASSWORD=${DJ_PASS:-simple}
+    command: mysqld --default-authentication-plugin=mysql_native_password
     # ports:
     #   - "3306:3306"
     # volumes:
