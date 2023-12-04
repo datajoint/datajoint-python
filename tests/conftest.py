@@ -11,10 +11,14 @@ import json
 from pathlib import Path
 import tempfile
 from datajoint import errors
+from datajoint.errors import (
+    ADAPTED_TYPE_SWITCH, FILEPATH_FEATURE_SWITCH
+)
 from . import (
     PREFIX, CONN_INFO, S3_CONN_INFO,
     schema, schema_simple, schema_advanced, schema_adapted
 )
+
 
 
 
@@ -172,18 +176,19 @@ def adapted_graph_instance():
 
 @pytest.fixture
 def enable_adapted_types(monkeypatch):
-    monkeypatch.setenv('ADAPTED_TYPE_SWITCH', 'TRUE')
+    monkeypatch.setenv(ADAPTED_TYPE_SWITCH, 'TRUE')
     yield
-    monkeypatch.delenv('ADAPTED_TYPE_SWITCH', raising=True)
+    monkeypatch.delenv(ADAPTED_TYPE_SWITCH, raising=True)
 
 @pytest.fixture
 def enable_filepath_feature(monkeypatch):
-    monkeypatch.setenv('FILEPATH_FEATURE_SWITCH', 'TRUE')
+    monkeypatch.setenv(FILEPATH_FEATURE_SWITCH, 'TRUE')
     yield
-    monkeypatch.delenv('FILEPATH_FEATURE_SWITCH', raising=True)
+    monkeypatch.delenv(FILEPATH_FEATURE_SWITCH, raising=True)
 
 @pytest.fixture
 def schema_ad(monkeypatch, connection_test, adapted_graph_instance, enable_adapted_types, enable_filepath_feature):
+    assert os.environ.get(ADAPTED_TYPE_SWITCH) == 'TRUE', 'must have adapted types enabled in environment'
     stores_config = {
         "repo-s3": dict(
             S3_CONN_INFO, protocol="s3", location="adapted/repo", stage=tempfile.mkdtemp()
@@ -209,6 +214,7 @@ def schema_ad(monkeypatch, connection_test, adapted_graph_instance, enable_adapt
     schema(schema_adapted.Layout)
     yield schema
     # errors._switch_filepath_types(False)
+    schema.drop()
 
 @pytest.fixture
 def httpClient():

@@ -8,7 +8,7 @@ from .schema_adapted import Connectivity, Layout
 
 
 def test_adapted_type(schema_ad):
-    assert os.environ['ADAPTED_TYPE_SWITCH'] == 'TRUE'
+    assert os.environ[dj.errors.ADAPTED_TYPE_SWITCH] == 'TRUE'
     c = Connectivity()
     graphs = [
         nx.lollipop_graph(4, 2),
