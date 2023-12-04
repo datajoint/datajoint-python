@@ -24,7 +24,9 @@
 	"shutdownAction": "stopCompose",
 	// Uncomment the next line to run commands after the container is created.
 	"postCreateCommand": "python3 -m pip install -e .",
-	"features": {},
+	"features": {
+		"ghcr.io/cirolosapio/devcontainers-features/alpine-git:0": {},
+	},
 	// Configure tool-specific properties.
 	// "customizations": {},
 	// Uncomment to connect as an existing user other than the container default. More info: https://aka.ms/dev-containers-non-root.
