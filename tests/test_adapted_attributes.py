@@ -2,7 +2,7 @@ import os
 import pytest
 import tempfile
 import datajoint as dj
-from datajoint.errors import ADAPTED_TYPE_SWITCH
+from datajoint.errors import ADAPTED_TYPE_SWITCH, FILEPATH_FEATURE_SWITCH
 import networkx as nx
 from itertools import zip_longest
 from . import schema_adapted
@@ -10,9 +10,28 @@ from .schema_adapted import Connectivity, Layout
 from . import PREFIX, S3_CONN_INFO
 
 
-@pytest.fixture
-def schema_ad(monkeypatch, connection_test, adapted_graph_instance, enable_adapted_types, enable_filepath_feature):
-    assert os.environ.get(ADAPTED_TYPE_SWITCH) == 'TRUE', 'must have adapted types enabled in environment'
+@pytest.fixture(scope='module')
+def adapted_graph_instance():
+    yield schema_adapted.GraphAdapter()
+
+
+@pytest.fixture(scope='module')
+def enable_adapted_types(monkeymodule):
+    monkeymodule.setenv(ADAPTED_TYPE_SWITCH, 'TRUE')
+    yield
+    monkeymodule.delenv(ADAPTED_TYPE_SWITCH, raising=True)
+
+
+@pytest.fixture(scope='module')
+def enable_filepath_feature(monkeymodule):
+    monkeymodule.setenv(FILEPATH_FEATURE_SWITCH, 'TRUE')
+    yield
+    monkeymodule.delenv(FILEPATH_FEATURE_SWITCH, raising=True)
+
+
+
+@pytest.fixture(scope='module')
+def schema_ad(connection_test, adapted_graph_instance, enable_adapted_types, enable_filepath_feature):
     stores_config = {
         "repo-s3": dict(
             S3_CONN_INFO, protocol="s3", location="adapted/repo", stage=tempfile.mkdtemp()
@@ -40,9 +59,12 @@ def schema_ad(monkeypatch, connection_test, adapted_graph_instance, enable_adapt
     # errors._switch_filepath_types(False)
     schema.drop()
 
-def test_adapted_type(schema_ad):
+@pytest.fixture(scope='module')
+def c(schema_ad):
+    yield Connectivity()
+
+def test_adapted_type(schema_ad, c):
     assert os.environ[dj.errors.ADAPTED_TYPE_SWITCH] == 'TRUE'
-    c = Connectivity()
     graphs = [
         nx.lollipop_graph(4, 2),
         nx.star_graph(5),

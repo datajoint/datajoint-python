@@ -19,7 +19,15 @@ from . import (
     schema, schema_simple, schema_advanced, schema_adapted
 )
 
+@pytest.fixture(scope="session")
+def monkeysession():
+    with pytest.MonkeyPatch.context() as mp:
+        yield mp
 
+@pytest.fixture(scope="module")
+def monkeymodule():
+    with pytest.MonkeyPatch.context() as mp:
+        yield mp
 
 
 @pytest.fixture(scope="session")
@@ -168,23 +176,6 @@ def schema_adv(connection_test):
     schema(schema_advanced.GlobalSynapse)
     yield schema
     schema.drop()
-
-
-@pytest.fixture
-def adapted_graph_instance():
-    yield schema_adapted.GraphAdapter()
-
-@pytest.fixture
-def enable_adapted_types(monkeypatch):
-    monkeypatch.setenv(ADAPTED_TYPE_SWITCH, 'TRUE')
-    yield
-    monkeypatch.delenv(ADAPTED_TYPE_SWITCH, raising=True)
-
-@pytest.fixture
-def enable_filepath_feature(monkeypatch):
-    monkeypatch.setenv(FILEPATH_FEATURE_SWITCH, 'TRUE')
-    yield
-    monkeypatch.delenv(FILEPATH_FEATURE_SWITCH, raising=True)
 
 
 @pytest.fixture
