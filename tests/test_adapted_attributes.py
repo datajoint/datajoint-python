@@ -9,6 +9,8 @@ from . import schema_adapted
 from .schema_adapted import Connectivity, Layout
 from . import PREFIX, S3_CONN_INFO
 
+SCHEMA_NAME = PREFIX + "_test_custom_datatype"
+
 
 @pytest.fixture
 def adapted_graph_instance():
@@ -30,14 +32,7 @@ def enable_filepath_feature(monkeypatch):
 
 
 @pytest.fixture
-def schema_name_custom_datatype():
-    schema_name = PREFIX + "_test_custom_datatype"
-    return schema_name
-
-
-@pytest.fixture
 def schema_ad(
-    schema_name_custom_datatype,
     connection_test,
     adapted_graph_instance,
     enable_adapted_types,
@@ -58,9 +53,7 @@ def schema_ad(
         "graph": adapted_graph_instance,
         "layout_to_filepath": layout_to_filepath,
     }
-    schema = dj.schema(
-        schema_name_custom_datatype, context=context, connection=connection_test
-    )
+    schema = dj.schema(SCHEMA_NAME, context=context, connection=connection_test)
     graph = adapted_graph_instance
     schema(schema_adapted.Connectivity)
     schema(schema_adapted.Layout)
@@ -69,23 +62,19 @@ def schema_ad(
 
 
 @pytest.fixture
-def local_schema(schema_ad, schema_name_custom_datatype):
+def local_schema(schema_ad):
     """Fixture for testing spawned classes"""
-    local_schema = dj.Schema(schema_name_custom_datatype)
+    local_schema = dj.Schema(SCHEMA_NAME)
     local_schema.spawn_missing_classes()
     yield local_schema
     local_schema.drop()
 
 
 @pytest.fixture
-def schema_virtual_module(
-    schema_ad, schema_name_custom_datatype, adapted_graph_instance
-):
+def schema_virtual_module(schema_ad, adapted_graph_instance):
     """Fixture for testing virtual modules"""
     schema_virtual_module = dj.VirtualModule(
-        "virtual_module",
-        schema_name_custom_datatype,
-        add_objects={"graph": adapted_graph_instance},
+        "virtual_module", SCHEMA_NAME, add_objects={"graph": adapted_graph_instance}
     )
     return schema_virtual_module
 
