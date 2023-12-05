@@ -27,12 +27,10 @@ from . import (
 )
 
 
-
 @pytest.fixture(scope="session")
 def monkeysession():
     with pytest.MonkeyPatch.context() as mp:
         yield mp
-
 
 
 @pytest.fixture(scope="module")
