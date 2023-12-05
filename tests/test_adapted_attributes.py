@@ -95,8 +95,7 @@ def test_adapted_type(schema_ad):
     c.delete()
 
 
-@pytest.mark.skip(reason='misconfigured s3 fixtures')
-def test_adapted_filepath_type(schema_ad):
+def test_adapted_filepath_type(schema_ad, minio_client):
     """https://github.com/datajoint/datajoint-python/issues/684"""
     c = Connectivity()
     c.delete()
