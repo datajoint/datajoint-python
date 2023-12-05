@@ -68,7 +68,7 @@ def connection_root(connection_root_bare):
     conn_root = connection_root_bare
     # Create MySQL users
     if version.parse(
-        connection_root.query("select @@version;").fetchone()[0]
+        conn_root.query("select @@version;").fetchone()[0]
     ) >= version.parse("8.0.0"):
         # create user if necessary on mysql8
         conn_root.query(
