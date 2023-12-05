@@ -59,8 +59,7 @@ class TestPopulate:
         assert self.ephys
         assert self.channel
 
-    @pytest.mark.skip(reason="temp")
-    def test_populate_with_success_count(self):
+    def test_populate_with_success_count(self, schema_any):
         # test simple populate
         assert self.subject, "root tables are empty"
         assert not self.experiment, "table already filled?"
@@ -77,8 +76,7 @@ class TestPopulate:
         success_count = ret["success_count"]
         assert len(self.trial.key_source & self.trial) == success_count
 
-    @pytest.mark.skip(reason="temp")
-    def test_populate_exclude_error_and_ignore_jobs(self):
+    def test_populate_exclude_error_and_ignore_jobs(self, schema_any):
         # test simple populate
         assert self.subject, "root tables are empty"
         assert not self.experiment, "table already filled?"
@@ -86,26 +84,21 @@ class TestPopulate:
         keys = self.experiment.key_source.fetch("KEY", limit=2)
         for idx, key in enumerate(keys):
             if idx == 0:
-                schema.schema.jobs.ignore(self.experiment.table_name, key)
+                schema_any.jobs.ignore(self.experiment.table_name, key)
             else:
-                schema.schema.jobs.error(self.experiment.table_name, key, "")
+                schema_any.jobs.error(self.experiment.table_name, key, "")
 
         self.experiment.populate(reserve_jobs=True)
-        assert (
-            len(self.experiment.key_source & self.experiment)
-            == len(self.experiment.key_source) - 2,
-        )
+        assert len(self.experiment.key_source & self.experiment) == len(self.experiment.key_source) - 2
 
-    @pytest.mark.skip(reason="temp")
-    def test_allow_direct_insert(self):
+    def test_allow_direct_insert(self, schema_any):
         assert self.subject, "root tables are empty"
         key = self.subject.fetch("KEY", limit=1)[0]
         key["experiment_id"] = 1000
         key["experiment_date"] = "2018-10-30"
         self.experiment.insert1(key, allow_direct_insert=True)
 
-    @pytest.mark.skip(reason="temp")
-    def test_multi_processing(self):
+    def test_multi_processing(self, schema_any):
         assert self.subject, "root tables are empty"
         assert not self.experiment, "table already filled?"
         self.experiment.populate(processes=2)
@@ -114,8 +107,7 @@ class TestPopulate:
             == len(self.subject) * self.experiment.fake_experiments_per_subject
         )
 
-    @pytest.mark.skip(reason="temp")
-    def test_max_multi_processing(self):
+    def test_max_multi_processing(self, schema_any):
         assert self.subject, "root tables are empty"
         assert not self.experiment, "table already filled?"
         self.experiment.populate(processes=None)
@@ -124,8 +116,7 @@ class TestPopulate:
             == len(self.subject) * self.experiment.fake_experiments_per_subject
         )
 
-    @pytest.mark.skip(reason="temp")
-    def test_allow_insert(self):
+    def test_allow_insert(self, schema_any):
         assert self.subject, "root tables are empty"
         key = self.subject.fetch("KEY")[0]
         key["experiment_id"] = 1001
@@ -133,7 +124,6 @@ class TestPopulate:
         with pytest.raises(DataJointError):
             self.experiment.insert1(key)
 
-    @pytest.mark.skip(reason="temp")
     def test_load_dependencies(self):
         schema = dj.Schema(f"{PREFIX}_load_dependencies_populate")
 
