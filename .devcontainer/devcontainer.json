@@ -17,18 +17,32 @@
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
+	"forwardPorts": [
+		80,
+		443,
+		3306,
+		8080,
+		9000
+	],
 	// Uncomment the next line if you want start specific services in your Docker Compose config.
 	// "runServices": [],
 	// Uncomment the next line if you want to keep your containers running after VS Code shuts down.
 	"shutdownAction": "stopCompose",
-	// Uncomment the next line to run commands after the container is created.
-	"postCreateCommand": "python3 -m pip install -e .",
+	"onCreateCommand": "python3 -m pip install -e .",
 	"features": {
-		"ghcr.io/cirolosapio/devcontainers-features/alpine-git:0": {},
+		"ghcr.io/devcontainers/features/git:1": {},
 	},
 	// Configure tool-specific properties.
-	// "customizations": {},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-python.python"
+			]
+		}
+	},
+	"remoteEnv": {
+		"LOCAL_WORKSPACE_FOLDER": "${localWorkspaceFolder}"
+	}
 	// Uncomment to connect as an existing user other than the container default. More info: https://aka.ms/dev-containers-non-root.
 	// "remoteUser": "devcontainer"
 }

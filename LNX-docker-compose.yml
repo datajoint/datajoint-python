@@ -7,9 +7,10 @@ x-net:
 services:
   db:
     <<: *net
-    image: datajoint/mysql:${MYSQL_VER:-5.7}
+    image: datajoint/mysql:${MYSQL_VER:-8.0}
     environment:
-      - MYSQL_ROOT_PASSWORD=${DJ_PASS}
+      - MYSQL_ROOT_PASSWORD=${DJ_PASS:-password}
+    command: mysqld --default-authentication-plugin=mysql_native_password
     # ports:
     #   - "3306:3306"
     # volumes:
@@ -44,7 +45,7 @@ services:
       interval: 15s
   fakeservices.datajoint.io:
     <<: *net
-    image: datajoint/nginx:v0.2.6
+    image: datajoint/nginx:v0.2.7
     environment:
       - ADD_db_TYPE=DATABASE
       - ADD_db_ENDPOINT=db:3306
@@ -69,7 +70,7 @@ services:
     environment:
       - DJ_HOST=fakeservices.datajoint.io
       - DJ_USER=root
-      - DJ_PASS
+      - DJ_PASS=password
       - DJ_TEST_HOST=fakeservices.datajoint.io
       - DJ_TEST_USER=datajoint
       - DJ_TEST_PASSWORD=datajoint
