@@ -14,6 +14,7 @@ from pathlib import Path
 import tempfile
 from datajoint import errors
 from datajoint.errors import ADAPTED_TYPE_SWITCH, FILEPATH_FEATURE_SWITCH
+from datajoint.errors import ADAPTED_TYPE_SWITCH, FILEPATH_FEATURE_SWITCH
 from . import (
     PREFIX,
     CONN_INFO,
@@ -26,10 +27,12 @@ from . import (
 )
 
 
+
 @pytest.fixture(scope="session")
 def monkeysession():
     with pytest.MonkeyPatch.context() as mp:
         yield mp
+
 
 
 @pytest.fixture(scope="module")
