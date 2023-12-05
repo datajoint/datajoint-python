@@ -10,47 +10,6 @@ from . import S3_CONN_INFO
 from minio import Minio
 
 
-@pytest.fixture(scope="session")
-def stores_config():
-    stores_config = {
-        "raw": dict(protocol="file", location=tempfile.mkdtemp()),
-        "repo": dict(
-            stage=tempfile.mkdtemp(), protocol="file", location=tempfile.mkdtemp()
-        ),
-        "repo-s3": dict(
-            S3_CONN_INFO, protocol="s3", location="dj/repo", stage=tempfile.mkdtemp()
-        ),
-        "local": dict(protocol="file", location=tempfile.mkdtemp(), subfolding=(1, 1)),
-        "share": dict(
-            S3_CONN_INFO, protocol="s3", location="dj/store/repo", subfolding=(2, 4)
-        ),
-    }
-    return stores_config
-
-
-@pytest.fixture
-def schema_ext(connection_test, stores_config, enable_filepath_feature):
-    schema = dj.Schema(
-        PREFIX + "_extern", context=LOCALS_EXTERNAL, connection=connection_test
-    )
-    dj.config["stores"] = stores_config
-    dj.config["cache"] = tempfile.mkdtemp()
-
-    schema(Simple)
-    schema(SimpleRemote)
-    schema(Seed)
-    schema(Dimension)
-    schema(Image)
-    schema(Attach)
-
-    # dj.errors._switch_filepath_types(True)
-    schema(Filepath)
-    schema(FilepathS3)
-    # dj.errors._switch_filepath_types(False)
-    yield schema
-    schema.drop()
-
-
 class TestS3:
     def test_connection(self, http_client, minio_client):
         assert minio_client.bucket_exists(S3_CONN_INFO["bucket"])
