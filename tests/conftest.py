@@ -302,11 +302,8 @@ def schema_ext(connection_test, stores_config, enable_filepath_feature):
     schema(schema_external.Dimension)
     schema(schema_external.Image)
     schema(schema_external.Attach)
-
-    # dj.errors._switch_filepath_types(True)
     schema(schema_external.Filepath)
     schema(schema_external.FilepathS3)
-    # dj.errors._switch_filepath_types(False)
     yield schema
     schema.drop()
 

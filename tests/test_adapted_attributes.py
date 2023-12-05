@@ -17,12 +17,6 @@ def adapted_graph_instance():
 
 
 @pytest.fixture
-def schema_name_custom_datatype():
-    schema_name = PREFIX + "_test_custom_datatype"
-    return schema_name
-
-
-@pytest.fixture
 def schema_ad(
     connection_test,
     adapted_graph_instance,
