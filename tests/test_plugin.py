@@ -1,3 +1,4 @@
+import pytest
 import datajoint.errors as djerr
 import datajoint.plugin as p
 import pkg_resources
@@ -22,7 +23,8 @@ def test_normal_djerror():
         assert e.__cause__ is None
 
 
-def test_verified_djerror(category="connection"):
+@pytest.mark.parametrize("category", ("connection",))
+def test_verified_djerror(category):
     try:
         curr_plugins = getattr(p, "{}_plugins".format(category))
         setattr(
@@ -40,7 +42,8 @@ def test_verified_djerror_type():
     test_verified_djerror(category="type")
 
 
-def test_unverified_djerror(category="connection"):
+@pytest.mark.parametrize("category", ("connection",))
+def test_unverified_djerror(category):
     try:
         curr_plugins = getattr(p, "{}_plugins".format(category))
         setattr(

@@ -1,10 +1,38 @@
 import datajoint as dj
 from packaging import version
 import os
+import minio
+import urllib3
+import certifi
+import shutil
 import pytest
-from . import PREFIX, schema, schema_simple, schema_advanced
+import networkx as nx
+import json
+from pathlib import Path
+import tempfile
+from datajoint import errors
+from datajoint.errors import ADAPTED_TYPE_SWITCH, FILEPATH_FEATURE_SWITCH
+from . import (
+    PREFIX,
+    CONN_INFO,
+    S3_CONN_INFO,
+    schema,
+    schema_simple,
+    schema_advanced,
+    schema_adapted,
+)
 
-namespace = locals()
+
+@pytest.fixture(scope="session")
+def monkeysession():
+    with pytest.MonkeyPatch.context() as mp:
+        yield mp
+
+
+@pytest.fixture(scope="module")
+def monkeymodule():
+    with pytest.MonkeyPatch.context() as mp:
+        yield mp
 
 
 @pytest.fixture(scope="session")
@@ -64,11 +92,12 @@ def connection_test(connection_root):
     connection.close()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def schema_any(connection_test):
     schema_any = dj.Schema(
-        PREFIX + "_test1", schema.__dict__, connection=connection_test
+        PREFIX + "_test1", schema.LOCALS_ANY, connection=connection_test
     )
+    assert schema.LOCALS_ANY, "LOCALS_ANY is empty"
     schema_any(schema.TTest)
     schema_any(schema.TTest2)
     schema_any(schema.TTest3)
@@ -109,10 +138,10 @@ def schema_any(connection_test):
     schema_any.drop()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def schema_simp(connection_test):
     schema = dj.Schema(
-        PREFIX + "_relational", schema_simple.__dict__, connection=connection_test
+        PREFIX + "_relational", schema_simple.LOCALS_SIMPLE, connection=connection_test
     )
     schema(schema_simple.IJ)
     schema(schema_simple.JI)
@@ -136,10 +165,12 @@ def schema_simp(connection_test):
     schema.drop()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def schema_adv(connection_test):
     schema = dj.Schema(
-        PREFIX + "_advanced", schema_advanced.__dict__, connection=connection_test
+        PREFIX + "_advanced",
+        schema_advanced.LOCALS_ADVANCED,
+        connection=connection_test,
     )
     schema(schema_advanced.Person)
     schema(schema_advanced.Parent)
@@ -152,3 +183,30 @@ def schema_adv(connection_test):
     schema(schema_advanced.GlobalSynapse)
     yield schema
     schema.drop()
+
+
+@pytest.fixture
+def httpClient():
+    # Initialize httpClient with relevant timeout.
+    httpClient = urllib3.PoolManager(
+        timeout=30,
+        cert_reqs="CERT_REQUIRED",
+        ca_certs=certifi.where(),
+        retries=urllib3.Retry(
+            total=3, backoff_factor=0.2, status_forcelist=[500, 502, 503, 504]
+        ),
+    )
+    yield httpClient
+
+
+@pytest.fixture
+def minioClient():
+    # Initialize minioClient with an endpoint and access/secret keys.
+    minioClient = minio.Minio(
+        S3_CONN_INFO["endpoint"],
+        access_key=S3_CONN_INFO["access_key"],
+        secret_key=S3_CONN_INFO["secret_key"],
+        secure=True,
+        http_client=httpClient,
+    )
+    yield minioClient

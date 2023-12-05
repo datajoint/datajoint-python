@@ -6,14 +6,6 @@ from datajoint.utils import from_camel_case, to_camel_case
 import pytest
 
 
-def setup():
-    pass
-
-
-def teardown():
-    pass
-
-
 def test_from_camel_case():
     assert from_camel_case("AllGroups") == "all_groups"
     with pytest.raises(DataJointError):
