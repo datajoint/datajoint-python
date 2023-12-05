@@ -4,24 +4,30 @@ from datajoint import DataJointError
 import datajoint as dj
 
 
-@pytest.fixture
-def schema_any_with_teardown(schema_any):
-    yield schema_any
-    # delete automatic tables just in case
-    schema_any.Ephys.Channel().delete_quick()
-    schema_any.Ephys().delete_quick()
-    schema_any.Trial().Condition.delete_quick()
-    schema_any.Trial().delete_quick()
-    schema_any.Experiment().delete_quick()
-
-
 class TestPopulate:
     """
     Test base relations: insert, delete
     """
 
-    def test_populate(self, schema_any_with_teardown):
-        breakpoint()
+    @classmethod
+    def setup_class(cls):
+        cls.user = schema.User()
+        cls.subject = schema.Subject()
+        cls.experiment = schema.Experiment()
+        cls.trial = schema.Trial()
+        cls.ephys = schema.Ephys()
+        cls.channel = schema.Ephys.Channel()
+
+    @classmethod
+    def teardown_class(cls):
+        # Delete automatic tables just in case
+        cls.channel.delete_quick()
+        cls.ephys.delete_quick()
+        cls.trial.Condition.delete_quick()
+        cls.trial.delete_quick()
+        cls.experiment.delete_quick()
+
+    def test_populate(self, schema_any):
         # test simple populate
         assert self.subject, "root tables are empty"
         assert not self.experiment, "table already filled?"
