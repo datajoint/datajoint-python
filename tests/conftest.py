@@ -23,13 +23,7 @@ from . import (
     schema_simple,
     schema_advanced,
     schema_adapted,
-    PREFIX,
-    CONN_INFO,
-    S3_CONN_INFO,
-    schema,
-    schema_simple,
-    schema_advanced,
-    schema_adapted,
+    schema_external,
 )
 
 
@@ -43,6 +37,20 @@ def monkeysession():
 def monkeymodule():
     with pytest.MonkeyPatch.context() as mp:
         yield mp
+
+
+@pytest.fixture
+def enable_adapted_types(monkeypatch):
+    monkeypatch.setenv(ADAPTED_TYPE_SWITCH, "TRUE")
+    yield
+    monkeypatch.delenv(ADAPTED_TYPE_SWITCH, raising=True)
+
+
+@pytest.fixture
+def enable_filepath_feature(monkeypatch):
+    monkeypatch.setenv(FILEPATH_FEATURE_SWITCH, "TRUE")
+    yield
+    monkeypatch.delenv(FILEPATH_FEATURE_SWITCH, raising=True)
 
 
 @pytest.fixture(scope="session")
@@ -168,6 +176,24 @@ def connection_test(connection_root):
     connection.close()
 
 
+@pytest.fixture(scope="session")
+def stores_config():
+    stores_config = {
+        "raw": dict(protocol="file", location=tempfile.mkdtemp()),
+        "repo": dict(
+            stage=tempfile.mkdtemp(), protocol="file", location=tempfile.mkdtemp()
+        ),
+        "repo-s3": dict(
+            S3_CONN_INFO, protocol="s3", location="dj/repo", stage=tempfile.mkdtemp()
+        ),
+        "local": dict(protocol="file", location=tempfile.mkdtemp(), subfolding=(1, 1)),
+        "share": dict(
+            S3_CONN_INFO, protocol="s3", location="dj/store/repo", subfolding=(2, 4)
+        ),
+    }
+    return stores_config
+
+
 @pytest.fixture
 def schema_any(connection_test):
     schema_any = dj.Schema(
@@ -257,6 +283,31 @@ def schema_adv(connection_test):
     schema(schema_advanced.InputCell)
     schema(schema_advanced.LocalSynapse)
     schema(schema_advanced.GlobalSynapse)
+    yield schema
+    schema.drop()
+
+
+@pytest.fixture
+def schema_ext(connection_test, stores_config, enable_filepath_feature):
+    schema = dj.Schema(
+        PREFIX + "_extern",
+        context=schema_external.LOCALS_EXTERNAL,
+        connection=connection_test,
+    )
+    dj.config["stores"] = stores_config
+    dj.config["cache"] = tempfile.mkdtemp()
+
+    schema(schema_external.Simple)
+    schema(schema_external.SimpleRemote)
+    schema(schema_external.Seed)
+    schema(schema_external.Dimension)
+    schema(schema_external.Image)
+    schema(schema_external.Attach)
+
+    # dj.errors._switch_filepath_types(True)
+    schema(schema_external.Filepath)
+    schema(schema_external.FilepathS3)
+    # dj.errors._switch_filepath_types(False)
     yield schema
     schema.drop()
 
