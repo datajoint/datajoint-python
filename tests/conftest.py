@@ -14,7 +14,15 @@ from pathlib import Path
 import tempfile
 from datajoint import errors
 from datajoint.errors import ADAPTED_TYPE_SWITCH, FILEPATH_FEATURE_SWITCH
+from datajoint.errors import ADAPTED_TYPE_SWITCH, FILEPATH_FEATURE_SWITCH
 from . import (
+    PREFIX,
+    CONN_INFO,
+    S3_CONN_INFO,
+    schema,
+    schema_simple,
+    schema_advanced,
+    schema_adapted,
     PREFIX,
     CONN_INFO,
     S3_CONN_INFO,
