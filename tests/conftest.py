@@ -269,6 +269,7 @@ def http_client():
 
 @pytest.fixture(scope="session")
 def minio_client_bare(http_client):
+    """Initialize MinIO with an endpoint and access/secret keys."""
     client = minio.Minio(
         S3_CONN_INFO["endpoint"],
         access_key=S3_CONN_INFO["access_key"],
@@ -281,8 +282,8 @@ def minio_client_bare(http_client):
 
 @pytest.fixture(scope="session")
 def minio_client(minio_client_bare):
-    """Initialize MinIO with an endpoint and access/secret keys."""
-    # Bootstrap MinIO bucket
+    """Initialize a MinIO client and create buckets for testing session."""
+    # Setup MinIO bucket
     aws_region = "us-east-1"
     try:
         minio_client_bare.make_bucket(S3_CONN_INFO["bucket"], location=aws_region)
