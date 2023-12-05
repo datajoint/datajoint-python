@@ -23,7 +23,11 @@ class TestPopulate:
     def teardown_class(cls):
         """Delete automatic tables just in case"""
         for autopop_table in (
-            cls.channel, cls.ephys, cls.trial.Condition, cls.trial, cls.experiment
+            cls.channel,
+            cls.ephys,
+            cls.trial.Condition,
+            cls.trial,
+            cls.experiment,
         ):
             try:
                 autopop_table.delete_quick()
@@ -89,7 +93,10 @@ class TestPopulate:
                 schema_any.jobs.error(self.experiment.table_name, key, "")
 
         self.experiment.populate(reserve_jobs=True)
-        assert len(self.experiment.key_source & self.experiment) == len(self.experiment.key_source) - 2
+        assert (
+            len(self.experiment.key_source & self.experiment)
+            == len(self.experiment.key_source) - 2
+        )
 
     def test_allow_direct_insert(self, schema_any):
         assert self.subject, "root tables are empty"
