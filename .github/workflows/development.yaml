@@ -77,7 +77,7 @@ jobs:
       - name: Run primary tests
         env:
           PY_VER: ${{matrix.py_ver}}
-          DJ_PASS: simple
+          DJ_PASS: password
           MYSQL_VER: ${{matrix.mysql_ver}}
           DISTRO: alpine
           MINIO_VER: RELEASE.2021-09-03T03-56-13Z
