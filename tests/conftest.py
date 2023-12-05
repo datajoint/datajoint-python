@@ -23,13 +23,6 @@ from . import (
     schema_simple,
     schema_advanced,
     schema_adapted,
-    PREFIX,
-    CONN_INFO,
-    S3_CONN_INFO,
-    schema,
-    schema_simple,
-    schema_advanced,
-    schema_adapted,
 )
 
 
