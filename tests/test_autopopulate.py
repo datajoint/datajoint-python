@@ -2,6 +2,7 @@ import pytest
 from . import schema, PREFIX
 from datajoint import DataJointError
 import datajoint as dj
+import pymysql
 
 
 class TestPopulate:
@@ -20,12 +21,15 @@ class TestPopulate:
 
     @classmethod
     def teardown_class(cls):
-        # Delete automatic tables just in case
-        cls.channel.delete_quick()
-        cls.ephys.delete_quick()
-        cls.trial.Condition.delete_quick()
-        cls.trial.delete_quick()
-        cls.experiment.delete_quick()
+        """Delete automatic tables just in case"""
+        for autopop_table in (
+            cls.channel, cls.ephys, cls.trial.Condition, cls.trial, cls.experiment
+        ):
+            try:
+                autopop_table.delete_quick()
+            except pymysql.err.OperationalError:
+                # Table doesn't exist
+                pass
 
     def test_populate(self, schema_any):
         # test simple populate
