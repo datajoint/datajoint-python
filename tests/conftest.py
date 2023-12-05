@@ -11,18 +11,23 @@ import json
 from pathlib import Path
 import tempfile
 from datajoint import errors
-from datajoint.errors import (
-    ADAPTED_TYPE_SWITCH, FILEPATH_FEATURE_SWITCH
-)
+from datajoint.errors import ADAPTED_TYPE_SWITCH, FILEPATH_FEATURE_SWITCH
 from . import (
-    PREFIX, CONN_INFO, S3_CONN_INFO,
-    schema, schema_simple, schema_advanced, schema_adapted
+    PREFIX,
+    CONN_INFO,
+    S3_CONN_INFO,
+    schema,
+    schema_simple,
+    schema_advanced,
+    schema_adapted,
 )
+
 
 @pytest.fixture(scope="session")
 def monkeysession():
     with pytest.MonkeyPatch.context() as mp:
         yield mp
+
 
 @pytest.fixture(scope="module")
 def monkeymodule():
@@ -163,7 +168,9 @@ def schema_simp(connection_test):
 @pytest.fixture
 def schema_adv(connection_test):
     schema = dj.Schema(
-        PREFIX + "_advanced", schema_advanced.LOCALS_ADVANCED, connection=connection_test
+        PREFIX + "_advanced",
+        schema_advanced.LOCALS_ADVANCED,
+        connection=connection_test,
     )
     schema(schema_advanced.Person)
     schema(schema_advanced.Parent)
@@ -190,6 +197,7 @@ def httpClient():
         ),
     )
     yield httpClient
+
 
 @pytest.fixture
 def minioClient():

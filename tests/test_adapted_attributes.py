@@ -19,34 +19,39 @@ def adapted_graph_instance():
 
 @pytest.fixture
 def enable_adapted_types(monkeypatch):
-    monkeypatch.setenv(ADAPTED_TYPE_SWITCH, 'TRUE')
+    monkeypatch.setenv(ADAPTED_TYPE_SWITCH, "TRUE")
     yield
     monkeypatch.delenv(ADAPTED_TYPE_SWITCH, raising=True)
 
 
 @pytest.fixture
 def enable_filepath_feature(monkeypatch):
-    monkeypatch.setenv(FILEPATH_FEATURE_SWITCH, 'TRUE')
+    monkeypatch.setenv(FILEPATH_FEATURE_SWITCH, "TRUE")
     yield
     monkeypatch.delenv(FILEPATH_FEATURE_SWITCH, raising=True)
 
 
 @pytest.fixture
 def schema_ad(
-    connection_test, adapted_graph_instance,
-    enable_adapted_types, enable_filepath_feature
+    connection_test,
+    adapted_graph_instance,
+    enable_adapted_types,
+    enable_filepath_feature,
 ):
     stores_config = {
         "repo-s3": dict(
-            S3_CONN_INFO, protocol="s3", location="adapted/repo", stage=tempfile.mkdtemp()
+            S3_CONN_INFO,
+            protocol="s3",
+            location="adapted/repo",
+            stage=tempfile.mkdtemp(),
         )
     }
     dj.config["stores"] = stores_config
     layout_to_filepath = schema_adapted.LayoutToFilepath()
     context = {
         **schema_adapted.LOCALS_ADAPTED,
-        'graph': adapted_graph_instance,
-        'layout_to_filepath': layout_to_filepath,
+        "graph": adapted_graph_instance,
+        "layout_to_filepath": layout_to_filepath,
     }
     schema = dj.schema(SCHEMA_NAME, context=context, connection=connection_test)
     graph = adapted_graph_instance
@@ -91,7 +96,7 @@ def test_adapted_type(schema_ad):
     c.delete()
 
 
-@pytest.mark.skip(reason='misconfigured s3 fixtures')
+@pytest.mark.skip(reason="misconfigured s3 fixtures")
 def test_adapted_filepath_type(schema_ad):
     """https://github.com/datajoint/datajoint-python/issues/684"""
     c = Connectivity()
@@ -125,7 +130,6 @@ def test_adapted_spawned(local_schema, enable_adapted_types):
         assert len(g1.edges) == len(g2.edges)
         assert 0 == len(nx.symmetric_difference(g1, g2).edges)
     c.delete()
-
 
 
 def test_adapted_virtual(schema_virtual_module):

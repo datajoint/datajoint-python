@@ -107,12 +107,14 @@ def test_insert_update(schema):
     q.delete_quick()
     assert not q
 
+
 def test_describe(schema):
     rel = Team()
     context = inspect.currentframe().f_globals
     s1 = declare(rel.full_table_name, rel.definition, context)
     s2 = declare(rel.full_table_name, rel.describe(), context)
     assert s1 == s2
+
 
 def test_restrict(schema):
     # dict
@@ -139,9 +141,7 @@ def test_restrict(schema):
 
     assert (Team & {"car": None}).fetch1("name") == "marketing"
 
-    assert (Team & {"car.tire_pressure": [34, 30, 27, 32]}).fetch1(
-        "name"
-    ) == "business"
+    assert (Team & {"car.tire_pressure": [34, 30, 27, 32]}).fetch1("name") == "business"
 
     assert (
         Team & {"car.headlights[1]": {"side": "right", "hyper_white": True}}
@@ -174,6 +174,7 @@ def test_restrict(schema):
         Team
         & """`car`->>'$.headlights[1]' = '{"side": "right", "hyper_white": true}'"""
     ).fetch1("name") == "business", "2nd `headlight` object did not match"
+
 
 def test_proj(schema):
     # proj necessary since we need to rename indexed value into a proper attribute name
