@@ -17,14 +17,14 @@ def adapted_graph_instance():
 
 @pytest.fixture
 def enable_adapted_types(monkeypatch):
-    monkeypatch.setenv(ADAPTED_TYPE_SWITCH, 'TRUE')
+    monkeypatch.setenv(ADAPTED_TYPE_SWITCH, "TRUE")
     yield
     monkeypatch.delenv(ADAPTED_TYPE_SWITCH, raising=True)
 
 
 @pytest.fixture
 def enable_filepath_feature(monkeypatch):
-    monkeypatch.setenv(FILEPATH_FEATURE_SWITCH, 'TRUE')
+    monkeypatch.setenv(FILEPATH_FEATURE_SWITCH, "TRUE")
     yield
     monkeypatch.delenv(FILEPATH_FEATURE_SWITCH, raising=True)
 
@@ -37,22 +37,30 @@ def schema_name_custom_datatype():
 
 @pytest.fixture
 def schema_ad(
-    schema_name_custom_datatype, connection_test, adapted_graph_instance,
-    enable_adapted_types, enable_filepath_feature
+    schema_name_custom_datatype,
+    connection_test,
+    adapted_graph_instance,
+    enable_adapted_types,
+    enable_filepath_feature,
 ):
     stores_config = {
         "repo-s3": dict(
-            S3_CONN_INFO, protocol="s3", location="adapted/repo", stage=tempfile.mkdtemp()
+            S3_CONN_INFO,
+            protocol="s3",
+            location="adapted/repo",
+            stage=tempfile.mkdtemp(),
         )
     }
     dj.config["stores"] = stores_config
     layout_to_filepath = schema_adapted.LayoutToFilepath()
     context = {
         **schema_adapted.LOCALS_ADAPTED,
-        'graph': adapted_graph_instance,
-        'layout_to_filepath': layout_to_filepath,
+        "graph": adapted_graph_instance,
+        "layout_to_filepath": layout_to_filepath,
     }
-    schema = dj.schema(schema_name_custom_datatype, context=context, connection=connection_test)
+    schema = dj.schema(
+        schema_name_custom_datatype, context=context, connection=connection_test
+    )
     graph = adapted_graph_instance
     schema(schema_adapted.Connectivity)
     schema(schema_adapted.Layout)
@@ -70,10 +78,14 @@ def local_schema(schema_ad, schema_name_custom_datatype):
 
 
 @pytest.fixture
-def schema_virtual_module(schema_ad, schema_name_custom_datatype, adapted_graph_instance):
+def schema_virtual_module(
+    schema_ad, schema_name_custom_datatype, adapted_graph_instance
+):
     """Fixture for testing virtual modules"""
     schema_virtual_module = dj.VirtualModule(
-        "virtual_module", schema_name_custom_datatype, add_objects={"graph": adapted_graph_instance}
+        "virtual_module",
+        schema_name_custom_datatype,
+        add_objects={"graph": adapted_graph_instance},
     )
     return schema_virtual_module
 
@@ -128,7 +140,6 @@ def test_adapted_spawned(local_schema, enable_adapted_types):
         assert len(g1.edges) == len(g2.edges)
         assert 0 == len(nx.symmetric_difference(g1, g2).edges)
     c.delete()
-
 
 
 def test_adapted_virtual(schema_virtual_module):

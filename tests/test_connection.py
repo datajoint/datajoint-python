@@ -12,7 +12,9 @@ import pytest
 
 @pytest.fixture
 def schema(connection_test):
-    schema = dj.Schema(PREFIX + "_transactions", context=dict(), connection=connection_test)
+    schema = dj.Schema(
+        PREFIX + "_transactions", context=dict(), connection=connection_test
+    )
     yield schema
     schema.drop()
 

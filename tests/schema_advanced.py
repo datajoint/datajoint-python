@@ -1,6 +1,7 @@
 import datajoint as dj
 import inspect
 
+
 class Person(dj.Manual):
     definition = """
     person_id : int
@@ -133,6 +134,7 @@ class GlobalSynapse(dj.Manual):
     -> Cell.proj(pre_slice="slice", pre_cell="cell")
     -> Cell.proj(post_slice="slice", post_cell="cell")
     """
+
 
 LOCALS_ADVANCED = {k: v for k, v in locals().items() if inspect.isclass(v)}
 __all__ = list(LOCALS_ADVANCED)

@@ -48,6 +48,7 @@ class Connectivity(dj.Manual):
     conn_graph = null : <graph>
     """
 
+
 class Layout(dj.Manual):
     definition = """
     # stores graph layout

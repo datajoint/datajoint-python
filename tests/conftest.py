@@ -13,12 +13,15 @@ import json
 from pathlib import Path
 import tempfile
 from datajoint import errors
-from datajoint.errors import (
-    ADAPTED_TYPE_SWITCH, FILEPATH_FEATURE_SWITCH
-)
+from datajoint.errors import ADAPTED_TYPE_SWITCH, FILEPATH_FEATURE_SWITCH
 from . import (
-    PREFIX, CONN_INFO, S3_CONN_INFO,
-    schema, schema_simple, schema_advanced, schema_adapted
+    PREFIX,
+    CONN_INFO,
+    S3_CONN_INFO,
+    schema,
+    schema_simple,
+    schema_advanced,
+    schema_adapted,
 )
 
 
@@ -118,7 +121,9 @@ def connection_root(connection_root_bare):
 def connection_test(connection_root):
     """Test user database connection."""
     database = f"{PREFIX}%%"
-    credentials = dict(host=os.getenv("DJ_HOST"), user="datajoint", password="datajoint")
+    credentials = dict(
+        host=os.getenv("DJ_HOST"), user="datajoint", password="datajoint"
+    )
     permission = "ALL PRIVILEGES"
 
     # Create MySQL users
@@ -231,7 +236,9 @@ def schema_simp(connection_test):
 @pytest.fixture
 def schema_adv(connection_test):
     schema = dj.Schema(
-        PREFIX + "_advanced", schema_advanced.LOCALS_ADVANCED, connection=connection_test
+        PREFIX + "_advanced",
+        schema_advanced.LOCALS_ADVANCED,
+        connection=connection_test,
     )
     schema(schema_advanced.Person)
     schema(schema_advanced.Parent)
@@ -246,7 +253,7 @@ def schema_adv(connection_test):
     schema.drop()
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def http_client():
     # Initialize httpClient with relevant timeout.
     client = urllib3.PoolManager(
@@ -260,7 +267,7 @@ def http_client():
     yield client
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def minio_client_bare(http_client):
     client = minio.Minio(
         S3_CONN_INFO["endpoint"],
@@ -272,7 +279,7 @@ def minio_client_bare(http_client):
     return client
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def minio_client(minio_client_bare):
     """Initialize MinIO with an endpoint and access/secret keys."""
     # Bootstrap MinIO bucket
@@ -288,7 +295,9 @@ def minio_client(minio_client_bare):
     # Teardown S3
     objs = list(minio_client_bare.list_objects(S3_CONN_INFO["bucket"], recursive=True))
     objs = [
-        minio_client_bare.remove_object(S3_CONN_INFO["bucket"], o.object_name.encode("utf-8"))
+        minio_client_bare.remove_object(
+            S3_CONN_INFO["bucket"], o.object_name.encode("utf-8")
+        )
         for o in objs
     ]
     minio_client_bare.remove_bucket(S3_CONN_INFO["bucket"])
