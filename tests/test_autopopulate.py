@@ -31,7 +31,7 @@ class TestPopulate:
         ):
             try:
                 autopop_table.delete_quick()
-            except pymysql.err.OperationalError:
+            except (pymysql.err.OperationalError, dj.errors.MissingTableError):
                 # Table doesn't exist
                 pass
 
