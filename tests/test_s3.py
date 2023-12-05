@@ -10,7 +10,7 @@ from . import S3_CONN_INFO
 from minio import Minio
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def stores_config():
     stores_config = {
         "raw": dict(protocol="file", location=tempfile.mkdtemp()),
@@ -30,7 +30,9 @@ def stores_config():
 
 @pytest.fixture
 def schema_ext(connection_test, stores_config, enable_filepath_feature):
-    schema = dj.Schema(PREFIX + "_extern", context=LOCALS_EXTERNAL, connection=connection_test)
+    schema = dj.Schema(
+        PREFIX + "_extern", context=LOCALS_EXTERNAL, connection=connection_test
+    )
     dj.config["stores"] = stores_config
     dj.config["cache"] = tempfile.mkdtemp()
 

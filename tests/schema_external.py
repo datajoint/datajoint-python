@@ -85,5 +85,5 @@ class FilepathS3(dj.Manual):
     """
 
 
-LOCALS_EXTERNAL= {k: v for k, v in locals().items() if inspect.isclass(v)}
+LOCALS_EXTERNAL = {k: v for k, v in locals().items() if inspect.isclass(v)}
 __all__ = list(LOCALS_EXTERNAL)
