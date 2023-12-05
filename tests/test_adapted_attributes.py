@@ -2,7 +2,6 @@ import os
 import pytest
 import tempfile
 import datajoint as dj
-from datajoint.errors import ADAPTED_TYPE_SWITCH, FILEPATH_FEATURE_SWITCH
 import networkx as nx
 from itertools import zip_longest
 from . import schema_adapted
@@ -15,20 +14,6 @@ SCHEMA_NAME = PREFIX + "_test_custom_datatype"
 @pytest.fixture
 def adapted_graph_instance():
     yield schema_adapted.GraphAdapter()
-
-
-@pytest.fixture
-def enable_adapted_types(monkeypatch):
-    monkeypatch.setenv(ADAPTED_TYPE_SWITCH, "TRUE")
-    yield
-    monkeypatch.delenv(ADAPTED_TYPE_SWITCH, raising=True)
-
-
-@pytest.fixture
-def enable_filepath_feature(monkeypatch):
-    monkeypatch.setenv(FILEPATH_FEATURE_SWITCH, "TRUE")
-    yield
-    monkeypatch.delenv(FILEPATH_FEATURE_SWITCH, raising=True)
 
 
 @pytest.fixture
