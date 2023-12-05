@@ -10,6 +10,8 @@ from . import PREFIX, S3_CONN_INFO
 
 SCHEMA_NAME = PREFIX + "_test_custom_datatype"
 
+SCHEMA_NAME = PREFIX + "_test_custom_datatype"
+
 
 @pytest.fixture
 def adapted_graph_instance():
