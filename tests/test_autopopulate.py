@@ -82,8 +82,8 @@ class TestPopulate:
 
         self.experiment.populate(reserve_jobs=True)
         assert (
-            len(self.experiment.key_source & self.experiment) ==
-            len(self.experiment.key_source) - 2,
+            len(self.experiment.key_source & self.experiment)
+            == len(self.experiment.key_source) - 2,
         )
 
     @pytest.mark.skip(reason="temp")
