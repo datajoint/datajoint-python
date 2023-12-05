@@ -5,7 +5,6 @@ from os import environ, remove
 import minio
 import urllib3
 import certifi
-from distutils.version import LooseVersion
 import shutil
 import pytest
 import networkx as nx
@@ -68,9 +67,9 @@ def connection_root(connection_root_bare):
     dj.config["safemode"] = False
     conn_root = connection_root_bare
     # Create MySQL users
-    if LooseVersion(conn_root.query("select @@version;").fetchone()[0]) >= LooseVersion(
-        "8.0.0"
-    ):
+    if version.parse(
+        connection_root.query("select @@version;").fetchone()[0]
+    ) >= version.parse("8.0.0"):
         # create user if necessary on mysql8
         conn_root.query(
             """
