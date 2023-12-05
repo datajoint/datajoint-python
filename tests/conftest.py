@@ -1,9 +1,11 @@
 import datajoint as dj
 from packaging import version
 import os
+from os import environ, remove
 import minio
 import urllib3
 import certifi
+from distutils.version import LooseVersion
 import shutil
 import pytest
 import networkx as nx
@@ -11,6 +13,7 @@ import json
 from pathlib import Path
 import tempfile
 from datajoint import errors
+from datajoint.errors import ADAPTED_TYPE_SWITCH, FILEPATH_FEATURE_SWITCH
 from datajoint.errors import ADAPTED_TYPE_SWITCH, FILEPATH_FEATURE_SWITCH
 from . import (
     PREFIX,
@@ -36,17 +39,83 @@ def monkeymodule():
 
 
 @pytest.fixture(scope="session")
-def connection_root():
-    """Root user database connection."""
-    dj.config["safemode"] = False
+def connection_root_bare():
     connection = dj.Connection(
         host=os.getenv("DJ_HOST"),
         user=os.getenv("DJ_USER"),
         password=os.getenv("DJ_PASS"),
     )
     yield connection
-    dj.config["safemode"] = True
-    connection.close()
+
+
+@pytest.fixture(scope="session")
+def connection_root(connection_root_bare):
+    """Root user database connection."""
+    dj.config["safemode"] = False
+    conn_root = connection_root_bare
+    # Create MySQL users
+    if LooseVersion(conn_root.query("select @@version;").fetchone()[0]) >= LooseVersion(
+        "8.0.0"
+    ):
+        # create user if necessary on mysql8
+        conn_root.query(
+            """
+                CREATE USER IF NOT EXISTS 'datajoint'@'%%'
+                IDENTIFIED BY 'datajoint';
+                """
+        )
+        conn_root.query(
+            """
+                CREATE USER IF NOT EXISTS 'djview'@'%%'
+                IDENTIFIED BY 'djview';
+                """
+        )
+        conn_root.query(
+            """
+                CREATE USER IF NOT EXISTS 'djssl'@'%%'
+                IDENTIFIED BY 'djssl'
+                REQUIRE SSL;
+                """
+        )
+        conn_root.query("GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%';")
+        conn_root.query("GRANT SELECT ON `djtest%%`.* TO 'djview'@'%%';")
+        conn_root.query("GRANT SELECT ON `djtest%%`.* TO 'djssl'@'%%';")
+    else:
+        # grant permissions. For MySQL 5.7 this also automatically creates user
+        # if not exists
+        conn_root.query(
+            """
+            GRANT ALL PRIVILEGES ON `djtest%%`.* TO 'datajoint'@'%%'
+            IDENTIFIED BY 'datajoint';
+            """
+        )
+        conn_root.query(
+            "GRANT SELECT ON `djtest%%`.* TO 'djview'@'%%' IDENTIFIED BY 'djview';"
+        )
+        conn_root.query(
+            """
+            GRANT SELECT ON `djtest%%`.* TO 'djssl'@'%%'
+            IDENTIFIED BY 'djssl'
+            REQUIRE SSL;
+            """
+        )
+
+    yield conn_root
+
+    # Teardown
+    conn_root.query("SET FOREIGN_KEY_CHECKS=0")
+    cur = conn_root.query('SHOW DATABASES LIKE "{}\_%%"'.format(PREFIX))
+    for db in cur.fetchall():
+        conn_root.query("DROP DATABASE `{}`".format(db[0]))
+    conn_root.query("SET FOREIGN_KEY_CHECKS=1")
+    if os.path.exists("dj_local_conf.json"):
+        remove("dj_local_conf.json")
+
+    # Remove created users
+    conn_root.query("DROP USER IF EXISTS `datajoint`")
+    conn_root.query("DROP USER IF EXISTS `djview`")
+    conn_root.query("DROP USER IF EXISTS `djssl`")
+    conn_root.close()
 
 
 @pytest.fixture(scope="session")
@@ -185,10 +254,10 @@ def schema_adv(connection_test):
     schema.drop()
 
 
-@pytest.fixture
-def httpClient():
+@pytest.fixture(scope="session")
+def http_client():
     # Initialize httpClient with relevant timeout.
-    httpClient = urllib3.PoolManager(
+    client = urllib3.PoolManager(
         timeout=30,
         cert_reqs="CERT_REQUIRED",
         ca_certs=certifi.where(),
@@ -196,17 +265,40 @@ def httpClient():
             total=3, backoff_factor=0.2, status_forcelist=[500, 502, 503, 504]
         ),
     )
-    yield httpClient
+    yield client
 
 
-@pytest.fixture
-def minioClient():
-    # Initialize minioClient with an endpoint and access/secret keys.
-    minioClient = minio.Minio(
+@pytest.fixture(scope="session")
+def minio_client_bare(http_client):
+    client = minio.Minio(
         S3_CONN_INFO["endpoint"],
         access_key=S3_CONN_INFO["access_key"],
         secret_key=S3_CONN_INFO["secret_key"],
         secure=True,
-        http_client=httpClient,
+        http_client=http_client,
     )
-    yield minioClient
+    return client
+
+
+@pytest.fixture(scope="session")
+def minio_client(minio_client_bare):
+    """Initialize MinIO with an endpoint and access/secret keys."""
+    # Bootstrap MinIO bucket
+    aws_region = "us-east-1"
+    try:
+        minio_client_bare.make_bucket(S3_CONN_INFO["bucket"], location=aws_region)
+    except minio.error.S3Error as e:
+        if e.code != "BucketAlreadyOwnedByYou":
+            raise e
+
+    yield minio_client_bare
+
+    # Teardown S3
+    objs = list(minio_client_bare.list_objects(S3_CONN_INFO["bucket"], recursive=True))
+    objs = [
+        minio_client_bare.remove_object(
+            S3_CONN_INFO["bucket"], o.object_name.encode("utf-8")
+        )
+        for o in objs
+    ]
+    minio_client_bare.remove_bucket(S3_CONN_INFO["bucket"])
