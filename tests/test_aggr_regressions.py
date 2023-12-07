@@ -2,64 +2,62 @@
 Regression tests for issues 386, 449, 484, and 558 — all related to processing complex aggregations and projections.
 """
 
-import itertools
-from nose.tools import assert_equal
+import pytest
 import datajoint as dj
-from . import PREFIX, CONN_INFO
+from . import PREFIX
 import uuid
 from .schema_uuid import Topic, Item, top_level_namespace_id
-
-schema = dj.Schema(PREFIX + "_aggr_regress", connection=dj.conn(**CONN_INFO))
-
-# --------------- ISSUE 386 -------------------
-# Issue 386 resulted from the loss of aggregated attributes when the aggregation was used as the restrictor
-#     Q & (R.aggr(S, n='count(*)') & 'n=2')
-#     Error: Unknown column 'n' in HAVING
+from .schema_aggr_regress import R, Q, S, A, B, X, LOCALS_AGGR_REGRESS
 
 
-@schema
-class R(dj.Lookup):
-    definition = """
-    r : char(1)
+@pytest.fixture
+def schema_aggr_reg(connection_test):
+    schema = dj.Schema(
+        PREFIX + "_aggr_regress",
+        context=LOCALS_AGGR_REGRESS,
+        connection=connection_test,
+    )
+    schema(R)
+    schema(Q)
+    schema(S)
+    yield schema
+    schema.drop()
+
+
+@pytest.fixture
+def schema_aggr_reg_with_abx(schema_aggr_reg):
+    schema_aggr_reg(A)
+    schema_aggr_reg(B)
+    schema_aggr_reg(X)
+    yield schema_aggr_reg
+
+
+def test_issue386(schema_aggr_reg):
     """
-    contents = zip("ABCDFGHIJKLMNOPQRST")
-
-
-@schema
-class Q(dj.Lookup):
-    definition = """
-    -> R
+    --------------- ISSUE 386 -------------------
+    Issue 386 resulted from the loss of aggregated attributes when the aggregation was used as the restrictor
+        Q & (R.aggr(S, n='count(*)') & 'n=2')
+        Error: Unknown column 'n' in HAVING
     """
-    contents = zip("ABCDFGH")
-
-
-@schema
-class S(dj.Lookup):
-    definition = """
-    -> R
-    s : int
-    """
-    contents = itertools.product("ABCDF", range(10))
-
-
-def test_issue386():
     result = R.aggr(S, n="count(*)") & "n=10"
     result = Q & result
     result.fetch()
 
 
-# ---------------- ISSUE 449 ------------------
-# Issue 449 arises from incorrect group by attributes after joining with a dj.U()
-
-
-def test_issue449():
+def test_issue449(schema_aggr_reg):
+    """
+    ---------------- ISSUE 449 ------------------
+    Issue 449 arises from incorrect group by attributes after joining with a dj.U()
+    """
     result = dj.U("n") * R.aggr(S, n="max(s)")
     result.fetch()
 
 
-# ---------------- ISSUE 484 -----------------
-# Issue 484
-def test_issue484():
+def test_issue484(schema_aggr_reg):
+    """
+    ---------------- ISSUE 484 -----------------
+    Issue 484
+    """
     q = dj.U().aggr(S, n="max(s)")
     n = q.fetch("n")
     n = q.fetch1("n")
@@ -68,47 +66,25 @@ def test_issue484():
     result.fetch()
 
 
-# ---------------  ISSUE 558 ------------------
-#  Issue 558 resulted from the fact that DataJoint saves subqueries and often combines a restriction followed
-#  by a projection into a single SELECT statement, which in several unusual cases produces unexpected results.
 
-
-@schema
-class A(dj.Lookup):
-    definition = """
-    id: int
+class TestIssue558:
     """
-    contents = zip(range(10))
-
-
-@schema
-class B(dj.Lookup):
-    definition = """
-    -> A
-    id2: int
+    ---------------  ISSUE 558 ------------------
+    Issue 558 resulted from the fact that DataJoint saves subqueries and often combines a restriction followed
+    by a projection into a single SELECT statement, which in several unusual cases produces unexpected results.
     """
-    contents = zip(range(5), range(5, 10))
+
+    def test_issue558_part1(self, schema_aggr_reg_with_abx):
+        q = (A - B).proj(id2="3")
+        assert len(A - B) == len(q)
 
 
-@schema
-class X(dj.Lookup):
-    definition = """
-    id: int
-    """
-    contents = zip(range(10))
+    def test_issue558_part2(self, schema_aggr_reg_with_abx):
+        d = dict(id=3, id2=5)
+        assert len(X & d) == len((X & d).proj(id2="3"))
 
 
-def test_issue558_part1():
-    q = (A - B).proj(id2="3")
-    assert_equal(len(A - B), len(q))
-
-
-def test_issue558_part2():
-    d = dict(id=3, id2=5)
-    assert_equal(len(X & d), len((X & d).proj(id2="3")))
-
-
-def test_left_join_len():
+def test_left_join_len(schema_uuid):
     Topic().add("jeff")
     Item.populate()
     Topic().add("jeff2")
@@ -120,8 +96,10 @@ def test_left_join_len():
     assert len(q) == len(qf)
 
 
-def test_union_join():
-    # https://github.com/datajoint/datajoint-python/issues/930
+def test_union_join(schema_aggr_reg_with_abx):
+    """
+    https://github.com/datajoint/datajoint-python/issues/930
+    """
     A.insert(zip([100, 200, 300, 400, 500, 600]))
     B.insert([(100, 11), (200, 22), (300, 33), (400, 44)])
     q1 = B & "id < 300"

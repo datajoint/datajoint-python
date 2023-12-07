@@ -1,4 +1,5 @@
 import uuid
+import inspect
 import datajoint as dj
 from . import PREFIX, CONN_INFO
 

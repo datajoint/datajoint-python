@@ -22,7 +22,7 @@ from . import (
     schema_advanced,
     schema_adapted,
     schema_external,
-    schema_uuid,
+    schema_uuid as schema_uuid_module,
 )
 
 
@@ -312,12 +312,12 @@ def schema_ext(connection_test, stores_config, enable_filepath_feature):
 def schema_uuid(connection_test):
     schema = dj.Schema(
         PREFIX + "_test1",
-        context=schema_uuid.LOCALS_UUID,
+        context=schema_uuid_module.LOCALS_UUID,
         connection=connection_test,
     )
-    schema(Basic)
-    schema(Topic)
-    schema(Item)
+    schema(schema_uuid_module.Basic)
+    schema(schema_uuid_module.Topic)
+    schema(schema_uuid_module.Item)
     yield schema
     schema.drop()
 
