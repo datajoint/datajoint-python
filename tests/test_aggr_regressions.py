@@ -12,10 +12,9 @@ from .schema_aggr_regress import R, Q, S, A, B, X, LOCALS_AGGR_REGRESS
 
 @pytest.fixture(scope="function")
 def schema_aggr_reg(connection_test):
-    context = {k: v for k, v in LOCALS_AGGR_REGRESS.items() if k in ('R', 'Q', 'S')}
     schema = dj.Schema(
         PREFIX + "_aggr_regress",
-        context=context,
+        context=LOCALS_AGGR_REGRESS,
         connection=connection_test,
     )
     schema(R)
@@ -27,7 +26,7 @@ def schema_aggr_reg(connection_test):
 
 @pytest.fixture(scope="function")
 def schema_aggr_reg_with_abx(schema_aggr_reg):
-    context = {k: v for k, v in LOCALS_AGGR_REGRESS.items() if k in ('A', 'B', 'X')}
+    context = LOCALS_AGGR_REGRESS
     schema_aggr_reg(A, context=context)
     schema_aggr_reg(B, context=context)
     schema_aggr_reg(X, context=context)
@@ -69,7 +68,6 @@ def test_issue484(schema_aggr_reg):
     result.fetch()
 
 
-
 def test_union_join(schema_aggr_reg_with_abx):
     """
     https://github.com/datajoint/datajoint-python/issues/930
@@ -92,7 +90,7 @@ def test_union_join(schema_aggr_reg_with_abx):
 
     assert ((q1 + q2) * A).fetch(as_dict=True) == expected_data
 
-# @pytest.mark.skip
+
 class TestIssue558:
     """
     ---------------  ISSUE 558 ------------------
@@ -119,4 +117,3 @@ def test_left_join_len(schema_uuid):
     )
     qf = q.fetch()
     assert len(q) == len(qf)
-
