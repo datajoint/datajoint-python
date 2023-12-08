@@ -12,9 +12,10 @@ from .schema_aggr_regress import R, Q, S, A, B, X, LOCALS_AGGR_REGRESS
 
 @pytest.fixture(scope="function")
 def schema_aggr_reg(connection_test):
+    context = LOCALS_AGGR_REGRESS
     schema = dj.Schema(
         PREFIX + "_aggr_regress",
-        context=LOCALS_AGGR_REGRESS,
+        context=context,
         connection=connection_test,
     )
     schema(R)
@@ -25,13 +26,21 @@ def schema_aggr_reg(connection_test):
 
 
 @pytest.fixture(scope="function")
-def schema_aggr_reg_with_abx(schema_aggr_reg):
+def schema_aggr_reg_with_abx(connection_test):
     context = LOCALS_AGGR_REGRESS
-    schema_aggr_reg(A, context=context)
-    schema_aggr_reg(B, context=context)
-    schema_aggr_reg(X, context=context)
-    yield schema_aggr_reg
-    schema_aggr_reg.drop()
+    schema = dj.Schema(
+        PREFIX + "_aggr_regress_with_abx",
+        context=context,
+        connection=connection_test,
+    )
+    schema(R)
+    schema(Q)
+    schema(S)
+    schema(A)
+    schema(B)
+    schema(X)
+    yield schema
+    schema.drop()
 
 
 def test_issue386(schema_aggr_reg):
@@ -70,6 +79,8 @@ def test_issue484(schema_aggr_reg):
 
 def test_union_join(schema_aggr_reg_with_abx):
     """
+    This test fails if it runs after TestIssue558.
+
     https://github.com/datajoint/datajoint-python/issues/930
     """
     A.insert(zip([100, 200, 300, 400, 500, 600]))
