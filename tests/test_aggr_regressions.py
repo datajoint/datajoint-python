@@ -33,7 +33,6 @@ def schema_aggr_reg_with_abx(schema_aggr_reg):
     schema_aggr_reg.drop()
 
 
-@pytest.mark.skip
 def test_issue386(schema_aggr_reg):
     """
     --------------- ISSUE 386 -------------------
@@ -46,7 +45,6 @@ def test_issue386(schema_aggr_reg):
     result.fetch()
 
 
-@pytest.mark.skip
 def test_issue449(schema_aggr_reg):
     """
     ---------------- ISSUE 449 ------------------
@@ -70,6 +68,7 @@ def test_issue484(schema_aggr_reg):
 
 
 
+@pytest.mark.skip
 class TestIssue558:
     """
     ---------------  ISSUE 558 ------------------
@@ -77,12 +76,10 @@ class TestIssue558:
     by a projection into a single SELECT statement, which in several unusual cases produces unexpected results.
     """
 
-    @pytest.mark.skip
     def test_issue558_part1(self, schema_aggr_reg_with_abx):
         q = (A - B).proj(id2="3")
         assert len(A - B) == len(q)
 
-    @pytest.mark.skip
     def test_issue558_part2(self, schema_aggr_reg_with_abx):
         d = dict(id=3, id2=5)
         assert len(X & d) == len((X & d).proj(id2="3"))
