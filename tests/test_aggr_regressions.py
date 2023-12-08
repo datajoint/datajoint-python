@@ -10,11 +10,12 @@ from .schema_uuid import Topic, Item, top_level_namespace_id
 from .schema_aggr_regress import R, Q, S, A, B, X, LOCALS_AGGR_REGRESS
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def schema_aggr_reg(connection_test):
+    context = {k: v for k, v in LOCALS_AGGR_REGRESS.items() if k in ('R', 'Q', 'S')}
     schema = dj.Schema(
         PREFIX + "_aggr_regress",
-        context=LOCALS_AGGR_REGRESS,
+        context=context,
         connection=connection_test,
     )
     schema(R)
@@ -24,11 +25,12 @@ def schema_aggr_reg(connection_test):
     schema.drop()
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def schema_aggr_reg_with_abx(schema_aggr_reg):
-    schema_aggr_reg(A)
-    schema_aggr_reg(B)
-    schema_aggr_reg(X)
+    context = {k: v for k, v in LOCALS_AGGR_REGRESS.items() if k in ('A', 'B', 'X')}
+    schema_aggr_reg(A, context=context)
+    schema_aggr_reg(B, context=context)
+    schema_aggr_reg(X, context=context)
     yield schema_aggr_reg
     schema_aggr_reg.drop()
 
@@ -68,7 +70,29 @@ def test_issue484(schema_aggr_reg):
 
 
 
-@pytest.mark.skip
+def test_union_join(schema_aggr_reg_with_abx):
+    """
+    https://github.com/datajoint/datajoint-python/issues/930
+    """
+    A.insert(zip([100, 200, 300, 400, 500, 600]))
+    B.insert([(100, 11), (200, 22), (300, 33), (400, 44)])
+    q1 = B & "id < 300"
+    q2 = B & "id > 300"
+
+    expected_data = [
+        {"id": 0, "id2": 5},
+        {"id": 1, "id2": 6},
+        {"id": 2, "id2": 7},
+        {"id": 3, "id2": 8},
+        {"id": 4, "id2": 9},
+        {"id": 100, "id2": 11},
+        {"id": 200, "id2": 22},
+        {"id": 400, "id2": 44},
+    ]
+
+    assert ((q1 + q2) * A).fetch(as_dict=True) == expected_data
+
+# @pytest.mark.skip
 class TestIssue558:
     """
     ---------------  ISSUE 558 ------------------
@@ -96,25 +120,3 @@ def test_left_join_len(schema_uuid):
     qf = q.fetch()
     assert len(q) == len(qf)
 
-
-def test_union_join(schema_aggr_reg_with_abx):
-    """
-    https://github.com/datajoint/datajoint-python/issues/930
-    """
-    A.insert(zip([100, 200, 300, 400, 500, 600]))
-    B.insert([(100, 11), (200, 22), (300, 33), (400, 44)])
-    q1 = B & "id < 300"
-    q2 = B & "id > 300"
-
-    expected_data = [
-        {"id": 0, "id2": 5},
-        {"id": 1, "id2": 6},
-        {"id": 2, "id2": 7},
-        {"id": 3, "id2": 8},
-        {"id": 4, "id2": 9},
-        {"id": 100, "id2": 11},
-        {"id": 200, "id2": 22},
-        {"id": 400, "id2": 44},
-    ]
-
-    assert ((q1 + q2) * A).fetch(as_dict=True) == expected_data
