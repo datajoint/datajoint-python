@@ -10,7 +10,7 @@ from .schema_uuid import Topic, Item, top_level_namespace_id
 from .schema_aggr_regress import R, Q, S, A, B, X, LOCALS_AGGR_REGRESS
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def schema_aggr_reg(connection_test):
     schema = dj.Schema(
         PREFIX + "_aggr_regress",
@@ -24,12 +24,13 @@ def schema_aggr_reg(connection_test):
     schema.drop()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def schema_aggr_reg_with_abx(schema_aggr_reg):
     schema_aggr_reg(A)
     schema_aggr_reg(B)
     schema_aggr_reg(X)
     yield schema_aggr_reg
+    schema_aggr_reg.drop()
 
 
 def test_issue386(schema_aggr_reg):
