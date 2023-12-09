@@ -1,55 +1,72 @@
 import pytest
 import re
 import datajoint as dj
-from . import schema_simple, schema_alter as schema_alter_module, PREFIX
+from . import schema as schema_any_module, schema_alter as schema_alter_module, PREFIX
 
 
 @pytest.fixture
-def _schema_alter(connection_test):
+def schema_alter(connection_test):
     context = {
+        **schema_any_module.LOCALS_ANY,
         # **schema_alter_module.LOCALS_ALTER,
-        # **schema_simple.LOCALS_SIMPLE,
     }
-    schema = dj.Schema(
-        PREFIX + "_alter", context=context, connection=connection_test
+    schema_any = dj.Schema(
+        PREFIX + "_test1", context=context, connection=connection_test
     )
-    schema(schema_simple.IJ, context=schema_simple.LOCALS_SIMPLE)
-    schema(schema_simple.JI, context=schema_simple.LOCALS_SIMPLE)
-    schema(schema_simple.A, context=schema_simple.LOCALS_SIMPLE)
-    schema(schema_simple.B, context=schema_simple.LOCALS_SIMPLE)
-    schema(schema_simple.L, context=schema_simple.LOCALS_SIMPLE)
-    schema(schema_simple.D, context=schema_simple.LOCALS_SIMPLE)
-    schema(schema_simple.E, context=schema_simple.LOCALS_SIMPLE)
-    schema(schema_simple.F, context=schema_simple.LOCALS_SIMPLE)
-    schema(schema_simple.F, context=schema_simple.LOCALS_SIMPLE)
-    schema(schema_simple.DataA, context=schema_simple.LOCALS_SIMPLE)
-    schema(schema_simple.DataB, context=schema_simple.LOCALS_SIMPLE)
-    schema(schema_simple.Website, context=schema_simple.LOCALS_SIMPLE)
-    schema(schema_simple.Profile, context=schema_simple.LOCALS_SIMPLE)
-    schema(schema_simple.Website, context=schema_simple.LOCALS_SIMPLE)
-    schema(schema_simple.TTestUpdate, context=schema_simple.LOCALS_SIMPLE)
-    schema(schema_simple.ArgmaxTest, context=schema_simple.LOCALS_SIMPLE)
-    schema(schema_simple.ReservedWord, context=schema_simple.LOCALS_SIMPLE)
-    schema(schema_simple.OutfitLaunch, context=schema_simple.LOCALS_SIMPLE)
+    schema_any(schema_any_module.TTest)
+    schema_any(schema_any_module.TTest2)
+    schema_any(schema_any_module.TTest3)
+    schema_any(schema_any_module.NullableNumbers)
+    schema_any(schema_any_module.TTestExtra)
+    schema_any(schema_any_module.TTestNoExtra)
+    schema_any(schema_any_module.Auto)
+    schema_any(schema_any_module.User)
+    schema_any(schema_any_module.Subject)
+    schema_any(schema_any_module.Language)
+    schema_any(schema_any_module.Experiment)
+    schema_any(schema_any_module.Trial)
+    schema_any(schema_any_module.Ephys)
+    schema_any(schema_any_module.Image)
+    schema_any(schema_any_module.UberTrash)
+    schema_any(schema_any_module.UnterTrash)
+    schema_any(schema_any_module.SimpleSource)
+    schema_any(schema_any_module.SigIntTable)
+    schema_any(schema_any_module.SigTermTable)
+    schema_any(schema_any_module.DjExceptionName)
+    schema_any(schema_any_module.ErrorClass)
+    schema_any(schema_any_module.DecimalPrimaryKey)
+    schema_any(schema_any_module.IndexRich)
+    schema_any(schema_any_module.ThingA)
+    schema_any(schema_any_module.ThingB)
+    schema_any(schema_any_module.ThingC)
+    schema_any(schema_any_module.Parent)
+    schema_any(schema_any_module.Child)
+    schema_any(schema_any_module.ComplexParent)
+    schema_any(schema_any_module.ComplexChild)
+    schema_any(schema_any_module.SubjectA)
+    schema_any(schema_any_module.SessionA)
+    schema_any(schema_any_module.SessionStatusA)
+    schema_any(schema_any_module.SessionDateA)
+    schema_any(schema_any_module.Stimulus)
+    schema_any(schema_any_module.Longblob)
 
-    schema(schema_alter_module.Experiment, context=schema_alter_module.LOCALS_ALTER)
-    schema(schema_alter_module.Parent, context=schema_alter_module.LOCALS_ALTER)
+    # schema_any(schema_alter_module.Experiment)
+    # schema_any(schema_alter_module.Parent)
 
-    yield schema
-    schema.drop()
+    yield schema_any
+    schema_any.drop()
 
 
-@pytest.fixture
-def schema_alter(schema_any):
+# @pytest.fixture
+def _schema_alter(schema_any):
     context = {
-        # **schema_simple.LOCALS_SIMPLE,
+        **schema_any_module.LOCALS_ANY,
         **schema_alter_module.LOCALS_ALTER,
     }
-    schema = schema_any
-    schema(schema_alter_module.Experiment, context=context)
-    schema(schema_alter_module.Parent, context=context)
-    yield schema
-    schema.drop()
+    schema_any(schema_alter_module.Experiment, context=context)
+    schema_any(schema_alter_module.Parent, context=context)
+    yield schema_any
+    schema_any.drop()
 
 
 
