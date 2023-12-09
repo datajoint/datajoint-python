@@ -1,24 +1,12 @@
+import pytest
 import datajoint as dj
 import numpy as np
-
-from . import PREFIX, CONN_INFO
+from . import PREFIX
 from numpy.testing import assert_array_equal
-from nose.tools import assert_true
-
-
-schema_in = dj.Schema(
-    PREFIX + "_test_bypass_serialization_in", connection=dj.conn(**CONN_INFO)
-)
-
-schema_out = dj.Schema(
-    PREFIX + "_test_blob_bypass_serialization_out", connection=dj.conn(**CONN_INFO)
-)
-
 
 test_blob = np.array([1, 2, 3])
 
 
-@schema_in
 class Input(dj.Lookup):
     definition = """
     id:                 int
@@ -28,7 +16,6 @@ class Input(dj.Lookup):
     contents = [(0, test_blob)]
 
 
-@schema_out
 class Output(dj.Manual):
     definition = """
     id:                 int
@@ -37,10 +24,34 @@ class Output(dj.Manual):
     """
 
 
-def test_bypass_serialization():
+@pytest.fixture
+def schema_in(connection_test):
+    schema = dj.Schema(
+        PREFIX + "_test_bypass_serialization_in",
+        context=dict(Input=Input),
+        connection=connection_test,
+    )
+    schema(Input)
+    yield schema
+    schema.drop()
+
+
+@pytest.fixture
+def schema_out(connection_test):
+    schema = dj.Schema(
+        PREFIX + "_test_blob_bypass_serialization_out",
+        context=dict(Output=Output),
+        connection=connection_test,
+    )
+    schema(Output)
+    yield schema
+    schema.drop()
+
+
+def test_bypass_serialization(schema_in, schema_out):
     dj.blob.bypass_serialization = True
     contents = Input.fetch(as_dict=True)
-    assert_true(isinstance(contents[0]["data"], bytes))
+    assert isinstance(contents[0]["data"], bytes)
     Output.insert(contents)
     dj.blob.bypass_serialization = False
     assert_array_equal(Input.fetch1("data"), Output.fetch1("data"))
