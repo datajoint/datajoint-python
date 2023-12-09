@@ -3,6 +3,11 @@ import re
 import datajoint as dj
 from . import schema as schema_any_module, schema_alter as schema_alter_module, PREFIX
 
+COMBINED_CONTEXT = {
+    **schema_any_module.LOCALS_ANY,
+    **schema_alter_module.LOCALS_ALTER,
+}
+
 
 @pytest.fixture
 def schema_alter(connection_test):
@@ -76,13 +81,13 @@ def test_alter(schema_alter):
         "SHOW CREATE TABLE " + schema_alter_module.Experiment.full_table_name
     ).fetchone()[1]
     schema_alter_module.Experiment.definition = schema_alter_module.Experiment.definition1
-    schema_alter_module.Experiment.alter(prompt=False)
+    schema_alter_module.Experiment.alter(prompt=False, context=COMBINED_CONTEXT)
     altered = schema.connection.query(
         "SHOW CREATE TABLE " + schema_alter_module.Experiment.full_table_name
     ).fetchone()[1]
     assert original != altered
     schema_alter_module.Experiment.definition = schema_alter_module.Experiment.original_definition
-    schema_alter_module.Experiment().alter(prompt=False)
+    schema_alter_module.Experiment().alter(prompt=False, context=COMBINED_CONTEXT)
     restored = schema.connection.query(
         "SHOW CREATE TABLE " + schema_alter_module.Experiment.full_table_name
     ).fetchone()[1]
