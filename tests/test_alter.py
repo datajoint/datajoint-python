@@ -40,14 +40,14 @@ def _schema_alter(connection_test):
 
 
 @pytest.fixture
-def schema_alter(schema_simp):
-    # context = {
-    #     **schema_simple.LOCALS_SIMPLE,
-    #     **schema_alter_module.LOCALS_ALTER,
-    # }
-    schema = schema_simp
-    schema(schema_alter_module.Experiment)
-    schema(schema_alter_module.Parent)
+def schema_alter(schema_any):
+    context = {
+        # **schema_simple.LOCALS_SIMPLE,
+        **schema_alter_module.LOCALS_ALTER,
+    }
+    schema = schema_any
+    schema(schema_alter_module.Experiment, context=context)
+    schema(schema_alter_module.Parent, context=context)
     yield schema
     schema.drop()
 
@@ -56,18 +56,18 @@ def schema_alter(schema_simp):
 def test_alter(schema_alter):
     schema = schema_alter
     original = schema.connection.query(
-        "SHOW CREATE TABLE " + Experiment.full_table_name
+        "SHOW CREATE TABLE " + schema_alter_module.Experiment.full_table_name
     ).fetchone()[1]
-    Experiment.definition = Experiment.definition1
-    Experiment.alter(prompt=False)
+    schema_alter_module.Experiment.definition = schema_alter_module.Experiment.definition1
+    schema_alter_module.Experiment.alter(prompt=False)
     altered = schema.connection.query(
-        "SHOW CREATE TABLE " + Experiment.full_table_name
+        "SHOW CREATE TABLE " + schema_alter_module.Experiment.full_table_name
     ).fetchone()[1]
     assert original != altered
-    Experiment.definition = Experiment.original_definition
-    Experiment().alter(prompt=False)
+    schema_alter_module.Experiment.definition = schema_alter_module.Experiment.original_definition
+    schema_alter_module.Experiment().alter(prompt=False)
     restored = schema.connection.query(
-        "SHOW CREATE TABLE " + Experiment.full_table_name
+        "SHOW CREATE TABLE " + schema_alter_module.Experiment.full_table_name
     ).fetchone()[1]
     assert altered != restored
     assert original == restored
@@ -90,7 +90,7 @@ def test_alter_part(schema_alter):
             re.sub(f"{attribute_sql},\n  ", "", definition_new) == definition_original
         )
 
-    verify_alter(table=Parent.Child, attribute_sql="`child_id` .* DEFAULT NULL")
+    verify_alter(table=schema_alter_module.Parent.Child, attribute_sql="`child_id` .* DEFAULT NULL")
     verify_alter(
-        table=Parent.Grandchild, attribute_sql="`grandchild_id` .* DEFAULT NULL"
+        table=schema_alter_module.Parent.Grandchild, attribute_sql="`grandchild_id` .* DEFAULT NULL"
     )
