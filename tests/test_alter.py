@@ -13,7 +13,9 @@ COMBINED_CONTEXT = {
 @pytest.fixture
 def schema_alter(connection_test):
     schema_any = dj.Schema(
-        PREFIX + "_alter", context=schema_any_module.LOCALS_ANY, connection=connection_test
+        PREFIX + "_alter",
+        context=schema_any_module.LOCALS_ANY,
+        connection=connection_test,
     )
     schema_any(schema_any_module.TTest)
     schema_any(schema_any_module.TTest2)
@@ -61,7 +63,6 @@ def schema_alter(connection_test):
 
 
 class TestAlter:
-
     def test_alter(self, schema_alter):
         original = schema_alter.connection.query(
             "SHOW CREATE TABLE " + Experiment.full_table_name
@@ -97,8 +98,11 @@ class TestAlter:
         """
         https://github.com/datajoint/datajoint-python/issues/936
         """
-        self.verify_alter(schema_alter, table=Parent.Child, attribute_sql="`child_id` .* DEFAULT NULL")
+        self.verify_alter(
+            schema_alter, table=Parent.Child, attribute_sql="`child_id` .* DEFAULT NULL"
+        )
         self.verify_alter(
             schema_alter,
-            table=Parent.Grandchild, attribute_sql="`grandchild_id` .* DEFAULT NULL"
+            table=Parent.Grandchild,
+            attribute_sql="`grandchild_id` .* DEFAULT NULL",
         )
