@@ -50,8 +50,8 @@ def schema_alter(connection_test):
     schema_any(schema_any_module.Stimulus)
     schema_any(schema_any_module.Longblob)
 
-    # schema_any(schema_alter_module.Experiment)
-    # schema_any(schema_alter_module.Parent)
+    schema_any(schema_alter_module.Experiment, context=schema_alter_module.LOCALS_ALTER)
+    schema_any(schema_alter_module.Parent, context=schema_alter_module.LOCALS_ALTER)
 
     yield schema_any
     schema_any.drop()
