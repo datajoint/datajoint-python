@@ -2,6 +2,7 @@ import pytest
 import re
 import datajoint as dj
 from . import schema as schema_any_module, schema_alter as schema_alter_module, PREFIX
+from .schema_alter import Parent, Experiment
 
 COMBINED_CONTEXT = {
     **schema_any_module.LOCALS_ANY,
@@ -11,12 +12,8 @@ COMBINED_CONTEXT = {
 
 @pytest.fixture
 def schema_alter(connection_test):
-    context = {
-        **schema_any_module.LOCALS_ANY,
-        # **schema_alter_module.LOCALS_ALTER,
-    }
     schema_any = dj.Schema(
-        PREFIX + "_test1", context=context, connection=connection_test
+        PREFIX + "_alter", context=schema_any_module.LOCALS_ANY, connection=connection_test
     )
     schema_any(schema_any_module.TTest)
     schema_any(schema_any_module.TTest2)
@@ -55,64 +52,53 @@ def schema_alter(connection_test):
     schema_any(schema_any_module.Stimulus)
     schema_any(schema_any_module.Longblob)
 
-    schema_any(schema_alter_module.Experiment, context=schema_alter_module.LOCALS_ALTER)
-    schema_any(schema_alter_module.Parent, context=schema_alter_module.LOCALS_ALTER)
+    # Add nodes from schema_alter_module
+    schema_any(Experiment, context=schema_alter_module.LOCALS_ALTER)
+    schema_any(Parent, context=schema_alter_module.LOCALS_ALTER)
 
     yield schema_any
     schema_any.drop()
 
 
-# @pytest.fixture
-def _schema_alter(schema_any):
-    context = {
-        **schema_any_module.LOCALS_ANY,
-        **schema_alter_module.LOCALS_ALTER,
-    }
-    schema_any(schema_alter_module.Experiment, context=context)
-    schema_any(schema_alter_module.Parent, context=context)
-    yield schema_any
-    schema_any.drop()
+class TestAlter:
 
+    def test_alter(self, schema_alter):
+        original = schema_alter.connection.query(
+            "SHOW CREATE TABLE " + Experiment.full_table_name
+        ).fetchone()[1]
+        Experiment.definition = Experiment.definition1
+        Experiment.alter(prompt=False, context=COMBINED_CONTEXT)
+        altered = schema_alter.connection.query(
+            "SHOW CREATE TABLE " + Experiment.full_table_name
+        ).fetchone()[1]
+        assert original != altered
+        Experiment.definition = Experiment.original_definition
+        Experiment().alter(prompt=False, context=COMBINED_CONTEXT)
+        restored = schema_alter.connection.query(
+            "SHOW CREATE TABLE " + Experiment.full_table_name
+        ).fetchone()[1]
+        assert altered != restored
+        assert original == restored
 
-
-def test_alter(schema_alter):
-    schema = schema_alter
-    original = schema.connection.query(
-        "SHOW CREATE TABLE " + schema_alter_module.Experiment.full_table_name
-    ).fetchone()[1]
-    schema_alter_module.Experiment.definition = schema_alter_module.Experiment.definition1
-    schema_alter_module.Experiment.alter(prompt=False, context=COMBINED_CONTEXT)
-    altered = schema.connection.query(
-        "SHOW CREATE TABLE " + schema_alter_module.Experiment.full_table_name
-    ).fetchone()[1]
-    assert original != altered
-    schema_alter_module.Experiment.definition = schema_alter_module.Experiment.original_definition
-    schema_alter_module.Experiment().alter(prompt=False, context=COMBINED_CONTEXT)
-    restored = schema.connection.query(
-        "SHOW CREATE TABLE " + schema_alter_module.Experiment.full_table_name
-    ).fetchone()[1]
-    assert altered != restored
-    assert original == restored
-
-
-def test_alter_part(schema_alter):
-    # https://github.com/datajoint/datajoint-python/issues/936
-    schema = schema_alter
-
-    def verify_alter(table, attribute_sql):
-        definition_original = schema.connection.query(
+    def verify_alter(self, schema_alter, table, attribute_sql):
+        definition_original = schema_alter.connection.query(
             f"SHOW CREATE TABLE {table.full_table_name}"
         ).fetchone()[1]
         table.definition = table.definition_new
         table.alter(prompt=False)
-        definition_new = schema.connection.query(
+        definition_new = schema_alter.connection.query(
             f"SHOW CREATE TABLE {table.full_table_name}"
         ).fetchone()[1]
         assert (
             re.sub(f"{attribute_sql},\n  ", "", definition_new) == definition_original
         )
 
-    verify_alter(table=schema_alter_module.Parent.Child, attribute_sql="`child_id` .* DEFAULT NULL")
-    verify_alter(
-        table=schema_alter_module.Parent.Grandchild, attribute_sql="`grandchild_id` .* DEFAULT NULL"
-    )
+    def test_alter_part(self, schema_alter):
+        """
+        https://github.com/datajoint/datajoint-python/issues/936
+        """
+        self.verify_alter(schema_alter, table=Parent.Child, attribute_sql="`child_id` .* DEFAULT NULL")
+        self.verify_alter(
+            schema_alter,
+            table=Parent.Grandchild, attribute_sql="`grandchild_id` .* DEFAULT NULL"
+        )
