@@ -15,7 +15,6 @@ def schema_simp_pop(schema_simp):
 
 
 class TestDelete:
-
     def test_delete_tree(self, schema_simp_pop):
         assert not dj.config["safemode"], "safemode must be off for testing"
         assert (
