@@ -5,18 +5,20 @@ import inspect
 from datajoint.declare import declare
 
 
-class TestDeclare:
+@pytest.fixture
+def schema_any(schema_any):
+    auto = Auto()
+    auto.fill()
+    user = User()
+    subject = Subject()
+    experiment = Experiment()
+    trial = Trial()
+    ephys = Ephys()
+    channel = Ephys.Channel()
+    yield schema_any
 
-    @classmethod
-    def setup_class(cls):
-        cls.auto = Auto()
-        cls.auto.fill()
-        cls.user = User()
-        cls.subject = Subject()
-        cls.experiment = Experiment()
-        cls.trial = Trial()
-        cls.ephys = Ephys()
-        cls.channel = Ephys.Channel()
+
+class TestDeclare:
 
     def test_schema_decorator(self, schema_any):
         assert issubclass(Subject, dj.Lookup)
@@ -58,8 +60,10 @@ class TestDeclare:
         s2 = declare(rel.full_table_name, rel.describe(), context)
         assert s1 == s2
 
-    def test_part(self, schema_any):
-        # Lookup and part with the same name.  See issue #365
+    def test_part(self):
+        """
+        Lookup and part with the same name.  See issue #365
+        """
         local_schema = dj.Schema(schema.database)
 
         @local_schema
@@ -180,20 +184,20 @@ class TestDeclare:
     def test_descendants_only_contain_part_table(self, schema_any):
         """issue #927"""
 
-        @schema
+        @schema_any
         class A(dj.Manual):
             definition = """
             a: int
             """
 
-        @schema
+        @schema_any
         class B(dj.Manual):
             definition = """
             -> A
             b: int
             """
 
-        @schema
+        @schema_any
         class Master(dj.Manual):
             definition = """
             table_master: int
@@ -211,41 +215,45 @@ class TestDeclare:
             "`djtest_test1`.`master__part`",
         ]
 
-    @raises(dj.DataJointError)
-    def test_bad_attribute_name(self):
-        @schema
+    def test_bad_attribute_name(self, schema_any):
+
         class BadName(dj.Manual):
             definition = """
             Bad_name : int
             """
 
-    @raises(dj.DataJointError)
-    def test_bad_fk_rename(self):
+        with pytest.raises(dj.DataJointError):
+            schema_any(BadName)
+
+    def test_bad_fk_rename(self, schema_any):
         """issue #381"""
 
-        @schema
         class A(dj.Manual):
             definition = """
             a : int
             """
 
-        @schema
         class B(dj.Manual):
             definition = """
             b -> A    # invalid, the new syntax is (b) -> A
             """
 
-    @raises(dj.DataJointError)
-    def test_primary_nullable_foreign_key(self):
-        @schema
+        schema_any(A)
+        with pytest.raises(dj.DataJointError):
+            schema_any(B)
+
+    def test_primary_nullable_foreign_key(self, schema_any):
+
         class Q(dj.Manual):
             definition = """
             -> [nullable] Experiment
             """
 
-    @raises(dj.DataJointError)
-    def test_invalid_foreign_key_option(self):
-        @schema
+        with pytest.raises(dj.DataJointError):
+            schema_any(Q)
+
+    def test_invalid_foreign_key_option(self, schema_any):
+
         class R(dj.Manual):
             definition = """
             -> Experiment
@@ -253,9 +261,11 @@ class TestDeclare:
             -> [optional] User
             """
 
-    @raises(dj.DataJointError)
-    def test_unsupported_datatype(self):
-        @schema
+        with pytest.raises(dj.DataJointError):
+            schema_any(R)
+
+    def test_unsupported_datatype(self, schema_any):
+
         class Q(dj.Manual):
             definition = """
             experiment : int
@@ -263,8 +273,12 @@ class TestDeclare:
             description : text
             """
 
-    def test_int_datatype(self):
-        @schema
+        with pytest.raises(dj.DataJointError):
+            schema_any(Q)
+
+    def test_int_datatype(self, schema_any):
+
+        @schema_any
         class Owner(dj.Manual):
             definition = """
             ownerid : int
@@ -272,9 +286,8 @@ class TestDeclare:
             car_count : integer
             """
 
-    @raises(dj.DataJointError)
-    def test_unsupported_int_datatype(self):
-        @schema
+    def test_unsupported_int_datatype(self, schema_any):
+
         class Driver(dj.Manual):
             definition = """
             driverid : tinyint
@@ -282,13 +295,14 @@ class TestDeclare:
             car_count : tinyinteger
             """
 
-    @raises(dj.DataJointError)
-    def test_long_table_name(self):
+        with pytest.raises(dj.DataJointError):
+            schema_any(Driver)
+
+    def test_long_table_name(self, schema_any):
         """
         test issue #205 -- reject table names over 64 characters in length
         """
 
-        @schema
         class WhyWouldAnyoneCreateATableNameThisLong(dj.Manual):
             definition = """
             master : int
@@ -298,3 +312,6 @@ class TestDeclare:
                 definition = """
                 -> (master)
                 """
+
+        with pytest.raises(dj.DataJointError):
+            schema_any(WhyWouldAnyoneCreateATableNameThisLong)
