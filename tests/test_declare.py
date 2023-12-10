@@ -1,49 +1,40 @@
-from nose.tools import (
-    assert_true,
-    assert_false,
-    assert_equal,
-    assert_list_equal,
-    raises,
-    assert_set_equal,
-)
+import pytest
 from .schema import *
 import datajoint as dj
 import inspect
 from datajoint.declare import declare
 
 
-auto = Auto()
-auto.fill()
-user = User()
-subject = Subject()
-experiment = Experiment()
-trial = Trial()
-ephys = Ephys()
-channel = Ephys.Channel()
-
-
 class TestDeclare:
-    @staticmethod
-    def test_schema_decorator():
+
+    @classmethod
+    def setup_class(cls):
+        cls.auto = Auto()
+        cls.auto.fill()
+        cls.user = User()
+        cls.subject = Subject()
+        cls.experiment = Experiment()
+        cls.trial = Trial()
+        cls.ephys = Ephys()
+        cls.channel = Ephys.Channel()
+
+    def test_schema_decorator(self, schema_any):
         assert_true(issubclass(Subject, dj.Lookup))
         assert_true(not issubclass(Subject, dj.Part))
 
-    @staticmethod
-    def test_class_help():
+    def test_class_help(self, schema_any):
         help(TTest)
         help(TTest2)
         assert_true(TTest.definition in TTest.__doc__)
         assert_true(TTest.definition in TTest2.__doc__)
 
-    @staticmethod
-    def test_instance_help():
+    def test_instance_help(self, schema_any):
         help(TTest())
         help(TTest2())
         assert_true(TTest().definition in TTest().__doc__)
         assert_true(TTest2().definition in TTest2().__doc__)
 
-    @staticmethod
-    def test_describe():
+    def test_describe(self, schema_any):
         """real_definition should match original definition"""
         rel = Experiment()
         context = inspect.currentframe().f_globals
@@ -51,8 +42,7 @@ class TestDeclare:
         s2 = declare(rel.full_table_name, rel.describe(), context)
         assert_equal(s1, s2)
 
-    @staticmethod
-    def test_describe_indexes():
+    def test_describe_indexes(self, schema_any):
         """real_definition should match original definition"""
         rel = IndexRich()
         context = inspect.currentframe().f_globals
@@ -60,8 +50,7 @@ class TestDeclare:
         s2 = declare(rel.full_table_name, rel.describe(), context)
         assert_equal(s1, s2)
 
-    @staticmethod
-    def test_describe_dependencies():
+    def test_describe_dependencies(self, schema_any):
         """real_definition should match original definition"""
         rel = ThingC()
         context = inspect.currentframe().f_globals
@@ -69,8 +58,7 @@ class TestDeclare:
         s2 = declare(rel.full_table_name, rel.describe(), context)
         assert_equal(s1, s2)
 
-    @staticmethod
-    def test_part():
+    def test_part(self, schema_any):
         # Lookup and part with the same name.  See issue #365
         local_schema = dj.Schema(schema.database)
 
@@ -93,8 +81,7 @@ class TestDeclare:
                 -> Type
                 """
 
-    @staticmethod
-    def test_attributes():
+    def test_attributes(self, schema_any):
         # test autoincrement declaration
         assert_list_equal(auto.heading.names, ["id", "name"])
         assert_true(auto.heading.attributes["id"].autoincrement)
@@ -143,8 +130,7 @@ class TestDeclare:
         )
         assert_true(channel.heading.attributes["voltage"].is_blob)
 
-    @staticmethod
-    def test_dependencies():
+    def test_dependencies(self, schema_any):
         assert_true(experiment.full_table_name in user.children(primary=False))
         assert_equal(set(experiment.parents(primary=False)), {user.full_table_name})
         assert_true(experiment.full_table_name in user.children(primary=False))
@@ -211,8 +197,7 @@ class TestDeclare:
             {ephys.full_table_name},
         )
 
-    @staticmethod
-    def test_descendants_only_contain_part_table():
+    def test_descendants_only_contain_part_table(self, schema_any):
         """issue #927"""
 
         @schema
@@ -246,18 +231,16 @@ class TestDeclare:
             "`djtest_test1`.`master__part`",
         ]
 
-    @staticmethod
     @raises(dj.DataJointError)
-    def test_bad_attribute_name():
+    def test_bad_attribute_name(self):
         @schema
         class BadName(dj.Manual):
             definition = """
             Bad_name : int
             """
 
-    @staticmethod
     @raises(dj.DataJointError)
-    def test_bad_fk_rename():
+    def test_bad_fk_rename(self):
         """issue #381"""
 
         @schema
@@ -272,18 +255,16 @@ class TestDeclare:
             b -> A    # invalid, the new syntax is (b) -> A
             """
 
-    @staticmethod
     @raises(dj.DataJointError)
-    def test_primary_nullable_foreign_key():
+    def test_primary_nullable_foreign_key(self):
         @schema
         class Q(dj.Manual):
             definition = """
             -> [nullable] Experiment
             """
 
-    @staticmethod
     @raises(dj.DataJointError)
-    def test_invalid_foreign_key_option():
+    def test_invalid_foreign_key_option(self):
         @schema
         class R(dj.Manual):
             definition = """
@@ -292,9 +273,8 @@ class TestDeclare:
             -> [optional] User
             """
 
-    @staticmethod
     @raises(dj.DataJointError)
-    def test_unsupported_datatype():
+    def test_unsupported_datatype(self):
         @schema
         class Q(dj.Manual):
             definition = """
@@ -303,8 +283,7 @@ class TestDeclare:
             description : text
             """
 
-    @staticmethod
-    def test_int_datatype():
+    def test_int_datatype(self):
         @schema
         class Owner(dj.Manual):
             definition = """
@@ -313,9 +292,8 @@ class TestDeclare:
             car_count : integer
             """
 
-    @staticmethod
     @raises(dj.DataJointError)
-    def test_unsupported_int_datatype():
+    def test_unsupported_int_datatype(self):
         @schema
         class Driver(dj.Manual):
             definition = """
@@ -324,9 +302,8 @@ class TestDeclare:
             car_count : tinyinteger
             """
 
-    @staticmethod
     @raises(dj.DataJointError)
-    def test_long_table_name():
+    def test_long_table_name(self):
         """
         test issue #205 -- reject table names over 64 characters in length
         """
