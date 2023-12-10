@@ -1,33 +1,31 @@
-from nose.tools import assert_false, assert_true, assert_equal, raises
+import pytest
 import datajoint as dj
 from .schema_simple import A, B, D, E, L, Website, Profile
 from .schema import ComplexChild, ComplexParent
 
 
-class TestDelete:
-    @staticmethod
-    def setup():
-        """
-        class-level test setup. Executes before each test method.
-        """
-        A().insert(A.contents, skip_duplicates=True)
-        L().insert(L.contents, skip_duplicates=True)
-        B().populate()
-        D().populate()
-        E().populate()
+@pytest.fixture
+def schema_simp_pop(schema_simp):
+    A().insert(A.contents, skip_duplicates=True)
+    L().insert(L.contents, skip_duplicates=True)
+    B().populate()
+    D().populate()
+    E().populate()
+    yield schema_simp
 
-    @staticmethod
-    def test_delete_tree():
-        assert_false(dj.config["safemode"], "safemode must be off for testing")
-        assert_true(
+
+class TestDelete:
+
+    def test_delete_tree(self, schema_simp_pop):
+        assert not dj.config["safemode"], "safemode must be off for testing"
+        assert (
             L() and A() and B() and B.C() and D() and E() and E.F(),
             "schema is not populated",
         )
         A().delete()
-        assert_false(A() or B() or B.C() or D() or E() or E.F(), "incomplete delete")
+        assert not A() or B() or B.C() or D() or E() or E.F(), "incomplete delete"
 
-    @staticmethod
-    def test_stepwise_delete():
+    def test_stepwise_delete(self, schema_simp_pop):
         assert not dj.config["safemode"], "safemode must be off for testing"
         assert L() and A() and B() and B.C(), "schema population failed"
         B.C().delete(force=True)
@@ -37,8 +35,7 @@ class TestDelete:
             not B()
         ), "failed to delete from the parent table following child table deletion"
 
-    @staticmethod
-    def test_delete_tree_restricted():
+    def test_delete_tree_restricted(self, schema_simp_pop):
         assert not dj.config["safemode"], "safemode must be off for testing"
         assert (
             L() and A() and B() and B.C() and D() and E() and E.F()
@@ -64,21 +61,19 @@ class TestDelete:
         assert len(E()) == rest["E"], "invalid delete restriction"
         assert len(E.F()) == rest["F"], "invalid delete restriction"
 
-    @staticmethod
-    def test_delete_lookup():
-        assert_false(dj.config["safemode"], "safemode must be off for testing")
-        assert_true(
+    def test_delete_lookup(self, schema_simp_pop):
+        assert not dj.config["safemode"], "safemode must be off for testing"
+        assert (
             bool(L() and A() and B() and B.C() and D() and E() and E.F()),
             "schema is not populated",
         )
         L().delete()
-        assert_false(bool(L() or D() or E() or E.F()), "incomplete delete")
+        assert not bool(L() or D() or E() or E.F()), "incomplete delete"
         A().delete()  # delete all is necessary because delete L deletes from subtables.
 
-    @staticmethod
-    def test_delete_lookup_restricted():
-        assert_false(dj.config["safemode"], "safemode must be off for testing")
-        assert_true(
+    def test_delete_lookup_restricted(self, schema_simp_pop):
+        assert not dj.config["safemode"], "safemode must be off for testing"
+        assert (
             L() and A() and B() and B.C() and D() and E() and E.F(),
             "schema is not populated",
         )
@@ -86,13 +81,14 @@ class TestDelete:
         original_count = len(L())
         deleted_count = len(rel)
         rel.delete()
-        assert_true(len(L()) == original_count - deleted_count)
+        assert len(L()) == original_count - deleted_count
 
-    @staticmethod
-    def test_delete_complex_keys():
-        # https://github.com/datajoint/datajoint-python/issues/883
-        # https://github.com/datajoint/datajoint-python/issues/886
-        assert_false(dj.config["safemode"], "safemode must be off for testing")
+    def test_delete_complex_keys(self, schema_any):
+        """
+        https://github.com/datajoint/datajoint-python/issues/883
+        https://github.com/datajoint/datajoint-python/issues/886
+        """
+        assert not dj.config["safemode"], "safemode must be off for testing"
         parent_key_count = 8
         child_key_count = 1
         restriction = dict(
@@ -108,17 +104,17 @@ class TestDelete:
         assert len(ComplexParent & restriction) == 0, "Parent record was not deleted"
         assert len(ComplexChild & restriction) == 0, "Child record was not deleted"
 
-    def test_delete_master(self):
+    def test_delete_master(self, schema_simp_pop):
         Profile().populate_random()
         Profile().delete()
 
-    @raises(dj.DataJointError)
-    def test_delete_parts(self):
+    def test_delete_parts(self, schema_simp_pop):
         """test issue #151"""
-        Profile().populate_random()
-        Website().delete()
+        with pytest.raises(dj.DataJointError):
+            Profile().populate_random()
+            Website().delete()
 
-    @raises(dj.DataJointError)
-    def test_drop_part(self):
+    def test_drop_part(self, schema_simp_pop):
         """test issue #374"""
-        Website().drop()
+        with pytest.raises(dj.DataJointError):
+            Website().drop()
