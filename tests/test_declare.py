@@ -19,20 +19,20 @@ class TestDeclare:
         cls.channel = Ephys.Channel()
 
     def test_schema_decorator(self, schema_any):
-        assert_true(issubclass(Subject, dj.Lookup))
-        assert_true(not issubclass(Subject, dj.Part))
+        assert issubclass(Subject, dj.Lookup)
+        assert not issubclass(Subject, dj.Part)
 
     def test_class_help(self, schema_any):
         help(TTest)
         help(TTest2)
-        assert_true(TTest.definition in TTest.__doc__)
-        assert_true(TTest.definition in TTest2.__doc__)
+        assert TTest.definition in TTest.__doc__
+        assert TTest.definition in TTest2.__doc__
 
     def test_instance_help(self, schema_any):
         help(TTest())
         help(TTest2())
-        assert_true(TTest().definition in TTest().__doc__)
-        assert_true(TTest2().definition in TTest2().__doc__)
+        assert TTest().definition in TTest().__doc__
+        assert TTest2().definition in TTest2().__doc__
 
     def test_describe(self, schema_any):
         """real_definition should match original definition"""
@@ -40,7 +40,7 @@ class TestDeclare:
         context = inspect.currentframe().f_globals
         s1 = declare(rel.full_table_name, rel.definition, context)
         s2 = declare(rel.full_table_name, rel.describe(), context)
-        assert_equal(s1, s2)
+        assert s1 == s2
 
     def test_describe_indexes(self, schema_any):
         """real_definition should match original definition"""
@@ -48,7 +48,7 @@ class TestDeclare:
         context = inspect.currentframe().f_globals
         s1 = declare(rel.full_table_name, rel.definition, context)
         s2 = declare(rel.full_table_name, rel.describe(), context)
-        assert_equal(s1, s2)
+        assert s1 == s2
 
     def test_describe_dependencies(self, schema_any):
         """real_definition should match original definition"""
@@ -56,7 +56,7 @@ class TestDeclare:
         context = inspect.currentframe().f_globals
         s1 = declare(rel.full_table_name, rel.definition, context)
         s2 = declare(rel.full_table_name, rel.describe(), context)
-        assert_equal(s1, s2)
+        assert s1 == s2
 
     def test_part(self, schema_any):
         # Lookup and part with the same name.  See issue #365
@@ -83,20 +83,19 @@ class TestDeclare:
 
     def test_attributes(self, schema_any):
         # test autoincrement declaration
-        assert_list_equal(auto.heading.names, ["id", "name"])
-        assert_true(auto.heading.attributes["id"].autoincrement)
+        assert auto.heading.names == ["id", "name"]
+        assert auto.heading.attributes["id"].autoincrement
 
         # test attribute declarations
-        assert_list_equal(
-            subject.heading.names,
-            ["subject_id", "real_id", "species", "date_of_birth", "subject_notes"],
-        )
-        assert_list_equal(subject.primary_key, ["subject_id"])
-        assert_true(subject.heading.attributes["subject_id"].numeric)
-        assert_false(subject.heading.attributes["real_id"].numeric)
+        assert (
+            subject.heading.names ==
+            ["subject_id", "real_id", "species", "date_of_birth", "subject_notes"])
+        assert subject.primary_key == ["subject_id"]
+        assert subject.heading.attributes["subject_id"].numeric
+        assert not subject.heading.attributes["real_id"].numeric
 
-        assert_list_equal(
-            experiment.heading.names,
+        assert (
+            experiment.heading.names ==
             [
                 "subject_id",
                 "experiment_id",
@@ -105,97 +104,78 @@ class TestDeclare:
                 "data_path",
                 "notes",
                 "entry_time",
-            ],
-        )
-        assert_list_equal(experiment.primary_key, ["subject_id", "experiment_id"])
+            ])
+        assert experiment.primary_key == ["subject_id", "experiment_id"]
 
-        assert_list_equal(
-            trial.heading.names,  # tests issue #516
-            ["animal", "experiment_id", "trial_id", "start_time"],
-        )
-        assert_list_equal(trial.primary_key, ["animal", "experiment_id", "trial_id"])
+        assert (
+            trial.heading.names ==  # tests issue #516
+            ["animal", "experiment_id", "trial_id", "start_time"])
+        assert trial.primary_key == ["animal", "experiment_id", "trial_id"]
 
-        assert_list_equal(
-            ephys.heading.names,
-            ["animal", "experiment_id", "trial_id", "sampling_frequency", "duration"],
-        )
-        assert_list_equal(ephys.primary_key, ["animal", "experiment_id", "trial_id"])
+        assert (
+            ephys.heading.names ==
+            ["animal", "experiment_id", "trial_id", "sampling_frequency", "duration"])
+        assert ephys.primary_key == ["animal", "experiment_id", "trial_id"]
 
-        assert_list_equal(
-            channel.heading.names,
-            ["animal", "experiment_id", "trial_id", "channel", "voltage", "current"],
-        )
-        assert_list_equal(
-            channel.primary_key, ["animal", "experiment_id", "trial_id", "channel"]
-        )
-        assert_true(channel.heading.attributes["voltage"].is_blob)
+        assert (
+            channel.heading.names ==
+            ["animal", "experiment_id", "trial_id", "channel", "voltage", "current"])
+        assert (
+            channel.primary_key == ["animal", "experiment_id", "trial_id", "channel"])
+        assert channel.heading.attributes["voltage"].is_blob
 
     def test_dependencies(self, schema_any):
-        assert_true(experiment.full_table_name in user.children(primary=False))
-        assert_equal(set(experiment.parents(primary=False)), {user.full_table_name})
-        assert_true(experiment.full_table_name in user.children(primary=False))
-        assert_set_equal(set(experiment.parents(primary=False)), {user.full_table_name})
-        assert_set_equal(
+        assert experiment.full_table_name in user.children(primary=False)
+        assert set(experiment.parents(primary=False)) == {user.full_table_name}
+        assert experiment.full_table_name in user.children(primary=False)
+        assert set(experiment.parents(primary=False)) == {user.full_table_name}
+        assert (
             set(
                 s.full_table_name
                 for s in experiment.parents(primary=False, as_objects=True)
-            ),
-            {user.full_table_name},
-        )
+            ) ==
+            {user.full_table_name})
 
-        assert_true(experiment.full_table_name in subject.descendants())
-        assert_true(
-            experiment.full_table_name
-            in {s.full_table_name for s in subject.descendants(as_objects=True)}
-        )
-        assert_true(subject.full_table_name in experiment.ancestors())
-        assert_true(
-            subject.full_table_name
-            in {s.full_table_name for s in experiment.ancestors(as_objects=True)}
-        )
+        assert experiment.full_table_name in subject.descendants()
+        assert (experiment.full_table_name
+            in {s.full_table_name for s in subject.descendants(as_objects=True)})
+        assert subject.full_table_name in experiment.ancestors()
+        assert (subject.full_table_name
+            in {s.full_table_name for s in experiment.ancestors(as_objects=True)})
 
-        assert_true(trial.full_table_name in experiment.descendants())
-        assert_true(
-            trial.full_table_name
-            in {s.full_table_name for s in experiment.descendants(as_objects=True)}
-        )
-        assert_true(experiment.full_table_name in trial.ancestors())
-        assert_true(
-            experiment.full_table_name
-            in {s.full_table_name for s in trial.ancestors(as_objects=True)}
-        )
+        assert trial.full_table_name in experiment.descendants()
+        assert (trial.full_table_name
+            in {s.full_table_name for s in experiment.descendants(as_objects=True)})
+        assert experiment.full_table_name in trial.ancestors()
+        assert (experiment.full_table_name
+            in {s.full_table_name for s in trial.ancestors(as_objects=True)})
 
-        assert_set_equal(
-            set(trial.children(primary=True)),
-            {ephys.full_table_name, trial.Condition.full_table_name},
-        )
-        assert_set_equal(set(trial.parts()), {trial.Condition.full_table_name})
-        assert_set_equal(
-            set(s.full_table_name for s in trial.parts(as_objects=True)),
-            {trial.Condition.full_table_name},
-        )
-        assert_set_equal(set(ephys.parents(primary=True)), {trial.full_table_name})
-        assert_set_equal(
+        assert (
+            set(trial.children(primary=True)) ==
+            {ephys.full_table_name, trial.Condition.full_table_name})
+        assert set(trial.parts()) == {trial.Condition.full_table_name}
+        assert (
+            set(s.full_table_name for s in trial.parts(as_objects=True)) ==
+            {trial.Condition.full_table_name})
+        assert set(ephys.parents(primary=True)) == {trial.full_table_name}
+        assert (
             set(
                 s.full_table_name for s in ephys.parents(primary=True, as_objects=True)
-            ),
-            {trial.full_table_name},
-        )
-        assert_set_equal(set(ephys.children(primary=True)), {channel.full_table_name})
-        assert_set_equal(
+            ) ==
+            {trial.full_table_name})
+        assert set(ephys.children(primary=True)) == {channel.full_table_name}
+        assert (
             set(
                 s.full_table_name for s in ephys.children(primary=True, as_objects=True)
-            ),
-            {channel.full_table_name},
-        )
-        assert_set_equal(set(channel.parents(primary=True)), {ephys.full_table_name})
-        assert_set_equal(
+            ) ==
+            {channel.full_table_name})
+        assert set(channel.parents(primary=True)) == {ephys.full_table_name}
+        assert (
             set(
                 s.full_table_name
                 for s in channel.parents(primary=True, as_objects=True)
-            ),
-            {ephys.full_table_name},
-        )
+            ) ==
+            {ephys.full_table_name})
 
     def test_descendants_only_contain_part_table(self, schema_any):
         """issue #927"""
