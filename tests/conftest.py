@@ -22,6 +22,7 @@ from . import (
     schema_advanced,
     schema_adapted,
     schema_external,
+    schema_uuid as schema_uuid_module,
 )
 
 
@@ -303,6 +304,20 @@ def schema_ext(connection_test, stores_config, enable_filepath_feature):
     schema(schema_external.Attach)
     schema(schema_external.Filepath)
     schema(schema_external.FilepathS3)
+    yield schema
+    schema.drop()
+
+
+@pytest.fixture
+def schema_uuid(connection_test):
+    schema = dj.Schema(
+        PREFIX + "_test1",
+        context=schema_uuid_module.LOCALS_UUID,
+        connection=connection_test,
+    )
+    schema(schema_uuid_module.Basic)
+    schema(schema_uuid_module.Topic)
+    schema(schema_uuid_module.Item)
     yield schema
     schema.drop()
 

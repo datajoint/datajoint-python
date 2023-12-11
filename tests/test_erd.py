@@ -58,7 +58,7 @@ def test_make_image(schema_simp):
 
 def test_part_table_parsing(schema_simp):
     # https://github.com/datajoint/datajoint-python/issues/882
-    erd = dj.Di(schema_simp)
+    erd = dj.Di(schema_simp, context=LOCALS_SIMPLE)
     graph = erd._make_graph()
     assert "OutfitLaunch" in graph.nodes()
     assert "OutfitLaunch.OutfitPiece" in graph.nodes()
