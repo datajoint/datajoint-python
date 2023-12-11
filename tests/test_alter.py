@@ -54,10 +54,7 @@ class Parent(dj.Manual):
         """
 
 
-LOCALS_ALTER = {
-    "Experiment": Experiment,
-    "Parent": Parent
-}
+LOCALS_ALTER = {"Experiment": Experiment, "Parent": Parent}
 COMBINED_CONTEXT = {
     **schema_any_module.LOCALS_ANY,
     **LOCALS_ALTER,
@@ -65,53 +62,10 @@ COMBINED_CONTEXT = {
 
 
 @pytest.fixture
-def schema_alter(connection_test):
-    schema_any = dj.Schema(
-        PREFIX + "_alter",
-        context=schema_any_module.LOCALS_ANY,
-        connection=connection_test,
-    )
-    schema_any(schema_any_module.TTest)
-    schema_any(schema_any_module.TTest2)
-    schema_any(schema_any_module.TTest3)
-    schema_any(schema_any_module.NullableNumbers)
-    schema_any(schema_any_module.TTestExtra)
-    schema_any(schema_any_module.TTestNoExtra)
-    schema_any(schema_any_module.Auto)
-    schema_any(schema_any_module.User)
-    schema_any(schema_any_module.Subject)
-    schema_any(schema_any_module.Language)
-    schema_any(schema_any_module.Experiment)
-    schema_any(schema_any_module.Trial)
-    schema_any(schema_any_module.Ephys)
-    schema_any(schema_any_module.Image)
-    schema_any(schema_any_module.UberTrash)
-    schema_any(schema_any_module.UnterTrash)
-    schema_any(schema_any_module.SimpleSource)
-    schema_any(schema_any_module.SigIntTable)
-    schema_any(schema_any_module.SigTermTable)
-    schema_any(schema_any_module.DjExceptionName)
-    schema_any(schema_any_module.ErrorClass)
-    schema_any(schema_any_module.DecimalPrimaryKey)
-    schema_any(schema_any_module.IndexRich)
-    schema_any(schema_any_module.ThingA)
-    schema_any(schema_any_module.ThingB)
-    schema_any(schema_any_module.ThingC)
-    schema_any(schema_any_module.Parent)
-    schema_any(schema_any_module.Child)
-    schema_any(schema_any_module.ComplexParent)
-    schema_any(schema_any_module.ComplexChild)
-    schema_any(schema_any_module.SubjectA)
-    schema_any(schema_any_module.SessionA)
-    schema_any(schema_any_module.SessionStatusA)
-    schema_any(schema_any_module.SessionDateA)
-    schema_any(schema_any_module.Stimulus)
-    schema_any(schema_any_module.Longblob)
-
+def schema_alter(connection_test, schema_any):
     # Overwrite Experiment and Parent nodes
     schema_any(Experiment, context=LOCALS_ALTER)
     schema_any(Parent, context=LOCALS_ALTER)
-
     yield schema_any
     schema_any.drop()
 
