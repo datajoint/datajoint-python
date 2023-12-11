@@ -118,7 +118,7 @@ def connection_root(connection_root_bare):
 
     # Teardown
     conn_root.query("SET FOREIGN_KEY_CHECKS=0")
-    cur = conn_root.query('SHOW DATABASES LIKE "{}\_%%"'.format(PREFIX))
+    cur = conn_root.query('SHOW DATABASES LIKE "{}\\_%%"'.format(PREFIX))
     for db in cur.fetchall():
         conn_root.query("DROP DATABASE `{}`".format(db[0]))
     conn_root.query("SET FOREIGN_KEY_CHECKS=1")
