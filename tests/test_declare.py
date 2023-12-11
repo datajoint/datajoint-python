@@ -77,7 +77,6 @@ class TestDeclare:
         """
         auto = Auto()
         auto.fill()
-        user = User()
         subject = Subject()
         experiment = Experiment()
         trial = Trial()
@@ -139,8 +138,6 @@ class TestDeclare:
         assert channel.heading.attributes["voltage"].is_blob
 
     def test_dependencies(self, schema_any):
-        auto = Auto()
-        auto.fill()
         user = User()
         subject = Subject()
         experiment = Experiment()
