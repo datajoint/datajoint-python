@@ -10,7 +10,6 @@ import pytest
 import networkx as nx
 import json
 from pathlib import Path
-import tempfile
 from datajoint import errors
 from datajoint.errors import ADAPTED_TYPE_SWITCH, FILEPATH_FEATURE_SWITCH
 from . import (
@@ -176,21 +175,43 @@ def connection_test(connection_root):
 
 
 @pytest.fixture(scope="session")
-def stores_config():
+def stores_config(tmpdir_factory):
     stores_config = {
-        "raw": dict(protocol="file", location=tempfile.mkdtemp()),
+        "raw": dict(protocol="file", location=tmpdir_factory.mktemp("raw")),
         "repo": dict(
-            stage=tempfile.mkdtemp(), protocol="file", location=tempfile.mkdtemp()
+            stage=tmpdir_factory.mktemp("repo"), protocol="file", location=tmpdir_factory.mktemp("repo")
         ),
         "repo-s3": dict(
-            S3_CONN_INFO, protocol="s3", location="dj/repo", stage=tempfile.mkdtemp()
+            S3_CONN_INFO, protocol="s3", location="dj/repo", stage=tmpdir_factory.mktemp("repo-s3")
         ),
-        "local": dict(protocol="file", location=tempfile.mkdtemp(), subfolding=(1, 1)),
+        "local": dict(protocol="file", location=tmpdir_factory.mktemp("local"), subfolding=(1, 1)),
         "share": dict(
             S3_CONN_INFO, protocol="s3", location="dj/store/repo", subfolding=(2, 4)
         ),
     }
     return stores_config
+
+
+@pytest.fixture
+def mock_stores(stores_config):
+    og_stores_config = dj.config.get("stores")
+    dj.config["stores"] = stores_config
+    yield
+    if og_stores_config is None:
+        del dj.config["stores"]
+    else:
+        dj.config["stores"] = og_stores_config
+
+
+@pytest.fixture
+def mock_cache(tmpdir_factory):
+    og_cache = dj.config.get("cache")
+    dj.config["cache"] = tmpdir_factory.mktemp("cache")
+    yield
+    if og_cache is None:
+        del dj.config["cache"]
+    else:
+        dj.config["cache"] = og_cache
 
 
 @pytest.fixture
@@ -287,15 +308,12 @@ def schema_adv(connection_test):
 
 
 @pytest.fixture
-def schema_ext(connection_test, stores_config, enable_filepath_feature):
+def schema_ext(connection_test, enable_filepath_feature, mock_stores, mock_cache):
     schema = dj.Schema(
         PREFIX + "_extern",
         context=schema_external.LOCALS_EXTERNAL,
         connection=connection_test,
     )
-    dj.config["stores"] = stores_config
-    dj.config["cache"] = tempfile.mkdtemp()
-
     schema(schema_external.Simple)
     schema(schema_external.SimpleRemote)
     schema(schema_external.Seed)
