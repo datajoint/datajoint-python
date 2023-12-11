@@ -179,12 +179,19 @@ def stores_config(tmpdir_factory):
     stores_config = {
         "raw": dict(protocol="file", location=tmpdir_factory.mktemp("raw")),
         "repo": dict(
-            stage=tmpdir_factory.mktemp("repo"), protocol="file", location=tmpdir_factory.mktemp("repo")
+            stage=tmpdir_factory.mktemp("repo"),
+            protocol="file",
+            location=tmpdir_factory.mktemp("repo"),
         ),
         "repo-s3": dict(
-            S3_CONN_INFO, protocol="s3", location="dj/repo", stage=tmpdir_factory.mktemp("repo-s3")
+            S3_CONN_INFO,
+            protocol="s3",
+            location="dj/repo",
+            stage=tmpdir_factory.mktemp("repo-s3"),
         ),
-        "local": dict(protocol="file", location=tmpdir_factory.mktemp("local"), subfolding=(1, 1)),
+        "local": dict(
+            protocol="file", location=tmpdir_factory.mktemp("local"), subfolding=(1, 1)
+        ),
         "share": dict(
             S3_CONN_INFO, protocol="s3", location="dj/store/repo", subfolding=(2, 4)
         ),
