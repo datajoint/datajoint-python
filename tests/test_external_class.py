@@ -36,7 +36,10 @@ def test_populate(schema_ext, mock_stores):
     image = schema_external.Image()
     image.populate()
     remaining, total = image.progress()
-    assert total == len(schema_external.Dimension() * schema_external.Seed()) and remaining == 0
+    assert (
+        total == len(schema_external.Dimension() * schema_external.Seed())
+        and remaining == 0
+    )
     for img, neg, dimensions in zip(
         *(image * schema_external.Dimension()).fetch("img", "neg", "dimensions")
     ):
