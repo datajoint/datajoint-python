@@ -35,8 +35,8 @@ def test_external_put():
         hash2 = ext.put(pack(np.random.randn(4, 3, 2)))
 
     fetched_hashes = ext.fetch("hash")
-    assert_true(all(hash in fetched_hashes for hash in (hash1, hash2)))
-    assert_equal(len(ext), initial_length + 1 + extra)
+    assert all(hash in fetched_hashes for hash in (hash1, hash2))
+    assert len(ext) == initial_length + 1 + extra
 
     output_ = unpack(ext.get(hash1))
     assert_array_equal(input_, output_)
@@ -54,58 +54,42 @@ def test_s3_leading_slash(index=100, store="share"):
     id = index
     dj.config["stores"][store]["location"] = "leading/slash/test"
     SimpleRemote.insert([{"simple": id, "item": value}])
-    assert_true(
-        np.array_equal(value, (SimpleRemote & "simple={}".format(id)).fetch1("item"))
-    )
+    assert np.array_equal(value, (SimpleRemote & "simple={}".format(id)).fetch1("item"))
 
     id = index + 1
     dj.config["stores"][store]["location"] = "/leading/slash/test"
     SimpleRemote.insert([{"simple": id, "item": value}])
-    assert_true(
-        np.array_equal(value, (SimpleRemote & "simple={}".format(id)).fetch1("item"))
-    )
+    assert np.array_equal(value, (SimpleRemote & "simple={}".format(id)).fetch1("item"))
 
     id = index + 2
     dj.config["stores"][store]["location"] = "leading\\slash\\test"
     SimpleRemote.insert([{"simple": id, "item": value}])
-    assert_true(
-        np.array_equal(value, (SimpleRemote & "simple={}".format(id)).fetch1("item"))
-    )
+    assert np.array_equal(value, (SimpleRemote & "simple={}".format(id)).fetch1("item"))
 
     id = index + 3
     dj.config["stores"][store]["location"] = "f:\\leading\\slash\\test"
     SimpleRemote.insert([{"simple": id, "item": value}])
-    assert_true(
-        np.array_equal(value, (SimpleRemote & "simple={}".format(id)).fetch1("item"))
-    )
+    assert np.array_equal(value, (SimpleRemote & "simple={}".format(id)).fetch1("item"))
 
     id = index + 4
     dj.config["stores"][store]["location"] = "f:\\leading/slash\\test"
     SimpleRemote.insert([{"simple": id, "item": value}])
-    assert_true(
-        np.array_equal(value, (SimpleRemote & "simple={}".format(id)).fetch1("item"))
-    )
+    assert np.array_equal(value, (SimpleRemote & "simple={}".format(id)).fetch1("item"))
 
     id = index + 5
     dj.config["stores"][store]["location"] = "/"
     SimpleRemote.insert([{"simple": id, "item": value}])
-    assert_true(
-        np.array_equal(value, (SimpleRemote & "simple={}".format(id)).fetch1("item"))
-    )
+    assert np.array_equal(value, (SimpleRemote & "simple={}".format(id)).fetch1("item"))
 
     id = index + 6
     dj.config["stores"][store]["location"] = "C:\\"
     SimpleRemote.insert([{"simple": id, "item": value}])
-    assert_true(
-        np.array_equal(value, (SimpleRemote & "simple={}".format(id)).fetch1("item"))
-    )
+    assert np.array_equal(value, (SimpleRemote & "simple={}".format(id)).fetch1("item"))
 
     id = index + 7
     dj.config["stores"][store]["location"] = ""
     SimpleRemote.insert([{"simple": id, "item": value}])
-    assert_true(
-        np.array_equal(value, (SimpleRemote & "simple={}".format(id)).fetch1("item"))
-    )
+    assert np.array_equal(value, (SimpleRemote & "simple={}".format(id)).fetch1("item"))
 
     dj.config["stores"][store]["location"] = oldConfig
 
