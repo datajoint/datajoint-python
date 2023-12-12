@@ -215,6 +215,7 @@ class TestFetch:
         assert len(cur) == 4, "Length is not correct"
         for c, l in list(zip(cur, languages[1:]))[:4]:
             assert np.all([cc == ll for cc, ll in zip(c, l)]), "Sorting order is different"
+        assert len(schema.DecimalPrimaryKey().fetch()), "Table DecimalPrimaryKey is empty"
 
     def test_limit_warning(self, schema_any, lang):
         """Tests whether warning is raised if offset is used without limit."""
@@ -257,7 +258,7 @@ class TestFetch:
     def test_decimal(self, schema_any):
         """Tests that decimal fields are correctly fetched and used in restrictions, see issue #334"""
         rel = schema.DecimalPrimaryKey()
-        assert bool(schema.DecimalPrimaryKey().fetch()), "Table DecimalPrimaryKey is empty"
+        assert len(rel.fetch()), "Table DecimalPrimaryKey contents are empty"
         rel.insert1([decimal.Decimal("3.1415926")])
         keys = rel.fetch()
         assert len(keys) > 0
