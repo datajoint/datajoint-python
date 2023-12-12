@@ -34,18 +34,14 @@ def subject():
 class TestFetch:
     def test_getattribute(self, schema_any, subject):
         """Testing Fetch.__call__ with attributes"""
-        list1 = sorted(
-            subject.proj().fetch(as_dict=True), key=itemgetter("subject_id")
-        )
+        list1 = sorted(subject.proj().fetch(as_dict=True), key=itemgetter("subject_id"))
         list2 = sorted(subject.fetch(dj.key), key=itemgetter("subject_id"))
         for l1, l2 in zip(list1, list2):
             assert l1 == l2, "Primary key is not returned correctly"
 
         tmp = subject.fetch(order_by="subject_id")
 
-        subject_notes, key, real_id = subject.fetch(
-            "subject_notes", dj.key, "real_id"
-        )
+        subject_notes, key, real_id = subject.fetch("subject_notes", dj.key, "real_id")
 
         np.testing.assert_array_equal(
             sorted(subject_notes), sorted(tmp["subject_notes"])
@@ -58,9 +54,10 @@ class TestFetch:
     def test_getattribute_for_fetch1(self, schema_any, subject):
         """Testing Fetch1.__call__ with attributes"""
         assert (subject & "subject_id=10").fetch1("subject_id") == 10
-        assert (
-            (subject & "subject_id=10").fetch1("subject_id", "species") ==
-            (10, "monkey"))
+        assert (subject & "subject_id=10").fetch1("subject_id", "species") == (
+            10,
+            "monkey",
+        )
 
     def test_order_by(self, schema_any, lang, languages):
         """Tests order_by sorting order"""
@@ -69,7 +66,9 @@ class TestFetch:
             languages.sort(key=itemgetter(1), reverse=ord_lang == "DESC")
             languages.sort(key=itemgetter(0), reverse=ord_name == "DESC")
             for c, l in zip(cur, languages):
-                assert np.all(cc == ll for cc, ll in zip(c, l)), "Sorting order is different"
+                assert np.all(
+                    cc == ll for cc, ll in zip(c, l)
+                ), "Sorting order is different"
 
     def test_order_by_default(self, schema_any, lang, languages):
         """Tests order_by sorting order with defaults"""
@@ -77,7 +76,9 @@ class TestFetch:
         languages.sort(key=itemgetter(0), reverse=True)
         languages.sort(key=itemgetter(1), reverse=False)
         for c, l in zip(cur, languages):
-            assert np.all([cc == ll for cc, ll in zip(c, l)]), "Sorting order is different"
+            assert np.all(
+                [cc == ll for cc, ll in zip(c, l)]
+            ), "Sorting order is different"
 
     def test_limit(self, schema_any, lang):
         """Test the limit kwarg"""
@@ -92,7 +93,9 @@ class TestFetch:
         languages.sort(key=itemgetter(1), reverse=False)
         assert len(cur) == 4, "Length is not correct"
         for c, l in list(zip(cur, languages))[:4]:
-            assert np.all([cc == ll for cc, ll in zip(c, l)]), "Sorting order is different"
+            assert np.all(
+                [cc == ll for cc, ll in zip(c, l)]
+            ), "Sorting order is different"
 
     def test_head_tail(self, schema_any):
         query = schema.User * schema.Language
@@ -118,7 +121,9 @@ class TestFetch:
         languages.sort(key=itemgetter(1), reverse=False)
         assert len(cur) == 4, "Length is not correct"
         for c, l in list(zip(cur, languages[2:6])):
-            assert np.all([cc == ll for cc, ll in zip(c, l)]), "Sorting order is different"
+            assert np.all(
+                [cc == ll for cc, ll in zip(c, l)]
+            ), "Sorting order is different"
 
     def test_iter(self, schema_any, lang, languages):
         """Test iterator"""
@@ -130,7 +135,9 @@ class TestFetch:
         # now as dict
         cur = lang.fetch(as_dict=True, order_by=("language", "name DESC"))
         for row, (tname, tlang) in list(zip(cur, languages)):
-            assert row["name"] == tname and row["language"] == tlang, "Values are not the same"
+            assert (
+                row["name"] == tname and row["language"] == tlang
+            ), "Values are not the same"
 
     def test_keys(self, schema_any, lang, languages):
         """test key fetch"""
@@ -154,14 +161,18 @@ class TestFetch:
         assert set(result[0]) == set(attrs)
 
     def test_fetch1_step1(self, schema_any, lang, languages):
-        assert lang.contents == languages == [
-            ("Fabian", "English"),
-            ("Edgar", "English"),
-            ("Dimitri", "English"),
-            ("Dimitri", "Ukrainian"),
-            ("Fabian", "German"),
-            ("Edgar", "Japanese"),
-        ], "Unexpected contents in Language table"
+        assert (
+            lang.contents
+            == languages
+            == [
+                ("Fabian", "English"),
+                ("Edgar", "English"),
+                ("Dimitri", "English"),
+                ("Dimitri", "Ukrainian"),
+                ("Fabian", "German"),
+                ("Edgar", "Japanese"),
+            ]
+        ), "Unexpected contents in Language table"
         key = {"name": "Edgar", "language": "Japanese"}
         true = languages[-1]
         dat = (lang & key).fetch1()
@@ -199,8 +210,12 @@ class TestFetch:
         languages.sort(key=itemgetter(1), reverse=False)
         assert len(cur) == 4, "Length is not correct"
         for c, l in list(zip(cur, languages[1:]))[:4]:
-            assert np.all([cc == ll for cc, ll in zip(c, l)]), "Sorting order is different"
-        assert len(schema.DecimalPrimaryKey().fetch()), "Table DecimalPrimaryKey is empty"
+            assert np.all(
+                [cc == ll for cc, ll in zip(c, l)]
+            ), "Sorting order is different"
+        assert len(
+            schema.DecimalPrimaryKey().fetch()
+        ), "Table DecimalPrimaryKey is empty"
 
     def test_limit_warning(self, schema_any, lang):
         """Tests whether warning is raised if offset is used without limit."""
