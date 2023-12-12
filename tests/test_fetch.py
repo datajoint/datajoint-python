@@ -1,4 +1,5 @@
 import pytest
+from typing import List
 from operator import itemgetter
 import itertools
 import numpy as np
@@ -12,10 +13,28 @@ import logging
 import io
 
 
+@pytest.fixture
+def lang():
+    yield schema.Language()
+
+
+@pytest.fixture
+def languages(lang) -> List:
+    og_contents = lang.contents
+    languages = og_contents.copy()
+    yield languages
+    lang.contents = og_contents
+
+
+@pytest.fixture
+def subject():
+    yield schema.Subject()
+
+
+
 class TestFetch:
-    def test_getattribute(self, schema_any):
+    def test_getattribute(self, schema_any, subject):
         """Testing Fetch.__call__ with attributes"""
-        subject = schema.Subject()
         list1 = sorted(
             subject.proj().fetch(as_dict=True), key=itemgetter("subject_id")
         )
@@ -37,19 +56,15 @@ class TestFetch:
         for l1, l2 in zip(list1, list2):
             assert l1 == l2, "Primary key is not returned correctly"
 
-    def test_getattribute_for_fetch1(self, schema_any):
+    def test_getattribute_for_fetch1(self, schema_any, subject):
         """Testing Fetch1.__call__ with attributes"""
-        subject = schema.Subject()
         assert (subject & "subject_id=10").fetch1("subject_id") == 10
         assert (
             (subject & "subject_id=10").fetch1("subject_id", "species") ==
             (10, "monkey"))
 
-    def test_order_by(self, schema_any):
+    def test_order_by(self, schema_any, lang, languages):
         """Tests order_by sorting order"""
-        lang = schema.Language()
-        languages = schema.Language.contents
-
         for ord_name, ord_lang in itertools.product(*2 * [["ASC", "DESC"]]):
             cur = lang.fetch(order_by=("name " + ord_name, "language " + ord_lang))
             languages.sort(key=itemgetter(1), reverse=ord_lang == "DESC")
@@ -60,28 +75,22 @@ class TestFetch:
                     "Sorting order is different",
                 )
 
-    def test_order_by_default(self, schema_any):
+    def test_order_by_default(self, schema_any, lang, languages):
         """Tests order_by sorting order with defaults"""
-        lang = schema.Language()
-        languages = schema.Language.contents
         cur = lang.fetch(order_by=("language", "name DESC"))
         languages.sort(key=itemgetter(0), reverse=True)
         languages.sort(key=itemgetter(1), reverse=False)
         for c, l in zip(cur, languages):
             assert np.all([cc == ll for cc, ll in zip(c, l)]), "Sorting order is different"
 
-    def test_limit(self, schema_any):
+    def test_limit(self, schema_any, lang):
         """Test the limit kwarg"""
-        lang = schema.Language()
         limit = 4
         cur = lang.fetch(limit=limit)
         assert len(cur) == limit, "Length is not correct"
 
-    def test_order_by_limit(self, schema_any):
+    def test_order_by_limit(self, schema_any, lang, languages):
         """Test the combination of order by and limit kwargs"""
-        lang = schema.Language()
-        languages = schema.Language.contents
-
         cur = lang.fetch(limit=4, order_by=["language", "name DESC"])
         languages.sort(key=itemgetter(0), reverse=True)
         languages.sort(key=itemgetter(1), reverse=False)
@@ -89,9 +98,8 @@ class TestFetch:
         for c, l in list(zip(cur, languages))[:4]:
             assert np.all([cc == ll for cc, ll in zip(c, l)]), "Sorting order is different"
 
-    @staticmethod
     def test_head_tail(self, schema_any):
-        query = schema_any.User * schema.Language
+        query = schema.User * schema.Language
         n = 5
         frame = query.head(n, format="frame")
         assert isinstance(frame, pandas.DataFrame)
@@ -107,11 +115,8 @@ class TestFetch:
         assert len(frame) == n
         assert query.primary_key == frame.index.names
 
-    def test_limit_offset(self, schema_any):
+    def test_limit_offset(self, schema_any, lang, languages):
         """Test the limit and offset kwargs together"""
-        lang = schema.Language()
-        languages = schema.Language.contents
-
         cur = lang.fetch(offset=2, limit=4, order_by=["language", "name DESC"])
         languages.sort(key=itemgetter(0), reverse=True)
         languages.sort(key=itemgetter(1), reverse=False)
@@ -119,15 +124,13 @@ class TestFetch:
         for c, l in list(zip(cur, languages[2:6])):
             assert np.all([cc == ll for cc, ll in zip(c, l)]), "Sorting order is different"
 
-    def test_iter(self, schema_any):
+    def test_iter(self, schema_any, lang, languages):
         """Test iterator"""
-        lang = schema.Language()
-        languages = schema.Language.contents
         cur = lang.fetch(order_by=["language", "name DESC"])
         languages.sort(key=itemgetter(0), reverse=True)
         languages.sort(key=itemgetter(1), reverse=False)
-        for (name, lang), (tname, tlang) in list(zip(cur, languages)):
-            assert name == tname and lang == tlang, "Values are not the same"
+        for (name, lang_val), (tname, tlang) in list(zip(cur, languages)):
+            assert name == tname and lang_val == tlang, "Values are not the same"
         # now as dict
         cur = lang.fetch(as_dict=True, order_by=("language", "name DESC"))
         for row, (tname, tlang) in list(zip(cur, languages)):
@@ -136,30 +139,38 @@ class TestFetch:
                 "Values are not the same",
             )
 
-    def test_keys(self, schema_any):
+    def test_keys(self, schema_any, lang, languages):
         """test key fetch"""
-        lang = schema.Language()
-        languages = schema.Language.contents
         languages.sort(key=itemgetter(0), reverse=True)
         languages.sort(key=itemgetter(1), reverse=False)
 
+        lang = schema.Language()
         cur = lang.fetch("name", "language", order_by=("language", "name DESC"))
         cur2 = list(lang.fetch("KEY", order_by=["language", "name DESC"]))
 
         for c, c2 in zip(zip(*cur), cur2):
             assert c == tuple(c2.values()), "Values are not the same"
 
-    def test_attributes_as_dict(self, schema_any):  # issue #595
-        subject = schema.Subject()
+    def test_attributes_as_dict(self, schema_any, subject):
+        """
+        Issue #595
+        """
         attrs = ("species", "date_of_birth")
         result = subject.fetch(*attrs, as_dict=True)
         assert bool(result) and len(result) == len(subject)
         assert set(result[0]) == set(attrs)
 
-    def test_fetch1_step1(self, schema_any):
-        lang = schema.Language()
+    def test_fetch1_step1(self, schema_any, lang, languages):
+        assert lang.contents == languages == [
+            ("Fabian", "English"),
+            ("Edgar", "English"),
+            ("Dimitri", "English"),
+            ("Dimitri", "Ukrainian"),
+            ("Fabian", "German"),
+            ("Edgar", "Japanese"),
+        ], "Unexpected contents in Language table"
         key = {"name": "Edgar", "language": "Japanese"}
-        true = schema.Language.contents[-1]
+        true = languages[-1]
         dat = (lang & key).fetch1()
         for k, (ke, c) in zip(true, dat.items()):
             assert k == c == (lang & key).fetch1(ke), "Values are not the same"
@@ -168,43 +179,37 @@ class TestFetch:
         with pytest.raises(dj.DataJointError):
             f = (schema.Language & 'lang = "ENGLISH"').fetch()
 
-    def test_repr(self, schema_any):
+    def test_repr(self, schema_any, subject):
         """Test string representation of fetch, returning table preview"""
-        subject = schema.Subject()
         repr = subject.fetch.__repr__()
         n = len(repr.strip().split("\n"))
         limit = dj.config["display.limit"]
         # 3 lines are used for headers (2) and summary statement (1)
         assert n - 3 <= limit
 
-    def test_fetch_none(self, schema_any):
+    def test_fetch_none(self, schema_any, lang):
         """Test preparing attributes for getitem"""
-        lang = schema.Language()
         with pytest.raises(dj.DataJointError):
             lang.fetch(None)
 
-    def test_asdict(self, schema_any):
+    def test_asdict(self, schema_any, lang):
         """Test returns as dictionaries"""
-        lang = schema.Language()
         d = lang.fetch(as_dict=True)
         for dd in d:
             assert isinstance(dd, dict)
 
-    def test_offset(self, schema_any):
+    def test_offset(self, schema_any, lang, languages):
         """Tests offset"""
-        lang = schema.Language()
         cur = lang.fetch(limit=4, offset=1, order_by=["language", "name DESC"])
 
-        languages = lang.contents
         languages.sort(key=itemgetter(0), reverse=True)
         languages.sort(key=itemgetter(1), reverse=False)
         assert len(cur) == 4, "Length is not correct"
         for c, l in list(zip(cur, languages[1:]))[:4]:
             assert np.all([cc == ll for cc, ll in zip(c, l)]), "Sorting order is different"
 
-    def test_limit_warning(self, schema_any):
+    def test_limit_warning(self, schema_any, lang):
         """Tests whether warning is raised if offset is used without limit."""
-        lang = schema.Language()
         logger = logging.getLogger("datajoint")
         log_capture = io.StringIO()
         stream_handler = logging.StreamHandler(log_capture)
@@ -224,21 +229,17 @@ class TestFetch:
                 logger.removeHandler(handler)
         assert "[WARNING]: Offset set, but no limit." in log_contents
 
-    def test_len(self, schema_any):
+    def test_len(self, schema_any, lang):
         """Tests __len__"""
-        lang = schema.Language()
-        assert (
-            len(lang.fetch()) == len(lang)), "__len__ is not behaving properly"
+        assert len(lang.fetch()) == len(lang), "__len__ is not behaving properly"
 
-    def test_fetch1_step2(self, schema_any):
+    def test_fetch1_step2(self, schema_any, lang):
         """Tests whether fetch1 raises error"""
-        lang = schema.Language()
         with pytest.raises(dj.DataJointError):
             lang.fetch1()
 
-    def test_fetch1_step3(self, schema_any):
+    def test_fetch1_step3(self, schema_any, lang):
         """Tests whether fetch1 raises error"""
-        lang = schema.Language()
         with pytest.raises(dj.DataJointError):
             lang.fetch1("name")
 
@@ -271,9 +272,8 @@ class TestFetch:
         assert any(np.isnan(d))
         assert any(np.isnan(f))
 
-    def test_fetch_format(self, schema_any):
+    def test_fetch_format(self, schema_any, subject):
         """test fetch_format='frame'"""
-        subject = schema.Subject()
         with dj.config(fetch_format="frame"):
             # test if lists are both dicts
             list1 = sorted(
@@ -300,9 +300,8 @@ class TestFetch:
             for l1, l2 in zip(list1, list2):
                 assert l1 == l2, "Primary key is not returned correctly"
 
-    def test_key_fetch1(self, schema_any):
+    def test_key_fetch1(self, schema_any, subject):
         """test KEY fetch1 - issue #976"""
-        subject = schema.Subject()
         with dj.config(fetch_format="array"):
             k1 = (subject & "subject_id=10").fetch1("KEY")
         with dj.config(fetch_format="frame"):
