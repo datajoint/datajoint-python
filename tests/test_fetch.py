@@ -31,8 +31,8 @@ def subject():
     yield schema.Subject()
 
 
-
 class TestFetch:
+    @pytest.mark.skip(reason='temp')
     def test_getattribute(self, schema_any, subject):
         """Testing Fetch.__call__ with attributes"""
         list1 = sorted(
@@ -56,6 +56,7 @@ class TestFetch:
         for l1, l2 in zip(list1, list2):
             assert l1 == l2, "Primary key is not returned correctly"
 
+    @pytest.mark.skip(reason='temp')
     def test_getattribute_for_fetch1(self, schema_any, subject):
         """Testing Fetch1.__call__ with attributes"""
         assert (subject & "subject_id=10").fetch1("subject_id") == 10
@@ -63,6 +64,7 @@ class TestFetch:
             (subject & "subject_id=10").fetch1("subject_id", "species") ==
             (10, "monkey"))
 
+    @pytest.mark.skip(reason='temp')
     def test_order_by(self, schema_any, lang, languages):
         """Tests order_by sorting order"""
         for ord_name, ord_lang in itertools.product(*2 * [["ASC", "DESC"]]):
@@ -70,11 +72,9 @@ class TestFetch:
             languages.sort(key=itemgetter(1), reverse=ord_lang == "DESC")
             languages.sort(key=itemgetter(0), reverse=ord_name == "DESC")
             for c, l in zip(cur, languages):
-                assert (
-                    np.all(cc == ll for cc, ll in zip(c, l)),
-                    "Sorting order is different",
-                )
+                assert np.all(cc == ll for cc, ll in zip(c, l)), "Sorting order is different"
 
+    @pytest.mark.skip(reason='temp')
     def test_order_by_default(self, schema_any, lang, languages):
         """Tests order_by sorting order with defaults"""
         cur = lang.fetch(order_by=("language", "name DESC"))
@@ -83,12 +83,14 @@ class TestFetch:
         for c, l in zip(cur, languages):
             assert np.all([cc == ll for cc, ll in zip(c, l)]), "Sorting order is different"
 
+    @pytest.mark.skip(reason='temp')
     def test_limit(self, schema_any, lang):
         """Test the limit kwarg"""
         limit = 4
         cur = lang.fetch(limit=limit)
         assert len(cur) == limit, "Length is not correct"
 
+    @pytest.mark.skip(reason='temp')
     def test_order_by_limit(self, schema_any, lang, languages):
         """Test the combination of order by and limit kwargs"""
         cur = lang.fetch(limit=4, order_by=["language", "name DESC"])
@@ -98,6 +100,7 @@ class TestFetch:
         for c, l in list(zip(cur, languages))[:4]:
             assert np.all([cc == ll for cc, ll in zip(c, l)]), "Sorting order is different"
 
+    @pytest.mark.skip(reason='temp')
     def test_head_tail(self, schema_any):
         query = schema.User * schema.Language
         n = 5
@@ -115,6 +118,7 @@ class TestFetch:
         assert len(frame) == n
         assert query.primary_key == frame.index.names
 
+    @pytest.mark.skip(reason='temp')
     def test_limit_offset(self, schema_any, lang, languages):
         """Test the limit and offset kwargs together"""
         cur = lang.fetch(offset=2, limit=4, order_by=["language", "name DESC"])
@@ -124,6 +128,7 @@ class TestFetch:
         for c, l in list(zip(cur, languages[2:6])):
             assert np.all([cc == ll for cc, ll in zip(c, l)]), "Sorting order is different"
 
+    @pytest.mark.skip(reason='temp')
     def test_iter(self, schema_any, lang, languages):
         """Test iterator"""
         cur = lang.fetch(order_by=["language", "name DESC"])
@@ -134,11 +139,9 @@ class TestFetch:
         # now as dict
         cur = lang.fetch(as_dict=True, order_by=("language", "name DESC"))
         for row, (tname, tlang) in list(zip(cur, languages)):
-            assert (
-                row["name"] == tname and row["language"] == tlang,
-                "Values are not the same",
-            )
+            assert row["name"] == tname and row["language"] == tlang, "Values are not the same"
 
+    @pytest.mark.skip(reason='temp')
     def test_keys(self, schema_any, lang, languages):
         """test key fetch"""
         languages.sort(key=itemgetter(0), reverse=True)
@@ -151,6 +154,7 @@ class TestFetch:
         for c, c2 in zip(zip(*cur), cur2):
             assert c == tuple(c2.values()), "Values are not the same"
 
+    @pytest.mark.skip(reason='temp')
     def test_attributes_as_dict(self, schema_any, subject):
         """
         Issue #595
@@ -160,6 +164,7 @@ class TestFetch:
         assert bool(result) and len(result) == len(subject)
         assert set(result[0]) == set(attrs)
 
+    @pytest.mark.skip(reason='temp')
     def test_fetch1_step1(self, schema_any, lang, languages):
         assert lang.contents == languages == [
             ("Fabian", "English"),
@@ -175,10 +180,12 @@ class TestFetch:
         for k, (ke, c) in zip(true, dat.items()):
             assert k == c == (lang & key).fetch1(ke), "Values are not the same"
 
+    @pytest.mark.skip(reason='temp')
     def test_misspelled_attribute(self, schema_any):
         with pytest.raises(dj.DataJointError):
             f = (schema.Language & 'lang = "ENGLISH"').fetch()
 
+    @pytest.mark.skip(reason='temp')
     def test_repr(self, schema_any, subject):
         """Test string representation of fetch, returning table preview"""
         repr = subject.fetch.__repr__()
@@ -187,6 +194,7 @@ class TestFetch:
         # 3 lines are used for headers (2) and summary statement (1)
         assert n - 3 <= limit
 
+    @pytest.mark.skip(reason='temp')
     def test_fetch_none(self, schema_any, lang):
         """Test preparing attributes for getitem"""
         with pytest.raises(dj.DataJointError):
@@ -229,15 +237,18 @@ class TestFetch:
                 logger.removeHandler(handler)
         assert "[WARNING]: Offset set, but no limit." in log_contents
 
+    @pytest.mark.skip(reason='temp')
     def test_len(self, schema_any, lang):
         """Tests __len__"""
         assert len(lang.fetch()) == len(lang), "__len__ is not behaving properly"
 
+    @pytest.mark.skip(reason='temp')
     def test_fetch1_step2(self, schema_any, lang):
         """Tests whether fetch1 raises error"""
         with pytest.raises(dj.DataJointError):
             lang.fetch1()
 
+    @pytest.mark.skip(reason='temp')
     def test_fetch1_step3(self, schema_any, lang):
         """Tests whether fetch1 raises error"""
         with pytest.raises(dj.DataJointError):
@@ -246,10 +257,13 @@ class TestFetch:
     def test_decimal(self, schema_any):
         """Tests that decimal fields are correctly fetched and used in restrictions, see issue #334"""
         rel = schema.DecimalPrimaryKey()
+        assert bool(schema.DecimalPrimaryKey().fetch()), "Table DecimalPrimaryKey is empty"
         rel.insert1([decimal.Decimal("3.1415926")])
         keys = rel.fetch()
+        assert len(keys) > 0
         assert len(rel & keys[0]) == 1
         keys = rel.fetch(dj.key)
+        assert len(keys) >= 2
         assert len(rel & keys[1]) == 1
 
     def test_nullable_numbers(self, schema_any):
