@@ -6,8 +6,6 @@ from . import schema_privileges
 
 namespace = locals()
 
-USER = "djsubset"
-
 
 @pytest.fixture
 def schema_priv(connection_test):
