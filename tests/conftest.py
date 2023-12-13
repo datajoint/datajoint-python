@@ -1,5 +1,6 @@
 import datajoint as dj
 from packaging import version
+from typing import Dict
 import os
 from os import environ, remove
 import minio
@@ -52,12 +53,17 @@ def enable_filepath_feature(monkeypatch):
 
 
 @pytest.fixture(scope="session")
-def connection_root_bare():
-    connection = dj.Connection(
+def db_creds_root() -> Dict:
+    return dict(
         host=os.getenv("DJ_HOST"),
         user=os.getenv("DJ_USER"),
         password=os.getenv("DJ_PASS"),
     )
+
+
+@pytest.fixture(scope="session")
+def connection_root_bare(db_creds_root):
+    connection = dj.Connection(**db_creds_root)
     yield connection
 
 
