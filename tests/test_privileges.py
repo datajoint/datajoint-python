@@ -1,42 +1,45 @@
+import os
+import pytest
 import importlib
 import datajoint as dj
 from . import schema, CONN_INFO_ROOT, PREFIX
-from . import schema_privileges as pipeline
-from nose.tools import assert_true, raises
+from . import schema_privileges
 
 namespace = locals()
 
+@pytest.fixture
+def connection_djview(connection_root):
+    """
+    A connection with only SELECT privilege to djtest schemas.
+    Requires connection_root fixture so that `djview` user exists.
+    """
+    connection = dj.conn(
+        host=os.getenv("DJ_HOST"),
+        user="djview",
+        password="djview",
+        reset=True,
+    )
+    yield connection
+
 
 class TestUnprivileged:
-    @classmethod
-    def setup_class(cls):
-        """A connection with only SELECT privilege to djtest schemas"""
-        cls.connection = dj.conn(
-            host=CONN_INFO_ROOT["host"], user="djview", password="djview", reset=True
-        )
-
-    @raises(dj.DataJointError)
-    def test_fail_create_schema(self):
+    def test_fail_create_schema(self, connection_djview):
         """creating a schema with no CREATE privilege"""
-        return dj.Schema("forbidden_schema", namespace, connection=self.connection)
+        with pytest.raises(dj.DataJointError):
+            return dj.Schema("forbidden_schema", namespace, connection=connection_djview)
 
-    @raises(dj.DataJointError)
-    def test_insert_failure(self):
+    def test_insert_failure(self, connection_djview, schema_any):
         unprivileged = dj.Schema(
-            schema.schema.database, namespace, connection=self.connection
+            schema_any.database, namespace, connection=connection_djview
         )
         unprivileged.spawn_missing_classes()
-        assert_true(
-            issubclass(Language, dj.Lookup)
-            and len(Language()) == len(schema.Language()),
-            "failed to spawn missing classes",
-        )
-        Language().insert1(("Socrates", "Greek"))
+        assert issubclass(Language, dj.Lookup) and len(Language()) == len(schema.Language()), "failed to spawn missing classes"
+        with pytest.raises(dj.DataJointError):
+            Language().insert1(("Socrates", "Greek"))
 
-    @raises(dj.DataJointError)
-    def test_failure_to_create_table(self):
+    def test_failure_to_create_table(self, connection_djview, schema_any):
         unprivileged = dj.Schema(
-            schema.schema.database, namespace, connection=self.connection
+            schema_any.database, namespace, connection=connection_djview
         )
 
         @unprivileged
@@ -47,7 +50,8 @@ class TestUnprivileged:
             value : float
             """
 
-        Try().insert1((1, 1.5))
+        with pytest.raises(dj.DataJointError):
+            Try().insert1((1, 1.5))
 
 
 class TestSubset:
@@ -61,7 +65,7 @@ class TestSubset:
             password=CONN_INFO_ROOT["password"],
             reset=True,
         )
-        pipeline.schema.activate(f"{PREFIX}_pipeline")
+        schema_privileges.schema.activate(f"{PREFIX}_schema_privileges")
         conn.query(
             f"""
             CREATE USER IF NOT EXISTS '{cls.USER}'@'%%'
@@ -71,14 +75,14 @@ class TestSubset:
         conn.query(
             f"""
             GRANT SELECT, INSERT, UPDATE, DELETE
-            ON `{PREFIX}_pipeline`.`#parent`
+            ON `{PREFIX}_schema_privileges`.`#parent`
             TO '{cls.USER}'@'%%'
             """
         )
         conn.query(
             f"""
             GRANT SELECT, INSERT, UPDATE, DELETE
-            ON `{PREFIX}_pipeline`.`__child`
+            ON `{PREFIX}_schema_privileges`.`__child`
             TO '{cls.USER}'@'%%'
             """
         )
@@ -98,12 +102,12 @@ class TestSubset:
             reset=True,
         )
         conn.query(f"DROP USER {cls.USER}")
-        conn.query(f"DROP DATABASE {PREFIX}_pipeline")
+        conn.query(f"DROP DATABASE {PREFIX}_schema_privileges")
 
     def test_populate_activate(self):
-        importlib.reload(pipeline)
-        pipeline.schema.activate(
-            f"{PREFIX}_pipeline", create_schema=True, create_tables=False
+        importlib.reload(schema_privileges)
+        schema_privileges.schema.activate(
+            f"{PREFIX}_schema_privileges", create_schema=True, create_tables=False
         )
-        pipeline.Child.populate()
-        assert pipeline.Child.progress(display=False)[0] == 0
+        schema_privileges.Child.populate()
+        assert schema_privileges.Child.progress(display=False)[0] == 0

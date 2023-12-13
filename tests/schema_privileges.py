@@ -1,9 +1,7 @@
 import datajoint as dj
+import inspect
 
-schema = dj.Schema()
 
-
-@schema
 class Parent(dj.Lookup):
     definition = """
     id: int
@@ -11,7 +9,6 @@ class Parent(dj.Lookup):
     contents = [(1,)]
 
 
-@schema
 class Child(dj.Computed):
     definition = """
     -> Parent
@@ -21,15 +18,17 @@ class Child(dj.Computed):
         self.insert1(key)
 
 
-@schema
 class NoAccess(dj.Lookup):
     definition = """
     string: varchar(10)
     """
 
 
-@schema
 class NoAccessAgain(dj.Manual):
     definition = """
     -> NoAccess
     """
+
+
+LOCALS_PRIV = {k: v for k, v in locals().items() if inspect.isclass(v)}
+__all__ = list(LOCALS_PRIV)
