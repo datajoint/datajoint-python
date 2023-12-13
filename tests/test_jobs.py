@@ -49,7 +49,7 @@ def test_reserve_job(schema_any, subjects):
     assert not schema_any.jobs, "failed to clear error jobs"
 
 
-def test_restrictions(schema_any, subjects):
+def test_restrictions(schema_any):
     jobs = schema_any.jobs
     jobs.delete()
     jobs.reserve("a", {"key": "a1"})
@@ -64,7 +64,7 @@ def test_restrictions(schema_any, subjects):
     jobs.delete()
 
 
-def test_sigint(schema_any, subjects):
+def test_sigint(schema_any):
     try:
         schema.SigIntTable().populate(reserve_jobs=True)
     except KeyboardInterrupt:
@@ -76,7 +76,7 @@ def test_sigint(schema_any, subjects):
     assert error_message == "KeyboardInterrupt"
 
 
-def test_sigterm(schema_any, subjects):
+def test_sigterm(schema_any):
     try:
         schema.SigTermTable().populate(reserve_jobs=True)
     except SystemExit:
@@ -88,7 +88,7 @@ def test_sigterm(schema_any, subjects):
     assert error_message == "SystemExit: SIGTERM received"
 
 
-def test_suppress_dj_errors(schema_any, subjects):
+def test_suppress_dj_errors(schema_any):
     """test_suppress_dj_errors: dj errors suppressible w/o native py blobs"""
     with dj.config(enable_python_native_blobs=False):
         schema.ErrorClass.populate(reserve_jobs=True, suppress_errors=True)
@@ -131,7 +131,7 @@ def test_long_error_message(schema_any, subjects):
     schema_any.jobs.delete()
 
 
-def test_long_error_stack(schema_any, subjects):
+def test_long_error_stack(schema_any):
     # create long error stack
     STACK_SIZE = (
         89942  # Does not fit into small blob (should be 64k, but found to be higher)
