@@ -11,7 +11,11 @@ import networkx as nx
 import json
 from pathlib import Path
 from datajoint import errors
-from datajoint.errors import ADAPTED_TYPE_SWITCH, FILEPATH_FEATURE_SWITCH, DataJointError
+from datajoint.errors import (
+    ADAPTED_TYPE_SWITCH,
+    FILEPATH_FEATURE_SWITCH,
+    DataJointError,
+)
 from . import (
     PREFIX,
     CONN_INFO,

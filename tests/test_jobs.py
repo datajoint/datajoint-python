@@ -21,7 +21,9 @@ def test_reserve_job(schema_any, subjects):
 
     # refuse jobs
     for key in subjects.fetch("KEY"):
-        assert not schema_any.jobs.reserve(table_name, key), "failed to respect reservation"
+        assert not schema_any.jobs.reserve(
+            table_name, key
+        ), "failed to respect reservation"
 
     # complete jobs
     for key in subjects.fetch("KEY"):
@@ -38,7 +40,9 @@ def test_reserve_job(schema_any, subjects):
 
     # refuse jobs with errors
     for key in subjects.fetch("KEY"):
-        assert not schema_any.jobs.reserve(table_name, key), "failed to ignore error jobs"
+        assert not schema_any.jobs.reserve(
+            table_name, key
+        ), "failed to ignore error jobs"
 
     # clear error jobs
     (schema_any.jobs & dict(status="error")).delete()
@@ -108,8 +112,12 @@ def test_long_error_message(schema_any, subjects):
     schema_any.jobs.reserve(table_name, key)
     schema_any.jobs.error(table_name, key, long_error_message)
     error_message = schema_any.jobs.fetch1("error_message")
-    assert len(error_message) == ERROR_MESSAGE_LENGTH, "error message is longer than max allowed"
-    assert error_message.endswith(TRUNCATION_APPENDIX), "appropriate ending missing for truncated error message"
+    assert (
+        len(error_message) == ERROR_MESSAGE_LENGTH
+    ), "error message is longer than max allowed"
+    assert error_message.endswith(
+        TRUNCATION_APPENDIX
+    ), "appropriate ending missing for truncated error message"
     schema_any.jobs.delete()
 
     # test long error message
@@ -117,7 +125,9 @@ def test_long_error_message(schema_any, subjects):
     schema_any.jobs.error(table_name, key, short_error_message)
     error_message = schema_any.jobs.fetch1("error_message")
     assert error_message == short_error_message, "error messages do not agree"
-    assert not error_message.endswith(TRUNCATION_APPENDIX), "error message should not be truncated"
+    assert not error_message.endswith(
+        TRUNCATION_APPENDIX
+    ), "error message should not be truncated"
     schema_any.jobs.delete()
 
 
