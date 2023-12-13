@@ -11,7 +11,11 @@ import networkx as nx
 import json
 from pathlib import Path
 from datajoint import errors
-from datajoint.errors import ADAPTED_TYPE_SWITCH, FILEPATH_FEATURE_SWITCH
+from datajoint.errors import (
+    ADAPTED_TYPE_SWITCH,
+    FILEPATH_FEATURE_SWITCH,
+    DataJointError,
+)
 from . import (
     PREFIX,
     CONN_INFO,
@@ -227,6 +231,10 @@ def schema_any(connection_test):
         PREFIX + "_test1", schema.LOCALS_ANY, connection=connection_test
     )
     assert schema.LOCALS_ANY, "LOCALS_ANY is empty"
+    try:
+        schema_any.jobs.delete()
+    except DataJointError:
+        pass
     schema_any(schema.TTest)
     schema_any(schema.TTest2)
     schema_any(schema.TTest3)
@@ -264,6 +272,10 @@ def schema_any(connection_test):
     schema_any(schema.Stimulus)
     schema_any(schema.Longblob)
     yield schema_any
+    try:
+        schema_any.jobs.delete()
+    except DataJointError:
+        pass
     schema_any.drop()
 
 
