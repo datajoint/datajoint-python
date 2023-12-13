@@ -47,20 +47,18 @@ class TestRelation:
         test the ability of tables to self-populate using the contents property
         """
         # test contents
-        assert_true(self.user)
-        assert_true(len(self.user) == len(self.user.contents))
+        assert self.user
+        assert len(self.user) == len(self.user.contents)
         u = self.user.fetch(order_by=["username"])
-        assert_list_equal(
-            list(u["username"]), sorted([s[0] for s in self.user.contents])
-        )
+        assert (
+            list(u["username"]) == sorted([s[0] for s in self.user.contents]))
 
         # test prepare
-        assert_true(self.subject)
-        assert_true(len(self.subject) == len(self.subject.contents))
+        assert self.subject
+        assert len(self.subject) == len(self.subject.contents)
         u = self.subject.fetch(order_by=["subject_id"])
-        assert_list_equal(
-            list(u["subject_id"]), sorted([s[0] for s in self.subject.contents])
-        )
+        assert (
+            list(u["subject_id"]) == sorted([s[0] for s in self.subject.contents]))
 
     @raises(dj.DataJointError)
     def test_misnamed_attribute1(self):
@@ -108,7 +106,7 @@ class TestRelation:
     def test_insert_select(self):
         schema.TTest2.delete()
         schema.TTest2.insert(schema.TTest)
-        assert_equal(len(schema.TTest2()), len(schema.TTest()))
+        assert len(schema.TTest2()) == len(schema.TTest())
 
         original_length = len(self.subject)
         elements = self.subject.proj(..., s="subject_id")
@@ -120,18 +118,18 @@ class TestRelation:
             species='"human"',
         )
         self.subject.insert(elements, ignore_extra_fields=True)
-        assert_equal(len(self.subject), 2 * original_length)
+        assert len(self.subject) == 2 * original_length
 
     def test_insert_pandas_roundtrip(self):
         """ensure fetched frames can be inserted"""
         schema.TTest2.delete()
         n = len(schema.TTest())
-        assert_true(n > 0)
+        assert n > 0
         df = schema.TTest.fetch(format="frame")
-        assert_true(isinstance(df, pandas.DataFrame))
-        assert_equal(len(df), n)
+        assert isinstance(df, pandas.DataFrame)
+        assert len(df) == n
         schema.TTest2.insert(df)
-        assert_equal(len(schema.TTest2()), n)
+        assert len(schema.TTest2()) == n
 
     def test_insert_pandas_userframe(self):
         """
@@ -140,12 +138,12 @@ class TestRelation:
         """
         schema.TTest2.delete()
         n = len(schema.TTest())
-        assert_true(n > 0)
+        assert n > 0
         df = pandas.DataFrame(schema.TTest.fetch())
-        assert_true(isinstance(df, pandas.DataFrame))
-        assert_equal(len(df), n)
+        assert isinstance(df, pandas.DataFrame)
+        assert len(df) == n
         schema.TTest2.insert(df)
-        assert_equal(len(schema.TTest2()), n)
+        assert len(schema.TTest2()) == n
 
     @raises(dj.DataJointError)
     def test_insert_select_ignore_extra_fields0(self):
@@ -191,9 +189,8 @@ class TestRelation:
         key = dict(subject_id=7)
         date = "2015-01-01"
         self.subject.insert1(dict(key, real_id=7, date_of_birth=date, subject_notes=""))
-        assert_equal(
-            date, str((self.subject & key).fetch1("date_of_birth")), "incorrect insert"
-        )
+        assert (
+            date == str((self.subject & key).fetch1("date_of_birth"))), "incorrect insert"
         date = "2015-01-02"
         self.subject.insert1(
             dict(key, real_id=7, date_of_birth=date, subject_notes=""),
@@ -207,9 +204,8 @@ class TestRelation:
         self.subject.insert1(
             dict(key, real_id=7, date_of_birth=date, subject_notes=""), replace=True
         )
-        assert_equal(
-            date, str((self.subject & key).fetch1("date_of_birth")), "replace failed"
-        )
+        assert (
+            date == str((self.subject & key).fetch1("date_of_birth"))), "replace failed"
 
     def test_delete_quick(self):
         """Tests quick deletion"""
@@ -224,9 +220,9 @@ class TestRelation:
         s = self.subject & (
             "subject_id in (%s)" % ",".join(str(r) for r in tmp["subject_id"])
         )
-        assert_true(len(s) == 2, "insert did not work.")
+        assert len(s) == 2, "insert did not work."
         s.delete_quick()
-        assert_true(len(s) == 0, "delete did not work.")
+        assert len(s) == 0, "delete did not work."
 
     def test_skip_duplicate(self):
         """Tests if duplicates are properly skipped."""
@@ -270,7 +266,7 @@ class TestRelation:
         X = np.random.randn(20, 10)
         self.img.insert1((1, X))
         Y = self.img.fetch()[0]["img"]
-        assert_true(np.all(X == Y), "Inserted and retrieved image are not identical")
+        assert np.all(X == Y), "Inserted and retrieved image are not identical"
 
     def test_drop(self):
         """Tests dropping tables"""
@@ -305,7 +301,7 @@ class TestRelation:
     def test_table_size(self):
         """test getting the size of the table and its indices in bytes"""
         number_of_bytes = self.experiment.size_on_disk
-        assert_true(isinstance(number_of_bytes, int) and number_of_bytes > 100)
+        assert isinstance(number_of_bytes, int) and number_of_bytes > 100
 
     def test_repr_html(self):
-        assert_true(self.ephys._repr_html_().strip().startswith("<style"))
+        assert self.ephys._repr_html_().strip().startswith("<style")
