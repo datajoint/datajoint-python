@@ -7,6 +7,7 @@ from . import schema_privileges
 
 namespace = locals()
 
+
 @pytest.fixture
 def connection_djview(connection_root):
     """
@@ -26,14 +27,18 @@ class TestUnprivileged:
     def test_fail_create_schema(self, connection_djview):
         """creating a schema with no CREATE privilege"""
         with pytest.raises(dj.DataJointError):
-            return dj.Schema("forbidden_schema", namespace, connection=connection_djview)
+            return dj.Schema(
+                "forbidden_schema", namespace, connection=connection_djview
+            )
 
     def test_insert_failure(self, connection_djview, schema_any):
         unprivileged = dj.Schema(
             schema_any.database, namespace, connection=connection_djview
         )
         unprivileged.spawn_missing_classes()
-        assert issubclass(Language, dj.Lookup) and len(Language()) == len(schema.Language()), "failed to spawn missing classes"
+        assert issubclass(Language, dj.Lookup) and len(Language()) == len(
+            schema.Language()
+        ), "failed to spawn missing classes"
         with pytest.raises(dj.DataJointError):
             Language().insert1(("Socrates", "Greek"))
 
