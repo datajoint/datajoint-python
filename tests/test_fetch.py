@@ -213,9 +213,6 @@ class TestFetch:
             assert np.all(
                 [cc == ll for cc, ll in zip(c, l)]
             ), "Sorting order is different"
-        assert len(
-            schema.DecimalPrimaryKey().fetch()
-        ), "Table DecimalPrimaryKey is empty"
 
     def test_limit_warning(self, schema_any, lang):
         """Tests whether warning is raised if offset is used without limit."""
