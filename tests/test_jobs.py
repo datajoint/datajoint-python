@@ -82,7 +82,7 @@ def test_sigterm(schema_any):
     except SystemExit:
         pass
 
-    assert len(schema_any.jobs.fetch()), "SigTermjobs table is empty"
+    assert len(schema_any.jobs.fetch()), "SigTerm jobs table is empty"
     status, error_message = schema_any.jobs.fetch1("status", "error_message")
     assert status == "error"
     assert error_message == "SystemExit: SIGTERM received"
