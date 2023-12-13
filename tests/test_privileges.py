@@ -1,21 +1,74 @@
 import os
 import pytest
-import importlib
 import datajoint as dj
 from . import schema, CONN_INFO_ROOT, PREFIX
 from . import schema_privileges
 
 namespace = locals()
 
+USER = "djsubset"
+
 
 @pytest.fixture
-def connection_djview(connection_root):
+def schema_priv(connection_test):
+    schema_priv = dj.Schema(
+        # PREFIX + "_schema_privileges",
+        context=schema_privileges.LOCALS_PRIV,
+        connection=connection_test,
+    )
+    schema_priv(schema_privileges.Parent)
+    schema_priv(schema_privileges.Child)
+    schema_priv(schema_privileges.NoAccess)
+    schema_priv(schema_privileges.NoAccessAgain)
+    yield schema_priv
+    if schema_priv.is_activated():
+        schema_priv.drop()
+
+
+@pytest.fixture
+def connection_djsubset(connection_root, db_creds_root, schema_priv):
+    user = "djsubset"
+    conn = dj.conn(**db_creds_root, reset=True)
+    schema_priv.activate(f"{PREFIX}_schema_privileges")
+    conn.query(
+        f"""
+        CREATE USER IF NOT EXISTS '{user}'@'%%'
+        IDENTIFIED BY '{user}'
+        """
+    )
+    conn.query(
+        f"""
+        GRANT SELECT, INSERT, UPDATE, DELETE
+        ON `{PREFIX}_schema_privileges`.`#parent`
+        TO '{user}'@'%%'
+        """
+    )
+    conn.query(
+        f"""
+        GRANT SELECT, INSERT, UPDATE, DELETE
+        ON `{PREFIX}_schema_privileges`.`__child`
+        TO '{user}'@'%%'
+        """
+    )
+    conn_djsubset = dj.conn(
+        host=db_creds_root["host"],
+        user=user,
+        password=user,
+        reset=True,
+    )
+    yield conn_djsubset
+    conn.query(f"DROP USER {user}")
+    conn.query(f"DROP DATABASE {PREFIX}_schema_privileges")
+
+
+@pytest.fixture
+def connection_djview(connection_root, db_creds_root):
     """
     A connection with only SELECT privilege to djtest schemas.
     Requires connection_root fixture so that `djview` user exists.
     """
     connection = dj.conn(
-        host=os.getenv("DJ_HOST"),
+        host=db_creds_root["host"],
         user="djview",
         password="djview",
         reset=True,
@@ -60,58 +113,8 @@ class TestUnprivileged:
 
 
 class TestSubset:
-    USER = "djsubset"
-
-    @classmethod
-    def setup_class(cls):
-        conn = dj.conn(
-            host=CONN_INFO_ROOT["host"],
-            user=CONN_INFO_ROOT["user"],
-            password=CONN_INFO_ROOT["password"],
-            reset=True,
-        )
-        schema_privileges.schema.activate(f"{PREFIX}_schema_privileges")
-        conn.query(
-            f"""
-            CREATE USER IF NOT EXISTS '{cls.USER}'@'%%'
-            IDENTIFIED BY '{cls.USER}'
-            """
-        )
-        conn.query(
-            f"""
-            GRANT SELECT, INSERT, UPDATE, DELETE
-            ON `{PREFIX}_schema_privileges`.`#parent`
-            TO '{cls.USER}'@'%%'
-            """
-        )
-        conn.query(
-            f"""
-            GRANT SELECT, INSERT, UPDATE, DELETE
-            ON `{PREFIX}_schema_privileges`.`__child`
-            TO '{cls.USER}'@'%%'
-            """
-        )
-        cls.connection = dj.conn(
-            host=CONN_INFO_ROOT["host"],
-            user=cls.USER,
-            password=cls.USER,
-            reset=True,
-        )
-
-    @classmethod
-    def teardown_class(cls):
-        conn = dj.conn(
-            host=CONN_INFO_ROOT["host"],
-            user=CONN_INFO_ROOT["user"],
-            password=CONN_INFO_ROOT["password"],
-            reset=True,
-        )
-        conn.query(f"DROP USER {cls.USER}")
-        conn.query(f"DROP DATABASE {PREFIX}_schema_privileges")
-
-    def test_populate_activate(self):
-        importlib.reload(schema_privileges)
-        schema_privileges.schema.activate(
+    def test_populate_activate(self, connection_djsubset, schema_priv):
+        schema_priv.activate(
             f"{PREFIX}_schema_privileges", create_schema=True, create_tables=False
         )
         schema_privileges.Child.populate()
