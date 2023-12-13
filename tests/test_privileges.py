@@ -10,7 +10,6 @@ namespace = locals()
 @pytest.fixture
 def schema_priv(connection_test):
     schema_priv = dj.Schema(
-        # PREFIX + "_schema_privileges",
         context=schema_privileges.LOCALS_PRIV,
         connection=connection_test,
     )
