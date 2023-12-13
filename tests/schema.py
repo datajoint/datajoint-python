@@ -307,7 +307,7 @@ class DecimalPrimaryKey(dj.Lookup):
     definition = """
     id  :  decimal(4,3)
     """
-    contents = zip((0.1, 0.25, 3.99))
+    contents = list(zip((0.1, 0.25, 3.99)))
 
 
 class IndexRich(dj.Manual):
