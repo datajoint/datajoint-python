@@ -131,7 +131,7 @@ def test_long_error_message(schema_any, subjects):
     schema_any.jobs.delete()
 
 
-def test_long_error_stack(schema_any):
+def test_long_error_stack(schema_any, subjects):
     # create long error stack
     STACK_SIZE = (
         89942  # Does not fit into small blob (should be 64k, but found to be higher)
