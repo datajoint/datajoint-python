@@ -263,7 +263,9 @@ def schema_any(connection_test):
     schema_any(schema.SessionDateA)
     schema_any(schema.Stimulus)
     schema_any(schema.Longblob)
+    schema_any.jobs.delete()
     yield schema_any
+    schema_any.jobs.delete()
     schema_any.drop()
 
 

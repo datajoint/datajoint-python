@@ -12,7 +12,6 @@ def subjects():
 
 
 def test_reserve_job(schema_any, subjects):
-    schema_any.jobs.delete()
     assert subjects
     table_name = "fake_table"
 
@@ -62,45 +61,37 @@ def test_restrictions(schema_any, subjects):
 
 
 def test_sigint(schema_any, subjects):
-    # clear out job table
-    schema_any.jobs.delete()
     try:
         schema.SigIntTable().populate(reserve_jobs=True)
     except KeyboardInterrupt:
         pass
 
+    assert len(schema_any.jobs.fetch()), "SigInt jobs table is empty"
     status, error_message = schema_any.jobs.fetch1("status", "error_message")
     assert status == "error"
     assert error_message == "KeyboardInterrupt"
-    schema_any.jobs.delete()
 
 
 def test_sigterm(schema_any, subjects):
-    # clear out job table
-    schema_any.jobs.delete()
     try:
         schema.SigTermTable().populate(reserve_jobs=True)
     except SystemExit:
         pass
 
+    assert len(schema_any.jobs.fetch()), "SigTermjobs table is empty"
     status, error_message = schema_any.jobs.fetch1("status", "error_message")
     assert status == "error"
     assert error_message == "SystemExit: SIGTERM received"
-    schema_any.jobs.delete()
 
 
 def test_suppress_dj_errors(schema_any, subjects):
     """test_suppress_dj_errors: dj errors suppressible w/o native py blobs"""
-    schema_any.jobs.delete()
     with dj.config(enable_python_native_blobs=False):
         schema.ErrorClass.populate(reserve_jobs=True, suppress_errors=True)
     assert len(schema.DjExceptionName()) == len(schema_any.jobs) > 0
 
 
 def test_long_error_message(schema_any, subjects):
-    # clear out jobs table
-    schema_any.jobs.delete()
-
     # create long error message
     long_error_message = "".join(
         random.choice(string.ascii_letters) for _ in range(ERROR_MESSAGE_LENGTH + 100)
@@ -131,9 +122,6 @@ def test_long_error_message(schema_any, subjects):
 
 
 def test_long_error_stack(schema_any, subjects):
-    # clear out jobs table
-    schema_any.jobs.delete()
-
     # create long error stack
     STACK_SIZE = (
         89942  # Does not fit into small blob (should be 64k, but found to be higher)
@@ -151,4 +139,3 @@ def test_long_error_stack(schema_any, subjects):
     schema_any.jobs.error(table_name, key, "error message", long_error_stack)
     error_stack = schema_any.jobs.fetch1("error_stack")
     assert error_stack == long_error_stack, "error stacks do not agree"
-    schema_any.jobs.delete()
