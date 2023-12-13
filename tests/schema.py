@@ -258,7 +258,7 @@ class SimpleSource(dj.Lookup):
     definition = """
     id : int  # id
     """
-    contents = ((x,) for x in range(10))
+    contents = [(x,) for x in range(10)]
 
 
 class SigIntTable(dj.Computed):
