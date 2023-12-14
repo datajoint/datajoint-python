@@ -59,7 +59,9 @@ def schema_uni(db_creds_test, schema_uni_inactive, connection_test):
 
 def test_activate_unauthorized(schema_uni_inactive, db_creds_test, connection_test):
     with pytest.raises(DataJointError):
-        schema_uni_inactive.activate("unauthorized", connection=dj.conn(**db_creds_test))
+        schema_uni_inactive.activate(
+            "unauthorized", connection=dj.conn(**db_creds_test)
+        )
 
 
 def test_fill(schema_uni):
@@ -160,8 +162,8 @@ def test_aggr(schema_uni):
         Grade, ..., n="count(student_id)", keep_all_rows=True
     ) & "n>1"
     assert not any(
-            name in section.heading.names for name in Grade.heading.secondary_attributes
-        )
+        name in section.heading.names for name in Grade.heading.secondary_attributes
+    )
     assert len(set(section.fetch("dept"))) == 1
     assert len(section) == 168
     assert bool(section)
