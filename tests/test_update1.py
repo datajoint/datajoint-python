@@ -53,7 +53,7 @@ def test_update1():
     attach_file.write_bytes(buffer1)
     Thing.update1(dict(key, picture=attach_file))
     attach_file.unlink()
-    assert_false(attach_file.is_file())
+    assert not attach_file.is_file()
 
     # filepath
     stage_path = dj.config["stores"]["update_repo"]["stage"]
@@ -65,7 +65,7 @@ def test_update1():
         f.write(original_file_data)
     Thing.update1(dict(key, img_file=managed_file))
     managed_file.unlink()
-    assert_false(managed_file.is_file())
+    assert not managed_file.is_file()
 
     check2 = Thing.fetch1(download_path=scratch_folder)
     buffer2 = Path(check2["picture"]).read_bytes()  # read attachment
@@ -84,29 +84,23 @@ def test_update1():
     )
     check3 = Thing.fetch1()
 
-    assert_true(
-        check1["number"] == 0 and check1["picture"] is None and check1["params"] is None
-    )
+    assert check1["number"] == 0 and check1["picture"] is None and check1["params"] is None
 
-    assert_true(
-        check2["number"] == 3
+    assert (check2["number"] == 3
         and check2["frac"] == 30.0
         and check2["picture"] is not None
         and check2["params"] is None
-        and buffer1 == buffer2
-    )
+        and buffer1 == buffer2)
 
-    assert_true(
-        check3["number"] == 0
+    assert (check3["number"] == 0
         and check3["frac"] == 30.0
         and check3["picture"] is None
         and check3["img_file"] is None
-        and isinstance(check3["params"], np.ndarray)
-    )
+        and isinstance(check3["params"], np.ndarray))
 
-    assert_true(check3["timestamp"] > check2["timestamp"])
-    assert_equal(buffer1, buffer2)
-    assert_equal(original_file_data, final_file_data)
+    assert check3["timestamp"] > check2["timestamp"]
+    assert buffer1 == buffer2
+    assert original_file_data == final_file_data
 
 
 @raises(DataJointError)
