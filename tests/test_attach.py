@@ -1,15 +1,14 @@
 import pytest
-import tempfile
 from pathlib import Path
 import os
 from .schema_external import Attach
 
 
-def test_attach_attributes(schema_ext, minio_client):
+def test_attach_attributes(schema_ext, minio_client, tmpdir_factory):
     """Test saving files in attachments"""
     # create a mock file
     table = Attach()
-    source_folder = tempfile.mkdtemp()
+    source_folder = tmpdir_factory.mktemp()
     for i in range(2):
         attach1 = Path(source_folder, "attach1.img")
         data1 = os.urandom(100)
@@ -21,7 +20,7 @@ def test_attach_attributes(schema_ext, minio_client):
             f.write(data2)
         table.insert1(dict(attach=i, img=attach1, txt=attach2))
 
-    download_folder = Path(tempfile.mkdtemp())
+    download_folder = Path(tmpdir_factory.mktemp())
     keys, path1, path2 = table.fetch(
         "KEY", "img", "txt", download_path=download_folder, order_by="KEY"
     )
@@ -43,11 +42,11 @@ def test_attach_attributes(schema_ext, minio_client):
     assert p2 == path2[0]
 
 
-def test_return_string(schema_ext, minio_client):
+def test_return_string(schema_ext, minio_client, tmpdir_factory):
     """Test returning string on fetch"""
     # create a mock file
     table = Attach()
-    source_folder = tempfile.mkdtemp()
+    source_folder = tmpdir_factory.mktemp()
 
     attach1 = Path(source_folder, "attach1.img")
     data1 = os.urandom(100)
@@ -59,7 +58,7 @@ def test_return_string(schema_ext, minio_client):
         f.write(data2)
     table.insert1(dict(attach=2, img=attach1, txt=attach2))
 
-    download_folder = Path(tempfile.mkdtemp())
+    download_folder = Path(tmpdir_factory.mktemp())
     keys, path1, path2 = table.fetch(
         "KEY", "img", "txt", download_path=download_folder, order_by="KEY"
     )
