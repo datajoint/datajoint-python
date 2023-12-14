@@ -128,10 +128,10 @@ def test_wrong_insert_type(user):
         user.insert1(3)
 
 
-def test_insert_select(subject, test2):
+def test_insert_select(subject, test, test2):
     test2.delete()
-    test2.insert(schema.TTest)
-    assert len(test2) == len(schema.TTest())
+    test2.insert(test)
+    assert len(test2) == len(test)
 
     original_length = len(subject)
     elements = subject.proj(..., s="subject_id")
@@ -146,27 +146,27 @@ def test_insert_select(subject, test2):
     assert len(subject) == 2 * original_length
 
 
-def test_insert_pandas_roundtrip(test2):
+def test_insert_pandas_roundtrip(test, test2):
     """ensure fetched frames can be inserted"""
     test2.delete()
-    n = len(schema.TTest())
+    n = len(test)
     assert n > 0
-    df = schema.TTest.fetch(format="frame")
+    df = test.fetch(format="frame")
     assert isinstance(df, pandas.DataFrame)
     assert len(df) == n
     test2.insert(df)
     assert len(test2) == n
 
 
-def test_insert_pandas_userframe(test2):
+def test_insert_pandas_userframe(test, test2):
     """
     ensure simple user-created frames (1 field, non-custom index)
     can be inserted without extra index adjustment
     """
     test2.delete()
-    n = len(schema.TTest())
+    n = len(test)
     assert n > 0
-    df = pandas.DataFrame(schema.TTest.fetch())
+    df = pandas.DataFrame(test.fetch())
     assert isinstance(df, pandas.DataFrame)
     assert len(df) == n
     test2.insert(df)
