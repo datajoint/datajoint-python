@@ -12,10 +12,9 @@ from .schema_aggr_regress import R, Q, S, A, B, X, LOCALS_AGGR_REGRESS
 
 @pytest.fixture(scope="function")
 def schema_aggr_reg(connection_test):
-    context = LOCALS_AGGR_REGRESS
     schema = dj.Schema(
         PREFIX + "_aggr_regress",
-        context=context,
+        context=LOCALS_AGGR_REGRESS,
         connection=connection_test,
     )
     schema(R)
@@ -27,10 +26,9 @@ def schema_aggr_reg(connection_test):
 
 @pytest.fixture(scope="function")
 def schema_aggr_reg_with_abx(connection_test):
-    context = LOCALS_AGGR_REGRESS
     schema = dj.Schema(
         PREFIX + "_aggr_regress_with_abx",
-        context=context,
+        context=LOCALS_AGGR_REGRESS,
         connection=connection_test,
     )
     schema(R)
