@@ -2,59 +2,8 @@ import pytest
 import re
 import datajoint as dj
 from . import schema as schema_any_module, PREFIX
+from .schema_alter import Experiment, Parent, LOCALS_ALTER
 
-
-class Experiment(dj.Imported):
-    original_definition = """  # information about experiments
-    -> Subject
-    experiment_id  :smallint  # experiment number for this subject
-    ---
-    experiment_date  :date   # date when experiment was started
-    -> [nullable] User
-    data_path=""     :varchar(255)  # file path to recorded data
-    notes=""         :varchar(2048) # e.g. purpose of experiment
-    entry_time=CURRENT_TIMESTAMP :timestamp   # automatic timestamp
-    """
-
-    definition1 = """  # Experiment
-    -> Subject
-    experiment_id  :smallint  # experiment number for this subject
-    ---
-    data_path     : int  # some number
-    extra=null : longblob  # just testing
-    -> [nullable] User
-    subject_notes=null         :varchar(2048) # {notes} e.g. purpose of experiment
-    entry_time=CURRENT_TIMESTAMP :timestamp   # automatic timestamp
-    """
-
-
-class Parent(dj.Manual):
-    definition = """
-    parent_id: int
-    """
-
-    class Child(dj.Part):
-        definition = """
-        -> Parent
-        """
-        definition_new = """
-        -> master
-        ---
-        child_id=null: int
-        """
-
-    class Grandchild(dj.Part):
-        definition = """
-        -> master.Child
-        """
-        definition_new = """
-        -> master.Child
-        ---
-        grandchild_id=null: int
-        """
-
-
-LOCALS_ALTER = {"Experiment": Experiment, "Parent": Parent}
 COMBINED_CONTEXT = {
     **schema_any_module.LOCALS_ANY,
     **LOCALS_ALTER,
@@ -71,6 +20,19 @@ def schema_alter(connection_test, schema_any):
 
 
 class TestAlter:
+    def verify_alter(self, schema_alter, table, attribute_sql):
+        definition_original = schema_alter.connection.query(
+            f"SHOW CREATE TABLE {table.full_table_name}"
+        ).fetchone()[1]
+        table.definition = table.definition_new
+        table.alter(prompt=False)
+        definition_new = schema_alter.connection.query(
+            f"SHOW CREATE TABLE {table.full_table_name}"
+        ).fetchone()[1]
+        assert (
+            re.sub(f"{attribute_sql},\n  ", "", definition_new) == definition_original
+        )
+
     def test_alter(self, schema_alter):
         original = schema_alter.connection.query(
             "SHOW CREATE TABLE " + Experiment.full_table_name
@@ -88,19 +50,6 @@ class TestAlter:
         ).fetchone()[1]
         assert altered != restored
         assert original == restored
-
-    def verify_alter(self, schema_alter, table, attribute_sql):
-        definition_original = schema_alter.connection.query(
-            f"SHOW CREATE TABLE {table.full_table_name}"
-        ).fetchone()[1]
-        table.definition = table.definition_new
-        table.alter(prompt=False)
-        definition_new = schema_alter.connection.query(
-            f"SHOW CREATE TABLE {table.full_table_name}"
-        ).fetchone()[1]
-        assert (
-            re.sub(f"{attribute_sql},\n  ", "", definition_new) == definition_original
-        )
 
     def test_alter_part(self, schema_alter):
         """
