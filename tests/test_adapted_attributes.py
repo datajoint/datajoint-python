@@ -22,24 +22,22 @@ def schema_ad(
     adapted_graph_instance,
     enable_adapted_types,
     enable_filepath_feature,
+    tmpdir
 ):
-    stores_config = {
+    dj.config["stores"] = {
         "repo-s3": dict(
             S3_CONN_INFO,
             protocol="s3",
             location="adapted/repo",
-            stage=tempfile.mkdtemp(),
+            stage=tmpdir
         )
     }
-    dj.config["stores"] = stores_config
-    layout_to_filepath = schema_adapted.LayoutToFilepath()
     context = {
         **schema_adapted.LOCALS_ADAPTED,
         "graph": adapted_graph_instance,
-        "layout_to_filepath": layout_to_filepath,
+        "layout_to_filepath": schema_adapted.LayoutToFilepath(),
     }
     schema = dj.schema(SCHEMA_NAME, context=context, connection=connection_test)
-    graph = adapted_graph_instance
     schema(schema_adapted.Connectivity)
     schema(schema_adapted.Layout)
     yield schema
@@ -93,7 +91,6 @@ def test_adapted_filepath_type(schema_ad, minio_client):
     t = Layout()
     t.insert1((0, layout))
     result = t.fetch1("layout")
-    # TODO: may fail, used to be assert_dict_equal
     assert result == layout
     t.delete()
     c.delete()
