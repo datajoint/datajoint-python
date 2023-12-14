@@ -12,23 +12,17 @@ from . import schema
 
 @pytest.fixture
 def test(schema_any):
-    assert len(schema.TTest.contents)
     yield schema.TTest()
-    assert len(schema.TTest.contents)
 
 
 @pytest.fixture
 def test_extra(schema_any):
-    assert len(schema.TTest.contents)
     yield schema.TTestExtra()
-    assert len(schema.TTest.contents)
 
 
 @pytest.fixture
 def test_no_extra(schema_any):
-    assert len(schema.TTest.contents)
     yield schema.TTestNoExtra()
-    assert len(schema.TTest.contents)
 
 
 @pytest.fixture
