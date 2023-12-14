@@ -1,12 +1,15 @@
+import types
 import pytest
+import inspect
 import datajoint as dj
+from unittest.mock import patch
 from inspect import getmembers
 from . import schema
 from . import PREFIX
 
 
 class Ephys(dj.Imported):
-    definition = """  # This is already declared in ./schema.py
+    definition = """  # This is already declare in ./schema.py
     """
 
 
@@ -25,18 +28,41 @@ def part_selector(attr):
 
 
 @pytest.fixture
+def schema_empty_module(schema_any, schema_empty):
+    # Mimic tests_old/schema_empty
+    namespace_dict = {
+        '_': schema_any,
+        'schema': schema_empty,
+        'Ephys': Ephys,
+    }
+    module = types.ModuleType('schema_empty')
+
+    # Add classes to the module's namespace
+    for k, v in namespace_dict.items():
+        setattr(module, k, v)
+
+    # Spawn missing classes in the caller's (self) namespace.
+    # Then add them to the mock module's namespace.
+    module.schema.context = None
+    module.schema.spawn_missing_classes(context=None)
+    for k, v in locals().items():
+        if inspect.isclass(v):
+            setattr(module, k, v)
+    return module
+
+
+@pytest.fixture
 def schema_empty(connection_test, schema_any):
     context = {
         **schema.LOCALS_ANY,
         "Ephys": Ephys
     }
-    schema_emp = dj.Schema(PREFIX + "_test1", context=context, connection=connection_test)
-    schema_emp(Ephys)
+    schema_empty = dj.Schema(PREFIX + "_test1", context=context, connection=connection_test)
+    schema_empty(Ephys)
     # load the rest of the classes
-    schema_emp.spawn_missing_classes()
-    breakpoint()
-    yield schema_emp
-    schema_emp.drop()
+    schema_empty.spawn_missing_classes(context=context)
+    yield schema_empty
+    schema_empty.drop()
 
 
 def test_schema_size_on_disk(schema_any):
@@ -55,10 +81,10 @@ def test_drop_unauthorized():
         info_schema.drop()
 
 
-def test_namespace_population(schema_empty, schema_any):
+def test_namespace_population(schema_empty_module):
     for name, rel in getmembers(schema, relation_selector):
-        assert hasattr(schema_empty, name), "{name} not found in schema_empty".format(name=name)
-        assert rel.__base__ is getattr(schema_empty, name).__base__, "Wrong tier for {name}".format(name=name)
+        assert hasattr(schema_empty_module, name), "{name} not found in schema_empty".format(name=name)
+        assert rel.__base__ is getattr(schema_empty_module, name).__base__, "Wrong tier for {name}".format(name=name)
 
         for name_part in dir(rel):
             if name_part[0].isupper() and part_selector(getattr(rel, name_part)):
