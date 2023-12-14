@@ -70,6 +70,7 @@ def test_populate(schema_simp_pop):
     assert len(E()) == len(B()) * len(D()) / len(A()), "E populated incorrectly"
     assert len(E.F()) > 0, "F populated incorrectly"
 
+
 def test_free_relation(schema_simp_pop):
     b = B()
     free = dj.FreeTable(b.connection, b.full_table_name)
@@ -77,17 +78,25 @@ def test_free_relation(schema_simp_pop):
     r = "n>5"
     assert (B() & r).make_sql() == (free & r).make_sql()
 
+
 def test_rename(schema_simp_pop):
     # test renaming
     x = B().proj(i="id_a") & "i in (1,2,3,4)"
     lenx = len(x)
-    assert len(x) == len(B() & "id_a in (1,2,3,4)"), "incorrect restriction of renamed attributes"
-    assert len(x & "id_b in (1,2)") == len(B() & "id_b in (1,2) and id_a in (1,2,3,4)"), "incorrect restriction of renamed restriction"
+    assert len(x) == len(
+        B() & "id_a in (1,2,3,4)"
+    ), "incorrect restriction of renamed attributes"
+    assert len(x & "id_b in (1,2)") == len(
+        B() & "id_b in (1,2) and id_a in (1,2,3,4)"
+    ), "incorrect restriction of renamed restriction"
     assert len(x) == lenx, "restriction modified original"
     y = x.proj(j="i")
-    assert len(y) == len(B() & "id_a in (1,2,3,4)"), "incorrect projection of restriction"
+    assert len(y) == len(
+        B() & "id_a in (1,2,3,4)"
+    ), "incorrect projection of restriction"
     z = y & "j in (3, 4, 5, 6)"
     assert len(z) == len(B() & "id_a in (3,4)"), "incorrect nested subqueries"
+
 
 def test_rename_order(schema_simp_pop):
     """
@@ -98,22 +107,31 @@ def test_rename_order(schema_simp_pop):
     pk2 = D.proj(a="id_a").primary_key
     assert ["a" if i == "id_a" else i for i in pk1] == pk2
 
+
 def test_join(schema_simp_pop):
     # Test cartesian product
     x = A()
     y = L()
     rel = x * y
     assert len(rel) == len(x) * len(y), "incorrect join"
-    assert set(x.heading.names).union(y.heading.names) == set(rel.heading.names), "incorrect join heading"
-    assert set(x.primary_key).union(y.primary_key) == set(rel.primary_key), "incorrect join primary_key"
+    assert set(x.heading.names).union(y.heading.names) == set(
+        rel.heading.names
+    ), "incorrect join heading"
+    assert set(x.primary_key).union(y.primary_key) == set(
+        rel.primary_key
+    ), "incorrect join primary_key"
 
     # Test cartesian product of restricted relations
     x = A() & "cond_in_a=1"
     y = L() & "cond_in_l=1"
     rel = x * y
     assert len(rel) == len(x) * len(y), "incorrect join"
-    assert set(x.heading.names).union(y.heading.names) == set(rel.heading.names), "incorrect join heading"
-    assert set(x.primary_key).union(y.primary_key) == set(rel.primary_key), "incorrect join primary_key"
+    assert set(x.heading.names).union(y.heading.names) == set(
+        rel.heading.names
+    ), "incorrect join heading"
+    assert set(x.primary_key).union(y.primary_key) == set(
+        rel.primary_key
+    ), "incorrect join primary_key"
 
     # Test join with common attributes
     cond = A() & "cond_in_a=1"
@@ -122,8 +140,12 @@ def test_join(schema_simp_pop):
     rel = x * y
     assert len(rel) >= len(x) and len(rel) >= len(y), "incorrect join"
     assert not rel - cond, "incorrect join, restriction, or antijoin"
-    assert set(x.heading.names).union(y.heading.names) == set(rel.heading.names), "incorrect join heading"
-    assert set(x.primary_key).union(y.primary_key) == set(rel.primary_key), "incorrect join primary_key"
+    assert set(x.heading.names).union(y.heading.names) == set(
+        rel.heading.names
+    ), "incorrect join heading"
+    assert set(x.primary_key).union(y.primary_key) == set(
+        rel.primary_key
+    ), "incorrect join primary_key"
 
     # test renamed join
     x = B().proj(
@@ -132,14 +154,22 @@ def test_join(schema_simp_pop):
     y = D()
     rel = x * y
     assert len(rel) == len(x) * len(y), "incorrect join"
-    assert set(x.heading.names).union(y.heading.names) == set(rel.heading.names), "incorrect join heading"
-    assert set(x.primary_key).union(y.primary_key) == set(rel.primary_key), "incorrect join primary_key"
+    assert set(x.heading.names).union(y.heading.names) == set(
+        rel.heading.names
+    ), "incorrect join heading"
+    assert set(x.primary_key).union(y.primary_key) == set(
+        rel.primary_key
+    ), "incorrect join primary_key"
     x = B().proj(a="id_a")
     y = D()
     rel = x * y
     assert len(rel) == len(x) * len(y), "incorrect join"
-    assert set(x.heading.names).union(y.heading.names) == set(rel.heading.names), "incorrect join heading"
-    assert set(x.primary_key).union(y.primary_key) == set(rel.primary_key), "incorrect join primary_key"
+    assert set(x.heading.names).union(y.heading.names) == set(
+        rel.heading.names
+    ), "incorrect join heading"
+    assert set(x.primary_key).union(y.primary_key) == set(
+        rel.primary_key
+    ), "incorrect join primary_key"
 
     # test pairing
     # Approach 1: join then restrict
@@ -155,6 +185,7 @@ def test_join(schema_simp_pop):
     y = (A & "cond_in_a=1").proj(a2="id_a")
     assert len(rel) == len(x * y)
 
+
 def test_issue_376(schema_any_pop):
     tab = TTest3()
     tab.delete_quick()
@@ -164,8 +195,10 @@ def test_issue_376(schema_any_pop):
     assert len(tab & 'value like "o%"') == 2
     assert len(tab & 'value like "o%%"') == 2
 
+
 def test_issue_463(schema_simp_pop):
     assert ((A & B) * B).fetch().size == len(A * B)
+
 
 def test_project(schema_simp_pop):
     x = A().proj(a="id_a")  # rename
@@ -175,9 +208,11 @@ def test_project(schema_simp_pop):
 
     # projection after restriction
     cond = L() & "cond_in_l"
-    assert (
-        len(D() & cond) + len(D() - cond) == len(D())), "failed semijoin or antijoin"
-    assert len((D() & cond).proj()) == len((D() & cond)), "projection failed: altered its argument" "s cardinality"
+    assert len(D() & cond) + len(D() - cond) == len(D()), "failed semijoin or antijoin"
+    assert len((D() & cond).proj()) == len((D() & cond)), (
+        "projection failed: altered its argument" "s cardinality"
+    )
+
 
 def test_rename_non_dj_attribute(connection_test, schema_simp_pop, schema_any_pop):
     schema = PREFIX + "_test1"
@@ -191,26 +226,31 @@ def test_rename_non_dj_attribute(connection_test, schema_simp_pop, schema_any_po
     ), "Failed to rename attribute correctly"
     connection_test.query(f"DROP TABLE {schema}.test_table")
 
+
 def test_union(schema_simp_pop):
     x = set(zip(*IJ.fetch("i", "j")))
     y = set(zip(*JI.fetch("i", "j")))
-    assert len(x) > 0 and len(y) > 0 and len(IJ() * JI()) < len(x)  # ensure the IJ and JI are non-trivial
+    assert (
+        len(x) > 0 and len(y) > 0 and len(IJ() * JI()) < len(x)
+    )  # ensure the IJ and JI are non-trivial
     z = set(zip(*(IJ + JI).fetch("i", "j")))  # union
     assert x.union(y) == z
     assert len(IJ + JI) == len(z)
+
 
 def test_outer_union_fail(schema_simp_pop):
     """Union of two tables with different primary keys raises an error."""
     with pytest.raises(dj.DataJointError):
         A() + B()
 
+
 def test_outer_union_fail(schema_any_pop):
     """Union of two tables with different primary keys raises an error."""
     t = Trial + Ephys
     t.fetch()
-    assert (
-        set(t.heading.names) == set(Trial.heading.names) | set(Ephys.heading.names))
+    assert set(t.heading.names) == set(Trial.heading.names) | set(Ephys.heading.names)
     len(t)
+
 
 def test_preview(schema_simp_pop):
     with dj.config(display__limit=7):
@@ -218,18 +258,18 @@ def test_preview(schema_simp_pop):
         s = x.preview()
         assert len(s.split("\n")) == len(x) + 2
 
+
 def test_heading_repr(schema_simp_pop):
     x = A * D
     s = repr(x.heading)
-    assert (
-        len(
-            list(
-                1
-                for g in s.split("\n")
-                if g.strip() and not g.strip().startswith(("-", "#"))
-            )
-        ) ==
-        len(x.heading.attributes))
+    assert len(
+        list(
+            1
+            for g in s.split("\n")
+            if g.strip() and not g.strip().startswith(("-", "#"))
+        )
+    ) == len(x.heading.attributes)
+
 
 def test_aggregate(schema_simp_pop):
     x = B().aggregate(B.C())
@@ -238,8 +278,9 @@ def test_aggregate(schema_simp_pop):
     x = B().aggregate(B.C(), keep_all_rows=True)
     assert len(x) == len(B())  # test LEFT join
 
-    assert (
-        len((x & "id_b=0").fetch()) == len(B() & "id_b=0"))  # test restricted aggregation
+    assert len((x & "id_b=0").fetch()) == len(
+        B() & "id_b=0"
+    )  # test restricted aggregation
 
     x = B().aggregate(
         B.C(),
@@ -253,15 +294,18 @@ def test_aggregate(schema_simp_pop):
     y = x & "mean>0"  # restricted aggregation
     assert len(y) > 0
     assert all(y.fetch("mean") > 0)
-    for n, count, mean, max_, key in zip(
-        *x.fetch("n", "count", "mean", "max", dj.key)
-    ):
+    for n, count, mean, max_, key in zip(*x.fetch("n", "count", "mean", "max", dj.key)):
         assert n == count, "aggregation failed (count)"
         values = (B.C() & key).fetch("value")
         assert bool(len(values)) == bool(n), "aggregation failed (restriction)"
         if n:
-            assert np.isclose(mean, values.mean(), rtol=1e-4, atol=1e-5), "aggregation failed (mean)"
-            assert np.isclose(max_, values.max(), rtol=1e-4, atol=1e-5), "aggregation failed (max)"
+            assert np.isclose(
+                mean, values.mean(), rtol=1e-4, atol=1e-5
+            ), "aggregation failed (mean)"
+            assert np.isclose(
+                max_, values.max(), rtol=1e-4, atol=1e-5
+            ), "aggregation failed (max)"
+
 
 def test_aggr(schema_simp_pop):
     x = B.aggr(B.C)
@@ -272,8 +316,9 @@ def test_aggr(schema_simp_pop):
     x = B().aggr(B.C(), keep_all_rows=True)
     assert len(x) == len(B())  # test LEFT join
 
-    assert (
-        len((x & "id_b=0").fetch()) == len(B() & "id_b=0"))  # test restricted aggregation
+    assert len((x & "id_b=0").fetch()) == len(
+        B() & "id_b=0"
+    )  # test restricted aggregation
 
     x = B().aggr(
         B.C(),
@@ -287,15 +332,18 @@ def test_aggr(schema_simp_pop):
     y = x & "mean>0"  # restricted aggregation
     assert len(y) > 0
     assert all(y.fetch("mean") > 0)
-    for n, count, mean, max_, key in zip(
-        *x.fetch("n", "count", "mean", "max", dj.key)
-    ):
+    for n, count, mean, max_, key in zip(*x.fetch("n", "count", "mean", "max", dj.key)):
         assert n == count, "aggregation failed (count)"
         values = (B.C() & key).fetch("value")
         assert bool(len(values)) == bool(n), "aggregation failed (restriction)"
         if n:
-            assert np.isclose(mean, values.mean(), rtol=1e-4, atol=1e-5), "aggregation failed (mean)"
-            assert np.isclose(max_, values.max(), rtol=1e-4, atol=1e-5), "aggregation failed (max)"
+            assert np.isclose(
+                mean, values.mean(), rtol=1e-4, atol=1e-5
+            ), "aggregation failed (mean)"
+            assert np.isclose(
+                max_, values.max(), rtol=1e-4, atol=1e-5
+            ), "aggregation failed (max)"
+
 
 def test_semijoin(schema_simp_pop):
     """
@@ -314,18 +362,22 @@ def test_semijoin(schema_simp_pop):
     assert len(semi) == n
     assert len(anti) == m
 
+
 def test_pandas_fetch_and_restriction(schema_simp_pop):
     q = L & "cond_in_l = 0"
     df = q.fetch(format="frame")  # pandas dataframe
     assert isinstance(df, pandas.DataFrame)
     assert len(E & q) == len(E & df)
 
+
 def test_restriction_by_null(schema_any_pop):
     assert len(Experiment & "username is null") > 0
     assert len(Experiment & "username is not null") > 0
 
+
 def test_restriction_between(schema_any_pop):  # see issue
     assert len(Experiment & 'username between "S" and "Z"') < len(Experiment())
+
 
 def test_restrictions_by_lists(schema_simp_pop):
     x = D()
@@ -349,19 +401,25 @@ def test_restrictions_by_lists(schema_simp_pop):
     assert len(x - []) == lenx, "incorrect restriction by an empty list"
     assert len(x - ()) == lenx, "incorrect restriction by an empty tuple"
     assert len(x - set()) == lenx, "incorrect restriction by an empty set"
-    assert (
-        len(x & {}) == lenx), "incorrect restriction by a tuple with no attributes"
+    assert len(x & {}) == lenx, "incorrect restriction by a tuple with no attributes"
     assert len(x - {}) == 0, "incorrect restriction by a tuple with no attributes"
-    assert len(x & {"foo": 0}) == lenx, "incorrect restriction by a tuple with no matching attributes"
-    assert len(x - {"foo": 0}) == 0, "incorrect restriction by a tuple with no matching attributes"
+    assert (
+        len(x & {"foo": 0}) == lenx
+    ), "incorrect restriction by a tuple with no matching attributes"
+    assert (
+        len(x - {"foo": 0}) == 0
+    ), "incorrect restriction by a tuple with no matching attributes"
     assert len(x & y) == len(x & y.fetch()), "incorrect restriction by a list"
     assert len(x - y) == len(x - y.fetch()), "incorrect restriction by a list"
     w = A()
     assert len(w) > 0, "incorrect test setup: w is empty"
-    assert bool(set(w.heading.names) & set(y.heading.names)) != "incorrect test setup: w and y should have no common attributes"
     assert (
-        len(w) == len(w & y)), "incorrect restriction without common attributes"
+        bool(set(w.heading.names) & set(y.heading.names))
+        != "incorrect test setup: w and y should have no common attributes"
+    )
+    assert len(w) == len(w & y), "incorrect restriction without common attributes"
     assert len(w - y) == 0, "incorrect restriction without common attributes"
+
 
 def test_datetime(schema_any_pop):
     """Test date retrieval"""
@@ -369,6 +427,7 @@ def test_datetime(schema_any_pop):
     e1 = Experiment() & dict(experiment_date=str(date))
     e2 = Experiment() & dict(experiment_date=date)
     assert len(e1) == len(e2) > 0, "Two date restriction do not yield the same result"
+
 
 def test_date(schema_simp_pop):
     """Test date update"""
@@ -386,14 +445,19 @@ def test_date(schema_simp_pop):
     F.update1(dict((F & "id=2").fetch1("KEY"), date=None))
     assert (F & "id=2").fetch1("date") == None
 
+
 def test_join_project(schema_simp_pop):
     """Test join of projected relations with matching non-primary key"""
     q = DataA.proj() * DataB.proj()
-    assert len(q) == len(DataA()) == len(DataB()), "Join of projected relations does not work"
+    assert (
+        len(q) == len(DataA()) == len(DataB())
+    ), "Join of projected relations does not work"
+
 
 def test_ellipsis(schema_any_pop):
     r = Experiment.proj(..., "- data_path").head(1, as_dict=True)
     assert set(Experiment.heading).difference(r[0]) == {"data_path"}
+
 
 def test_update_single_key(schema_simp_pop):
     """Test that only one row can be updated"""
@@ -402,15 +466,18 @@ def test_update_single_key(schema_simp_pop):
             dict(TTestUpdate.fetch1("KEY"), string_attr="my new string")
         )
 
+
 def test_update_no_primary(schema_simp_pop):
     """Test that no primary key can be updated"""
     with pytest.raises(dj.DataJointError):
         TTestUpdate.update1(dict(TTestUpdate.fetch1("KEY"), primary_key=2))
 
+
 def test_update_missing_attribute(schema_simp_pop):
     """Test that attribute is in table"""
     with pytest.raises(dj.DataJointError):
         TTestUpdate.update1(dict(TTestUpdate.fetch1("KEY"), not_existing=2))
+
 
 def test_update_string_attribute(schema_simp_pop):
     """Test replacing a string value"""
@@ -421,6 +488,7 @@ def test_update_string_attribute(schema_simp_pop):
     TTestUpdate.update1(dict(rel.fetch1("KEY"), string_attr=s))
     assert s == rel.fetch1("string_attr"), "Updated string does not match"
 
+
 def test_update_numeric_attribute(schema_simp_pop):
     """Test replacing a string value"""
     rel = TTestUpdate() & dict(primary_key=0)
@@ -430,13 +498,14 @@ def test_update_numeric_attribute(schema_simp_pop):
     TTestUpdate.update1(dict(rel.fetch1("KEY"), num_attr=None))
     assert np.isnan(rel.fetch1("num_attr")), "Numeric value is not NaN"
 
+
 def test_update_blob_attribute(schema_simp_pop):
     """Test replacing a string value"""
     rel = TTestUpdate() & dict(primary_key=0)
     s = rel.fetch1("blob_attr")
     TTestUpdate.update1(dict(rel.fetch1("KEY"), blob_attr=s.T))
-    assert (
-        s.T.shape == rel.fetch1("blob_attr").shape), "Array dimensions do not match"
+    assert s.T.shape == rel.fetch1("blob_attr").shape, "Array dimensions do not match"
+
 
 def test_reserved_words(schema_simp_pop):
     """Test the user of SQL reserved words as attributes"""
@@ -447,6 +516,7 @@ def test_reserved_words(schema_simp_pop):
     assert (rel & {"key": 1, "in": "ouch", "from": "bummer"}).fetch1("int") == 3
     assert (rel.proj("int", double="from") & {"double": "bummer"}).fetch1("int") == 3
     (rel & {"key": 1}).delete()
+
 
 def test_reserved_words2(schema_simp_pop):
     """Test the user of SQL reserved words as attributes"""
@@ -459,13 +529,16 @@ def test_reserved_words2(schema_simp_pop):
             "in"
         )  # error because reserved word `key` is not in backquotes. See issue #249
 
+
 def test_permissive_join_basic(schema_any_pop):
     """Verify join compatibility check is skipped for join"""
     Child @ Parent
 
+
 def test_permissive_restriction_basic(schema_any_pop):
     """Verify join compatibility check is skipped for restriction"""
     Child ^ Parent
+
 
 def test_complex_date_restriction(schema_simp_pop):
     # https://github.com/datajoint/datajoint-python/issues/892
@@ -482,6 +555,7 @@ def test_complex_date_restriction(schema_simp_pop):
     assert len(q) == 1
     q.delete()
 
+
 def test_null_dict_restriction(schema_simp_pop):
     # https://github.com/datajoint/datajoint-python/issues/824
     """Test a restriction for null using dict"""
@@ -490,6 +564,7 @@ def test_null_dict_restriction(schema_simp_pop):
     assert len(q) == 1
     q = F & dict(id=5, date=None)
     assert len(q) == 1
+
 
 def test_joins_with_aggregation(schema_any_pop):
     # https://github.com/datajoint/datajoint-python/issues/898
@@ -509,6 +584,7 @@ def test_joins_with_aggregation(schema_any_pop):
         SessionDateA * (subj_query & 'date_trained<"2020-12-21"')
     ) & "session_date<date_trained"
     assert len(session_dates) == 1
+
 
 def test_union_multiple(schema_simp_pop):
     # https://github.com/datajoint/datajoint-python/issues/926
