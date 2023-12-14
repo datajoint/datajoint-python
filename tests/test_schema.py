@@ -29,7 +29,11 @@ def part_selector(attr):
 
 @pytest.fixture
 def schema_empty_module(schema_any, schema_empty):
-    # Mimic tests_old/schema_empty
+    """
+    Mock the module tests_old.schema_empty.
+    The test `test_namespace_population` will check that the module contains all the
+    classes in schema_any, after running `spawn_missing_classes`.
+    """
     namespace_dict = {
         '_': schema_any,
         'schema': schema_empty,
@@ -41,13 +45,6 @@ def schema_empty_module(schema_any, schema_empty):
     for k, v in namespace_dict.items():
         setattr(module, k, v)
 
-    # Spawn missing classes in the caller's (self) namespace.
-    # Then add them to the mock module's namespace.
-    module.schema.context = None
-    module.schema.spawn_missing_classes(context=None)
-    for k, v in locals().items():
-        if inspect.isclass(v):
-            setattr(module, k, v)
     return module
 
 
@@ -82,6 +79,19 @@ def test_drop_unauthorized():
 
 
 def test_namespace_population(schema_empty_module):
+    """
+    With the schema_empty_module fixture, this test
+    mimics the behavior of `spawn_missing_classes`, as if the schema
+    was declared in a separate module and `spawn_missing_classes` was called in that namespace.
+    """
+    # Spawn missing classes in the caller's (self) namespace.
+    schema_empty_module.schema.context = None
+    schema_empty_module.schema.spawn_missing_classes(context=None)
+    # Then add them to the mock module's namespace.
+    for k, v in locals().items():
+        if inspect.isclass(v):
+            setattr(schema_empty_module, k, v)
+
     for name, rel in getmembers(schema, relation_selector):
         assert hasattr(schema_empty_module, name), "{name} not found in schema_empty".format(name=name)
         assert rel.__base__ is getattr(schema_empty_module, name).__base__, "Wrong tier for {name}".format(name=name)
