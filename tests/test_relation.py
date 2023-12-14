@@ -16,6 +16,11 @@ def test(schema_any):
 
 
 @pytest.fixture
+def test2(schema_any):
+    yield schema.TTest2()
+
+
+@pytest.fixture
 def test_extra(schema_any):
     yield schema.TTestExtra()
 
@@ -123,10 +128,10 @@ def test_wrong_insert_type(user):
         user.insert1(3)
 
 
-def test_insert_select(subject):
-    schema.TTest2.delete()
-    schema.TTest2.insert(schema.TTest)
-    assert len(schema.TTest2()) == len(schema.TTest())
+def test_insert_select(subject, test2):
+    test2.delete()
+    test2.insert(schema.TTest)
+    assert len(test2) == len(schema.TTest())
 
     original_length = len(subject)
     elements = subject.proj(..., s="subject_id")
@@ -141,31 +146,31 @@ def test_insert_select(subject):
     assert len(subject) == 2 * original_length
 
 
-def test_insert_pandas_roundtrip(schema_any):
+def test_insert_pandas_roundtrip(test2):
     """ensure fetched frames can be inserted"""
-    schema.TTest2.delete()
+    test2.delete()
     n = len(schema.TTest())
     assert n > 0
     df = schema.TTest.fetch(format="frame")
     assert isinstance(df, pandas.DataFrame)
     assert len(df) == n
-    schema.TTest2.insert(df)
-    assert len(schema.TTest2()) == n
+    test2.insert(df)
+    assert len(test2) == n
 
 
-def test_insert_pandas_userframe(schema_any):
+def test_insert_pandas_userframe(test2):
     """
     ensure simple user-created frames (1 field, non-custom index)
     can be inserted without extra index adjustment
     """
-    schema.TTest2.delete()
+    test2.delete()
     n = len(schema.TTest())
     assert n > 0
     df = pandas.DataFrame(schema.TTest.fetch())
     assert isinstance(df, pandas.DataFrame)
     assert len(df) == n
-    schema.TTest2.insert(df)
-    assert len(schema.TTest2()) == n
+    test2.insert(df)
+    assert len(test2) == n
 
 
 def test_insert_select_ignore_extra_fields0(test, test_extra):
