@@ -77,20 +77,25 @@ def test_contents(user, subject):
     u = subject.fetch(order_by=["subject_id"])
     assert list(u["subject_id"]) == sorted([s[0] for s in subject.contents])
 
+
 def test_misnamed_attribute1(user):
     with pytest.raises(dj.DataJointError):
         user.insert([dict(username="Bob"), dict(user="Alice")])
+
 
 def test_misnamed_attribute2(user):
     with pytest.raises(KeyError):
         user.insert1(dict(user="Bob"))
 
+
 def test_extra_attribute1(user):
     with pytest.raises(KeyError):
         user.insert1(dict(username="Robert", spouse="Alice"))
 
+
 def test_extra_attribute2(user):
     user.insert1(dict(username="Robert", spouse="Alice"), ignore_extra_fields=True)
+
 
 def test_missing_definition(schema_any):
     class MissingDefinition(dj.Manual):
@@ -101,25 +106,28 @@ def test_missing_definition(schema_any):
         """
 
     with pytest.raises(NotImplementedError):
-        schema_any(
-            MissingDefinition, context=dict(MissingDefinition=MissingDefinition)
-        )
+        schema_any(MissingDefinition, context=dict(MissingDefinition=MissingDefinition))
+
 
 def test_empty_insert1(user):
     with pytest.raises(dj.DataJointError):
         user.insert1(())
 
+
 def test_empty_insert(user):
     with pytest.raises(dj.DataJointError):
         user.insert([()])
+
 
 def test_wrong_arguments_insert(user):
     with pytest.raises(dj.DataJointError):
         user.insert1(("First", "Second"))
 
+
 def test_wrong_insert_type(user):
     with pytest.raises(dj.DataJointError):
         user.insert1(3)
+
 
 def test_insert_select(subject):
     schema.TTest2.delete()
@@ -138,6 +146,7 @@ def test_insert_select(subject):
     subject.insert(elements, ignore_extra_fields=True)
     assert len(subject) == 2 * original_length
 
+
 def test_insert_pandas_roundtrip(schema_any):
     """ensure fetched frames can be inserted"""
     schema.TTest2.delete()
@@ -148,6 +157,7 @@ def test_insert_pandas_roundtrip(schema_any):
     assert len(df) == n
     schema.TTest2.insert(df)
     assert len(schema.TTest2()) == n
+
 
 def test_insert_pandas_userframe(schema_any):
     """
@@ -163,11 +173,13 @@ def test_insert_pandas_userframe(schema_any):
     schema.TTest2.insert(df)
     assert len(schema.TTest2()) == n
 
+
 def test_insert_select_ignore_extra_fields0(test, test_extra):
     """need ignore extra fields for insert select"""
     test_extra.insert1((test.fetch("key").max() + 1, 0, 0))
     with pytest.raises(dj.DataJointError):
         test.insert(test_extra)
+
 
 def test_insert_select_ignore_extra_fields1(test, test_extra):
     """make sure extra fields works in insert select"""
@@ -177,10 +189,12 @@ def test_insert_select_ignore_extra_fields1(test, test_extra):
     test.insert(test_extra, ignore_extra_fields=True)
     assert keyno in test.fetch("key")
 
+
 def test_insert_select_ignore_extra_fields2(test_no_extra, test):
     """make sure insert select still works when ignoring extra fields when there are none"""
     test_no_extra.delete()
     test_no_extra.insert(test, ignore_extra_fields=True)
+
 
 def test_insert_select_ignore_extra_fields3(test, test_no_extra, test_extra):
     """make sure insert select works for from query result"""
@@ -195,11 +209,13 @@ def test_insert_select_ignore_extra_fields3(test, test_no_extra, test_extra):
     keystr = str(test_extra.fetch("key").max())
     test_no_extra.insert((test_extra & "`key`=" + keystr), ignore_extra_fields=True)
 
+
 def test_skip_duplicates(test_no_extra, test):
     """test that skip_duplicates works when inserting from another table"""
     test_no_extra.delete()
     test_no_extra.insert(test, ignore_extra_fields=True, skip_duplicates=True)
     test_no_extra.insert(test, ignore_extra_fields=True, skip_duplicates=True)
+
 
 def test_replace(subject):
     """
@@ -214,13 +230,12 @@ def test_replace(subject):
         dict(key, real_id=7, date_of_birth=date, subject_notes=""),
         skip_duplicates=True,
     )
-    assert date != str(
-        (subject & key).fetch1("date_of_birth")
-    ), "inappropriate replace"
+    assert date != str((subject & key).fetch1("date_of_birth")), "inappropriate replace"
     subject.insert1(
         dict(key, real_id=7, date_of_birth=date, subject_notes=""), replace=True
     )
     assert date == str((subject & key).fetch1("date_of_birth")), "replace failed"
+
 
 def test_delete_quick(subject):
     """Tests quick deletion"""
@@ -232,12 +247,11 @@ def test_delete_quick(subject):
         dtype=subject.heading.as_dtype,
     )
     subject.insert(tmp)
-    s = subject & (
-        "subject_id in (%s)" % ",".join(str(r) for r in tmp["subject_id"])
-    )
+    s = subject & ("subject_id in (%s)" % ",".join(str(r) for r in tmp["subject_id"]))
     assert len(s) == 2, "insert did not work."
     s.delete_quick()
     assert len(s) == 0, "delete did not work."
+
 
 def test_skip_duplicate(subject):
     """Tests if duplicates are properly skipped."""
@@ -258,6 +272,7 @@ def test_skip_duplicate(subject):
     )
     subject.insert(tmp, skip_duplicates=True)
 
+
 def test_not_skip_duplicate(subject):
     """Tests if duplicates are not skipped."""
     tmp = np.array(
@@ -271,10 +286,12 @@ def test_not_skip_duplicate(subject):
     with pytest.raises(dj.errors.DuplicateError):
         subject.insert(tmp, skip_duplicates=False)
 
+
 def test_no_error_suppression(test):
     """skip_duplicates=True should not suppress other errors"""
     with pytest.raises(dj.errors.MissingAttributeError):
         test.insert([dict(key=100)], skip_duplicates=True)
+
 
 def test_blob_insert(img):
     """Tests inserting and retrieving blobs."""
@@ -282,6 +299,7 @@ def test_blob_insert(img):
     img.insert1((1, X))
     Y = img.fetch()[0]["img"]
     assert np.all(X == Y), "Inserted and retrieved image are not identical"
+
 
 def test_drop(trash):
     """Tests dropping tables"""
@@ -295,6 +313,7 @@ def test_drop(trash):
         pass
     finally:
         dj.config["safemode"] = False
+
 
 def test_table_regexp(schema_any):
     """Test whether table names are matched by regular expressions"""
@@ -315,10 +334,12 @@ def test_table_regexp(schema_any):
                 tier.tier_regexp, rel.table_name
             ), "Regular expression matches for {name} but should not".format(name=name)
 
+
 def test_table_size(experiment):
     """test getting the size of the table and its indices in bytes"""
     number_of_bytes = experiment.size_on_disk
     assert isinstance(number_of_bytes, int) and number_of_bytes > 100
+
 
 def test_repr_html(ephys):
     assert ephys._repr_html_().strip().startswith("<style")
