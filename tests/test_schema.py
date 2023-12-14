@@ -35,11 +35,11 @@ def schema_empty_module(schema_any, schema_empty):
     classes in schema_any, after running `spawn_missing_classes`.
     """
     namespace_dict = {
-        '_': schema_any,
-        'schema': schema_empty,
-        'Ephys': Ephys,
+        "_": schema_any,
+        "schema": schema_empty,
+        "Ephys": Ephys,
     }
-    module = types.ModuleType('schema_empty')
+    module = types.ModuleType("schema_empty")
 
     # Add classes to the module's namespace
     for k, v in namespace_dict.items():
@@ -50,11 +50,10 @@ def schema_empty_module(schema_any, schema_empty):
 
 @pytest.fixture
 def schema_empty(connection_test, schema_any):
-    context = {
-        **schema.LOCALS_ANY,
-        "Ephys": Ephys
-    }
-    schema_empty = dj.Schema(PREFIX + "_test1", context=context, connection=connection_test)
+    context = {**schema.LOCALS_ANY, "Ephys": Ephys}
+    schema_empty = dj.Schema(
+        PREFIX + "_test1", context=context, connection=connection_test
+    )
     schema_empty(Ephys)
     # load the rest of the classes
     schema_empty.spawn_missing_classes(context=context)
@@ -93,12 +92,18 @@ def test_namespace_population(schema_empty_module):
             setattr(schema_empty_module, k, v)
 
     for name, rel in getmembers(schema, relation_selector):
-        assert hasattr(schema_empty_module, name), "{name} not found in schema_empty".format(name=name)
-        assert rel.__base__ is getattr(schema_empty_module, name).__base__, "Wrong tier for {name}".format(name=name)
+        assert hasattr(
+            schema_empty_module, name
+        ), "{name} not found in schema_empty".format(name=name)
+        assert (
+            rel.__base__ is getattr(schema_empty_module, name).__base__
+        ), "Wrong tier for {name}".format(name=name)
 
         for name_part in dir(rel):
             if name_part[0].isupper() and part_selector(getattr(rel, name_part)):
-                assert getattr(rel, name_part).__base__ is dj.Part, "Wrong tier for {name}".format(name=name_part)
+                assert (
+                    getattr(rel, name_part).__base__ is dj.Part
+                ), "Wrong tier for {name}".format(name=name_part)
 
 
 def test_undecorated_table():
@@ -125,7 +130,6 @@ def test_reject_decorated_part(schema_any):
         class B(dj.Part):
             definition = ...
 
-
     with pytest.raises(dj.DataJointError):
         schema_any(A.B)
         schema_any(A)
@@ -136,7 +140,9 @@ def test_unauthorized_database(db_creds_test):
     an attempt to create a database to which user has no privileges should raise an informative exception.
     """
     with pytest.raises(dj.DataJointError):
-        dj.Schema("unauthorized_schema", connection=dj.conn(reset=True, **db_creds_test))
+        dj.Schema(
+            "unauthorized_schema", connection=dj.conn(reset=True, **db_creds_test)
+        )
 
 
 def test_drop_database(db_creds_test):
@@ -150,9 +156,7 @@ def test_drop_database(db_creds_test):
 
 
 def test_overlapping_name(connection_test):
-    test_schema = dj.Schema(
-        PREFIX + "_overlapping_schema", connection=connection_test
-    )
+    test_schema = dj.Schema(PREFIX + "_overlapping_schema", connection=connection_test)
 
     @test_schema
     class Unit(dj.Manual):
