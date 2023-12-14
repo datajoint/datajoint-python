@@ -23,12 +23,12 @@ def part_selector(attr):
 
 def test_schema_size_on_disk():
     number_of_bytes = schema.schema.size_on_disk
-    assert_true(isinstance(number_of_bytes, int))
+    assert isinstance(number_of_bytes, int)
 
 
 def test_schema_list():
     schemas = dj.list_schemas()
-    assert_true(schema.schema.database in schemas)
+    assert schema.schema.database in schemas
 
 
 @raises(dj.errors.AccessError)
@@ -96,9 +96,9 @@ def test_drop_database():
     schema = dj.Schema(
         PREFIX + "_drop_test", connection=dj.conn(reset=True, **CONN_INFO)
     )
-    assert_true(schema.exists)
+    assert schema.exists
     schema.drop()
-    assert_false(schema.exists)
+    assert not schema.exists
     schema.drop()  # should do nothing
 
 
@@ -160,8 +160,8 @@ def test_list_tables():
 
 
 def test_schema_save():
-    assert_true("class Experiment(dj.Imported)" in schema.schema.code)
-    assert_true("class Experiment(dj.Imported)" in schema_empty.schema.code)
+    assert "class Experiment(dj.Imported)" in schema.schema.code
+    assert "class Experiment(dj.Imported)" in schema_empty.schema.code
 
 
 def test_uppercase_schema():
