@@ -11,9 +11,9 @@ def test_uuid():
     Basic().insert1(dict(item=u, number=n))
     Basic().insert(zip(map(uuid.uuid1, range(20)), count()))
     number = (Basic() & {"item": u}).fetch1("number")
-    assert_equal(number, n)
+    assert number == n
     item = (Basic & {"number": n}).fetch1("item")
-    assert_equal(u, item)
+    assert u == item
 
 
 def test_string_uuid():
@@ -21,8 +21,8 @@ def test_string_uuid():
     u, n = "00000000-0000-0000-0000-000000000000", 24601
     Basic().insert1(dict(item=u, number=n))
     k, m = (Basic & {"item": u}).fetch1("KEY", "number")
-    assert_equal(m, n)
-    assert_true(isinstance(k["item"], uuid.UUID))
+    assert m == n
+    assert isinstance(k["item"], uuid.UUID)
 
 
 @raises(DataJointError)
@@ -66,4 +66,4 @@ def test_uuid_dependencies():
     ):
         Topic().add(word)
     Item.populate()
-    assert_equal(Item().progress(), (0, len(Topic())))
+    assert Item().progress() == (0, len(Topic()))
