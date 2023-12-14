@@ -1,10 +1,13 @@
-from nose.tools import assert_false, assert_true, raises
+import pytest
 import datajoint as dj
 from inspect import getmembers
 from . import schema
-from . import schema_empty
-from . import PREFIX, CONN_INFO, CONN_INFO_ROOT
-from .schema_simple import schema as schema_simple
+from . import PREFIX
+
+
+class Ephys(dj.Imported):
+    definition = """  # This is already declared in ./schema.py
+    """
 
 
 def relation_selector(attr):
@@ -21,42 +24,47 @@ def part_selector(attr):
         return False
 
 
-def test_schema_size_on_disk():
-    number_of_bytes = schema.schema.size_on_disk
+@pytest.fixture
+def schema_empty(connection_test, schema_any):
+    context = {
+        **schema.LOCALS_ANY,
+        "Ephys": Ephys
+    }
+    schema_emp = dj.Schema(PREFIX + "_test1", context=context, connection=connection_test)
+    schema_emp(Ephys)
+    # load the rest of the classes
+    schema_emp.spawn_missing_classes()
+    breakpoint()
+    yield schema_emp
+    schema_emp.drop()
+
+
+def test_schema_size_on_disk(schema_any):
+    number_of_bytes = schema_any.size_on_disk
     assert isinstance(number_of_bytes, int)
 
 
-def test_schema_list():
+def test_schema_list(schema_any):
     schemas = dj.list_schemas()
-    assert schema.schema.database in schemas
+    assert schema_any.database in schemas
 
 
-@raises(dj.errors.AccessError)
 def test_drop_unauthorized():
     info_schema = dj.schema("information_schema")
-    info_schema.drop()
+    with pytest.raises(dj.errors.AccessError):
+        info_schema.drop()
 
 
-def test_namespace_population():
+def test_namespace_population(schema_empty, schema_any):
     for name, rel in getmembers(schema, relation_selector):
-        assert_true(
-            hasattr(schema_empty, name),
-            "{name} not found in schema_empty".format(name=name),
-        )
-        assert_true(
-            rel.__base__ is getattr(schema_empty, name).__base__,
-            "Wrong tier for {name}".format(name=name),
-        )
+        assert hasattr(schema_empty, name), "{name} not found in schema_empty".format(name=name)
+        assert rel.__base__ is getattr(schema_empty, name).__base__, "Wrong tier for {name}".format(name=name)
 
         for name_part in dir(rel):
             if name_part[0].isupper() and part_selector(getattr(rel, name_part)):
-                assert_true(
-                    getattr(rel, name_part).__base__ is dj.Part,
-                    "Wrong tier for {name}".format(name=name_part),
-                )
+                assert getattr(rel, name_part).__base__ is dj.Part, "Wrong tier for {name}".format(name=name_part)
 
 
-@raises(dj.DataJointError)
 def test_undecorated_table():
     """
     Undecorated user table classes should raise an informative exception upon first use
@@ -66,35 +74,38 @@ def test_undecorated_table():
         definition = ""
 
     a = UndecoratedClass()
-    print(a.full_table_name)
+    with pytest.raises(dj.DataJointError):
+        print(a.full_table_name)
 
 
-@raises(dj.DataJointError)
-def test_reject_decorated_part():
+def test_reject_decorated_part(schema_any):
     """
     Decorating a dj.Part table should raise an informative exception.
     """
 
-    @schema.schema
     class A(dj.Manual):
         definition = ...
 
-        @schema.schema
         class B(dj.Part):
             definition = ...
 
 
-@raises(dj.DataJointError)
-def test_unauthorized_database():
+    with pytest.raises(dj.DataJointError):
+        schema_any(A.B)
+        schema_any(A)
+
+
+def test_unauthorized_database(db_creds_test):
     """
     an attempt to create a database to which user has no privileges should raise an informative exception.
     """
-    dj.Schema("unauthorized_schema", connection=dj.conn(reset=True, **CONN_INFO))
+    with pytest.raises(dj.DataJointError):
+        dj.Schema("unauthorized_schema", connection=dj.conn(reset=True, **db_creds_test))
 
 
-def test_drop_database():
+def test_drop_database(db_creds_test):
     schema = dj.Schema(
-        PREFIX + "_drop_test", connection=dj.conn(reset=True, **CONN_INFO)
+        PREFIX + "_drop_test", connection=dj.conn(reset=True, **db_creds_test)
     )
     assert schema.exists
     schema.drop()
@@ -102,9 +113,9 @@ def test_drop_database():
     schema.drop()  # should do nothing
 
 
-def test_overlapping_name():
+def test_overlapping_name(connection_test):
     test_schema = dj.Schema(
-        PREFIX + "_overlapping_schema", connection=dj.conn(**CONN_INFO)
+        PREFIX + "_overlapping_schema", connection=connection_test
     )
 
     @test_schema
@@ -131,8 +142,10 @@ def test_overlapping_name():
     test_schema.drop()
 
 
-def test_list_tables():
-    # https://github.com/datajoint/datajoint-python/issues/838
+def test_list_tables(schema_simp):
+    """
+    https://github.com/datajoint/datajoint-python/issues/838
+    """
     assert set(
         [
             "reserved_word",
@@ -156,17 +169,22 @@ def test_list_tables():
             "profile",
             "profile__website",
         ]
-    ) == set(schema_simple.list_tables())
+    ) == set(schema_simp.list_tables())
 
 
-def test_schema_save():
-    assert "class Experiment(dj.Imported)" in schema.schema.code
-    assert "class Experiment(dj.Imported)" in schema_empty.schema.code
+def test_schema_save_any(schema_any):
+    assert "class Experiment(dj.Imported)" in schema_any.code
 
 
-def test_uppercase_schema():
-    # https://github.com/datajoint/datajoint-python/issues/564
-    dj.conn(**CONN_INFO_ROOT, reset=True)
+def test_schema_save_empty(schema_empty):
+    assert "class Experiment(dj.Imported)" in schema_empty.code
+
+
+def test_uppercase_schema(db_creds_root):
+    """
+    https://github.com/datajoint/datajoint-python/issues/564
+    """
+    dj.conn(**db_creds_root, reset=True)
     schema1 = dj.Schema("Schema_A")
 
     @schema1
