@@ -1,4 +1,5 @@
 import datajoint as dj
+import inspect
 
 
 class Experiment(dj.Imported):
