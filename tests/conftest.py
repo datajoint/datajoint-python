@@ -59,6 +59,15 @@ def enable_filepath_feature(monkeypatch):
 
 
 @pytest.fixture(scope="session")
+def db_creds_test() -> Dict:
+    return dict(
+        host=os.getenv("DJ_TEST_HOST", "fakeservices.datajoint.io"),
+        user=os.getenv("DJ_TEST_USER", "datajoint"),
+        password=os.getenv("DJ_TEST_PASSWORD", "datajoint"),
+    )
+
+
+@pytest.fixture(scope="session")
 def db_creds_root() -> Dict:
     return dict(
         host=os.getenv("DJ_HOST", "fakeservices.datajoint.io"),
@@ -144,7 +153,7 @@ def connection_root(connection_root_bare, prefix):
 
 
 @pytest.fixture(scope="session")
-def connection_test(connection_root, prefix):
+def connection_test(connection_root, prefix, db_creds_test):
     """Test user database connection."""
     database = f"{prefix}%%"
     credentials = dict(
@@ -159,14 +168,14 @@ def connection_test(connection_root, prefix):
         # create user if necessary on mysql8
         connection_root.query(
             f"""
-            CREATE USER IF NOT EXISTS '{credentials["user"]}'@'%%'
-            IDENTIFIED BY '{credentials["password"]}';
+            CREATE USER IF NOT EXISTS '{db_creds_test["user"]}'@'%%'
+            IDENTIFIED BY '{db_creds_test["password"]}';
             """
         )
         connection_root.query(
             f"""
             GRANT {permission} ON `{database}`.*
-            TO '{credentials["user"]}'@'%%';
+            TO '{db_creds_test["user"]}'@'%%';
             """
         )
     else:
@@ -175,14 +184,14 @@ def connection_test(connection_root, prefix):
         connection_root.query(
             f"""
             GRANT {permission} ON `{database}`.*
-            TO '{credentials["user"]}'@'%%'
-            IDENTIFIED BY '{credentials["password"]}';
+            TO '{db_creds_test["user"]}'@'%%'
+            IDENTIFIED BY '{db_creds_test["password"]}';
             """
         )
 
-    connection = dj.Connection(**credentials)
+    connection = dj.Connection(**db_creds_test)
     yield connection
-    connection_root.query(f"""DROP USER `{credentials["user"]}`""")
+    connection_root.query(f"""DROP USER `{db_creds_test["user"]}`""")
     connection.close()
 
 
