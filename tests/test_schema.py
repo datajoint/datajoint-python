@@ -143,9 +143,9 @@ def test_unauthorized_database(db_creds_test):
         )
 
 
-def test_drop_database(db_creds_test):
+def test_drop_database(db_creds_test, prefix):
     schema = dj.Schema(
-        PREFIX + "_drop_test", connection=dj.conn(reset=True, **db_creds_test)
+        prefix + "_drop_test", connection=dj.conn(reset=True, **db_creds_test)
     )
     assert schema.exists
     schema.drop()
@@ -153,8 +153,8 @@ def test_drop_database(db_creds_test):
     schema.drop()  # should do nothing
 
 
-def test_overlapping_name(connection_test):
-    test_schema = dj.Schema(PREFIX + "_overlapping_schema", connection=connection_test)
+def test_overlapping_name(connection_test, prefix):
+    test_schema = dj.Schema(prefix + "_overlapping_schema", connection=connection_test)
 
     @test_schema
     class Unit(dj.Manual):
