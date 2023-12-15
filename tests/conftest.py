@@ -182,7 +182,7 @@ def connection_test(connection_root):
     connection.close()
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def s3_creds() -> Dict:
     return dict(
         endpoint=os.environ.get("S3_ENDPOINT", "fakeservices.datajoint.io"),
