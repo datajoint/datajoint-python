@@ -188,7 +188,7 @@ def test_project(schema_simp_pop):
     )
 
 
-def test_rename_non_dj_attribute(connection_test, schema_simp_pop, schema_any_pop):
+def test_rename_non_dj_attribute(connection_test, schema_simp_pop, schema_any_pop, prefix):
     schema = prefix + "_test1"
     connection_test.query(
         f"CREATE TABLE {schema}.test_table (oldID int PRIMARY KEY)"

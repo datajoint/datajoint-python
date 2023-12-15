@@ -109,7 +109,7 @@ class TestUnprivileged:
 
 
 class TestSubset:
-    def test_populate_activate(self, connection_djsubset, schema_priv):
+    def test_populate_activate(self, connection_djsubset, schema_priv, prefix):
         schema_priv.activate(
             f"{prefix}_schema_privileges", create_schema=True, create_tables=False
         )
