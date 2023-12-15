@@ -495,4 +495,3 @@ def channel(schema_any):
 @pytest.fixture
 def trash(schema_any):
     return schema.UberTrash()
-

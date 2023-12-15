@@ -121,9 +121,7 @@ def test_complex_matlab_squeeze(schema_blob_pop):
     )  # 'simple string'    'character string'
     assert blob == "character string"
 
-    blob = (Blob & "id=2").fetch1(
-        "blob", squeeze=True
-    )  # '1D vector'        1:15:180
+    blob = (Blob & "id=2").fetch1("blob", squeeze=True)  # '1D vector'        1:15:180
     assert_array_equal(blob, np.r_[1:180:15])
 
     blob = (Blob & "id=3").fetch1(
@@ -155,15 +153,11 @@ def test_complex_matlab_squeeze(schema_blob_pop):
     assert np.array_equal(blob, np.r_[1:25].reshape((2, 3, 4), order="F"))
     assert blob.dtype == "float64"
 
-    blob = (Blob & "id=6").fetch1(
-        "blob", squeeze=True
-    )  # reshape(uint8(1:24), [2,3,4])
+    blob = (Blob & "id=6").fetch1("blob", squeeze=True)  # reshape(uint8(1:24), [2,3,4])
     assert np.array_equal(blob, np.r_[1:25].reshape((2, 3, 4), order="F"))
     assert blob.dtype == "uint8"
 
-    blob = (Blob & "id=7").fetch1(
-        "blob", squeeze=True
-    )  # fftn(reshape(1:24, [2,3,4]))
+    blob = (Blob & "id=7").fetch1("blob", squeeze=True)  # fftn(reshape(1:24, [2,3,4]))
     assert tuple(blob.shape) == (2, 3, 4)
     assert blob.dtype == "complex128"
 

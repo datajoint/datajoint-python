@@ -66,7 +66,9 @@ class Team(dj.Lookup):
 
 @pytest.fixture
 def schema_json(connection_test):
-    schema = dj.Schema(PREFIX + "_json", context=dict(Team=Team), connection=connection_test)
+    schema = dj.Schema(
+        PREFIX + "_json", context=dict(Team=Team), connection=connection_test
+    )
     schema(Team)
     yield schema
     schema.drop()

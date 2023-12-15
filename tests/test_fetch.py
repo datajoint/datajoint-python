@@ -24,13 +24,12 @@ def test_getattribute(subject):
 
     subject_notes, key, real_id = subject.fetch("subject_notes", dj.key, "real_id")
 
-    np.testing.assert_array_equal(
-        sorted(subject_notes), sorted(tmp["subject_notes"])
-    )
+    np.testing.assert_array_equal(sorted(subject_notes), sorted(tmp["subject_notes"]))
     np.testing.assert_array_equal(sorted(real_id), sorted(tmp["real_id"]))
     list1 = sorted(key, key=itemgetter("subject_id"))
     for l1, l2 in zip(list1, list2):
         assert l1 == l2, "Primary key is not returned correctly"
+
 
 def test_getattribute_for_fetch1(subject):
     """Testing Fetch1.__call__ with attributes"""
@@ -39,6 +38,7 @@ def test_getattribute_for_fetch1(subject):
         10,
         "monkey",
     )
+
 
 def test_order_by(lang, languages):
     """Tests order_by sorting order"""
@@ -51,21 +51,22 @@ def test_order_by(lang, languages):
                 cc == ll for cc, ll in zip(c, l)
             ), "Sorting order is different"
 
+
 def test_order_by_default(lang, languages):
     """Tests order_by sorting order with defaults"""
     cur = lang.fetch(order_by=("language", "name DESC"))
     languages.sort(key=itemgetter(0), reverse=True)
     languages.sort(key=itemgetter(1), reverse=False)
     for c, l in zip(cur, languages):
-        assert np.all(
-            [cc == ll for cc, ll in zip(c, l)]
-        ), "Sorting order is different"
+        assert np.all([cc == ll for cc, ll in zip(c, l)]), "Sorting order is different"
+
 
 def test_limit(lang):
     """Test the limit kwarg"""
     limit = 4
     cur = lang.fetch(limit=limit)
     assert len(cur) == limit, "Length is not correct"
+
 
 def test_order_by_limit(lang, languages):
     """Test the combination of order by and limit kwargs"""
@@ -74,9 +75,8 @@ def test_order_by_limit(lang, languages):
     languages.sort(key=itemgetter(1), reverse=False)
     assert len(cur) == 4, "Length is not correct"
     for c, l in list(zip(cur, languages))[:4]:
-        assert np.all(
-            [cc == ll for cc, ll in zip(c, l)]
-        ), "Sorting order is different"
+        assert np.all([cc == ll for cc, ll in zip(c, l)]), "Sorting order is different"
+
 
 def test_head_tail(schema_any):
     query = schema.User * schema.Language
@@ -95,6 +95,7 @@ def test_head_tail(schema_any):
     assert len(frame) == n
     assert query.primary_key == frame.index.names
 
+
 def test_limit_offset(lang, languages):
     """Test the limit and offset kwargs together"""
     cur = lang.fetch(offset=2, limit=4, order_by=["language", "name DESC"])
@@ -102,9 +103,8 @@ def test_limit_offset(lang, languages):
     languages.sort(key=itemgetter(1), reverse=False)
     assert len(cur) == 4, "Length is not correct"
     for c, l in list(zip(cur, languages[2:6])):
-        assert np.all(
-            [cc == ll for cc, ll in zip(c, l)]
-        ), "Sorting order is different"
+        assert np.all([cc == ll for cc, ll in zip(c, l)]), "Sorting order is different"
+
 
 def test_iter(lang, languages):
     """Test iterator"""
@@ -120,6 +120,7 @@ def test_iter(lang, languages):
             row["name"] == tname and row["language"] == tlang
         ), "Values are not the same"
 
+
 def test_keys(lang, languages):
     """test key fetch"""
     languages.sort(key=itemgetter(0), reverse=True)
@@ -132,6 +133,7 @@ def test_keys(lang, languages):
     for c, c2 in zip(zip(*cur), cur2):
         assert c == tuple(c2.values()), "Values are not the same"
 
+
 def test_attributes_as_dict(subject):
     """
     Issue #595
@@ -140,6 +142,7 @@ def test_attributes_as_dict(subject):
     result = subject.fetch(*attrs, as_dict=True)
     assert bool(result) and len(result) == len(subject)
     assert set(result[0]) == set(attrs)
+
 
 def test_fetch1_step1(lang, languages):
     assert (
@@ -160,9 +163,11 @@ def test_fetch1_step1(lang, languages):
     for k, (ke, c) in zip(true, dat.items()):
         assert k == c == (lang & key).fetch1(ke), "Values are not the same"
 
+
 def test_misspelled_attribute(schema_any):
     with pytest.raises(dj.DataJointError):
         f = (schema.Language & 'lang = "ENGLISH"').fetch()
+
 
 def test_repr(subject):
     """Test string representation of fetch, returning table preview"""
@@ -172,16 +177,19 @@ def test_repr(subject):
     # 3 lines are used for headers (2) and summary statement (1)
     assert n - 3 <= limit
 
+
 def test_fetch_none(lang):
     """Test preparing attributes for getitem"""
     with pytest.raises(dj.DataJointError):
         lang.fetch(None)
+
 
 def test_asdict(lang):
     """Test returns as dictionaries"""
     d = lang.fetch(as_dict=True)
     for dd in d:
         assert isinstance(dd, dict)
+
 
 def test_offset(lang, languages):
     """Tests offset"""
@@ -191,9 +199,8 @@ def test_offset(lang, languages):
     languages.sort(key=itemgetter(1), reverse=False)
     assert len(cur) == 4, "Length is not correct"
     for c, l in list(zip(cur, languages[1:]))[:4]:
-        assert np.all(
-            [cc == ll for cc, ll in zip(c, l)]
-        ), "Sorting order is different"
+        assert np.all([cc == ll for cc, ll in zip(c, l)]), "Sorting order is different"
+
 
 def test_limit_warning(lang):
     """Tests whether warning is raised if offset is used without limit."""
@@ -216,19 +223,23 @@ def test_limit_warning(lang):
             logger.removeHandler(handler)
     assert "[WARNING]: Offset set, but no limit." in log_contents
 
+
 def test_len(lang):
     """Tests __len__"""
     assert len(lang.fetch()) == len(lang), "__len__ is not behaving properly"
+
 
 def test_fetch1_step2(lang):
     """Tests whether fetch1 raises error"""
     with pytest.raises(dj.DataJointError):
         lang.fetch1()
 
+
 def test_fetch1_step3(lang):
     """Tests whether fetch1 raises error"""
     with pytest.raises(dj.DataJointError):
         lang.fetch1("name")
+
 
 def test_decimal(schema_any):
     """Tests that decimal fields are correctly fetched and used in restrictions, see issue #334"""
@@ -241,6 +252,7 @@ def test_decimal(schema_any):
     keys = rel.fetch(dj.key)
     assert len(keys) >= 2
     assert len(rel & keys[1]) == 1
+
 
 def test_nullable_numbers(schema_any):
     """test mixture of values and nulls in numeric attributes"""
@@ -262,13 +274,12 @@ def test_nullable_numbers(schema_any):
     assert any(np.isnan(d))
     assert any(np.isnan(f))
 
+
 def test_fetch_format(subject):
     """test fetch_format='frame'"""
     with dj.config(fetch_format="frame"):
         # test if lists are both dicts
-        list1 = sorted(
-            subject.proj().fetch(as_dict=True), key=itemgetter("subject_id")
-        )
+        list1 = sorted(subject.proj().fetch(as_dict=True), key=itemgetter("subject_id"))
         list2 = sorted(subject.fetch(dj.key), key=itemgetter("subject_id"))
         for l1, l2 in zip(list1, list2):
             assert l1 == l2, "Primary key is not returned correctly"
@@ -278,9 +289,7 @@ def test_fetch_format(subject):
         assert isinstance(tmp, pandas.DataFrame)
         tmp = tmp.to_records()
 
-        subject_notes, key, real_id = subject.fetch(
-            "subject_notes", dj.key, "real_id"
-        )
+        subject_notes, key, real_id = subject.fetch("subject_notes", dj.key, "real_id")
 
         np.testing.assert_array_equal(
             sorted(subject_notes), sorted(tmp["subject_notes"])
@@ -290,6 +299,7 @@ def test_fetch_format(subject):
         for l1, l2 in zip(list1, list2):
             assert l1 == l2, "Primary key is not returned correctly"
 
+
 def test_key_fetch1(subject):
     """test KEY fetch1 - issue #976"""
     with dj.config(fetch_format="array"):
@@ -298,10 +308,12 @@ def test_key_fetch1(subject):
         k2 = (subject & "subject_id=10").fetch1("KEY")
     assert k1 == k2
 
+
 def test_same_secondary_attribute(schema_any):
     children = (schema.Child * schema.Parent().proj()).fetch()["name"]
     assert len(children) == 1
     assert children[0] == "Dan"
+
 
 def test_query_caching(schema_any):
     # initialize cache directory
@@ -315,9 +327,7 @@ def test_query_caching(schema_any):
         cached_res = schema.TTest3().fetch()
         # attempt to insert while caching enabled
         try:
-            schema.TTest3.insert(
-                [dict(key=200 + i, value=400 + i) for i in range(2)]
-            )
+            schema.TTest3.insert([dict(key=200 + i, value=400 + i) for i in range(2)])
             assert False, "Insert allowed while query caching enabled"
         except dj.DataJointError:
             conn.set_query_cache()
@@ -337,12 +347,14 @@ def test_query_caching(schema_any):
     # reset cache directory state (will fail if purge was unsuccessful)
     os.rmdir(os.path.expanduser("~/dj_query_cache"))
 
+
 def test_fetch_group_by(schema_any):
     """
     https://github.com/datajoint/datajoint-python/issues/914
     """
 
     assert schema.Parent().fetch("KEY", order_by="name") == [{"parent_id": 1}]
+
 
 def test_dj_u_distinct(schema_any):
     """
@@ -368,6 +380,7 @@ def test_dj_u_distinct(schema_any):
     fetched_result = result.fetch(as_dict=True, order_by=("contrast", "brightness"))
     schema.Stimulus.delete_quick()
     assert fetched_result == expected_result
+
 
 def test_backslash(schema_any):
     """

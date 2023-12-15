@@ -9,17 +9,20 @@ def test_schema_decorator(schema_any):
     assert issubclass(Subject, dj.Lookup)
     assert not issubclass(Subject, dj.Part)
 
+
 def test_class_help(schema_any):
     help(TTest)
     help(TTest2)
     assert TTest.definition in TTest.__doc__
     assert TTest.definition in TTest2.__doc__
 
+
 def test_instance_help(schema_any):
     help(TTest())
     help(TTest2())
     assert TTest().definition in TTest().__doc__
     assert TTest2().definition in TTest2().__doc__
+
 
 def test_describe(schema_any):
     """real_definition should match original definition"""
@@ -29,6 +32,7 @@ def test_describe(schema_any):
     s2 = declare(rel.full_table_name, rel.describe(), context)
     assert s1 == s2
 
+
 def test_describe_indexes(schema_any):
     """real_definition should match original definition"""
     rel = IndexRich()
@@ -37,6 +41,7 @@ def test_describe_indexes(schema_any):
     s2 = declare(rel.full_table_name, rel.describe(), context)
     assert s1 == s2
 
+
 def test_describe_dependencies(schema_any):
     """real_definition should match original definition"""
     rel = ThingC()
@@ -44,6 +49,7 @@ def test_describe_dependencies(schema_any):
     s1 = declare(rel.full_table_name, rel.definition, context)
     s2 = declare(rel.full_table_name, rel.describe(), context)
     assert s1 == s2
+
 
 def test_part(schema_any):
     """
@@ -69,6 +75,7 @@ def test_part(schema_any):
             -> TypeMaster
             -> Type
             """
+
 
 def test_attributes(schema_any):
     """
@@ -136,6 +143,7 @@ def test_attributes(schema_any):
     assert channel.primary_key == ["animal", "experiment_id", "trial_id", "channel"]
     assert channel.heading.attributes["voltage"].is_blob
 
+
 def test_dependencies(schema_any):
     user = User()
     subject = Subject()
@@ -149,8 +157,7 @@ def test_dependencies(schema_any):
     assert experiment.full_table_name in user.children(primary=False)
     assert set(experiment.parents(primary=False)) == {user.full_table_name}
     assert set(
-        s.full_table_name
-        for s in experiment.parents(primary=False, as_objects=True)
+        s.full_table_name for s in experiment.parents(primary=False, as_objects=True)
     ) == {user.full_table_name}
 
     assert experiment.full_table_name in subject.descendants()
@@ -192,6 +199,7 @@ def test_dependencies(schema_any):
         s.full_table_name for s in channel.parents(primary=True, as_objects=True)
     ) == {ephys.full_table_name}
 
+
 def test_descendants_only_contain_part_table(schema_any):
     """issue #927"""
 
@@ -227,6 +235,7 @@ def test_descendants_only_contain_part_table(schema_any):
         "`djtest_test1`.`master__part`",
     ]
 
+
 def test_bad_attribute_name(schema_any):
     class BadName(dj.Manual):
         definition = """
@@ -235,6 +244,7 @@ def test_bad_attribute_name(schema_any):
 
     with pytest.raises(dj.DataJointError):
         schema_any(BadName)
+
 
 def test_bad_fk_rename(schema_any):
     """issue #381"""
@@ -253,6 +263,7 @@ def test_bad_fk_rename(schema_any):
     with pytest.raises(dj.DataJointError):
         schema_any(B)
 
+
 def test_primary_nullable_foreign_key(schema_any):
     class Q(dj.Manual):
         definition = """
@@ -261,6 +272,7 @@ def test_primary_nullable_foreign_key(schema_any):
 
     with pytest.raises(dj.DataJointError):
         schema_any(Q)
+
 
 def test_invalid_foreign_key_option(schema_any):
     class R(dj.Manual):
@@ -273,6 +285,7 @@ def test_invalid_foreign_key_option(schema_any):
     with pytest.raises(dj.DataJointError):
         schema_any(R)
 
+
 def test_unsupported_datatype(schema_any):
     class Q(dj.Manual):
         definition = """
@@ -284,6 +297,7 @@ def test_unsupported_datatype(schema_any):
     with pytest.raises(dj.DataJointError):
         schema_any(Q)
 
+
 def test_int_datatype(schema_any):
     @schema_any
     class Owner(dj.Manual):
@@ -292,6 +306,7 @@ def test_int_datatype(schema_any):
         ---
         car_count : integer
         """
+
 
 def test_unsupported_int_datatype(schema_any):
     class Driver(dj.Manual):
@@ -303,6 +318,7 @@ def test_unsupported_int_datatype(schema_any):
 
     with pytest.raises(dj.DataJointError):
         schema_any(Driver)
+
 
 def test_long_table_name(schema_any):
     """

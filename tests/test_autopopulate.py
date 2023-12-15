@@ -10,10 +10,7 @@ def test_populate(trial, subject, experiment, ephys, channel):
     assert subject, "root tables are empty"
     assert not experiment, "table already filled?"
     experiment.populate()
-    assert (
-        len(experiment)
-        == len(subject) * experiment.fake_experiments_per_subject
-    )
+    assert len(experiment) == len(subject) * experiment.fake_experiments_per_subject
 
     # test restricted populate
     assert not trial, "table already filled?"
@@ -65,10 +62,7 @@ def test_populate_exclude_error_and_ignore_jobs(schema_any, subject, experiment)
             schema_any.jobs.error(experiment.table_name, key, "")
 
     experiment.populate(reserve_jobs=True)
-    assert (
-        len(experiment.key_source & experiment)
-        == len(experiment.key_source) - 2
-    )
+    assert len(experiment.key_source & experiment) == len(experiment.key_source) - 2
 
 
 def test_allow_direct_insert(subject, experiment):
@@ -79,15 +73,12 @@ def test_allow_direct_insert(subject, experiment):
     experiment.insert1(key, allow_direct_insert=True)
 
 
-@pytest.mark.parametrize('processes', [None, 2])
+@pytest.mark.parametrize("processes", [None, 2])
 def test_multi_processing(subject, experiment, processes):
     assert subject, "root tables are empty"
     assert not experiment, "table already filled?"
     experiment.populate(processes=None)
-    assert (
-        len(experiment)
-        == len(subject) * experiment.fake_experiments_per_subject
-    )
+    assert len(experiment) == len(subject) * experiment.fake_experiments_per_subject
 
 
 def test_allow_insert(subject, experiment):

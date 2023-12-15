@@ -50,15 +50,18 @@ def test_object_conversion_one(schema_fetch_same):
     new = ProjData().proj(sub="resp").fetch("sub")
     assert new.dtype == np.float64
 
+
 def test_object_conversion_two(schema_fetch_same):
     [sub, add] = ProjData().proj(sub="resp", add="sim").fetch("sub", "add")
     assert sub.dtype == np.float64
     assert add.dtype == np.float64
 
+
 def test_object_conversion_all(schema_fetch_same):
     new = ProjData().proj(sub="resp", add="sim").fetch()
     assert new["sub"].dtype == np.float64
     assert new["add"].dtype == np.float64
+
 
 def test_object_no_convert(schema_fetch_same):
     new = ProjData().fetch()

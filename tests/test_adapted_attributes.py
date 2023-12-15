@@ -23,14 +23,11 @@ def schema_ad(
     enable_adapted_types,
     enable_filepath_feature,
     s3_creds,
-    tmpdir
+    tmpdir,
 ):
     dj.config["stores"] = {
         "repo-s3": dict(
-            s3_creds,
-            protocol="s3",
-            location="adapted/repo",
-            stage=str(tmpdir)
+            s3_creds, protocol="s3", location="adapted/repo", stage=str(tmpdir)
         )
     }
     context = {

@@ -14,7 +14,9 @@ class NanTest(dj.Manual):
 
 @pytest.fixture
 def schema_nan(connection_test):
-    schema = dj.Schema(PREFIX + "_nantest", context=dict(NanTest=NanTest), connection=connection_test)
+    schema = dj.Schema(
+        PREFIX + "_nantest", context=dict(NanTest=NanTest), connection=connection_test
+    )
     schema(NanTest)
     yield schema
     schema.drop()

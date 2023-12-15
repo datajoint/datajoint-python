@@ -22,7 +22,9 @@ class Subjects(dj.Manual):
 @pytest.fixture
 def schema_tx(connection_test):
     schema = dj.Schema(
-        PREFIX + "_transactions", context=dict(Subjects=Subjects), connection=connection_test
+        PREFIX + "_transactions",
+        context=dict(Subjects=Subjects),
+        connection=connection_test,
     )
     schema(Subjects)
     yield schema
