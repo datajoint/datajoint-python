@@ -8,7 +8,7 @@ def test_attach_attributes(schema_ext, minio_client, tmpdir_factory):
     """Test saving files in attachments"""
     # create a mock file
     table = Attach()
-    source_folder = tmpdir_factory.mktemp()
+    source_folder = tmpdir_factory.mktemp("source")
     for i in range(2):
         attach1 = Path(source_folder, "attach1.img")
         data1 = os.urandom(100)
@@ -20,7 +20,7 @@ def test_attach_attributes(schema_ext, minio_client, tmpdir_factory):
             f.write(data2)
         table.insert1(dict(attach=i, img=attach1, txt=attach2))
 
-    download_folder = Path(tmpdir_factory.mktemp())
+    download_folder = Path(tmpdir_factory.mktemp("download"))
     keys, path1, path2 = table.fetch(
         "KEY", "img", "txt", download_path=download_folder, order_by="KEY"
     )
@@ -46,7 +46,7 @@ def test_return_string(schema_ext, minio_client, tmpdir_factory):
     """Test returning string on fetch"""
     # create a mock file
     table = Attach()
-    source_folder = tmpdir_factory.mktemp()
+    source_folder = tmpdir_factory.mktemp("source")
 
     attach1 = Path(source_folder, "attach1.img")
     data1 = os.urandom(100)
@@ -58,7 +58,7 @@ def test_return_string(schema_ext, minio_client, tmpdir_factory):
         f.write(data2)
     table.insert1(dict(attach=2, img=attach1, txt=attach2))
 
-    download_folder = Path(tmpdir_factory.mktemp())
+    download_folder = Path(tmpdir_factory.mktemp("download"))
     keys, path1, path2 = table.fetch(
         "KEY", "img", "txt", download_path=download_folder, order_by="KEY"
     )
