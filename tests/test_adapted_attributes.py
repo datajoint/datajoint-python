@@ -26,7 +26,7 @@ def schema_ad(
     enable_filepath_feature,
     s3_creds,
     tmpdir,
-    schema_name
+    schema_name,
 ):
     dj.config["stores"] = {
         "repo-s3": dict(
