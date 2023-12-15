@@ -29,7 +29,7 @@ def schema_ad(
             S3_CONN_INFO,
             protocol="s3",
             location="adapted/repo",
-            stage=tmpdir
+            stage=str(tmpdir)
         )
     }
     context = {
