@@ -17,9 +17,8 @@ def schema_simp_pop(schema_simp):
 def test_delete_tree(schema_simp_pop):
     assert not dj.config["safemode"], "safemode must be off for testing"
     assert (
-        L() and A() and B() and B.C() and D() and E() and E.F(),
-        "schema is not populated",
-    )
+        L() and A() and B() and B.C() and D() and E() and E.F()
+    ), "schema is not populated"
     A().delete()
     assert not A() or B() or B.C() or D() or E() or E.F(), "incomplete delete"
 
@@ -64,10 +63,9 @@ def test_delete_tree_restricted(schema_simp_pop):
 
 def test_delete_lookup(schema_simp_pop):
     assert not dj.config["safemode"], "safemode must be off for testing"
-    assert (
-        bool(L() and A() and B() and B.C() and D() and E() and E.F()),
-        "schema is not populated",
-    )
+    assert bool(
+        L() and A() and B() and B.C() and D() and E() and E.F()
+    ), "schema is not populated"
     L().delete()
     assert not bool(L() or D() or E() or E.F()), "incomplete delete"
     A().delete()  # delete all is necessary because delete L deletes from subtables.
@@ -76,9 +74,8 @@ def test_delete_lookup(schema_simp_pop):
 def test_delete_lookup_restricted(schema_simp_pop):
     assert not dj.config["safemode"], "safemode must be off for testing"
     assert (
-        L() and A() and B() and B.C() and D() and E() and E.F(),
-        "schema is not populated",
-    )
+        L() and A() and B() and B.C() and D() and E() and E.F()
+    ), "schema is not populated"
     rel = L() & "cond_in_l"
     original_count = len(L())
     deleted_count = len(rel)
