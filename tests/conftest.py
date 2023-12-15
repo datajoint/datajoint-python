@@ -156,9 +156,6 @@ def connection_root(connection_root_bare, prefix):
 def connection_test(connection_root, prefix, db_creds_test):
     """Test user database connection."""
     database = f"{prefix}%%"
-    credentials = dict(
-        host=os.getenv("DJ_HOST"), user="datajoint", password="datajoint"
-    )
     permission = "ALL PRIVILEGES"
 
     # Create MySQL users
