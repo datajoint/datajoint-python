@@ -2,10 +2,8 @@ import types
 import pytest
 import inspect
 import datajoint as dj
-from unittest.mock import patch
 from inspect import getmembers
 from . import schema
-from . import PREFIX
 
 
 class Ephys(dj.Imported):
@@ -49,10 +47,10 @@ def schema_empty_module(schema_any, schema_empty):
 
 
 @pytest.fixture
-def schema_empty(connection_test, schema_any):
+def schema_empty(connection_test, schema_any, prefix):
     context = {**schema.LOCALS_ANY, "Ephys": Ephys}
     schema_empty = dj.Schema(
-        PREFIX + "_test1", context=context, connection=connection_test
+        prefix + "_test1", context=context, connection=connection_test
     )
     schema_empty(Ephys)
     # load the rest of the classes
