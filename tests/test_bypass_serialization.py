@@ -36,7 +36,7 @@ def schema_in(connection_test, prefix):
 
 
 @pytest.fixture
-def schema_out(connection_test):
+def schema_out(connection_test, prefix):
     schema = dj.Schema(
         prefix + "_test_blob_bypass_serialization_out",
         context=dict(Output=Output),
