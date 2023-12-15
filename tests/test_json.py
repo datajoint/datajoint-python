@@ -4,7 +4,6 @@ from datajoint.declare import declare
 import datajoint as dj
 import numpy as np
 from packaging.version import Version
-from . import PREFIX
 
 if Version(dj.conn().query("select @@version;").fetchone()[0]) < Version("8.0.0"):
     pytest.skip("These tests require MySQL >= v8.0.0", allow_module_level=True)
@@ -65,9 +64,9 @@ class Team(dj.Lookup):
 
 
 @pytest.fixture
-def schema_json(connection_test):
+def schema_json(connection_test, prefix):
     schema = dj.Schema(
-        PREFIX + "_json", context=dict(Team=Team), connection=connection_test
+        prefix + "_json", context=dict(Team=Team), connection=connection_test
     )
     schema(Team)
     yield schema

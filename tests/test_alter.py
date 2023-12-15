@@ -1,7 +1,7 @@
 import pytest
 import re
 import datajoint as dj
-from . import schema as schema_any_module, PREFIX
+from . import schema as schema_any_module
 from .schema_alter import Experiment, Parent, LOCALS_ALTER
 
 COMBINED_CONTEXT = {

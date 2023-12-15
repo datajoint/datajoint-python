@@ -1,6 +1,5 @@
 import numpy as np
 import datajoint as dj
-from . import PREFIX
 import pytest
 
 
@@ -13,9 +12,9 @@ class NanTest(dj.Manual):
 
 
 @pytest.fixture
-def schema_nan(connection_test):
+def schema_nan(connection_test, prefix):
     schema = dj.Schema(
-        PREFIX + "_nantest", context=dict(NanTest=NanTest), connection=connection_test
+        prefix + "_nantest", context=dict(NanTest=NanTest), connection=connection_test
     )
     schema(NanTest)
     yield schema

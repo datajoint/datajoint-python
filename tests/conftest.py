@@ -18,7 +18,6 @@ from datajoint.errors import (
     DataJointError,
 )
 from . import (
-    PREFIX,
     schema,
     schema_simple,
     schema_advanced,
@@ -26,6 +25,11 @@ from . import (
     schema_external,
     schema_uuid as schema_uuid_module,
 )
+
+
+@pytest.fixture(scope="session")
+def prefix():
+    return os.environ.get("DJ_TEST_DB_PREFIX", "djtest")
 
 
 @pytest.fixture(scope="session")
@@ -70,7 +74,7 @@ def connection_root_bare(db_creds_root):
 
 
 @pytest.fixture(scope="session")
-def connection_root(connection_root_bare):
+def connection_root(connection_root_bare, prefix):
     """Root user database connection."""
     dj.config["safemode"] = False
     conn_root = connection_root_bare
@@ -125,7 +129,7 @@ def connection_root(connection_root_bare):
 
     # Teardown
     conn_root.query("SET FOREIGN_KEY_CHECKS=0")
-    cur = conn_root.query('SHOW DATABASES LIKE "{}\\_%%"'.format(PREFIX))
+    cur = conn_root.query('SHOW DATABASES LIKE "{}\\_%%"'.format(prefix))
     for db in cur.fetchall():
         conn_root.query("DROP DATABASE `{}`".format(db[0]))
     conn_root.query("SET FOREIGN_KEY_CHECKS=1")
@@ -140,9 +144,9 @@ def connection_root(connection_root_bare):
 
 
 @pytest.fixture(scope="session")
-def connection_test(connection_root):
+def connection_test(connection_root, prefix):
     """Test user database connection."""
-    database = f"{PREFIX}%%"
+    database = f"{prefix}%%"
     credentials = dict(
         host=os.getenv("DJ_HOST"), user="datajoint", password="datajoint"
     )
@@ -240,9 +244,9 @@ def mock_cache(tmpdir_factory):
 
 
 @pytest.fixture
-def schema_any(connection_test):
+def schema_any(connection_test, prefix):
     schema_any = dj.Schema(
-        PREFIX + "_test1", schema.LOCALS_ANY, connection=connection_test
+        prefix + "_test1", schema.LOCALS_ANY, connection=connection_test
     )
     assert schema.LOCALS_ANY, "LOCALS_ANY is empty"
     try:
@@ -294,9 +298,9 @@ def schema_any(connection_test):
 
 
 @pytest.fixture
-def schema_simp(connection_test):
+def schema_simp(connection_test, prefix):
     schema = dj.Schema(
-        PREFIX + "_relational", schema_simple.LOCALS_SIMPLE, connection=connection_test
+        prefix + "_relational", schema_simple.LOCALS_SIMPLE, connection=connection_test
     )
     schema(schema_simple.IJ)
     schema(schema_simple.JI)
@@ -321,9 +325,9 @@ def schema_simp(connection_test):
 
 
 @pytest.fixture
-def schema_adv(connection_test):
+def schema_adv(connection_test, prefix):
     schema = dj.Schema(
-        PREFIX + "_advanced",
+        prefix + "_advanced",
         schema_advanced.LOCALS_ADVANCED,
         connection=connection_test,
     )
@@ -341,9 +345,9 @@ def schema_adv(connection_test):
 
 
 @pytest.fixture
-def schema_ext(connection_test, enable_filepath_feature, mock_stores, mock_cache):
+def schema_ext(connection_test, enable_filepath_feature, mock_stores, mock_cache, prefix):
     schema = dj.Schema(
-        PREFIX + "_extern",
+        prefix + "_extern",
         context=schema_external.LOCALS_EXTERNAL,
         connection=connection_test,
     )
@@ -360,9 +364,9 @@ def schema_ext(connection_test, enable_filepath_feature, mock_stores, mock_cache
 
 
 @pytest.fixture
-def schema_uuid(connection_test):
+def schema_uuid(connection_test, prefix):
     schema = dj.Schema(
-        PREFIX + "_test1",
+        prefix + "_test1",
         context=schema_uuid_module.LOCALS_UUID,
         connection=connection_test,
     )

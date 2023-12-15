@@ -5,7 +5,6 @@ A schema for testing external attributes
 import tempfile
 import inspect
 import datajoint as dj
-from . import PREFIX
 import numpy as np
 
 

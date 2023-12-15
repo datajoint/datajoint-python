@@ -1,7 +1,7 @@
 import os
 import pytest
 import datajoint as dj
-from . import schema, PREFIX, schema_privileges
+from . import schema, schema_privileges
 
 namespace = locals()
 
@@ -22,10 +22,10 @@ def schema_priv(connection_test):
 
 
 @pytest.fixture
-def connection_djsubset(connection_root, db_creds_root, schema_priv):
+def connection_djsubset(connection_root, db_creds_root, schema_priv, prefix):
     user = "djsubset"
     conn = dj.conn(**db_creds_root, reset=True)
-    schema_priv.activate(f"{PREFIX}_schema_privileges")
+    schema_priv.activate(f"{prefix}_schema_privileges")
     conn.query(
         f"""
         CREATE USER IF NOT EXISTS '{user}'@'%%'
@@ -35,14 +35,14 @@ def connection_djsubset(connection_root, db_creds_root, schema_priv):
     conn.query(
         f"""
         GRANT SELECT, INSERT, UPDATE, DELETE
-        ON `{PREFIX}_schema_privileges`.`#parent`
+        ON `{prefix}_schema_privileges`.`#parent`
         TO '{user}'@'%%'
         """
     )
     conn.query(
         f"""
         GRANT SELECT, INSERT, UPDATE, DELETE
-        ON `{PREFIX}_schema_privileges`.`__child`
+        ON `{prefix}_schema_privileges`.`__child`
         TO '{user}'@'%%'
         """
     )
@@ -54,7 +54,7 @@ def connection_djsubset(connection_root, db_creds_root, schema_priv):
     )
     yield conn_djsubset
     conn.query(f"DROP USER {user}")
-    conn.query(f"DROP DATABASE {PREFIX}_schema_privileges")
+    conn.query(f"DROP DATABASE {prefix}_schema_privileges")
 
 
 @pytest.fixture
@@ -111,7 +111,7 @@ class TestUnprivileged:
 class TestSubset:
     def test_populate_activate(self, connection_djsubset, schema_priv):
         schema_priv.activate(
-            f"{PREFIX}_schema_privileges", create_schema=True, create_tables=False
+            f"{prefix}_schema_privileges", create_schema=True, create_tables=False
         )
         schema_privileges.Child.populate()
         assert schema_privileges.Child.progress(display=False)[0] == 0

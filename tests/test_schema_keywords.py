@@ -1,6 +1,5 @@
 import pytest
 import datajoint as dj
-from . import PREFIX
 
 
 class A(dj.Manual):
@@ -34,8 +33,8 @@ class D(B):
 
 
 @pytest.fixture
-def schema_kwd(connection_test):
-    schema = dj.Schema(PREFIX + "_keywords", connection=connection_test)
+def schema_kwd(connection_test, prefix):
+    schema = dj.Schema(prefix + "_keywords", connection=connection_test)
     schema(A)
     schema(D)
     yield schema

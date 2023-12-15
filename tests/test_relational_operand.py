@@ -7,7 +7,6 @@ import numpy as np
 import datajoint as dj
 from .schema_simple import *
 from .schema import *
-from . import PREFIX
 
 
 @pytest.fixture
@@ -190,7 +189,7 @@ def test_project(schema_simp_pop):
 
 
 def test_rename_non_dj_attribute(connection_test, schema_simp_pop, schema_any_pop):
-    schema = PREFIX + "_test1"
+    schema = prefix + "_test1"
     connection_test.query(
         f"CREATE TABLE {schema}.test_table (oldID int PRIMARY KEY)"
     ).fetchall()

@@ -5,7 +5,6 @@ Collection of test cases to test connection module.
 import datajoint as dj
 from datajoint import DataJointError
 import numpy as np
-from . import PREFIX
 import pytest
 
 
@@ -20,9 +19,9 @@ class Subjects(dj.Manual):
 
 
 @pytest.fixture
-def schema_tx(connection_test):
+def schema_tx(connection_test, prefix):
     schema = dj.Schema(
-        PREFIX + "_transactions",
+        prefix + "_transactions",
         context=dict(Subjects=Subjects),
         connection=connection_test,
     )

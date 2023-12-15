@@ -1,5 +1,4 @@
 import pytest
-from . import PREFIX
 import numpy as np
 import datajoint as dj
 
@@ -16,9 +15,9 @@ class ProjData(dj.Manual):
 
 
 @pytest.fixture
-def schema_fetch_same(connection_test):
+def schema_fetch_same(connection_test, prefix):
     schema = dj.Schema(
-        PREFIX + "_fetch_same",
+        prefix + "_fetch_same",
         context=dict(ProjData=ProjData),
         connection=connection_test,
     )

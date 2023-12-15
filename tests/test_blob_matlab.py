@@ -3,7 +3,6 @@ import pytest
 import datajoint as dj
 from datajoint.blob import pack, unpack
 from numpy.testing import assert_array_equal
-from . import PREFIX
 
 
 class Blob(dj.Manual):
@@ -16,8 +15,8 @@ class Blob(dj.Manual):
 
 
 @pytest.fixture
-def schema_blob(connection_test):
-    schema = dj.Schema(PREFIX + "_test1", dict(Blob=Blob), connection=connection_test)
+def schema_blob(connection_test, prefix):
+    schema = dj.Schema(prefix + "_test1", dict(Blob=Blob), connection=connection_test)
     schema(Blob)
     yield schema
     schema.drop()

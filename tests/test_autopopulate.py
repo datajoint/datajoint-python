@@ -1,8 +1,8 @@
 import pytest
-from . import schema, PREFIX
 from datajoint import DataJointError
 import datajoint as dj
 import pymysql
+from . import schema
 
 
 def test_populate(trial, subject, experiment, ephys, channel):
@@ -90,8 +90,8 @@ def test_allow_insert(subject, experiment):
         experiment.insert1(key)
 
 
-def test_load_dependencies():
-    schema = dj.Schema(f"{PREFIX}_load_dependencies_populate")
+def test_load_dependencies(prefix):
+    schema = dj.Schema(f"{prefix}_load_dependencies_populate")
 
     @schema
     class ImageSource(dj.Lookup):
