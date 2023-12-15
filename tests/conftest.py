@@ -414,3 +414,64 @@ def minio_client(minio_client_bare):
         for o in objs
     ]
     minio_client_bare.remove_bucket(S3_CONN_INFO["bucket"])
+
+
+@pytest.fixture
+def test(schema_any):
+    yield schema.TTest()
+
+
+@pytest.fixture
+def test2(schema_any):
+    yield schema.TTest2()
+
+
+@pytest.fixture
+def test_extra(schema_any):
+    yield schema.TTestExtra()
+
+
+@pytest.fixture
+def test_no_extra(schema_any):
+    yield schema.TTestNoExtra()
+
+
+@pytest.fixture
+def user(schema_any):
+    return schema.User()
+
+
+@pytest.fixture
+def subject(schema_any):
+    return schema.Subject()
+
+
+@pytest.fixture
+def experiment(schema_any):
+    return schema.Experiment()
+
+
+@pytest.fixture
+def ephys(schema_any):
+    return schema.Ephys()
+
+
+@pytest.fixture
+def img(schema_any):
+    return schema.Image()
+
+
+@pytest.fixture
+def trial(schema_any):
+    return schema.Trial()
+
+
+@pytest.fixture
+def channel(schema_any):
+    return schema.Ephys.Channel()
+
+
+@pytest.fixture
+def trash(schema_any):
+    return schema.UberTrash()
+
