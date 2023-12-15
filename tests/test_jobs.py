@@ -101,7 +101,7 @@ def test_long_error_message(subject, schema_any):
     assert subject
     table_name = "fake_table"
 
-    key = subject.fetch("KEY")[0]
+    key = subject.fetch("KEY", limit=1)[0]
 
     # test long error message
     schema_any.jobs.reserve(table_name, key)
@@ -137,7 +137,7 @@ def test_long_error_stack(subject, schema_any):
     assert subject
     table_name = "fake_table"
 
-    key = subject.fetch("KEY")[0]
+    key = subject.fetch("KEY", limit=1)[0]
 
     # test long error stack
     schema_any.jobs.reserve(table_name, key)
