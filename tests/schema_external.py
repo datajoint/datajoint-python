@@ -5,7 +5,7 @@ A schema for testing external attributes
 import tempfile
 import inspect
 import datajoint as dj
-from . import PREFIX, CONN_INFO, S3_CONN_INFO
+from . import PREFIX
 import numpy as np
 
 

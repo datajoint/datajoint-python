@@ -6,7 +6,7 @@ import networkx as nx
 from itertools import zip_longest
 from . import schema_adapted
 from .schema_adapted import Connectivity, Layout
-from . import PREFIX, S3_CONN_INFO
+from . import PREFIX
 
 SCHEMA_NAME = PREFIX + "_test_custom_datatype"
 
@@ -22,11 +22,12 @@ def schema_ad(
     adapted_graph_instance,
     enable_adapted_types,
     enable_filepath_feature,
+    s3_creds,
     tmpdir
 ):
     dj.config["stores"] = {
         "repo-s3": dict(
-            S3_CONN_INFO,
+            s3_creds,
             protocol="s3",
             location="adapted/repo",
             stage=str(tmpdir)
