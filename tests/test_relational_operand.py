@@ -5,34 +5,9 @@ import pandas
 import datetime
 import numpy as np
 import datajoint as dj
-from .schema_simple import (
-    A,
-    B,
-    D,
-    E,
-    F,
-    L,
-    DataA,
-    DataB,
-    TTestUpdate,
-    IJ,
-    JI,
-    ReservedWord,
-    OutfitLaunch,
-)
-from .schema import (
-    Experiment,
-    TTest3,
-    Trial,
-    Ephys,
-    Child,
-    Parent,
-    SubjectA,
-    SessionA,
-    SessionStatusA,
-    SessionDateA,
-)
-from . import PREFIX, CONN_INFO
+from .schema_simple import *
+from .schema import *
+from . import PREFIX
 
 
 @pytest.fixture

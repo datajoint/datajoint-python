@@ -1,6 +1,6 @@
 import datajoint as dj
 from packaging import version
-from typing import Dict
+from typing import Dict, List
 import os
 from os import environ, remove
 import minio
@@ -19,8 +19,6 @@ from datajoint.errors import (
 )
 from . import (
     PREFIX,
-    CONN_INFO,
-    S3_CONN_INFO,
     schema,
     schema_simple,
     schema_advanced,
@@ -184,8 +182,18 @@ def connection_test(connection_root):
     connection.close()
 
 
+@pytest.fixture
+def s3_creds() -> Dict:
+    return dict(
+        endpoint=os.environ.get("S3_ENDPOINT", "fakeservices.datajoint.io"),
+        access_key=os.environ.get("S3_ACCESS_KEY", "datajoint"),
+        secret_key=os.environ.get("S3_SECRET_KEY", "datajoint"),
+        bucket=os.environ.get("S3_BUCKET", "datajoint.test"),
+    )
+
+
 @pytest.fixture(scope="session")
-def stores_config(tmpdir_factory):
+def stores_config(s3_creds, tmpdir_factory):
     stores_config = {
         "raw": dict(protocol="file", location=tmpdir_factory.mktemp("raw")),
         "repo": dict(
@@ -194,7 +202,7 @@ def stores_config(tmpdir_factory):
             location=tmpdir_factory.mktemp("repo"),
         ),
         "repo-s3": dict(
-            S3_CONN_INFO,
+            s3_creds,
             protocol="s3",
             location="dj/repo",
             stage=tmpdir_factory.mktemp("repo-s3"),
@@ -203,7 +211,7 @@ def stores_config(tmpdir_factory):
             protocol="file", location=tmpdir_factory.mktemp("local"), subfolding=(1, 1)
         ),
         "share": dict(
-            S3_CONN_INFO, protocol="s3", location="dj/store/repo", subfolding=(2, 4)
+            s3_creds, protocol="s3", location="dj/store/repo", subfolding=(2, 4)
         ),
     }
     return stores_config
@@ -380,12 +388,12 @@ def http_client():
 
 
 @pytest.fixture(scope="session")
-def minio_client_bare(http_client):
+def minio_client_bare(s3_creds, http_client):
     """Initialize MinIO with an endpoint and access/secret keys."""
     client = minio.Minio(
-        S3_CONN_INFO["endpoint"],
-        access_key=S3_CONN_INFO["access_key"],
-        secret_key=S3_CONN_INFO["secret_key"],
+        s3_creds["endpoint"],
+        access_key=s3_creds["access_key"],
+        secret_key=s3_creds["secret_key"],
         secure=True,
         http_client=http_client,
     )
@@ -393,12 +401,12 @@ def minio_client_bare(http_client):
 
 
 @pytest.fixture(scope="session")
-def minio_client(minio_client_bare):
+def minio_client(s3_creds, minio_client_bare):
     """Initialize a MinIO client and create buckets for testing session."""
     # Setup MinIO bucket
     aws_region = "us-east-1"
     try:
-        minio_client_bare.make_bucket(S3_CONN_INFO["bucket"], location=aws_region)
+        minio_client_bare.make_bucket(s3_creds["bucket"], location=aws_region)
     except minio.error.S3Error as e:
         if e.code != "BucketAlreadyOwnedByYou":
             raise e
@@ -406,14 +414,14 @@ def minio_client(minio_client_bare):
     yield minio_client_bare
 
     # Teardown S3
-    objs = list(minio_client_bare.list_objects(S3_CONN_INFO["bucket"], recursive=True))
+    objs = list(minio_client_bare.list_objects(s3_creds["bucket"], recursive=True))
     objs = [
         minio_client_bare.remove_object(
-            S3_CONN_INFO["bucket"], o.object_name.encode("utf-8")
+            s3_creds["bucket"], o.object_name.encode("utf-8")
         )
         for o in objs
     ]
-    minio_client_bare.remove_bucket(S3_CONN_INFO["bucket"])
+    minio_client_bare.remove_bucket(s3_creds["bucket"])
 
 
 @pytest.fixture
@@ -442,8 +450,21 @@ def user(schema_any):
 
 
 @pytest.fixture
+def lang(schema_any):
+    yield schema.Language()
+
+
+@pytest.fixture
+def languages(lang) -> List:
+    og_contents = lang.contents
+    languages = og_contents.copy()
+    yield languages
+    lang.contents = og_contents
+
+
+@pytest.fixture
 def subject(schema_any):
-    return schema.Subject()
+    yield schema.Subject()
 
 
 @pytest.fixture

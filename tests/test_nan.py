@@ -12,36 +12,39 @@ class NanTest(dj.Manual):
     """
 
 
-@pytest.fixture(scope="module")
-def schema(connection_test):
-    schema = dj.Schema(PREFIX + "_nantest", connection=connection_test)
+@pytest.fixture
+def schema_nan(connection_test):
+    schema = dj.Schema(PREFIX + "_nantest", context=dict(NanTest=NanTest), connection=connection_test)
     schema(NanTest)
     yield schema
     schema.drop()
 
 
-@pytest.fixture(scope="class")
-def setup_class(request, schema):
+@pytest.fixture
+def arr_a():
+    return np.array([0, 1 / 3, np.nan, np.pi, np.nan])
+
+
+@pytest.fixture
+def schema_nan_pop(schema_nan, arr_a):
     rel = NanTest()
     with dj.config(safemode=False):
         rel.delete()
-    a = np.array([0, 1 / 3, np.nan, np.pi, np.nan])
-    rel.insert(((i, value) for i, value in enumerate(a)))
-    request.cls.rel = rel
-    request.cls.a = a
+    rel.insert(((i, value) for i, value in enumerate(arr_a)))
+    return schema_nan
 
 
-class TestNaNInsert:
-    def test_insert_nan(self, setup_class):
-        """Test fetching of null values"""
-        b = self.rel.fetch("value", order_by="id")
-        assert (np.isnan(self.a) == np.isnan(b)).all(), "incorrect handling of Nans"
-        assert np.allclose(
-            self.a[np.logical_not(np.isnan(self.a))], b[np.logical_not(np.isnan(b))]
-        ), "incorrect storage of floats"
+def test_insert_nan(schema_nan_pop, arr_a):
+    """Test fetching of null values"""
+    b = NanTest().fetch("value", order_by="id")
+    assert (np.isnan(arr_a) == np.isnan(b)).all(), "incorrect handling of Nans"
+    assert np.allclose(
+        arr_a[np.logical_not(np.isnan(arr_a))], b[np.logical_not(np.isnan(b))]
+    ), "incorrect storage of floats"
 
-    def test_nulls_do_not_affect_primary_keys(self, setup_class):
-        """Test against a case that previously caused a bug when skipping existing entries."""
-        self.rel.insert(
-            ((i, value) for i, value in enumerate(self.a)), skip_duplicates=True
-        )
+
+def test_nulls_do_not_affect_primary_keys(schema_nan_pop, arr_a):
+    """Test against a case that previously caused a bug when skipping existing entries."""
+    NanTest().insert(
+        ((i, value) for i, value in enumerate(arr_a)), skip_duplicates=True
+    )

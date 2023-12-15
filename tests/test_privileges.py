@@ -1,25 +1,24 @@
 import os
 import pytest
 import datajoint as dj
-from . import schema, CONN_INFO_ROOT, PREFIX
-from . import schema_privileges
+from . import schema, PREFIX, schema_privileges
 
 namespace = locals()
 
 
 @pytest.fixture
 def schema_priv(connection_test):
-    schema_priv = dj.Schema(
+    schema = dj.Schema(
         context=schema_privileges.LOCALS_PRIV,
         connection=connection_test,
     )
-    schema_priv(schema_privileges.Parent)
-    schema_priv(schema_privileges.Child)
-    schema_priv(schema_privileges.NoAccess)
-    schema_priv(schema_privileges.NoAccessAgain)
-    yield schema_priv
-    if schema_priv.is_activated():
-        schema_priv.drop()
+    schema(schema_privileges.Parent)
+    schema(schema_privileges.Child)
+    schema(schema_privileges.NoAccess)
+    schema(schema_privileges.NoAccessAgain)
+    yield schema
+    if schema.is_activated():
+        schema.drop()
 
 
 @pytest.fixture

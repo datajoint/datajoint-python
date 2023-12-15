@@ -7,7 +7,7 @@ from packaging.version import Version
 from . import PREFIX
 
 if Version(dj.conn().query("select @@version;").fetchone()[0]) < Version("8.0.0"):
-    pytest.skip("skipping windows-only tests", allow_module_level=True)
+    pytest.skip("These tests require MySQL >= v8.0.0", allow_module_level=True)
 
 
 class Team(dj.Lookup):
@@ -65,14 +65,14 @@ class Team(dj.Lookup):
 
 
 @pytest.fixture
-def schema(connection_test):
-    schema = dj.Schema(PREFIX + "_json", context=dict(), connection=connection_test)
+def schema_json(connection_test):
+    schema = dj.Schema(PREFIX + "_json", context=dict(Team=Team), connection=connection_test)
     schema(Team)
     yield schema
     schema.drop()
 
 
-def test_insert_update(schema):
+def test_insert_update(schema_json):
     car = {
         "name": "Discovery",
         "length": 22.9,
@@ -108,7 +108,7 @@ def test_insert_update(schema):
     assert not q
 
 
-def test_describe(schema):
+def test_describe(schema_json):
     rel = Team()
     context = inspect.currentframe().f_globals
     s1 = declare(rel.full_table_name, rel.definition, context)
@@ -116,7 +116,7 @@ def test_describe(schema):
     assert s1 == s2
 
 
-def test_restrict(schema):
+def test_restrict(schema_json):
     # dict
     assert (Team & {"car.name": "Chaching"}).fetch1("name") == "business"
 
@@ -176,7 +176,7 @@ def test_restrict(schema):
     ).fetch1("name") == "business", "2nd `headlight` object did not match"
 
 
-def test_proj(schema):
+def test_proj(schema_json):
     # proj necessary since we need to rename indexed value into a proper attribute name
     assert Team.proj(car_length="car.length").fetch(
         as_dict=True, order_by="car_length"

@@ -6,7 +6,6 @@ import numpy as np
 import datajoint as dj
 from datajoint.table import Table
 from unittest.mock import patch
-
 from . import schema
 
 
