@@ -208,8 +208,8 @@ def test_insert_longblob(schema_any):
             dtype=[("hits", "O"), ("sides", "O"), ("tasks", "O"), ("stage", "O")],
         ),
     }
-    assert fetched['id'] == expected['id']
-    assert np.array_equal(fetched['data'], expected['data'])
+    assert fetched["id"] == expected["id"]
+    assert np.array_equal(fetched["data"], expected["data"])
     (Longblob & "id=1").delete()
     dj.blob.use_32bit_dims = False
 
