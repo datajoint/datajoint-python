@@ -1,10 +1,12 @@
 ## Release notes
 
 ### Upcoming
+- Added - Migrate nosetests to pytest - PR [#1142](https://github.com/datajoint/datajoint-python/pull/1142)
 - Added - Codespell GitHub Actions workflow
 - Added - GitHub Actions workflow to manually release docs
 - Changed - Update `datajoint/nginx` to `v0.2.6`
 - Changed - Migrate docs from `https://docs.datajoint.org/python` to `https://datajoint.com/docs/core/datajoint-python`
+- Fixed - [DevContainer](https://containers.dev/) configuration - PR [#1115](https://github.com/datajoint/datajoint-python/pull/1115)
 - Fixed - Updated set_password to work on MySQL 8 - PR [#1106](https://github.com/datajoint/datajoint-python/pull/1106)
 - Added - Missing tests for set_password - PR [#1106](https://github.com/datajoint/datajoint-python/pull/1106)
 - Changed - Returning success count after the .populate() call - PR [#1050](https://github.com/datajoint/datajoint-python/pull/1050)
