@@ -5,18 +5,6 @@ from .schema import *
 from .schema_simple import *
 
 
-# def setup_class(cls):
-#     cls.user = User()
-#     cls.language = Language()
-#     cls.subject = Subject()
-#     cls.experiment = Experiment()
-#     cls.trial = Trial()
-#     cls.ephys = Ephys()
-#     cls.channel = Ephys.Channel()
-#     cls.img = Image()
-#     cls.trash = UberTrash()
-
-
 def test_restriction(lang, languages, trial):
     language_set = {s[1] for s in languages}
     rel = dj.U("language") & lang
