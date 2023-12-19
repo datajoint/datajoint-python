@@ -225,19 +225,26 @@ def test_insert_longblob_32bit(schema_any, enable_feature_32bit_dims):
 def test_datetime_serialization_speed():
     # If this fails that means for some reason deserializing/serializing
     # np arrays of np.datetime64 types is now slower than regular arrays of datetime
+    assert not dj.blob.use_32bit_dims, "32 bit dims should be off for this test"
+    context = dict(
+        np=np,
+        datetime=datetime,
+        pack=pack,
+        unpack=unpack,
+    )
 
     optimized_exe_time = timeit.timeit(
         setup="myarr=pack(np.array([np.datetime64('2022-10-13 03:03:13') for _ in range(0, 10000)]))",
         stmt="unpack(myarr)",
         number=10,
-        globals=globals(),
+        globals=context
     )
     print(f"np time {optimized_exe_time}")
     baseline_exe_time = timeit.timeit(
         setup="myarr2=pack(np.array([datetime(2022,10,13,3,3,13) for _ in range (0, 10000)]))",
         stmt="unpack(myarr2)",
         number=10,
-        globals=globals(),
+        globals=context
     )
     print(f"python time {baseline_exe_time}")
 
