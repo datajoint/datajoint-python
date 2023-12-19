@@ -1,3 +1,4 @@
+import pytest
 import datajoint as dj
 import timeit
 import numpy as np
@@ -8,6 +9,13 @@ from datajoint.blob import pack, unpack
 from numpy.testing import assert_array_equal
 from pytest import approx
 from .schema import Longblob
+
+
+@pytest.fixture
+def enable_feature_32bit_dims():
+    dj.blob.use_32bit_dims = True
+    yield
+    dj.blob.use_32bit_dims = False
 
 
 def test_pack():
@@ -180,6 +188,8 @@ def test_insert_longblob(schema_any):
     assert (Longblob & "id=1").fetch1()["data"].all() == query_mym_blob["data"].all()
     (Longblob & "id=1").delete()
 
+
+def test_insert_longblob_32bit(schema_any, enable_feature_32bit_dims):
     query_32_blob = (
         "INSERT INTO djtest_test1.longblob (id, data) VALUES (1, "
         "X'6D596D00530200000001000000010000000400000068697473007369646573007461736B73007374"
@@ -190,7 +200,6 @@ def test_insert_longblob(schema_any):
         "00000041020000000100000008000000040000000000000053007400610067006500200031003000')"
     )
     dj.conn().query(query_32_blob).fetchall()
-    dj.blob.use_32bit_dims = True
     fetched = (Longblob & "id=1").fetch1()
     expected = {
         "id": 1,
@@ -211,7 +220,6 @@ def test_insert_longblob(schema_any):
     assert fetched["id"] == expected["id"]
     assert np.array_equal(fetched["data"], expected["data"])
     (Longblob & "id=1").delete()
-    dj.blob.use_32bit_dims = False
 
 
 def test_datetime_serialization_speed():
