@@ -1,6 +1,6 @@
 import datajoint as dj
 from packaging import version
-from typing import Dict
+from typing import Dict, List
 import os
 from os import environ, remove
 import minio
@@ -18,9 +18,6 @@ from datajoint.errors import (
     DataJointError,
 )
 from . import (
-    PREFIX,
-    CONN_INFO,
-    S3_CONN_INFO,
     schema,
     schema_simple,
     schema_advanced,
@@ -28,6 +25,11 @@ from . import (
     schema_external,
     schema_uuid as schema_uuid_module,
 )
+
+
+@pytest.fixture(scope="session")
+def prefix():
+    return os.environ.get("DJ_TEST_DB_PREFIX", "djtest")
 
 
 @pytest.fixture(scope="session")
@@ -81,7 +83,7 @@ def connection_root_bare(db_creds_root):
 
 
 @pytest.fixture(scope="session")
-def connection_root(connection_root_bare):
+def connection_root(connection_root_bare, prefix):
     """Root user database connection."""
     dj.config["safemode"] = False
     conn_root = connection_root_bare
@@ -136,7 +138,7 @@ def connection_root(connection_root_bare):
 
     # Teardown
     conn_root.query("SET FOREIGN_KEY_CHECKS=0")
-    cur = conn_root.query('SHOW DATABASES LIKE "{}\\_%%"'.format(PREFIX))
+    cur = conn_root.query('SHOW DATABASES LIKE "{}\\_%%"'.format(prefix))
     for db in cur.fetchall():
         conn_root.query("DROP DATABASE `{}`".format(db[0]))
     conn_root.query("SET FOREIGN_KEY_CHECKS=1")
@@ -151,9 +153,9 @@ def connection_root(connection_root_bare):
 
 
 @pytest.fixture(scope="session")
-def connection_test(connection_root, db_creds_test):
+def connection_test(connection_root, prefix, db_creds_test):
     """Test user database connection."""
-    database = f"{PREFIX}%%"
+    database = f"{prefix}%%"
     permission = "ALL PRIVILEGES"
 
     # Create MySQL users
@@ -191,7 +193,17 @@ def connection_test(connection_root, db_creds_test):
 
 
 @pytest.fixture(scope="session")
-def stores_config(tmpdir_factory):
+def s3_creds() -> Dict:
+    return dict(
+        endpoint=os.environ.get("S3_ENDPOINT", "fakeservices.datajoint.io"),
+        access_key=os.environ.get("S3_ACCESS_KEY", "datajoint"),
+        secret_key=os.environ.get("S3_SECRET_KEY", "datajoint"),
+        bucket=os.environ.get("S3_BUCKET", "datajoint.test"),
+    )
+
+
+@pytest.fixture(scope="session")
+def stores_config(s3_creds, tmpdir_factory):
     stores_config = {
         "raw": dict(protocol="file", location=tmpdir_factory.mktemp("raw")),
         "repo": dict(
@@ -200,7 +212,7 @@ def stores_config(tmpdir_factory):
             location=tmpdir_factory.mktemp("repo"),
         ),
         "repo-s3": dict(
-            S3_CONN_INFO,
+            s3_creds,
             protocol="s3",
             location="dj/repo",
             stage=tmpdir_factory.mktemp("repo-s3"),
@@ -209,7 +221,7 @@ def stores_config(tmpdir_factory):
             protocol="file", location=tmpdir_factory.mktemp("local"), subfolding=(1, 1)
         ),
         "share": dict(
-            S3_CONN_INFO, protocol="s3", location="dj/store/repo", subfolding=(2, 4)
+            s3_creds, protocol="s3", location="dj/store/repo", subfolding=(2, 4)
         ),
     }
     return stores_config
@@ -238,9 +250,9 @@ def mock_cache(tmpdir_factory):
 
 
 @pytest.fixture
-def schema_any(connection_test):
+def schema_any(connection_test, prefix):
     schema_any = dj.Schema(
-        PREFIX + "_test1", schema.LOCALS_ANY, connection=connection_test
+        prefix + "_test1", schema.LOCALS_ANY, connection=connection_test
     )
     assert schema.LOCALS_ANY, "LOCALS_ANY is empty"
     try:
@@ -292,9 +304,9 @@ def schema_any(connection_test):
 
 
 @pytest.fixture
-def schema_simp(connection_test):
+def schema_simp(connection_test, prefix):
     schema = dj.Schema(
-        PREFIX + "_relational", schema_simple.LOCALS_SIMPLE, connection=connection_test
+        prefix + "_relational", schema_simple.LOCALS_SIMPLE, connection=connection_test
     )
     schema(schema_simple.IJ)
     schema(schema_simple.JI)
@@ -319,9 +331,9 @@ def schema_simp(connection_test):
 
 
 @pytest.fixture
-def schema_adv(connection_test):
+def schema_adv(connection_test, prefix):
     schema = dj.Schema(
-        PREFIX + "_advanced",
+        prefix + "_advanced",
         schema_advanced.LOCALS_ADVANCED,
         connection=connection_test,
     )
@@ -339,9 +351,11 @@ def schema_adv(connection_test):
 
 
 @pytest.fixture
-def schema_ext(connection_test, enable_filepath_feature, mock_stores, mock_cache):
+def schema_ext(
+    connection_test, enable_filepath_feature, mock_stores, mock_cache, prefix
+):
     schema = dj.Schema(
-        PREFIX + "_extern",
+        prefix + "_extern",
         context=schema_external.LOCALS_EXTERNAL,
         connection=connection_test,
     )
@@ -358,9 +372,9 @@ def schema_ext(connection_test, enable_filepath_feature, mock_stores, mock_cache
 
 
 @pytest.fixture
-def schema_uuid(connection_test):
+def schema_uuid(connection_test, prefix):
     schema = dj.Schema(
-        PREFIX + "_test1",
+        prefix + "_test1",
         context=schema_uuid_module.LOCALS_UUID,
         connection=connection_test,
     )
@@ -386,12 +400,12 @@ def http_client():
 
 
 @pytest.fixture(scope="session")
-def minio_client_bare(http_client):
+def minio_client_bare(s3_creds, http_client):
     """Initialize MinIO with an endpoint and access/secret keys."""
     client = minio.Minio(
-        S3_CONN_INFO["endpoint"],
-        access_key=S3_CONN_INFO["access_key"],
-        secret_key=S3_CONN_INFO["secret_key"],
+        s3_creds["endpoint"],
+        access_key=s3_creds["access_key"],
+        secret_key=s3_creds["secret_key"],
         secure=True,
         http_client=http_client,
     )
@@ -399,12 +413,12 @@ def minio_client_bare(http_client):
 
 
 @pytest.fixture(scope="session")
-def minio_client(minio_client_bare):
+def minio_client(s3_creds, minio_client_bare):
     """Initialize a MinIO client and create buckets for testing session."""
     # Setup MinIO bucket
     aws_region = "us-east-1"
     try:
-        minio_client_bare.make_bucket(S3_CONN_INFO["bucket"], location=aws_region)
+        minio_client_bare.make_bucket(s3_creds["bucket"], location=aws_region)
     except minio.error.S3Error as e:
         if e.code != "BucketAlreadyOwnedByYou":
             raise e
@@ -412,11 +426,84 @@ def minio_client(minio_client_bare):
     yield minio_client_bare
 
     # Teardown S3
-    objs = list(minio_client_bare.list_objects(S3_CONN_INFO["bucket"], recursive=True))
+    objs = list(minio_client_bare.list_objects(s3_creds["bucket"], recursive=True))
     objs = [
         minio_client_bare.remove_object(
-            S3_CONN_INFO["bucket"], o.object_name.encode("utf-8")
+            s3_creds["bucket"], o.object_name.encode("utf-8")
         )
         for o in objs
     ]
-    minio_client_bare.remove_bucket(S3_CONN_INFO["bucket"])
+    minio_client_bare.remove_bucket(s3_creds["bucket"])
+
+
+@pytest.fixture
+def test(schema_any):
+    yield schema.TTest()
+
+
+@pytest.fixture
+def test2(schema_any):
+    yield schema.TTest2()
+
+
+@pytest.fixture
+def test_extra(schema_any):
+    yield schema.TTestExtra()
+
+
+@pytest.fixture
+def test_no_extra(schema_any):
+    yield schema.TTestNoExtra()
+
+
+@pytest.fixture
+def user(schema_any):
+    return schema.User()
+
+
+@pytest.fixture
+def lang(schema_any):
+    yield schema.Language()
+
+
+@pytest.fixture
+def languages(lang) -> List:
+    og_contents = lang.contents
+    languages = og_contents.copy()
+    yield languages
+    lang.contents = og_contents
+
+
+@pytest.fixture
+def subject(schema_any):
+    yield schema.Subject()
+
+
+@pytest.fixture
+def experiment(schema_any):
+    return schema.Experiment()
+
+
+@pytest.fixture
+def ephys(schema_any):
+    return schema.Ephys()
+
+
+@pytest.fixture
+def img(schema_any):
+    return schema.Image()
+
+
+@pytest.fixture
+def trial(schema_any):
+    return schema.Trial()
+
+
+@pytest.fixture
+def channel(schema_any):
+    return schema.Ephys.Channel()
+
+
+@pytest.fixture
+def trash(schema_any):
+    return schema.UberTrash()

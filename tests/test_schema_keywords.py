@@ -1,6 +1,5 @@
-from . import PREFIX
-import datajoint as dj
 import pytest
+import datajoint as dj
 
 
 class A(dj.Manual):
@@ -34,15 +33,15 @@ class D(B):
 
 
 @pytest.fixture
-def schema(connection_test):
-    schema = dj.Schema(PREFIX + "_keywords", connection=connection_test)
+def schema_kwd(connection_test, prefix):
+    schema = dj.Schema(prefix + "_keywords", connection=connection_test)
     schema(A)
     schema(D)
     yield schema
     schema.drop()
 
 
-def test_inherited_part_table(schema):
+def test_inherited_part_table(schema_kwd):
     assert "a_id" in D().heading.attributes
     assert "b_id" in D().heading.attributes
     assert "a_id" in D.C().heading.attributes
