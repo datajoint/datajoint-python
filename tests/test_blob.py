@@ -237,14 +237,14 @@ def test_datetime_serialization_speed():
         setup="myarr=pack(np.array([np.datetime64('2022-10-13 03:03:13') for _ in range(0, 10000)]))",
         stmt="unpack(myarr)",
         number=10,
-        globals=context
+        globals=context,
     )
     print(f"np time {optimized_exe_time}")
     baseline_exe_time = timeit.timeit(
         setup="myarr2=pack(np.array([datetime(2022,10,13,3,3,13) for _ in range (0, 10000)]))",
         stmt="unpack(myarr2)",
         number=10,
-        globals=context
+        globals=context,
     )
     print(f"python time {baseline_exe_time}")
 
