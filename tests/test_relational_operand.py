@@ -5,34 +5,8 @@ import pandas
 import datetime
 import numpy as np
 import datajoint as dj
-from .schema_simple import (
-    A,
-    B,
-    D,
-    E,
-    F,
-    L,
-    DataA,
-    DataB,
-    TTestUpdate,
-    IJ,
-    JI,
-    ReservedWord,
-    OutfitLaunch,
-)
-from .schema import (
-    Experiment,
-    TTest3,
-    Trial,
-    Ephys,
-    Child,
-    Parent,
-    SubjectA,
-    SessionA,
-    SessionStatusA,
-    SessionDateA,
-)
-from . import PREFIX, CONN_INFO
+from .schema_simple import *
+from .schema import *
 
 
 @pytest.fixture
@@ -214,8 +188,10 @@ def test_project(schema_simp_pop):
     )
 
 
-def test_rename_non_dj_attribute(connection_test, schema_simp_pop, schema_any_pop):
-    schema = PREFIX + "_test1"
+def test_rename_non_dj_attribute(
+    connection_test, schema_simp_pop, schema_any_pop, prefix
+):
+    schema = prefix + "_test1"
     connection_test.query(
         f"CREATE TABLE {schema}.test_table (oldID int PRIMARY KEY)"
     ).fetchall()

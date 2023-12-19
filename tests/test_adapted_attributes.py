@@ -6,9 +6,11 @@ import networkx as nx
 from itertools import zip_longest
 from . import schema_adapted
 from .schema_adapted import Connectivity, Layout
-from . import PREFIX, S3_CONN_INFO
 
-SCHEMA_NAME = PREFIX + "_test_custom_datatype"
+
+@pytest.fixture
+def schema_name(prefix):
+    return prefix + "_test_custom_datatype"
 
 
 @pytest.fixture
@@ -22,24 +24,21 @@ def schema_ad(
     adapted_graph_instance,
     enable_adapted_types,
     enable_filepath_feature,
+    s3_creds,
+    tmpdir,
+    schema_name,
 ):
-    stores_config = {
+    dj.config["stores"] = {
         "repo-s3": dict(
-            S3_CONN_INFO,
-            protocol="s3",
-            location="adapted/repo",
-            stage=tempfile.mkdtemp(),
+            s3_creds, protocol="s3", location="adapted/repo", stage=str(tmpdir)
         )
     }
-    dj.config["stores"] = stores_config
-    layout_to_filepath = schema_adapted.LayoutToFilepath()
     context = {
         **schema_adapted.LOCALS_ADAPTED,
         "graph": adapted_graph_instance,
-        "layout_to_filepath": layout_to_filepath,
+        "layout_to_filepath": schema_adapted.LayoutToFilepath(),
     }
-    schema = dj.schema(SCHEMA_NAME, context=context, connection=connection_test)
-    graph = adapted_graph_instance
+    schema = dj.schema(schema_name, context=context, connection=connection_test)
     schema(schema_adapted.Connectivity)
     schema(schema_adapted.Layout)
     yield schema
@@ -47,19 +46,19 @@ def schema_ad(
 
 
 @pytest.fixture
-def local_schema(schema_ad):
+def local_schema(schema_ad, schema_name):
     """Fixture for testing spawned classes"""
-    local_schema = dj.Schema(SCHEMA_NAME)
+    local_schema = dj.Schema(schema_name)
     local_schema.spawn_missing_classes()
     yield local_schema
     local_schema.drop()
 
 
 @pytest.fixture
-def schema_virtual_module(schema_ad, adapted_graph_instance):
+def schema_virtual_module(schema_ad, adapted_graph_instance, schema_name):
     """Fixture for testing virtual modules"""
     schema_virtual_module = dj.VirtualModule(
-        "virtual_module", SCHEMA_NAME, add_objects={"graph": adapted_graph_instance}
+        "virtual_module", schema_name, add_objects={"graph": adapted_graph_instance}
     )
     return schema_virtual_module
 
@@ -93,7 +92,6 @@ def test_adapted_filepath_type(schema_ad, minio_client):
     t = Layout()
     t.insert1((0, layout))
     result = t.fetch1("layout")
-    # TODO: may fail, used to be assert_dict_equal
     assert result == layout
     t.delete()
     c.delete()

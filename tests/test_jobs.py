@@ -6,40 +6,35 @@ import string
 import datajoint as dj
 
 
-@pytest.fixture
-def subjects():
-    yield schema.Subject()
-
-
-def test_reserve_job(schema_any, subjects):
-    assert subjects
+def test_reserve_job(subject, schema_any):
+    assert subject
     table_name = "fake_table"
 
     # reserve jobs
-    for key in subjects.fetch("KEY"):
+    for key in subject.fetch("KEY"):
         assert schema_any.jobs.reserve(table_name, key), "failed to reserve a job"
 
     # refuse jobs
-    for key in subjects.fetch("KEY"):
+    for key in subject.fetch("KEY"):
         assert not schema_any.jobs.reserve(
             table_name, key
         ), "failed to respect reservation"
 
     # complete jobs
-    for key in subjects.fetch("KEY"):
+    for key in subject.fetch("KEY"):
         schema_any.jobs.complete(table_name, key)
     assert not schema_any.jobs, "failed to free jobs"
 
     # reserve jobs again
-    for key in subjects.fetch("KEY"):
+    for key in subject.fetch("KEY"):
         assert schema_any.jobs.reserve(table_name, key), "failed to reserve new jobs"
 
     # finish with error
-    for key in subjects.fetch("KEY"):
+    for key in subject.fetch("KEY"):
         schema_any.jobs.error(table_name, key, "error message")
 
     # refuse jobs with errors
-    for key in subjects.fetch("KEY"):
+    for key in subject.fetch("KEY"):
         assert not schema_any.jobs.reserve(
             table_name, key
         ), "failed to ignore error jobs"
@@ -95,7 +90,7 @@ def test_suppress_dj_errors(schema_any):
     assert len(schema.DjExceptionName()) == len(schema_any.jobs) > 0
 
 
-def test_long_error_message(schema_any, subjects):
+def test_long_error_message(subject, schema_any):
     # create long error message
     long_error_message = "".join(
         random.choice(string.ascii_letters) for _ in range(ERROR_MESSAGE_LENGTH + 100)
@@ -103,10 +98,10 @@ def test_long_error_message(schema_any, subjects):
     short_error_message = "".join(
         random.choice(string.ascii_letters) for _ in range(ERROR_MESSAGE_LENGTH // 2)
     )
-    assert subjects
+    assert subject
     table_name = "fake_table"
 
-    key = subjects.fetch("KEY")[0]
+    key = subject.fetch("KEY", limit=1)[0]
 
     # test long error message
     schema_any.jobs.reserve(table_name, key)
@@ -131,7 +126,7 @@ def test_long_error_message(schema_any, subjects):
     schema_any.jobs.delete()
 
 
-def test_long_error_stack(schema_any, subjects):
+def test_long_error_stack(subject, schema_any):
     # create long error stack
     STACK_SIZE = (
         89942  # Does not fit into small blob (should be 64k, but found to be higher)
@@ -139,10 +134,10 @@ def test_long_error_stack(schema_any, subjects):
     long_error_stack = "".join(
         random.choice(string.ascii_letters) for _ in range(STACK_SIZE)
     )
-    assert subjects
+    assert subject
     table_name = "fake_table"
 
-    key = subjects.fetch("KEY")[0]
+    key = subject.fetch("KEY", limit=1)[0]
 
     # test long error stack
     schema_any.jobs.reserve(table_name, key)

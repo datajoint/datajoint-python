@@ -4,7 +4,7 @@ from pathlib import Path
 from datajoint import DataJointError
 import datajoint as dj
 from .schema_university import *
-from . import PREFIX, schema_university
+from . import schema_university
 
 
 def _hash4(table):
@@ -32,10 +32,10 @@ def schema_uni_inactive():
 
 
 @pytest.fixture
-def schema_uni(db_creds_test, schema_uni_inactive, connection_test):
+def schema_uni(db_creds_test, schema_uni_inactive, connection_test, prefix):
     # Deferred activation
     schema_uni_inactive.activate(
-        PREFIX + "_university", connection=dj.conn(**db_creds_test)
+        prefix + "_university", connection=dj.conn(**db_creds_test)
     )
     # ---------------  Fill University -------------------
     test_data_dir = Path(__file__).parent / "data"
