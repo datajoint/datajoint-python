@@ -12,7 +12,7 @@ services:
       context: .
       dockerfile: .devcontainer/Dockerfile
       args:
-        - PY_VER=${PY_VER:-3.8}
+        - PY_VER=${PY_VER:-3.11}
         - DISTRO=${DISTRO:-buster}
 
     volumes:
