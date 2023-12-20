@@ -6,8 +6,8 @@ services:
     # folder. Note that the path of the Dockerfile and context is relative to the *primary*
     # docker-compose.yml file (the first in the devcontainer.json "dockerComposeFile"
     # array). The sample below assumes your primary file is in the root of your project.
-    container_name: devcontainer
-    image: devcontainer
+    container_name: datajoint-python-devcontainer
+    image: datajoint/datajoint-python-devcontainer:${PY_VER:-3.11}-${DISTRO:-buster}
     build:
       context: .
       dockerfile: .devcontainer/Dockerfile
