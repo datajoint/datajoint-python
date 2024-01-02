@@ -23,8 +23,7 @@ def test_normal_djerror():
         assert e.__cause__ is None
 
 
-@pytest.mark.parametrize("category", ("connection",))
-def test_verified_djerror(category):
+def test_verified_djerror(category="connection"):
     try:
         curr_plugins = getattr(p, "{}_plugins".format(category))
         setattr(
@@ -42,8 +41,7 @@ def test_verified_djerror_type():
     test_verified_djerror(category="type")
 
 
-@pytest.mark.parametrize("category", ("connection",))
-def test_unverified_djerror(category):
+def test_unverified_djerror(category="connection"):
     try:
         curr_plugins = getattr(p, "{}_plugins".format(category))
         setattr(

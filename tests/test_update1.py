@@ -4,7 +4,6 @@ import numpy as np
 from pathlib import Path
 import tempfile
 import datajoint as dj
-from . import PREFIX
 from datajoint import DataJointError
 
 
@@ -42,9 +41,9 @@ def mock_stores_update(tmpdir_factory):
 
 
 @pytest.fixture
-def schema_update1(connection_test):
+def schema_update1(connection_test, prefix):
     schema = dj.Schema(
-        PREFIX + "_update1", context=dict(Thing=Thing), connection=connection_test
+        prefix + "_update1", context=dict(Thing=Thing), connection=connection_test
     )
     schema(Thing)
     yield schema

@@ -1,7 +1,6 @@
 import pytest
 import datajoint as dj
 import numpy as np
-from . import PREFIX
 from numpy.testing import assert_array_equal
 
 test_blob = np.array([1, 2, 3])
@@ -25,9 +24,9 @@ class Output(dj.Manual):
 
 
 @pytest.fixture
-def schema_in(connection_test):
+def schema_in(connection_test, prefix):
     schema = dj.Schema(
-        PREFIX + "_test_bypass_serialization_in",
+        prefix + "_test_bypass_serialization_in",
         context=dict(Input=Input),
         connection=connection_test,
     )
@@ -37,9 +36,9 @@ def schema_in(connection_test):
 
 
 @pytest.fixture
-def schema_out(connection_test):
+def schema_out(connection_test, prefix):
     schema = dj.Schema(
-        PREFIX + "_test_blob_bypass_serialization_out",
+        prefix + "_test_blob_bypass_serialization_out",
         context=dict(Output=Output),
         connection=connection_test,
     )

@@ -1,5 +1,4 @@
 import pytest
-from . import PREFIX, CONN_INFO
 import numpy as np
 import datajoint as dj
 
@@ -16,11 +15,11 @@ class ProjData(dj.Manual):
 
 
 @pytest.fixture
-def schema_fetch_same(connection_root):
+def schema_fetch_same(connection_test, prefix):
     schema = dj.Schema(
-        PREFIX + "_fetch_same",
+        prefix + "_fetch_same",
         context=dict(ProjData=ProjData),
-        connection=connection_root,
+        connection=connection_test,
     )
     schema(ProjData)
     ProjData().insert(
@@ -46,27 +45,24 @@ def schema_fetch_same(connection_root):
     schema.drop()
 
 
-@pytest.fixture
-def projdata():
-    yield ProjData()
+def test_object_conversion_one(schema_fetch_same):
+    new = ProjData().proj(sub="resp").fetch("sub")
+    assert new.dtype == np.float64
 
 
-class TestFetchSame:
-    def test_object_conversion_one(self, schema_fetch_same, projdata):
-        new = projdata.proj(sub="resp").fetch("sub")
-        assert new.dtype == np.float64
+def test_object_conversion_two(schema_fetch_same):
+    [sub, add] = ProjData().proj(sub="resp", add="sim").fetch("sub", "add")
+    assert sub.dtype == np.float64
+    assert add.dtype == np.float64
 
-    def test_object_conversion_two(self, schema_fetch_same, projdata):
-        [sub, add] = projdata.proj(sub="resp", add="sim").fetch("sub", "add")
-        assert sub.dtype == np.float64
-        assert add.dtype == np.float64
 
-    def test_object_conversion_all(self, schema_fetch_same, projdata):
-        new = projdata.proj(sub="resp", add="sim").fetch()
-        assert new["sub"].dtype == np.float64
-        assert new["add"].dtype == np.float64
+def test_object_conversion_all(schema_fetch_same):
+    new = ProjData().proj(sub="resp", add="sim").fetch()
+    assert new["sub"].dtype == np.float64
+    assert new["add"].dtype == np.float64
 
-    def test_object_no_convert(self, schema_fetch_same, projdata):
-        new = projdata.fetch()
-        assert new["big"].dtype == "object"
-        assert new["blah"].dtype == "object"
+
+def test_object_no_convert(schema_fetch_same):
+    new = ProjData().fetch()
+    assert new["big"].dtype == "object"
+    assert new["blah"].dtype == "object"
