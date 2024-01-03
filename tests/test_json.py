@@ -5,10 +5,18 @@ import datajoint as dj
 import numpy as np
 from packaging.version import Version
 
-if Version(dj.conn().query("select @@version;").fetchone()[0]) < Version("8.0.0"):
-    pytest.skip("These tests require MySQL >= v8.0.0", allow_module_level=True)
+
+@pytest.fixture
+def skip_for_mysql_lt_8(connection_test):
+    """
+    Skip test if MySQL version is less than 8.0.0
+    """
+    mysql_version = connection_root.query("select @@version;").fetchone()[0]
+    if Version(mysql_version) < Version("8.0.0"):
+        pytest.skip("These tests require MySQL >= v8.0.0", allow_module_level=True)
 
 
+@pytest.mark.usefixtures("skip_for_mysql_lt_8")
 class Team(dj.Lookup):
     definition = """
     name: varchar(40)
