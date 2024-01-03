@@ -182,6 +182,8 @@ class Connection:
         elif port is None:
             port = config["database.port"]
         self.conn_info = dict(host=host, port=port, user=user, passwd=password)
+        if use_tls is None:
+            use_tls = config["database.use_tls"]
         if use_tls is not False:
             self.conn_info["ssl"] = (
                 use_tls if isinstance(use_tls, dict) else {"ssl": {}}
