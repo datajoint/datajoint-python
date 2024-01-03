@@ -81,14 +81,15 @@ def setup_ssl_config():
     dj.config["database.use_tls"] = False
     yield
 
+
 @pytest.fixture(scope="session")
-def connection_root_bare(db_creds_root):
+def connection_root_bare(db_creds_root, setup_ssl_config):
     connection = dj.Connection(**db_creds_root)
     yield connection
 
 
 @pytest.fixture(scope="session")
-def connection_root(connection_root_bare, prefix, setup_ssl_config):
+def connection_root(connection_root_bare, prefix):
     """Root user database connection."""
     dj.config["safemode"] = False
     conn_root = connection_root_bare
