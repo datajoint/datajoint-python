@@ -75,17 +75,19 @@ class TestPopulate:
         assert_true(self.subject, "root tables are empty")
         assert_false(self.experiment, "table already filled?")
 
-        keys = self.experiment.key_source.fetch("KEY", limit=2)
+        keys = self.experiment.key_source.fetch("KEY", limit=3)
         for idx, key in enumerate(keys):
             if idx == 0:
                 schema.schema.jobs.ignore(self.experiment.table_name, key)
-            else:
+            elif idx == 1:
                 schema.schema.jobs.error(self.experiment.table_name, key, "")
+            else:
+                schema.schema.jobs.reserve(self.experiment.table_name, key)
 
         self.experiment.populate(reserve_jobs=True)
         assert_equal(
             len(self.experiment.key_source & self.experiment),
-            len(self.experiment.key_source) - 2,
+            len(self.experiment.key_source) - 3,
         )
 
     def test_allow_direct_insert(self):
