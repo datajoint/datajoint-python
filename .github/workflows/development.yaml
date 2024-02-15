@@ -58,6 +58,10 @@ jobs:
         py_ver: ["3.9"]
         mysql_ver: ["8.0", "5.7"]
         include:
+          - py_ver: "3.11"
+            mysql_ver: "8.0"
+          - py_ver: "3.10"
+            mysql_ver: "8.0"
           - py_ver: "3.8"
             mysql_ver: "5.7"
           - py_ver: "3.7"
@@ -77,7 +81,7 @@ jobs:
       - name: Run primary tests
         env:
           PY_VER: ${{matrix.py_ver}}
-          DJ_PASS: simple
+          DJ_PASS: password
           MYSQL_VER: ${{matrix.mysql_ver}}
           DISTRO: alpine
           MINIO_VER: RELEASE.2021-09-03T03-56-13Z

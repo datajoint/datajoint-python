@@ -39,24 +39,16 @@ The following will verify there are no regression errors by running our test sui
 
 - Entire test suite:
   ```
-  nosetests -vw tests_old
+  pytest -sv --cov-report term-missing --cov=datajoint tests
   ```
-  > Note: We are in the process of upgrading to `pytest` tests. To run those, use:
-  > ```
-  > pytest -sv --cov-report term-missing --cov=datajoint tests
-  > ```
 
 - A single functional test:
   ```
-  nosetests -vs --tests=tests_old.test_external_class:test_insert_and_fetch
+  pytest -sv tests/test_connection.py::test_dj_conn
   ```
-  > Note: We are in the process of upgrading to `pytest` tests. To run those, use:
-  > ```
-  > pytest -sv tests/test_connection.py::test_dj_conn
-  > ```
 - A single class test:
   ```
-  nosetests -vs --tests=tests_old.test_fetch:TestFetch.test_getattribute_for_fetch1
+  pytest -sv tests/test_aggr_regressions.py::TestIssue558
   ```
 
 ### Style Tests
@@ -104,7 +96,7 @@ It is often useful in development to connect to DataJoint's relational database 
 Connect as follows to the database running within your developer environment:
 
 ```
-mysql -hfakeservices.datajoint.io -uroot -psimple
+mysql -hfakeservices.datajoint.io -uroot -ppassword
 ```
 
 ### Documentation
