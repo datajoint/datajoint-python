@@ -758,9 +758,11 @@ class Table(QueryExpression):
             if do_include:
                 attributes_declared.add(attr.name)
                 definition += "%-20s : %-28s %s\n" % (
-                    attr.name
-                    if attr.default is None
-                    else "%s=%s" % (attr.name, attr.default),
+                    (
+                        attr.name
+                        if attr.default is None
+                        else "%s=%s" % (attr.name, attr.default)
+                    ),
                     "%s%s"
                     % (attr.type, " auto_increment" if attr.autoincrement else ""),
                     "# " + attr.comment if attr.comment else "",
