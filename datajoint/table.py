@@ -76,6 +76,10 @@ class Table(QueryExpression):
         return self._table_name
 
     @property
+    def class_name(self):
+        return self.__class__.__name__
+
+    @property
     def definition(self):
         raise NotImplementedError(
             "Subclasses of Table must implement the `definition` property"
@@ -92,6 +96,14 @@ class Table(QueryExpression):
             raise DataJointError(
                 "Cannot declare new tables inside a transaction, "
                 "e.g. from inside a populate/make call"
+            )
+        # Enforce strict CamelCase #1150
+        if "_" in self.class_name:
+            raise DataJointError(
+                "Table with class name `{name}` contains an underscore. ".format(
+                    name=self.class_name
+                ) +
+                "Classes defining tables should be formatted in strict CamelCase."
             )
         sql, external_stores = declare(self.full_table_name, self.definition, context)
         sql = sql.format(database=self.database)
