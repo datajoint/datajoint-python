@@ -76,10 +76,7 @@ def is_camel_case(s):
     >>> is_camel_case("TableName")  # returns True
     >>> is_camel_case("table_name")  # returns False
     """
-    # return re.match(r"^[A-Z][a-z0-9]+(?:[A-Z][a-z0-9]+)*$", s) is not None
-    return re.match(
-        r"[A-Z][a-zA-Z0-9]*", s
-    ) is not None and not contains_non_ascii_char(s)
+    return re.match(r"^[A-Z][a-z0-9]+(?:[A-Z][a-z0-9]+)*$", s) is not None and not contains_non_ascii_char(s)
 
 
 def to_camel_case(s):
