@@ -358,4 +358,3 @@ def test_table_name_with_underscores(schema_any):
     schema_any(TableNoUnderscores)
     with pytest.raises(dj.DataJointError, match="strict CamelCase") as e:
         schema_any(Table_With_Underscores)
-

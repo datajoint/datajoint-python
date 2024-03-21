@@ -102,8 +102,8 @@ class Table(QueryExpression):
             raise DataJointError(
                 "Table with class name `{name}` contains an underscore. ".format(
                     name=self.class_name
-                ) +
-                "Classes defining tables should be formatted in strict CamelCase."
+                )
+                + "Classes defining tables should be formatted in strict CamelCase."
             )
         sql, external_stores = declare(self.full_table_name, self.definition, context)
         sql = sql.format(database=self.database)
