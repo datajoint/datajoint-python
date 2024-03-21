@@ -2,6 +2,7 @@
 This module contains the Connection class that manages the connection to the database, and
 the ``conn`` function that provides access to a persistent connection in datajoint.
 """
+
 import warnings
 from contextlib import contextmanager
 import pymysql as client

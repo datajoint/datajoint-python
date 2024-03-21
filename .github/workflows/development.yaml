@@ -90,13 +90,28 @@ jobs:
         run: |
           export HOST_UID=$(id -u)
           docker-compose -f LNX-docker-compose.yml up --build --exit-code-from app
+  lint:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        py_ver: ["3.11"]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{matrix.py_ver}}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{matrix.py_ver}}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 black==24.2.0
+      - name: Run syntax tests
+        run: flake8 datajoint --count --select=E9,F63,F7,F82 --show-source --statistics
       - name: Run style tests
         run: |
           flake8 --ignore=E203,E722,W503 datajoint \
                  --count --max-complexity=62 --max-line-length=127 --statistics
-          black datajoint --check -v
-          black tests --check -v
-          black tests_old --check -v
+          black --required-version '24.2.0' --check -v datajoint tests tests_old
   codespell:
     name: Check for spelling errors
     permissions:

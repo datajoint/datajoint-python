@@ -1,6 +1,7 @@
 """
 A simple, abstract schema to test relational algebra
 """
+
 import random
 import datajoint as dj
 import itertools
