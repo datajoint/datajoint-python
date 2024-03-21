@@ -14,6 +14,9 @@ import pytest
 
 def test_is_camel_case():
     assert is_camel_case("AllGroups")
+    assert not is_camel_case("All_Groups")
+    assert not is_camel_case("All_Groups_")
+    assert not is_camel_case("_AllGroups")
     assert not is_camel_case("allGroups")
     assert not is_camel_case("repNames")
     assert not is_camel_case("10_all")
