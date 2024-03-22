@@ -15,7 +15,7 @@ from .declare import declare, alter
 from .condition import make_condition
 from .expression import QueryExpression
 from . import blob
-from .utils import user_choice, get_master
+from .utils import user_choice, get_master, is_camel_case
 from .heading import Heading
 from .errors import (
     DuplicateError,
@@ -76,6 +76,10 @@ class Table(QueryExpression):
         return self._table_name
 
     @property
+    def class_name(self):
+        return self.__class__.__name__
+
+    @property
     def definition(self):
         raise NotImplementedError(
             "Subclasses of Table must implement the `definition` property"
@@ -92,6 +96,14 @@ class Table(QueryExpression):
             raise DataJointError(
                 "Cannot declare new tables inside a transaction, "
                 "e.g. from inside a populate/make call"
+            )
+        # Enforce strict CamelCase #1150
+        if not is_camel_case(self.class_name):
+            raise DataJointError(
+                "Table class name `{name}` is invalid. Please use CamelCase. ".format(
+                    name=self.class_name
+                )
+                + "Classes defining tables should be formatted in strict CamelCase."
             )
         sql, external_stores = declare(self.full_table_name, self.definition, context)
         sql = sql.format(database=self.database)
