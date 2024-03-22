@@ -98,9 +98,9 @@ class Table(QueryExpression):
                 "e.g. from inside a populate/make call"
             )
         # Enforce strict CamelCase #1150
-        if "_" in self.class_name:
+        if not is_camel_case(self.class_name):
             raise DataJointError(
-                "Table with class name `{name}` contains an underscore. ".format(
+                "Table class name `{name}` is invalid. Please use CamelCase. ".format(
                     name=self.class_name
                 )
                 + "Classes defining tables should be formatted in strict CamelCase."
