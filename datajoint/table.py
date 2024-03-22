@@ -15,7 +15,7 @@ from .declare import declare, alter
 from .condition import make_condition
 from .expression import QueryExpression
 from . import blob
-from .utils import user_choice, get_master
+from .utils import user_choice, get_master, is_camel_case
 from .heading import Heading
 from .errors import (
     DuplicateError,
