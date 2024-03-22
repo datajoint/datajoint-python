@@ -7,7 +7,6 @@ from datajoint.utils import (
     from_camel_case,
     to_camel_case,
     is_camel_case,
-    contains_non_ascii_char,
 )
 import pytest
 
@@ -23,9 +22,7 @@ def test_is_camel_case():
     assert not is_camel_case("hello world")
     assert not is_camel_case("#baisc_names")
     assert not is_camel_case("alphaBeta")
-    non_ascii_class_name = "TestΣ"
-    assert contains_non_ascii_char(non_ascii_class_name)
-    assert not is_camel_case(non_ascii_class_name)
+    assert not is_camel_case("TestΣ")
 
 
 def test_from_camel_case():

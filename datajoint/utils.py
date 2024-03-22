@@ -53,19 +53,6 @@ def get_master(full_table_name: str) -> str:
     return match["master"] + "`" if match else ""
 
 
-def contains_non_ascii_char(s):
-    """
-    Check if a string contains non-ASCII characters.
-
-    :param s: string to check
-    :returns: True if the string contains any non-ASCII characters, False otherwise
-    Example:
-    >>> contains_non_ascii_char("Hello")  # returns False
-    >>> contains_non_ascii_char("HelloΣ")  # returns True
-    """
-    return any(ord(c) > 127 for c in s)
-
-
 def is_camel_case(s):
     """
     Check if a string is in CamelCase notation.
@@ -76,9 +63,7 @@ def is_camel_case(s):
     >>> is_camel_case("TableName")  # returns True
     >>> is_camel_case("table_name")  # returns False
     """
-    return re.match(
-        r"^[A-Z][a-z0-9]+(?:[A-Z][a-z0-9]+)*$", s
-    ) is not None and not contains_non_ascii_char(s)
+    return bool(re.match(r"^[A-Z][A-Za-z0-9]*$", s))
 
 
 def to_camel_case(s):
