@@ -337,3 +337,26 @@ def test_long_table_name(schema_any):
 
     with pytest.raises(dj.DataJointError):
         schema_any(WhyWouldAnyoneCreateATableNameThisLong)
+
+
+def test_table_name_with_underscores(schema_any):
+    """
+    Test issue #1150 -- Reject table names containing underscores. Tables should be in strict
+    CamelCase.
+    """
+
+    class TableNoUnderscores(dj.Manual):
+        definition = """
+        id : int
+        """
+
+    class Table_With_Underscores(dj.Manual):
+        definition = """
+        id : int
+        """
+
+    schema_any(TableNoUnderscores)
+    with pytest.raises(
+        dj.DataJointError, match="must be alphanumeric in CamelCase"
+    ) as e:
+        schema_any(Table_With_Underscores)
