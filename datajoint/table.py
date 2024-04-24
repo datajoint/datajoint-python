@@ -486,6 +486,7 @@ class Table(QueryExpression):
         transaction: bool = True,
         safemode: Union[bool, None] = None,
         force_parts: bool = False,
+        include_master: bool = True,
     ) -> int:
         """
         Deletes the contents of the table and its dependent tables, recursively.
@@ -497,6 +498,7 @@ class Table(QueryExpression):
             safemode: If `True`, prohibit nested transactions and prompt to confirm. Default
                 is `dj.config['safemode']`.
             force_parts: Delete from parts even when not deleting from their masters.
+            include_master: If `True`, delete from the master table as well. Default is `True`.
 
         Returns:
             Number of deleted rows (excluding those from dependent tables).
@@ -565,7 +567,22 @@ class Table(QueryExpression):
                         )
                     else:
                         child &= table.proj()
+
+                    master = get_master(child.full_table_name)
+                    if include_master and master and master not in deleted:
+                        master_table = FreeTable(table.connection, master)
+                        master_table._restriction = [
+                            make_condition(
+                                master_table,
+                                (master_table & child).proj().fetch(),
+                                set(),
+                            )
+                        ]
+
                     cascade(child)
+
+                    if include_master and master and master not in deleted:
+                        cascade(master_table)
                 else:
                     deleted.add(table.full_table_name)
                     logger.info(
