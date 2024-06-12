@@ -1,8 +1,6 @@
-import datajoint as dj
 from datajoint import errors
 from pytest import raises
 from datajoint.dependencies import unite_master_parts
-from .schema import *
 
 
 def test_unite_master_parts():
@@ -50,22 +48,10 @@ def test_unite_master_parts():
     ]
 
 
-def test_nullable_dependency(schema_any):
+def test_nullable_dependency(thing_tables):
     """test nullable unique foreign key"""
     # Thing C has a nullable dependency on B whose primary key is composite
-    a = ThingA()
-    b = ThingB()
-    c = ThingC()
-
-    # clear previous contents if any.
-    c.delete_quick()
-    b.delete_quick()
-    a.delete_quick()
-
-    a.insert(dict(a=a) for a in range(7))
-
-    b.insert1(dict(b1=1, b2=1, b3=100))
-    b.insert1(dict(b1=1, b2=2, b3=100))
+    _, _, c, _, _ = thing_tables
 
     # missing foreign key attributes = ok
     c.insert1(dict(a=0))
@@ -79,23 +65,10 @@ def test_nullable_dependency(schema_any):
     assert len(c) == len(c.fetch()) == 5
 
 
-def test_unique_dependency(schema_any):
+def test_unique_dependency(thing_tables):
     """test nullable unique foreign key"""
-
     # Thing C has a nullable dependency on B whose primary key is composite
-    a = ThingA()
-    b = ThingB()
-    c = ThingC()
-
-    # clear previous contents if any.
-    c.delete_quick()
-    b.delete_quick()
-    a.delete_quick()
-
-    a.insert(dict(a=a) for a in range(7))
-
-    b.insert1(dict(b1=1, b2=1, b3=100))
-    b.insert1(dict(b1=1, b2=2, b3=100))
+    _, _, c, _, _ = thing_tables
 
     c.insert1(dict(a=0, b1=1, b2=1))
     # duplicate foreign key attributes = not ok

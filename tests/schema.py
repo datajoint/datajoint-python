@@ -345,6 +345,21 @@ class ThingC(dj.Manual):
     """
 
 
+#  Additional tables for #1159
+class ThingD(dj.Manual):
+    definition = """
+    d: int
+    ---
+    -> ThingC
+    """
+
+
+class ThingE(dj.Manual):
+    definition = """
+    -> ThingD
+    """
+
+
 class Parent(dj.Lookup):
     definition = """
     parent_id: int

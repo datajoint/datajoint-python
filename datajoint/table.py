@@ -559,6 +559,7 @@ class Table(QueryExpression):
                         and match["fk_attrs"] == match["pk_attrs"]
                     ):
                         child._restriction = table._restriction
+                        child._restriction_attributes = table.restriction_attributes
                     elif match["fk_attrs"] != match["pk_attrs"]:
                         child &= table.proj(
                             **dict(zip(match["fk_attrs"], match["pk_attrs"]))

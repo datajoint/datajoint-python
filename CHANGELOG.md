@@ -11,6 +11,7 @@
 - Added - Missing tests for set_password - PR [#1106](https://github.com/datajoint/datajoint-python/pull/1106)
 - Changed - Returning success count after the .populate() call - PR [#1050](https://github.com/datajoint/datajoint-python/pull/1050)
 - Fixed - `Autopopulate.populate` excludes `reserved` jobs in addition to `ignore` and `error` jobs 
+- Fixed - `cascade` passes `_restriction_attributes` when passing `_restriction` - PR [#1160](https://github.com/datajoint/datajoint-python/pull/1060)
 
 ### 0.14.1 -- Jun 02, 2023
 - Fixed - Fix altering a part table that uses the "master" keyword - PR [#991](https://github.com/datajoint/datajoint-python/pull/991)
