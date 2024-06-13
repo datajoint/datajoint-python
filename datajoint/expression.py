@@ -847,7 +847,7 @@ class U:
     >>> dj.U().aggr(expr, n='count(*)')
 
     The following expressions both yield one element containing the number `n` of distinct values of attribute `attr` in
-    query expressio `expr`.
+    query expression `expr`.
 
     >>> dj.U().aggr(expr, n='count(distinct attr)')
     >>> dj.U().aggr(dj.U('attr').aggr(expr), 'n=count(*)')
