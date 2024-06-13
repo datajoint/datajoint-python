@@ -486,7 +486,7 @@ class Table(QueryExpression):
         transaction: bool = True,
         safemode: Union[bool, None] = None,
         force_parts: bool = False,
-        include_master: bool = True,
+        include_parts: bool = True,
     ) -> int:
         """
         Deletes the contents of the table and its dependent tables, recursively.
@@ -498,7 +498,8 @@ class Table(QueryExpression):
             safemode: If `True`, prohibit nested transactions and prompt to confirm. Default
                 is `dj.config['safemode']`.
             force_parts: Delete from parts even when not deleting from their masters.
-            include_master: If `True`, delete from the master table as well. Default is `True`.
+            include_parts: If `True`, include part/master pairs in the cascade.
+                Default is `True`.
 
         Returns:
             Number of deleted rows (excluding those from dependent tables).
@@ -509,6 +510,7 @@ class Table(QueryExpression):
             DataJointError: Deleting a part table before its master.
         """
         deleted = set()
+        visited_masters = set()
 
         def cascade(table):
             """service function to perform cascading deletes recursively."""
@@ -568,25 +570,30 @@ class Table(QueryExpression):
                     else:
                         child &= table.proj()
 
-                    master = get_master(child.full_table_name)
-                    if include_master and master and master not in deleted:
-                        master_table = FreeTable(table.connection, master)
-                        master_table._restriction = [
-                            make_condition(
-                                master_table,
-                                (master_table & child).proj().fetch(),
-                                set(),
+                    master_name = get_master(child.full_table_name)
+                    if (
+                        include_parts
+                        and master_name
+                        and master_name != table.full_table_name
+                        and master_name not in visited_masters
+                    ):
+                        master = FreeTable(table.connection, master_name)
+                        master._restriction_attributes = set()
+                        master._restriction = [
+                            make_condition(  # &= may cause in target tables in subquery
+                                master,
+                                (master.proj() & child.proj()).fetch(),
+                                master._restriction_attributes,
                             )
                         ]
-
-                    cascade(child)
-
-                    if include_master and master and master not in deleted:
-                        cascade(master_table)
+                        visited_masters.add(master_name)
+                        cascade(master)
+                    else:
+                        cascade(child)
                 else:
                     deleted.add(table.full_table_name)
                     logger.info(
-                        "Deleting {count} rows from {table}".format(
+                        "Deleting: {count} rows from {table}".format(
                             count=delete_count, table=table.full_table_name
                         )
                     )
