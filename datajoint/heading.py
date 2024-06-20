@@ -33,6 +33,7 @@ default_attribute_properties = (
         is_attachment=False,
         is_filepath=False,
         is_external=False,
+        is_hidden=False,
         adapter=None,
         store=None,
         unsupported=False,
@@ -120,7 +121,7 @@ class Heading:
     def attributes(self):
         if self._attributes is None:
             self._init_from_database()  # lazy loading from database
-        return self._attributes
+        return {k: v for k, v in self._attributes.items() if not v.is_hidden}
 
     @property
     def names(self):
@@ -300,6 +301,7 @@ class Heading:
                 store=None,
                 is_external=False,
                 attribute_expression=None,
+                is_hidden=attr["name"].startswith("_"),
             )
 
             if any(TYPE_PATTERN[t].match(attr["type"]) for t in ("INTEGER", "FLOAT")):
