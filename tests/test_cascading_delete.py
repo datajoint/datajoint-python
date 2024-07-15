@@ -121,3 +121,16 @@ def test_drop_part(schema_simp_pop):
     """test issue #374"""
     with pytest.raises(dj.DataJointError):
         Website().drop()
+
+
+def test_delete_1159(thing_tables):
+    tbl_a, tbl_c, tbl_c, tbl_d, tbl_e = thing_tables
+
+    tbl_c.insert([dict(a=i) for i in range(6)])
+    tbl_d.insert([dict(a=i, d=i) for i in range(5)])
+    tbl_e.insert([dict(d=i) for i in range(4)])
+
+    (tbl_a & "a=3").delete()
+
+    assert len(tbl_a) == 6, "Failed to cascade restriction attributes"
+    assert len(tbl_e) == 3, "Failed to cascade restriction attributes"
