@@ -28,7 +28,7 @@ jobs:
       DOCKER_CLIENT_TIMEOUT: "120"
       COMPOSE_HTTP_TIMEOUT: "120"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Validate version and release notes
         run: |
           DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py)
@@ -58,8 +58,6 @@ jobs:
         py_ver: ["3.9"]
         mysql_ver: ["8.0", "5.7"]
         include:
-          - py_ver: "3.12"
-            mysql_ver: "8.0"
           - py_ver: "3.11"
             mysql_ver: "8.0"
           - py_ver: "3.10"
@@ -67,9 +65,9 @@ jobs:
           - py_ver: "3.8"
             mysql_ver: "5.7"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python ${{matrix.py_ver}}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{matrix.py_ver}}
       - name: Install dependencies
@@ -96,9 +94,9 @@ jobs:
       matrix:
         py_ver: ["3.11"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python ${{matrix.py_ver}}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{matrix.py_ver}}
       - name: Install dependencies
@@ -119,7 +117,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Codespell
         uses: codespell-project/actions-codespell@v2
   publish-docs:
@@ -132,7 +130,7 @@ jobs:
       DOCKER_CLIENT_TIMEOUT: "120"
       COMPOSE_HTTP_TIMEOUT: "120"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Deploy docs
         run: |
           export MODE=BUILD
@@ -164,9 +162,9 @@ jobs:
     outputs:
       release_upload_url: ${{steps.create_gh_release.outputs.upload_url}}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python ${{matrix.py_ver}}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{matrix.py_ver}}
       - name: Determine package version
