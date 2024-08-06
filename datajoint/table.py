@@ -593,7 +593,7 @@ class Table(QueryExpression):
                 else:
                     deleted.add(table.full_table_name)
                     logger.info(
-                        "Deleting: {count} rows from {table}".format(
+                        "Deleting {count} rows from {table}".format(
                             count=delete_count, table=table.full_table_name
                         )
                     )
