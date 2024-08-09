@@ -285,6 +285,8 @@ def schema_any(connection_test, prefix):
     schema_any(schema.ThingA)
     schema_any(schema.ThingB)
     schema_any(schema.ThingC)
+    schema_any(schema.ThingD)
+    schema_any(schema.ThingE)
     schema_any(schema.Parent)
     schema_any(schema.Child)
     schema_any(schema.ComplexParent)
@@ -301,6 +303,26 @@ def schema_any(connection_test, prefix):
     except DataJointError:
         pass
     schema_any.drop()
+
+
+@pytest.fixture
+def thing_tables(schema_any):
+    a = schema.ThingA()
+    b = schema.ThingB()
+    c = schema.ThingC()
+    d = schema.ThingD()
+    e = schema.ThingE()
+
+    # clear previous contents if any.
+    c.delete_quick()
+    b.delete_quick()
+    a.delete_quick()
+
+    a.insert(dict(a=a) for a in range(7))
+    b.insert1(dict(b1=1, b2=1, b3=100))
+    b.insert1(dict(b1=1, b2=2, b3=100))
+
+    yield a, b, c, d, e
 
 
 @pytest.fixture
