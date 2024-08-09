@@ -339,6 +339,7 @@ def schema_simp(connection_test, prefix):
     schema(schema_simple.E)
     schema(schema_simple.F)
     schema(schema_simple.F)
+    schema(schema_simple.G)
     schema(schema_simple.DataA)
     schema(schema_simple.DataB)
     schema(schema_simple.Website)
