@@ -125,10 +125,18 @@ class E(dj.Computed):
         id_h :int
         """
 
+    class I(dj.Part): 
+        definition = """ # test force_masters revisit part
+        -> E
+        id_i :int
+        ---
+        -> H
+        """
+
     def make(self, key):
         random.seed(str(key))
         l_contents = list(L().fetch("KEY"))
-        part_f, part_g, part_h = E.F(), E.G(), E.H()
+        part_f, part_g, part_h, part_i = E.F(), E.G(), E.H(), E.I()
         bc_references = list((B.C() & key).fetch("KEY"))
         random.shuffle(bc_references)
 
@@ -141,6 +149,7 @@ class E(dj.Computed):
         g_inserts = [dict(key, id_g=i, **ref) for i, ref in enumerate(l_contents)]
         part_g.insert(g_inserts)
         part_h.insert(dict(key, id_h=i) for i in range(4))
+        part_i.insert(dict(key, id_i=i, **random.choice(g_inserts)) for i in range(4))
 
 
 class F(dj.Manual):

@@ -486,7 +486,7 @@ class Table(QueryExpression):
         transaction: bool = True,
         safemode: Union[bool, None] = None,
         force_parts: bool = False,
-        include_parts: bool = True,
+        force_masters: bool = True,
     ) -> int:
         """
         Deletes the contents of the table and its dependent tables, recursively.
