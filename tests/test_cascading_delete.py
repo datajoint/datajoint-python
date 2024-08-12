@@ -115,13 +115,13 @@ def test_delete_parts_error(schema_simp_pop):
     """test issue #151"""
     with pytest.raises(dj.DataJointError):
         Profile().populate_random()
-        Website().delete(include_parts=False)
+        Website().delete(force_masters=False)
 
 
 def test_delete_parts(schema_simp_pop):
     """test issue #151"""
     Profile().populate_random()
-    Website().delete(include_parts=True)
+    Website().delete(force_masters=True)
 
 
 def test_delete_parts_complex(schema_simp_pop):

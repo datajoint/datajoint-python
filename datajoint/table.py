@@ -498,7 +498,7 @@ class Table(QueryExpression):
             safemode: If `True`, prohibit nested transactions and prompt to confirm. Default
                 is `dj.config['safemode']`.
             force_parts: Delete from parts even when not deleting from their masters.
-            include_parts: If `True`, include part/master pairs in the cascade.
+            force_masters: If `True`, include part/master pairs in the cascade.
                 Default is `True`.
 
         Returns:
@@ -573,7 +573,7 @@ class Table(QueryExpression):
 
                     master_name = get_master(child.full_table_name)
                     if (
-                        include_parts
+                        force_masters
                         and master_name
                         and master_name != table.full_table_name
                         and master_name not in visited_masters
