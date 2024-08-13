@@ -42,7 +42,7 @@ jobs:
       - name: Build pip artifacts
         run: |
           export HOST_UID=$(id -u)
-          docker-compose -f docker-compose-build.yaml up --exit-code-from app --build
+          docker compose -f docker-compose-build.yaml up --exit-code-from app --build
           echo "DJ_VERSION=${DJ_VERSION}" >> $GITHUB_ENV
       - if: matrix.py_ver == '3.9' && matrix.distro == 'debian'
         name: Add pip artifacts
@@ -87,7 +87,7 @@ jobs:
           COMPOSE_HTTP_TIMEOUT: "120"
         run: |
           export HOST_UID=$(id -u)
-          docker-compose -f LNX-docker-compose.yml up --build --exit-code-from app
+          docker compose -f LNX-docker-compose.yml up --build --exit-code-from app
   lint:
     runs-on: ubuntu-latest
     strategy:
@@ -218,7 +218,7 @@ jobs:
       - name: Publish pip release
         run: |
           export HOST_UID=$(id -u)
-          docker-compose -f docker-compose-build.yaml run \
+          docker compose -f docker-compose-build.yaml run \
             -e TWINE_USERNAME=${TWINE_USERNAME} -e TWINE_PASSWORD=${TWINE_PASSWORD} app \
             sh -c "pip install twine && python -m twine upload dist/*"
       - name: Login to DockerHub
