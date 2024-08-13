@@ -150,7 +150,7 @@ class E(dj.Computed):
         part_g.insert(g_inserts)
         h_inserts = [dict(key, id_h=i) for i in range(4)]
         part_h.insert(h_inserts)
-        part_m.insert(dict(key, id_i=i, **random.choice(h_inserts)) for i in range(4))
+        part_m.insert(dict(key, id_m=m, **random.choice(h_inserts)) for m in range(4))
 
 
 class F(dj.Manual):

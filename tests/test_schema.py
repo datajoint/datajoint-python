@@ -196,6 +196,7 @@ def test_list_tables(schema_simp):
             "__e__f",
             "__e__g",
             "__e__h",
+            "__e__m",
             "__g",
             "#outfit_launch",
             "#outfit_launch__outfit_piece",
