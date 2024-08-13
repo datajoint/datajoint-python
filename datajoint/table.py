@@ -512,12 +512,6 @@ class Table(QueryExpression):
         deleted = set()
         visited_masters = set()
 
-        if force_masters and not force_parts:
-            logger.warn(
-                "force_masters=True implies force_parts=True. "
-                + "Ignoring force_parts=False."
-            )  # No need to reset, as force_masters will cascade to parts.
-
         def cascade(table):
             """service function to perform cascading deletes recursively."""
             max_attempts = 50
