@@ -13,6 +13,7 @@
 - Fixed - `Autopopulate.populate` excludes `reserved` jobs in addition to `ignore` and `error` jobs 
 - Fixed - Issue [#1159]((https://github.com/datajoint/datajoint-python/pull/1159)  (cascading delete)  - PR [#1160](https://github.com/datajoint/datajoint-python/pull/1160)
 - Fixed - `docker compose` commands in CI [#1164](https://github.com/datajoint/datajoint-python/pull/1164)
+- Changed - Default delete behavior now includes masters of part tables - PR [#1158](https://github.com/datajoint/datajoint-python/pull/1158)
 
 ### 0.14.1 -- Jun 02, 2023
 - Fixed - Fix altering a part table that uses the "master" keyword - PR [#991](https://github.com/datajoint/datajoint-python/pull/991)
