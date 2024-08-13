@@ -11,7 +11,7 @@
 - Added - Missing tests for set_password - PR [#1106](https://github.com/datajoint/datajoint-python/pull/1106)
 - Changed - Returning success count after the .populate() call - PR [#1050](https://github.com/datajoint/datajoint-python/pull/1050)
 - Fixed - `Autopopulate.populate` excludes `reserved` jobs in addition to `ignore` and `error` jobs 
-- Fixed - Issue [#1159]((https://github.com/datajoint/datajoint-python/pull/1159)  (cascading delete)  - PR [#1160](https://github.com/datajoint/datajoint-python/pull/1160)
+- Fixed - Issue [#1159](https://github.com/datajoint/datajoint-python/pull/1159) (cascading delete) - PR [#1160](https://github.com/datajoint/datajoint-python/pull/1160)
 - Fixed - `docker compose` commands in CI [#1164](https://github.com/datajoint/datajoint-python/pull/1164)
 - Changed - Default delete behavior now includes masters of part tables - PR [#1158](https://github.com/datajoint/datajoint-python/pull/1158)
 
