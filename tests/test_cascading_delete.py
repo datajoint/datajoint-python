@@ -127,7 +127,7 @@ def test_delete_parts(schema_simp_pop):
 def test_delete_parts_complex(schema_simp_pop):
     """test issue #151 with complex master/part. PR #1158."""
     prev_len = len(G())
-    (A() & "id_a=1").delete()
+    (A() & "id_a=1").delete(force_masters=True)
     assert prev_len - len(G()) == 16, "Failed to delete parts"
 
 

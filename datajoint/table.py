@@ -486,7 +486,7 @@ class Table(QueryExpression):
         transaction: bool = True,
         safemode: Union[bool, None] = None,
         force_parts: bool = False,
-        force_masters: bool = True,
+        force_masters: bool = False,
     ) -> int:
         """
         Deletes the contents of the table and its dependent tables, recursively.
@@ -499,7 +499,7 @@ class Table(QueryExpression):
                 is `dj.config['safemode']`.
             force_parts: Delete from parts even when not deleting from their masters.
             force_masters: If `True`, include part/master pairs in the cascade.
-                Default is `True`.
+                Default is `False`.
 
         Returns:
             Number of deleted rows (excluding those from dependent tables).
