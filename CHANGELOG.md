@@ -1,6 +1,6 @@
 ## Release notes
 
-### Upcoming
+### 0.14.2 -- Aug 19, 2024
 - Added - Migrate nosetests to pytest - PR [#1142](https://github.com/datajoint/datajoint-python/pull/1142)
 - Added - Codespell GitHub Actions workflow
 - Added - GitHub Actions workflow to manually release docs
@@ -10,7 +10,7 @@
 - Fixed - Updated set_password to work on MySQL 8 - PR [#1106](https://github.com/datajoint/datajoint-python/pull/1106)
 - Added - Missing tests for set_password - PR [#1106](https://github.com/datajoint/datajoint-python/pull/1106)
 - Changed - Returning success count after the .populate() call - PR [#1050](https://github.com/datajoint/datajoint-python/pull/1050)
-- Fixed - `Autopopulate.populate` excludes `reserved` jobs in addition to `ignore` and `error` jobs 
+- Fixed - `Autopopulate.populate` excludes `reserved` jobs in addition to `ignore` and `error` jobs
 - Fixed - Issue [#1159](https://github.com/datajoint/datajoint-python/pull/1159) (cascading delete) - PR [#1160](https://github.com/datajoint/datajoint-python/pull/1160)
 - Changed - Minimum Python version for Datajoint-Python is now 3.8 PR #1163
 - Fixed - `docker compose` commands in CI [#1164](https://github.com/datajoint/datajoint-python/pull/1164)
