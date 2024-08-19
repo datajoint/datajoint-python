@@ -1,6 +1,6 @@
 import pytest
 import datajoint as dj
-from .schema_simple import A, B, D, E, L, Website, Profile
+from .schema_simple import A, B, D, E, G, L, Website, Profile
 from .schema import ComplexChild, ComplexParent
 
 
@@ -11,6 +11,7 @@ def schema_simp_pop(schema_simp):
     B().populate()
     D().populate()
     E().populate()
+    G().populate()
     yield schema_simp
 
 
@@ -96,7 +97,7 @@ def test_delete_complex_keys(schema_any):
         **{
             "child_id_{}".format(i + 1): (i + parent_key_count)
             for i in range(child_key_count)
-        }
+        },
     )
     assert len(ComplexParent & restriction) == 1, "Parent record missing"
     assert len(ComplexChild & restriction) == 1, "Child record missing"
@@ -110,11 +111,24 @@ def test_delete_master(schema_simp_pop):
     Profile().delete()
 
 
-def test_delete_parts(schema_simp_pop):
+def test_delete_parts_error(schema_simp_pop):
     """test issue #151"""
     with pytest.raises(dj.DataJointError):
         Profile().populate_random()
-        Website().delete()
+        Website().delete(force_masters=False)
+
+
+def test_delete_parts(schema_simp_pop):
+    """test issue #151"""
+    Profile().populate_random()
+    Website().delete(force_masters=True)
+
+
+def test_delete_parts_complex(schema_simp_pop):
+    """test issue #151 with complex master/part. PR #1158."""
+    prev_len = len(G())
+    (A() & "id_a=1").delete(force_masters=True)
+    assert prev_len - len(G()) == 16, "Failed to delete parts"
 
 
 def test_drop_part(schema_simp_pop):

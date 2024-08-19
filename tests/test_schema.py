@@ -184,7 +184,7 @@ def test_list_tables(schema_simp):
     """
     https://github.com/datajoint/datajoint-python/issues/838
     """
-    assert set(
+    expected = set(
         [
             "reserved_word",
             "#l",
@@ -194,6 +194,10 @@ def test_list_tables(schema_simp):
             "__b__c",
             "__e",
             "__e__f",
+            "__e__g",
+            "__e__h",
+            "__e__m",
+            "__g",
             "#outfit_launch",
             "#outfit_launch__outfit_piece",
             "#i_j",
@@ -207,7 +211,9 @@ def test_list_tables(schema_simp):
             "profile",
             "profile__website",
         ]
-    ) == set(schema_simp.list_tables())
+    )
+    actual = set(schema_simp.list_tables())
+    assert actual == expected, f"Missing from list_tables(): {expected - actual}"
 
 
 def test_schema_save_any(schema_any):

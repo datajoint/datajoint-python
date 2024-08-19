@@ -486,6 +486,7 @@ class Table(QueryExpression):
         transaction: bool = True,
         safemode: Union[bool, None] = None,
         force_parts: bool = False,
+        force_masters: bool = False,
     ) -> int:
         """
         Deletes the contents of the table and its dependent tables, recursively.
@@ -497,6 +498,8 @@ class Table(QueryExpression):
             safemode: If `True`, prohibit nested transactions and prompt to confirm. Default
                 is `dj.config['safemode']`.
             force_parts: Delete from parts even when not deleting from their masters.
+            force_masters: If `True`, include part/master pairs in the cascade.
+                Default is `False`.
 
         Returns:
             Number of deleted rows (excluding those from dependent tables).
@@ -507,6 +510,7 @@ class Table(QueryExpression):
             DataJointError: Deleting a part table before its master.
         """
         deleted = set()
+        visited_masters = set()
 
         def cascade(table):
             """service function to perform cascading deletes recursively."""
@@ -566,7 +570,27 @@ class Table(QueryExpression):
                         )
                     else:
                         child &= table.proj()
-                    cascade(child)
+
+                    master_name = get_master(child.full_table_name)
+                    if (
+                        force_masters
+                        and master_name
+                        and master_name != table.full_table_name
+                        and master_name not in visited_masters
+                    ):
+                        master = FreeTable(table.connection, master_name)
+                        master._restriction_attributes = set()
+                        master._restriction = [
+                            make_condition(  # &= may cause in target tables in subquery
+                                master,
+                                (master.proj() & child.proj()).fetch(),
+                                master._restriction_attributes,
+                            )
+                        ]
+                        visited_masters.add(master_name)
+                        cascade(master)
+                    else:
+                        cascade(child)
                 else:
                     deleted.add(table.full_table_name)
                     logger.info(

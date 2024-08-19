@@ -111,17 +111,46 @@ class E(dj.Computed):
         -> B.C
         """
 
+    class G(dj.Part):
+        definition = """ # test secondary fk reference
+        -> E
+        id_g :int
+        ---
+        -> L
+        """
+
+    class H(dj.Part):
+        definition = """ # test no additional fk reference
+        -> E
+        id_h :int
+        """
+
+    class M(dj.Part):
+        definition = """ # test force_masters revisit
+        -> E
+        id_m :int
+        ---
+        -> E.H
+        """
+
     def make(self, key):
         random.seed(str(key))
-        self.insert1(dict(key, **random.choice(list(L().fetch("KEY")))))
-        sub = E.F()
-        references = list((B.C() & key).fetch("KEY"))
-        random.shuffle(references)
-        sub.insert(
+        l_contents = list(L().fetch("KEY"))
+        part_f, part_g, part_h, part_m = E.F(), E.G(), E.H(), E.M()
+        bc_references = list((B.C() & key).fetch("KEY"))
+        random.shuffle(bc_references)
+
+        self.insert1(dict(key, **random.choice(l_contents)))
+        part_f.insert(
             dict(key, id_f=i, **ref)
-            for i, ref in enumerate(references)
+            for i, ref in enumerate(bc_references)
             if random.getrandbits(1)
         )
+        g_inserts = [dict(key, id_g=i, **ref) for i, ref in enumerate(l_contents)]
+        part_g.insert(g_inserts)
+        h_inserts = [dict(key, id_h=i) for i in range(4)]
+        part_h.insert(h_inserts)
+        part_m.insert(dict(key, id_m=m, **random.choice(h_inserts)) for m in range(4))
 
 
 class F(dj.Manual):
@@ -130,6 +159,15 @@ class F(dj.Manual):
     ----
     date=null: date
     """
+
+
+class G(dj.Computed):
+    definition = """ # test downstream of complex master/parts
+    -> E
+    """
+
+    def make(self, key):
+        self.insert1(key)
 
 
 class DataA(dj.Lookup):
