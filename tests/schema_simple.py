@@ -92,7 +92,33 @@ class D(dj.Computed):
         # make reference to a random tuple from L
         random.seed(str(key))
         lookup = list(L().fetch("KEY"))
-        self.insert(dict(key, id_d=i, **random.choice(lookup)) for i in range(4))
+        self.insert(dict(key, id_d=i, **random.choice(lookup))
+                    for i in range(4))
+
+
+class N(dj.Computed):
+    definition = """
+    # test for three part make function
+    -> A
+    id_d :int
+    ---
+    -> L
+    """
+
+    def make_fetch(self, key):
+        # make reference to a random tuple from L
+        lookup = list(L().fetch("KEY"))
+        inputs = key, lookup
+        return inputs
+
+    def make_compute(self, inputs):
+        key, lookup = inputs
+        random.seed(str(key))
+        values = [dict(key, id_d=i, **random.choice(lookup)) for i in range(4)]
+        return values
+
+    def make_insert(self, values):
+        self.insert(values)
 
 
 class E(dj.Computed):
