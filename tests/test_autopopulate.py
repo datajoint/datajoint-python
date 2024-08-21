@@ -1,11 +1,9 @@
 import pytest
 from datajoint import DataJointError
 import datajoint as dj
-import pymysql
-from . import schema
 
 
-def test_populate(trial, subject, experiment, ephys, channel):
+def test_populate(schema_any, trial, subject, experiment, ephys, channel):
     # test simple populate
     assert subject, "root tables are empty"
     assert not experiment, "table already filled?"
@@ -32,7 +30,7 @@ def test_populate(trial, subject, experiment, ephys, channel):
     assert channel
 
 
-def test_populate_with_success_count(subject, experiment, trial):
+def test_populate_with_success_count(schema_any, subject, experiment, trial):
     # test simple populate
     assert subject, "root tables are empty"
     assert not experiment, "table already filled?"
@@ -67,7 +65,7 @@ def test_populate_exclude_error_and_ignore_jobs(schema_any, subject, experiment)
         experiment.key_source) - 2
 
 
-def test_allow_direct_insert(subject, experiment):
+def test_allow_direct_insert(schema_any, subject, experiment):
     assert subject, "root tables are empty"
     key = subject.fetch("KEY", limit=1)[0]
     key["experiment_id"] = 1000
@@ -76,7 +74,7 @@ def test_allow_direct_insert(subject, experiment):
 
 
 @pytest.mark.parametrize("processes", [None, 2])
-def test_multi_processing(subject, experiment, processes):
+def test_multi_processing(schema_any, subject, experiment, processes):
     assert subject, "root tables are empty"
     assert not experiment, "table already filled?"
     experiment.populate(processes=None)
@@ -84,7 +82,7 @@ def test_multi_processing(subject, experiment, processes):
         experiment.fake_experiments_per_subject
 
 
-def test_allow_insert(subject, experiment):
+def test_allow_insert(schema_any, subject, experiment):
     assert subject, "root tables are empty"
     key = subject.fetch("KEY")[0]
     key["experiment_id"] = 1001
