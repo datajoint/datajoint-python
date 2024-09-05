@@ -289,7 +289,7 @@ else:
             )
             # relabel nodes to class names
             mapping = {
-                node: lookup_class_name(node, self.context) or node
+                node: f'"{lookup_class_name(node, self.context) or node}"'
                 for node in graph.nodes()
             }
             new_names = [mapping.values()]
