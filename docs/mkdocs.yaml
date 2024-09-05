@@ -111,6 +111,9 @@ plugins:
       default_handler: python
       handlers:
         python:
+          paths:
+            - "."
+            - /main/
           options:
             filters:
               - "!^_"
