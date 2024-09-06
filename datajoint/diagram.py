@@ -312,9 +312,7 @@ else:
             """
             for u, v, *_, edgedata in graph.edges(data=True):
                 if "attr_map" in edgedata:
-                    graph.edges[u, v]["attr_map"] = '"{0}"'.format(
-                        edgedata["attr_map"]
-                    )
+                    graph.edges[u, v]["attr_map"] = '"{0}"'.format(edgedata["attr_map"])
 
         @staticmethod
         def _stringify_and_encapsulate_node_names(graph):
@@ -325,7 +323,7 @@ else:
             nx.relabel_nodes(
                 graph,
                 {node: '"{0}"'.format(node) for node in graph.nodes()},
-                copy=False
+                copy=False,
             )
 
         def make_dot(self):
