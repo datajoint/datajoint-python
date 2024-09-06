@@ -300,6 +300,34 @@ else:
             nx.relabel_nodes(graph, mapping, copy=False)
             return graph
 
+        @staticmethod
+        def _stringify_and_encapsulate_edge_attributes(graph):
+            """
+            Modifies the `nx.Graph`'s edge attribute `attr_map` to be a string representation
+            of the attribute map, and encapsulates the string in double quotes.
+            Changes the graph in place.
+
+            Implements workaround described in
+            https://github.com/pydot/pydot/issues/258#issuecomment-795798099
+            """
+            for u, v, *_, edgedata in graph.edges(data=True):
+                if "attr_map" in edgedata:
+                    graph.edges[u, v]["attr_map"] = '"{0}"'.format(
+                        edgedata["attr_map"]
+                    )
+
+        @staticmethod
+        def _stringify_and_encapsulate_node_names(graph):
+            """
+            Modifies the `nx.Graph`'s node names string representations encapsulated in
+            double quotes.
+            """
+            nx.relabel_nodes(
+                graph,
+                {node: '"{0}"'.format(node) for node in graph.nodes()},
+                copy=False
+            )
+
         def make_dot(self):
             graph = self._make_graph()
             graph.nodes()
@@ -368,6 +396,8 @@ else:
                 for node, d in dict(graph.nodes(data=True)).items()
             }
 
+            self._stringify_and_encapsulate_node_names(graph)
+            self._stringify_and_encapsulate_edge_attributes(graph)
             dot = nx.drawing.nx_pydot.to_pydot(graph)
             for node in dot.get_nodes():
                 node.set_shape("circle")
