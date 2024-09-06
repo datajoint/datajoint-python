@@ -438,9 +438,14 @@ else:
 
             for edge in dot.get_edges():
                 # see https://graphviz.org/doc/info/attrs.html
-                src = edge.get_source().strip('"')
-                dest = edge.get_destination().strip('"')
+                src = edge.get_source()
+                dest = edge.get_destination()
                 props = graph.get_edge_data(src, dest)
+                if props is None:
+                    raise DataJointError(
+                        "Could not find edge with source "
+                        "'{}' and destination '{}'".format(src, dest)
+                    )
                 edge.set_color("#00000040")
                 edge.set_style("solid" if props["primary"] else "dashed")
                 master_part = graph.nodes[dest][
