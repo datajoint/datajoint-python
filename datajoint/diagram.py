@@ -301,7 +301,7 @@ else:
             return graph
 
         @staticmethod
-        def _stringify_and_encapsulate_edge_attributes(graph):
+        def _encapsulate_edge_attributes(graph):
             """
             Modifies the `nx.Graph`'s edge attribute `attr_map` to be a string representation
             of the attribute map, and encapsulates the string in double quotes.
@@ -315,7 +315,7 @@ else:
                     graph.edges[u, v]["attr_map"] = '"{0}"'.format(edgedata["attr_map"])
 
         @staticmethod
-        def _stringify_and_encapsulate_node_names(graph):
+        def _encapsulate_node_names(graph):
             """
             Modifies the `nx.Graph`'s node names string representations encapsulated in
             double quotes.
@@ -398,8 +398,8 @@ else:
                 for node, d in dict(graph.nodes(data=True)).items()
             }
 
-            self._stringify_and_encapsulate_node_names(graph)
-            self._stringify_and_encapsulate_edge_attributes(graph)
+            self._encapsulate_node_names(graph)
+            self._encapsulate_edge_attributes(graph)
             dot = nx.drawing.nx_pydot.to_pydot(graph)
             for node in dot.get_nodes():
                 node.set_shape("circle")
