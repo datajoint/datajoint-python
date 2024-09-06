@@ -1,5 +1,8 @@
 ## Release notes
 
+### Upcoming
+- Fixed - Added encapsulating double quotes to comply with [DOT language](https://graphviz.org/doc/info/lang.html) - PR [#1176](https://github.com/datajoint/datajoint-python/pull/1176)
+
 ### 0.14.2 -- Aug 19, 2024
 - Added - Migrate nosetests to pytest - PR [#1142](https://github.com/datajoint/datajoint-python/pull/1142)
 - Added - Codespell GitHub Actions workflow
