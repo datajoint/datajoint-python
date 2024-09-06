@@ -319,6 +319,10 @@ else:
             """
             Modifies the `nx.Graph`'s node names string representations encapsulated in
             double quotes.
+            Changes the graph in place.
+
+            Implements workaround described in
+            https://github.com/datajoint/datajoint-python/pull/1176
             """
             nx.relabel_nodes(
                 graph,
