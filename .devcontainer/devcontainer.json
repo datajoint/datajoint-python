@@ -1,22 +1,22 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/docker-existing-docker-compose
 {
-	"name": "Development",
-	"dockerComposeFile": "docker-compose.yaml",
+	"name": "Existing Docker Compose (Extend)",
+	// Update the 'dockerComposeFile' list if you have more compose files or use different names.
+	// The .devcontainer/docker-compose.yml file contains any overrides you need/want to make.
+	"dockerComposeFile": [
+		"../LNX-docker-compose.yml",
+		"docker-compose.yml"
+	],
+	// The 'service' property is the name of the service for the container that VS Code should
+	// use. Update this value and .devcontainer/docker-compose.yml to the real service name.
 	"service": "app",
+	// The optional 'workspaceFolder' property is the path VS Code should open by default when
+	// connected. This is typically a file mount in .devcontainer/docker-compose.yml
 	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
-	// Use this environment variable if you need to bind mount your local source code into a new container.
-	"remoteEnv": {
-		"LOCAL_WORKSPACE_FOLDER": "${localWorkspaceFolder}"
-	},
-	// https://containers.dev/features
-	"features": {
-		"ghcr.io/devcontainers/features/docker-in-docker:2": {},
-		"ghcr.io/devcontainers/features/git:1": {},
-		"ghcr.io/eitsupi/devcontainer-features/jq-likes:1": {},
-		"ghcr.io/guiyomh/features/vim:0": {}
-	},
-	"onCreateCommand": "pip install -e .",
-	"postStartCommand": "MYSQL_VER=8.0 MINIO_VER=RELEASE.2022-08-11T04-37-28Z docker compose -f local-docker-compose.yml down && docker volume prune -f && MYSQL_VER=8.0 MINIO_VER=RELEASE.2022-08-11T04-37-28Z docker compose -f local-docker-compose.yml up --build --wait",
+	// Features to add to the dev container. More info: https://containers.dev/features.
+	// "features": {},
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	"forwardPorts": [
 		80,
 		443,
@@ -24,11 +24,26 @@
 		8080,
 		9000
 	],
+	// Uncomment the next line if you want start specific services in your Docker Compose config.
+	// "runServices": [],
+	// Uncomment the next line if you want to keep your containers running after VS Code shuts down.
+	"shutdownAction": "stopCompose",
+	"onCreateCommand": "python3 -m pip install -e .",
+	"features": {
+		"ghcr.io/devcontainers/features/git:1": {},
+		"ghcr.io/devcontainers/features/docker-in-docker:2": {},
+	},
+	// Configure tool-specific properties.
 	"customizations": {
 		"vscode": {
 			"extensions": [
 				"ms-python.python"
 			]
 		}
+	},
+	"remoteEnv": {
+		"LOCAL_WORKSPACE_FOLDER": "${localWorkspaceFolder}"
 	}
+	// Uncomment to connect as an existing user other than the container default. More info: https://aka.ms/dev-containers-non-root.
+	// "remoteUser": "devcontainer"
 }

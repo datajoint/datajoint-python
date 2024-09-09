@@ -322,9 +322,11 @@ class Blob:
             + "\0".join(array.dtype.names).encode()  # number of fields
             + b"\0"
             + b"".join(  # field names
-                self.pack_recarray(array[f])
-                if array[f].dtype.fields
-                else self.pack_array(array[f])
+                (
+                    self.pack_recarray(array[f])
+                    if array[f].dtype.fields
+                    else self.pack_array(array[f])
+                )
                 for f in array.dtype.names
             )
         )
@@ -449,7 +451,7 @@ class Blob:
         )
 
     def read_struct(self):
-        """deserialize matlab stuct"""
+        """deserialize matlab struct"""
         n_dims = self.read_value()
         shape = self.read_value(count=n_dims)
         n_elem = np.prod(shape, dtype=int)

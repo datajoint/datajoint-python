@@ -102,9 +102,11 @@ class QueryExpression:
 
     def from_clause(self):
         support = (
-            "(" + src.make_sql() + ") as `$%x`" % next(self._subquery_alias_count)
-            if isinstance(src, QueryExpression)
-            else src
+            (
+                "(" + src.make_sql() + ") as `$%x`" % next(self._subquery_alias_count)
+                if isinstance(src, QueryExpression)
+                else src
+            )
             for src in self.support
         )
         clause = next(support)
@@ -728,14 +730,16 @@ class Aggregation(QueryExpression):
                 fields=fields,
                 from_=self.from_clause(),
                 where=self.where_clause(),
-                group_by=""
-                if not self.primary_key
-                else (
-                    " GROUP BY `%s`" % "`,`".join(self._grouping_attributes)
-                    + (
-                        ""
-                        if not self.restriction
-                        else f" HAVING ({')AND('.join(self.restriction)})"
+                group_by=(
+                    ""
+                    if not self.primary_key
+                    else (
+                        " GROUP BY `%s`" % "`,`".join(self._grouping_attributes)
+                        + (
+                            ""
+                            if not self.restriction
+                            else " HAVING (%s)" % ")AND(".join(self.restriction)
+                        )
                     )
                 ),
                 sorting=self.sorting_clauses(),
@@ -798,13 +802,17 @@ class Union(QueryExpression):
         ):
             # no secondary attributes: use UNION DISTINCT
             fields = arg1.primary_key
-            return "SELECT * FROM (({sql1}) UNION ({sql2})) as `_u{alias}`{sorting}".format(
-                sql1=arg1.make_sql()
-                if isinstance(arg1, Union)
-                else arg1.make_sql(fields),
-                sql2=arg2.make_sql()
-                if isinstance(arg2, Union)
-                else arg2.make_sql(fields),
+            return "SELECT * FROM (({sql1}) UNION ({sql2})) as `_u{alias}{sorting}`".format(
+                sql1=(
+                    arg1.make_sql()
+                    if isinstance(arg1, Union)
+                    else arg1.make_sql(fields)
+                ),
+                sql2=(
+                    arg2.make_sql()
+                    if isinstance(arg2, Union)
+                    else arg2.make_sql(fields)
+                ),
                 alias=next(self.__count),
                 sorting=self.sorting_clauses(),
             )
@@ -866,7 +874,7 @@ class U:
     >>> dj.U().aggr(expr, n='count(*)')
 
     The following expressions both yield one element containing the number `n` of distinct values of attribute `attr` in
-    query expressio `expr`.
+    query expression `expr`.
 
     >>> dj.U().aggr(expr, n='count(distinct attr)')
     >>> dj.U().aggr(dj.U('attr').aggr(expr), 'n=count(*)')

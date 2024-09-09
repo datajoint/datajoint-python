@@ -1,7 +1,23 @@
 ## Release notes
 
-### Upcoming
+### 0.14.3 -- TBD
 - Added - `dj.Top` restriction ([#1024](https://github.com/datajoint/datajoint-python/issues/1024)) PR [#1084](https://github.com/datajoint/datajoint-python/pull/1084)
+
+### 0.14.2 -- Aug 19, 2024
+- Added - Migrate nosetests to pytest - PR [#1142](https://github.com/datajoint/datajoint-python/pull/1142)
+- Added - Codespell GitHub Actions workflow
+- Added - GitHub Actions workflow to manually release docs
+- Changed - Update `datajoint/nginx` to `v0.2.6`
+- Changed - Migrate docs from `https://docs.datajoint.org/python` to `https://datajoint.com/docs/core/datajoint-python`
+- Fixed - [DevContainer](https://containers.dev/) configuration - PR [#1115](https://github.com/datajoint/datajoint-python/pull/1115)
+- Fixed - Updated set_password to work on MySQL 8 - PR [#1106](https://github.com/datajoint/datajoint-python/pull/1106)
+- Added - Missing tests for set_password - PR [#1106](https://github.com/datajoint/datajoint-python/pull/1106)
+- Changed - Returning success count after the .populate() call - PR [#1050](https://github.com/datajoint/datajoint-python/pull/1050)
+- Fixed - `Autopopulate.populate` excludes `reserved` jobs in addition to `ignore` and `error` jobs
+- Fixed - Issue [#1159](https://github.com/datajoint/datajoint-python/pull/1159) (cascading delete) - PR [#1160](https://github.com/datajoint/datajoint-python/pull/1160)
+- Changed - Minimum Python version for Datajoint-Python is now 3.8 PR #1163
+- Fixed - `docker compose` commands in CI [#1164](https://github.com/datajoint/datajoint-python/pull/1164)
+- Changed - Default delete behavior now includes masters of part tables - PR [#1158](https://github.com/datajoint/datajoint-python/pull/1158)
 
 ### 0.14.1 -- Jun 02, 2023
 - Fixed - Fix altering a part table that uses the "master" keyword - PR [#991](https://github.com/datajoint/datajoint-python/pull/991)
@@ -34,7 +50,7 @@
 - Fixed - Fix queries with backslashes ([#999](https://github.com/datajoint/datajoint-python/issues/999)) PR [#1052](https://github.com/datajoint/datajoint-python/pull/1052)
 
 ### 0.13.7 -- Jul 13, 2022
-- Fixed - Fix networkx incompatable change by version pinning to 2.6.3 (#1035) PR #1036
+- Fixed - Fix networkx incompatible change by version pinning to 2.6.3 (#1035) PR #1036
 - Added - Support for serializing numpy datetime64 types (#1022) PR #1036
 - Changed - Add traceback to default logging PR #1036
 
@@ -86,7 +102,7 @@
 - Fixed - `schema.list_tables()` is not topologically sorted (#838) PR #893
 - Fixed - Diagram part tables do not show proper class name (#882) PR #893
 - Fixed - Error in complex restrictions (#892) PR #893
-- Fixed - WHERE and GROUP BY clases are dropped on joins with aggregation (#898, #899) PR #893
+- Fixed - WHERE and GROUP BY classes are dropped on joins with aggregation (#898, #899) PR #893
 
 ### 0.13.0 -- Mar 24, 2021
 - Re-implement query transpilation into SQL, fixing issues (#386, #449, #450, #484, #558). PR #754

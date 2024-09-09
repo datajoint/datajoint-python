@@ -1,78 +1,94 @@
-# Common Commands
+# Insert
 
-## Insert
+The `insert` method of DataJoint table objects inserts entities into the table.
 
-Data entry is as easy as providing the appropriate data structure to a permitted
-[table](../reproduce/table-tiers.md).
-
-Given the following [table definition](../getting-started/table-definitions.md), we can
-insert data as follows.
-
-```text      
-    mouse_id: int            # unique mouse id
-    ---
-    dob: date                # mouse date of birth
-    sex: enum('M', 'F', 'U') # sex of mouse - Male, Female, or Unknown
-``` 
+In Python there is a separate method `insert1` to insert one entity at a time.
+The entity may have the form of a Python dictionary with key names matching the 
+attribute names in the table.
 
 ```python
-mouse.insert1( (0, '2017-03-01', 'M') ) # Single entry
-data = [
-    (1, '2016-11-19', 'M'),
-    (2, '2016-11-20', 'U'),
-    (5, '2016-12-25', 'F')
-]
-mouse.insert(data) # Multi-entry
+lab.Person.insert1(
+          dict(username='alice',
+               first_name='Alice',
+               last_name='Cooper'))
 ```
 
-## Make
+The entity also may take the form of a sequence of values in the same order as the 
+attributes in the table.
 
-The `make` method populates automated tables from inserted data. Read more in the
-full article [here](../reproduce/make-method.md)
-
-## Fetch
-
-Data queries in DataJoint comprise two distinct steps:
-
-1.  Construct the `query` object to represent the required data using
-    tables and [operators](../query/operators).
-2.  Fetch the data from `query` into the workspace of the host language.
-
-Note that entities returned by `fetch` methods are not guaranteed to be sorted in any
-particular order unless specifically requested. Furthermore, the order is not
-guaranteed to be the same in any two queries, and the contents of two identical queries
-may change between two sequential invocations unless they are wrapped in a transaction.
-Therefore, if you wish to fetch matching pairs of attributes, do so in one `fetch`
-call.
-
-``` python
-data = query.fetch()
+```python
+lab.Person.insert1(['alice', 'Alice', 'Cooper'])
 ```
 
-## Drop
+Additionally, the entity may be inserted as a 
+[NumPy record array](https://docs.scipy.org/doc/numpy/reference/generated/numpy.record.html#numpy.record)
+ or [Pandas DataFrame](https://pandas.pydata.org/pandas-docs/stable/generated/pandas.DataFrame.html).
 
-The `drop` method completely removes a table from the database, including its
-definition. It also removes all dependent tables, recursively. DataJoint will first
-display the tables being dropped and the number of entities in each before prompting
-the user for confirmation to proceed.
+The `insert` method accepts a sequence or a generator of multiple entities and is used 
+to insert multiple entities at once.
 
-The `drop` method is often used during initial design to allow altered
-table definitions to take effect.
-
-``` python
-# drop the Person table from its schema
-Person.drop()
+```python
+lab.Person.insert([
+          ['alice',   'Alice',   'Cooper'],
+          ['bob',     'Bob',     'Dylan'],
+          ['carol',   'Carol',   'Douglas']])
 ```
 
-## Diagrams
+Several optional parameters can be used with `insert`:
 
-The `Diagram` command can help you visualize your pipeline, or understand
-an existing pipeline. 
+  `replace` If `True`, replaces the existing entity.
+  (Default `False`.)
 
-``` python
-import datajoint as dj
-schema = dj.Schema('my_database')
-dj.Diagram(schema).draw()
+  `skip_duplicates` If `True`, silently skip duplicate inserts.
+  (Default `False`.)
+
+  `ignore_extra_fields` If `False`, fields that are not in the heading raise an error.
+  (Default `False`.)
+
+  `allow_direct_insert` If `True`, allows inserts outside of populate calls.
+  Applies only in auto-populated tables.
+  (Default `None`.)
+
+## Batched inserts
+
+Inserting a set of entities in a single `insert` differs from inserting the same set of 
+entities one-by-one in a `for` loop in two ways:
+
+1. Network overhead is reduced.
+   Network overhead can be tens of milliseconds per query.
+   Inserting 1000 entities in a single `insert` call may save a few seconds over 
+   inserting them individually.
+2. The insert is performed as an all-or-nothing transaction.
+   If even one insert fails because it violates any constraint, then none of the 
+   entities in the set are inserted.
+
+However, inserting too many entities in a single query may run against buffer size or 
+packet size limits of the database server.
+Due to these limitations, performing inserts of very large numbers of entities should 
+be broken up into moderately sized batches, such as a few hundred at a time.
+
+## Server-side inserts
+
+Data inserted into a table often come from other tables already present on the database server.
+In such cases, data can be [fetched](../query/fetch.md) from the first table and then 
+inserted into another table, but this results in transfers back and forth between the 
+database and the local system.
+Instead, data can be inserted from one table into another without transfers between the 
+database and the local system using [queries](../query/principles.md).
+
+In the example below, a new schema has been created in preparation for phase two of a 
+project.
+Experimental protocols from the first phase of the project will be reused in the second 
+phase.
+Since the entities are already present on the database in the `Protocol` table of the 
+`phase_one` schema, we can perform a server-side insert into `phase_two.Protocol` 
+without fetching a local copy.
+
+```python
+# Server-side inserts are faster...
+phase_two.Protocol.insert(phase_one.Protocol)
+
+# ...than fetching before inserting
+protocols = phase_one.Protocol.fetch()
+phase_two.Protocol.insert(protocols)
 ```
-
-For more information about diagrams, see [this article](../design/diagrams).

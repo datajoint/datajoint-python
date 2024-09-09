@@ -1,6 +1,7 @@
 """
 Settings for DataJoint.
 """
+
 from contextlib import contextmanager
 import json
 import os

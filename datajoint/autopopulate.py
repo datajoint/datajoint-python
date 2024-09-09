@@ -1,4 +1,5 @@
 """This module defines class dj.AutoPopulate"""
+
 import logging
 import datetime
 import traceback
@@ -118,7 +119,7 @@ class AutoPopulate:
 
     def _jobs_to_do(self, restrictions):
         """
-        :return: the query yeilding the keys to be computed (derived from self.key_source)
+        :return: the query yielding the keys to be computed (derived from self.key_source)
         """
         if self.restriction:
             raise DataJointError(
@@ -180,6 +181,9 @@ class AutoPopulate:
             to be passed down to each ``make()`` call. Computation arguments should be
             specified within the pipeline e.g. using a `dj.Lookup` table.
         :type make_kwargs: dict, optional
+        :return: a dict with two keys
+            "success_count": the count of successful ``make()`` calls in this ``populate()`` call
+            "error_list": the error list that is filled if `suppress_errors` is True
         """
         if self.connection.in_transaction:
             raise DataJointError("Populate cannot be called during a transaction.")
@@ -204,12 +208,12 @@ class AutoPopulate:
 
         keys = (self._jobs_to_do(restrictions) - self.target).fetch("KEY", limit=limit)
 
-        # exclude "error" or "ignore" jobs
+        # exclude "error", "ignore" or "reserved" jobs
         if reserve_jobs:
             exclude_key_hashes = (
                 jobs
                 & {"table_name": self.target.table_name}
-                & 'status in ("error", "ignore")'
+                & 'status in ("error", "ignore", "reserved")'
             ).fetch("key_hash")
             keys = [key for key in keys if key_hash(key) not in exclude_key_hashes]
 
@@ -222,49 +226,62 @@ class AutoPopulate:
 
         keys = keys[:max_calls]
         nkeys = len(keys)
-        if not nkeys:
-            return
-
-        processes = min(_ for _ in (processes, nkeys, mp.cpu_count()) if _)
 
         error_list = []
-        populate_kwargs = dict(
-            suppress_errors=suppress_errors,
-            return_exception_objects=return_exception_objects,
-            make_kwargs=make_kwargs,
-        )
+        success_list = []
 
-        if processes == 1:
-            for key in (
-                tqdm(keys, desc=self.__class__.__name__) if display_progress else keys
-            ):
-                error = self._populate1(key, jobs, **populate_kwargs)
-                if error is not None:
-                    error_list.append(error)
-        else:
-            # spawn multiple processes
-            self.connection.close()  # disconnect parent process from MySQL server
-            del self.connection._conn.ctx  # SSLContext is not pickleable
-            with mp.Pool(
-                processes, _initialize_populate, (self, jobs, populate_kwargs)
-            ) as pool, (
-                tqdm(desc="Processes: ", total=nkeys)
-                if display_progress
-                else contextlib.nullcontext()
-            ) as progress_bar:
-                for error in pool.imap(_call_populate1, keys, chunksize=1):
-                    if error is not None:
-                        error_list.append(error)
-                    if display_progress:
-                        progress_bar.update()
-            self.connection.connect()  # reconnect parent process to MySQL server
+        if nkeys:
+            processes = min(_ for _ in (processes, nkeys, mp.cpu_count()) if _)
+
+            populate_kwargs = dict(
+                suppress_errors=suppress_errors,
+                return_exception_objects=return_exception_objects,
+                make_kwargs=make_kwargs,
+            )
+
+            if processes == 1:
+                for key in (
+                    tqdm(keys, desc=self.__class__.__name__)
+                    if display_progress
+                    else keys
+                ):
+                    status = self._populate1(key, jobs, **populate_kwargs)
+                    if status is True:
+                        success_list.append(1)
+                    elif isinstance(status, tuple):
+                        error_list.append(status)
+                    else:
+                        assert status is False
+            else:
+                # spawn multiple processes
+                self.connection.close()  # disconnect parent process from MySQL server
+                del self.connection._conn.ctx  # SSLContext is not pickleable
+                with mp.Pool(
+                    processes, _initialize_populate, (self, jobs, populate_kwargs)
+                ) as pool, (
+                    tqdm(desc="Processes: ", total=nkeys)
+                    if display_progress
+                    else contextlib.nullcontext()
+                ) as progress_bar:
+                    for status in pool.imap(_call_populate1, keys, chunksize=1):
+                        if status is True:
+                            success_list.append(1)
+                        elif isinstance(status, tuple):
+                            error_list.append(status)
+                        else:
+                            assert status is False
+                        if display_progress:
+                            progress_bar.update()
+                self.connection.connect()  # reconnect parent process to MySQL server
 
         # restore original signal handler:
         if reserve_jobs:
             signal.signal(signal.SIGTERM, old_handler)
 
-        if suppress_errors:
-            return error_list
+        return {
+            "success_count": sum(success_list),
+            "error_list": error_list,
+        }
 
     def _populate1(
         self, key, jobs, suppress_errors, return_exception_objects, make_kwargs=None
@@ -275,55 +292,60 @@ class AutoPopulate:
         :param key: dict specifying job to populate
         :param suppress_errors: bool if errors should be suppressed and returned
         :param return_exception_objects: if True, errors must be returned as objects
-        :return: (key, error) when suppress_errors=True, otherwise None
+        :return: (key, error) when suppress_errors=True,
+            True if successfully invoke one `make()` call, otherwise False
         """
         make = self._make_tuples if hasattr(self, "_make_tuples") else self.make
 
-        if jobs is None or jobs.reserve(self.target.table_name, self._job_key(key)):
-            self.connection.start_transaction()
-            if key in self.target:  # already populated
+        if jobs is not None and not jobs.reserve(
+            self.target.table_name, self._job_key(key)
+        ):
+            return False
+
+        self.connection.start_transaction()
+        if key in self.target:  # already populated
+            self.connection.cancel_transaction()
+            if jobs is not None:
+                jobs.complete(self.target.table_name, self._job_key(key))
+            return False
+
+        logger.debug(f"Making {key} -> {self.target.full_table_name}")
+        self.__class__._allow_insert = True
+        try:
+            make(dict(key), **(make_kwargs or {}))
+        except (KeyboardInterrupt, SystemExit, Exception) as error:
+            try:
                 self.connection.cancel_transaction()
-                if jobs is not None:
-                    jobs.complete(self.target.table_name, self._job_key(key))
+            except LostConnectionError:
+                pass
+            error_message = "{exception}{msg}".format(
+                exception=error.__class__.__name__,
+                msg=": " + str(error) if str(error) else "",
+            )
+            logger.debug(
+                f"Error making {key} -> {self.target.full_table_name} - {error_message}"
+            )
+            if jobs is not None:
+                # show error name and error message (if any)
+                jobs.error(
+                    self.target.table_name,
+                    self._job_key(key),
+                    error_message=error_message,
+                    error_stack=traceback.format_exc(),
+                )
+            if not suppress_errors or isinstance(error, SystemExit):
+                raise
             else:
-                logger.debug(f"Making {key} -> {self.target.full_table_name}")
-                self.__class__._allow_insert = True
-                try:
-                    make(dict(key), **(make_kwargs or {}))
-                except (KeyboardInterrupt, SystemExit, Exception) as error:
-                    try:
-                        self.connection.cancel_transaction()
-                    except LostConnectionError:
-                        pass
-                    error_message = "{exception}{msg}".format(
-                        exception=error.__class__.__name__,
-                        msg=": " + str(error) if str(error) else "",
-                    )
-                    logger.debug(
-                        f"Error making {key} -> {self.target.full_table_name} - {error_message}"
-                    )
-                    if jobs is not None:
-                        # show error name and error message (if any)
-                        jobs.error(
-                            self.target.table_name,
-                            self._job_key(key),
-                            error_message=error_message,
-                            error_stack=traceback.format_exc(),
-                        )
-                    if not suppress_errors or isinstance(error, SystemExit):
-                        raise
-                    else:
-                        logger.error(error)
-                        return key, error if return_exception_objects else error_message
-                else:
-                    self.connection.commit_transaction()
-                    logger.debug(
-                        f"Success making {key} -> {self.target.full_table_name}"
-                    )
-                    if jobs is not None:
-                        jobs.complete(self.target.table_name, self._job_key(key))
-                finally:
-                    self.__class__._allow_insert = False
+                logger.error(error)
+                return key, error if return_exception_objects else error_message
+        else:
+            self.connection.commit_transaction()
+            logger.debug(f"Success making {key} -> {self.target.full_table_name}")
+            if jobs is not None:
+                jobs.complete(self.target.table_name, self._job_key(key))
+            return True
+        finally:
+            self.__class__._allow_insert = False
 
     def progress(self, *restrictions, display=False):
         """
