@@ -1,7 +1,6 @@
 import logging
 import os
 import sys
-import io
 
 logger = logging.getLogger(__name__.split(".")[0])
 

@@ -28,10 +28,12 @@ default_attribute_properties = (
         numeric=None,
         string=None,
         uuid=False,
+        json=None,
         is_blob=False,
         is_attachment=False,
         is_filepath=False,
         is_external=False,
+        is_hidden=False,
         adapter=None,
         store=None,
         unsupported=False,
@@ -84,7 +86,7 @@ class Attribute(namedtuple("_Attribute", default_attribute_properties)):
 
 class Heading:
     """
-    Local class for relations' headings.
+    Local class for table headings.
     Heading contains the property attributes, which is an dict in which the keys are
     the attribute names and the values are Attributes.
     """
@@ -119,7 +121,7 @@ class Heading:
     def attributes(self):
         if self._attributes is None:
             self._init_from_database()  # lazy loading from database
-        return self._attributes
+        return {k: v for k, v in self._attributes.items() if not v.is_hidden}
 
     @property
     def names(self):
@@ -142,7 +144,7 @@ class Heading:
         return [
             k
             for k, v in self.attributes.items()
-            if not v.is_blob and not v.is_attachment and not v.is_filepath
+            if not (v.is_blob or v.is_attachment or v.is_filepath or v.json)
         ]
 
     @property
@@ -192,10 +194,12 @@ class Heading:
         represent heading as the SQL SELECT clause.
         """
         return ",".join(
-            "`%s`" % name
-            if self.attributes[name].attribute_expression is None
-            else self.attributes[name].attribute_expression
-            + (" as `%s`" % name if include_aliases else "")
+            (
+                "`%s`" % name
+                if self.attributes[name].attribute_expression is None
+                else self.attributes[name].attribute_expression
+                + (" as `%s`" % name if include_aliases else "")
+            )
             for name in fields
         )
 
@@ -273,7 +277,6 @@ class Heading:
 
         # additional attribute properties
         for attr in attributes:
-
             attr.update(
                 in_key=(attr["in_key"] == "PRI"),
                 database=database,
@@ -291,12 +294,14 @@ class Heading:
                 ),
                 is_blob=bool(TYPE_PATTERN["INTERNAL_BLOB"].match(attr["type"])),
                 uuid=False,
+                json=bool(TYPE_PATTERN["JSON"].match(attr["type"])),
                 is_attachment=False,
                 is_filepath=False,
                 adapter=None,
                 store=None,
                 is_external=False,
                 attribute_expression=None,
+                is_hidden=attr["name"].startswith("_"),
             )
 
             if any(TYPE_PATTERN[t].match(attr["type"]) for t in ("INTEGER", "FLOAT")):
@@ -370,16 +375,23 @@ class Heading:
                     is_blob=category in ("INTERNAL_BLOB", "EXTERNAL_BLOB"),
                     uuid=category == "UUID",
                     is_external=category in EXTERNAL_TYPES,
-                    store=attr["type"].split("@")[1]
-                    if category in EXTERNAL_TYPES
-                    else None,
+                    store=(
+                        attr["type"].split("@")[1]
+                        if category in EXTERNAL_TYPES
+                        else None
+                    ),
                 )
 
             if attr["in_key"] and any(
-                (attr["is_blob"], attr["is_attachment"], attr["is_filepath"])
+                (
+                    attr["is_blob"],
+                    attr["is_attachment"],
+                    attr["is_filepath"],
+                    attr["json"],
+                )
             ):
                 raise DataJointError(
-                    "Blob, attachment, or filepath attributes are not allowed in the primary key"
+                    "Json, Blob, attachment, or filepath attributes are not allowed in the primary key"
                 )
 
             if (
@@ -420,7 +432,8 @@ class Heading:
         ):
             if item["Key_name"] != "PRIMARY":
                 keys[item["Key_name"]][item["Seq_in_index"]] = dict(
-                    column=item["Column_name"],
+                    column=item["Column_name"]
+                    or f"({item['Expression']})".replace(r"\'", "'"),
                     unique=(item["Non_unique"] == 0),
                     nullable=item["Null"].lower() == "yes",
                 )

@@ -1,11 +1,15 @@
-from nose.tools import assert_false, assert_true, raises
+import types
+import pytest
+import inspect
 import datajoint as dj
 import pandas as pd
 from inspect import getmembers
 from . import schema
-from . import schema_empty
-from . import PREFIX, CONN_INFO, CONN_INFO_ROOT
-from .schema_simple import schema as schema_simple
+
+
+class Ephys(dj.Imported):
+    definition = """  # This is already declare in ./schema.py
+    """
 
 
 def relation_selector(attr):
@@ -22,16 +26,50 @@ def part_selector(attr):
         return False
 
 
-def test_schema_size_on_disk():
-    number_of_bytes = schema.schema.size_on_disk
-    assert_true(isinstance(number_of_bytes, int))
+@pytest.fixture
+def schema_empty_module(schema_any, schema_empty):
+    """
+    Mock the module tests_old.schema_empty.
+    The test `test_namespace_population` will check that the module contains all the
+    classes in schema_any, after running `spawn_missing_classes`.
+    """
+    namespace_dict = {
+        "_": schema_any,
+        "schema": schema_empty,
+        "Ephys": Ephys,
+    }
+    module = types.ModuleType("schema_empty")
+
+    # Add classes to the module's namespace
+    for k, v in namespace_dict.items():
+        setattr(module, k, v)
+
+    return module
 
 
-def test_schema_list():
+@pytest.fixture
+def schema_empty(connection_test, schema_any, prefix):
+    context = {**schema.LOCALS_ANY, "Ephys": Ephys}
+    schema_empty = dj.Schema(
+        prefix + "_test1", context=context, connection=connection_test
+    )
+    schema_empty(Ephys)
+    # load the rest of the classes
+    schema_empty.spawn_missing_classes(context=context)
+    yield schema_empty
+    schema_empty.drop()
+
+
+def test_schema_size_on_disk(schema_any):
+    number_of_bytes = schema_any.size_on_disk
+    assert isinstance(number_of_bytes, int)
+
+
+def test_schema_list(schema_any):
     schemas = dj.list_schemas()
-    assert_true(schema.schema.database in schemas)
+    assert schema_any.database in schemas
 
-
+    
 def test_schema_progress():
     expected_progress = pd.DataFrame({
         '__error_class': {'total': 13,
@@ -74,81 +112,92 @@ def test_schema_progress():
     assert expected_progress.equals(schema_progress)
 
 
-@raises(dj.errors.AccessError)
 def test_drop_unauthorized():
     info_schema = dj.schema("information_schema")
-    info_schema.drop()
+    with pytest.raises(dj.errors.AccessError):
+        info_schema.drop()
 
 
-def test_namespace_population():
+def test_namespace_population(schema_empty_module):
+    """
+    With the schema_empty_module fixture, this test
+    mimics the behavior of `spawn_missing_classes`, as if the schema
+    was declared in a separate module and `spawn_missing_classes` was called in that namespace.
+    """
+    # Spawn missing classes in the caller's (self) namespace.
+    schema_empty_module.schema.context = None
+    schema_empty_module.schema.spawn_missing_classes(context=None)
+    # Then add them to the mock module's namespace.
+    for k, v in locals().items():
+        if inspect.isclass(v):
+            setattr(schema_empty_module, k, v)
+
     for name, rel in getmembers(schema, relation_selector):
-        assert_true(
-            hasattr(schema_empty, name),
-            "{name} not found in schema_empty".format(name=name),
-        )
-        assert_true(
-            rel.__base__ is getattr(schema_empty, name).__base__,
-            "Wrong tier for {name}".format(name=name),
-        )
+        assert hasattr(
+            schema_empty_module, name
+        ), "{name} not found in schema_empty".format(name=name)
+        assert (
+            rel.__base__ is getattr(schema_empty_module, name).__base__
+        ), "Wrong tier for {name}".format(name=name)
 
         for name_part in dir(rel):
             if name_part[0].isupper() and part_selector(getattr(rel, name_part)):
-                assert_true(
-                    getattr(rel, name_part).__base__ is dj.Part,
-                    "Wrong tier for {name}".format(name=name_part),
-                )
+                assert (
+                    getattr(rel, name_part).__base__ is dj.Part
+                ), "Wrong tier for {name}".format(name=name_part)
 
 
-@raises(dj.DataJointError)
 def test_undecorated_table():
     """
-    Undecorated user relation classes should raise an informative exception upon first use
+    Undecorated user table classes should raise an informative exception upon first use
     """
 
     class UndecoratedClass(dj.Manual):
         definition = ""
 
     a = UndecoratedClass()
-    print(a.full_table_name)
+    with pytest.raises(dj.DataJointError):
+        print(a.full_table_name)
 
 
-@raises(dj.DataJointError)
-def test_reject_decorated_part():
+def test_reject_decorated_part(schema_any):
     """
     Decorating a dj.Part table should raise an informative exception.
     """
 
-    @schema.schema
     class A(dj.Manual):
         definition = ...
 
-        @schema.schema
         class B(dj.Part):
             definition = ...
 
+    with pytest.raises(dj.DataJointError):
+        schema_any(A.B)
+        schema_any(A)
 
-@raises(dj.DataJointError)
-def test_unauthorized_database():
+
+def test_unauthorized_database(db_creds_test):
     """
     an attempt to create a database to which user has no privileges should raise an informative exception.
     """
-    dj.Schema("unauthorized_schema", connection=dj.conn(reset=True, **CONN_INFO))
+    with pytest.raises(dj.DataJointError):
+        dj.Schema(
+            "unauthorized_schema", connection=dj.conn(reset=True, **db_creds_test)
+        )
 
 
-def test_drop_database():
+def test_drop_database(db_creds_test, prefix):
     schema = dj.Schema(
-        PREFIX + "_drop_test", connection=dj.conn(reset=True, **CONN_INFO)
+        prefix + "_drop_test", connection=dj.conn(reset=True, **db_creds_test)
     )
-    assert_true(schema.exists)
+    assert schema.exists
     schema.drop()
-    assert_false(schema.exists)
+    assert not schema.exists
     schema.drop()  # should do nothing
 
 
-def test_overlapping_name():
-    test_schema = dj.Schema(
-        PREFIX + "_overlapping_schema", connection=dj.conn(**CONN_INFO)
-    )
+def test_overlapping_name(connection_test, prefix):
+    test_schema = dj.Schema(prefix + "_overlapping_schema", connection=connection_test)
 
     @test_schema
     class Unit(dj.Manual):
@@ -174,9 +223,11 @@ def test_overlapping_name():
     test_schema.drop()
 
 
-def test_list_tables():
-    # https://github.com/datajoint/datajoint-python/issues/838
-    assert set(
+def test_list_tables(schema_simp):
+    """
+    https://github.com/datajoint/datajoint-python/issues/838
+    """
+    expected = set(
         [
             "reserved_word",
             "#l",
@@ -186,6 +237,10 @@ def test_list_tables():
             "__b__c",
             "__e",
             "__e__f",
+            "__e__g",
+            "__e__h",
+            "__e__m",
+            "__g",
             "#outfit_launch",
             "#outfit_launch__outfit_piece",
             "#i_j",
@@ -198,18 +253,27 @@ def test_list_tables():
             "#website",
             "profile",
             "profile__website",
+            "#select_p_k",
+            "#key_p_k",
         ]
-    ) == set(schema_simple.list_tables())
+    )
+    actual = set(schema_simp.list_tables())
+    assert actual == expected, f"Missing from list_tables(): {expected - actual}"
 
 
-def test_schema_save():
-    assert_true("class Experiment(dj.Imported)" in schema.schema.code)
-    assert_true("class Experiment(dj.Imported)" in schema_empty.schema.code)
+def test_schema_save_any(schema_any):
+    assert "class Experiment(dj.Imported)" in schema_any.code
 
 
-def test_uppercase_schema():
-    # https://github.com/datajoint/datajoint-python/issues/564
-    dj.conn(**CONN_INFO_ROOT, reset=True)
+def test_schema_save_empty(schema_empty):
+    assert "class Experiment(dj.Imported)" in schema_empty.code
+
+
+def test_uppercase_schema(db_creds_root):
+    """
+    https://github.com/datajoint/datajoint-python/issues/564
+    """
+    dj.conn(**db_creds_root, reset=True)
     schema1 = dj.Schema("Schema_A")
 
     @schema1

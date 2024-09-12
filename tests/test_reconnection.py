@@ -2,34 +2,31 @@
 Collection of test cases to test connection module.
 """
 
-from nose.tools import assert_true, assert_false, raises
+import pytest
 import datajoint as dj
 from datajoint import DataJointError
-from . import CONN_INFO
 
 
-class TestReconnect:
-    """
-    test reconnection
-    """
+@pytest.fixture
+def conn(connection_root, db_creds_root):
+    return dj.conn(reset=True, **db_creds_root)
 
-    def setup(self):
-        self.conn = dj.conn(reset=True, **CONN_INFO)
 
-    def test_close(self):
-        assert_true(self.conn.is_connected, "Connection should be alive")
-        self.conn.close()
-        assert_false(self.conn.is_connected, "Connection should now be closed")
+def test_close(conn):
+    assert conn.is_connected, "Connection should be alive"
+    conn.close()
+    assert not conn.is_connected, "Connection should now be closed"
 
-    def test_reconnect(self):
-        assert_true(self.conn.is_connected, "Connection should be alive")
-        self.conn.close()
-        self.conn.query("SHOW DATABASES;", reconnect=True).fetchall()
-        assert_true(self.conn.is_connected, "Connection should be alive")
 
-    @raises(DataJointError)
-    def test_reconnect_throws_error_in_transaction(self):
-        assert_true(self.conn.is_connected, "Connection should be alive")
-        with self.conn.transaction:
-            self.conn.close()
-            self.conn.query("SHOW DATABASES;", reconnect=True).fetchall()
+def test_reconnect(conn):
+    assert conn.is_connected, "Connection should be alive"
+    conn.close()
+    conn.query("SHOW DATABASES;", reconnect=True).fetchall()
+    assert conn.is_connected, "Connection should be alive"
+
+
+def test_reconnect_throws_error_in_transaction(conn):
+    assert conn.is_connected, "Connection should be alive"
+    with conn.transaction, pytest.raises(DataJointError):
+        conn.close()
+        conn.query("SHOW DATABASES;", reconnect=True).fetchall()

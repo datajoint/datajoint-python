@@ -1,18 +1,17 @@
 from functools import partial
 from pathlib import Path
-import logging
 import pandas
 import itertools
-import re
+import json
 import numpy as np
 import uuid
 import numbers
+
+from datajoint.condition import Top
 from . import blob, hash
 from .errors import DataJointError
 from .settings import config
 from .utils import safe_write
-
-logger = logging.getLogger(__name__.split(".")[0])
 
 
 class key:
@@ -47,6 +46,8 @@ def _get(connection, attr, data, squeeze, download_path):
     """
     if data is None:
         return
+    if attr.json:
+        return json.loads(data)
 
     extern = (
         connection.schemas[attr.database].external[attr.store]
@@ -59,7 +60,6 @@ def _get(connection, attr, data, squeeze, download_path):
 
     if attr.is_filepath:
         return adapt(extern.download_filepath(uuid.UUID(bytes=data))[0])
-
     if attr.is_attachment:
         # Steps:
         # 1. get the attachment filename
@@ -117,21 +117,6 @@ def _get(connection, attr, data, squeeze, download_path):
     )
 
 
-def _flatten_attribute_list(primary_key, attrs):
-    """
-    :param primary_key: list of attributes in primary key
-    :param attrs: list of attribute names, which may include "KEY", "KEY DESC" or "KEY ASC"
-    :return: generator of attributes where "KEY" is replaces with its component attributes
-    """
-    for a in attrs:
-        if re.match(r"^\s*KEY(\s+[aA][Ss][Cc])?\s*$", a):
-            yield from primary_key
-        elif re.match(r"^\s*KEY\s+[Dd][Ee][Ss][Cc]\s*$", a):
-            yield from (q + " DESC" for q in primary_key)
-        else:
-            yield a
-
-
 class Fetch:
     """
     A fetch object that handles retrieving elements from the table expression.
@@ -158,7 +143,7 @@ class Fetch:
         unpacks blob attributes.
 
         :param attrs: zero or more attributes to fetch. If not provided, the call will return all attributes of this
-                        relation. If provided, returns tuples with an entry for each attribute.
+                        table. If provided, returns tuples with an entry for each attribute.
         :param offset: the number of tuples to skip in the returned result
         :param limit: the maximum number of tuples to return
         :param order_by: a single attribute or the list of attributes to order the results. No ordering should be assumed
@@ -170,15 +155,15 @@ class Fetch:
                         True for .fetch('KEY')
         :param squeeze:  if True, remove extra dimensions from arrays
         :param download_path: for fetches that download data, e.g. attachments
-        :return: the contents of the relation in the form of a structured numpy.array or a dict list
+        :return: the contents of the table in the form of a structured numpy.array or a dict list
         """
-        if order_by is not None:
-            # if 'order_by' passed in a string, make into list
-            if isinstance(order_by, str):
-                order_by = [order_by]
-            # expand "KEY" or "KEY DESC"
-            order_by = list(
-                _flatten_attribute_list(self._expression.primary_key, order_by)
+        if offset or order_by or limit:
+            self._expression = self._expression.restrict(
+                Top(
+                    limit,
+                    order_by,
+                    offset,
+                )
             )
 
         attrs_as_dict = as_dict and attrs
@@ -210,13 +195,6 @@ class Fetch:
                     'use "array" or "frame"'.format(format)
                 )
 
-        if limit is None and offset is not None:
-            logger.warning(
-                "Offset set, but no limit. Setting limit to a large number. "
-                "Consider setting a limit explicitly."
-            )
-            limit = 8000000000  # just a very large number to effect no limit
-
         get = partial(
             _get,
             self._expression.connection,
@@ -242,20 +220,20 @@ class Fetch:
                 ]
             else:
                 return_values = [
-                    list(
-                        (to_dicts if as_dict else lambda x: x)(
-                            ret[self._expression.primary_key]
+                    (
+                        list(
+                            (to_dicts if as_dict else lambda x: x)(
+                                ret[self._expression.primary_key]
+                            )
                         )
+                        if is_key(attribute)
+                        else ret[attribute]
                     )
-                    if is_key(attribute)
-                    else ret[attribute]
                     for attribute in attrs
                 ]
                 ret = return_values[0] if len(attrs) == 1 else return_values
         else:  # fetch all attributes as a numpy.record_array or pandas.DataFrame
-            cur = self._expression.cursor(
-                as_dict=as_dict, limit=limit, offset=offset, order_by=order_by
-            )
+            cur = self._expression.cursor(as_dict=as_dict)
             heading = self._expression.heading
             if as_dict:
                 ret = [
@@ -270,12 +248,14 @@ class Fetch:
                     else np.dtype(
                         [
                             (
-                                name,
-                                type(value),
-                            )  # use the first element to determine blob type
-                            if heading[name].is_blob
-                            and isinstance(value, numbers.Number)
-                            else (name, heading.as_dtype[name])
+                                (
+                                    name,
+                                    type(value),
+                                )  # use the first element to determine blob type
+                                if heading[name].is_blob
+                                and isinstance(value, numbers.Number)
+                                else (name, heading.as_dtype[name])
+                            )
                             for value, name in zip(ret[0], heading.as_dtype.names)
                         ]
                     )
@@ -317,7 +297,7 @@ class Fetch1:
                  If attrs is empty, the return result is a dict
         :param squeeze:  When true, remove extra dimensions from arrays in attributes
         :param download_path: for fetches that download data, e.g. attachments
-        :return: the one tuple in the relation in the form of a dict
+        :return: the one tuple in the table in the form of a dict
         """
         heading = self._expression.heading
 
@@ -351,9 +331,11 @@ class Fetch1:
                     "fetch1 should only return one tuple. %d tuples found" % len(result)
                 )
             return_values = tuple(
-                next(to_dicts(result[self._expression.primary_key]))
-                if is_key(attribute)
-                else result[attribute][0]
+                (
+                    next(to_dicts(result[self._expression.primary_key]))
+                    if is_key(attribute)
+                    else result[attribute][0]
+                )
                 for attribute in attrs
             )
             ret = return_values[0] if len(attrs) == 1 else return_values

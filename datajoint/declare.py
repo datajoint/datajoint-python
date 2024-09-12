@@ -2,12 +2,14 @@
 This module hosts functions to convert DataJoint table definitions into mysql table definitions, and to
 declare the corresponding mysql tables.
 """
+
 import re
 import pyparsing as pp
 import logging
-import warnings
+from hashlib import sha1
 from .errors import DataJointError, _support_filepath_types, FILEPATH_FEATURE_SWITCH
 from .attribute_adapter import get_adapter
+from .condition import translate_attribute
 
 UUID_DATA_TYPE = "binary(16)"
 MAX_TABLE_NAME_LENGTH = 64
@@ -24,6 +26,7 @@ TYPE_PATTERN = {
         DECIMAL=r"(decimal|numeric)(\s*\(.+\))?(\s+unsigned)?$",
         FLOAT=r"(double|float|real)(\s*\(.+\))?(\s+unsigned)?$",
         STRING=r"(var)?char\s*\(.+\)$",
+        JSON=r"json$",
         ENUM=r"enum\s*\(.+\)$",
         BOOL=r"bool(ean)?$",  # aliased to tinyint(1)
         TEMPORAL=r"(date|datetime|time|timestamp|year)(\s*\(.+\))?$",
@@ -130,25 +133,9 @@ def build_attribute_parser():
     return attribute_name + pp.Optional(default) + colon + data_type + comment
 
 
-def build_index_parser():
-    left = pp.Literal("(").suppress()
-    right = pp.Literal(")").suppress()
-    unique = pp.Optional(pp.CaselessKeyword("unique")).setResultsName("unique")
-    index = pp.CaselessKeyword("index").suppress()
-    attribute_name = pp.Word(pp.srange("[a-z]"), pp.srange("[a-z0-9_]"))
-    return (
-        unique
-        + index
-        + left
-        + pp.delimitedList(attribute_name).setResultsName("attr_list")
-        + right
-    )
-
-
 foreign_key_parser_old = build_foreign_key_parser_old()
 foreign_key_parser = build_foreign_key_parser()
 attribute_parser = build_attribute_parser()
-index_parser = build_index_parser()
 
 
 def is_foreign_key(line):
@@ -178,19 +165,14 @@ def compile_foreign_key(
     from .table import Table
     from .expression import QueryExpression
 
-    obsolete = False  # See issue #436.  Old style to be deprecated in a future release
     try:
         result = foreign_key_parser.parseString(line)
-    except pp.ParseException:
-        try:
-            result = foreign_key_parser_old.parseString(line)
-        except pp.ParseBaseException as err:
-            raise DataJointError('Parsing error in line "%s". %s.' % (line, err))
-        else:
-            obsolete = True
+    except pp.ParseException as err:
+        raise DataJointError('Parsing error in line "%s". %s.' % (line, err))
+
     try:
         ref = eval(result.ref_table, context)
-    except NameError if obsolete else Exception:
+    except Exception:
         raise DataJointError(
             "Foreign key reference %s could not be resolved" % result.ref_table
         )
@@ -206,18 +188,6 @@ def compile_foreign_key(
             'Primary dependencies cannot be nullable in line "{line}"'.format(line=line)
         )
 
-    if obsolete:
-        logger.warning(
-            'Line "{line}" uses obsolete syntax that will no longer be supported in datajoint 0.14. '
-            "For details, see issue #780 https://github.com/datajoint/datajoint-python/issues/780".format(
-                line=line
-            )
-        )
-        if not isinstance(ref, type) or not issubclass(ref, Table):
-            raise DataJointError(
-                "Foreign key reference %r must be a valid query" % result.ref_table
-            )
-
     if isinstance(ref, type) and issubclass(ref, Table):
         ref = ref()
 
@@ -232,55 +202,6 @@ def compile_foreign_key(
             'Dependency "%s" is not supported (yet). Use a base table or its projection.'
             % result.ref_table
         )
-
-    if obsolete:
-        # for backward compatibility with old-style dependency declarations.  See issue #436
-        if not isinstance(ref, Table):
-            DataJointError(
-                'Dependency "%s" is not supported. Check documentation.'
-                % result.ref_table
-            )
-        if not all(r in ref.primary_key for r in result.ref_attrs):
-            raise DataJointError('Invalid foreign key attributes in "%s"' % line)
-        try:
-            raise DataJointError(
-                'Duplicate attributes "{attr}" in "{line}"'.format(
-                    attr=next(attr for attr in result.new_attrs if attr in attributes),
-                    line=line,
-                )
-            )
-        except StopIteration:
-            pass  # the normal outcome
-
-        # Match the primary attributes of the referenced table to local attributes
-        new_attrs = list(result.new_attrs)
-        ref_attrs = list(result.ref_attrs)
-
-        # special case, the renamed attribute is implicit
-        if new_attrs and not ref_attrs:
-            if len(new_attrs) != 1:
-                raise DataJointError(
-                    'Renamed foreign key must be mapped to the primary key in "%s"'
-                    % line
-                )
-            if len(ref.primary_key) == 1:
-                # if the primary key has one attribute, allow implicit renaming
-                ref_attrs = ref.primary_key
-            else:
-                # if only one primary key attribute remains, then allow implicit renaming
-                ref_attrs = [attr for attr in ref.primary_key if attr not in attributes]
-                if len(ref_attrs) != 1:
-                    raise DataJointError(
-                        'Could not resolve which primary key attribute should be referenced in "%s"'
-                        % line
-                    )
-
-        if len(new_attrs) != len(ref_attrs):
-            raise DataJointError('Mismatched attributes in foreign key "%s"' % line)
-
-        if ref_attrs:
-            # convert to projected dependency
-            ref = ref.proj(**dict(zip(new_attrs, ref_attrs)))
 
     # declare new foreign key attributes
     for attr in ref.primary_key:
@@ -342,7 +263,7 @@ def prepare_declare(definition, context):
                 foreign_key_sql,
                 index_sql,
             )
-        elif re.match(r"^(unique\s+)?index[^:]*$", line, re.I):  # index
+        elif re.match(r"^(unique\s+)?index\s*.*$", line, re.I):  # index
             compile_index(line, index_sql)
         else:
             name, sql, store = compile_attribute(line, in_key, foreign_key_sql, context)
@@ -389,6 +310,18 @@ def declare(full_table_name, definition, context):
         index_sql,
         external_stores,
     ) = prepare_declare(definition, context)
+
+    metadata_attr_sql = [
+        "`_{full_table_name}_timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP"
+    ]
+    attribute_sql.extend(
+        attr.format(
+            full_table_name=sha1(
+                full_table_name.replace("`", "").encode("utf-8")
+            ).hexdigest()
+        )
+        for attr in metadata_attr_sql
+    )
 
     if not primary_key:
         raise DataJointError("Table must have a primary key")
@@ -463,9 +396,7 @@ def _make_attribute_alter(new, old, primary_key):
                         command=(
                             "ADD"
                             if (old_name or new_name) not in old_names
-                            else "MODIFY"
-                            if not old_name
-                            else "CHANGE `%s`" % old_name
+                            else "MODIFY" if not old_name else "CHANGE `%s`" % old_name
                         ),
                         new_def=new_def,
                         after="" if after is None else "AFTER `%s`" % after,
@@ -516,10 +447,24 @@ def alter(definition, old_definition, context):
 
 
 def compile_index(line, index_sql):
-    match = index_parser.parseString(line)
+    def format_attribute(attr):
+        match, attr = translate_attribute(attr)
+        if match is None:
+            return attr
+        if match["path"] is None:
+            return f"`{attr}`"
+        return f"({attr})"
+
+    match = re.match(r"(?P<unique>unique\s+)?index\s*\(\s*(?P<args>.*)\)", line, re.I)
+    if match is None:
+        raise DataJointError(f'Table definition syntax error in line "{line}"')
+    match = match.groupdict()
+
+    attr_list = re.findall(r"(?:[^,(]|\([^)]*\))+", match["args"])
     index_sql.append(
-        "{unique} index ({attrs})".format(
-            unique=match.unique, attrs=",".join("`%s`" % a for a in match.attr_list)
+        "{unique}index ({attrs})".format(
+            unique="unique " if match["unique"] else "",
+            attrs=",".join(format_attribute(a.strip()) for a in attr_list),
         )
     )
 

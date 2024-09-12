@@ -1,29 +1,12 @@
 import datajoint as dj
+import inspect
 import networkx as nx
 import json
 from pathlib import Path
 import tempfile
-from datajoint import errors
-
-from . import PREFIX, CONN_INFO, S3_CONN_INFO
-
-stores_config = {
-    "repo-s3": dict(
-        S3_CONN_INFO, protocol="s3", location="adapted/repo", stage=tempfile.mkdtemp()
-    )
-}
-
-dj.config["stores"] = stores_config
-
-schema_name = PREFIX + "_test_custom_datatype"
-schema = dj.schema(schema_name, connection=dj.conn(**CONN_INFO))
-
-
-errors._switch_adapted_types(True)  # enable adapted types for testing only
 
 
 class GraphAdapter(dj.AttributeAdapter):
-
     attribute_type = "longblob"  # this is how the attribute will be declared
 
     @staticmethod
@@ -36,22 +19,6 @@ class GraphAdapter(dj.AttributeAdapter):
         # convert graph object into an edge list
         assert isinstance(obj, nx.Graph)
         return list(obj.edges)
-
-
-# instantiate for use as a datajoint type
-graph = GraphAdapter()
-
-
-@schema
-class Connectivity(dj.Manual):
-    definition = """
-    connid : int
-    ---
-    conn_graph = null : <graph>
-    """
-
-
-errors._switch_filepath_types(True)
 
 
 class LayoutToFilepath(dj.AttributeAdapter):
@@ -74,10 +41,14 @@ class LayoutToFilepath(dj.AttributeAdapter):
         return path
 
 
-layout_to_filepath = LayoutToFilepath()
+class Connectivity(dj.Manual):
+    definition = """
+    connid : int
+    ---
+    conn_graph = null : <graph>
+    """
 
 
-@schema
 class Layout(dj.Manual):
     definition = """
     # stores graph layout
@@ -87,5 +58,5 @@ class Layout(dj.Manual):
     """
 
 
-errors._switch_filepath_types(False)
-errors._switch_adapted_types(False)  # disable again
+LOCALS_ADAPTED = {k: v for k, v in locals().items() if inspect.isclass(v)}
+__all__ = list(LOCALS_ADAPTED)

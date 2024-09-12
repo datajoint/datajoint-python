@@ -1,44 +1,57 @@
-from nose.tools import assert_true, assert_false, assert_equal, raises
+import pytest
 import os
 import numpy as np
 from pathlib import Path
 import tempfile
 import datajoint as dj
-from . import PREFIX, CONN_INFO
 from datajoint import DataJointError
 
-schema = dj.Schema(PREFIX + "_update1", connection=dj.conn(**CONN_INFO))
 
-dj.config["stores"]["update_store"] = dict(protocol="file", location=tempfile.mkdtemp())
-
-dj.config["stores"]["update_repo"] = dict(
-    stage=tempfile.mkdtemp(), protocol="file", location=tempfile.mkdtemp()
-)
-
-
-scratch_folder = tempfile.mkdtemp()
-
-dj.errors._switch_filepath_types(True)
-
-
-@schema
 class Thing(dj.Manual):
     definition = """
-    thing   :   int    
+    thing   :   int
     ---
-    number=0  : int   
+    number=0  : int
     frac    : float
     picture = null    :   attach@update_store
-    params = null  : longblob 
+    params = null  : longblob
     img_file = null: filepath@update_repo
     timestamp = CURRENT_TIMESTAMP :   datetime
     """
 
 
-def test_update1():
-    """test normal updates"""
+@pytest.fixture(scope="module")
+def mock_stores_update(tmpdir_factory):
+    og_stores_config = dj.config.get("stores")
+    if "stores" not in dj.config:
+        dj.config["stores"] = {}
+    dj.config["stores"]["update_store"] = dict(
+        protocol="file", location=tmpdir_factory.mktemp("store")
+    )
+    dj.config["stores"]["update_repo"] = dict(
+        stage=tmpdir_factory.mktemp("repo_stage"),
+        protocol="file",
+        location=tmpdir_factory.mktemp("repo_loc"),
+    )
+    yield
+    if og_stores_config is None:
+        del dj.config["stores"]
+    else:
+        dj.config["stores"] = og_stores_config
 
-    dj.errors._switch_filepath_types(True)
+
+@pytest.fixture
+def schema_update1(connection_test, prefix):
+    schema = dj.Schema(
+        prefix + "_update1", context=dict(Thing=Thing), connection=connection_test
+    )
+    schema(Thing)
+    yield schema
+    schema.drop()
+
+
+def test_update1(tmpdir, enable_filepath_feature, schema_update1, mock_stores_update):
+    """Test normal updates"""
     # CHECK 1 -- initial insert
     key = dict(thing=1)
     Thing.insert1(dict(key, frac=0.5))
@@ -48,12 +61,12 @@ def test_update1():
     # numbers and datetimes
     Thing.update1(dict(key, number=3, frac=30, timestamp="2020-01-01 10:00:00"))
     # attachment
-    attach_file = Path(scratch_folder, "attach1.dat")
+    attach_file = Path(tmpdir, "attach1.dat")
     buffer1 = os.urandom(100)
     attach_file.write_bytes(buffer1)
     Thing.update1(dict(key, picture=attach_file))
     attach_file.unlink()
-    assert_false(attach_file.is_file())
+    assert not attach_file.is_file()
 
     # filepath
     stage_path = dj.config["stores"]["update_repo"]["stage"]
@@ -65,9 +78,9 @@ def test_update1():
         f.write(original_file_data)
     Thing.update1(dict(key, img_file=managed_file))
     managed_file.unlink()
-    assert_false(managed_file.is_file())
+    assert not managed_file.is_file()
 
-    check2 = Thing.fetch1(download_path=scratch_folder)
+    check2 = Thing.fetch1(download_path=tmpdir)
     buffer2 = Path(check2["picture"]).read_bytes()  # read attachment
     final_file_data = managed_file.read_bytes()  # read filepath
 
@@ -84,11 +97,11 @@ def test_update1():
     )
     check3 = Thing.fetch1()
 
-    assert_true(
+    assert (
         check1["number"] == 0 and check1["picture"] is None and check1["params"] is None
     )
 
-    assert_true(
+    assert (
         check2["number"] == 3
         and check2["frac"] == 30.0
         and check2["picture"] is not None
@@ -96,7 +109,7 @@ def test_update1():
         and buffer1 == buffer2
     )
 
-    assert_true(
+    assert (
         check3["number"] == 0
         and check3["frac"] == 30.0
         and check3["picture"] is None
@@ -104,23 +117,30 @@ def test_update1():
         and isinstance(check3["params"], np.ndarray)
     )
 
-    assert_true(check3["timestamp"] > check2["timestamp"])
-    assert_equal(buffer1, buffer2)
-    assert_equal(original_file_data, final_file_data)
+    assert check3["timestamp"] > check2["timestamp"]
+    assert buffer1 == buffer2
+    assert original_file_data == final_file_data
 
 
-@raises(DataJointError)
-def test_update1_nonexistent():
-    Thing.update1(dict(thing=100, frac=0.5))  # updating a non-existent entry
+def test_update1_nonexistent(
+    enable_filepath_feature, schema_update1, mock_stores_update
+):
+    with pytest.raises(DataJointError):
+        # updating a non-existent entry
+        Thing.update1(dict(thing=100, frac=0.5))
 
 
-@raises(DataJointError)
-def test_update1_noprimary():
-    Thing.update1(dict(number=None))  # missing primary key
+def test_update1_noprimary(enable_filepath_feature, schema_update1, mock_stores_update):
+    with pytest.raises(DataJointError):
+        # missing primary key
+        Thing.update1(dict(number=None))
 
 
-@raises(DataJointError)
-def test_update1_misspelled_attribute():
+def test_update1_misspelled_attribute(
+    enable_filepath_feature, schema_update1, mock_stores_update
+):
     key = dict(thing=17)
     Thing.insert1(dict(key, frac=1.5))
-    Thing.update1(dict(key, numer=3))  # misspelled attribute
+    with pytest.raises(DataJointError):
+        # misspelled attribute
+        Thing.update1(dict(key, numer=3))

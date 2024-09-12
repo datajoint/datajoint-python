@@ -1,22 +1,31 @@
 import pymysql
 from getpass import getpass
+from packaging import version
 from .connection import conn
 from .settings import config
 from .utils import user_choice
+import logging
+
+logger = logging.getLogger(__name__.split(".")[0])
 
 
-def set_password(
-    new_password=None, connection=None, update_config=None
-):  # pragma: no cover
+def set_password(new_password=None, connection=None, update_config=None):
     connection = conn() if connection is None else connection
     if new_password is None:
         new_password = getpass("New password: ")
         confirm_password = getpass("Confirm password: ")
         if new_password != confirm_password:
-            print("Failed to confirm the password! Aborting password change.")
+            logger.warning("Failed to confirm the password! Aborting password change.")
             return
-    connection.query("SET PASSWORD = PASSWORD('%s')" % new_password)
-    print("Password updated.")
+
+    if version.parse(
+        connection.query("select @@version;").fetchone()[0]
+    ) >= version.parse("5.7"):
+        # SET PASSWORD is deprecated as of MySQL 5.7 and removed in 8+
+        connection.query("ALTER USER user() IDENTIFIED BY '%s';" % new_password)
+    else:
+        connection.query("SET PASSWORD = PASSWORD('%s')" % new_password)
+    logger.info("Password updated.")
 
     if update_config or (
         update_config is None and user_choice("Update local setting?") == "yes"
@@ -25,7 +34,7 @@ def set_password(
         config.save_local(verbose=True)
 
 
-def kill(restriction=None, connection=None, order_by=None):  # pragma: no cover
+def kill(restriction=None, connection=None, order_by=None):
     """
     view and kill database connections.
 
@@ -81,7 +90,7 @@ def kill(restriction=None, connection=None, order_by=None):  # pragma: no cover
                 try:
                     connection.query("kill %d" % pid)
                 except pymysql.err.InternalError:
-                    print("Process not found")
+                    logger.warn("Process not found")
 
 
 def kill_quick(restriction=None, connection=None):

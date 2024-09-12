@@ -1,3 +1,4 @@
+import pytest
 import datajoint.errors as djerr
 import datajoint.plugin as p
 import pkg_resources

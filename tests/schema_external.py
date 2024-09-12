@@ -1,36 +1,13 @@
 """
-a schema for testing external attributes
+A schema for testing external attributes
 """
 
 import tempfile
+import inspect
 import datajoint as dj
-
-from . import PREFIX, CONN_INFO, S3_CONN_INFO
 import numpy as np
 
-schema = dj.Schema(PREFIX + "_extern", connection=dj.conn(**CONN_INFO))
 
-
-stores_config = {
-    "raw": dict(protocol="file", location=tempfile.mkdtemp()),
-    "repo": dict(
-        stage=tempfile.mkdtemp(), protocol="file", location=tempfile.mkdtemp()
-    ),
-    "repo-s3": dict(
-        S3_CONN_INFO, protocol="s3", location="dj/repo", stage=tempfile.mkdtemp()
-    ),
-    "local": dict(protocol="file", location=tempfile.mkdtemp(), subfolding=(1, 1)),
-    "share": dict(
-        S3_CONN_INFO, protocol="s3", location="dj/store/repo", subfolding=(2, 4)
-    ),
-}
-
-dj.config["stores"] = stores_config
-
-dj.config["cache"] = tempfile.mkdtemp()
-
-
-@schema
 class Simple(dj.Manual):
     definition = """
     simple  : int
@@ -39,7 +16,6 @@ class Simple(dj.Manual):
     """
 
 
-@schema
 class SimpleRemote(dj.Manual):
     definition = """
     simple  : int
@@ -48,7 +24,6 @@ class SimpleRemote(dj.Manual):
     """
 
 
-@schema
 class Seed(dj.Lookup):
     definition = """
     seed :  int
@@ -56,7 +31,6 @@ class Seed(dj.Lookup):
     contents = zip(range(4))
 
 
-@schema
 class Dimension(dj.Lookup):
     definition = """
     dim  : int
@@ -66,7 +40,6 @@ class Dimension(dj.Lookup):
     contents = ([0, [100, 50]], [1, [3, 4, 8, 6]])
 
 
-@schema
 class Image(dj.Computed):
     definition = """
     # table for storing
@@ -83,7 +56,6 @@ class Image(dj.Computed):
         self.insert1(dict(key, img=img, neg=-img.astype(np.float32)))
 
 
-@schema
 class Attach(dj.Manual):
     definition = """
     # table for storing attachments
@@ -94,27 +66,23 @@ class Attach(dj.Manual):
     """
 
 
-dj.errors._switch_filepath_types(True)
-
-
-@schema
 class Filepath(dj.Manual):
     definition = """
-    # table for file management 
+    # table for file management
     fnum : int # test comment containing :
     ---
-    img : filepath@repo  # managed files 
+    img : filepath@repo  # managed files
     """
 
 
-@schema
 class FilepathS3(dj.Manual):
     definition = """
-    # table for file management 
-    fnum : int 
+    # table for file management
+    fnum : int
     ---
-    img : filepath@repo-s3  # managed files 
+    img : filepath@repo-s3  # managed files
     """
 
 
-dj.errors._switch_filepath_types(False)
+LOCALS_EXTERNAL = {k: v for k, v in locals().items() if inspect.isclass(v)}
+__all__ = list(LOCALS_EXTERNAL)

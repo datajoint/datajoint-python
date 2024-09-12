@@ -56,21 +56,23 @@ def repr_html(query_expression):
 
     css = """
     <style type="text/css">
-        .Relation{
+        .Table{
             border-collapse:collapse;
         }
-        .Relation th{
+        .Table th{
             background: #A0A0A0; color: #ffffff; padding:4px; border:#f0e0e0 1px solid;
             font-weight: normal; font-family: monospace; font-size: 100%;
         }
-        .Relation td{
+        .Table td{
             padding:4px; border:#f0e0e0 1px solid; font-size:100%;
         }
-        .Relation tr:nth-child(odd){
+        .Table tr:nth-child(odd){
             background: #ffffff;
+            color: #000000;
         }
-        .Relation tr:nth-child(even){
+        .Table tr:nth-child(even){
             background: #f3f1ff;
+            color: #000000;
         }
         /* Tooltip container */
         .djtooltip {
@@ -111,7 +113,7 @@ def repr_html(query_expression):
     {css}
     {title}
         <div style="max-height:1000px;max-width:1500px;overflow:auto;">
-        <table border="1" class="Relation">
+        <table border="1" class="Table">
             <thead> <tr style="text-align: right;"> <th> {head} </th> </tr> </thead>
             <tbody> <tr> {body} </tr> </tbody>
         </table>
@@ -124,9 +126,9 @@ def repr_html(query_expression):
             head_template.format(
                 column=c,
                 comment=heading.attributes[c].comment,
-                primary="primary"
-                if c in query_expression.primary_key
-                else "nonprimary",
+                primary=(
+                    "primary" if c in query_expression.primary_key else "nonprimary"
+                ),
             )
             for c in heading.names
         ),
@@ -143,7 +145,9 @@ def repr_html(query_expression):
                 for tup in tuples
             ]
         ),
-        count=("<p>Total: %d</p>" % len(rel))
-        if config["display.show_tuple_count"]
-        else "",
+        count=(
+            ("<p>Total: %d</p>" % len(rel))
+            if config["display.show_tuple_count"]
+            else ""
+        ),
     )

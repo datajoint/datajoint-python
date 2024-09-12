@@ -1,13 +1,10 @@
 import uuid
+import inspect
 import datajoint as dj
-from . import PREFIX, CONN_INFO
-
-schema = dj.Schema(PREFIX + "_test1", connection=dj.conn(**CONN_INFO))
 
 top_level_namespace_id = uuid.UUID("00000000-0000-0000-0000-000000000000")
 
 
-@schema
 class Basic(dj.Manual):
     definition = """
     item : uuid
@@ -16,7 +13,6 @@ class Basic(dj.Manual):
     """
 
 
-@schema
 class Topic(dj.Manual):
     definition = """
     # A topic for items
@@ -32,12 +28,11 @@ class Topic(dj.Manual):
         )
 
 
-@schema
 class Item(dj.Computed):
     definition = """
-    item_id : uuid  # internal identification of 
+    item_id : uuid  # internal identification of
     ---
-    -> Topic 
+    -> Topic
     word : varchar(8000)
     """
 
@@ -48,3 +43,7 @@ class Item(dj.Computed):
             self.insert1(
                 dict(key, word=word, item_id=uuid.uuid5(key["topic_id"], word))
             )
+
+
+LOCALS_UUID = {k: v for k, v in locals().items() if inspect.isclass(v)}
+__all__ = list(LOCALS_UUID)

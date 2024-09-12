@@ -6,12 +6,8 @@ import random
 import numpy as np
 import datajoint as dj
 import inspect
-from . import PREFIX, CONN_INFO
-
-schema = dj.Schema(PREFIX + "_test1", connection=dj.conn(**CONN_INFO))
 
 
-@schema
 class TTest(dj.Lookup):
     """
     doc string
@@ -25,7 +21,6 @@ class TTest(dj.Lookup):
     contents = [(k, 2 * k) for k in range(10)]
 
 
-@schema
 class TTest2(dj.Manual):
     definition = """
     key   :   int     # key
@@ -34,19 +29,17 @@ class TTest2(dj.Manual):
     """
 
 
-@schema
 class TTest3(dj.Manual):
     definition = """
-    key : int 
+    key : int
     ---
     value : varchar(300)
     """
 
 
-@schema
 class NullableNumbers(dj.Manual):
     definition = """
-    key : int 
+    key : int
     ---
     fvalue = null : float
     dvalue = null : double
@@ -54,7 +47,6 @@ class NullableNumbers(dj.Manual):
     """
 
 
-@schema
 class TTestExtra(dj.Manual):
     """
     clone of Test but with an extra field
@@ -63,7 +55,6 @@ class TTestExtra(dj.Manual):
     definition = TTest.definition + "\nextra : int # extra int\n"
 
 
-@schema
 class TTestNoExtra(dj.Manual):
     """
     clone of Test but with no extra fields
@@ -72,7 +63,6 @@ class TTestNoExtra(dj.Manual):
     definition = TTest.definition
 
 
-@schema
 class Auto(dj.Lookup):
     definition = """
     id  :int auto_increment
@@ -85,7 +75,6 @@ class Auto(dj.Lookup):
             self.insert([dict(name="Godel"), dict(name="Escher"), dict(name="Bach")])
 
 
-@schema
 class User(dj.Lookup):
     definition = """      # lab members
     username: varchar(12)
@@ -101,7 +90,6 @@ class User(dj.Lookup):
     ]
 
 
-@schema
 class Subject(dj.Lookup):
     definition = """  # Basic information about animal subjects used in experiments
     subject_id   :int  #  unique subject id
@@ -121,7 +109,6 @@ class Subject(dj.Lookup):
     ]
 
 
-@schema
 class Language(dj.Lookup):
     definition = """
     # languages spoken by some of the developers
@@ -139,7 +126,6 @@ class Language(dj.Lookup):
     ]
 
 
-@schema
 class Experiment(dj.Imported):
     definition = """  # information about experiments
     -> Subject
@@ -161,7 +147,7 @@ class Experiment(dj.Imported):
         from datetime import date, timedelta
 
         users = [None, None] + list(User().fetch()["username"])
-        random.seed("Amazing Seed")
+        random.seed("Amazing Seed4")
         self.insert(
             dict(
                 key,
@@ -175,7 +161,6 @@ class Experiment(dj.Imported):
         )
 
 
-@schema
 class Trial(dj.Imported):
     definition = """   # a trial within an experiment
     -> Experiment.proj(animal='subject_id')
@@ -205,7 +190,6 @@ class Trial(dj.Imported):
             )
 
 
-@schema
 class Ephys(dj.Imported):
     definition = """    # some kind of electrophysiological recording
     -> Trial
@@ -244,7 +228,6 @@ class Ephys(dj.Imported):
         )
 
 
-@schema
 class Image(dj.Manual):
     definition = """
     # table for testing blob inserts
@@ -254,7 +237,6 @@ class Image(dj.Manual):
     """
 
 
-@schema
 class UberTrash(dj.Lookup):
     definition = """
     id : int
@@ -263,7 +245,6 @@ class UberTrash(dj.Lookup):
     contents = [(1,)]
 
 
-@schema
 class UnterTrash(dj.Lookup):
     definition = """
     -> UberTrash
@@ -273,15 +254,13 @@ class UnterTrash(dj.Lookup):
     contents = [(1, 1), (1, 2)]
 
 
-@schema
 class SimpleSource(dj.Lookup):
     definition = """
     id : int  # id
     """
-    contents = ((x,) for x in range(10))
+    contents = [(x,) for x in range(10)]
 
 
-@schema
 class SigIntTable(dj.Computed):
     definition = """
     -> SimpleSource
@@ -291,7 +270,6 @@ class SigIntTable(dj.Computed):
         raise KeyboardInterrupt
 
 
-@schema
 class SigTermTable(dj.Computed):
     definition = """
     -> SimpleSource
@@ -301,7 +279,6 @@ class SigTermTable(dj.Computed):
         raise SystemExit("SIGTERM received")
 
 
-@schema
 class DjExceptionName(dj.Lookup):
     definition = """
     dj_exception_name:    char(64)
@@ -316,7 +293,6 @@ class DjExceptionName(dj.Lookup):
         ]
 
 
-@schema
 class ErrorClass(dj.Computed):
     definition = """
     -> DjExceptionName
@@ -327,15 +303,13 @@ class ErrorClass(dj.Computed):
         raise getattr(dj.errors, exception_name)
 
 
-@schema
 class DecimalPrimaryKey(dj.Lookup):
     definition = """
     id  :  decimal(4,3)
     """
-    contents = zip((0.1, 0.25, 3.99))
+    contents = list(zip((0.1, 0.25, 3.99)))
 
 
-@schema
 class IndexRich(dj.Manual):
     definition = """
     -> Subject
@@ -348,14 +322,12 @@ class IndexRich(dj.Manual):
 
 
 #  Schema for issue 656
-@schema
 class ThingA(dj.Manual):
     definition = """
     a: int
     """
 
 
-@schema
 class ThingB(dj.Manual):
     definition = """
     b1: int
@@ -365,7 +337,6 @@ class ThingB(dj.Manual):
     """
 
 
-@schema
 class ThingC(dj.Manual):
     definition = """
     -> ThingA
@@ -374,7 +345,21 @@ class ThingC(dj.Manual):
     """
 
 
-@schema
+#  Additional tables for #1159
+class ThingD(dj.Manual):
+    definition = """
+    d: int
+    ---
+    -> ThingC
+    """
+
+
+class ThingE(dj.Manual):
+    definition = """
+    -> ThingD
+    """
+
+
 class Parent(dj.Lookup):
     definition = """
     parent_id: int
@@ -384,7 +369,6 @@ class Parent(dj.Lookup):
     contents = [(1, "Joe")]
 
 
-@schema
 class Child(dj.Lookup):
     definition = """
     -> Parent
@@ -396,13 +380,11 @@ class Child(dj.Lookup):
 
 
 # Related to issue #886 (8), #883 (5)
-@schema
 class ComplexParent(dj.Lookup):
     definition = "\n".join(["parent_id_{}: int".format(i + 1) for i in range(8)])
     contents = [tuple(i for i in range(8))]
 
 
-@schema
 class ComplexChild(dj.Lookup):
     definition = "\n".join(
         ["-> ComplexParent"] + ["child_id_{}: int".format(i + 1) for i in range(1)]
@@ -410,7 +392,6 @@ class ComplexChild(dj.Lookup):
     contents = [tuple(i for i in range(9))]
 
 
-@schema
 class SubjectA(dj.Lookup):
     definition = """
     subject_id: varchar(32)
@@ -425,7 +406,6 @@ class SubjectA(dj.Lookup):
     ]
 
 
-@schema
 class SessionA(dj.Lookup):
     definition = """
     -> SubjectA
@@ -441,7 +421,6 @@ class SessionA(dj.Lookup):
     ]
 
 
-@schema
 class SessionStatusA(dj.Lookup):
     definition = """
     -> SessionA
@@ -456,7 +435,6 @@ class SessionStatusA(dj.Lookup):
     ]
 
 
-@schema
 class SessionDateA(dj.Lookup):
     definition = """
     -> SubjectA
@@ -470,7 +448,6 @@ class SessionDateA(dj.Lookup):
     ]
 
 
-@schema
 class Stimulus(dj.Lookup):
     definition = """
     id: int
@@ -480,10 +457,13 @@ class Stimulus(dj.Lookup):
     """
 
 
-@schema
 class Longblob(dj.Manual):
     definition = """
     id: int
     ---
     data: longblob
     """
+
+
+LOCALS_ANY = {k: v for k, v in locals().items() if inspect.isclass(v)}
+__all__ = list(LOCALS_ANY)

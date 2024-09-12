@@ -1,12 +1,7 @@
-from . import PREFIX, CONN_INFO
+import pytest
 import datajoint as dj
-from nose.tools import assert_true
 
 
-schema = dj.Schema(PREFIX + "_keywords", connection=dj.conn(**CONN_INFO))
-
-
-@schema
 class A(dj.Manual):
     definition = """
     a_id: int   # a id
@@ -33,14 +28,22 @@ class B(dj.Manual):
         """
 
 
-@schema
 class D(B):
     source = A
 
 
-def test_inherited_part_table():
-    assert_true("a_id" in D().heading.attributes)
-    assert_true("b_id" in D().heading.attributes)
-    assert_true("a_id" in D.C().heading.attributes)
-    assert_true("b_id" in D.C().heading.attributes)
-    assert_true("name" in D.C().heading.attributes)
+@pytest.fixture
+def schema_kwd(connection_test, prefix):
+    schema = dj.Schema(prefix + "_keywords", connection=connection_test)
+    schema(A)
+    schema(D)
+    yield schema
+    schema.drop()
+
+
+def test_inherited_part_table(schema_kwd):
+    assert "a_id" in D().heading.attributes
+    assert "b_id" in D().heading.attributes
+    assert "a_id" in D.C().heading.attributes
+    assert "b_id" in D.C().heading.attributes
+    assert "name" in D.C().heading.attributes

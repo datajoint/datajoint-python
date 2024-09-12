@@ -1,22 +1,34 @@
 """
 A simple, abstract schema to test relational algebra
 """
+
 import random
 import datajoint as dj
 import itertools
 import hashlib
 import uuid
 import faker
-
-
-from . import PREFIX, CONN_INFO
 import numpy as np
 from datetime import date, timedelta
+import inspect
 
-schema = dj.Schema(PREFIX + "_relational", locals(), connection=dj.conn(**CONN_INFO))
+
+class SelectPK(dj.Lookup):
+    definition = """  # tests sql keyword escaping
+    id: int
+    select  : int
+    """
+    contents = list(dict(id=i, select=i * j) for i in range(3) for j in range(4, 0, -1))
 
 
-@schema
+class KeyPK(dj.Lookup):
+    definition = """  # tests sql keyword escaping
+    id   : int
+    key  : int
+    """
+    contents = list(dict(id=i, key=i + j) for i in range(3) for j in range(4, 0, -1))
+
+
 class IJ(dj.Lookup):
     definition = """  # tests restrictions
     i  : int
@@ -25,7 +37,6 @@ class IJ(dj.Lookup):
     contents = list(dict(i=i, j=j + 2) for i in range(3) for j in range(3))
 
 
-@schema
 class JI(dj.Lookup):
     definition = """  # tests restrictions by relations when attributes are reordered
     j  : int
@@ -34,7 +45,6 @@ class JI(dj.Lookup):
     contents = list(dict(i=i + 1, j=j) for i in range(3) for j in range(3))
 
 
-@schema
 class A(dj.Lookup):
     definition = """
     id_a :int
@@ -44,7 +54,6 @@ class A(dj.Lookup):
     contents = [(i, i % 4 > i % 3) for i in range(10)]
 
 
-@schema
 class B(dj.Computed):
     definition = """
     -> A
@@ -78,7 +87,6 @@ class B(dj.Computed):
             )
 
 
-@schema
 class L(dj.Lookup):
     definition = """
     id_l: int
@@ -88,7 +96,6 @@ class L(dj.Lookup):
     contents = [(i, i % 3 >= i % 5) for i in range(30)]
 
 
-@schema
 class D(dj.Computed):
     definition = """
     -> A
@@ -104,7 +111,6 @@ class D(dj.Computed):
         self.insert(dict(key, id_d=i, **random.choice(lookup)) for i in range(4))
 
 
-@schema
 class E(dj.Computed):
     definition = """
     -> B
@@ -121,20 +127,48 @@ class E(dj.Computed):
         -> B.C
         """
 
+    class G(dj.Part):
+        definition = """ # test secondary fk reference
+        -> E
+        id_g :int
+        ---
+        -> L
+        """
+
+    class H(dj.Part):
+        definition = """ # test no additional fk reference
+        -> E
+        id_h :int
+        """
+
+    class M(dj.Part):
+        definition = """ # test force_masters revisit
+        -> E
+        id_m :int
+        ---
+        -> E.H
+        """
+
     def make(self, key):
         random.seed(str(key))
-        self.insert1(dict(key, **random.choice(list(L().fetch("KEY")))))
-        sub = E.F()
-        references = list((B.C() & key).fetch("KEY"))
-        random.shuffle(references)
-        sub.insert(
+        l_contents = list(L().fetch("KEY"))
+        part_f, part_g, part_h, part_m = E.F(), E.G(), E.H(), E.M()
+        bc_references = list((B.C() & key).fetch("KEY"))
+        random.shuffle(bc_references)
+
+        self.insert1(dict(key, **random.choice(l_contents)))
+        part_f.insert(
             dict(key, id_f=i, **ref)
-            for i, ref in enumerate(references)
+            for i, ref in enumerate(bc_references)
             if random.getrandbits(1)
         )
+        g_inserts = [dict(key, id_g=i, **ref) for i, ref in enumerate(l_contents)]
+        part_g.insert(g_inserts)
+        h_inserts = [dict(key, id_h=i) for i in range(4)]
+        part_h.insert(h_inserts)
+        part_m.insert(dict(key, id_m=m, **random.choice(h_inserts)) for m in range(4))
 
 
-@schema
 class F(dj.Manual):
     definition = """
     id: int
@@ -143,7 +177,15 @@ class F(dj.Manual):
     """
 
 
-@schema
+class G(dj.Computed):
+    definition = """ # test downstream of complex master/parts
+    -> E
+    """
+
+    def make(self, key):
+        self.insert1(key)
+
+
 class DataA(dj.Lookup):
     definition = """
     idx     : int
@@ -153,7 +195,6 @@ class DataA(dj.Lookup):
     contents = list(zip(range(5), range(5)))
 
 
-@schema
 class DataB(dj.Lookup):
     definition = """
     idx     : int
@@ -163,7 +204,6 @@ class DataB(dj.Lookup):
     contents = list(zip(range(5), range(5, 10)))
 
 
-@schema
 class Website(dj.Lookup):
     definition = """
     url_hash : uuid
@@ -179,7 +219,6 @@ class Website(dj.Lookup):
         return url_hash
 
 
-@schema
 class Profile(dj.Manual):
     definition = """
     ssn : char(11)
@@ -212,7 +251,6 @@ class Profile(dj.Manual):
                     )
 
 
-@schema
 class TTestUpdate(dj.Lookup):
     definition = """
     primary_key     : int
@@ -228,7 +266,6 @@ class TTestUpdate(dj.Lookup):
     ]
 
 
-@schema
 class ArgmaxTest(dj.Lookup):
     definition = """
     primary_key     : int
@@ -249,20 +286,18 @@ class ArgmaxTest(dj.Lookup):
         )
 
 
-@schema
 class ReservedWord(dj.Manual):
     definition = """
     # Test of SQL reserved words
     key : int
     ---
-    in    :  varchar(25)    
-    from  :  varchar(25)   
+    in    :  varchar(25)
+    from  :  varchar(25)
     int   :  int
     select : varchar(25)
     """
 
 
-@schema
 class OutfitLaunch(dj.Lookup):
     definition = """
     # Monthly released designer outfits
@@ -279,3 +314,7 @@ class OutfitLaunch(dj.Lookup):
         piece: varchar(20)
         """
         contents = [(0, "jeans"), (0, "sneakers"), (0, "polo")]
+
+
+LOCALS_SIMPLE = {k: v for k, v in locals().items() if inspect.isclass(v)}
+__all__ = list(LOCALS_SIMPLE)

@@ -1,6 +1,7 @@
 """
 Settings for DataJoint.
 """
+
 from contextlib import contextmanager
 import json
 import os
@@ -62,7 +63,6 @@ log_levels = {
 
 
 class Config(collections.abc.MutableMapping):
-
     instance = None
 
     def __init__(self, *args, **kwargs):
@@ -241,9 +241,7 @@ class Config(collections.abc.MutableMapping):
             return self._conf[key]
 
         def __setitem__(self, key, value):
-            logger.debug(
-                logging.DEBUG, "Setting {0:s} to {1:s}".format(str(key), str(value))
-            )
+            logger.debug("Setting {0:s} to {1:s}".format(str(key), str(value)))
             if validators[key](value):
                 self._conf[key] = value
             else:

@@ -1,9 +1,7 @@
 import datajoint as dj
+import inspect
 
-schema = dj.Schema()
 
-
-@schema
 class Student(dj.Manual):
     definition = """
     student_id : int unsigned   # university-wide ID number
@@ -20,7 +18,6 @@ class Student(dj.Manual):
     """
 
 
-@schema
 class Department(dj.Manual):
     definition = """
     dept : varchar(6)   # abbreviated department name, e.g. BIOL
@@ -31,7 +28,6 @@ class Department(dj.Manual):
     """
 
 
-@schema
 class StudentMajor(dj.Manual):
     definition = """
     -> Student
@@ -41,7 +37,6 @@ class StudentMajor(dj.Manual):
     """
 
 
-@schema
 class Course(dj.Manual):
     definition = """
     -> Department
@@ -52,7 +47,6 @@ class Course(dj.Manual):
     """
 
 
-@schema
 class Term(dj.Manual):
     definition = """
     term_year : year
@@ -60,7 +54,6 @@ class Term(dj.Manual):
     """
 
 
-@schema
 class Section(dj.Manual):
     definition = """
     -> Course
@@ -71,7 +64,6 @@ class Section(dj.Manual):
     """
 
 
-@schema
 class CurrentTerm(dj.Manual):
     definition = """
     omega=0 : tinyint
@@ -80,7 +72,6 @@ class CurrentTerm(dj.Manual):
     """
 
 
-@schema
 class Enroll(dj.Manual):
     definition = """
     -> Student
@@ -88,7 +79,6 @@ class Enroll(dj.Manual):
     """
 
 
-@schema
 class LetterGrade(dj.Lookup):
     definition = """
     grade : char(2)
@@ -110,10 +100,13 @@ class LetterGrade(dj.Lookup):
     ]
 
 
-@schema
 class Grade(dj.Manual):
     definition = """
     -> Enroll
     ---
     -> LetterGrade
     """
+
+
+LOCALS_UNI = {k: v for k, v in locals().items() if inspect.isclass(v)}
+__all__ = list(LOCALS_UNI)
