@@ -3,6 +3,7 @@ Collection of test cases to test the dj cli
 """
 
 import json
+import ast
 import subprocess
 import pytest
 import datajoint as dj
@@ -60,21 +61,8 @@ def test_cli_config():
     process.stdin.flush()
 
     stdout, stderr = process.communicate()
-
-    snippet = stdout[4:519]
-    assert snippet
-    assert isinstance(snippet, str)
-    try:
-        assert dj.config == json.loads(
-            snippet.replace("'", '"')
-            .replace("None", "null")
-            .replace("True", "true")
-            .replace("False", "false")
-        )
-    except Exception as e:
-        print(snippet)
-        print(stdout)
-        raise AssertionError(f"Error decoding JSON {snippet=}") from e
+    cleaned = stdout.strip(" >\t\n\r")
+    assert dj.config == ast.literal_eval(cleaned)
 
 
 def test_cli_args():
