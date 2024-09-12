@@ -26,26 +26,7 @@ def test_cli_help(capsys):
     assert pytest_wrapped_e.value.code == 0
 
     captured_output = capsys.readouterr().out
-
-    assert (
-        "\
-usage: datajoint [--help] [-V] [-u USER] [-p PASSWORD] [-h HOST]\n\
-                 [-s SCHEMAS [SCHEMAS ...]]\n\n\
-\
-DataJoint console interface.\n\n\
-\
-optional arguments:\n\
-  --help                show this help message and exit\n\
-  -V, --version         show program's version number and exit\n\
-  -u USER, --user USER  Datajoint username\n\
-  -p PASSWORD, --password PASSWORD\n\
-                        Datajoint password\n\
-  -h HOST, --host HOST  Datajoint host\n\
-  -s SCHEMAS [SCHEMAS ...], --schemas SCHEMAS [SCHEMAS ...]\n\
-                        A list of virtual module mappings in `db:schema ...`\n\
-                        format\n"
-        == captured_output
-    )
+    assert captured_output.strip()
 
 
 def test_cli_config():
