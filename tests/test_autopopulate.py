@@ -56,7 +56,7 @@ def test_populate_key_list(subject, experiment, trial):
     keys = experiment.key_source.fetch("KEY", order_by="KEY")
     n = 3
     assert len(keys) > n
-    keys = keys[:n] 
+    keys = keys[:n]
     ret = experiment.populate(keys=keys)
     assert n == ret["success_count"]
 
