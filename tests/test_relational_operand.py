@@ -576,7 +576,7 @@ def test_union_multiple(schema_simp_pop):
 class TestDjTop:
     """TODO: migrate"""
 
-    def test_restrictions_by_top(self):
+    def test_restrictions_by_top(self, schema_simp_pop):
         a = L() & dj.Top()
         b = L() & dj.Top(order_by=["cond_in_l", "KEY"])
         x = L() & dj.Top(5, "id_l desc", 4) & "cond_in_l=1"
@@ -613,7 +613,7 @@ class TestDjTop:
             {"id_l": 20, "cond_in_l": 1},
         ]
 
-    def test_top_restriction_with_keywords(self):
+    def test_top_restriction_with_keywords(self, schema_simp_pop):
         select = SelectPK() & dj.Top(limit=9, order_by=["select desc"])
         key = KeyPK() & dj.Top(limit=9, order_by="key desc")
         assert select.fetch(as_dict=True) == [
@@ -639,26 +639,26 @@ class TestDjTop:
             {"id": 2, "key": 3},
         ]
 
-    def test_top_errors(self):
-        with assert_raises(DataJointError) as err1:
+    def test_top_errors(self, schema_simp_pop):
+        with pytest.raises(DataJointError) as err1:
             L() & ("cond_in_l=1", dj.Top())
-        with assert_raises(DataJointError) as err2:
+        with pytest.raises(DataJointError) as err2:
             L() & dj.AndList(["cond_in_l=1", dj.Top()])
-        with assert_raises(TypeError) as err3:
+        with pytest.raises(TypeError) as err3:
             L() & dj.Top(limit="1")
-        with assert_raises(TypeError) as err4:
+        with pytest.raises(TypeError) as err4:
             L() & dj.Top(order_by=1)
-        with assert_raises(TypeError) as err5:
+        with pytest.raises(TypeError) as err5:
             L() & dj.Top(offset="1")
         assert (
-            "Invalid restriction type Top(limit=1, order_by=['KEY'], offset=0)"
-            == str(err1.exception)
+            "datajoint.errors.DataJointError: Invalid restriction type Top(limit=1, order_by=['KEY'], offset=0)"
+            == str(err1.exconly())
         )
         assert (
-            "Invalid restriction type Top(limit=1, order_by=['KEY'], offset=0)"
-            == str(err2.exception)
+            "datajoint.errors.DataJointError: Invalid restriction type Top(limit=1, order_by=['KEY'], offset=0)"
+            == str(err2.exconly())
         )
-        assert "Top limit must be an integer" == str(err3.exception)
-        assert "Top order_by attributes must all be strings" == str(
-            err4.exception)
-        assert "The offset argument must be an integer" == str(err5.exception)
+        assert "TypeError: Top limit must be an integer" == str(err3.exconly())
+        assert "TypeError: Top order_by attributes must all be strings" == str(
+            err4.exconly())
+        assert "TypeError: The offset argument must be an integer" == str(err5.exconly())
