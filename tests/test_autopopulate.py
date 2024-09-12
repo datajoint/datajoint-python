@@ -53,11 +53,11 @@ def test_populate_explicit_key_list(subject, experiment, trial):
     # test simple populate
     assert subject, "root tables are empty"
     assert not experiment, "table already filled?"
-	keys = experiment.key_source.fetch("KEY", order_by="KEY")
+    keys = experiment.key_source.fetch("KEY", order_by="KEY")
     n = 3
     keys = keys[:n] 
     assert len(keys) == n
-    ret = experiment.populate(keys)
+    ret = experiment.populate(keys=keys)
     assert n == ret["success_count"]
 
 
