@@ -61,13 +61,20 @@ def test_cli_config():
 
     stdout, stderr = process.communicate()
 
-    assert dj.config == json.loads(
-        stdout[4:519]
-        .replace("'", '"')
-        .replace("None", "null")
-        .replace("True", "true")
-        .replace("False", "false")
-    )
+    snippet = stdout[4:519]
+    assert snippet
+    assert isinstance(snippet, str)
+    try:
+        assert dj.config == json.loads(
+            snippet.replace("'", '"')
+            .replace("None", "null")
+            .replace("True", "true")
+            .replace("False", "false")
+        )
+    except Exception as e:
+        print(snippet)
+        print(stdout)
+        raise AssertionError(f"Error decoding JSON {snippet=}") from e
 
 
 def test_cli_args():
