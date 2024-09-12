@@ -62,7 +62,7 @@ def test_cli_config():
 
     stdout, stderr = process.communicate()
     cleaned = stdout.strip(" >\t\n\r")
-    assert dj.config.keys() == ast.literal_eval(cleaned).keys()
+    assert set(dj.config.keys()) == set(ast.literal_eval(cleaned).keys())
 
 
 def test_cli_args():
