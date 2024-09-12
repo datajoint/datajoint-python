@@ -211,7 +211,8 @@ class AutoPopulate:
 
         if keys is None:
             keys = (self._jobs_to_do(restrictions) - self.target).fetch(
-                "KEY", limit=limit)
+                "KEY", limit=limit
+            )
 
         # exclude "error", "ignore" or "reserved" jobs
         if reserve_jobs:
