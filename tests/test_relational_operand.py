@@ -660,5 +660,8 @@ class TestDjTop:
         )
         assert "TypeError: Top limit must be an integer" == str(err3.exconly())
         assert "TypeError: Top order_by attributes must all be strings" == str(
-            err4.exconly())
-        assert "TypeError: The offset argument must be an integer" == str(err5.exconly())
+            err4.exconly()
+        )
+        assert "TypeError: The offset argument must be an integer" == str(
+            err5.exconly()
+        )

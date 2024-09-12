@@ -18,8 +18,7 @@ class SelectPK(dj.Lookup):
     id: int
     select  : int
     """
-    contents = list(dict(id=i, select=i * j)
-                    for i in range(3) for j in range(4, 0, -1))
+    contents = list(dict(id=i, select=i * j) for i in range(3) for j in range(4, 0, -1))
 
 
 class KeyPK(dj.Lookup):
@@ -27,8 +26,7 @@ class KeyPK(dj.Lookup):
     id   : int
     key  : int
     """
-    contents = list(dict(id=i, key=i + j)
-                    for i in range(3) for j in range(4, 0, -1))
+    contents = list(dict(id=i, key=i + j) for i in range(3) for j in range(4, 0, -1))
 
 
 class IJ(dj.Lookup):
