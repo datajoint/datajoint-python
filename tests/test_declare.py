@@ -360,3 +360,11 @@ def test_table_name_with_underscores(schema_any):
         dj.DataJointError, match="must be alphanumeric in CamelCase"
     ) as e:
         schema_any(Table_With_Underscores)
+
+
+def test_hidden_attributes(schema_any):
+    assert (
+        list(Experiment().heading._attributes.keys())[-1].split("_")[2] == "timestamp"
+    )
+    assert any(a.is_hidden for a in Experiment().heading._attributes.values())
+    assert not any(a.is_hidden for a in Experiment().heading.attributes.values())
