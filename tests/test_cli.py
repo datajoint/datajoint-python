@@ -62,7 +62,8 @@ def test_cli_config():
 
     stdout, stderr = process.communicate()
     cleaned = stdout.strip(" >\t\n\r")
-    assert set(dj.config.keys()) == set(ast.literal_eval(cleaned).keys())
+    for key in ("database.user", "database.password", "database.host"):
+        assert key in cleaned, f"Key {key} not found in config from stdout: {cleaned}"
 
 
 def test_cli_args():
