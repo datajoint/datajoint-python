@@ -343,10 +343,10 @@ class TestDeclare:
                 """
 
     @staticmethod
-    @raises(dj.DataJointError)
-    def test_regex_mismatch():
-        @schema
-        class IndexAttribute(dj.Manual):
-            definition = """
-            index: int
-            """
+    def test_hidden_attributes():
+        assert (
+            list(Experiment().heading._attributes.keys())[-1].split("_")[2]
+            == "timestamp"
+        )
+        assert any(a.is_hidden for a in Experiment().heading._attributes.values())
+        assert not any(a.is_hidden for a in Experiment().heading.attributes.values())

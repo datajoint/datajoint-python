@@ -6,6 +6,7 @@ declare the corresponding mysql tables.
 import re
 import pyparsing as pp
 import logging
+from hashlib import sha1
 from .errors import DataJointError, _support_filepath_types, FILEPATH_FEATURE_SWITCH
 from .attribute_adapter import get_adapter
 from .condition import translate_attribute
@@ -309,6 +310,18 @@ def declare(full_table_name, definition, context):
         index_sql,
         external_stores,
     ) = prepare_declare(definition, context)
+
+    metadata_attr_sql = [
+        "`_{full_table_name}_timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP"
+    ]
+    attribute_sql.extend(
+        attr.format(
+            full_table_name=sha1(
+                full_table_name.replace("`", "").encode("utf-8")
+            ).hexdigest()
+        )
+        for attr in metadata_attr_sql
+    )
 
     if not primary_key:
         raise DataJointError("Table must have a primary key")
