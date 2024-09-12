@@ -94,7 +94,6 @@ of either the primary key or a foreign key.
 2. All common attributes in the two relations must be of a compatible datatype for
 equality comparisons.
 
-<<<<<<< HEAD
 ## Restriction
 
 The restriction operator `A & cond` selects the subset of entities from `A` that meet
@@ -394,10 +393,3 @@ dj.U().aggr(Session, n="max(session)") # (3)
 `dj.U()`, as shown in the last example above, is often useful for integer IDs.
 For an example of this process, see the source code for
 [Element Array Electrophysiology's `insert_new_params`](https://datajoint.com/docs/elements/element-array-ephys/latest/api/element_array_ephys/ephys_acute/#element_array_ephys.ephys_acute.ClusteringParamSet.insert_new_params).
-=======
-These restrictions are introduced both for performance reasons and for conceptual
-reasons.
-For performance, they encourage queries that rely on indexes.
-For conceptual reasons, they encourage database design in which entities in different
-tables are related to each other by the use of primary keys and foreign keys.
->>>>>>> master
