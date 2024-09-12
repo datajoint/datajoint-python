@@ -6,7 +6,6 @@ import json
 import subprocess
 import pytest
 import datajoint as dj
-from . import CONN_INFO_ROOT, PREFIX
 
 
 def test_cli_version(capsys):
@@ -91,8 +90,8 @@ def test_cli_args():
     assert "test_host" == stdout[37:46]
 
 
-def test_cli_schemas():
-    schema = dj.Schema(PREFIX + "_cli", locals(), connection=dj.conn(**CONN_INFO_ROOT))
+def test_cli_schemas(prefix, connection_root):
+    schema = dj.Schema(prefix + "_cli", locals(), connection=connection_root)
 
     @schema
     class IJ(dj.Lookup):
