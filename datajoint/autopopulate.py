@@ -1,4 +1,5 @@
 """This module defines class dj.AutoPopulate"""
+
 import logging
 import datetime
 import traceback
@@ -207,12 +208,12 @@ class AutoPopulate:
 
         keys = (self._jobs_to_do(restrictions) - self.target).fetch("KEY", limit=limit)
 
-        # exclude "error" or "ignore" jobs
+        # exclude "error", "ignore" or "reserved" jobs
         if reserve_jobs:
             exclude_key_hashes = (
                 jobs
                 & {"table_name": self.target.table_name}
-                & 'status in ("error", "ignore")'
+                & 'status in ("error", "ignore", "reserved")'
             ).fetch("key_hash")
             keys = [key for key in keys if key_hash(key) not in exclude_key_hashes]
 

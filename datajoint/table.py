@@ -15,7 +15,7 @@ from .declare import declare, alter
 from .condition import make_condition
 from .expression import QueryExpression
 from . import blob
-from .utils import user_choice, get_master
+from .utils import user_choice, get_master, is_camel_case
 from .heading import Heading
 from .errors import (
     DuplicateError,
@@ -76,6 +76,10 @@ class Table(QueryExpression):
         return self._table_name
 
     @property
+    def class_name(self):
+        return self.__class__.__name__
+
+    @property
     def definition(self):
         raise NotImplementedError(
             "Subclasses of Table must implement the `definition` property"
@@ -92,6 +96,14 @@ class Table(QueryExpression):
             raise DataJointError(
                 "Cannot declare new tables inside a transaction, "
                 "e.g. from inside a populate/make call"
+            )
+        # Enforce strict CamelCase #1150
+        if not is_camel_case(self.class_name):
+            raise DataJointError(
+                "Table class name `{name}` is invalid. Please use CamelCase. ".format(
+                    name=self.class_name
+                )
+                + "Classes defining tables should be formatted in strict CamelCase."
             )
         sql, external_stores = declare(self.full_table_name, self.definition, context)
         sql = sql.format(database=self.database)
@@ -474,6 +486,7 @@ class Table(QueryExpression):
         transaction: bool = True,
         safemode: Union[bool, None] = None,
         force_parts: bool = False,
+        force_masters: bool = False,
     ) -> int:
         """
         Deletes the contents of the table and its dependent tables, recursively.
@@ -485,6 +498,8 @@ class Table(QueryExpression):
             safemode: If `True`, prohibit nested transactions and prompt to confirm. Default
                 is `dj.config['safemode']`.
             force_parts: Delete from parts even when not deleting from their masters.
+            force_masters: If `True`, include part/master pairs in the cascade.
+                Default is `False`.
 
         Returns:
             Number of deleted rows (excluding those from dependent tables).
@@ -495,6 +510,7 @@ class Table(QueryExpression):
             DataJointError: Deleting a part table before its master.
         """
         deleted = set()
+        visited_masters = set()
 
         def cascade(table):
             """service function to perform cascading deletes recursively."""
@@ -547,13 +563,34 @@ class Table(QueryExpression):
                         and match["fk_attrs"] == match["pk_attrs"]
                     ):
                         child._restriction = table._restriction
+                        child._restriction_attributes = table.restriction_attributes
                     elif match["fk_attrs"] != match["pk_attrs"]:
                         child &= table.proj(
                             **dict(zip(match["fk_attrs"], match["pk_attrs"]))
                         )
                     else:
                         child &= table.proj()
-                    cascade(child)
+
+                    master_name = get_master(child.full_table_name)
+                    if (
+                        force_masters
+                        and master_name
+                        and master_name != table.full_table_name
+                        and master_name not in visited_masters
+                    ):
+                        master = FreeTable(table.connection, master_name)
+                        master._restriction_attributes = set()
+                        master._restriction = [
+                            make_condition(  # &= may cause in target tables in subquery
+                                master,
+                                (master.proj() & child.proj()).fetch(),
+                                master._restriction_attributes,
+                            )
+                        ]
+                        visited_masters.add(master_name)
+                        cascade(master)
+                    else:
+                        cascade(child)
                 else:
                     deleted.add(table.full_table_name)
                     logger.info(
@@ -758,9 +795,11 @@ class Table(QueryExpression):
             if do_include:
                 attributes_declared.add(attr.name)
                 definition += "%-20s : %-28s %s\n" % (
-                    attr.name
-                    if attr.default is None
-                    else "%s=%s" % (attr.name, attr.default),
+                    (
+                        attr.name
+                        if attr.default is None
+                        else "%s=%s" % (attr.name, attr.default)
+                    ),
                     "%s%s"
                     % (attr.type, " auto_increment" if attr.autoincrement else ""),
                     "# " + attr.comment if attr.comment else "",

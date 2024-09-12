@@ -244,13 +244,15 @@ class Fetch:
                 ]
             else:
                 return_values = [
-                    list(
-                        (to_dicts if as_dict else lambda x: x)(
-                            ret[self._expression.primary_key]
+                    (
+                        list(
+                            (to_dicts if as_dict else lambda x: x)(
+                                ret[self._expression.primary_key]
+                            )
                         )
+                        if is_key(attribute)
+                        else ret[attribute]
                     )
-                    if is_key(attribute)
-                    else ret[attribute]
                     for attribute in attrs
                 ]
                 ret = return_values[0] if len(attrs) == 1 else return_values
@@ -272,12 +274,14 @@ class Fetch:
                     else np.dtype(
                         [
                             (
-                                name,
-                                type(value),
-                            )  # use the first element to determine blob type
-                            if heading[name].is_blob
-                            and isinstance(value, numbers.Number)
-                            else (name, heading.as_dtype[name])
+                                (
+                                    name,
+                                    type(value),
+                                )  # use the first element to determine blob type
+                                if heading[name].is_blob
+                                and isinstance(value, numbers.Number)
+                                else (name, heading.as_dtype[name])
+                            )
                             for value, name in zip(ret[0], heading.as_dtype.names)
                         ]
                     )
@@ -353,9 +357,11 @@ class Fetch1:
                     "fetch1 should only return one tuple. %d tuples found" % len(result)
                 )
             return_values = tuple(
-                next(to_dicts(result[self._expression.primary_key]))
-                if is_key(attribute)
-                else result[attribute][0]
+                (
+                    next(to_dicts(result[self._expression.primary_key]))
+                    if is_key(attribute)
+                    else result[attribute][0]
+                )
                 for attribute in attrs
             )
             ret = return_values[0] if len(attrs) == 1 else return_values

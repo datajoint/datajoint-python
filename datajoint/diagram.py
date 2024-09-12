@@ -300,6 +300,36 @@ else:
             nx.relabel_nodes(graph, mapping, copy=False)
             return graph
 
+        @staticmethod
+        def _encapsulate_edge_attributes(graph):
+            """
+            Modifies the `nx.Graph`'s edge attribute `attr_map` to be a string representation
+            of the attribute map, and encapsulates the string in double quotes.
+            Changes the graph in place.
+
+            Implements workaround described in
+            https://github.com/pydot/pydot/issues/258#issuecomment-795798099
+            """
+            for u, v, *_, edgedata in graph.edges(data=True):
+                if "attr_map" in edgedata:
+                    graph.edges[u, v]["attr_map"] = '"{0}"'.format(edgedata["attr_map"])
+
+        @staticmethod
+        def _encapsulate_node_names(graph):
+            """
+            Modifies the `nx.Graph`'s node names string representations encapsulated in
+            double quotes.
+            Changes the graph in place.
+
+            Implements workaround described in
+            https://github.com/datajoint/datajoint-python/pull/1176
+            """
+            nx.relabel_nodes(
+                graph,
+                {node: '"{0}"'.format(node) for node in graph.nodes()},
+                copy=False,
+            )
+
         def make_dot(self):
             graph = self._make_graph()
             graph.nodes()
@@ -368,6 +398,8 @@ else:
                 for node, d in dict(graph.nodes(data=True)).items()
             }
 
+            self._encapsulate_node_names(graph)
+            self._encapsulate_edge_attributes(graph)
             dot = nx.drawing.nx_pydot.to_pydot(graph)
             for node in dot.get_nodes():
                 node.set_shape("circle")
@@ -385,11 +417,15 @@ else:
                     assert issubclass(cls, Table)
                     description = cls().describe(context=self.context).split("\n")
                     description = (
-                        "-" * 30
-                        if q.startswith("---")
-                        else q.replace("->", "&#8594;")
-                        if "->" in q
-                        else q.split(":")[0]
+                        (
+                            "-" * 30
+                            if q.startswith("---")
+                            else (
+                                q.replace("->", "&#8594;")
+                                if "->" in q
+                                else q.split(":")[0]
+                            )
+                        )
                         for q in description
                         if not q.startswith("#")
                     )
@@ -404,9 +440,14 @@ else:
 
             for edge in dot.get_edges():
                 # see https://graphviz.org/doc/info/attrs.html
-                src = edge.get_source().strip('"')
-                dest = edge.get_destination().strip('"')
+                src = edge.get_source()
+                dest = edge.get_destination()
                 props = graph.get_edge_data(src, dest)
+                if props is None:
+                    raise DataJointError(
+                        "Could not find edge with source "
+                        "'{}' and destination '{}'".format(src, dest)
+                    )
                 edge.set_color("#00000040")
                 edge.set_style("solid" if props["primary"] else "dashed")
                 master_part = graph.nodes[dest][

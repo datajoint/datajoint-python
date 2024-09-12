@@ -322,9 +322,11 @@ class Blob:
             + "\0".join(array.dtype.names).encode()  # number of fields
             + b"\0"
             + b"".join(  # field names
-                self.pack_recarray(array[f])
-                if array[f].dtype.fields
-                else self.pack_array(array[f])
+                (
+                    self.pack_recarray(array[f])
+                    if array[f].dtype.fields
+                    else self.pack_array(array[f])
+                )
                 for f in array.dtype.names
             )
         )

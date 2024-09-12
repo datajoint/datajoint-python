@@ -7,19 +7,17 @@ import os
 import pymysql
 import pytest
 
-from . import CONN_INFO_ROOT
-
 
 @pytest.fixture()
-def user_alice() -> dict:
+def user_alice(db_creds_root) -> dict:
     # set up - reset config, log in as root, and create a new user alice
     # reset dj.config manually because its state may be changed by these tests
     if os.path.exists(dj.settings.LOCALCONFIG):
         os.remove(dj.settings.LOCALCONFIG)
     dj.config["database.password"] = os.getenv("DJ_PASS")
-    root_conn = dj.conn(**CONN_INFO_ROOT, reset=True)
+    root_conn = dj.conn(**db_creds_root, reset=True)
     new_credentials = dict(
-        host=CONN_INFO_ROOT["host"],
+        host=db_creds_root["host"],
         user="alice",
         password="oldpass",
     )

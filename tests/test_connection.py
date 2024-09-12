@@ -5,40 +5,36 @@ Collection of test cases to test connection module.
 import datajoint as dj
 from datajoint import DataJointError
 import numpy as np
-from . import CONN_INFO_ROOT, connection_root, connection_test
-
-from . import PREFIX
 import pytest
 
 
+class Subjects(dj.Manual):
+    definition = """
+    #Basic subject
+    subject_id                  : int      # unique subject id
+    ---
+    real_id                     :  varchar(40)    #  real-world name
+    species = "mouse"           : enum('mouse', 'monkey', 'human')   # species
+    """
+
+
 @pytest.fixture
-def schema(connection_test):
-    schema = dj.Schema(PREFIX + "_transactions", locals(), connection=connection_test)
+def schema_tx(connection_test, prefix):
+    schema = dj.Schema(
+        prefix + "_transactions",
+        context=dict(Subjects=Subjects),
+        connection=connection_test,
+    )
+    schema(Subjects)
     yield schema
     schema.drop()
 
 
-@pytest.fixture
-def Subjects(schema):
-    @schema
-    class Subjects(dj.Manual):
-        definition = """
-        #Basic subject
-        subject_id                  : int      # unique subject id
-        ---
-        real_id                     :  varchar(40)    #  real-world name
-        species = "mouse"           : enum('mouse', 'monkey', 'human')   # species
-        """
-
-    yield Subjects
-    Subjects.drop()
-
-
-def test_dj_conn():
+def test_dj_conn(db_creds_root):
     """
     Should be able to establish a connection as root user
     """
-    c = dj.conn(**CONN_INFO_ROOT)
+    c = dj.conn(**db_creds_root)
     assert c.is_connected
 
 
@@ -49,24 +45,24 @@ def test_dj_connection_class(connection_test):
     assert connection_test.is_connected
 
 
-def test_persistent_dj_conn():
+def test_persistent_dj_conn(db_creds_root):
     """
     conn() method should provide persistent connection across calls.
     Setting reset=True should create a new persistent connection.
     """
-    c1 = dj.conn(**CONN_INFO_ROOT)
+    c1 = dj.conn(**db_creds_root)
     c2 = dj.conn()
-    c3 = dj.conn(**CONN_INFO_ROOT)
-    c4 = dj.conn(reset=True, **CONN_INFO_ROOT)
-    c5 = dj.conn(**CONN_INFO_ROOT)
+    c3 = dj.conn(**db_creds_root)
+    c4 = dj.conn(reset=True, **db_creds_root)
+    c5 = dj.conn(**db_creds_root)
     assert c1 is c2
     assert c1 is c3
     assert c1 is not c4
     assert c4 is c5
 
 
-def test_repr():
-    c1 = dj.conn(**CONN_INFO_ROOT)
+def test_repr(db_creds_root):
+    c1 = dj.conn(**db_creds_root)
     assert "disconnected" not in repr(c1) and "connected" in repr(c1)
 
 
@@ -75,7 +71,7 @@ def test_active(connection_test):
         assert conn.in_transaction, "Transaction is not active"
 
 
-def test_transaction_rollback(connection_test, Subjects):
+def test_transaction_rollback(schema_tx, connection_test):
     """Test transaction cancellation using a with statement"""
     tmp = np.array(
         [(1, "Peter", "mouse"), (2, "Klara", "monkey")],
@@ -100,13 +96,13 @@ def test_transaction_rollback(connection_test, Subjects):
     ), "Length is not 0. Expected because rollback should have happened."
 
 
-def test_cancel(connection_test, Subjects):
+def test_cancel(schema_tx, connection_test):
     """Tests cancelling a transaction explicitly"""
     tmp = np.array(
         [(1, "Peter", "mouse"), (2, "Klara", "monkey")],
-        Subjects.heading.as_dtype,
+        Subjects().heading.as_dtype,
     )
-    Subjects.delete_quick()
+    Subjects().delete_quick()
     Subjects.insert1(tmp[0])
     connection_test.start_transaction()
     Subjects.insert1(tmp[1])

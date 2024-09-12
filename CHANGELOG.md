@@ -1,13 +1,23 @@
 ## Release notes
 
-### Upcoming
+### 0.14.3 -- TBD
+- Fixed - Added encapsulating double quotes to comply with [DOT language](https://graphviz.org/doc/info/lang.html) - PR [#1177](https://github.com/datajoint/datajoint-python/pull/1177)
+
+### 0.14.2 -- Aug 19, 2024
+- Added - Migrate nosetests to pytest - PR [#1142](https://github.com/datajoint/datajoint-python/pull/1142)
 - Added - Codespell GitHub Actions workflow
 - Added - GitHub Actions workflow to manually release docs
 - Changed - Update `datajoint/nginx` to `v0.2.6`
 - Changed - Migrate docs from `https://docs.datajoint.org/python` to `https://datajoint.com/docs/core/datajoint-python`
+- Fixed - [DevContainer](https://containers.dev/) configuration - PR [#1115](https://github.com/datajoint/datajoint-python/pull/1115)
 - Fixed - Updated set_password to work on MySQL 8 - PR [#1106](https://github.com/datajoint/datajoint-python/pull/1106)
 - Added - Missing tests for set_password - PR [#1106](https://github.com/datajoint/datajoint-python/pull/1106)
 - Changed - Returning success count after the .populate() call - PR [#1050](https://github.com/datajoint/datajoint-python/pull/1050)
+- Fixed - `Autopopulate.populate` excludes `reserved` jobs in addition to `ignore` and `error` jobs
+- Fixed - Issue [#1159](https://github.com/datajoint/datajoint-python/pull/1159) (cascading delete) - PR [#1160](https://github.com/datajoint/datajoint-python/pull/1160)
+- Changed - Minimum Python version for Datajoint-Python is now 3.8 PR #1163
+- Fixed - `docker compose` commands in CI [#1164](https://github.com/datajoint/datajoint-python/pull/1164)
+- Changed - Default delete behavior now includes masters of part tables - PR [#1158](https://github.com/datajoint/datajoint-python/pull/1158)
 
 ### 0.14.1 -- Jun 02, 2023
 - Fixed - Fix altering a part table that uses the "master" keyword - PR [#991](https://github.com/datajoint/datajoint-python/pull/991)

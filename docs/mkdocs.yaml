@@ -107,10 +107,14 @@ theme:
         name: Switch to light mode
 plugins:
   - search
+  - autorefs
   - mkdocstrings:
       default_handler: python
       handlers:
         python:
+          paths:
+            - "."
+            - /main/
           options:
             filters:
               - "!^_"
