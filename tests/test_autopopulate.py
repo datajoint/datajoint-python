@@ -49,14 +49,14 @@ def test_populate_with_success_count(subject, experiment, trial):
     assert len(trial.key_source & trial) == success_count
 
 
-def test_populate_explicit_key_list(subject, experiment, trial):
+def test_populate_key_list(subject, experiment, trial):
     # test simple populate
     assert subject, "root tables are empty"
     assert not experiment, "table already filled?"
     keys = experiment.key_source.fetch("KEY", order_by="KEY")
     n = 3
+    assert len(keys) > n
     keys = keys[:n] 
-    assert len(keys) == n
     ret = experiment.populate(keys=keys)
     assert n == ret["success_count"]
 
