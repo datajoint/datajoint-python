@@ -126,9 +126,9 @@ def repr_html(query_expression):
             head_template.format(
                 column=c,
                 comment=heading.attributes[c].comment,
-                primary="primary"
-                if c in query_expression.primary_key
-                else "nonprimary",
+                primary=(
+                    "primary" if c in query_expression.primary_key else "nonprimary"
+                ),
             )
             for c in heading.names
         ),
@@ -145,7 +145,9 @@ def repr_html(query_expression):
                 for tup in tuples
             ]
         ),
-        count=("<p>Total: %d</p>" % len(rel))
-        if config["display.show_tuple_count"]
-        else "",
+        count=(
+            ("<p>Total: %d</p>" % len(rel))
+            if config["display.show_tuple_count"]
+            else ""
+        ),
     )

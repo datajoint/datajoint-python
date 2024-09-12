@@ -28,7 +28,7 @@ jobs:
       DOCKER_CLIENT_TIMEOUT: "120"
       COMPOSE_HTTP_TIMEOUT: "120"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Validate version and release notes
         run: |
           DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py)
@@ -42,7 +42,7 @@ jobs:
       - name: Build pip artifacts
         run: |
           export HOST_UID=$(id -u)
-          docker-compose -f docker-compose-build.yaml up --exit-code-from app --build
+          docker compose -f docker-compose-build.yaml up --exit-code-from app --build
           echo "DJ_VERSION=${DJ_VERSION}" >> $GITHUB_ENV
       - if: matrix.py_ver == '3.9' && matrix.distro == 'debian'
         name: Add pip artifacts
@@ -58,14 +58,16 @@ jobs:
         py_ver: ["3.9"]
         mysql_ver: ["8.0", "5.7"]
         include:
+          - py_ver: "3.11"
+            mysql_ver: "8.0"
+          - py_ver: "3.10"
+            mysql_ver: "8.0"
           - py_ver: "3.8"
             mysql_ver: "5.7"
-          - py_ver: "3.7"
-            mysql_ver: "5.7"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python ${{matrix.py_ver}}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{matrix.py_ver}}
       - name: Install dependencies
@@ -77,7 +79,7 @@ jobs:
       - name: Run primary tests
         env:
           PY_VER: ${{matrix.py_ver}}
-          DJ_PASS: simple
+          DJ_PASS: password
           MYSQL_VER: ${{matrix.mysql_ver}}
           DISTRO: alpine
           MINIO_VER: RELEASE.2021-09-03T03-56-13Z
@@ -85,14 +87,40 @@ jobs:
           COMPOSE_HTTP_TIMEOUT: "120"
         run: |
           export HOST_UID=$(id -u)
-          docker-compose -f LNX-docker-compose.yml up --build --exit-code-from app
+          docker compose -f LNX-docker-compose.yml up --build --exit-code-from app
+  lint:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        py_ver: ["3.11"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{matrix.py_ver}}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{matrix.py_ver}}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 black==24.2.0
+      - name: Run syntax tests
+        run: flake8 datajoint --count --select=E9,F63,F7,F82 --show-source --statistics
       - name: Run style tests
         run: |
           flake8 --ignore=E203,E722,W503 datajoint \
-                 --count --max-complexity=62 --max-line-length=127 --statistics
-          black datajoint --check -v
-          black tests --check -v
-          black tests_old --check -v
+                 --count --max-complexity=62 --max-line-length=127 --statistics \
+                 --per-file-ignores='datajoint/diagram.py:C901'
+          black --required-version '24.2.0' --check -v datajoint tests tests_old
+  codespell:
+    name: Check for spelling errors
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Codespell
+        uses: codespell-project/actions-codespell@v2
   publish-docs:
     if: |
       github.event_name == 'push' &&
@@ -103,7 +131,7 @@ jobs:
       DOCKER_CLIENT_TIMEOUT: "120"
       COMPOSE_HTTP_TIMEOUT: "120"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Deploy docs
         run: |
           export MODE=BUILD
@@ -135,9 +163,9 @@ jobs:
     outputs:
       release_upload_url: ${{steps.create_gh_release.outputs.upload_url}}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python ${{matrix.py_ver}}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{matrix.py_ver}}
       - name: Determine package version
@@ -162,7 +190,7 @@ jobs:
           prerelease: false
           draft: false
       - name: Fetch pip artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4.1.7
         with:
           name: pip-datajoint-${{env.DJ_VERSION}}
           path: dist
@@ -191,7 +219,7 @@ jobs:
       - name: Publish pip release
         run: |
           export HOST_UID=$(id -u)
-          docker-compose -f docker-compose-build.yaml run \
+          docker compose -f docker-compose-build.yaml run \
             -e TWINE_USERNAME=${TWINE_USERNAME} -e TWINE_PASSWORD=${TWINE_PASSWORD} app \
             sh -c "pip install twine && python -m twine upload dist/*"
       - name: Login to DockerHub

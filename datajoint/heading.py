@@ -193,10 +193,12 @@ class Heading:
         represent heading as the SQL SELECT clause.
         """
         return ",".join(
-            "`%s`" % name
-            if self.attributes[name].attribute_expression is None
-            else self.attributes[name].attribute_expression
-            + (" as `%s`" % name if include_aliases else "")
+            (
+                "`%s`" % name
+                if self.attributes[name].attribute_expression is None
+                else self.attributes[name].attribute_expression
+                + (" as `%s`" % name if include_aliases else "")
+            )
             for name in fields
         )
 
@@ -371,9 +373,11 @@ class Heading:
                     is_blob=category in ("INTERNAL_BLOB", "EXTERNAL_BLOB"),
                     uuid=category == "UUID",
                     is_external=category in EXTERNAL_TYPES,
-                    store=attr["type"].split("@")[1]
-                    if category in EXTERNAL_TYPES
-                    else None,
+                    store=(
+                        attr["type"].split("@")[1]
+                        if category in EXTERNAL_TYPES
+                        else None
+                    ),
                 )
 
             if attr["in_key"] and any(

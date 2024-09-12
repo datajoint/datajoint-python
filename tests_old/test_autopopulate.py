@@ -53,22 +53,41 @@ class TestPopulate:
         assert_true(self.ephys)
         assert_true(self.channel)
 
+    def test_populate_with_success_count(self):
+        # test simple populate
+        assert_true(self.subject, "root tables are empty")
+        assert_false(self.experiment, "table already filled?")
+        ret = self.experiment.populate()
+        success_count = ret["success_count"]
+        assert_equal(len(self.experiment.key_source & self.experiment), success_count)
+
+        # test restricted populate
+        assert_false(self.trial, "table already filled?")
+        restriction = self.subject.proj(animal="subject_id").fetch("KEY")[0]
+        d = self.trial.connection.dependencies
+        d.load()
+        ret = self.trial.populate(restriction, suppress_errors=True)
+        success_count = ret["success_count"]
+        assert_equal(len(self.trial.key_source & self.trial), success_count)
+
     def test_populate_exclude_error_and_ignore_jobs(self):
         # test simple populate
         assert_true(self.subject, "root tables are empty")
         assert_false(self.experiment, "table already filled?")
 
-        keys = self.experiment.key_source.fetch("KEY", limit=2)
+        keys = self.experiment.key_source.fetch("KEY", limit=3)
         for idx, key in enumerate(keys):
             if idx == 0:
                 schema.schema.jobs.ignore(self.experiment.table_name, key)
-            else:
+            elif idx == 1:
                 schema.schema.jobs.error(self.experiment.table_name, key, "")
+            else:
+                schema.schema.jobs.reserve(self.experiment.table_name, key)
 
         self.experiment.populate(reserve_jobs=True)
         assert_equal(
             len(self.experiment.key_source & self.experiment),
-            len(self.experiment.key_source) - 2,
+            len(self.experiment.key_source) - 3,
         )
 
     def test_allow_direct_insert(self):

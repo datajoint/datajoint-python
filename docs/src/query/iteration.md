@@ -7,7 +7,7 @@ individual entities sequentially. In DataJoint this is accomplished through iter
 In the simple example below, iteration is used to display the names and values of the
 attributes of each entity in the simple table or table expression.
 
-``` python
+```python
 for entity in table:
     print(entity)
 ```
@@ -30,7 +30,7 @@ in all cases, such as for tables with little data stored as secondary attributes
 the example below, DataJoint fetches all of the attributes of each entity in a single
 call and then iterates over the list of entities stored in memory.
 
-``` python
+```python
 for entity in table.fetch(as_dict=True):
     print(entity)
 ```

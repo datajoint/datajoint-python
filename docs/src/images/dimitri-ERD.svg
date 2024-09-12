@@ -1,0 +1,117 @@
+
+<svg height="327pt" viewBox="0.00 0.00 740.50 327.00" width="741pt" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g class="graph" id="graph0" transform="scale(1 1) rotate(0) translate(4 323)">
+<title>%3</title>
+<polygon fill="#ffffff" points="-4,4 -4,-323 736.5,-323 736.5,4 -4,4" stroke="transparent"/>
+<!-- `dimitri_university`.`course` -->
+<g class="node" id="node1">
+<title>`dimitri_university`.`course`</title>
+<polygon fill="#00ff00" fill-opacity="0.188235" points="528.5,-248 367.5,-248 367.5,-213 528.5,-213 528.5,-248" stroke="#00ff00" stroke-opacity="0.188235"/>
+<text fill="#006400" font-family="arial" font-size="12.00" text-anchor="start" text-decoration="underline" x="375.5" y="-228.4">`dimitri_university`.`course`</text>
+</g>
+<!-- `dimitri_university`.`section` -->
+<g class="node" id="node7">
+<title>`dimitri_university`.`section`</title>
+<polygon fill="#00ff00" fill-opacity="0.188235" points="523.5,-177 360.5,-177 360.5,-142 523.5,-142 523.5,-177" stroke="#00ff00" stroke-opacity="0.188235"/>
+<text fill="#006400" font-family="arial" font-size="12.00" text-anchor="start" text-decoration="underline" x="368.5" y="-157.4">`dimitri_university`.`section`</text>
+</g>
+<!-- `dimitri_university`.`course`&#45;&gt;`dimitri_university`.`section` -->
+<g class="edge" id="edge1">
+<title>`dimitri_university`.`course`-&gt;`dimitri_university`.`section`</title>
+<path d="M446.5169,-212.9494C445.6007,-202.1083 444.4284,-188.2366 443.5078,-177.3418" fill="none" stroke="#000000" stroke-opacity="0.250980" stroke-width=".75"/>
+</g>
+<!-- `dimitri_university`.`current_term` -->
+<g class="node" id="node2">
+<title>`dimitri_university`.`current_term`</title>
+<polygon fill="#00ff00" fill-opacity="0.188235" points="732.5,-177 541.5,-177 541.5,-142 732.5,-142 732.5,-177" stroke="#00ff00" stroke-opacity="0.188235"/>
+<text fill="#006400" font-family="arial" font-size="12.00" text-anchor="start" text-decoration="underline" x="549.5" y="-157.4">`dimitri_university`.`current_term`</text>
+</g>
+<!-- `dimitri_university`.`department` -->
+<g class="node" id="node3">
+<title>`dimitri_university`.`department`</title>
+<polygon fill="#00ff00" fill-opacity="0.188235" points="505.5,-319 320.5,-319 320.5,-284 505.5,-284 505.5,-319" stroke="#00ff00" stroke-opacity="0.188235"/>
+<text fill="#006400" font-family="arial" font-size="12.00" text-anchor="start" text-decoration="underline" x="328.5" y="-299.4">`dimitri_university`.`department`</text>
+</g>
+<!-- `dimitri_university`.`department`&#45;&gt;`dimitri_university`.`course` -->
+<g class="edge" id="edge2">
+<title>`dimitri_university`.`department`-&gt;`dimitri_university`.`course`</title>
+<path d="M421.6517,-283.9494C426.9959,-273.1083 433.8341,-259.2366 439.2047,-248.3418" fill="none" stroke="#000000" stroke-opacity="0.250980" stroke-width=".75"/>
+</g>
+<!-- `dimitri_university`.`student_major` -->
+<g class="node" id="node9">
+<title>`dimitri_university`.`student_major`</title>
+<polygon fill="#00ff00" fill-opacity="0.188235" points="349,-248 149,-248 149,-213 349,-213 349,-248" stroke="#00ff00" stroke-opacity="0.188235"/>
+<text fill="#006400" font-family="arial" font-size="12.00" text-anchor="middle" x="249" y="-227.4">`dimitri_university`.`student_major`</text>
+</g>
+<!-- `dimitri_university`.`department`&#45;&gt;`dimitri_university`.`student_major` -->
+<g class="edge" id="edge3">
+<title>`dimitri_university`.`department`-&gt;`dimitri_university`.`student_major`</title>
+<path d="M372.4607,-283.9494C347.2296,-273.0262 314.8916,-259.0262 289.6414,-248.0947" fill="none" stroke="#000000" stroke-dasharray="5,2" stroke-opacity="0.250980" stroke-width=".75"/>
+</g>
+<!-- `dimitri_university`.`enroll` -->
+<g class="node" id="node4">
+<title>`dimitri_university`.`enroll`</title>
+<polygon fill="#00ff00" fill-opacity="0.188235" points="361.5,-106 206.5,-106 206.5,-71 361.5,-71 361.5,-106" stroke="#00ff00" stroke-opacity="0.188235"/>
+<text fill="#006400" font-family="arial" font-size="12.00" text-anchor="middle" x="284" y="-85.4">`dimitri_university`.`enroll`</text>
+</g>
+<!-- `dimitri_university`.`grade` -->
+<g class="node" id="node5">
+<title>`dimitri_university`.`grade`</title>
+<polygon fill="#00ff00" fill-opacity="0.188235" points="266.5,-35 111.5,-35 111.5,0 266.5,0 266.5,-35" stroke="#00ff00" stroke-opacity="0.188235"/>
+<text fill="#006400" font-family="arial" font-size="12.00" text-anchor="middle" x="189" y="-14.4">`dimitri_university`.`grade`</text>
+</g>
+<!-- `dimitri_university`.`enroll`&#45;&gt;`dimitri_university`.`grade` -->
+<g class="edge" id="edge4">
+<title>`dimitri_university`.`enroll`-&gt;`dimitri_university`.`grade`</title>
+<path d="M260.5168,-70.9494C245.9013,-60.0262 227.1689,-46.0262 212.5422,-35.0947" fill="none" stroke="#000000" stroke-opacity="0.250980" stroke-width="2"/>
+</g>
+<!-- `dimitri_university`.`letter_grade` -->
+<g class="node" id="node6">
+<title>`dimitri_university`.`letter_grade`</title>
+<polygon fill="#00ff00" fill-opacity="0.188235" points="188,-106 0,-106 0,-71 188,-71 188,-106" stroke="#00ff00" stroke-opacity="0.188235"/>
+<text fill="#006400" font-family="arial" font-size="12.00" text-anchor="start" text-decoration="underline" x="8" y="-86.4">`dimitri_university`.`letter_grade`</text>
+</g>
+<!-- `dimitri_university`.`letter_grade`&#45;&gt;`dimitri_university`.`grade` -->
+<g class="edge" id="edge5">
+<title>`dimitri_university`.`letter_grade`-&gt;`dimitri_university`.`grade`</title>
+<path d="M117.4832,-70.9494C132.0987,-60.0262 150.8311,-46.0262 165.4578,-35.0947" fill="none" stroke="#000000" stroke-dasharray="5,2" stroke-opacity="0.250980" stroke-width=".75"/>
+</g>
+<!-- `dimitri_university`.`section`&#45;&gt;`dimitri_university`.`enroll` -->
+<g class="edge" id="edge6">
+<title>`dimitri_university`.`section`-&gt;`dimitri_university`.`enroll`</title>
+<path d="M402.9438,-141.9494C378.6358,-131.0262 347.4809,-117.0262 323.1545,-106.0947" fill="none" stroke="#000000" stroke-opacity="0.250980" stroke-width=".75"/>
+</g>
+<!-- `dimitri_university`.`student` -->
+<g class="node" id="node8">
+<title>`dimitri_university`.`student`</title>
+<polygon fill="#00ff00" fill-opacity="0.188235" points="267,-319 103,-319 103,-284 267,-284 267,-319" stroke="#00ff00" stroke-opacity="0.188235"/>
+<text fill="#006400" font-family="arial" font-size="12.00" text-anchor="start" text-decoration="underline" x="111" y="-299.4">`dimitri_university`.`student`</text>
+</g>
+<!-- `dimitri_university`.`student`&#45;&gt;`dimitri_university`.`enroll` -->
+<g class="edge" id="edge7">
+<title>`dimitri_university`.`student`-&gt;`dimitri_university`.`enroll`</title>
+<path d="M164.6178,-283.8306C155.1889,-274.2936 144.9894,-261.6831 140,-248 134.671,-233.3857 133.5302,-227.1463 140,-213 162.5422,-163.711 215.2999,-126.4787 250.3081,-106.0837" fill="none" stroke="#000000" stroke-opacity="0.250980" stroke-width=".75"/>
+</g>
+<!-- `dimitri_university`.`student`&#45;&gt;`dimitri_university`.`student_major` -->
+<g class="edge" id="edge8">
+<title>`dimitri_university`.`student`-&gt;`dimitri_university`.`student_major`</title>
+<path d="M200.8202,-283.9494C210.5925,-273.1083 223.0966,-259.2366 232.9172,-248.3418" fill="none" stroke="#000000" stroke-opacity="0.250980" stroke-width="2"/>
+</g>
+<!-- `dimitri_university`.`term` -->
+<g class="node" id="node10">
+<title>`dimitri_university`.`term`</title>
+<polygon fill="#00ff00" fill-opacity="0.188235" points="706,-248 558,-248 558,-213 706,-213 706,-248" stroke="#00ff00" stroke-opacity="0.188235"/>
+<text fill="#006400" font-family="arial" font-size="12.00" text-anchor="start" text-decoration="underline" x="566" y="-228.4">`dimitri_university`.`term`</text>
+</g>
+<!-- `dimitri_university`.`term`&#45;&gt;`dimitri_university`.`current_term` -->
+<g class="edge" id="edge9">
+<title>`dimitri_university`.`term`-&gt;`dimitri_university`.`current_term`</title>
+<path d="M633.236,-212.9494C633.9994,-202.1083 634.9763,-188.2366 635.7435,-177.3418" fill="none" stroke="#000000" stroke-dasharray="5,2" stroke-opacity="0.250980" stroke-width=".75"/>
+</g>
+<!-- `dimitri_university`.`term`&#45;&gt;`dimitri_university`.`section` -->
+<g class="edge" id="edge10">
+<title>`dimitri_university`.`term`-&gt;`dimitri_university`.`section`</title>
+<path d="M585.0337,-212.9494C555.8026,-202.0262 518.3378,-188.0262 489.0845,-177.0947" fill="none" stroke="#000000" stroke-opacity="0.250980" stroke-width=".75"/>
+</g>
+</g>
+</svg>
