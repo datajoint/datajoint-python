@@ -13,7 +13,6 @@ from datetime import date, timedelta
 import inspect
 
 
-@schema
 class SelectPK(dj.Lookup):
     definition = """  # tests sql keyword escaping
     id: int
@@ -23,7 +22,6 @@ class SelectPK(dj.Lookup):
                     for i in range(3) for j in range(4, 0, -1))
 
 
-@schema
 class KeyPK(dj.Lookup):
     definition = """  # tests sql keyword escaping
     id   : int
