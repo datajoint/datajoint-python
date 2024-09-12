@@ -53,6 +53,19 @@ def get_master(full_table_name: str) -> str:
     return match["master"] + "`" if match else ""
 
 
+def is_camel_case(s):
+    """
+    Check if a string is in CamelCase notation.
+
+    :param s: string to check
+    :returns: True if the string is in CamelCase notation, False otherwise
+    Example:
+    >>> is_camel_case("TableName")  # returns True
+    >>> is_camel_case("table_name")  # returns False
+    """
+    return bool(re.match(r"^[A-Z][A-Za-z0-9]*$", s))
+
+
 def to_camel_case(s):
     """
     Convert names with under score (_) separation into camel case names.
@@ -82,7 +95,7 @@ def from_camel_case(s):
     def convert(match):
         return ("_" if match.groups()[0] else "") + match.group(0).lower()
 
-    if not re.match(r"[A-Z][a-zA-Z0-9]*", s):
+    if not is_camel_case(s):
         raise DataJointError(
             "ClassName must be alphanumeric in CamelCase, begin with a capital letter"
         )

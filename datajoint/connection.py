@@ -2,6 +2,7 @@
 This module contains the Connection class that manages the connection to the database, and
 the ``conn`` function that provides access to a persistent connection in datajoint.
 """
+
 import warnings
 from contextlib import contextmanager
 import pymysql as client
@@ -17,8 +18,11 @@ from .blob import pack, unpack
 from .hash import uuid_from_buffer
 from .plugin import connection_plugins
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__.split(".")[0])
 query_log_max_length = 300
+
+
+cache_key = "query_cache"  # the key to lookup the query_cache folder in dj.config
 
 
 def get_host_hook(host_input):
@@ -76,6 +80,8 @@ def translate_query_error(client_error, query):
     # Integrity errors
     if err == 1062:
         return errors.DuplicateError(*args)
+    if err == 1217:  # MySQL 8 error code
+        return errors.IntegrityError(*args)
     if err == 1451:
         return errors.IntegrityError(*args)
     if err == 1452:
@@ -110,16 +116,16 @@ def conn(
     :param init_fun: initialization function
     :param reset: whether the connection should be reset or not
     :param use_tls: TLS encryption option. Valid options are: True (required), False
-        (required no TLS), None (TLS prefered, default), dict (Manually specify values per
+        (required no TLS), None (TLS preferred, default), dict (Manually specify values per
         https://dev.mysql.com/doc/refman/5.7/en/connection-options.html#encrypted-connection-options).
     """
     if not hasattr(conn, "connection") or reset:
         host = host if host is not None else config["database.host"]
         user = user if user is not None else config["database.user"]
         password = password if password is not None else config["database.password"]
-        if user is None:  # pragma: no cover
+        if user is None:
             user = input("Please enter DataJoint username: ")
-        if password is None:  # pragma: no cover
+        if password is None:
             password = getpass(prompt="Please enter DataJoint password: ")
         init_fun = (
             init_fun if init_fun is not None else config["connection.init_function"]
@@ -184,7 +190,7 @@ class Connection:
         self.conn_info["ssl_input"] = use_tls
         self.conn_info["host_input"] = host_input
         self.init_fun = init_fun
-        print("Connecting {user}@{host}:{port}".format(**self.conn_info))
+        logger.info("Connecting {user}@{host}:{port}".format(**self.conn_info))
         self._conn = None
         self._query_cache = None
         connect_host_hook(self)
@@ -220,7 +226,7 @@ class Connection:
                         k: v
                         for k, v in self.conn_info.items()
                         if k not in ["ssl_input", "host_input"]
-                    }
+                    },
                 )
             except client.err.InternalError:
                 self._conn = client.connect(
@@ -236,7 +242,7 @@ class Connection:
                             or k == "ssl"
                             and self.conn_info["ssl_input"] is None
                         )
-                    }
+                    },
                 )
         self._conn.autocommit(True)
 
@@ -254,13 +260,12 @@ class Connection:
     def purge_query_cache(self):
         """Purges all query cache."""
         if (
-            "query_cache" in config
-            and isinstance(config["query_cache"], str)
-            and pathlib.Path(config["query_cache"]).is_dir()
+            isinstance(config.get(cache_key), str)
+            and pathlib.Path(config[cache_key]).is_dir()
         ):
-            path_iter = pathlib.Path(config["query_cache"]).glob("**/*")
-            for path in path_iter:
-                path.unlink()
+            for path in pathlib.Path(config[cache_key]).iterdir():
+                if not path.is_dir():
+                    path.unlink()
 
     def close(self):
         self._conn.close()
@@ -313,15 +318,15 @@ class Connection:
                 "Only SELECT queries are allowed when query caching is on."
             )
         if use_query_cache:
-            if not config["query_cache"]:
+            if not config[cache_key]:
                 raise errors.DataJointError(
-                    "Provide filepath dj.config['query_cache'] when using query caching."
+                    f"Provide filepath dj.config['{cache_key}'] when using query caching."
                 )
             hash_ = uuid_from_buffer(
                 (str(self._query_cache) + re.sub(r"`\$\w+`", "", query)).encode()
                 + pack(args)
             )
-            cache_path = pathlib.Path(config["query_cache"]) / str(hash_)
+            cache_path = pathlib.Path(config[cache_key]) / str(hash_)
             try:
                 buffer = cache_path.read_bytes()
             except FileNotFoundError:
@@ -339,7 +344,7 @@ class Connection:
         except errors.LostConnectionError:
             if not reconnect:
                 raise
-            warnings.warn("MySQL server has gone away. Reconnecting to the server.")
+            logger.warning("MySQL server has gone away. Reconnecting to the server.")
             connect_host_hook(self)
             if self._in_transaction:
                 self.cancel_transaction()
@@ -380,7 +385,7 @@ class Connection:
             raise errors.DataJointError("Nested connections are not supported.")
         self.query("START TRANSACTION WITH CONSISTENT SNAPSHOT")
         self._in_transaction = True
-        logger.info("Transaction started")
+        logger.debug("Transaction started")
 
     def cancel_transaction(self):
         """
@@ -388,7 +393,7 @@ class Connection:
         """
         self.query("ROLLBACK")
         self._in_transaction = False
-        logger.info("Transaction cancelled. Rolling back ...")
+        logger.debug("Transaction cancelled. Rolling back ...")
 
     def commit_transaction(self):
         """
@@ -397,7 +402,7 @@ class Connection:
         """
         self.query("COMMIT")
         self._in_transaction = False
-        logger.info("Transaction committed and closed.")
+        logger.debug("Transaction committed and closed.")
 
     # -------- context manager for transactions
     @property

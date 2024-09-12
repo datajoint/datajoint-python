@@ -1,0 +1,21 @@
+{
+    "editor.formatOnPaste": false,
+    "editor.formatOnSave": true,
+    "editor.rulers": [
+        94
+    ],
+    "python.formatting.provider": "black",
+    "[python]": {
+        "editor.defaultFormatter": null
+    },
+    "[markdown]": {
+        "editor.defaultFormatter": "disable"
+    },
+    "[yaml]": {
+        "editor.defaultFormatter": "disable"
+    },
+    "[dockercompose]": {
+        "editor.defaultFormatter": "disable"
+    },
+    "files.autoSave": "off"
+}

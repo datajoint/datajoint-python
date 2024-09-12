@@ -1,0 +1,11 @@
+mkdocs-material==9.1.17
+mkdocs-redirects
+mkdocstrings
+mkdocstrings-python
+mike
+mdx-truly-sane-lists
+mkdocs-gen-files
+mkdocs-literate-nav
+mkdocs-exclude-search
+mkdocs-jupyter
+mkdocs-section-index

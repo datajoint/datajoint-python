@@ -1,5 +1,5 @@
 """
-DataJoint for Python is a framework for building data piplines using MySQL databases
+DataJoint for Python is a framework for building data pipelines using MySQL databases
 to represent pipeline structure and bulk storage systems for large objects.
 DataJoint is built on the foundation of the relational data model and prescribes a
 consistent method for organizing, populating, and querying data.
@@ -50,8 +50,10 @@ __all__ = [
     "DataJointError",
     "key",
     "key_hash",
+    "logger",
 ]
 
+from .logging import logger
 from .version import __version__
 from .settings import config
 from .connection import conn, Connection
@@ -68,7 +70,6 @@ from .hash import key_hash
 from .attribute_adapter import AttributeAdapter
 from . import errors
 from .errors import DataJointError
-from .migrate import migrate_dj011_external_blob_storage_to_dj012
 
 ERD = Di = Diagram  # Aliases for Diagram
 schema = Schema  # Aliases for Schema

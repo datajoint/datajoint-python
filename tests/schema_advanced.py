@@ -1,10 +1,7 @@
 import datajoint as dj
-from . import PREFIX, CONN_INFO
-
-schema = dj.Schema(PREFIX + "_advanced", locals(), connection=dj.conn(**CONN_INFO))
+import inspect
 
 
-@schema
 class Person(dj.Manual):
     definition = """
     person_id : int
@@ -39,13 +36,12 @@ class Person(dj.Manual):
         )
 
 
-@schema
 class Parent(dj.Manual):
     definition = """
     -> Person
     parent_sex  : enum('M','F')
     ---
-    (parent) -> Person
+    -> Person.proj(parent='person_id')
     """
 
     def fill(self):
@@ -89,7 +85,6 @@ class Parent(dj.Manual):
         )
 
 
-@schema
 class Subject(dj.Manual):
     definition = """
     subject : int
@@ -98,14 +93,12 @@ class Subject(dj.Manual):
     """
 
 
-@schema
 class Prep(dj.Manual):
     definition = """
     prep   : int
     """
 
 
-@schema
 class Slice(dj.Manual):
     definition = """
     -> Prep
@@ -113,7 +106,6 @@ class Slice(dj.Manual):
     """
 
 
-@schema
 class Cell(dj.Manual):
     definition = """
     -> Slice
@@ -121,7 +113,6 @@ class Cell(dj.Manual):
     """
 
 
-@schema
 class InputCell(dj.Manual):
     definition = """  # a synapse within the slice
     -> Cell
@@ -129,19 +120,21 @@ class InputCell(dj.Manual):
     """
 
 
-@schema
 class LocalSynapse(dj.Manual):
     definition = """  # a synapse within the slice
-    (presynaptic) -> Cell(cell)
-    (postsynaptic)-> Cell
+    -> Cell.proj(presynaptic='cell')
+    -> Cell.proj(postsynaptic='cell')
     """
 
 
-@schema
 class GlobalSynapse(dj.Manual):
     # Mix old-style and new-style projected foreign keys
     definition = """
     # a synapse within the slice
     -> Cell.proj(pre_slice="slice", pre_cell="cell")
-    (post_slice, post_cell)-> Cell(slice, cell)
+    -> Cell.proj(post_slice="slice", post_cell="cell")
     """
+
+
+LOCALS_ADVANCED = {k: v for k, v in locals().items() if inspect.isclass(v)}
+__all__ = list(LOCALS_ADVANCED)
