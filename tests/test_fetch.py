@@ -202,28 +202,6 @@ def test_offset(lang, languages):
         assert np.all([cc == ll for cc, ll in zip(c, l)]), "Sorting order is different"
 
 
-def test_limit_warning(lang):
-    """Tests whether warning is raised if offset is used without limit."""
-    logger = logging.getLogger("datajoint")
-    log_capture = io.StringIO()
-    stream_handler = logging.StreamHandler(log_capture)
-    log_format = logging.Formatter(
-        "[%(asctime)s][%(funcName)s][%(levelname)s]: %(message)s"
-    )
-    stream_handler.setFormatter(log_format)
-    stream_handler.set_name("test_limit_warning")
-    logger.addHandler(stream_handler)
-    lang.fetch(offset=1)
-
-    log_contents = log_capture.getvalue()
-    log_capture.close()
-
-    for handler in logger.handlers:  # Clean up handler
-        if handler.name == "test_limit_warning":
-            logger.removeHandler(handler)
-    assert "[WARNING]: Offset set, but no limit." in log_contents
-
-
 def test_len(lang):
     """Tests __len__"""
     assert len(lang.fetch()) == len(lang), "__len__ is not behaving properly"

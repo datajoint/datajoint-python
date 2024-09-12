@@ -339,6 +339,17 @@ def test_long_table_name(schema_any):
         schema_any(WhyWouldAnyoneCreateATableNameThisLong)
 
 
+def test_regex_mismatch(schema_any):
+
+    class IndexAttribute(dj.Manual):
+        definition = """
+        index: int
+        """
+
+    with pytest.raises(dj.DataJointError):
+        schema_any(IndexAttribute)
+
+
 def test_table_name_with_underscores(schema_any):
     """
     Test issue #1150 -- Reject table names containing underscores. Tables should be in strict

@@ -16,6 +16,24 @@ schema = dj.Schema(PREFIX + "_relational", locals(), connection=dj.conn(**CONN_I
 
 
 @schema
+class SelectPK(dj.Lookup):
+    definition = """  # tests sql keyword escaping
+    id: int
+    select  : int
+    """
+    contents = list(dict(id=i, select=i * j) for i in range(3) for j in range(4, 0, -1))
+
+
+@schema
+class KeyPK(dj.Lookup):
+    definition = """  # tests sql keyword escaping
+    id   : int
+    key  : int
+    """
+    contents = list(dict(id=i, key=i + j) for i in range(3) for j in range(4, 0, -1))
+
+
+@schema
 class IJ(dj.Lookup):
     definition = """  # tests restrictions
     i  : int
