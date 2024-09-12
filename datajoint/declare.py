@@ -315,14 +315,12 @@ def declare(full_table_name, definition, context):
         "`_{full_table_name}_timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP"
     ]
     attribute_sql.extend(
-        [
-            attr.format(
-                full_table_name=sha1(
-                    full_table_name.replace("`", "").encode("utf-8")
-                ).hexdigest()
-            )
-            for attr in metadata_attr_sql
-        ]
+        attr.format(
+            full_table_name=sha1(
+                full_table_name.replace("`", "").encode("utf-8")
+            ).hexdigest()
+        )
+        for attr in metadata_attr_sql
     )
 
     if not primary_key:
