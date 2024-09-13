@@ -124,20 +124,16 @@ def test_pack():
     assert x == unpack(pack(x)), "Set did not pack/unpack correctly"
 
     x = tuple(range(10))
-    assert x == unpack(
-        pack(range(10))), "Iterator did not pack/unpack correctly"
+    assert x == unpack(pack(range(10))), "Iterator did not pack/unpack correctly"
 
     x = Decimal("1.24")
-    assert x == approx(
-        unpack(pack(x))), "Decimal object did not pack/unpack correctly"
+    assert x == approx(unpack(pack(x))), "Decimal object did not pack/unpack correctly"
 
     x = datetime.now()
-    assert x == unpack(
-        pack(x)), "Datetime object did not pack/unpack correctly"
+    assert x == unpack(pack(x)), "Datetime object did not pack/unpack correctly"
 
     x = np.bool_(True)
-    assert x == unpack(
-        pack(x)), "Numpy bool object did not pack/unpack correctly"
+    assert x == unpack(pack(x)), "Numpy bool object did not pack/unpack correctly"
 
     x = "test"
     assert x == unpack(pack(x)), "String object did not pack/unpack correctly"
@@ -158,15 +154,13 @@ def test_recarrays():
     x = x.view(np.recarray)
     assert_array_equal(x, unpack(pack(x)))
 
-    x = np.array([(3, 4)], dtype=[("tmp0", float),
-                 ("tmp1", "O")]).view(np.recarray)
+    x = np.array([(3, 4)], dtype=[("tmp0", float), ("tmp1", "O")]).view(np.recarray)
     assert_array_equal(x, unpack(pack(x)))
 
 
 def test_object_arrays():
     x = np.array(((1, 2, 3), True), dtype="object")
-    assert_array_equal(x, unpack(pack(x)),
-                       "Object array did not serialize correctly")
+    assert_array_equal(x, unpack(pack(x)), "Object array did not serialize correctly")
 
 
 def test_complex():
@@ -176,12 +170,10 @@ def test_complex():
     z = np.random.randn(10) + 1j * np.random.randn(10)
     assert_array_equal(z, unpack(pack(z)), "Arrays do not match!")
 
-    x = np.float32(np.random.randn(3, 4, 5)) + 1j * \
-        np.float32(np.random.randn(3, 4, 5))
+    x = np.float32(np.random.randn(3, 4, 5)) + 1j * np.float32(np.random.randn(3, 4, 5))
     assert_array_equal(x, unpack(pack(x)), "Arrays do not match!")
 
-    x = np.int16(np.random.randn(1, 2, 3)) + 1j * \
-        np.int16(np.random.randn(1, 2, 3))
+    x = np.int16(np.random.randn(1, 2, 3)) + 1j * np.int16(np.random.randn(1, 2, 3))
     assert_array_equal(x, unpack(pack(x)), "Arrays do not match!")
 
 
@@ -193,8 +185,7 @@ def test_insert_longblob(schema_any):
 
     query_mym_blob = {"id": 1, "data": np.array([1, 2, 3])}
     Longblob.insert1(query_mym_blob)
-    assert_array_equal(
-        (Longblob & "id=1").fetch1()["data"], query_mym_blob["data"])
+    assert_array_equal((Longblob & "id=1").fetch1()["data"], query_mym_blob["data"])
     (Longblob & "id=1").delete()
 
 
@@ -223,14 +214,12 @@ def test_insert_longblob_32bit(schema_any, enable_feature_32bit_dims):
                     )
                 ]
             ],
-            dtype=[("hits", "O"), ("sides", "O"),
-                   ("tasks", "O"), ("stage", "O")],
+            dtype=[("hits", "O"), ("sides", "O"), ("tasks", "O"), ("stage", "O")],
         ),
     }
     assert fetched["id"] == expected["id"]
-    for name in expected['data'][0][0].dtype.names:
-        assert_array_equal(
-            expected['data'][0][0][name], fetched['data'][0][0][name])
+    for name in expected["data"][0][0].dtype.names:
+        assert_array_equal(expected["data"][0][0][name], fetched["data"][0][0][name])
     (Longblob & "id=1").delete()
 
 
