@@ -1,7 +1,9 @@
-ARG IMAGE=djbase
+ARG IMAGE=jupyter/docker-stacks-foundation
 ARG PY_VER=3.9
 ARG DISTRO=debian
-FROM datajoint/${IMAGE}:py${PY_VER}-${DISTRO}
+FROM ${IMAGE}
+RUN conda install -y -n base -c conda-forge python=${PY_VER} && \
+    conda clean -afy
 COPY --chown=anaconda:anaconda ./setup.py ./datajoint.pub ./requirements.txt /main/
 COPY --chown=anaconda:anaconda ./datajoint /main/datajoint
 RUN \

@@ -60,6 +60,12 @@ services:
   app:
     <<: *net
     image: datajoint/djtest:py${PY_VER:-3.8}-${DISTRO:-alpine}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PY_VER: ${PY_VER:-3.8}
+        DISTRO: ${DISTRO:-alpine}
     depends_on:
       db:
         condition: service_healthy
