@@ -330,6 +330,8 @@ def schema_simp(connection_test, prefix):
     schema = dj.Schema(
         prefix + "_relational", schema_simple.LOCALS_SIMPLE, connection=connection_test
     )
+    schema(schema_simple.SelectPK)
+    schema(schema_simple.KeyPK)
     schema(schema_simple.IJ)
     schema(schema_simple.JI)
     schema(schema_simple.A)

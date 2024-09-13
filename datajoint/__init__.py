@@ -37,6 +37,7 @@ __all__ = [
     "Part",
     "Not",
     "AndList",
+    "Top",
     "U",
     "Diagram",
     "Di",
@@ -51,6 +52,7 @@ __all__ = [
     "key",
     "key_hash",
     "logger",
+    "cli",
 ]
 
 from .logging import logger
@@ -61,7 +63,7 @@ from .schemas import Schema
 from .schemas import VirtualModule, list_schemas
 from .table import Table, FreeTable
 from .user_tables import Manual, Lookup, Imported, Computed, Part
-from .expression import Not, AndList, U
+from .expression import Not, AndList, U, Top
 from .diagram import Diagram
 from .admin import set_password, kill
 from .blob import MatCell, MatStruct
@@ -70,6 +72,7 @@ from .hash import key_hash
 from .attribute_adapter import AttributeAdapter
 from . import errors
 from .errors import DataJointError
+from .cli import cli
 
 ERD = Di = Diagram  # Aliases for Diagram
 schema = Schema  # Aliases for Schema

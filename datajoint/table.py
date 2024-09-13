@@ -645,6 +645,8 @@ class Table(QueryExpression):
                 logger.warn("Nothing to delete.")
             if transaction:
                 self.connection.cancel_transaction()
+        elif not transaction:
+            logger.info("Delete completed")
         else:
             if not safemode or user_choice("Commit deletes?", default="no") == "yes":
                 if transaction:

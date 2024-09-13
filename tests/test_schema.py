@@ -210,6 +210,8 @@ def test_list_tables(schema_simp):
             "#website",
             "profile",
             "profile__website",
+            "#select_p_k",
+            "#key_p_k",
         ]
     )
     actual = set(schema_simp.list_tables())

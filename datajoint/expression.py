@@ -9,6 +9,7 @@ from .fetch import Fetch, Fetch1
 from .preview import preview, repr_html
 from .condition import (
     AndList,
+    Top,
     Not,
     make_condition,
     assert_join_compatibility,
@@ -52,6 +53,7 @@ class QueryExpression:
     _connection = None
     _heading = None
     _support = None
+    _top = None
 
     # If the query will be using distinct
     _distinct = False
@@ -121,17 +123,33 @@ class QueryExpression:
             else " WHERE (%s)" % ")AND(".join(str(s) for s in self.restriction)
         )
 
+    def sorting_clauses(self):
+        if not self._top:
+            return ""
+        clause = ", ".join(
+            _wrap_attributes(
+                _flatten_attribute_list(self.primary_key, self._top.order_by)
+            )
+        )
+        if clause:
+            clause = f" ORDER BY {clause}"
+        if self._top.limit is not None:
+            clause += f" LIMIT {self._top.limit}{f' OFFSET {self._top.offset}' if self._top.offset else ''}"
+
+        return clause
+
     def make_sql(self, fields=None):
         """
         Make the SQL SELECT statement.
 
         :param fields: used to explicitly set the select attributes
         """
-        return "SELECT {distinct}{fields} FROM {from_}{where}".format(
+        return "SELECT {distinct}{fields} FROM {from_}{where}{sorting}".format(
             distinct="DISTINCT " if self._distinct else "",
             fields=self.heading.as_sql(fields or self.heading.names),
             from_=self.from_clause(),
             where=self.where_clause(),
+            sorting=self.sorting_clauses(),
         )
 
     # --------- query operators -----------
@@ -189,6 +207,14 @@ class QueryExpression:
         string, or an AndList.
         """
         attributes = set()
+        if isinstance(restriction, Top):
+            result = (
+                self.make_subquery()
+                if self._top and not self._top.__eq__(restriction)
+                else copy.copy(self)
+            )  # make subquery to avoid overwriting existing Top
+            result._top = restriction
+            return result
         new_condition = make_condition(self, restriction, attributes)
         if new_condition is True:
             return self  # restriction has no effect, return the same object
@@ -202,8 +228,10 @@ class QueryExpression:
             pass  # all ok
         # If the new condition uses any new attributes, a subquery is required.
         # However, Aggregation's HAVING statement works fine with aliased attributes.
-        need_subquery = isinstance(self, Union) or (
-            not isinstance(self, Aggregation) and self.heading.new_attributes
+        need_subquery = (
+            isinstance(self, Union)
+            or (not isinstance(self, Aggregation) and self.heading.new_attributes)
+            or self._top
         )
         if need_subquery:
             result = self.make_subquery()
@@ -539,19 +567,20 @@ class QueryExpression:
 
     def __len__(self):
         """:return: number of elements in the result set e.g. ``len(q1)``."""
-        return self.connection.query(
+        result = self.make_subquery() if self._top else copy.copy(self)
+        return result.connection.query(
             "SELECT {select_} FROM {from_}{where}".format(
                 select_=(
                     "count(*)"
-                    if any(self._left)
+                    if any(result._left)
                     else "count(DISTINCT {fields})".format(
-                        fields=self.heading.as_sql(
-                            self.primary_key, include_aliases=False
+                        fields=result.heading.as_sql(
+                            result.primary_key, include_aliases=False
                         )
                     )
                 ),
-                from_=self.from_clause(),
-                where=self.where_clause(),
+                from_=result.from_clause(),
+                where=result.where_clause(),
             )
         ).fetchone()[0]
 
@@ -619,18 +648,12 @@ class QueryExpression:
                     # -- move on to next entry.
                     return next(self)
 
-    def cursor(self, offset=0, limit=None, order_by=None, as_dict=False):
+    def cursor(self, as_dict=False):
         """
         See expression.fetch() for input description.
         :return: query cursor
         """
-        if offset and limit is None:
-            raise DataJointError("limit is required when offset is set")
         sql = self.make_sql()
-        if order_by is not None:
-            sql += " ORDER BY " + ", ".join(order_by)
-        if limit is not None:
-            sql += " LIMIT %d" % limit + (" OFFSET %d" % offset if offset else "")
         logger.debug(sql)
         return self.connection.query(sql, as_dict=as_dict)
 
@@ -701,23 +724,26 @@ class Aggregation(QueryExpression):
         fields = self.heading.as_sql(fields or self.heading.names)
         assert self._grouping_attributes or not self.restriction
         distinct = set(self.heading.names) == set(self.primary_key)
-        return "SELECT {distinct}{fields} FROM {from_}{where}{group_by}".format(
-            distinct="DISTINCT " if distinct else "",
-            fields=fields,
-            from_=self.from_clause(),
-            where=self.where_clause(),
-            group_by=(
-                ""
-                if not self.primary_key
-                else (
-                    " GROUP BY `%s`" % "`,`".join(self._grouping_attributes)
-                    + (
-                        ""
-                        if not self.restriction
-                        else " HAVING (%s)" % ")AND(".join(self.restriction)
+        return (
+            "SELECT {distinct}{fields} FROM {from_}{where}{group_by}{sorting}".format(
+                distinct="DISTINCT " if distinct else "",
+                fields=fields,
+                from_=self.from_clause(),
+                where=self.where_clause(),
+                group_by=(
+                    ""
+                    if not self.primary_key
+                    else (
+                        " GROUP BY `%s`" % "`,`".join(self._grouping_attributes)
+                        + (
+                            ""
+                            if not self.restriction
+                            else " HAVING (%s)" % ")AND(".join(self.restriction)
+                        )
                     )
-                )
-            ),
+                ),
+                sorting=self.sorting_clauses(),
+            )
         )
 
     def __len__(self):
@@ -776,7 +802,7 @@ class Union(QueryExpression):
         ):
             # no secondary attributes: use UNION DISTINCT
             fields = arg1.primary_key
-            return "SELECT * FROM (({sql1}) UNION ({sql2})) as `_u{alias}`".format(
+            return "SELECT * FROM (({sql1}) UNION ({sql2})) as `_u{alias}{sorting}`".format(
                 sql1=(
                     arg1.make_sql()
                     if isinstance(arg1, Union)
@@ -788,6 +814,7 @@ class Union(QueryExpression):
                     else arg2.make_sql(fields)
                 ),
                 alias=next(self.__count),
+                sorting=self.sorting_clauses(),
             )
         # with secondary attributes, use union of left join with antijoin
         fields = self.heading.names
@@ -939,3 +966,25 @@ class U:
         )
 
     aggregate = aggr  # alias for aggr
+
+
+def _flatten_attribute_list(primary_key, attrs):
+    """
+    :param primary_key: list of attributes in primary key
+    :param attrs: list of attribute names, which may include "KEY", "KEY DESC" or "KEY ASC"
+    :return: generator of attributes where "KEY" is replaced with its component attributes
+    """
+    for a in attrs:
+        if re.match(r"^\s*KEY(\s+[aA][Ss][Cc])?\s*$", a):
+            if primary_key:
+                yield from primary_key
+        elif re.match(r"^\s*KEY\s+[Dd][Ee][Ss][Cc]\s*$", a):
+            if primary_key:
+                yield from (q + " DESC" for q in primary_key)
+        else:
+            yield a
+
+
+def _wrap_attributes(attr):
+    for entry in attr:  # wrap attribute names in backquotes
+        yield re.sub(r"\b((?!asc|desc)\w+)\b", r"`\1`", entry, flags=re.IGNORECASE)
