@@ -178,9 +178,9 @@ else:
             return self
 
         def topological_sort(self):
-            """:return:  list of nodes in topological order"""
+            """:return:  list of nodes in lexcigraphical topological order"""
             return list(
-                nx.algorithms.dag.topological_sort(
+                nx.algorithms.dag.lexicographical_topological_sort(
                     nx.DiGraph(self).subgraph(self.nodes_to_show)
                 )
             )
