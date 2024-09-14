@@ -177,14 +177,6 @@ else:
             )
             return self
 
-        def topological_sort(self):
-            """:return:  list of nodes in lexcigraphical topological order"""
-            return list(
-                nx.algorithms.dag.lexicographical_topological_sort(
-                    nx.DiGraph(self).subgraph(self.nodes_to_show)
-                )
-            )
-
         def __add__(self, arg):
             """
             :param arg: either another Diagram or a positive integer.

@@ -3,7 +3,6 @@ Collection of test cases to test the dj cli
 """
 
 import json
-import ast
 import subprocess
 import pytest
 import datajoint as dj

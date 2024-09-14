@@ -106,6 +106,10 @@ class Dependencies(nx.DiGraph):
             raise DataJointError("DataJoint can only work with acyclic dependencies")
         self._loaded = True
 
+    def topo_sort(self):
+        """:return:  list of nodes in lexcigraphical topological order"""
+        return list(nx.algorithms.dag.lexicographical_topological_sort(self))
+
     def parents(self, table_name, primary=None):
         """
         :param table_name: `schema`.`table`
@@ -142,8 +146,8 @@ class Dependencies(nx.DiGraph):
         :return: all dependent tables sorted in topological order.  Self is included.
         """
         self.load(force=False)
-        nodes = self.subgraph(nx.algorithms.dag.descendants(self, full_table_name))
-        return [full_table_name] + list(nx.algorithms.dag.topological_sort(nodes))
+        nodes = self.subgraph(nx.algorithms.dag.descendants(self, full_table_name)).copy()
+        return [full_table_name] + nodes.topo_sort()
 
     def ancestors(self, full_table_name):
         """
@@ -151,9 +155,5 @@ class Dependencies(nx.DiGraph):
         :return: all dependent tables sorted in topological order.  Self is included.
         """
         self.load(force=False)
-        nodes = self.subgraph(nx.algorithms.dag.ancestors(self, full_table_name))
-        return list(
-            reversed(
-                list(nx.algorithms.dag.topological_sort(nodes)) + [full_table_name]
-            )
-        )
+        nodes = self.subgraph(nx.algorithms.dag.ancestors(self, full_table_name)).copy()
+        return reversed(nodes.topo_sort() + [full_table_name])

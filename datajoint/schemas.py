@@ -453,7 +453,7 @@ class Schema:
 
         diagram = Diagram(self)
         body = "\n\n".join(
-            make_class_definition(table) for table in diagram.topological_sort()
+            make_class_definition(table) for table in diagram.topo_sort()
         )
         python_code = "\n\n".join(
             (
@@ -484,7 +484,7 @@ class Schema:
             t
             for d, t in (
                 full_t.replace("`", "").split(".")
-                for full_t in Diagram(self).topological_sort()
+                for full_t in Diagram(self).topo_sort()
             )
             if d == self.database
         ]
