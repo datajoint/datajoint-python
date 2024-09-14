@@ -2,10 +2,8 @@ import warnings
 import logging
 import inspect
 import re
-import itertools
-import collections
 from .connection import conn
-from .diagram import Diagram, _get_tier
+from .diagram import Diagram
 from .settings import config
 from .errors import DataJointError, AccessError
 from .jobs import JobTable
@@ -13,7 +11,7 @@ from .external import ExternalMapping
 from .heading import Heading
 from .utils import user_choice, to_camel_case
 from .user_tables import Part, Computed, Imported, Manual, Lookup
-from .table import lookup_class_name, Log, FreeTable
+from .table import lookup_class_name, Log
 import types
 
 logger = logging.getLogger(__name__.split(".")[0])
