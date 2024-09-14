@@ -5,7 +5,6 @@ import io
 import logging
 import inspect
 from .table import Table
-from .dependencies import unite_master_parts
 from .user_tables import Manual, Imported, Computed, Lookup, Part
 from .errors import DataJointError
 from .table import lookup_class_name
@@ -59,8 +58,7 @@ if not diagram_active:
         Entity relationship diagram, currently disabled due to the lack of required packages: matplotlib and pygraphviz.
 
         To enable Diagram feature, please install both matplotlib and pygraphviz. For instructions on how to install
-        these two packages, refer to http://docs.datajoint.io/setup/Install-and-connect.html#python and
-        http://tutorials.datajoint.io/setting-up/datajoint-python.html
+        these two packages, refer to https://datajoint.com/docs/core/datajoint-python/0.14/client/install/
         """
 
         def __init__(self, *args, **kwargs):
@@ -181,11 +179,9 @@ else:
 
         def topological_sort(self):
             """:return:  list of nodes in topological order"""
-            return unite_master_parts(
-                list(
-                    nx.algorithms.dag.topological_sort(
-                        nx.DiGraph(self).subgraph(self.nodes_to_show)
-                    )
+            return list(
+                nx.algorithms.dag.topological_sort(
+                    nx.DiGraph(self).subgraph(self.nodes_to_show)
                 )
             )
 
