@@ -401,7 +401,6 @@ class Schema:
             self._jobs = JobTable(self.connection, self.database)
         return self._jobs
 
-
     def list_tables(self):
         """
         Return a list of all tables in the schema except tables with ~ in first character such
