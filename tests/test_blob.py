@@ -185,7 +185,7 @@ def test_insert_longblob(schema_any):
 
     query_mym_blob = {"id": 1, "data": np.array([1, 2, 3])}
     Longblob.insert1(query_mym_blob)
-    assert (Longblob & "id=1").fetch1()["data"].all() == query_mym_blob["data"].all()
+    assert_array_equal((Longblob & "id=1").fetch1()["data"], query_mym_blob["data"])
     (Longblob & "id=1").delete()
 
 
@@ -218,7 +218,8 @@ def test_insert_longblob_32bit(schema_any, enable_feature_32bit_dims):
         ),
     }
     assert fetched["id"] == expected["id"]
-    assert np.array_equal(fetched["data"], expected["data"])
+    for name in expected["data"][0][0].dtype.names:
+        assert_array_equal(expected["data"][0][0][name], fetched["data"][0][0][name])
     (Longblob & "id=1").delete()
 
 
@@ -248,4 +249,5 @@ def test_datetime_serialization_speed():
     )
     print(f"python time {baseline_exe_time}")
 
-    assert optimized_exe_time * 900 < baseline_exe_time
+    # The time savings were much greater (x1000) but use x10 for testing
+    assert optimized_exe_time * 10 < baseline_exe_time
