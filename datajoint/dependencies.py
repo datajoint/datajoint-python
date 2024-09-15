@@ -4,13 +4,13 @@ import re
 from collections import defaultdict
 from .errors import DataJointError
 
+
 def extract_master(part_table):
     """
-    given a part table name, return master part. None if not a part table 
+    given a part table name, return master part. None if not a part table
     """
     match = re.match(r"(?P<master>`\w+`.`#?\w+)__\w+`", part_table)
-    return match['master'] + '`' if match else None
-
+    return match["master"] + "`" if match else None
 
 
 def topo_sort(graph):
@@ -39,13 +39,11 @@ def topo_sort(graph):
     # to ensure correct topological ordering of the masters.
     for part in graph:
         # find the part's master
-        master = extract_master(part)
-        if master:
+        if (master := extract_master(part)) in graph:
             for edge in graph.in_edges(part):
                 parent = edge[0]
                 if parent != master and extract_master(parent) != master:
                     graph.add_edge(parent, master)
-
     sorted_nodes = list(nx.topological_sort(graph))
 
     # bring parts up to their masters
@@ -53,8 +51,7 @@ def topo_sort(graph):
     placed = set()
     while pos > 1:
         part = sorted_nodes[pos]
-        master = extract_master(part)
-        if not master or part in placed:
+        if not (master := extract_master) or part in placed:
             pos -= 1
         else:
             placed.add(part)
@@ -63,7 +60,7 @@ def topo_sort(graph):
             except ValueError:
                 # master not found
                 pass
-            else:                
+            else:
                 if pos > j + 1:
                     # move the part to its master
                     del sorted_nodes[pos]
@@ -214,8 +211,8 @@ class Dependencies(nx.DiGraph):
         :return: all dependent tables sorted in topological order.  Self is included.
         """
         self.load(force=False)
-        nodes =  self.subgraph(nx.descendants(self, full_table_name))
-        return  [full_table_name] + nodes.topo_sort()
+        nodes = self.subgraph(nx.descendants(self, full_table_name))
+        return [full_table_name] + nodes.topo_sort()
 
     def ancestors(self, full_table_name):
         """

@@ -217,6 +217,7 @@ def test_list_tables(schema_simp):
     actual = set(schema_simp.list_tables())
     assert actual == expected, f"Missing from list_tables(): {expected - actual}"
 
+
 def test_schema_save_any(schema_any):
     assert "class Experiment(dj.Imported)" in schema_any.code
 
