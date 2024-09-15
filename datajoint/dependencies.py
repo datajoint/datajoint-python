@@ -1,7 +1,63 @@
 import networkx as nx
 import itertools
+import re
 from collections import defaultdict
 from .errors import DataJointError
+
+
+def topo_sort(graph):
+    """
+    topological sort of a dependency graph that keeps part tables together with their masters
+    :return: list of table names in topological order
+    """
+    graph = nx.DiGraph(graph)  # make a copy
+
+    # collapse alias nodes
+    alias_nodes = [node for node in graph if node.isdigit()]
+    for node in alias_nodes:
+        direct_edge = (
+            next(x for x in graph.in_edges(node))[0],
+            next(x for x in graph.out_edges(node))[1],
+        )
+        graph.add_edge(*direct_edge)
+    graph.remove_nodes_from(alias_nodes)
+
+    # Add parts' dependencies to their masters' dependencies
+    # to ensure correct topological ordering of the masters.
+    part_pattern = re.compile(r"(?P<master>`\w+`.`#?\w+)__\w+`")
+    for part in graph:
+        # print part tables and their master
+        match = part_pattern.match(part)
+        if match:
+            master = match["master"] + "`"
+            for edge in graph.in_edges(part):
+                if edge[0] != master:
+                    graph.add_edge(edge[0], master)
+
+    sorted_nodes = list(nx.algorithms.topological_sort(graph))
+
+    # bring parts up to their masters
+    pos = len(sorted_nodes)
+    while pos > 0:
+        pos -= 1
+        part = sorted_nodes[pos]
+        match = part_pattern.match(part)
+        if match:
+            master = match["master"] + "`"
+            print(part, master)
+            try:
+                j = sorted_nodes.index(master)
+            except ValueError:
+                # master not found
+                continue
+            if pos > j + 1:
+                print(pos, j)
+                # move the part to its master
+                del sorted_nodes[pos]
+                sorted_nodes.insert(j + 1, part)
+                pos += 1
+
+    return sorted_nodes
 
 
 class Dependencies(nx.DiGraph):
@@ -107,8 +163,8 @@ class Dependencies(nx.DiGraph):
         self._loaded = True
 
     def topo_sort(self):
-        """:return:  list of nodes in lexcigraphical topological order"""
-        return list(nx.algorithms.dag.lexicographical_topological_sort(self))
+        """:return: list of tables names in topological order"""
+        return topo_sort(self)
 
     def parents(self, table_name, primary=None):
         """
@@ -146,7 +202,9 @@ class Dependencies(nx.DiGraph):
         :return: all dependent tables sorted in topological order.  Self is included.
         """
         self.load(force=False)
-        nodes = self.subgraph(nx.algorithms.dag.descendants(self, full_table_name)).copy()
+        nodes = self.subgraph(
+            nx.algorithms.dag.descendants(self, full_table_name)
+        ).copy()
         return [full_table_name] + nodes.topo_sort()
 
     def ancestors(self, full_table_name):
