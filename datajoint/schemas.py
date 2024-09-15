@@ -481,7 +481,7 @@ class Schema:
             t
             for d, t in (
                 full_t.replace("`", "").split(".")
-                for full_t in Diagram(self).topo_sort()
+                for full_t in self.connection.dependencies.topo_sort()
             )
             if d == self.database
         ]
@@ -530,7 +530,6 @@ class VirtualModule(types.ModuleType):
 
 def list_schemas(connection=None):
     """
-
     :param connection: a dj.Connection object
     :return: list of all accessible schemas on the server
     """
