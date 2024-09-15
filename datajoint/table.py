@@ -217,7 +217,6 @@ class Table(QueryExpression):
 
     def descendants(self, as_objects=False):
         """
-
         :param as_objects: False - a list of table names; True - a list of table objects.
         :return: list of tables descendants in topological order.
         """
