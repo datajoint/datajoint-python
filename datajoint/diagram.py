@@ -6,7 +6,7 @@ import logging
 import inspect
 from .table import Table
 from .dependencies import topo_sort
-from .user_tables import Manual, Imported, Computed, Lookup, Part
+from .user_tables import Manual, Imported, Computed, Lookup, Part, _get_tier, _AliasNode
 from .errors import DataJointError
 from .table import lookup_class_name
 
@@ -27,30 +27,6 @@ except:
 
 
 logger = logging.getLogger(__name__.split(".")[0])
-user_table_classes = (Manual, Lookup, Computed, Imported, Part)
-
-
-class _AliasNode:
-    """
-    special class to indicate aliased foreign keys
-    """
-
-    pass
-
-
-def _get_tier(table_name):
-    """given the table name, return"""
-    if not table_name.startswith("`"):
-        return _AliasNode
-    else:
-        try:
-            return next(
-                tier
-                for tier in user_table_classes
-                if re.fullmatch(tier.tier_regexp, table_name.split("`")[-2])
-            )
-        except StopIteration:
-            return None
 
 
 if not diagram_active:
