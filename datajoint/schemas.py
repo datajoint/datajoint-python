@@ -412,6 +412,7 @@ class Schema:
 
         :return: a string containing the body of a complete Python module defining this schema.
         """
+        self.connection.dependencies.load()
         self._assert_exists()
         module_count = itertools.count()
         # add virtual modules for referenced modules with names vmod0, vmod1, ...
@@ -477,6 +478,7 @@ class Schema:
 
         :return: A list of table names from the database schema.
         """
+        self.connection.dependencies.load()
         return [
             t
             for d, t in (
