@@ -1,5 +1,4 @@
 import networkx as nx
-import re
 import functools
 import io
 import logging
