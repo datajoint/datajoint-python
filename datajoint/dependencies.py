@@ -56,11 +56,11 @@ def topo_sort(graph):
             pos -= 1
         else:
             placed.add(part)
-            j = sorted_nodes.index(master)
-            if pos > j + 1:
-                # move the part to its master
+            insert_pos = sorted_nodes.index(master) + 1
+            if pos > insert_pos:
+                # move the part to the position immediately after its master
                 del sorted_nodes[pos]
-                sorted_nodes.insert(j + 1, part)
+                sorted_nodes.insert(insert_pos, part)
 
     return sorted_nodes
 
