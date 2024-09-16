@@ -61,7 +61,7 @@ else:
         draws the diagram using pyplot
 
         diag1 + diag2  - combines the two diagrams.
-        diag1 - diag2  - differente between diagrams
+        diag1 - diag2  - difference between diagrams
         diag1 * diag2  - intersction of diagrams
         diag + n   - expands n levels of successors
         diag - n   - expands n levels of predecessors
