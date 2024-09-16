@@ -51,20 +51,15 @@ def topo_sort(graph):
     placed = set()
     while pos > 1:
         part = sorted_nodes[pos]
-        if not (master := extract_master) or part in placed:
+        if (master := extract_master(part)) not in graph or part in placed:
             pos -= 1
         else:
             placed.add(part)
-            try:
-                j = sorted_nodes.index(master)
-            except ValueError:
-                # master not found
-                pass
-            else:
-                if pos > j + 1:
-                    # move the part to its master
-                    del sorted_nodes[pos]
-                    sorted_nodes.insert(j + 1, part)
+            j = sorted_nodes.index(master)
+            if pos > j + 1:
+                # move the part to its master
+                del sorted_nodes[pos]
+                sorted_nodes.insert(j + 1, part)
 
     return sorted_nodes
 
