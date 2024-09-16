@@ -257,7 +257,7 @@ class _AliasNode:
 
 
 def _get_tier(table_name):
-    """given the table name, return the use table class."""
+    """given the table name, return the user table class."""
     if not table_name.startswith("`"):
         return _AliasNode
     else:
