@@ -61,8 +61,8 @@ else:
         draws the diagram using pyplot
 
         diag1 + diag2  - combines the two diagrams.
-        diag1 - diag2  - differente between diagrams
-        diag1 * diag2  - intersction of diagrams
+        diag1 - diag2  - difference between diagrams
+        diag1 * diag2  - intersection of diagrams
         diag + n   - expands n levels of successors
         diag - n   - expands n levels of predecessors
         Thus dj.Diagram(schema.Table)+1-1 defines the diagram of immediate ancestors and descendants of schema.Table
