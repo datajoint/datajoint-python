@@ -71,7 +71,7 @@ else:
         Only those tables that are loaded in the connection object are displayed
         """
 
-        def __init__(self, source=None, context=None):
+        def __init__(self, source, context=None):
 
             if isinstance(source, Diagram):
                 # copy constructor

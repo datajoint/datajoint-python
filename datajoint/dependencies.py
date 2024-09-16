@@ -42,7 +42,8 @@ def topo_sort(graph):
         if (master := extract_master(part)) in graph:
             for edge in graph.in_edges(part):
                 parent = edge[0]
-                if parent != master and extract_master(parent) != master:
+                if master not in (parent, extract_master(parent)):
+                    # if parent is neither master nor part of master
                     graph.add_edge(parent, master)
     sorted_nodes = list(nx.topological_sort(graph))
 
