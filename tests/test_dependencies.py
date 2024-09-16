@@ -19,6 +19,26 @@ def test_nullable_dependency(thing_tables):
     assert len(c) == len(c.fetch()) == 5
 
 
+def test_topo_sort():
+    import networkx as nx
+    import datajoint as dj
+
+    graph = nx.DiGraph(
+        [
+            ("`a`.`a`", "`a`.`m`"),
+            ("`a`.`a`", "`a`.`z`"),
+            ("`a`.`m`", "`a`.`m__part`"),
+            ("`a`.`z`", "`a`.`m__part`"),
+        ]
+    )
+    assert dj.dependencies.topo_sort(graph) == [
+        "`a`.`a`",
+        "`a`.`z`",
+        "`a`.`m`",
+        "`a`.`m__part`",
+    ]
+
+
 def test_unique_dependency(thing_tables):
     """test nullable unique foreign key"""
     # Thing C has a nullable dependency on B whose primary key is composite
