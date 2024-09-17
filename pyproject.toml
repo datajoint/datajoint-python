@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "datajoint-python"
+version = "0.14.2"
+description = "A relational data framework for scientific data pipelines with MySQL backend."
+authors = ["Ethan Ho <53266718+ethho@users.noreply.github.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
