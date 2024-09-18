@@ -1,11 +1,11 @@
-ARG IMAGE=jupyter/docker-stacks-foundation
 ARG PY_VER=3.9
-ARG DISTRO=debian
+ARG IMAGE=jupyter/docker-stacks-foundation
 FROM ${IMAGE}
+USER jovyan
 RUN conda install -y -n base -c conda-forge python=${PY_VER} && \
     conda clean -afy
-COPY --chown=anaconda:anaconda ./setup.py ./datajoint.pub ./requirements.txt /main/
-COPY --chown=anaconda:anaconda ./datajoint /main/datajoint
+COPY --chown=1000:100 ./pyproject.toml ./README.md ./LICENSE.txt /main/
+COPY --chown=1000:100 ./datajoint /main/datajoint
 RUN \
     pip install --no-cache-dir /main && \
     rm -r /main/*
