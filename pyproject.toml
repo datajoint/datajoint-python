@@ -12,6 +12,8 @@ dependencies = [
   "pydot",
   "minio>=7.0.0",
   "matplotlib",
+  "otumat",
+  "faker",
   "cryptography",
   "urllib3"
 ]
@@ -61,6 +63,12 @@ datajoint = "datajoint.cli:cli"
 [tool.setuptools]
 packages = ["datajoint"]
 
+[tool.setuptools.package-data]
+datajoint = ["datajoint.pub"]
+
 [build-system]
-requires = ["setuptools >= 61.0"]
+requires = [
+    "setuptools>=60",
+    "setuptools-scm>=8.0"
+]
 build-backend = "setuptools.build_meta"
