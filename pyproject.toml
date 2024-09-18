@@ -1,54 +1,63 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [project]
-name = "spam-eggs"
-version = "2020.0.0"
+name = "datajoint"
+version = "0.14.2"
 dependencies = [
-  "httpx",
-  "gidgethub[httpx]>4.0.0",
-  "django>2.1; os_name != 'nt'",
-  "django>2.0; os_name == 'nt'",
+  "numpy",
+  "pymysql>=0.7.2",
+  "pyparsing",
+  "ipython",
+  "pandas",
+  "tqdm",
+  "networkx",
+  "pydot",
+  "minio>=7.0.0",
+  "matplotlib",
+  "cryptography",
+  "urllib3"
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.8,<4.0"
 authors = [
-  {name = "Pradyun Gedam", email = "pradyun@example.com"},
-  {name = "Tzu-Ping Chung", email = "tzu-ping@example.com"},
-  {name = "Another person"},
-  {email = "different.person@example.com"},
+  {name = "Dimitri Yatsenko", email = "dimitri@datajoint.com"},
+  {name = "Raphael Guzman"},
+  {name = "Edgar Walker"},
+  {name = "DataJoint Contributors", email = "support@datajoint.com"},
 ]
 maintainers = [
-  {name = "Brett Cannon", email = "brett@example.com"}
+  {name = "Dimitri Yatsenko", email = "dimitri@datajoint.com"},
+  {name = "DataJoint Contributors", email = "support@datajoint.com"},
 ]
-description = "Lovely Spam! Wonderful Spam!"
-readme = "README.rst"
+description = "A relational data pipeline framework."
+readme = "README.md"
 license = {file = "LICENSE.txt"}
-keywords = ["egg", "bacon", "sausage", "tomatoes", "Lobster Thermidor"]
+keywords = [
+    "database",
+    "data pipelines",
+    "scientific computing",
+    "automated research workflows",
+]
 classifiers = [
-  "Development Status :: 4 - Beta",
   "Programming Language :: Python"
 ]
 
 [project.optional-dependencies]
-gui = ["PyQt5"]
-cli = [
-  "rich",
-  "click",
+test = [
+  "pytest",
+  "pytest-cov",
+  "black==24.2.0",
+  "flake8",
 ]
 
 [project.urls]
-Homepage = "https://example.com"
-Documentation = "https://readthedocs.org"
-Repository = "https://github.com/me/spam.git"
-"Bug Tracker" = "https://github.com/me/spam/issues"
-Changelog = "https://github.com/me/spam/blob/master/CHANGELOG.md"
+Homepage = "https://datajoint.com/docs"
+Documentation = "https://datajoint.com/docs"
+Repository = "https://github.com/datajoint/datajoint-python"
+"Bug Tracker" = "https://github.com/datajoint/datajoint-python/issues"
+Changelog = "https://github.com/datajoint/datajoint-python/blob/master/CHANGELOG.md"
 
-[project.scripts]
-spam-cli = "spam:main_cli"
+[project.entry-points."console_scripts"]
+dj = "datajoint.cli:cli"
+datajoint = "datajoint.cli:cli"
 
-[project.gui-scripts]
-spam-gui = "spam:main_gui"
-
-[project.entry-points."spam.magical"]
-tomatoes = "spam:main_tomatoes"
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
