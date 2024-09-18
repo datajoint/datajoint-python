@@ -447,9 +447,9 @@ def minio_client(s3_creds, minio_client_bare, teardown=False):
         if e.code != "BucketAlreadyOwnedByYou":
             raise e
 
-    if not teardown:
-        return minio_client_bare
     yield minio_client_bare
+    if not teardown:
+        return
 
     # Teardown S3
     objs = list(minio_client_bare.list_objects(s3_creds["bucket"], recursive=True))
