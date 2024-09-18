@@ -437,7 +437,7 @@ def minio_client_bare(s3_creds):
 
 
 @pytest.fixture(scope="session")
-def minio_client(s3_creds, minio_client_bare):
+def minio_client(s3_creds, minio_client_bare, teardown=False):
     """Initialize a MinIO client and create buckets for testing session."""
     # Setup MinIO bucket
     aws_region = "us-east-1"
@@ -447,6 +447,8 @@ def minio_client(s3_creds, minio_client_bare):
         if e.code != "BucketAlreadyOwnedByYou":
             raise e
 
+    if not teardown:
+        return minio_client_bare
     yield minio_client_bare
 
     # Teardown S3
