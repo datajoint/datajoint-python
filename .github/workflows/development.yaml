@@ -87,7 +87,7 @@ jobs:
           COMPOSE_HTTP_TIMEOUT: "120"
         run: |
           export HOST_UID=$(id -u)
-          docker compose -f LNX-docker-compose.yml up --build --exit-code-from app
+          docker compose up --build --exit-code-from app
   lint:
     runs-on: ubuntu-latest
     strategy:
