@@ -195,7 +195,7 @@ def connection_test(connection_root, prefix, db_creds_test):
 @pytest.fixture(scope="session")
 def s3_creds() -> Dict:
     return dict(
-        endpoint=os.environ.get("S3_ENDPOINT", "fakeservices.datajoint.io"),
+        endpoint=os.environ.get("S3_ENDPOINT", "minio:9000"),
         access_key=os.environ.get("S3_ACCESS_KEY", "datajoint"),
         secret_key=os.environ.get("S3_SECRET_KEY", "datajoint"),
         bucket=os.environ.get("S3_BUCKET", "datajoint.test"),
@@ -425,14 +425,13 @@ def http_client():
 
 
 @pytest.fixture(scope="session")
-def minio_client_bare(s3_creds, http_client):
+def minio_client_bare(s3_creds):
     """Initialize MinIO with an endpoint and access/secret keys."""
     client = minio.Minio(
-        s3_creds["endpoint"],
+        endpoint=s3_creds["endpoint"],
         access_key=s3_creds["access_key"],
         secret_key=s3_creds["secret_key"],
-        secure=True,
-        http_client=http_client,
+        secure=False,
     )
     return client
 

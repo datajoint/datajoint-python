@@ -221,7 +221,7 @@ jobs:
       - name: Publish pip release
         run: |
           export HOST_UID=$(id -u)
-          docker compose run \
+          docker compose run --build \
             -e TWINE_USERNAME=${TWINE_USERNAME} -e TWINE_PASSWORD=${TWINE_PASSWORD} app \
             sh -c "pip install twine && python -m twine upload dist/*"
       - name: Login to DockerHub
