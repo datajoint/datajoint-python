@@ -17,7 +17,19 @@ class DataJointError(Exception):
     """
 
     def __init__(self, *args):
-        super().__init__(*args)
+        from .plugin import connection_plugins, type_plugins
+
+        self.__cause__ = (
+            PluginWarning("Unverified DataJoint plugin detected.")
+            if any(
+                [
+                    any([not plugins[k]["verified"] for k in plugins])
+                    for plugins in [connection_plugins, type_plugins]
+                    if plugins
+                ]
+            )
+            else None
+        )
 
     def suggest(self, *args):
         """
