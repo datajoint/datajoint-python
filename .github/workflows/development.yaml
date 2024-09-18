@@ -44,7 +44,8 @@ jobs:
           echo "EOF" >> $GITHUB_ENV
       - name: Build pip artifacts
         run: |
-          python3 setup.py bdist_wheel sdist
+          python3 -m pip install build
+          python3 -m build .
           echo "DJ_VERSION=${DJ_VERSION}" >> $GITHUB_ENV
       - if: matrix.py_ver == '3.9' && matrix.distro == 'debian'
         name: Add pip artifacts
