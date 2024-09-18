@@ -104,5 +104,8 @@ def test_cli_schemas(prefix, connection_root):
     ]
 
     cleaned = stdout.strip(" >\t\n\r")
-    for key in ("test_schema", "Schema `djtest_cli`",):
+    for key in (
+        "test_schema",
+        "Schema `djtest_cli`",
+    ):
         assert key in cleaned, f"Key {key} not found in config from stdout: {cleaned}"

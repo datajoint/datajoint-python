@@ -27,7 +27,7 @@ class Folder:
         *,
         secure=False,
         proxy_server=None,
-        **_
+        **_,
     ):
         # from https://docs.min.io/docs/python-client-api-reference
         self.client = minio.Minio(
