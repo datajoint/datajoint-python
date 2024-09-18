@@ -58,6 +58,9 @@ Changelog = "https://github.com/datajoint/datajoint-python/blob/master/CHANGELOG
 dj = "datajoint.cli:cli"
 datajoint = "datajoint.cli:cli"
 
+[tool.setuptools]
+packages = ["datajoint"]
+
 [build-system]
 requires = ["setuptools >= 61.0"]
 build-backend = "setuptools.build_meta"

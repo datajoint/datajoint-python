@@ -60,8 +60,14 @@ services:
       - PYTHON_USER=dja
       - JUPYTER_PASSWORD=datajoint
     working_dir: /src
-    command: |
-      pip install -e ".[test]"
-      pip show datajoint
-      pytest -sv --cov-report term-missing --cov=datajoint tests
+    volumes:
+      - .:/src
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        pip install -e ".[test]"
+        pip show datajoint
+        pytest -sv --cov-report term-missing --cov=datajoint tests
 
