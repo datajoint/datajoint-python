@@ -1,14 +1,26 @@
-ARG PY_VER=3.9
-ARG IMAGE=jupyter/docker-stacks-foundation
+ARG IMAGE=mambaorg/micromamba:1.5-bookworm-slim
 FROM ${IMAGE}
-RUN conda install -y -n base -c conda-forge python=${PY_VER} git graphviz pydot && \
-    conda clean -afy
-USER 1000
+
+ARG CONDA_BIN=micromamba
+ARG PY_VER=3.9
+ARG HOST_UID=1000
+
+RUN ${CONDA_BIN} install --no-pin -qq -y -n base -c conda-forge \
+        python=${PY_VER} pip setuptools git graphviz pydot && \
+    ${CONDA_BIN} clean -qq -afy
+
+COPY --chown=${HOST_UID:-1000}:mambauser ./pyproject.toml ./README.md ./LICENSE.txt /main/
+COPY --chown=${HOST_UID:-1000}:mambauser ./datajoint /main/datajoint
+
 VOLUME /src
-WORKDIR /tmp
-COPY --chown=1000:100 ./pyproject.toml ./README.md ./LICENSE.txt /main/
-COPY --chown=1000:100 ./datajoint /main/datajoint
-RUN \
-    pip install --no-cache-dir /main && \
-    rm -r /main/*
 WORKDIR /src
+USER root
+RUN \
+    chown -R ${HOST_UID:-1000}:mambauser /main && \
+    chown -R ${HOST_UID:-1000}:mambauser /src && \
+    eval "$(micromamba shell hook --shell bash)" && \
+    micromamba activate base && \
+    pip install -q --no-cache-dir /main && \
+    rm -r /main/*
+USER ${MAMBA_USER}
+ENV PATH="$PATH:/home/mambauser/.local/bin"

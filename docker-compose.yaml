@@ -41,6 +41,7 @@ services:
       dockerfile: Dockerfile
       args:
         PY_VER: ${PY_VER:-3.8}
+        HOST_UID: ${HOST_UID:-1000}
     depends_on:
       db:
         condition: service_healthy
@@ -60,7 +61,7 @@ services:
       - PYTHON_USER=dja
       - JUPYTER_PASSWORD=datajoint
     working_dir: /src
-    user: 1000:100
+    user: ${HOST_UID:-1000}:mambauser
     volumes:
       - .:/src
   djtest:
