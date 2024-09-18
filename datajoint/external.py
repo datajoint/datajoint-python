@@ -8,7 +8,7 @@ from .hash import uuid_from_buffer, uuid_from_file
 from .table import Table, FreeTable
 from .heading import Heading
 from .declare import EXTERNAL_TABLE_ROOT
-from . import s3
+from . import s3, errors
 from .utils import safe_write, safe_copy
 
 logger = logging.getLogger(__name__.split(".")[0])
@@ -141,7 +141,12 @@ class ExternalTable(Table):
         if self.spec["protocol"] == "s3":
             return self.s3.get(external_path)
         if self.spec["protocol"] == "file":
-            return Path(external_path).read_bytes()
+            try:
+                return Path(external_path).read_bytes()
+            except FileNotFoundError:
+                raise errors.MissingExternalFile(
+                    f"Missing external file {external_path}"
+                ) from None
         assert False
 
     def _remove_external_file(self, external_path):

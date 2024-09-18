@@ -1,51 +1,5 @@
 from datajoint import errors
 from pytest import raises
-from datajoint.dependencies import unite_master_parts
-
-
-def test_unite_master_parts():
-    assert unite_master_parts(
-        [
-            "`s`.`a`",
-            "`s`.`a__q`",
-            "`s`.`b`",
-            "`s`.`c`",
-            "`s`.`c__q`",
-            "`s`.`b__q`",
-            "`s`.`d`",
-            "`s`.`a__r`",
-        ]
-    ) == [
-        "`s`.`a`",
-        "`s`.`a__q`",
-        "`s`.`a__r`",
-        "`s`.`b`",
-        "`s`.`b__q`",
-        "`s`.`c`",
-        "`s`.`c__q`",
-        "`s`.`d`",
-    ]
-    assert unite_master_parts(
-        [
-            "`lab`.`#equipment`",
-            "`cells`.`cell_analysis_method`",
-            "`cells`.`cell_analysis_method_task_type`",
-            "`cells`.`cell_analysis_method_users`",
-            "`cells`.`favorite_selection`",
-            "`cells`.`cell_analysis_method__cell_selection_params`",
-            "`lab`.`#equipment__config`",
-            "`cells`.`cell_analysis_method__field_detect_params`",
-        ]
-    ) == [
-        "`lab`.`#equipment`",
-        "`lab`.`#equipment__config`",
-        "`cells`.`cell_analysis_method`",
-        "`cells`.`cell_analysis_method__cell_selection_params`",
-        "`cells`.`cell_analysis_method__field_detect_params`",
-        "`cells`.`cell_analysis_method_task_type`",
-        "`cells`.`cell_analysis_method_users`",
-        "`cells`.`favorite_selection`",
-    ]
 
 
 def test_nullable_dependency(thing_tables):
@@ -63,6 +17,26 @@ def test_nullable_dependency(thing_tables):
     c.insert1(dict(a=4, b1=1, b2=2))
 
     assert len(c) == len(c.fetch()) == 5
+
+
+def test_topo_sort():
+    import networkx as nx
+    import datajoint as dj
+
+    graph = nx.DiGraph(
+        [
+            ("`a`.`a`", "`a`.`m`"),
+            ("`a`.`a`", "`a`.`z`"),
+            ("`a`.`m`", "`a`.`m__part`"),
+            ("`a`.`z`", "`a`.`m__part`"),
+        ]
+    )
+    assert dj.dependencies.topo_sort(graph) == [
+        "`a`.`a`",
+        "`a`.`z`",
+        "`a`.`m`",
+        "`a`.`m__part`",
+    ]
 
 
 def test_unique_dependency(thing_tables):

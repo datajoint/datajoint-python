@@ -1,12 +1,11 @@
 import networkx as nx
-import re
 import functools
 import io
 import logging
 import inspect
 from .table import Table
-from .dependencies import unite_master_parts
-from .user_tables import Manual, Imported, Computed, Lookup, Part
+from .dependencies import topo_sort
+from .user_tables import Manual, Imported, Computed, Lookup, Part, _get_tier, _AliasNode
 from .errors import DataJointError
 from .table import lookup_class_name
 
@@ -27,29 +26,6 @@ except:
 
 
 logger = logging.getLogger(__name__.split(".")[0])
-user_table_classes = (Manual, Lookup, Computed, Imported, Part)
-
-
-class _AliasNode:
-    """
-    special class to indicate aliased foreign keys
-    """
-
-    pass
-
-
-def _get_tier(table_name):
-    if not table_name.startswith("`"):
-        return _AliasNode
-    else:
-        try:
-            return next(
-                tier
-                for tier in user_table_classes
-                if re.fullmatch(tier.tier_regexp, table_name.split("`")[-2])
-            )
-        except StopIteration:
-            return None
 
 
 if not diagram_active:
@@ -59,8 +35,7 @@ if not diagram_active:
         Entity relationship diagram, currently disabled due to the lack of required packages: matplotlib and pygraphviz.
 
         To enable Diagram feature, please install both matplotlib and pygraphviz. For instructions on how to install
-        these two packages, refer to http://docs.datajoint.io/setup/Install-and-connect.html#python and
-        http://tutorials.datajoint.io/setting-up/datajoint-python.html
+        these two packages, refer to https://datajoint.com/docs/core/datajoint-python/0.14/client/install/
         """
 
         def __init__(self, *args, **kwargs):
@@ -72,19 +47,22 @@ else:
 
     class Diagram(nx.DiGraph):
         """
-        Entity relationship diagram.
+        Schema diagram showing tables and foreign keys between in the form of a directed
+        acyclic graph (DAG).  The diagram is derived from the connection.dependencies object.
 
         Usage:
 
         >>>  diag = Diagram(source)
 
-        source can be a base table object, a base table class, a schema, or a module that has a schema.
+        source can be a table object, a table class, a schema, or a module that has a schema.
 
         >>> diag.draw()
 
         draws the diagram using pyplot
 
         diag1 + diag2  - combines the two diagrams.
+        diag1 - diag2  - difference between diagrams
+        diag1 * diag2  - intersection of diagrams
         diag + n   - expands n levels of successors
         diag - n   - expands n levels of predecessors
         Thus dj.Diagram(schema.Table)+1-1 defines the diagram of immediate ancestors and descendants of schema.Table
@@ -94,6 +72,7 @@ else:
         """
 
         def __init__(self, source, context=None):
+
             if isinstance(source, Diagram):
                 # copy constructor
                 self.nodes_to_show = set(source.nodes_to_show)
@@ -154,7 +133,7 @@ else:
 
         def add_parts(self):
             """
-            Adds to the diagram the part tables of tables already included in the diagram
+            Adds to the diagram the part tables of all master tables already in the diagram
             :return:
             """
 
@@ -178,16 +157,6 @@ else:
                 if any(is_part(n, m) for m in self.nodes_to_show)
             )
             return self
-
-        def topological_sort(self):
-            """:return:  list of nodes in topological order"""
-            return unite_master_parts(
-                list(
-                    nx.algorithms.dag.topological_sort(
-                        nx.DiGraph(self).subgraph(self.nodes_to_show)
-                    )
-                )
-            )
 
         def __add__(self, arg):
             """
@@ -255,6 +224,10 @@ else:
             self = Diagram(self)  # copy
             self.nodes_to_show.intersection_update(arg.nodes_to_show)
             return self
+
+        def topo_sort(self):
+            """return nodes in lexicographical topological order"""
+            return topo_sort(self)
 
         def _make_graph(self):
             """

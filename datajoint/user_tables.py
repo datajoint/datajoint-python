@@ -2,6 +2,7 @@
 Hosts the table tiers, user tables should be derived from.
 """
 
+import re
 from .table import Table
 from .autopopulate import AutoPopulate
 from .utils import from_camel_case, ClassProperty
@@ -242,3 +243,29 @@ class Part(UserTable):
     def alter(self, prompt=True, context=None):
         # without context, use declaration context which maps master keyword to master table
         super().alter(prompt=prompt, context=context or self.declaration_context)
+
+
+user_table_classes = (Manual, Lookup, Computed, Imported, Part)
+
+
+class _AliasNode:
+    """
+    special class to indicate aliased foreign keys
+    """
+
+    pass
+
+
+def _get_tier(table_name):
+    """given the table name, return the user table class."""
+    if not table_name.startswith("`"):
+        return _AliasNode
+    else:
+        try:
+            return next(
+                tier
+                for tier in user_table_classes
+                if re.fullmatch(tier.tier_regexp, table_name.split("`")[-2])
+            )
+        except StopIteration:
+            return None
