@@ -84,7 +84,7 @@ jobs:
           COMPOSE_HTTP_TIMEOUT: "120"
         run: |
           export HOST_UID=$(id -u)
-          docker compose --profile test up --build --exit-code-from djtest djtest
+          docker compose --profile test up --quiet-pull --build --exit-code-from djtest djtest
   lint:
     runs-on: ubuntu-latest
     strategy:
@@ -135,7 +135,7 @@ jobs:
           export PACKAGE=datajoint
           export UPSTREAM_REPO=https://github.com/${GITHUB_REPOSITORY}.git
           export HOST_UID=$(id -u)
-          docker compose -f docs/docker-compose.yaml up --exit-code-from docs --build
+          docker compose -f docs/docker-compose.yaml up --quiet-pull --exit-code-from docs --build
           git push origin gh-pages
   publish-release:
     if: |
@@ -216,7 +216,7 @@ jobs:
       - name: Publish pip release
         run: |
           export HOST_UID=$(id -u)
-          docker compose run --build \
+          docker compose run --build --quiet-pull \
             -e TWINE_USERNAME=${TWINE_USERNAME} -e TWINE_PASSWORD=${TWINE_PASSWORD} app \
             sh -c "pip install twine && python -m twine upload dist/*"
       - name: Login to DockerHub
