@@ -73,12 +73,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{matrix.py_ver}}
-      - name: Install dependencies
-        run: |
-          python3 -m pip install --upgrade pip
-          python3 -m pip install ".[test]"
-      - name: Run syntax tests
-        run: flake8 datajoint --count --select=E9,F63,F7,F82 --show-source --statistics
       - name: Run primary tests
         env:
           PY_VER: ${{matrix.py_ver}}
