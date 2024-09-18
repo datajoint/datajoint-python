@@ -60,10 +60,9 @@ services:
       - PYTHON_USER=dja
       - JUPYTER_PASSWORD=datajoint
     working_dir: /src
+    user: 1000:100
     volumes:
       - .:/src
-    # tty: true
-    # stdin_open: true
   djtest:
     extends:
       service: app
