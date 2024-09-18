@@ -1,4 +1,4 @@
-# docker compose up --exit-code-from app --build
+# DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py) docker compose up --exit-code-from app --build
 services:
   db:
     image: datajoint/mysql:${MYSQL_VER:-8.0}
@@ -75,6 +75,10 @@ services:
     working_dir: /src
     volumes:
       - .:/src
+  djtest:
+    extends:
+      service: app
+    profiles: ["test"]
     command:
       - sh
       - -c
