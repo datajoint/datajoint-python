@@ -34,7 +34,7 @@ jobs:
           python-version: ${{matrix.py_ver}}
       - name: Validate version and release notes
         run: |
-          DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py)
+          DJ_VERSION=$(grep -m 1 version pyproject.toml | grep -oP '\d+\.\d+\.\d+')
           RELEASE_BODY=$(python3 -c \
             'print(open("./CHANGELOG.md").read().split("\n\n")[1].split("\n", 1)[1])' \
           )
@@ -167,7 +167,7 @@ jobs:
           python-version: ${{matrix.py_ver}}
       - name: Determine package version
         run: |
-          DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py)
+          DJ_VERSION=$(grep -m 1 version pyproject.toml | grep -oP '\d+\.\d+\.\d+')
           RELEASE_BODY=$(python -c \
             'print(open("./CHANGELOG.md").read().split("\n\n")[1].split("\n", 1)[1])' \
           )

@@ -1,4 +1,4 @@
-# DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py) docker compose --profile test up --build --exit-code-from djtest djtest
+# DJ_VERSION=$(grep -m 1 version pyproject.toml | grep -oP '\d+\.\d+\.\d+') docker compose --profile test up --build --exit-code-from djtest djtest
 services:
   db:
     image: datajoint/mysql:${MYSQL_VER:-8.0}
