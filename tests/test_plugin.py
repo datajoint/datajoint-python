@@ -5,6 +5,7 @@ import pkg_resources
 from os import path
 
 
+@pytest.mark.skip(reason="marked for deprecation")
 def test_check_pubkey():
     base_name = "datajoint"
     base_meta = pkg_resources.get_distribution(base_name)

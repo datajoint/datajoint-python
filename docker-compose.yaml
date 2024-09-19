@@ -1,0 +1,79 @@
+# DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py) docker compose --profile test up --build --exit-code-from djtest djtest
+services:
+  db:
+    image: datajoint/mysql:${MYSQL_VER:-8.0}
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DJ_PASS:-password}
+    command: mysqld --default-authentication-plugin=mysql_native_password
+    # ports:
+    #   - "3306:3306"
+    # volumes:
+    #   - ./mysql/data:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      timeout: 30s
+      retries: 5
+      interval: 15s
+  minio:
+    image: minio/minio:${MINIO_VER:-RELEASE.2022-08-11T04-37-28Z}
+    environment:
+      - MINIO_ACCESS_KEY=datajoint
+      - MINIO_SECRET_KEY=datajoint
+    # ports:
+    #   - "9000:9000"
+    # volumes:
+    #   - ./minio/config:/root/.minio
+    #   - ./minio/data:/data
+    command: server --address ":9000" /data
+    healthcheck:
+      test:
+        - "CMD"
+        - "curl"
+        - "--fail"
+        - "http://minio:9000/minio/health/live"
+      timeout: 30s
+      retries: 5
+      interval: 15s
+  app:
+    image: datajoint/datajoint:${DJ_VERSION:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PY_VER: ${PY_VER:-3.8}
+        HOST_UID: ${HOST_UID:-1000}
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      - DJ_HOST=db
+      - DJ_USER=root
+      - DJ_PASS=password
+      - DJ_TEST_HOST=db
+      - DJ_TEST_USER=datajoint
+      - DJ_TEST_PASSWORD=datajoint
+      - S3_ENDPOINT=minio:9000
+      - S3_ACCESS_KEY=datajoint
+      - S3_SECRET_KEY=datajoint
+      - S3_BUCKET=datajoint.test
+      - PYTHON_USER=dja
+      - JUPYTER_PASSWORD=datajoint
+    working_dir: /src
+    user: ${HOST_UID:-1000}:mambauser
+    volumes:
+      - .:/src
+  djtest:
+    extends:
+      service: app
+    profiles: ["test"]
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        pip install -q -e ".[test]"
+        pip freeze | grep datajoint
+        pytest --cov-report term-missing --cov=datajoint tests
+
