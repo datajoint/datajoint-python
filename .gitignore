@@ -26,7 +26,6 @@ jupyter_custom.js
 .eggs
 *.code-workspace
 docs/site
-datajoint/_version.py
 
 
 !.vscode/settings.json
