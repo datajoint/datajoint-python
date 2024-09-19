@@ -63,9 +63,6 @@ datajoint = "datajoint.cli:cli"
 [tool.setuptools]
 packages = ["datajoint"]
 
-[tool.setuptools_scm]
-version_file = "datajoint/_version.py"
-
 [build-system]
 requires = [
     "setuptools>=60",
