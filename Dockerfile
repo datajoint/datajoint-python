@@ -19,6 +19,6 @@ USER root
 RUN \
     chown -R ${HOST_UID:-1000}:mambauser /main && \
     chown -R ${HOST_UID:-1000}:mambauser /src && \
-    micromamba run -n base pip install -q --no-cache-dir /main && \
+    ${CONDA_BIN} run -n base pip install -q --no-cache-dir /main && \
     rm -r /main/*
 USER ${MAMBA_USER}
