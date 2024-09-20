@@ -1,4 +1,4 @@
-# DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py) docker compose --profile test up --build --exit-code-from djtest djtest
+# HOST_UID=$(id -u) PY_VER=3.11 DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py) docker compose --profile test up --build --exit-code-from djtest djtest
 services:
   db:
     image: datajoint/mysql:${MYSQL_VER:-8.0}
