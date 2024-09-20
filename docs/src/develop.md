@@ -96,7 +96,7 @@ It is often useful in development to connect to DataJoint's relational database 
 Connect as follows to the database running within your developer environment:
 
 ```
-mysql -hfakeservices.datajoint.io -uroot -ppassword
+mysql -hdb -uroot -ppassword
 ```
 
 ### Documentation

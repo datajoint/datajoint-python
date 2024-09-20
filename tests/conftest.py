@@ -61,7 +61,7 @@ def enable_filepath_feature(monkeypatch):
 @pytest.fixture(scope="session")
 def db_creds_test() -> Dict:
     return dict(
-        host=os.getenv("DJ_TEST_HOST", "fakeservices.datajoint.io"),
+        host=os.getenv("DJ_TEST_HOST", "db"),
         user=os.getenv("DJ_TEST_USER", "datajoint"),
         password=os.getenv("DJ_TEST_PASSWORD", "datajoint"),
     )
@@ -70,7 +70,7 @@ def db_creds_test() -> Dict:
 @pytest.fixture(scope="session")
 def db_creds_root() -> Dict:
     return dict(
-        host=os.getenv("DJ_HOST", "fakeservices.datajoint.io"),
+        host=os.getenv("DJ_HOST", "db"),
         user=os.getenv("DJ_USER", "root"),
         password=os.getenv("DJ_PASS", "password"),
     )
