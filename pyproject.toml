@@ -1,6 +1,6 @@
 [project]
 name = "datajoint"
-version = "0.14.2"
+version = "0.14.3"
 dependencies = [
   "numpy",
   "pymysql>=0.7.2",
