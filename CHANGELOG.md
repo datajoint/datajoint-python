@@ -1,6 +1,6 @@
 ## Release notes
 
-### 0.14.3 -- TBD
+### 0.14.3 -- Sep 20, 2024
 - Added - `dj.Top` restriction ([#1024](https://github.com/datajoint/datajoint-python/issues/1024)) PR [#1084](https://github.com/datajoint/datajoint-python/pull/1084)
 - Fixed - Added encapsulating double quotes to comply with [DOT language](https://graphviz.org/doc/info/lang.html) - PR [#1177](https://github.com/datajoint/datajoint-python/pull/1177)
 - Added - Datajoint python CLI ([#940](https://github.com/datajoint/datajoint-python/issues/940)) PR [#1095](https://github.com/datajoint/datajoint-python/pull/1095)
@@ -8,6 +8,7 @@
 - Added - Ability to specify a list of keys to populate - PR [#989](https://github.com/datajoint/datajoint-python/pull/989)
 - Fixed - fixed topological sort [#1057](https://github.com/datajoint/datajoint-python/issues/1057)- PR [#1184](https://github.com/datajoint/datajoint-python/pull/1184)
 - Fixed - .parts() not always returning parts [#1103](https://github.com/datajoint/datajoint-python/issues/1103)- PR [#1184](https://github.com/datajoint/datajoint-python/pull/1184)
+- Changed - replace `setup.py` with `pyproject.toml` PR [#1183](https://github.com/datajoint/datajoint-python/pull/1183)
 
 ### 0.14.2 -- Aug 19, 2024
 - Added - Migrate nosetests to pytest - PR [#1142](https://github.com/datajoint/datajoint-python/pull/1142)

@@ -8,6 +8,6 @@ RUN \
     pip uninstall datajoint -y
 
 USER root
-ENV DJ_HOST fakeservices.datajoint.io
+ENV DJ_HOST db
 ENV DJ_USER root
 ENV DJ_PASS password

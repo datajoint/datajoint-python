@@ -1,0 +1,71 @@
+[project]
+name = "datajoint"
+version = "0.14.3"
+dependencies = [
+  "numpy",
+  "pymysql>=0.7.2",
+  "pyparsing",
+  "ipython",
+  "pandas",
+  "tqdm",
+  "networkx",
+  "pydot",
+  "minio>=7.0.0",
+  "matplotlib",
+  "otumat",
+  "faker",
+  "cryptography",
+  "urllib3"
+]
+requires-python = ">=3.8,<4.0"
+authors = [
+  {name = "Dimitri Yatsenko", email = "dimitri@datajoint.com"},
+  {name = "Raphael Guzman"},
+  {name = "Edgar Walker"},
+  {name = "DataJoint Contributors", email = "support@datajoint.com"},
+]
+maintainers = [
+  {name = "Dimitri Yatsenko", email = "dimitri@datajoint.com"},
+  {name = "DataJoint Contributors", email = "support@datajoint.com"},
+]
+description = "A relational data pipeline framework."
+readme = "README.md"
+license = {file = "LICENSE.txt"}
+keywords = [
+    "database",
+    "data pipelines",
+    "scientific computing",
+    "automated research workflows",
+]
+classifiers = [
+  "Programming Language :: Python"
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest",
+  "pytest-cov",
+  "black==24.2.0",
+  "flake8",
+]
+
+[project.urls]
+Homepage = "https://datajoint.com/docs"
+Documentation = "https://datajoint.com/docs"
+Repository = "https://github.com/datajoint/datajoint-python"
+"Bug Tracker" = "https://github.com/datajoint/datajoint-python/issues"
+Changelog = "https://github.com/datajoint/datajoint-python/blob/master/CHANGELOG.md"
+
+[project.entry-points."console_scripts"]
+dj = "datajoint.cli:cli"
+datajoint = "datajoint.cli:cli"
+
+[tool.setuptools]
+packages = ["datajoint"]
+
+[build-system]
+requires = [
+    "setuptools>=60",
+    "setuptools-scm>=8.0"
+]
+build-backend = "setuptools.build_meta"
