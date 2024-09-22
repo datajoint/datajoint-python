@@ -413,7 +413,9 @@ def test_add_hidden_timestamp_enabled(enable_add_hidden_timestamp, schema_any):
 
 
 def test_add_hidden_timestamp_disabled(disable_add_hidden_timestamp, schema_any):
-    assert not config["add_hidden_timestamp"], "expected add_hidden_timestamp to be False"
+    assert not config[
+        "add_hidden_timestamp"
+    ], "expected add_hidden_timestamp to be False"
     msg = f"{Experiment().heading._attributes=}"
     assert not any(
         a.name.endswith("_timestamp") for a in Experiment().heading._attributes.values()
