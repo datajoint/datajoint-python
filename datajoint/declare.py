@@ -312,7 +312,7 @@ def declare(full_table_name, definition, context):
         external_stores,
     ) = prepare_declare(definition, context)
 
-    if config.get("enable_hidden_attributes", False):
+    if config.get("add_hidden_timestamp", False):
         metadata_attr_sql = [
             "`_{full_table_name}_timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP"
         ]
