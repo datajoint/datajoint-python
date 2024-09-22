@@ -394,8 +394,9 @@ def test_table_name_with_underscores(schema_any):
 
 def test_hidden_attributes_default_value():
     config_val = config.get("enable_hidden_attributes")
-    assert config_val is not None and not config_val, \
-        "Default value for enable_hidden_attributes is not False"
+    assert (
+        config_val is not None and not config_val
+    ), "Default value for enable_hidden_attributes is not False"
 
 
 def test_hidden_attributes_enabled(enable_hidden_attributes, schema_any):
@@ -403,8 +404,12 @@ def test_hidden_attributes_enabled(enable_hidden_attributes, schema_any):
     config["enable_hidden_attributes"] = True
 
     msg = f"{Experiment().heading._attributes=}"
-    assert any(a.name.endswith("_timestamp") for a in Experiment().heading._attributes.values()), msg
-    assert any(a.name.startswith("_") for a in Experiment().heading._attributes.values()), msg
+    assert any(
+        a.name.endswith("_timestamp") for a in Experiment().heading._attributes.values()
+    ), msg
+    assert any(
+        a.name.startswith("_") for a in Experiment().heading._attributes.values()
+    ), msg
     assert any(a.is_hidden for a in Experiment().heading._attributes.values()), msg
     assert not any(a.is_hidden for a in Experiment().heading.attributes.values()), msg
 
@@ -417,8 +422,12 @@ def test_hidden_attributes_disabled(disable_hidden_attributes, schema_any):
     config["enable_hidden_attributes"] = False
 
     msg = f"{Experiment().heading._attributes=}"
-    assert not any(a.name.endswith("_timestamp") for a in Experiment().heading._attributes.values()), msg
-    assert not any(a.name.startswith("_") for a in Experiment().heading._attributes.values()), msg
+    assert not any(
+        a.name.endswith("_timestamp") for a in Experiment().heading._attributes.values()
+    ), msg
+    assert not any(
+        a.name.startswith("_") for a in Experiment().heading._attributes.values()
+    ), msg
     assert not any(a.is_hidden for a in Experiment().heading._attributes.values()), msg
     assert not any(a.is_hidden for a in Experiment().heading.attributes.values()), msg
 
