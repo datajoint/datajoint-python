@@ -3,6 +3,25 @@ from .schema import *
 import datajoint as dj
 import inspect
 from datajoint.declare import declare
+from datajoint.settings import config
+
+
+@pytest.fixture(scope="function")
+def enable_hidden_attributes():
+    orig_config_val = config.get("enable_hidden_attributes")
+    config["enable_hidden_attributes"] = True
+    yield
+    if orig_config_val is not None:
+        config["enable_hidden_attributes"] = orig_config_val
+
+
+@pytest.fixture(scope="function")
+def disable_hidden_attributes():
+    orig_config_val = config.get("enable_hidden_attributes")
+    config["enable_hidden_attributes"] = False
+    yield
+    if orig_config_val is not None:
+        config["enable_hidden_attributes"] = orig_config_val
 
 
 def test_schema_decorator(schema_any):
@@ -373,9 +392,35 @@ def test_table_name_with_underscores(schema_any):
         schema_any(Table_With_Underscores)
 
 
-def test_hidden_attributes(schema_any):
-    assert (
-        list(Experiment().heading._attributes.keys())[-1].split("_")[2] == "timestamp"
-    )
-    assert any(a.is_hidden for a in Experiment().heading._attributes.values())
-    assert not any(a.is_hidden for a in Experiment().heading.attributes.values())
+def test_hidden_attributes_default_value():
+    config_val = config.get("enable_hidden_attributes")
+    assert config_val is not None and not config_val, \
+        "Default value for enable_hidden_attributes is not False"
+
+
+def test_hidden_attributes_enabled(enable_hidden_attributes, schema_any):
+    orig_config_val = config.get("enable_hidden_attributes")
+    config["enable_hidden_attributes"] = True
+
+    msg = f"{Experiment().heading._attributes=}"
+    assert any(a.name.endswith("_timestamp") for a in Experiment().heading._attributes.values()), msg
+    assert any(a.name.startswith("_") for a in Experiment().heading._attributes.values()), msg
+    assert any(a.is_hidden for a in Experiment().heading._attributes.values()), msg
+    assert not any(a.is_hidden for a in Experiment().heading.attributes.values()), msg
+
+    if orig_config_val is not None:
+        config["enable_hidden_attributes"] = orig_config_val
+
+
+def test_hidden_attributes_disabled(disable_hidden_attributes, schema_any):
+    orig_config_val = config.get("enable_hidden_attributes")
+    config["enable_hidden_attributes"] = False
+
+    msg = f"{Experiment().heading._attributes=}"
+    assert not any(a.name.endswith("_timestamp") for a in Experiment().heading._attributes.values()), msg
+    assert not any(a.name.startswith("_") for a in Experiment().heading._attributes.values()), msg
+    assert not any(a.is_hidden for a in Experiment().heading._attributes.values()), msg
+    assert not any(a.is_hidden for a in Experiment().heading.attributes.values()), msg
+
+    if orig_config_val is not None:
+        config["enable_hidden_attributes"] = orig_config_val

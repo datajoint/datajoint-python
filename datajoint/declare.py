@@ -10,6 +10,7 @@ from hashlib import sha1
 from .errors import DataJointError, _support_filepath_types, FILEPATH_FEATURE_SWITCH
 from .attribute_adapter import get_adapter
 from .condition import translate_attribute
+from .settings import config
 
 UUID_DATA_TYPE = "binary(16)"
 MAX_TABLE_NAME_LENGTH = 64
@@ -311,17 +312,18 @@ def declare(full_table_name, definition, context):
         external_stores,
     ) = prepare_declare(definition, context)
 
-    metadata_attr_sql = [
-        "`_{full_table_name}_timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP"
-    ]
-    attribute_sql.extend(
-        attr.format(
-            full_table_name=sha1(
-                full_table_name.replace("`", "").encode("utf-8")
-            ).hexdigest()
+    if config.get("enable_hidden_attributes", False):
+        metadata_attr_sql = [
+            "`_{full_table_name}_timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP"
+        ]
+        attribute_sql.extend(
+            attr.format(
+                full_table_name=sha1(
+                    full_table_name.replace("`", "").encode("utf-8")
+                ).hexdigest()
+            )
+            for attr in metadata_attr_sql
         )
-        for attr in metadata_attr_sql
-    )
 
     if not primary_key:
         raise DataJointError("Table must have a primary key")
