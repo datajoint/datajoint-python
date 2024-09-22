@@ -136,7 +136,7 @@ class Fetch:
         format=None,
         as_dict=None,
         squeeze=False,
-        download_path="."
+        download_path=".",
     ):
         """
         Fetches the expression results from the database into an np.array or list of dictionaries and

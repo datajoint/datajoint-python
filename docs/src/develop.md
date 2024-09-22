@@ -11,15 +11,20 @@ Here are some options that provide a great developer experience:
   - Build time for a 2-Core codespace is **~6m**. This is done infrequently and cached for convenience.
   - Start time for a 2-Core codespace is **~2m**. This will pull the built codespace from cache when you need it.
   - *Tip*: GitHub auto names the codespace but you can rename the codespace so that it is easier to identify later.
-- **Local IDE**:
+- **Local IDE (VSCode - Dev Containers)**:
   - Ensure you have [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
   - Ensure you have [Docker](https://docs.docker.com/get-docker/)
   - Ensure you have [VSCode](https://code.visualstudio.com/)
   - Install the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
   - `git clone` the codebase repository and open it in VSCode
   - Use the `Dev Containers extension` to `Reopen in Container` (More info in the `Getting started` included with the extension)
-
-You will know your environment has finished loading once you see a terminal open related to `Running postStartCommand` with a final message: `Done`.
+  - You will know your environment has finished loading once you see a terminal open related to `Running postStartCommand` with a final message: `Done. Press any key to close the terminal.`.
+- **Local IDE (Docker Compose)**:
+  - Ensure you have [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
+  - Ensure you have [Docker](https://docs.docker.com/get-docker/)
+  - `git clone` the codebase repository and open it in VSCode
+  - Issue the following command in the terminal to build and run the Docker container: `HOST_UID=$(id -u) PY_VER=3.11 DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py) docker compose --profile test run --rm -it djtest -- sh -c 'pip install -qe ".[test]" && bash'`
+  - Issue the following command in the terminal to stop the Docker compose stack: `docker compose --profile test down`
 
 ## Features
 
@@ -96,7 +101,7 @@ It is often useful in development to connect to DataJoint's relational database 
 Connect as follows to the database running within your developer environment:
 
 ```
-mysql -hfakeservices.datajoint.io -uroot -ppassword
+mysql -hdb -uroot -ppassword
 ```
 
 ### Documentation
