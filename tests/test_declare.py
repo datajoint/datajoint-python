@@ -3,6 +3,25 @@ from .schema import *
 import datajoint as dj
 import inspect
 from datajoint.declare import declare
+from datajoint.settings import config
+
+
+@pytest.fixture(scope="function")
+def enable_add_hidden_timestamp():
+    orig_config_val = config.get("add_hidden_timestamp")
+    config["add_hidden_timestamp"] = True
+    yield
+    if orig_config_val is not None:
+        config["add_hidden_timestamp"] = orig_config_val
+
+
+@pytest.fixture(scope="function")
+def disable_add_hidden_timestamp():
+    orig_config_val = config.get("add_hidden_timestamp")
+    config["add_hidden_timestamp"] = False
+    yield
+    if orig_config_val is not None:
+        config["add_hidden_timestamp"] = orig_config_val
 
 
 def test_schema_decorator(schema_any):
@@ -373,9 +392,36 @@ def test_table_name_with_underscores(schema_any):
         schema_any(Table_With_Underscores)
 
 
-def test_hidden_attributes(schema_any):
+def test_add_hidden_timestamp_default_value():
+    config_val = config.get("add_hidden_timestamp")
     assert (
-        list(Experiment().heading._attributes.keys())[-1].split("_")[2] == "timestamp"
-    )
-    assert any(a.is_hidden for a in Experiment().heading._attributes.values())
-    assert not any(a.is_hidden for a in Experiment().heading.attributes.values())
+        config_val is not None and not config_val
+    ), "Default value for add_hidden_timestamp is not False"
+
+
+def test_add_hidden_timestamp_enabled(enable_add_hidden_timestamp, schema_any):
+    assert config["add_hidden_timestamp"], "add_hidden_timestamp is not enabled"
+    msg = f"{Experiment().heading._attributes=}"
+    assert any(
+        a.name.endswith("_timestamp") for a in Experiment().heading._attributes.values()
+    ), msg
+    assert any(
+        a.name.startswith("_") for a in Experiment().heading._attributes.values()
+    ), msg
+    assert any(a.is_hidden for a in Experiment().heading._attributes.values()), msg
+    assert not any(a.is_hidden for a in Experiment().heading.attributes.values()), msg
+
+
+def test_add_hidden_timestamp_disabled(disable_add_hidden_timestamp, schema_any):
+    assert not config[
+        "add_hidden_timestamp"
+    ], "expected add_hidden_timestamp to be False"
+    msg = f"{Experiment().heading._attributes=}"
+    assert not any(
+        a.name.endswith("_timestamp") for a in Experiment().heading._attributes.values()
+    ), msg
+    assert not any(
+        a.name.startswith("_") for a in Experiment().heading._attributes.values()
+    ), msg
+    assert not any(a.is_hidden for a in Experiment().heading._attributes.values()), msg
+    assert not any(a.is_hidden for a in Experiment().heading.attributes.values()), msg
