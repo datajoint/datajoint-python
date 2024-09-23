@@ -15,7 +15,7 @@
         <link rel="next" href="../errors/">
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.19">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.1.17">
     
     
       
@@ -23,7 +23,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.eebd395e.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.26e3688c.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ecc896b0.min.css">
@@ -1409,7 +1409,7 @@
   
     <li class="md-nav__item">
       <a href="../../../tutorials/json/" class="md-nav__link">
-        Using the json type
+        Using the type
       </a>
     </li>
   
@@ -1618,6 +1618,20 @@
   
   
     <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        cli.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../condition/" class="md-nav__link">
         condition.py
       </a>
@@ -1705,7 +1719,7 @@
       
         <li class="md-nav__item">
   <a href="#datajoint.diagram" class="md-nav__link">
-    datajoint.diagram
+    diagram
   </a>
   
 </li>
@@ -1720,21 +1734,21 @@
         
           <li class="md-nav__item">
   <a href="#datajoint.diagram.Diagram.from_sequence" class="md-nav__link">
-    from_sequence()
+    from_sequence
   </a>
   
 </li>
         
           <li class="md-nav__item">
   <a href="#datajoint.diagram.Diagram.add_parts" class="md-nav__link">
-    add_parts()
+    add_parts
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#datajoint.diagram.Diagram.topological_sort" class="md-nav__link">
-    topological_sort()
+  <a href="#datajoint.diagram.Diagram.topo_sort" class="md-nav__link">
+    topo_sort
   </a>
   
 </li>
@@ -2024,12 +2038,37 @@
 <div class="doc doc-object doc-module">
 
 
-<a id="datajoint.diagram"></a>
-  <div class="doc doc-contents first">
 
-  
+<a id="datajoint.diagram"></a>
+    <div class="doc doc-contents first">
+
+
 
   <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -2054,18 +2093,19 @@
 
 
 <h2 id="datajoint.diagram.Diagram" class="doc doc-heading">
-          <code>Diagram</code>
+            <code>Diagram</code>
 
 
 <a href="#datajoint.diagram.Diagram" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-          <p class="doc doc-class-bases">
-            Bases: <code><span title="networkx">nx</span>.<span title="networkx.DiGraph">DiGraph</span></code></p>
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="networkx.DiGraph">DiGraph</span></code></p>
 
-  
-      <p>Entity relationship diagram.</p>
+
+        <p>Schema diagram showing tables and foreign keys between in the form of a directed
+acyclic graph (DAG).  The diagram is derived from the connection.dependencies object.</p>
 <p>Usage:</p>
 <blockquote>
 <blockquote>
@@ -2074,7 +2114,7 @@
 </blockquote>
 </blockquote>
 </blockquote>
-<p>source can be a base table object, a base table class, a schema, or a module that has a schema.</p>
+<p>source can be a table object, a table class, a schema, or a module that has a schema.</p>
 <blockquote>
 <blockquote>
 <blockquote>
@@ -2084,15 +2124,42 @@
 </blockquote>
 <p>draws the diagram using pyplot</p>
 <p>diag1 + diag2  - combines the two diagrams.
+diag1 - diag2  - difference between diagrams
+diag1 * diag2  - intersection of diagrams
 diag + n   - expands n levels of successors
 diag - n   - expands n levels of predecessors
 Thus dj.Diagram(schema.Table)+1-1 defines the diagram of immediate ancestors and descendants of schema.Table</p>
 <p>Note that diagram + 1 - 1  may differ from diagram - 1 + 1 and so forth.
 Only those tables that are loaded in the connection object are displayed</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/diagram.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 73</span>
+              <details class="quote">
+                <summary>Source code in <code>datajoint/diagram.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 48</span>
+<span class="normal"> 49</span>
+<span class="normal"> 50</span>
+<span class="normal"> 51</span>
+<span class="normal"> 52</span>
+<span class="normal"> 53</span>
+<span class="normal"> 54</span>
+<span class="normal"> 55</span>
+<span class="normal"> 56</span>
+<span class="normal"> 57</span>
+<span class="normal"> 58</span>
+<span class="normal"> 59</span>
+<span class="normal"> 60</span>
+<span class="normal"> 61</span>
+<span class="normal"> 62</span>
+<span class="normal"> 63</span>
+<span class="normal"> 64</span>
+<span class="normal"> 65</span>
+<span class="normal"> 66</span>
+<span class="normal"> 67</span>
+<span class="normal"> 68</span>
+<span class="normal"> 69</span>
+<span class="normal"> 70</span>
+<span class="normal"> 71</span>
+<span class="normal"> 72</span>
+<span class="normal"> 73</span>
 <span class="normal"> 74</span>
 <span class="normal"> 75</span>
 <span class="normal"> 76</span>
@@ -2482,21 +2549,38 @@ Only those tables that are loaded in the connection object are displayed</p>
 <span class="normal">460</span>
 <span class="normal">461</span>
 <span class="normal">462</span>
-<span class="normal">463</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Diagram</span><span class="p">(</span><span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">):</span>
+<span class="normal">463</span>
+<span class="normal">464</span>
+<span class="normal">465</span>
+<span class="normal">466</span>
+<span class="normal">467</span>
+<span class="normal">468</span>
+<span class="normal">469</span>
+<span class="normal">470</span>
+<span class="normal">471</span>
+<span class="normal">472</span>
+<span class="normal">473</span>
+<span class="normal">474</span>
+<span class="normal">475</span>
+<span class="normal">476</span>
+<span class="normal">477</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Diagram</span><span class="p">(</span><span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Entity relationship diagram.</span>
+<span class="sd">    Schema diagram showing tables and foreign keys between in the form of a directed</span>
+<span class="sd">    acyclic graph (DAG).  The diagram is derived from the connection.dependencies object.</span>
 
 <span class="sd">    Usage:</span>
 
 <span class="sd">    &gt;&gt;&gt;  diag = Diagram(source)</span>
 
-<span class="sd">    source can be a base table object, a base table class, a schema, or a module that has a schema.</span>
+<span class="sd">    source can be a table object, a table class, a schema, or a module that has a schema.</span>
 
 <span class="sd">    &gt;&gt;&gt; diag.draw()</span>
 
 <span class="sd">    draws the diagram using pyplot</span>
 
 <span class="sd">    diag1 + diag2  - combines the two diagrams.</span>
+<span class="sd">    diag1 - diag2  - difference between diagrams</span>
+<span class="sd">    diag1 * diag2  - intersection of diagrams</span>
 <span class="sd">    diag + n   - expands n levels of successors</span>
 <span class="sd">    diag - n   - expands n levels of predecessors</span>
 <span class="sd">    Thus dj.Diagram(schema.Table)+1-1 defines the diagram of immediate ancestors and descendants of schema.Table</span>
@@ -2506,6 +2590,7 @@ Only those tables that are loaded in the connection object are displayed</p>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">Diagram</span><span class="p">):</span>
             <span class="c1"># copy constructor</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">nodes_to_show</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">nodes_to_show</span><span class="p">)</span>
@@ -2566,7 +2651,7 @@ Only those tables that are loaded in the connection object are displayed</p>
 
     <span class="k">def</span> <span class="nf">add_parts</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Adds to the diagram the part tables of tables already included in the diagram</span>
+<span class="sd">        Adds to the diagram the part tables of all master tables already in the diagram</span>
 <span class="sd">        :return:</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
@@ -2590,16 +2675,6 @@ Only those tables that are loaded in the connection object are displayed</p>
             <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">is_part</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">m</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes_to_show</span><span class="p">)</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span>
-
-    <span class="k">def</span> <span class="nf">topological_sort</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;:return:  list of nodes in topological order&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">unite_master_parts</span><span class="p">(</span>
-            <span class="nb">list</span><span class="p">(</span>
-                <span class="n">nx</span><span class="o">.</span><span class="n">algorithms</span><span class="o">.</span><span class="n">dag</span><span class="o">.</span><span class="n">topological_sort</span><span class="p">(</span>
-                    <span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nodes_to_show</span><span class="p">)</span>
-                <span class="p">)</span>
-            <span class="p">)</span>
-        <span class="p">)</span>
 
     <span class="k">def</span> <span class="fm">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -2668,6 +2743,10 @@ Only those tables that are loaded in the connection object are displayed</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">nodes_to_show</span><span class="o">.</span><span class="n">intersection_update</span><span class="p">(</span><span class="n">arg</span><span class="o">.</span><span class="n">nodes_to_show</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span>
 
+    <span class="k">def</span> <span class="nf">topo_sort</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;return nodes in lexicographical topological order&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">topo_sort</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
     <span class="k">def</span> <span class="nf">_make_graph</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Make the self.graph - a graph object ready for drawing</span>
@@ -2711,6 +2790,36 @@ Only those tables that are loaded in the connection object are displayed</p>
             <span class="p">)</span>
         <span class="n">nx</span><span class="o">.</span><span class="n">relabel_nodes</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">mapping</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">graph</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_encapsulate_edge_attributes</span><span class="p">(</span><span class="n">graph</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Modifies the `nx.Graph`&#39;s edge attribute `attr_map` to be a string representation</span>
+<span class="sd">        of the attribute map, and encapsulates the string in double quotes.</span>
+<span class="sd">        Changes the graph in place.</span>
+
+<span class="sd">        Implements workaround described in</span>
+<span class="sd">        https://github.com/pydot/pydot/issues/258#issuecomment-795798099</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="o">*</span><span class="n">_</span><span class="p">,</span> <span class="n">edgedata</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">edges</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+            <span class="k">if</span> <span class="s2">&quot;attr_map&quot;</span> <span class="ow">in</span> <span class="n">edgedata</span><span class="p">:</span>
+                <span class="n">graph</span><span class="o">.</span><span class="n">edges</span><span class="p">[</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">][</span><span class="s2">&quot;attr_map&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;&quot;</span><span class="si">{0}</span><span class="s1">&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">edgedata</span><span class="p">[</span><span class="s2">&quot;attr_map&quot;</span><span class="p">])</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_encapsulate_node_names</span><span class="p">(</span><span class="n">graph</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Modifies the `nx.Graph`&#39;s node names string representations encapsulated in</span>
+<span class="sd">        double quotes.</span>
+<span class="sd">        Changes the graph in place.</span>
+
+<span class="sd">        Implements workaround described in</span>
+<span class="sd">        https://github.com/datajoint/datajoint-python/pull/1176</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">nx</span><span class="o">.</span><span class="n">relabel_nodes</span><span class="p">(</span>
+            <span class="n">graph</span><span class="p">,</span>
+            <span class="p">{</span><span class="n">node</span><span class="p">:</span> <span class="s1">&#39;&quot;</span><span class="si">{0}</span><span class="s1">&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">node</span><span class="p">)</span> <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">()},</span>
+            <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">make_dot</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">graph</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_graph</span><span class="p">()</span>
@@ -2780,6 +2889,8 @@ Only those tables that are loaded in the connection object are displayed</p>
             <span class="k">for</span> <span class="n">node</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">dict</span><span class="p">(</span><span class="n">graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
         <span class="p">}</span>
 
+        <span class="bp">self</span><span class="o">.</span><span class="n">_encapsulate_node_names</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_encapsulate_edge_attributes</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>
         <span class="n">dot</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">drawing</span><span class="o">.</span><span class="n">nx_pydot</span><span class="o">.</span><span class="n">to_pydot</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">dot</span><span class="o">.</span><span class="n">get_nodes</span><span class="p">():</span>
             <span class="n">node</span><span class="o">.</span><span class="n">set_shape</span><span class="p">(</span><span class="s2">&quot;circle&quot;</span><span class="p">)</span>
@@ -2797,11 +2908,15 @@ Only those tables that are loaded in the connection object are displayed</p>
                 <span class="k">assert</span> <span class="nb">issubclass</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">Table</span><span class="p">)</span>
                 <span class="n">description</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">()</span><span class="o">.</span><span class="n">describe</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="n">description</span> <span class="o">=</span> <span class="p">(</span>
-                    <span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">30</span>
-                    <span class="k">if</span> <span class="n">q</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;---&quot;</span><span class="p">)</span>
-                    <span class="k">else</span> <span class="n">q</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;-&gt;&quot;</span><span class="p">,</span> <span class="s2">&quot;&amp;#8594;&quot;</span><span class="p">)</span>
-                    <span class="k">if</span> <span class="s2">&quot;-&gt;&quot;</span> <span class="ow">in</span> <span class="n">q</span>
-                    <span class="k">else</span> <span class="n">q</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                    <span class="p">(</span>
+                        <span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">30</span>
+                        <span class="k">if</span> <span class="n">q</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;---&quot;</span><span class="p">)</span>
+                        <span class="k">else</span> <span class="p">(</span>
+                            <span class="n">q</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;-&gt;&quot;</span><span class="p">,</span> <span class="s2">&quot;&amp;#8594;&quot;</span><span class="p">)</span>
+                            <span class="k">if</span> <span class="s2">&quot;-&gt;&quot;</span> <span class="ow">in</span> <span class="n">q</span>
+                            <span class="k">else</span> <span class="n">q</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
                     <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="n">description</span>
                     <span class="k">if</span> <span class="ow">not</span> <span class="n">q</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;#&quot;</span><span class="p">)</span>
                 <span class="p">)</span>
@@ -2816,9 +2931,14 @@ Only those tables that are loaded in the connection object are displayed</p>
 
         <span class="k">for</span> <span class="n">edge</span> <span class="ow">in</span> <span class="n">dot</span><span class="o">.</span><span class="n">get_edges</span><span class="p">():</span>
             <span class="c1"># see https://graphviz.org/doc/info/attrs.html</span>
-            <span class="n">src</span> <span class="o">=</span> <span class="n">edge</span><span class="o">.</span><span class="n">get_source</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s1">&#39;&quot;&#39;</span><span class="p">)</span>
-            <span class="n">dest</span> <span class="o">=</span> <span class="n">edge</span><span class="o">.</span><span class="n">get_destination</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s1">&#39;&quot;&#39;</span><span class="p">)</span>
+            <span class="n">src</span> <span class="o">=</span> <span class="n">edge</span><span class="o">.</span><span class="n">get_source</span><span class="p">()</span>
+            <span class="n">dest</span> <span class="o">=</span> <span class="n">edge</span><span class="o">.</span><span class="n">get_destination</span><span class="p">()</span>
             <span class="n">props</span> <span class="o">=</span> <span class="n">graph</span><span class="o">.</span><span class="n">get_edge_data</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dest</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">props</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
+                    <span class="s2">&quot;Could not find edge with source &quot;</span>
+                    <span class="s2">&quot;&#39;</span><span class="si">{}</span><span class="s2">&#39; and destination &#39;</span><span class="si">{}</span><span class="s2">&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dest</span><span class="p">)</span>
+                <span class="p">)</span>
             <span class="n">edge</span><span class="o">.</span><span class="n">set_color</span><span class="p">(</span><span class="s2">&quot;#00000040&quot;</span><span class="p">)</span>
             <span class="n">edge</span><span class="o">.</span><span class="n">set_style</span><span class="p">(</span><span class="s2">&quot;solid&quot;</span> <span class="k">if</span> <span class="n">props</span><span class="p">[</span><span class="s2">&quot;primary&quot;</span><span class="p">]</span> <span class="k">else</span> <span class="s2">&quot;dashed&quot;</span><span class="p">)</span>
             <span class="n">master_part</span> <span class="o">=</span> <span class="n">graph</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">dest</span><span class="p">][</span>
@@ -2874,9 +2994,9 @@ Only those tables that are loaded in the connection object are displayed</p>
     <span class="k">def</span> <span class="nf">_layout</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">pydot_layout</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">prog</span><span class="o">=</span><span class="s2">&quot;dot&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
 
-  
+
 
   <div class="doc doc-children">
 
@@ -2886,14 +3006,12 @@ Only those tables that are loaded in the connection object are displayed</p>
 
 
 
-
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.diagram.Diagram.from_sequence" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">from_sequence</span><span class="p">(</span><span class="n">sequence</span><span class="p">)</span></code>
-  
+            <code class="highlight language-python"><span class="n">from_sequence</span><span class="p">(</span><span class="n">sequence</span><span class="p">)</span></code>
+
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
   </span>
@@ -2901,73 +3019,71 @@ Only those tables that are loaded in the connection object are displayed</p>
 <a href="#datajoint.diagram.Diagram.from_sequence" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>The join Diagram for all objects in sequence</p>
+    <div class="doc doc-contents ">
+
+        <p>The join Diagram for all objects in sequence</p>
 
 
-
-  <p><strong>Parameters:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Type</th>
-        <th>Description</th>
-        <th>Default</th>
-      </tr>
-    </thead>
-    <tbody>
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td><code>sequence</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>a sequence (e.g. list, tuple)</p>
-            </div>
-          </td>
-          <td>
-              <em>required</em>
-          </td>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>sequence</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>a sequence (e.g. list, tuple)</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>Diagram(arg1) + ... + Diagram(argn)</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Diagram(arg1) + ... + Diagram(argn)</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/diagram.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">145</span>
-<span class="normal">146</span>
-<span class="normal">147</span>
-<span class="normal">148</span>
-<span class="normal">149</span>
-<span class="normal">150</span>
-<span class="normal">151</span>
-<span class="normal">152</span>
-<span class="normal">153</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/diagram.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
 <span class="k">def</span> <span class="nf">from_sequence</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">sequence</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    The join Diagram for all objects in sequence</span>
@@ -2977,11 +3093,10 @@ Only those tables that are loaded in the connection object are displayed</p>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">functools</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="p">,</span> <span class="nb">map</span><span class="p">(</span><span class="n">Diagram</span><span class="p">,</span> <span class="n">sequence</span><span class="p">))</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -2991,70 +3106,68 @@ Only those tables that are loaded in the connection object are displayed</p>
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.diagram.Diagram.add_parts" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">add_parts</span><span class="p">()</span></code>
+            <code class="highlight language-python"><span class="n">add_parts</span><span class="p">()</span></code>
 
 <a href="#datajoint.diagram.Diagram.add_parts" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>Adds to the diagram the part tables of tables already included in the diagram</p>
+    <div class="doc doc-contents ">
+
+        <p>Adds to the diagram the part tables of all master tables already in the diagram</p>
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/diagram.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">155</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/diagram.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
 <span class="normal">156</span>
 <span class="normal">157</span>
 <span class="normal">158</span>
-<span class="normal">159</span>
-<span class="normal">160</span>
-<span class="normal">161</span>
-<span class="normal">162</span>
-<span class="normal">163</span>
-<span class="normal">164</span>
-<span class="normal">165</span>
-<span class="normal">166</span>
-<span class="normal">167</span>
-<span class="normal">168</span>
-<span class="normal">169</span>
-<span class="normal">170</span>
-<span class="normal">171</span>
-<span class="normal">172</span>
-<span class="normal">173</span>
-<span class="normal">174</span>
-<span class="normal">175</span>
-<span class="normal">176</span>
-<span class="normal">177</span>
-<span class="normal">178</span>
-<span class="normal">179</span>
-<span class="normal">180</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">add_parts</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="normal">159</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">add_parts</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Adds to the diagram the part tables of tables already included in the diagram</span>
+<span class="sd">    Adds to the diagram the part tables of all master tables already in the diagram</span>
 <span class="sd">    :return:</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
@@ -3079,11 +3192,10 @@ Only those tables that are loaded in the connection object are displayed</p>
     <span class="p">)</span>
     <span class="k">return</span> <span class="bp">self</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -3093,62 +3205,26 @@ Only those tables that are loaded in the connection object are displayed</p>
 <div class="doc doc-object doc-function">
 
 
+<h3 id="datajoint.diagram.Diagram.topo_sort" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">topo_sort</span><span class="p">()</span></code>
 
-<h3 id="datajoint.diagram.Diagram.topological_sort" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">topological_sort</span><span class="p">()</span></code>
-
-<a href="#datajoint.diagram.Diagram.topological_sort" class="headerlink" title="Permanent link">&para;</a></h3>
-
-
-  <div class="doc doc-contents ">
-  
-      
+<a href="#datajoint.diagram.Diagram.topo_sort" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
+    <div class="doc doc-contents ">
 
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
-        <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>list of nodes in topological order</p>
-            </div>
-          </td>
-        </tr>
-    </tbody>
-  </table>
+        <p>return nodes in lexicographical topological order</p>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/diagram.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">182</span>
-<span class="normal">183</span>
-<span class="normal">184</span>
-<span class="normal">185</span>
-<span class="normal">186</span>
-<span class="normal">187</span>
-<span class="normal">188</span>
-<span class="normal">189</span>
-<span class="normal">190</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">topological_sort</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;:return:  list of nodes in topological order&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">unite_master_parts</span><span class="p">(</span>
-        <span class="nb">list</span><span class="p">(</span>
-            <span class="n">nx</span><span class="o">.</span><span class="n">algorithms</span><span class="o">.</span><span class="n">dag</span><span class="o">.</span><span class="n">topological_sort</span><span class="p">(</span>
-                <span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nodes_to_show</span><span class="p">)</span>
-            <span class="p">)</span>
-        <span class="p">)</span>
-    <span class="p">)</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/diagram.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">topo_sort</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;return nodes in lexicographical topological order&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">topo_sort</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
 
@@ -3157,40 +3233,16 @@ Only those tables that are loaded in the connection object are displayed</p>
 
   </div>
 
-  </div>
+    </div>
 
 </div>
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   </div>
 
-  </div>
+    </div>
 
 </div>
 
@@ -3311,10 +3363,10 @@ Only those tables that are loaded in the connection object are displayed</p>
       <div class="md-dialog__inner md-typeset"></div>
     </div>
     
-    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.74e28a9f.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.220ee61c.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.b425cdc4.min.js"></script>
       
     
   </body>

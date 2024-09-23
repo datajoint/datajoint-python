@@ -15,7 +15,7 @@
         <link rel="next" href="../schemas/">
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.19">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.1.17">
     
     
       
@@ -23,7 +23,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.eebd395e.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.26e3688c.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ecc896b0.min.css">
@@ -1409,7 +1409,7 @@
   
     <li class="md-nav__item">
       <a href="../../../tutorials/json/" class="md-nav__link">
-        Using the json type
+        Using the type
       </a>
     </li>
   
@@ -1606,6 +1606,20 @@
     <li class="md-nav__item">
       <a href="../blob/" class="md-nav__link">
         blob.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        cli.py
       </a>
     </li>
   
@@ -1859,7 +1873,7 @@
       
         <li class="md-nav__item">
   <a href="#datajoint.s3" class="md-nav__link">
-    datajoint.s3
+    s3
   </a>
   
 </li>
@@ -1874,7 +1888,7 @@
         
           <li class="md-nav__item">
   <a href="#datajoint.s3.Folder.fget" class="md-nav__link">
-    fget()
+    fget
   </a>
   
 </li>
@@ -2010,14 +2024,19 @@
 <div class="doc doc-object doc-module">
 
 
-<a id="datajoint.s3"></a>
-  <div class="doc doc-contents first">
-  
-      <p>AWS S3 operations</p>
 
-  
+<a id="datajoint.s3"></a>
+    <div class="doc doc-contents first">
+
+        <p>AWS S3 operations</p>
+
+
 
   <div class="doc doc-children">
+
+
+
+
 
 
 
@@ -2030,21 +2049,20 @@
 
 
 <h2 id="datajoint.s3.Folder" class="doc doc-heading">
-          <code>Folder</code>
+            <code>Folder</code>
 
 
 <a href="#datajoint.s3.Folder" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
+    <div class="doc doc-contents ">
 
-  
-      <p>A Folder instance manipulates a flat folder of objects within an S3-compatible object store</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/s3.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 15</span>
-<span class="normal"> 16</span>
+        <p>A Folder instance manipulates a flat folder of objects within an S3-compatible object store</p>
+
+              <details class="quote">
+                <summary>Source code in <code>datajoint/s3.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 16</span>
 <span class="normal"> 17</span>
 <span class="normal"> 18</span>
 <span class="normal"> 19</span>
@@ -2148,7 +2166,8 @@
 <span class="normal">117</span>
 <span class="normal">118</span>
 <span class="normal">119</span>
-<span class="normal">120</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Folder</span><span class="p">:</span>
+<span class="normal">120</span>
+<span class="normal">121</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Folder</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A Folder instance manipulates a flat folder of objects within an S3-compatible object store</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -2162,7 +2181,7 @@
         <span class="o">*</span><span class="p">,</span>
         <span class="n">secure</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">proxy_server</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-        <span class="o">**</span><span class="n">_</span>
+        <span class="o">**</span><span class="n">_</span><span class="p">,</span>
     <span class="p">):</span>
         <span class="c1"># from https://docs.min.io/docs/python-client-api-reference</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">client</span> <span class="o">=</span> <span class="n">minio</span><span class="o">.</span><span class="n">Minio</span><span class="p">(</span>
@@ -2255,12 +2274,11 @@
         <span class="k">except</span> <span class="n">minio</span><span class="o">.</span><span class="n">error</span><span class="o">.</span><span class="n">MinioException</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">DataJointError</span><span class="p">(</span><span class="s2">&quot;Failed to delete </span><span class="si">%s</span><span class="s2"> from s3 storage&quot;</span> <span class="o">%</span> <span class="n">name</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
 
-  
+
 
   <div class="doc doc-children">
-
 
 
 
@@ -2271,21 +2289,19 @@
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.s3.Folder.fget" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">fget</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">local_filepath</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">fget</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">local_filepath</span><span class="p">)</span></code>
 
 <a href="#datajoint.s3.Folder.fget" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>get file from object name to local filepath</p>
+    <div class="doc doc-contents ">
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/s3.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">80</span>
-<span class="normal">81</span>
+        <p>get file from object name to local filepath</p>
+
+            <details class="quote">
+              <summary>Source code in <code>datajoint/s3.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">81</span>
 <span class="normal">82</span>
 <span class="normal">83</span>
 <span class="normal">84</span>
@@ -2297,7 +2313,8 @@
 <span class="normal">90</span>
 <span class="normal">91</span>
 <span class="normal">92</span>
-<span class="normal">93</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">fget</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">local_filepath</span><span class="p">):</span>
+<span class="normal">93</span>
+<span class="normal">94</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">fget</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">local_filepath</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;get file from object name to local filepath&quot;&quot;&quot;</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;fget: </span><span class="si">{}</span><span class="s2">:</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bucket</span><span class="p">,</span> <span class="n">name</span><span class="p">))</span>
     <span class="n">name</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
@@ -2312,8 +2329,8 @@
     <span class="k">if</span> <span class="s2">&quot;contents_hash&quot;</span> <span class="ow">in</span> <span class="n">meta</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">uuid</span><span class="o">.</span><span class="n">UUID</span><span class="p">(</span><span class="n">meta</span><span class="p">[</span><span class="s2">&quot;contents_hash&quot;</span><span class="p">])</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
 
@@ -2322,7 +2339,7 @@
 
   </div>
 
-  </div>
+    </div>
 
 </div>
 
@@ -2331,7 +2348,7 @@
 
   </div>
 
-  </div>
+    </div>
 
 </div>
 
@@ -2452,10 +2469,10 @@
       <div class="md-dialog__inner md-typeset"></div>
     </div>
     
-    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.74e28a9f.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.220ee61c.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.b425cdc4.min.js"></script>
       
     
   </body>

@@ -15,7 +15,7 @@
         <link rel="next" href="../citation/">
       
       <link rel="icon" href="../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.19">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.1.17">
     
     
       
@@ -23,7 +23,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.eebd395e.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.26e3688c.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.ecc896b0.min.css">
@@ -1409,7 +1409,7 @@
   
     <li class="md-nav__item">
       <a href="../tutorials/json/" class="md-nav__link">
-        Using the json type
+        Using the type
       </a>
     </li>
   
@@ -1705,6 +1705,20 @@
     <li class="md-nav__item">
       <a href="../api/datajoint/blob/" class="md-nav__link">
         blob.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/datajoint/cli/" class="md-nav__link">
+        cli.py
       </a>
     </li>
   
@@ -2062,17 +2076,25 @@
 <li><em>Tip</em>: GitHub auto names the codespace but you can rename the codespace so that it is easier to identify later.</li>
 </ul>
 </li>
-<li><strong>Local IDE</strong>:<ul>
+<li><strong>Local IDE (VSCode - Dev Containers)</strong>:<ul>
 <li>Ensure you have <a href="https://git-scm.com/book/en/v2/Getting-Started-Installing-Git">Git</a></li>
 <li>Ensure you have <a href="https://docs.docker.com/get-docker/">Docker</a></li>
 <li>Ensure you have <a href="https://code.visualstudio.com/">VSCode</a></li>
 <li>Install the <a href="https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers">Dev Containers extension</a></li>
 <li><code>git clone</code> the codebase repository and open it in VSCode</li>
 <li>Use the <code>Dev Containers extension</code> to <code>Reopen in Container</code> (More info in the <code>Getting started</code> included with the extension)</li>
+<li>You will know your environment has finished loading once you see a terminal open related to <code>Running postStartCommand</code> with a final message: <code>Done. Press any key to close the terminal.</code>.</li>
+</ul>
+</li>
+<li><strong>Local IDE (Docker Compose)</strong>:<ul>
+<li>Ensure you have <a href="https://git-scm.com/book/en/v2/Getting-Started-Installing-Git">Git</a></li>
+<li>Ensure you have <a href="https://docs.docker.com/get-docker/">Docker</a></li>
+<li><code>git clone</code> the codebase repository and open it in VSCode</li>
+<li>Issue the following command in the terminal to build and run the Docker container: <code>HOST_UID=$(id -u) PY_VER=3.11 DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py) docker compose --profile test run --rm -it djtest -- sh -c 'pip install -qe ".[test]" &amp;&amp; bash'</code></li>
+<li>Issue the following command in the terminal to stop the Docker compose stack: <code>docker compose --profile test down</code></li>
 </ul>
 </li>
 </ul>
-<p>You will know your environment has finished loading once you see a terminal open related to <code>Running postStartCommand</code> with a final message: <code>Done</code>.</p>
 <h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">&para;</a></h2>
 <p>Once you've successfully launched the development environment, you'll be able to take advantage of our developer tooling to help improve productivity and quality.</p>
 <h3 id="syntax-tests">Syntax Tests<a class="headerlink" href="#syntax-tests" title="Permanent link">&para;</a></h3>
@@ -2083,25 +2105,15 @@
 <p>The following will verify there are no regression errors by running our test suite of unit and integration tests.</p>
 <ul>
 <li>Entire test suite:
-  <div class="highlight"><pre><span></span><code>nosetests -vw tests_old
-</code></pre></div><blockquote>
-<p>Note: We are in the process of upgrading to <code>pytest</code> tests. To run those, use:
-<div class="highlight"><pre><span></span><code>pytest -sv --cov-report term-missing --cov=datajoint tests
-</code></pre></div></p>
-</blockquote>
-</li>
+  <div class="highlight"><pre><span></span><code>pytest -sv --cov-report term-missing --cov=datajoint tests
+</code></pre></div></li>
 </ul>
 <ul>
 <li>A single functional test:
-  <div class="highlight"><pre><span></span><code>nosetests -vs --tests=tests_old.test_external_class:test_insert_and_fetch
-</code></pre></div><blockquote>
-<p>Note: We are in the process of upgrading to <code>pytest</code> tests. To run those, use:
-<div class="highlight"><pre><span></span><code>pytest -sv tests/test_connection.py::test_dj_conn
-</code></pre></div></p>
-</blockquote>
-</li>
+  <div class="highlight"><pre><span></span><code>pytest -sv tests/test_connection.py::test_dj_conn
+</code></pre></div></li>
 <li>A single class test:
-  <div class="highlight"><pre><span></span><code>nosetests -vs --tests=tests_old.test_fetch:TestFetch.test_getattribute_for_fetch1
+  <div class="highlight"><pre><span></span><code>pytest -sv tests/test_aggr_regressions.py::TestIssue558
 </code></pre></div></li>
 </ul>
 <h3 id="style-tests">Style Tests<a class="headerlink" href="#style-tests" title="Permanent link">&para;</a></h3>
@@ -2130,7 +2142,7 @@
 <h3 id="mysql-cli">MySQL CLI<a class="headerlink" href="#mysql-cli" title="Permanent link">&para;</a></h3>
 <p>It is often useful in development to connect to DataJoint's relational database backend directly using the MySQL CLI.</p>
 <p>Connect as follows to the database running within your developer environment:</p>
-<div class="highlight"><pre><span></span><code>mysql -hfakeservices.datajoint.io -uroot -psimple
+<div class="highlight"><pre><span></span><code>mysql -hdb -uroot -ppassword
 </code></pre></div>
 <h3 id="documentation">Documentation<a class="headerlink" href="#documentation" title="Permanent link">&para;</a></h3>
 <p>Our documentation is built using <a href="https://squidfunk.github.io/mkdocs-material/">MkDocs Material</a>. The easiest way to improve the documentation is by using the <code>docs/docker-compose.yaml</code> environment. The source can be modified in <code>docs/src</code> using markdown.</p>
@@ -2265,10 +2277,10 @@
       <div class="md-dialog__inner md-typeset"></div>
     </div>
     
-    <script id="__config" type="application/json">{"base": "..", "features": ["toc.integrate", "content.code.annotate"], "search": "../assets/javascripts/workers/search.74e28a9f.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": "..", "features": ["toc.integrate", "content.code.annotate"], "search": "../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.220ee61c.min.js"></script>
+      <script src="../assets/javascripts/bundle.b425cdc4.min.js"></script>
       
     
   </body>

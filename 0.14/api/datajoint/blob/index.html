@@ -12,10 +12,10 @@
         <link rel="prev" href="../autopopulate/">
       
       
-        <link rel="next" href="../condition/">
+        <link rel="next" href="../cli/">
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.19">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.1.17">
     
     
       
@@ -23,7 +23,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.eebd395e.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.26e3688c.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ecc896b0.min.css">
@@ -1409,7 +1409,7 @@
   
     <li class="md-nav__item">
       <a href="../../../tutorials/json/" class="md-nav__link">
-        Using the json type
+        Using the type
       </a>
     </li>
   
@@ -1635,7 +1635,7 @@
       
         <li class="md-nav__item">
   <a href="#datajoint.blob" class="md-nav__link">
-    datajoint.blob
+    blob
   </a>
   
 </li>
@@ -1664,56 +1664,56 @@
         
           <li class="md-nav__item">
   <a href="#datajoint.blob.Blob.squeeze" class="md-nav__link">
-    squeeze()
+    squeeze
   </a>
   
 </li>
         
           <li class="md-nav__item">
   <a href="#datajoint.blob.Blob.pack_array" class="md-nav__link">
-    pack_array()
+    pack_array
   </a>
   
 </li>
         
           <li class="md-nav__item">
   <a href="#datajoint.blob.Blob.read_recarray" class="md-nav__link">
-    read_recarray()
+    read_recarray
   </a>
   
 </li>
         
           <li class="md-nav__item">
   <a href="#datajoint.blob.Blob.pack_recarray" class="md-nav__link">
-    pack_recarray()
+    pack_recarray
   </a>
   
 </li>
         
           <li class="md-nav__item">
   <a href="#datajoint.blob.Blob.read_struct" class="md-nav__link">
-    read_struct()
+    read_struct
   </a>
   
 </li>
         
           <li class="md-nav__item">
   <a href="#datajoint.blob.Blob.pack_struct" class="md-nav__link">
-    pack_struct()
+    pack_struct
   </a>
   
 </li>
         
           <li class="md-nav__item">
   <a href="#datajoint.blob.Blob.read_cell_array" class="md-nav__link">
-    read_cell_array()
+    read_cell_array
   </a>
   
 </li>
         
           <li class="md-nav__item">
   <a href="#datajoint.blob.Blob.read_datetime" class="md-nav__link">
-    read_datetime()
+    read_datetime
   </a>
   
 </li>
@@ -1727,6 +1727,20 @@
   
 </nav>
       
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        cli.py
+      </a>
     </li>
   
 
@@ -2073,13 +2087,14 @@
 <div class="doc doc-object doc-module">
 
 
+
 <a id="datajoint.blob"></a>
-  <div class="doc doc-contents first">
-  
-      <p>(De)serialization methods for basic datatypes and numpy.ndarrays with provisions for mutual
+    <div class="doc doc-contents first">
+
+        <p>(De)serialization methods for basic datatypes and numpy.ndarrays with provisions for mutual
 compatibility with Matlab-based serialization implemented by mYm.</p>
 
-  
+
 
   <div class="doc doc-children">
 
@@ -2098,22 +2113,22 @@ compatibility with Matlab-based serialization implemented by mYm.</p>
 
 
 <h2 id="datajoint.blob.MatCell" class="doc doc-heading">
-          <code>MatCell</code>
+            <code>MatCell</code>
 
 
 <a href="#datajoint.blob.MatCell" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-          <p class="doc doc-class-bases">
-            Bases: <code><span title="numpy">np</span>.<span title="numpy.ndarray">ndarray</span></code></p>
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="numpy.ndarray">ndarray</span></code></p>
 
-  
-      <p>a numpy ndarray representing a Matlab cell array</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/blob.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">73</span>
+        <p>a numpy ndarray representing a Matlab cell array</p>
+
+              <details class="quote">
+                <summary>Source code in <code>datajoint/blob.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">73</span>
 <span class="normal">74</span>
 <span class="normal">75</span>
 <span class="normal">76</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">MatCell</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
@@ -2121,9 +2136,9 @@ compatibility with Matlab-based serialization implemented by mYm.</p>
 
     <span class="k">pass</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
 
-  </div>
+    </div>
 
 </div>
 
@@ -2137,22 +2152,22 @@ compatibility with Matlab-based serialization implemented by mYm.</p>
 
 
 <h2 id="datajoint.blob.MatStruct" class="doc doc-heading">
-          <code>MatStruct</code>
+            <code>MatStruct</code>
 
 
 <a href="#datajoint.blob.MatStruct" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-          <p class="doc doc-class-bases">
-            Bases: <code><span title="numpy">np</span>.<span title="numpy.recarray">recarray</span></code></p>
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="numpy.recarray">recarray</span></code></p>
 
-  
-      <p>numpy.recarray representing a Matlab struct array</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/blob.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">79</span>
+        <p>numpy.recarray representing a Matlab struct array</p>
+
+              <details class="quote">
+                <summary>Source code in <code>datajoint/blob.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">79</span>
 <span class="normal">80</span>
 <span class="normal">81</span>
 <span class="normal">82</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">MatStruct</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">recarray</span><span class="p">):</span>
@@ -2160,9 +2175,9 @@ compatibility with Matlab-based serialization implemented by mYm.</p>
 
     <span class="k">pass</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
 
-  </div>
+    </div>
 
 </div>
 
@@ -2176,18 +2191,18 @@ compatibility with Matlab-based serialization implemented by mYm.</p>
 
 
 <h2 id="datajoint.blob.Blob" class="doc doc-heading">
-          <code>Blob</code>
+            <code>Blob</code>
 
 
 <a href="#datajoint.blob.Blob" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
+    <div class="doc doc-contents ">
 
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/blob.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 85</span>
+              <details class="quote">
+                <summary>Source code in <code>datajoint/blob.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 85</span>
 <span class="normal"> 86</span>
 <span class="normal"> 87</span>
 <span class="normal"> 88</span>
@@ -2686,7 +2701,9 @@ compatibility with Matlab-based serialization implemented by mYm.</p>
 <span class="normal">581</span>
 <span class="normal">582</span>
 <span class="normal">583</span>
-<span class="normal">584</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Blob</span><span class="p">:</span>
+<span class="normal">584</span>
+<span class="normal">585</span>
+<span class="normal">586</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Blob</span><span class="p">:</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">squeeze</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_squeeze</span> <span class="o">=</span> <span class="n">squeeze</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_blob</span> <span class="o">=</span> <span class="kc">None</span>
@@ -2926,9 +2943,11 @@ compatibility with Matlab-based serialization implemented by mYm.</p>
             <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\0</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">array</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">names</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>  <span class="c1"># number of fields</span>
             <span class="o">+</span> <span class="sa">b</span><span class="s2">&quot;</span><span class="se">\0</span><span class="s2">&quot;</span>
             <span class="o">+</span> <span class="sa">b</span><span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>  <span class="c1"># field names</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">pack_recarray</span><span class="p">(</span><span class="n">array</span><span class="p">[</span><span class="n">f</span><span class="p">])</span>
-                <span class="k">if</span> <span class="n">array</span><span class="p">[</span><span class="n">f</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">fields</span>
-                <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">pack_array</span><span class="p">(</span><span class="n">array</span><span class="p">[</span><span class="n">f</span><span class="p">])</span>
+                <span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">pack_recarray</span><span class="p">(</span><span class="n">array</span><span class="p">[</span><span class="n">f</span><span class="p">])</span>
+                    <span class="k">if</span> <span class="n">array</span><span class="p">[</span><span class="n">f</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">fields</span>
+                    <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">pack_array</span><span class="p">(</span><span class="n">array</span><span class="p">[</span><span class="n">f</span><span class="p">])</span>
+                <span class="p">)</span>
                 <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">array</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">names</span>
             <span class="p">)</span>
         <span class="p">)</span>
@@ -3187,12 +3206,11 @@ compatibility with Matlab-based serialization implemented by mYm.</p>
                 <span class="n">blob</span> <span class="o">=</span> <span class="n">compressed</span>
         <span class="k">return</span> <span class="n">blob</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
 
-  
+
 
   <div class="doc doc-children">
-
 
 
 
@@ -3203,21 +3221,20 @@ compatibility with Matlab-based serialization implemented by mYm.</p>
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.blob.Blob.squeeze" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">squeeze</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">convert_to_scalar</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">squeeze</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">convert_to_scalar</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
 
 <a href="#datajoint.blob.Blob.squeeze" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>Simplify the input array - squeeze out all singleton dimensions.
+    <div class="doc doc-contents ">
+
+        <p>Simplify the input array - squeeze out all singleton dimensions.
 If convert_to_scalar, then convert zero-dimensional arrays to scalars</p>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/blob.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">101</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/blob.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">101</span>
 <span class="normal">102</span>
 <span class="normal">103</span>
 <span class="normal">104</span>
@@ -3235,11 +3252,10 @@ If convert_to_scalar, then convert zero-dimensional arrays to scalars</p>
     <span class="n">array</span> <span class="o">=</span> <span class="n">array</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span>
     <span class="k">return</span> <span class="n">array</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="k">if</span> <span class="n">array</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">convert_to_scalar</span> <span class="k">else</span> <span class="n">array</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -3249,20 +3265,19 @@ If convert_to_scalar, then convert zero-dimensional arrays to scalars</p>
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.blob.Blob.pack_array" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">pack_array</span><span class="p">(</span><span class="n">array</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">pack_array</span><span class="p">(</span><span class="n">array</span><span class="p">)</span></code>
 
 <a href="#datajoint.blob.Blob.pack_array" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>Serialize an np.ndarray into bytes.  Scalars are encoded with ndim=0.</p>
+    <div class="doc doc-contents ">
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/blob.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">255</span>
+        <p>Serialize an np.ndarray into bytes.  Scalars are encoded with ndim=0.</p>
+
+            <details class="quote">
+              <summary>Source code in <code>datajoint/blob.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">255</span>
 <span class="normal">256</span>
 <span class="normal">257</span>
 <span class="normal">258</span>
@@ -3350,11 +3365,10 @@ If convert_to_scalar, then convert zero-dimensional arrays to scalars</p>
             <span class="n">blob</span> <span class="o">+=</span> <span class="n">imaginary</span><span class="o">.</span><span class="n">tobytes</span><span class="p">(</span><span class="n">order</span><span class="o">=</span><span class="s2">&quot;F&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">blob</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -3364,20 +3378,19 @@ If convert_to_scalar, then convert zero-dimensional arrays to scalars</p>
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.blob.Blob.read_recarray" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">read_recarray</span><span class="p">()</span></code>
+            <code class="highlight language-python"><span class="n">read_recarray</span><span class="p">()</span></code>
 
 <a href="#datajoint.blob.Blob.read_recarray" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>Serialize an np.ndarray with fields, including recarrays</p>
+    <div class="doc doc-contents ">
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/blob.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">300</span>
+        <p>Serialize an np.ndarray with fields, including recarrays</p>
+
+            <details class="quote">
+              <summary>Source code in <code>datajoint/blob.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">300</span>
 <span class="normal">301</span>
 <span class="normal">302</span>
 <span class="normal">303</span>
@@ -3409,11 +3422,10 @@ If convert_to_scalar, then convert zero-dimensional arrays to scalars</p>
         <span class="n">rec</span><span class="p">[</span><span class="n">f</span><span class="p">]</span> <span class="o">=</span> <span class="n">t</span>
     <span class="k">return</span> <span class="n">rec</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">recarray</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -3423,20 +3435,19 @@ If convert_to_scalar, then convert zero-dimensional arrays to scalars</p>
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.blob.Blob.pack_recarray" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">pack_recarray</span><span class="p">(</span><span class="n">array</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">pack_recarray</span><span class="p">(</span><span class="n">array</span><span class="p">)</span></code>
 
 <a href="#datajoint.blob.Blob.pack_recarray" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>Serialize a Matlab struct array</p>
+    <div class="doc doc-contents ">
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/blob.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">317</span>
+        <p>Serialize a Matlab struct array</p>
+
+            <details class="quote">
+              <summary>Source code in <code>datajoint/blob.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">317</span>
 <span class="normal">318</span>
 <span class="normal">319</span>
 <span class="normal">320</span>
@@ -3449,7 +3460,9 @@ If convert_to_scalar, then convert zero-dimensional arrays to scalars</p>
 <span class="normal">327</span>
 <span class="normal">328</span>
 <span class="normal">329</span>
-<span class="normal">330</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">pack_recarray</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">):</span>
+<span class="normal">330</span>
+<span class="normal">331</span>
+<span class="normal">332</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">pack_recarray</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Serialize a Matlab struct array&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="p">(</span>
         <span class="sa">b</span><span class="s2">&quot;F&quot;</span>
@@ -3457,18 +3470,19 @@ If convert_to_scalar, then convert zero-dimensional arrays to scalars</p>
         <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\0</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">array</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">names</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>  <span class="c1"># number of fields</span>
         <span class="o">+</span> <span class="sa">b</span><span class="s2">&quot;</span><span class="se">\0</span><span class="s2">&quot;</span>
         <span class="o">+</span> <span class="sa">b</span><span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>  <span class="c1"># field names</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">pack_recarray</span><span class="p">(</span><span class="n">array</span><span class="p">[</span><span class="n">f</span><span class="p">])</span>
-            <span class="k">if</span> <span class="n">array</span><span class="p">[</span><span class="n">f</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">fields</span>
-            <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">pack_array</span><span class="p">(</span><span class="n">array</span><span class="p">[</span><span class="n">f</span><span class="p">])</span>
+            <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">pack_recarray</span><span class="p">(</span><span class="n">array</span><span class="p">[</span><span class="n">f</span><span class="p">])</span>
+                <span class="k">if</span> <span class="n">array</span><span class="p">[</span><span class="n">f</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">fields</span>
+                <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">pack_array</span><span class="p">(</span><span class="n">array</span><span class="p">[</span><span class="n">f</span><span class="p">])</span>
+            <span class="p">)</span>
             <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">array</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">names</span>
         <span class="p">)</span>
     <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -3478,22 +3492,19 @@ If convert_to_scalar, then convert zero-dimensional arrays to scalars</p>
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.blob.Blob.read_struct" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">read_struct</span><span class="p">()</span></code>
+            <code class="highlight language-python"><span class="n">read_struct</span><span class="p">()</span></code>
 
 <a href="#datajoint.blob.Blob.read_struct" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>deserialize matlab struct</p>
+    <div class="doc doc-contents ">
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/blob.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">451</span>
-<span class="normal">452</span>
-<span class="normal">453</span>
+        <p>deserialize matlab struct</p>
+
+            <details class="quote">
+              <summary>Source code in <code>datajoint/blob.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">453</span>
 <span class="normal">454</span>
 <span class="normal">455</span>
 <span class="normal">456</span>
@@ -3509,7 +3520,9 @@ If convert_to_scalar, then convert zero-dimensional arrays to scalars</p>
 <span class="normal">466</span>
 <span class="normal">467</span>
 <span class="normal">468</span>
-<span class="normal">469</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">read_struct</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="normal">469</span>
+<span class="normal">470</span>
+<span class="normal">471</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">read_struct</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;deserialize matlab struct&quot;&quot;&quot;</span>
     <span class="n">n_dims</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_value</span><span class="p">()</span>
     <span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_value</span><span class="p">(</span><span class="n">count</span><span class="o">=</span><span class="n">n_dims</span><span class="p">)</span>
@@ -3529,11 +3542,10 @@ If convert_to_scalar, then convert zero-dimensional arrays to scalars</p>
         <span class="n">data</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="s2">&quot;F&quot;</span><span class="p">),</span> <span class="n">convert_to_scalar</span><span class="o">=</span><span class="kc">False</span>
     <span class="p">)</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">MatStruct</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -3543,22 +3555,19 @@ If convert_to_scalar, then convert zero-dimensional arrays to scalars</p>
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.blob.Blob.pack_struct" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">pack_struct</span><span class="p">(</span><span class="n">array</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">pack_struct</span><span class="p">(</span><span class="n">array</span><span class="p">)</span></code>
 
 <a href="#datajoint.blob.Blob.pack_struct" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>Serialize a Matlab struct array</p>
+    <div class="doc doc-contents ">
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/blob.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">471</span>
-<span class="normal">472</span>
-<span class="normal">473</span>
+        <p>Serialize a Matlab struct array</p>
+
+            <details class="quote">
+              <summary>Source code in <code>datajoint/blob.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">473</span>
 <span class="normal">474</span>
 <span class="normal">475</span>
 <span class="normal">476</span>
@@ -3570,7 +3579,9 @@ If convert_to_scalar, then convert zero-dimensional arrays to scalars</p>
 <span class="normal">482</span>
 <span class="normal">483</span>
 <span class="normal">484</span>
-<span class="normal">485</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">pack_struct</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">):</span>
+<span class="normal">485</span>
+<span class="normal">486</span>
+<span class="normal">487</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">pack_struct</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">array</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Serialize a Matlab struct array&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="p">(</span>
         <span class="sa">b</span><span class="s2">&quot;S&quot;</span>
@@ -3586,11 +3597,10 @@ If convert_to_scalar, then convert zero-dimensional arrays to scalars</p>
         <span class="p">)</span>
     <span class="p">)</span>  <span class="c1"># values</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -3600,22 +3610,19 @@ If convert_to_scalar, then convert zero-dimensional arrays to scalars</p>
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.blob.Blob.read_cell_array" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">read_cell_array</span><span class="p">()</span></code>
+            <code class="highlight language-python"><span class="n">read_cell_array</span><span class="p">()</span></code>
 
 <a href="#datajoint.blob.Blob.read_cell_array" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>deserialize MATLAB cell array</p>
+    <div class="doc doc-contents ">
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/blob.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">487</span>
-<span class="normal">488</span>
-<span class="normal">489</span>
+        <p>deserialize MATLAB cell array</p>
+
+            <details class="quote">
+              <summary>Source code in <code>datajoint/blob.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">489</span>
 <span class="normal">490</span>
 <span class="normal">491</span>
 <span class="normal">492</span>
@@ -3623,7 +3630,9 @@ If convert_to_scalar, then convert zero-dimensional arrays to scalars</p>
 <span class="normal">494</span>
 <span class="normal">495</span>
 <span class="normal">496</span>
-<span class="normal">497</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">read_cell_array</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="normal">497</span>
+<span class="normal">498</span>
+<span class="normal">499</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">read_cell_array</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;deserialize MATLAB cell array&quot;&quot;&quot;</span>
     <span class="n">n_dims</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_value</span><span class="p">()</span>
     <span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_value</span><span class="p">(</span><span class="n">count</span><span class="o">=</span><span class="n">n_dims</span><span class="p">)</span>
@@ -3635,11 +3644,10 @@ If convert_to_scalar, then convert zero-dimensional arrays to scalars</p>
         <span class="p">)</span>
     <span class="p">)</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="n">MatCell</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -3649,22 +3657,19 @@ If convert_to_scalar, then convert zero-dimensional arrays to scalars</p>
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.blob.Blob.read_datetime" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">read_datetime</span><span class="p">()</span></code>
+            <code class="highlight language-python"><span class="n">read_datetime</span><span class="p">()</span></code>
 
 <a href="#datajoint.blob.Blob.read_datetime" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>deserialize datetime.date, .time, or .datetime</p>
+    <div class="doc doc-contents ">
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/blob.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">509</span>
-<span class="normal">510</span>
-<span class="normal">511</span>
+        <p>deserialize datetime.date, .time, or .datetime</p>
+
+            <details class="quote">
+              <summary>Source code in <code>datajoint/blob.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">511</span>
 <span class="normal">512</span>
 <span class="normal">513</span>
 <span class="normal">514</span>
@@ -3680,7 +3685,9 @@ If convert_to_scalar, then convert zero-dimensional arrays to scalars</p>
 <span class="normal">524</span>
 <span class="normal">525</span>
 <span class="normal">526</span>
-<span class="normal">527</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">read_datetime</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="normal">527</span>
+<span class="normal">528</span>
+<span class="normal">529</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">read_datetime</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;deserialize datetime.date, .time, or .datetime&quot;&quot;&quot;</span>
     <span class="n">date</span><span class="p">,</span> <span class="n">time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_value</span><span class="p">(</span><span class="s2">&quot;int32&quot;</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_value</span><span class="p">(</span><span class="s2">&quot;int64&quot;</span><span class="p">)</span>
     <span class="n">date</span> <span class="o">=</span> <span class="p">(</span>
@@ -3700,8 +3707,8 @@ If convert_to_scalar, then convert zero-dimensional arrays to scalars</p>
     <span class="p">)</span>
     <span class="k">return</span> <span class="n">time</span> <span class="ow">and</span> <span class="n">date</span> <span class="ow">and</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">combine</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">time</span><span class="p">)</span> <span class="ow">or</span> <span class="n">time</span> <span class="ow">or</span> <span class="n">date</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
 
@@ -3710,7 +3717,7 @@ If convert_to_scalar, then convert zero-dimensional arrays to scalars</p>
 
   </div>
 
-  </div>
+    </div>
 
 </div>
 
@@ -3719,7 +3726,7 @@ If convert_to_scalar, then convert zero-dimensional arrays to scalars</p>
 
   </div>
 
-  </div>
+    </div>
 
 </div>
 
@@ -3840,10 +3847,10 @@ If convert_to_scalar, then convert zero-dimensional arrays to scalars</p>
       <div class="md-dialog__inner md-typeset"></div>
     </div>
     
-    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.74e28a9f.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.220ee61c.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.b425cdc4.min.js"></script>
       
     
   </body>

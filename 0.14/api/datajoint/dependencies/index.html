@@ -15,7 +15,7 @@
         <link rel="next" href="../diagram/">
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.19">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.1.17">
     
     
       
@@ -23,7 +23,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.eebd395e.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.26e3688c.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ecc896b0.min.css">
@@ -1409,7 +1409,7 @@
   
     <li class="md-nav__item">
       <a href="../../../tutorials/json/" class="md-nav__link">
-        Using the json type
+        Using the type
       </a>
     </li>
   
@@ -1618,6 +1618,20 @@
   
   
     <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        cli.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../condition/" class="md-nav__link">
         condition.py
       </a>
@@ -1691,14 +1705,21 @@
       
         <li class="md-nav__item">
   <a href="#datajoint.dependencies" class="md-nav__link">
-    datajoint.dependencies
+    dependencies
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#datajoint.dependencies.unite_master_parts" class="md-nav__link">
-    unite_master_parts()
+  <a href="#datajoint.dependencies.extract_master" class="md-nav__link">
+    extract_master
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#datajoint.dependencies.topo_sort" class="md-nav__link">
+    topo_sort
   </a>
   
 </li>
@@ -1713,35 +1734,42 @@
         
           <li class="md-nav__item">
   <a href="#datajoint.dependencies.Dependencies.load" class="md-nav__link">
-    load()
+    load
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#datajoint.dependencies.Dependencies.topo_sort" class="md-nav__link">
+    topo_sort
   </a>
   
 </li>
         
           <li class="md-nav__item">
   <a href="#datajoint.dependencies.Dependencies.parents" class="md-nav__link">
-    parents()
+    parents
   </a>
   
 </li>
         
           <li class="md-nav__item">
   <a href="#datajoint.dependencies.Dependencies.children" class="md-nav__link">
-    children()
+    children
   </a>
   
 </li>
         
           <li class="md-nav__item">
   <a href="#datajoint.dependencies.Dependencies.descendants" class="md-nav__link">
-    descendants()
+    descendants
   </a>
   
 </li>
         
           <li class="md-nav__item">
   <a href="#datajoint.dependencies.Dependencies.ancestors" class="md-nav__link">
-    ancestors()
+    ancestors
   </a>
   
 </li>
@@ -2045,12 +2073,16 @@
 <div class="doc doc-object doc-module">
 
 
-<a id="datajoint.dependencies"></a>
-  <div class="doc doc-contents first">
 
-  
+<a id="datajoint.dependencies"></a>
+    <div class="doc doc-contents first">
+
+
 
   <div class="doc doc-children">
+
+
+
 
 
 
@@ -2062,35 +2094,78 @@
 <div class="doc doc-object doc-function">
 
 
+<h2 id="datajoint.dependencies.extract_master" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">extract_master</span><span class="p">(</span><span class="n">part_table</span><span class="p">)</span></code>
 
-<h2 id="datajoint.dependencies.unite_master_parts" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">unite_master_parts</span><span class="p">(</span><span class="n">lst</span><span class="p">)</span></code>
-
-<a href="#datajoint.dependencies.unite_master_parts" class="headerlink" title="Permanent link">&para;</a></h2>
+<a href="#datajoint.dependencies.extract_master" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>re-order a list of table names so that part tables immediately follow their master tables without breaking
-the topological order.
-Without this correction, a simple topological sort may insert other descendants between master and parts.
-The input list must be topologically sorted.
-:example:
-unite_master_parts(
-    ['<code>s</code>.<code>a</code>', '<code>s</code>.<code>a__q</code>', '<code>s</code>.<code>b</code>', '<code>s</code>.<code>c</code>', '<code>s</code>.<code>c__q</code>', '<code>s</code>.<code>b__q</code>', '<code>s</code>.<code>d</code>', '<code>s</code>.<code>a__r</code>']) -&gt;
-    ['<code>s</code>.<code>a</code>', '<code>s</code>.<code>a__q</code>', '<code>s</code>.<code>a__r</code>', '<code>s</code>.<code>b</code>', '<code>s</code>.<code>b__q</code>', '<code>s</code>.<code>c</code>', '<code>s</code>.<code>c__q</code>', '<code>s</code>.<code>d</code>']</p>
+    <div class="doc doc-contents ">
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/dependencies.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 8</span>
+        <p>given a part table name, return master part. None if not a part table</p>
+
+            <details class="quote">
+              <summary>Source code in <code>datajoint/dependencies.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 8</span>
 <span class="normal"> 9</span>
 <span class="normal">10</span>
 <span class="normal">11</span>
 <span class="normal">12</span>
-<span class="normal">13</span>
-<span class="normal">14</span>
-<span class="normal">15</span>
-<span class="normal">16</span>
+<span class="normal">13</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">extract_master</span><span class="p">(</span><span class="n">part_table</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    given a part table name, return master part. None if not a part table</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;(?P&lt;master&gt;`\w+`.`#?\w+)__\w+`&quot;</span><span class="p">,</span> <span class="n">part_table</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">match</span><span class="p">[</span><span class="s2">&quot;master&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;`&quot;</span> <span class="k">if</span> <span class="n">match</span> <span class="k">else</span> <span class="kc">None</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="datajoint.dependencies.topo_sort" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">topo_sort</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span></code>
+
+<a href="#datajoint.dependencies.topo_sort" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>topological sort of a dependency graph that keeps part tables together with their masters</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>list of table names in topological order</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+            <details class="quote">
+              <summary>Source code in <code>datajoint/dependencies.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">16</span>
 <span class="normal">17</span>
 <span class="normal">18</span>
 <span class="normal">19</span>
@@ -2103,37 +2178,97 @@ unite_master_parts(
 <span class="normal">26</span>
 <span class="normal">27</span>
 <span class="normal">28</span>
-<span class="normal">29</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">unite_master_parts</span><span class="p">(</span><span class="n">lst</span><span class="p">):</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span>
+<span class="normal">61</span>
+<span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span>
+<span class="normal">65</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">topo_sort</span><span class="p">(</span><span class="n">graph</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    re-order a list of table names so that part tables immediately follow their master tables without breaking</span>
-<span class="sd">    the topological order.</span>
-<span class="sd">    Without this correction, a simple topological sort may insert other descendants between master and parts.</span>
-<span class="sd">    The input list must be topologically sorted.</span>
-<span class="sd">    :example:</span>
-<span class="sd">    unite_master_parts(</span>
-<span class="sd">        [&#39;`s`.`a`&#39;, &#39;`s`.`a__q`&#39;, &#39;`s`.`b`&#39;, &#39;`s`.`c`&#39;, &#39;`s`.`c__q`&#39;, &#39;`s`.`b__q`&#39;, &#39;`s`.`d`&#39;, &#39;`s`.`a__r`&#39;]) -&gt;</span>
-<span class="sd">        [&#39;`s`.`a`&#39;, &#39;`s`.`a__q`&#39;, &#39;`s`.`a__r`&#39;, &#39;`s`.`b`&#39;, &#39;`s`.`b__q`&#39;, &#39;`s`.`c`&#39;, &#39;`s`.`c__q`&#39;, &#39;`s`.`d`&#39;]</span>
+<span class="sd">    topological sort of a dependency graph that keeps part tables together with their masters</span>
+<span class="sd">    :return: list of table names in topological order</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">lst</span><span class="p">)):</span>
-        <span class="n">name</span> <span class="o">=</span> <span class="n">lst</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
-        <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;(?P&lt;master&gt;`\w+`.`#?\w+)__\w+`&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">match</span><span class="p">:</span>  <span class="c1"># name is a part table</span>
-            <span class="n">master</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s2">&quot;master&quot;</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
-                <span class="k">if</span> <span class="n">lst</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">==</span> <span class="n">master</span> <span class="o">+</span> <span class="s2">&quot;`&quot;</span> <span class="ow">or</span> <span class="n">lst</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">master</span> <span class="o">+</span> <span class="s2">&quot;__&quot;</span><span class="p">):</span>
-                    <span class="c1"># move from the ith position to the (j+1)th position</span>
-                    <span class="n">lst</span><span class="p">[</span><span class="n">j</span> <span class="o">+</span> <span class="mi">1</span> <span class="p">:</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">+</span> <span class="n">lst</span><span class="p">[</span><span class="n">j</span> <span class="o">+</span> <span class="mi">1</span> <span class="p">:</span> <span class="n">i</span><span class="p">]</span>
-                    <span class="k">break</span>
-    <span class="k">return</span> <span class="n">lst</span>
+
+    <span class="n">graph</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>  <span class="c1"># make a copy</span>
+
+    <span class="c1"># collapse alias nodes</span>
+    <span class="n">alias_nodes</span> <span class="o">=</span> <span class="p">[</span><span class="n">node</span> <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">graph</span> <span class="k">if</span> <span class="n">node</span><span class="o">.</span><span class="n">isdigit</span><span class="p">()]</span>
+    <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">alias_nodes</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">direct_edge</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="nb">next</span><span class="p">(</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">in_edges</span><span class="p">(</span><span class="n">node</span><span class="p">))[</span><span class="mi">0</span><span class="p">],</span>
+                <span class="nb">next</span><span class="p">(</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">out_edges</span><span class="p">(</span><span class="n">node</span><span class="p">))[</span><span class="mi">1</span><span class="p">],</span>
+            <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
+            <span class="k">pass</span>  <span class="c1"># a disconnected alias node</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">graph</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="o">*</span><span class="n">direct_edge</span><span class="p">)</span>
+    <span class="n">graph</span><span class="o">.</span><span class="n">remove_nodes_from</span><span class="p">(</span><span class="n">alias_nodes</span><span class="p">)</span>
+
+    <span class="c1"># Add parts&#39; dependencies to their masters&#39; dependencies</span>
+    <span class="c1"># to ensure correct topological ordering of the masters.</span>
+    <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">graph</span><span class="p">:</span>
+        <span class="c1"># find the part&#39;s master</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">master</span> <span class="o">:=</span> <span class="n">extract_master</span><span class="p">(</span><span class="n">part</span><span class="p">))</span> <span class="ow">in</span> <span class="n">graph</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">edge</span> <span class="ow">in</span> <span class="n">graph</span><span class="o">.</span><span class="n">in_edges</span><span class="p">(</span><span class="n">part</span><span class="p">):</span>
+                <span class="n">parent</span> <span class="o">=</span> <span class="n">edge</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">master</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="n">extract_master</span><span class="p">(</span><span class="n">parent</span><span class="p">)):</span>
+                    <span class="c1"># if parent is neither master nor part of master</span>
+                    <span class="n">graph</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="n">master</span><span class="p">)</span>
+    <span class="n">sorted_nodes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">nx</span><span class="o">.</span><span class="n">topological_sort</span><span class="p">(</span><span class="n">graph</span><span class="p">))</span>
+
+    <span class="c1"># bring parts up to their masters</span>
+    <span class="n">pos</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">sorted_nodes</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+    <span class="n">placed</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">while</span> <span class="n">pos</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">part</span> <span class="o">=</span> <span class="n">sorted_nodes</span><span class="p">[</span><span class="n">pos</span><span class="p">]</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">master</span> <span class="o">:=</span> <span class="n">extract_master</span><span class="p">(</span><span class="n">part</span><span class="p">))</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">graph</span> <span class="ow">or</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">placed</span><span class="p">:</span>
+            <span class="n">pos</span> <span class="o">-=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">placed</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">part</span><span class="p">)</span>
+            <span class="n">insert_pos</span> <span class="o">=</span> <span class="n">sorted_nodes</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">master</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">pos</span> <span class="o">&gt;</span> <span class="n">insert_pos</span><span class="p">:</span>
+                <span class="c1"># move the part to the position immediately after its master</span>
+                <span class="k">del</span> <span class="n">sorted_nodes</span><span class="p">[</span><span class="n">pos</span><span class="p">]</span>
+                <span class="n">sorted_nodes</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">insert_pos</span><span class="p">,</span> <span class="n">part</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">sorted_nodes</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
-
-
-
 
 
 
@@ -2145,62 +2280,26 @@ unite_master_parts(
 
 
 <h2 id="datajoint.dependencies.Dependencies" class="doc doc-heading">
-          <code>Dependencies</code>
+            <code>Dependencies</code>
 
 
 <a href="#datajoint.dependencies.Dependencies" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-          <p class="doc doc-class-bases">
-            Bases: <code><span title="networkx">nx</span>.<span title="networkx.DiGraph">DiGraph</span></code></p>
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="networkx.DiGraph">DiGraph</span></code></p>
 
-  
-      <p>The graph of dependencies (foreign keys) between loaded tables.</p>
+
+        <p>The graph of dependencies (foreign keys) between loaded tables.</p>
 <p>Note: the 'connection' argument should normally be supplied;
 Empty use is permitted to facilitate use of networkx algorithms which
 internally create objects with the expectation of empty constructors.
 See also: <a href="https://github.com/datajoint/datajoint-python/pull/443">https://github.com/datajoint/datajoint-python/pull/443</a></p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/dependencies.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 32</span>
-<span class="normal"> 33</span>
-<span class="normal"> 34</span>
-<span class="normal"> 35</span>
-<span class="normal"> 36</span>
-<span class="normal"> 37</span>
-<span class="normal"> 38</span>
-<span class="normal"> 39</span>
-<span class="normal"> 40</span>
-<span class="normal"> 41</span>
-<span class="normal"> 42</span>
-<span class="normal"> 43</span>
-<span class="normal"> 44</span>
-<span class="normal"> 45</span>
-<span class="normal"> 46</span>
-<span class="normal"> 47</span>
-<span class="normal"> 48</span>
-<span class="normal"> 49</span>
-<span class="normal"> 50</span>
-<span class="normal"> 51</span>
-<span class="normal"> 52</span>
-<span class="normal"> 53</span>
-<span class="normal"> 54</span>
-<span class="normal"> 55</span>
-<span class="normal"> 56</span>
-<span class="normal"> 57</span>
-<span class="normal"> 58</span>
-<span class="normal"> 59</span>
-<span class="normal"> 60</span>
-<span class="normal"> 61</span>
-<span class="normal"> 62</span>
-<span class="normal"> 63</span>
-<span class="normal"> 64</span>
-<span class="normal"> 65</span>
-<span class="normal"> 66</span>
-<span class="normal"> 67</span>
-<span class="normal"> 68</span>
+              <details class="quote">
+                <summary>Source code in <code>datajoint/dependencies.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 68</span>
 <span class="normal"> 69</span>
 <span class="normal"> 70</span>
 <span class="normal"> 71</span>
@@ -2320,7 +2419,39 @@ See also: <a href="https://github.com/datajoint/datajoint-python/pull/443">https
 <span class="normal">185</span>
 <span class="normal">186</span>
 <span class="normal">187</span>
-<span class="normal">188</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Dependencies</span><span class="p">(</span><span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">):</span>
+<span class="normal">188</span>
+<span class="normal">189</span>
+<span class="normal">190</span>
+<span class="normal">191</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Dependencies</span><span class="p">(</span><span class="n">nx</span><span class="o">.</span><span class="n">DiGraph</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    The graph of dependencies (foreign keys) between loaded tables.</span>
 
@@ -2422,6 +2553,10 @@ See also: <a href="https://github.com/datajoint/datajoint-python/pull/443">https
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">&quot;DataJoint can only work with acyclic dependencies&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_loaded</span> <span class="o">=</span> <span class="kc">True</span>
 
+    <span class="k">def</span> <span class="nf">topo_sort</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;:return: list of tables names in topological order&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">topo_sort</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
     <span class="k">def</span> <span class="nf">parents</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span> <span class="n">primary</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        :param table_name: `schema`.`table`</span>
@@ -2458,10 +2593,8 @@ See also: <a href="https://github.com/datajoint/datajoint-python/pull/443">https
 <span class="sd">        :return: all dependent tables sorted in topological order.  Self is included.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-        <span class="n">nodes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="n">nx</span><span class="o">.</span><span class="n">algorithms</span><span class="o">.</span><span class="n">dag</span><span class="o">.</span><span class="n">descendants</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">full_table_name</span><span class="p">))</span>
-        <span class="k">return</span> <span class="n">unite_master_parts</span><span class="p">(</span>
-            <span class="p">[</span><span class="n">full_table_name</span><span class="p">]</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">nx</span><span class="o">.</span><span class="n">algorithms</span><span class="o">.</span><span class="n">dag</span><span class="o">.</span><span class="n">topological_sort</span><span class="p">(</span><span class="n">nodes</span><span class="p">))</span>
-        <span class="p">)</span>
+        <span class="n">nodes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="n">nx</span><span class="o">.</span><span class="n">descendants</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">full_table_name</span><span class="p">))</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">full_table_name</span><span class="p">]</span> <span class="o">+</span> <span class="n">nodes</span><span class="o">.</span><span class="n">topo_sort</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">ancestors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">full_table_name</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -2469,21 +2602,14 @@ See also: <a href="https://github.com/datajoint/datajoint-python/pull/443">https
 <span class="sd">        :return: all dependent tables sorted in topological order.  Self is included.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-        <span class="n">nodes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="n">nx</span><span class="o">.</span><span class="n">algorithms</span><span class="o">.</span><span class="n">dag</span><span class="o">.</span><span class="n">ancestors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">full_table_name</span><span class="p">))</span>
-        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span>
-            <span class="nb">reversed</span><span class="p">(</span>
-                <span class="n">unite_master_parts</span><span class="p">(</span>
-                    <span class="nb">list</span><span class="p">(</span><span class="n">nx</span><span class="o">.</span><span class="n">algorithms</span><span class="o">.</span><span class="n">dag</span><span class="o">.</span><span class="n">topological_sort</span><span class="p">(</span><span class="n">nodes</span><span class="p">))</span> <span class="o">+</span> <span class="p">[</span><span class="n">full_table_name</span><span class="p">]</span>
-                <span class="p">)</span>
-            <span class="p">)</span>
-        <span class="p">)</span>
+        <span class="n">nodes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="n">nx</span><span class="o">.</span><span class="n">ancestors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">full_table_name</span><span class="p">))</span>
+        <span class="k">return</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">nodes</span><span class="o">.</span><span class="n">topo_sort</span><span class="p">()</span> <span class="o">+</span> <span class="p">[</span><span class="n">full_table_name</span><span class="p">])</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
 
-  
+
 
   <div class="doc doc-children">
-
 
 
 
@@ -2494,57 +2620,20 @@ See also: <a href="https://github.com/datajoint/datajoint-python/pull/443">https
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.dependencies.Dependencies.load" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">load</span><span class="p">(</span><span class="n">force</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">load</span><span class="p">(</span><span class="n">force</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
 
 <a href="#datajoint.dependencies.Dependencies.load" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>Load dependencies for all loaded schemas.
+    <div class="doc doc-contents ">
+
+        <p>Load dependencies for all loaded schemas.
 This method gets called before any operation that requires dependencies: delete, drop, populate, progress.</p>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/dependencies.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 52</span>
-<span class="normal"> 53</span>
-<span class="normal"> 54</span>
-<span class="normal"> 55</span>
-<span class="normal"> 56</span>
-<span class="normal"> 57</span>
-<span class="normal"> 58</span>
-<span class="normal"> 59</span>
-<span class="normal"> 60</span>
-<span class="normal"> 61</span>
-<span class="normal"> 62</span>
-<span class="normal"> 63</span>
-<span class="normal"> 64</span>
-<span class="normal"> 65</span>
-<span class="normal"> 66</span>
-<span class="normal"> 67</span>
-<span class="normal"> 68</span>
-<span class="normal"> 69</span>
-<span class="normal"> 70</span>
-<span class="normal"> 71</span>
-<span class="normal"> 72</span>
-<span class="normal"> 73</span>
-<span class="normal"> 74</span>
-<span class="normal"> 75</span>
-<span class="normal"> 76</span>
-<span class="normal"> 77</span>
-<span class="normal"> 78</span>
-<span class="normal"> 79</span>
-<span class="normal"> 80</span>
-<span class="normal"> 81</span>
-<span class="normal"> 82</span>
-<span class="normal"> 83</span>
-<span class="normal"> 84</span>
-<span class="normal"> 85</span>
-<span class="normal"> 86</span>
-<span class="normal"> 87</span>
-<span class="normal"> 88</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/dependencies.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 88</span>
 <span class="normal"> 89</span>
 <span class="normal"> 90</span>
 <span class="normal"> 91</span>
@@ -2588,7 +2677,43 @@ This method gets called before any operation that requires dependencies: delete,
 <span class="normal">129</span>
 <span class="normal">130</span>
 <span class="normal">131</span>
-<span class="normal">132</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Load dependencies for all loaded schemas.</span>
 <span class="sd">    This method gets called before any operation that requires dependencies: delete, drop, populate, progress.</span>
@@ -2670,11 +2795,10 @@ This method gets called before any operation that requires dependencies: delete,
         <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">&quot;DataJoint can only work with acyclic dependencies&quot;</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_loaded</span> <span class="o">=</span> <span class="kc">True</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -2684,98 +2808,148 @@ This method gets called before any operation that requires dependencies: delete,
 <div class="doc doc-object doc-function">
 
 
+<h3 id="datajoint.dependencies.Dependencies.topo_sort" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">topo_sort</span><span class="p">()</span></code>
+
+<a href="#datajoint.dependencies.Dependencies.topo_sort" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>list of tables names in topological order</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+            <details class="quote">
+              <summary>Source code in <code>datajoint/dependencies.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">170</span>
+<span class="normal">171</span>
+<span class="normal">172</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">topo_sort</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;:return: list of tables names in topological order&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">topo_sort</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
 
 <h3 id="datajoint.dependencies.Dependencies.parents" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">parents</span><span class="p">(</span><span class="n">table_name</span><span class="p">,</span> <span class="n">primary</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">parents</span><span class="p">(</span><span class="n">table_name</span><span class="p">,</span> <span class="n">primary</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 <a href="#datajoint.dependencies.Dependencies.parents" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      
+    <div class="doc doc-contents ">
+
+        
 
 
-
-  <p><strong>Parameters:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Type</th>
-        <th>Description</th>
-        <th>Default</th>
-      </tr>
-    </thead>
-    <tbody>
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td><code>table_name</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p><code>schema</code>.<code>table</code></p>
-            </div>
-          </td>
-          <td>
-              <em>required</em>
-          </td>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
         </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>table_name</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>schema</code>.<code>table</code></p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>primary</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>if None, then all parents are returned. If True, then only foreign keys composed of primary key attributes are considered.  If False, the only foreign keys including at least one non-primary attribute are considered.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td><code>primary</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>if None, then all parents are returned. If True, then only foreign keys composed of primary key attributes are considered.  If False, the only foreign keys including at least one non-primary attribute are considered.</p>
-            </div>
-          </td>
-          <td>
-                <code>None</code>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>dict of tables referenced by the foreign keys of table</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
-        <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>dict of tables referenced by the foreign keys of table</p>
-            </div>
-          </td>
-        </tr>
-    </tbody>
-  </table>
-
-          <details class="quote">
-            <summary>Source code in <code>datajoint/dependencies.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">134</span>
-<span class="normal">135</span>
-<span class="normal">136</span>
-<span class="normal">137</span>
-<span class="normal">138</span>
-<span class="normal">139</span>
-<span class="normal">140</span>
-<span class="normal">141</span>
-<span class="normal">142</span>
-<span class="normal">143</span>
-<span class="normal">144</span>
-<span class="normal">145</span>
-<span class="normal">146</span>
-<span class="normal">147</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">parents</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span> <span class="n">primary</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/dependencies.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">174</span>
+<span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span>
+<span class="normal">178</span>
+<span class="normal">179</span>
+<span class="normal">180</span>
+<span class="normal">181</span>
+<span class="normal">182</span>
+<span class="normal">183</span>
+<span class="normal">184</span>
+<span class="normal">185</span>
+<span class="normal">186</span>
+<span class="normal">187</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">parents</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span> <span class="n">primary</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    :param table_name: `schema`.`table`</span>
 <span class="sd">    :param primary: if None, then all parents are returned. If True, then only foreign keys composed of</span>
@@ -2790,11 +2964,10 @@ This method gets called before any operation that requires dependencies: delete,
         <span class="k">if</span> <span class="n">primary</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">p</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="s2">&quot;primary&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">primary</span>
     <span class="p">}</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -2804,98 +2977,95 @@ This method gets called before any operation that requires dependencies: delete,
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.dependencies.Dependencies.children" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">children</span><span class="p">(</span><span class="n">table_name</span><span class="p">,</span> <span class="n">primary</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">children</span><span class="p">(</span><span class="n">table_name</span><span class="p">,</span> <span class="n">primary</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 <a href="#datajoint.dependencies.Dependencies.children" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      
+    <div class="doc doc-contents ">
+
+        
 
 
-
-  <p><strong>Parameters:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Type</th>
-        <th>Description</th>
-        <th>Default</th>
-      </tr>
-    </thead>
-    <tbody>
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td><code>table_name</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p><code>schema</code>.<code>table</code></p>
-            </div>
-          </td>
-          <td>
-              <em>required</em>
-          </td>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
         </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>table_name</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>schema</code>.<code>table</code></p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>primary</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>if None, then all children are returned. If True, then only foreign keys composed of primary key attributes are considered.  If False, the only foreign keys including at least one non-primary attribute are considered.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td><code>primary</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>if None, then all children are returned. If True, then only foreign keys composed of primary key attributes are considered.  If False, the only foreign keys including at least one non-primary attribute are considered.</p>
-            </div>
-          </td>
-          <td>
-                <code>None</code>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>dict of tables referencing the table through foreign keys</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
-        <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>dict of tables referencing the table through foreign keys</p>
-            </div>
-          </td>
-        </tr>
-    </tbody>
-  </table>
-
-          <details class="quote">
-            <summary>Source code in <code>datajoint/dependencies.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">149</span>
-<span class="normal">150</span>
-<span class="normal">151</span>
-<span class="normal">152</span>
-<span class="normal">153</span>
-<span class="normal">154</span>
-<span class="normal">155</span>
-<span class="normal">156</span>
-<span class="normal">157</span>
-<span class="normal">158</span>
-<span class="normal">159</span>
-<span class="normal">160</span>
-<span class="normal">161</span>
-<span class="normal">162</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">children</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span> <span class="n">primary</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/dependencies.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">189</span>
+<span class="normal">190</span>
+<span class="normal">191</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">children</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table_name</span><span class="p">,</span> <span class="n">primary</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    :param table_name: `schema`.`table`</span>
 <span class="sd">    :param primary: if None, then all children are returned. If True, then only foreign keys composed of</span>
@@ -2910,11 +3080,10 @@ This method gets called before any operation that requires dependencies: delete,
         <span class="k">if</span> <span class="n">primary</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">p</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="s2">&quot;primary&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">primary</span>
     <span class="p">}</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -2924,96 +3093,88 @@ This method gets called before any operation that requires dependencies: delete,
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.dependencies.Dependencies.descendants" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">descendants</span><span class="p">(</span><span class="n">full_table_name</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">descendants</span><span class="p">(</span><span class="n">full_table_name</span><span class="p">)</span></code>
 
 <a href="#datajoint.dependencies.Dependencies.descendants" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      
+    <div class="doc doc-contents ">
+
+        
 
 
-
-  <p><strong>Parameters:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Type</th>
-        <th>Description</th>
-        <th>Default</th>
-      </tr>
-    </thead>
-    <tbody>
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td><code>full_table_name</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>In form <code>schema</code>.<code>table_name</code></p>
-            </div>
-          </td>
-          <td>
-              <em>required</em>
-          </td>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>full_table_name</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>In form <code>schema</code>.<code>table_name</code></p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>all dependent tables sorted in topological order.  Self is included.</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>all dependent tables sorted in topological order.  Self is included.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/dependencies.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">164</span>
-<span class="normal">165</span>
-<span class="normal">166</span>
-<span class="normal">167</span>
-<span class="normal">168</span>
-<span class="normal">169</span>
-<span class="normal">170</span>
-<span class="normal">171</span>
-<span class="normal">172</span>
-<span class="normal">173</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">descendants</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">full_table_name</span><span class="p">):</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/dependencies.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">descendants</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">full_table_name</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    :param full_table_name:  In form `schema`.`table_name`</span>
 <span class="sd">    :return: all dependent tables sorted in topological order.  Self is included.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-    <span class="n">nodes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="n">nx</span><span class="o">.</span><span class="n">algorithms</span><span class="o">.</span><span class="n">dag</span><span class="o">.</span><span class="n">descendants</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">full_table_name</span><span class="p">))</span>
-    <span class="k">return</span> <span class="n">unite_master_parts</span><span class="p">(</span>
-        <span class="p">[</span><span class="n">full_table_name</span><span class="p">]</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">nx</span><span class="o">.</span><span class="n">algorithms</span><span class="o">.</span><span class="n">dag</span><span class="o">.</span><span class="n">topological_sort</span><span class="p">(</span><span class="n">nodes</span><span class="p">))</span>
-    <span class="p">)</span>
+    <span class="n">nodes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="n">nx</span><span class="o">.</span><span class="n">descendants</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">full_table_name</span><span class="p">))</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">full_table_name</span><span class="p">]</span> <span class="o">+</span> <span class="n">nodes</span><span class="o">.</span><span class="n">topo_sort</span><span class="p">()</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -3023,101 +3184,86 @@ This method gets called before any operation that requires dependencies: delete,
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.dependencies.Dependencies.ancestors" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">ancestors</span><span class="p">(</span><span class="n">full_table_name</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">ancestors</span><span class="p">(</span><span class="n">full_table_name</span><span class="p">)</span></code>
 
 <a href="#datajoint.dependencies.Dependencies.ancestors" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      
+    <div class="doc doc-contents ">
+
+        
 
 
-
-  <p><strong>Parameters:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Type</th>
-        <th>Description</th>
-        <th>Default</th>
-      </tr>
-    </thead>
-    <tbody>
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td><code>full_table_name</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>In form <code>schema</code>.<code>table_name</code></p>
-            </div>
-          </td>
-          <td>
-              <em>required</em>
-          </td>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>full_table_name</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>In form <code>schema</code>.<code>table_name</code></p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>all dependent tables sorted in topological order.  Self is included.</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>all dependent tables sorted in topological order.  Self is included.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/dependencies.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">175</span>
-<span class="normal">176</span>
-<span class="normal">177</span>
-<span class="normal">178</span>
-<span class="normal">179</span>
-<span class="normal">180</span>
-<span class="normal">181</span>
-<span class="normal">182</span>
-<span class="normal">183</span>
-<span class="normal">184</span>
-<span class="normal">185</span>
-<span class="normal">186</span>
-<span class="normal">187</span>
-<span class="normal">188</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">ancestors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">full_table_name</span><span class="p">):</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/dependencies.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">ancestors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">full_table_name</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    :param full_table_name:  In form `schema`.`table_name`</span>
 <span class="sd">    :return: all dependent tables sorted in topological order.  Self is included.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-    <span class="n">nodes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="n">nx</span><span class="o">.</span><span class="n">algorithms</span><span class="o">.</span><span class="n">dag</span><span class="o">.</span><span class="n">ancestors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">full_table_name</span><span class="p">))</span>
-    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span>
-        <span class="nb">reversed</span><span class="p">(</span>
-            <span class="n">unite_master_parts</span><span class="p">(</span>
-                <span class="nb">list</span><span class="p">(</span><span class="n">nx</span><span class="o">.</span><span class="n">algorithms</span><span class="o">.</span><span class="n">dag</span><span class="o">.</span><span class="n">topological_sort</span><span class="p">(</span><span class="n">nodes</span><span class="p">))</span> <span class="o">+</span> <span class="p">[</span><span class="n">full_table_name</span><span class="p">]</span>
-            <span class="p">)</span>
-        <span class="p">)</span>
-    <span class="p">)</span>
+    <span class="n">nodes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subgraph</span><span class="p">(</span><span class="n">nx</span><span class="o">.</span><span class="n">ancestors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">full_table_name</span><span class="p">))</span>
+    <span class="k">return</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">nodes</span><span class="o">.</span><span class="n">topo_sort</span><span class="p">()</span> <span class="o">+</span> <span class="p">[</span><span class="n">full_table_name</span><span class="p">])</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
 
@@ -3126,7 +3272,7 @@ This method gets called before any operation that requires dependencies: delete,
 
   </div>
 
-  </div>
+    </div>
 
 </div>
 
@@ -3135,7 +3281,7 @@ This method gets called before any operation that requires dependencies: delete,
 
   </div>
 
-  </div>
+    </div>
 
 </div>
 
@@ -3256,10 +3402,10 @@ This method gets called before any operation that requires dependencies: delete,
       <div class="md-dialog__inner md-typeset"></div>
     </div>
     
-    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.74e28a9f.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.220ee61c.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.b425cdc4.min.js"></script>
       
     
   </body>

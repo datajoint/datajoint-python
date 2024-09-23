@@ -15,7 +15,7 @@
         <link rel="next" href="../utils/">
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.19">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.1.17">
     
     
       
@@ -23,7 +23,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.eebd395e.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.26e3688c.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ecc896b0.min.css">
@@ -1409,7 +1409,7 @@
   
     <li class="md-nav__item">
       <a href="../../../tutorials/json/" class="md-nav__link">
-        Using the json type
+        Using the type
       </a>
     </li>
   
@@ -1606,6 +1606,20 @@
     <li class="md-nav__item">
       <a href="../blob/" class="md-nav__link">
         blob.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        cli.py
       </a>
     </li>
   
@@ -1915,7 +1929,7 @@
       
         <li class="md-nav__item">
   <a href="#datajoint.user_tables" class="md-nav__link">
-    datajoint.user_tables
+    user_tables
   </a>
   
 </li>
@@ -1944,7 +1958,7 @@
         
           <li class="md-nav__item">
   <a href="#datajoint.user_tables.UserTable.table_name" class="md-nav__link">
-    table_name()
+    table_name
   </a>
   
 </li>
@@ -1992,14 +2006,14 @@
         
           <li class="md-nav__item">
   <a href="#datajoint.user_tables.Part.delete" class="md-nav__link">
-    delete()
+    delete
   </a>
   
 </li>
         
           <li class="md-nav__item">
   <a href="#datajoint.user_tables.Part.drop" class="md-nav__link">
-    drop()
+    drop
   </a>
   
 </li>
@@ -2079,14 +2093,23 @@
 <div class="doc doc-object doc-module">
 
 
-<a id="datajoint.user_tables"></a>
-  <div class="doc doc-contents first">
-  
-      <p>Hosts the table tiers, user tables should be derived from.</p>
 
-  
+<a id="datajoint.user_tables"></a>
+    <div class="doc doc-contents first">
+
+        <p>Hosts the table tiers, user tables should be derived from.</p>
+
+
 
   <div class="doc doc-children">
+
+
+
+
+
+
+
+
 
 
 
@@ -2107,24 +2130,23 @@
 
 
 <h2 id="datajoint.user_tables.TableMeta" class="doc doc-heading">
-          <code>TableMeta</code>
+            <code>TableMeta</code>
 
 
 <a href="#datajoint.user_tables.TableMeta" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-          <p class="doc doc-class-bases">
-            Bases: <code>type</code></p>
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code>type</code></p>
 
-  
-      <p>TableMeta subclasses allow applying some instance methods and properties directly
+
+        <p>TableMeta subclasses allow applying some instance methods and properties directly
 at class level. For example, this allows Table.fetch() instead of Table().fetch().</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/user_tables.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">45</span>
-<span class="normal">46</span>
+              <details class="quote">
+                <summary>Source code in <code>datajoint/user_tables.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">46</span>
 <span class="normal">47</span>
 <span class="normal">48</span>
 <span class="normal">49</span>
@@ -2159,7 +2181,8 @@ at class level. For example, this allows Table.fetch() instead of Table().fetch(
 <span class="normal">78</span>
 <span class="normal">79</span>
 <span class="normal">80</span>
-<span class="normal">81</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">TableMeta</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
+<span class="normal">81</span>
+<span class="normal">82</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">TableMeta</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    TableMeta subclasses allow applying some instance methods and properties directly</span>
 <span class="sd">    at class level. For example, this allows Table.fetch() instead of Table().fetch().</span>
@@ -2197,9 +2220,9 @@ at class level. For example, this allows Table.fetch() instead of Table().fetch(
     <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">cls</span><span class="p">())</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
 
-  
+
 
   <div class="doc doc-children">
 
@@ -2209,17 +2232,9 @@ at class level. For example, this allows Table.fetch() instead of Table().fetch(
 
   </div>
 
-  </div>
+    </div>
 
 </div>
-
-
-
-
-
-
-
-
 
 
 
@@ -2231,24 +2246,23 @@ at class level. For example, this allows Table.fetch() instead of Table().fetch(
 
 
 <h2 id="datajoint.user_tables.UserTable" class="doc doc-heading">
-          <code>UserTable</code>
+            <code>UserTable</code>
 
 
 <a href="#datajoint.user_tables.UserTable" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-          <p class="doc doc-class-bases">
-            Bases: <code><a class="autorefs autorefs-internal" title="datajoint.table.Table" href="../table/#datajoint.table.Table">Table</a></code></p>
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="datajoint.table.Table" href="../table/#datajoint.table.Table">Table</a></code></p>
 
-  
-      <p>A subclass of UserTable is a dedicated class interfacing a base table.
+
+        <p>A subclass of UserTable is a dedicated class interfacing a base table.
 UserTable is initialized by the decorator generated by schema().</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/user_tables.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 84</span>
-<span class="normal"> 85</span>
+              <details class="quote">
+                <summary>Source code in <code>datajoint/user_tables.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 85</span>
 <span class="normal"> 86</span>
 <span class="normal"> 87</span>
 <span class="normal"> 88</span>
@@ -2293,7 +2307,8 @@ UserTable is initialized by the decorator generated by schema().</p>
 <span class="normal">127</span>
 <span class="normal">128</span>
 <span class="normal">129</span>
-<span class="normal">130</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">UserTable</span><span class="p">(</span><span class="n">Table</span><span class="p">,</span> <span class="n">metaclass</span><span class="o">=</span><span class="n">TableMeta</span><span class="p">):</span>
+<span class="normal">130</span>
+<span class="normal">131</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">UserTable</span><span class="p">(</span><span class="n">Table</span><span class="p">,</span> <span class="n">metaclass</span><span class="o">=</span><span class="n">TableMeta</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A subclass of UserTable is a dedicated class interfacing a base table.</span>
 <span class="sd">    UserTable is initialized by the decorator generated by schema().</span>
@@ -2341,9 +2356,9 @@ UserTable is initialized by the decorator generated by schema().</p>
                 <span class="p">)</span>
             <span class="k">return</span> <span class="sa">r</span><span class="s2">&quot;`</span><span class="si">{0:s}</span><span class="s2">`.`</span><span class="si">{1:s}</span><span class="s2">`&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">database</span><span class="p">,</span> <span class="bp">cls</span><span class="o">.</span><span class="n">table_name</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
 
-  
+
 
   <div class="doc doc-children">
 
@@ -2358,8 +2373,8 @@ UserTable is initialized by the decorator generated by schema().</p>
 
 
 <h3 id="datajoint.user_tables.UserTable.definition" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">definition</span></code>
-  
+            <code class="highlight language-python"><span class="n">definition</span></code>
+
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
@@ -2367,36 +2382,34 @@ UserTable is initialized by the decorator generated by schema().</p>
 <a href="#datajoint.user_tables.UserTable.definition" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      
+    <div class="doc doc-contents ">
+
+        
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>a string containing the table definition using the DataJoint DDL.</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
-  </div>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>a string containing the table definition using the DataJoint DDL.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+    </div>
 
 </div>
-
 
 
 
@@ -2406,50 +2419,48 @@ UserTable is initialized by the decorator generated by schema().</p>
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.user_tables.UserTable.table_name" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">table_name</span><span class="p">()</span></code>
+            <code class="highlight language-python"><span class="n">table_name</span><span class="p">()</span></code>
 
 <a href="#datajoint.user_tables.UserTable.table_name" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      
+    <div class="doc doc-contents ">
+
+        
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>the table name of the table formatted for mysql.</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>the table name of the table formatted for mysql.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/user_tables.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">112</span>
-<span class="normal">113</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/user_tables.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">113</span>
 <span class="normal">114</span>
 <span class="normal">115</span>
 <span class="normal">116</span>
 <span class="normal">117</span>
 <span class="normal">118</span>
-<span class="normal">119</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@ClassProperty</span>
+<span class="normal">119</span>
+<span class="normal">120</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@ClassProperty</span>
 <span class="k">def</span> <span class="nf">table_name</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    :return: the table name of the table formatted for mysql.</span>
@@ -2458,8 +2469,8 @@ UserTable is initialized by the decorator generated by schema().</p>
         <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s2">&quot;Class prefix is not defined!&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_prefix</span> <span class="o">+</span> <span class="n">from_camel_case</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
 
@@ -2468,7 +2479,7 @@ UserTable is initialized by the decorator generated by schema().</p>
 
   </div>
 
-  </div>
+    </div>
 
 </div>
 
@@ -2482,28 +2493,28 @@ UserTable is initialized by the decorator generated by schema().</p>
 
 
 <h2 id="datajoint.user_tables.Manual" class="doc doc-heading">
-          <code>Manual</code>
+            <code>Manual</code>
 
 
 <a href="#datajoint.user_tables.Manual" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-          <p class="doc doc-class-bases">
-            Bases: <code><a class="autorefs autorefs-internal" title="datajoint.user_tables.UserTable" href="#datajoint.user_tables.UserTable">UserTable</a></code></p>
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="datajoint.user_tables.UserTable" href="#datajoint.user_tables.UserTable">UserTable</a></code></p>
 
-  
-      <p>Inherit from this class if the table's values are entered manually.</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/user_tables.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">133</span>
-<span class="normal">134</span>
+        <p>Inherit from this class if the table's values are entered manually.</p>
+
+              <details class="quote">
+                <summary>Source code in <code>datajoint/user_tables.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">134</span>
 <span class="normal">135</span>
 <span class="normal">136</span>
 <span class="normal">137</span>
 <span class="normal">138</span>
-<span class="normal">139</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Manual</span><span class="p">(</span><span class="n">UserTable</span><span class="p">):</span>
+<span class="normal">139</span>
+<span class="normal">140</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Manual</span><span class="p">(</span><span class="n">UserTable</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Inherit from this class if the table&#39;s values are entered manually.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -2511,9 +2522,9 @@ UserTable is initialized by the decorator generated by schema().</p>
     <span class="n">_prefix</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">&quot;&quot;</span>
     <span class="n">tier_regexp</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">&quot;(?P&lt;manual&gt;&quot;</span> <span class="o">+</span> <span class="n">_prefix</span> <span class="o">+</span> <span class="n">_base_regexp</span> <span class="o">+</span> <span class="s2">&quot;)&quot;</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
 
-  
+
 
   <div class="doc doc-children">
 
@@ -2523,7 +2534,7 @@ UserTable is initialized by the decorator generated by schema().</p>
 
   </div>
 
-  </div>
+    </div>
 
 </div>
 
@@ -2537,25 +2548,24 @@ UserTable is initialized by the decorator generated by schema().</p>
 
 
 <h2 id="datajoint.user_tables.Lookup" class="doc doc-heading">
-          <code>Lookup</code>
+            <code>Lookup</code>
 
 
 <a href="#datajoint.user_tables.Lookup" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-          <p class="doc doc-class-bases">
-            Bases: <code><a class="autorefs autorefs-internal" title="datajoint.user_tables.UserTable" href="#datajoint.user_tables.UserTable">UserTable</a></code></p>
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="datajoint.user_tables.UserTable" href="#datajoint.user_tables.UserTable">UserTable</a></code></p>
 
-  
-      <p>Inherit from this class if the table's values are for lookup. This is
+
+        <p>Inherit from this class if the table's values are for lookup. This is
 currently equivalent to defining the table as Manual and serves semantic
 purposes only.</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/user_tables.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">142</span>
-<span class="normal">143</span>
+              <details class="quote">
+                <summary>Source code in <code>datajoint/user_tables.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">143</span>
 <span class="normal">144</span>
 <span class="normal">145</span>
 <span class="normal">146</span>
@@ -2564,7 +2574,8 @@ purposes only.</p>
 <span class="normal">149</span>
 <span class="normal">150</span>
 <span class="normal">151</span>
-<span class="normal">152</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Lookup</span><span class="p">(</span><span class="n">UserTable</span><span class="p">):</span>
+<span class="normal">152</span>
+<span class="normal">153</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Lookup</span><span class="p">(</span><span class="n">UserTable</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Inherit from this class if the table&#39;s values are for lookup. This is</span>
 <span class="sd">    currently equivalent to defining the table as Manual and serves semantic</span>
@@ -2576,9 +2587,9 @@ purposes only.</p>
         <span class="sa">r</span><span class="s2">&quot;(?P&lt;lookup&gt;&quot;</span> <span class="o">+</span> <span class="n">_prefix</span> <span class="o">+</span> <span class="n">_base_regexp</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;TIER&quot;</span><span class="p">,</span> <span class="s2">&quot;lookup&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;)&quot;</span>
     <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
 
-  
+
 
   <div class="doc doc-children">
 
@@ -2588,7 +2599,7 @@ purposes only.</p>
 
   </div>
 
-  </div>
+    </div>
 
 </div>
 
@@ -2602,30 +2613,30 @@ purposes only.</p>
 
 
 <h2 id="datajoint.user_tables.Imported" class="doc doc-heading">
-          <code>Imported</code>
+            <code>Imported</code>
 
 
 <a href="#datajoint.user_tables.Imported" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-          <p class="doc doc-class-bases">
-            Bases: <code><a class="autorefs autorefs-internal" title="datajoint.user_tables.UserTable" href="#datajoint.user_tables.UserTable">UserTable</a></code>, <code><a class="autorefs autorefs-internal" title="datajoint.autopopulate.AutoPopulate" href="../autopopulate/#datajoint.autopopulate.AutoPopulate">AutoPopulate</a></code></p>
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="datajoint.user_tables.UserTable" href="#datajoint.user_tables.UserTable">UserTable</a></code>, <code><a class="autorefs autorefs-internal" title="datajoint.autopopulate.AutoPopulate" href="../autopopulate/#datajoint.autopopulate.AutoPopulate">AutoPopulate</a></code></p>
 
-  
-      <p>Inherit from this class if the table's values are imported from external data sources.
+
+        <p>Inherit from this class if the table's values are imported from external data sources.
 The inherited class must at least provide the function <code>_make_tuples</code>.</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/user_tables.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">155</span>
-<span class="normal">156</span>
+              <details class="quote">
+                <summary>Source code in <code>datajoint/user_tables.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">156</span>
 <span class="normal">157</span>
 <span class="normal">158</span>
 <span class="normal">159</span>
 <span class="normal">160</span>
 <span class="normal">161</span>
-<span class="normal">162</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Imported</span><span class="p">(</span><span class="n">UserTable</span><span class="p">,</span> <span class="n">AutoPopulate</span><span class="p">):</span>
+<span class="normal">162</span>
+<span class="normal">163</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Imported</span><span class="p">(</span><span class="n">UserTable</span><span class="p">,</span> <span class="n">AutoPopulate</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Inherit from this class if the table&#39;s values are imported from external data sources.</span>
 <span class="sd">    The inherited class must at least provide the function `_make_tuples`.</span>
@@ -2634,9 +2645,9 @@ The inherited class must at least provide the function <code>_make_tuples</code>
     <span class="n">_prefix</span> <span class="o">=</span> <span class="s2">&quot;_&quot;</span>
     <span class="n">tier_regexp</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">&quot;(?P&lt;imported&gt;&quot;</span> <span class="o">+</span> <span class="n">_prefix</span> <span class="o">+</span> <span class="n">_base_regexp</span> <span class="o">+</span> <span class="s2">&quot;)&quot;</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
 
-  
+
 
   <div class="doc doc-children">
 
@@ -2646,7 +2657,7 @@ The inherited class must at least provide the function <code>_make_tuples</code>
 
   </div>
 
-  </div>
+    </div>
 
 </div>
 
@@ -2660,30 +2671,30 @@ The inherited class must at least provide the function <code>_make_tuples</code>
 
 
 <h2 id="datajoint.user_tables.Computed" class="doc doc-heading">
-          <code>Computed</code>
+            <code>Computed</code>
 
 
 <a href="#datajoint.user_tables.Computed" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-          <p class="doc doc-class-bases">
-            Bases: <code><a class="autorefs autorefs-internal" title="datajoint.user_tables.UserTable" href="#datajoint.user_tables.UserTable">UserTable</a></code>, <code><a class="autorefs autorefs-internal" title="datajoint.autopopulate.AutoPopulate" href="../autopopulate/#datajoint.autopopulate.AutoPopulate">AutoPopulate</a></code></p>
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="datajoint.user_tables.UserTable" href="#datajoint.user_tables.UserTable">UserTable</a></code>, <code><a class="autorefs autorefs-internal" title="datajoint.autopopulate.AutoPopulate" href="../autopopulate/#datajoint.autopopulate.AutoPopulate">AutoPopulate</a></code></p>
 
-  
-      <p>Inherit from this class if the table's values are computed from other tables in the schema.
+
+        <p>Inherit from this class if the table's values are computed from other tables in the schema.
 The inherited class must at least provide the function <code>_make_tuples</code>.</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/user_tables.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">165</span>
-<span class="normal">166</span>
+              <details class="quote">
+                <summary>Source code in <code>datajoint/user_tables.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">166</span>
 <span class="normal">167</span>
 <span class="normal">168</span>
 <span class="normal">169</span>
 <span class="normal">170</span>
 <span class="normal">171</span>
-<span class="normal">172</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Computed</span><span class="p">(</span><span class="n">UserTable</span><span class="p">,</span> <span class="n">AutoPopulate</span><span class="p">):</span>
+<span class="normal">172</span>
+<span class="normal">173</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Computed</span><span class="p">(</span><span class="n">UserTable</span><span class="p">,</span> <span class="n">AutoPopulate</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Inherit from this class if the table&#39;s values are computed from other tables in the schema.</span>
 <span class="sd">    The inherited class must at least provide the function `_make_tuples`.</span>
@@ -2692,9 +2703,9 @@ The inherited class must at least provide the function <code>_make_tuples</code>
     <span class="n">_prefix</span> <span class="o">=</span> <span class="s2">&quot;__&quot;</span>
     <span class="n">tier_regexp</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">&quot;(?P&lt;computed&gt;&quot;</span> <span class="o">+</span> <span class="n">_prefix</span> <span class="o">+</span> <span class="n">_base_regexp</span> <span class="o">+</span> <span class="s2">&quot;)&quot;</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
 
-  
+
 
   <div class="doc doc-children">
 
@@ -2704,7 +2715,7 @@ The inherited class must at least provide the function <code>_make_tuples</code>
 
   </div>
 
-  </div>
+    </div>
 
 </div>
 
@@ -2718,26 +2729,25 @@ The inherited class must at least provide the function <code>_make_tuples</code>
 
 
 <h2 id="datajoint.user_tables.Part" class="doc doc-heading">
-          <code>Part</code>
+            <code>Part</code>
 
 
 <a href="#datajoint.user_tables.Part" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-          <p class="doc doc-class-bases">
-            Bases: <code><a class="autorefs autorefs-internal" title="datajoint.user_tables.UserTable" href="#datajoint.user_tables.UserTable">UserTable</a></code></p>
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="datajoint.user_tables.UserTable" href="#datajoint.user_tables.UserTable">UserTable</a></code></p>
 
-  
-      <p>Inherit from this class if the table's values are details of an entry in another table
+
+        <p>Inherit from this class if the table's values are details of an entry in another table
 and if this table is populated by the other table. For example, the entries inheriting from
 dj.Part could be single entries of a matrix, while the parent table refers to the entire matrix.
 Part tables are implemented as classes inside classes.</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/user_tables.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">175</span>
-<span class="normal">176</span>
+              <details class="quote">
+                <summary>Source code in <code>datajoint/user_tables.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">176</span>
 <span class="normal">177</span>
 <span class="normal">178</span>
 <span class="normal">179</span>
@@ -2805,7 +2815,8 @@ Part tables are implemented as classes inside classes.</p>
 <span class="normal">241</span>
 <span class="normal">242</span>
 <span class="normal">243</span>
-<span class="normal">244</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Part</span><span class="p">(</span><span class="n">UserTable</span><span class="p">):</span>
+<span class="normal">244</span>
+<span class="normal">245</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Part</span><span class="p">(</span><span class="n">UserTable</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Inherit from this class if the table&#39;s values are details of an entry in another table</span>
 <span class="sd">    and if this table is populated by the other table. For example, the entries inheriting from</span>
@@ -2876,12 +2887,11 @@ Part tables are implemented as classes inside classes.</p>
         <span class="c1"># without context, use declaration context which maps master keyword to master table</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">alter</span><span class="p">(</span><span class="n">prompt</span><span class="o">=</span><span class="n">prompt</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">context</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">declaration_context</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
 
-  
+
 
   <div class="doc doc-children">
-
 
 
 
@@ -2892,21 +2902,19 @@ Part tables are implemented as classes inside classes.</p>
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.user_tables.Part.delete" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">delete</span><span class="p">(</span><span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">delete</span><span class="p">(</span><span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
 
 <a href="#datajoint.user_tables.Part.delete" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>unless force is True, prohibits direct deletes from parts.</p>
+    <div class="doc doc-contents ">
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/user_tables.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">220</span>
-<span class="normal">221</span>
+        <p>unless force is True, prohibits direct deletes from parts.</p>
+
+            <details class="quote">
+              <summary>Source code in <code>datajoint/user_tables.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">221</span>
 <span class="normal">222</span>
 <span class="normal">223</span>
 <span class="normal">224</span>
@@ -2914,7 +2922,8 @@ Part tables are implemented as classes inside classes.</p>
 <span class="normal">226</span>
 <span class="normal">227</span>
 <span class="normal">228</span>
-<span class="normal">229</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="normal">229</span>
+<span class="normal">230</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    unless force is True, prohibits direct deletes from parts.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -2925,11 +2934,10 @@ Part tables are implemented as classes inside classes.</p>
             <span class="s2">&quot;Cannot delete from a Part directly. Delete from master instead&quot;</span>
         <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -2939,21 +2947,19 @@ Part tables are implemented as classes inside classes.</p>
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.user_tables.Part.drop" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">drop</span><span class="p">(</span><span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">drop</span><span class="p">(</span><span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
 
 <a href="#datajoint.user_tables.Part.drop" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>unless force is True, prohibits direct deletes from parts.</p>
+    <div class="doc doc-contents ">
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/user_tables.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">231</span>
-<span class="normal">232</span>
+        <p>unless force is True, prohibits direct deletes from parts.</p>
+
+            <details class="quote">
+              <summary>Source code in <code>datajoint/user_tables.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">232</span>
 <span class="normal">233</span>
 <span class="normal">234</span>
 <span class="normal">235</span>
@@ -2961,7 +2967,8 @@ Part tables are implemented as classes inside classes.</p>
 <span class="normal">237</span>
 <span class="normal">238</span>
 <span class="normal">239</span>
-<span class="normal">240</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">drop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="normal">240</span>
+<span class="normal">241</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">drop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    unless force is True, prohibits direct deletes from parts.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -2972,8 +2979,8 @@ Part tables are implemented as classes inside classes.</p>
             <span class="s2">&quot;Cannot drop a Part directly.  Delete from master instead&quot;</span>
         <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
 
@@ -2982,7 +2989,7 @@ Part tables are implemented as classes inside classes.</p>
 
   </div>
 
-  </div>
+    </div>
 
 </div>
 
@@ -2991,7 +2998,7 @@ Part tables are implemented as classes inside classes.</p>
 
   </div>
 
-  </div>
+    </div>
 
 </div>
 
@@ -3112,10 +3119,10 @@ Part tables are implemented as classes inside classes.</p>
       <div class="md-dialog__inner md-typeset"></div>
     </div>
     
-    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.74e28a9f.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.220ee61c.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.b425cdc4.min.js"></script>
       
     
   </body>

@@ -15,7 +15,7 @@
         <link rel="next" href="../version/">
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.19">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.1.17">
     
     
       
@@ -23,7 +23,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.eebd395e.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.26e3688c.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ecc896b0.min.css">
@@ -1409,7 +1409,7 @@
   
     <li class="md-nav__item">
       <a href="../../../tutorials/json/" class="md-nav__link">
-        Using the json type
+        Using the type
       </a>
     </li>
   
@@ -1606,6 +1606,20 @@
     <li class="md-nav__item">
       <a href="../blob/" class="md-nav__link">
         blob.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        cli.py
       </a>
     </li>
   
@@ -1929,56 +1943,63 @@
       
         <li class="md-nav__item">
   <a href="#datajoint.utils" class="md-nav__link">
-    datajoint.utils
+    utils
   </a>
   
 </li>
       
         <li class="md-nav__item">
   <a href="#datajoint.utils.user_choice" class="md-nav__link">
-    user_choice()
+    user_choice
   </a>
   
 </li>
       
         <li class="md-nav__item">
   <a href="#datajoint.utils.get_master" class="md-nav__link">
-    get_master()
+    get_master
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#datajoint.utils.is_camel_case" class="md-nav__link">
+    is_camel_case
   </a>
   
 </li>
       
         <li class="md-nav__item">
   <a href="#datajoint.utils.to_camel_case" class="md-nav__link">
-    to_camel_case()
+    to_camel_case
   </a>
   
 </li>
       
         <li class="md-nav__item">
   <a href="#datajoint.utils.from_camel_case" class="md-nav__link">
-    from_camel_case()
+    from_camel_case
   </a>
   
 </li>
       
         <li class="md-nav__item">
   <a href="#datajoint.utils.safe_write" class="md-nav__link">
-    safe_write()
+    safe_write
   </a>
   
 </li>
       
         <li class="md-nav__item">
   <a href="#datajoint.utils.safe_copy" class="md-nav__link">
-    safe_copy()
+    safe_copy
   </a>
   
 </li>
       
         <li class="md-nav__item">
   <a href="#datajoint.utils.parse_sql" class="md-nav__link">
-    parse_sql()
+    parse_sql
   </a>
   
 </li>
@@ -2039,15 +2060,15 @@
 <div class="doc doc-object doc-module">
 
 
-<a id="datajoint.utils"></a>
-  <div class="doc doc-contents first">
-  
-      <p>General-purpose utilities</p>
 
-  
+<a id="datajoint.utils"></a>
+    <div class="doc doc-contents first">
+
+        <p>General-purpose utilities</p>
+
+
 
   <div class="doc doc-children">
-
 
 
 
@@ -2062,98 +2083,95 @@
 <div class="doc doc-object doc-function">
 
 
-
 <h2 id="datajoint.utils.user_choice" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">user_choice</span><span class="p">(</span><span class="n">prompt</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;yes&#39;</span><span class="p">,</span> <span class="s1">&#39;no&#39;</span><span class="p">),</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">user_choice</span><span class="p">(</span><span class="n">prompt</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;yes&#39;</span><span class="p">,</span> <span class="s1">&#39;no&#39;</span><span class="p">),</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 <a href="#datajoint.utils.user_choice" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>Prompts the user for confirmation.  The default value, if any, is capitalized.</p>
+    <div class="doc doc-contents ">
+
+        <p>Prompts the user for confirmation.  The default value, if any, is capitalized.</p>
 
 
-
-  <p><strong>Parameters:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Type</th>
-        <th>Description</th>
-        <th>Default</th>
-      </tr>
-    </thead>
-    <tbody>
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td><code>prompt</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>Information to display to the user.</p>
-            </div>
-          </td>
-          <td>
-              <em>required</em>
-          </td>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
         </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>prompt</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Information to display to the user.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>choices</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>an iterable of possible choices.</p>
+              </div>
+            </td>
+            <td>
+                  <code>(&#39;yes&#39;, &#39;no&#39;)</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>default</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>default choice</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td><code>choices</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>an iterable of possible choices.</p>
-            </div>
-          </td>
-          <td>
-                <code>(&#39;yes&#39;, &#39;no&#39;)</code>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-        <tr>
-          <td><code>default</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>default choice</p>
-            </div>
-          </td>
-          <td>
-                <code>None</code>
-          </td>
-        </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>the user's choice</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
-        <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>the user's choice</p>
-            </div>
-          </td>
-        </tr>
-    </tbody>
-  </table>
-
-          <details class="quote">
-            <summary>Source code in <code>datajoint/utils.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">17</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/utils.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">17</span>
 <span class="normal">18</span>
 <span class="normal">19</span>
 <span class="normal">20</span>
@@ -2189,11 +2207,10 @@
         <span class="n">response</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">if</span> <span class="n">response</span> <span class="k">else</span> <span class="n">default</span>
     <span class="k">return</span> <span class="n">response</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -2203,16 +2220,15 @@
 <div class="doc doc-object doc-function">
 
 
-
 <h2 id="datajoint.utils.get_master" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">get_master</span><span class="p">(</span><span class="n">full_table_name</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">get_master</span><span class="p">(</span><span class="n">full_table_name</span><span class="p">)</span></code>
 
 <a href="#datajoint.utils.get_master" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>If the table name is that of a part table, then return what the master table name would be.
+    <div class="doc doc-contents ">
+
+        <p>If the table name is that of a part table, then return what the master table name would be.
 This follows DataJoint's table naming convention where a master and a part must be in the
 same schema and the part table is prefixed with the master table name + <code>__</code>.</p>
 <p>Example:
@@ -2220,62 +2236,60 @@ same schema and the part table is prefixed with the master table name + <code>__
    <code>ephys</code>.<code>session__recording</code>  -- part</p>
 
 
-
-  <p><strong>Parameters:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Type</th>
-        <th>Description</th>
-        <th>Default</th>
-      </tr>
-    </thead>
-    <tbody>
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td><code>full_table_name</code></td>
-          <td>
-                <code>str</code>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>Full table name including part.</p>
-            </div>
-          </td>
-          <td>
-              <em>required</em>
-          </td>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>full_table_name</code></td>
+            <td>
+                  <code>str</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Full table name including part.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-                <code>str</code>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>Supposed master full table name or empty string if not a part table name.</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code>str</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Supposed master full table name or empty string if not a part table name.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/utils.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">37</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/utils.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">37</span>
 <span class="normal">38</span>
 <span class="normal">39</span>
 <span class="normal">40</span>
@@ -2309,11 +2323,10 @@ same schema and the part table is prefixed with the master table name + <code>__
     <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;(?P&lt;master&gt;`\w+`.`\w+)__(?P&lt;part&gt;\w+)`&quot;</span><span class="p">,</span> <span class="n">full_table_name</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">match</span><span class="p">[</span><span class="s2">&quot;master&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;`&quot;</span> <span class="k">if</span> <span class="n">match</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -2323,72 +2336,69 @@ same schema and the part table is prefixed with the master table name + <code>__
 <div class="doc doc-object doc-function">
 
 
+<h2 id="datajoint.utils.is_camel_case" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">is_camel_case</span><span class="p">(</span><span class="n">s</span><span class="p">)</span></code>
 
-<h2 id="datajoint.utils.to_camel_case" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">to_camel_case</span><span class="p">(</span><span class="n">s</span><span class="p">)</span></code>
-
-<a href="#datajoint.utils.to_camel_case" class="headerlink" title="Permanent link">&para;</a></h2>
-
-
-  <div class="doc doc-contents ">
-  
-      <p>Convert names with under score (_) separation into camel case names.</p>
+<a href="#datajoint.utils.is_camel_case" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
+    <div class="doc doc-contents ">
 
-  <p><strong>Parameters:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Type</th>
-        <th>Description</th>
-        <th>Default</th>
-      </tr>
-    </thead>
-    <tbody>
+        <p>Check if a string is in CamelCase notation.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td><code>s</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>string in under_score notation</p>
-            </div>
-          </td>
-          <td>
-              <em>required</em>
-          </td>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>s</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>string to check</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>string in CamelCase notation Example: &gt;&gt;&gt; to_camel_case("table_name")  # returns "TableName"</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>True if the string is in CamelCase notation, False otherwise Example: &gt;&gt;&gt; is_camel_case("TableName")  # returns True &gt;&gt;&gt; is_camel_case("table_name")  # returns False</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/utils.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">56</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/utils.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">56</span>
 <span class="normal">57</span>
 <span class="normal">58</span>
 <span class="normal">59</span>
@@ -2398,10 +2408,107 @@ same schema and the part table is prefixed with the master table name + <code>__
 <span class="normal">63</span>
 <span class="normal">64</span>
 <span class="normal">65</span>
-<span class="normal">66</span>
-<span class="normal">67</span>
-<span class="normal">68</span>
-<span class="normal">69</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">to_camel_case</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+<span class="normal">66</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">is_camel_case</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Check if a string is in CamelCase notation.</span>
+
+<span class="sd">    :param s: string to check</span>
+<span class="sd">    :returns: True if the string is in CamelCase notation, False otherwise</span>
+<span class="sd">    Example:</span>
+<span class="sd">    &gt;&gt;&gt; is_camel_case(&quot;TableName&quot;)  # returns True</span>
+<span class="sd">    &gt;&gt;&gt; is_camel_case(&quot;table_name&quot;)  # returns False</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;^[A-Z][A-Za-z0-9]*$&quot;</span><span class="p">,</span> <span class="n">s</span><span class="p">))</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="datajoint.utils.to_camel_case" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">to_camel_case</span><span class="p">(</span><span class="n">s</span><span class="p">)</span></code>
+
+<a href="#datajoint.utils.to_camel_case" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Convert names with under score (_) separation into camel case names.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>s</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>string in under_score notation</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>string in CamelCase notation Example: &gt;&gt;&gt; to_camel_case("table_name")  # returns "TableName"</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+            <details class="quote">
+              <summary>Source code in <code>datajoint/utils.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">69</span>
+<span class="normal">70</span>
+<span class="normal">71</span>
+<span class="normal">72</span>
+<span class="normal">73</span>
+<span class="normal">74</span>
+<span class="normal">75</span>
+<span class="normal">76</span>
+<span class="normal">77</span>
+<span class="normal">78</span>
+<span class="normal">79</span>
+<span class="normal">80</span>
+<span class="normal">81</span>
+<span class="normal">82</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">to_camel_case</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Convert names with under score (_) separation into camel case names.</span>
 
@@ -2416,11 +2523,10 @@ same schema and the part table is prefixed with the master table name + <code>__
 
     <span class="k">return</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;(^|[_\W])+[a-zA-Z]&quot;</span><span class="p">,</span> <span class="n">to_upper</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -2430,89 +2536,86 @@ same schema and the part table is prefixed with the master table name + <code>__
 <div class="doc doc-object doc-function">
 
 
-
 <h2 id="datajoint.utils.from_camel_case" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">from_camel_case</span><span class="p">(</span><span class="n">s</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">from_camel_case</span><span class="p">(</span><span class="n">s</span><span class="p">)</span></code>
 
 <a href="#datajoint.utils.from_camel_case" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>Convert names in camel case into underscore (_) separated names</p>
+    <div class="doc doc-contents ">
+
+        <p>Convert names in camel case into underscore (_) separated names</p>
 
 
-
-  <p><strong>Parameters:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Type</th>
-        <th>Description</th>
-        <th>Default</th>
-      </tr>
-    </thead>
-    <tbody>
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td><code>s</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>string in CamelCase notation</p>
-            </div>
-          </td>
-          <td>
-              <em>required</em>
-          </td>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>s</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>string in CamelCase notation</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>string in under_score notation Example: &gt;&gt;&gt; from_camel_case("TableName") # yields "table_name"</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>string in under_score notation Example: &gt;&gt;&gt; from_camel_case("TableName") # yields "table_name"</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/utils.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">72</span>
-<span class="normal">73</span>
-<span class="normal">74</span>
-<span class="normal">75</span>
-<span class="normal">76</span>
-<span class="normal">77</span>
-<span class="normal">78</span>
-<span class="normal">79</span>
-<span class="normal">80</span>
-<span class="normal">81</span>
-<span class="normal">82</span>
-<span class="normal">83</span>
-<span class="normal">84</span>
-<span class="normal">85</span>
-<span class="normal">86</span>
-<span class="normal">87</span>
-<span class="normal">88</span>
-<span class="normal">89</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">from_camel_case</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/utils.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 85</span>
+<span class="normal"> 86</span>
+<span class="normal"> 87</span>
+<span class="normal"> 88</span>
+<span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">from_camel_case</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Convert names in camel case into underscore (_) separated names</span>
 
@@ -2525,17 +2628,16 @@ same schema and the part table is prefixed with the master table name + <code>__
     <span class="k">def</span> <span class="nf">convert</span><span class="p">(</span><span class="n">match</span><span class="p">):</span>
         <span class="k">return</span> <span class="p">(</span><span class="s2">&quot;_&quot;</span> <span class="k">if</span> <span class="n">match</span><span class="o">.</span><span class="n">groups</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
 
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;[A-Z][a-zA-Z0-9]*&quot;</span><span class="p">,</span> <span class="n">s</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">is_camel_case</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
         <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span>
             <span class="s2">&quot;ClassName must be alphanumeric in CamelCase, begin with a capital letter&quot;</span>
         <span class="p">)</span>
     <span class="k">return</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;(\B[A-Z])|(\b[A-Z])&quot;</span><span class="p">,</span> <span class="n">convert</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -2545,74 +2647,72 @@ same schema and the part table is prefixed with the master table name + <code>__
 <div class="doc doc-object doc-function">
 
 
-
 <h2 id="datajoint.utils.safe_write" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">safe_write</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">blob</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">safe_write</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">blob</span><span class="p">)</span></code>
 
 <a href="#datajoint.utils.safe_write" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>A two-step write.</p>
+    <div class="doc doc-contents ">
+
+        <p>A two-step write.</p>
 
 
-
-  <p><strong>Parameters:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Type</th>
-        <th>Description</th>
-        <th>Default</th>
-      </tr>
-    </thead>
-    <tbody>
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td><code>filename</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>full path</p>
-            </div>
-          </td>
-          <td>
-              <em>required</em>
-          </td>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
         </tr>
-        <tr>
-          <td><code>blob</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>binary data</p>
-            </div>
-          </td>
-          <td>
-              <em>required</em>
-          </td>
-        </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>filename</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>full path</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>blob</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>binary data</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/utils.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 92</span>
-<span class="normal"> 93</span>
-<span class="normal"> 94</span>
-<span class="normal"> 95</span>
-<span class="normal"> 96</span>
-<span class="normal"> 97</span>
-<span class="normal"> 98</span>
-<span class="normal"> 99</span>
-<span class="normal">100</span>
-<span class="normal">101</span>
-<span class="normal">102</span>
-<span class="normal">103</span>
-<span class="normal">104</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">safe_write</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">blob</span><span class="p">):</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/utils.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">safe_write</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">blob</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A two-step write.</span>
 
@@ -2626,11 +2726,10 @@ same schema and the part table is prefixed with the master table name + <code>__
         <span class="n">temp_file</span><span class="o">.</span><span class="n">write_bytes</span><span class="p">(</span><span class="n">blob</span><span class="p">)</span>
         <span class="n">temp_file</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -2640,29 +2739,28 @@ same schema and the part table is prefixed with the master table name + <code>__
 <div class="doc doc-object doc-function">
 
 
-
 <h2 id="datajoint.utils.safe_copy" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">safe_copy</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dest</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">safe_copy</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dest</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
 
 <a href="#datajoint.utils.safe_copy" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>Copy the contents of src file into dest file as a two-step process. Skip if dest exists already</p>
+    <div class="doc doc-contents ">
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/utils.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">107</span>
-<span class="normal">108</span>
-<span class="normal">109</span>
-<span class="normal">110</span>
-<span class="normal">111</span>
-<span class="normal">112</span>
-<span class="normal">113</span>
-<span class="normal">114</span>
-<span class="normal">115</span>
-<span class="normal">116</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">safe_copy</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dest</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <p>Copy the contents of src file into dest file as a two-step process. Skip if dest exists already</p>
+
+            <details class="quote">
+              <summary>Source code in <code>datajoint/utils.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">safe_copy</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dest</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Copy the contents of src file into dest file as a two-step process. Skip if dest exists already</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -2673,11 +2771,10 @@ same schema and the part table is prefixed with the master table name + <code>__
         <span class="n">shutil</span><span class="o">.</span><span class="n">copyfile</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">src</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">temp_file</span><span class="p">))</span>
         <span class="n">temp_file</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">dest</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -2687,36 +2784,35 @@ same schema and the part table is prefixed with the master table name + <code>__
 <div class="doc doc-object doc-function">
 
 
-
 <h2 id="datajoint.utils.parse_sql" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">parse_sql</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">parse_sql</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span></code>
 
 <a href="#datajoint.utils.parse_sql" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>yield SQL statements from an SQL file</p>
+    <div class="doc doc-contents ">
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/utils.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">119</span>
-<span class="normal">120</span>
-<span class="normal">121</span>
-<span class="normal">122</span>
-<span class="normal">123</span>
-<span class="normal">124</span>
-<span class="normal">125</span>
-<span class="normal">126</span>
-<span class="normal">127</span>
-<span class="normal">128</span>
-<span class="normal">129</span>
-<span class="normal">130</span>
-<span class="normal">131</span>
-<span class="normal">132</span>
+        <p>yield SQL statements from an SQL file</p>
+
+            <details class="quote">
+              <summary>Source code in <code>datajoint/utils.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">132</span>
 <span class="normal">133</span>
 <span class="normal">134</span>
-<span class="normal">135</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">parse_sql</span><span class="p">(</span><span class="n">filepath</span><span class="p">):</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">parse_sql</span><span class="p">(</span><span class="n">filepath</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    yield SQL statements from an SQL file</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -2734,8 +2830,8 @@ same schema and the part table is prefixed with the master table name + <code>__
                         <span class="k">yield</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">statement</span><span class="p">)</span>
                         <span class="n">statement</span> <span class="o">=</span> <span class="p">[]</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
 
@@ -2744,7 +2840,7 @@ same schema and the part table is prefixed with the master table name + <code>__
 
   </div>
 
-  </div>
+    </div>
 
 </div>
 
@@ -2865,10 +2961,10 @@ same schema and the part table is prefixed with the master table name + <code>__
       <div class="md-dialog__inner md-typeset"></div>
     </div>
     
-    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.74e28a9f.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.220ee61c.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.b425cdc4.min.js"></script>
       
     
   </body>

@@ -15,7 +15,7 @@
         <link rel="next" href="../expression/">
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.19">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.1.17">
     
     
       
@@ -23,7 +23,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.eebd395e.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.26e3688c.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ecc896b0.min.css">
@@ -1409,7 +1409,7 @@
   
     <li class="md-nav__item">
       <a href="../../../tutorials/json/" class="md-nav__link">
-        Using the json type
+        Using the type
       </a>
     </li>
   
@@ -1618,6 +1618,20 @@
   
   
     <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        cli.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../condition/" class="md-nav__link">
         condition.py
       </a>
@@ -1719,7 +1733,7 @@
       
         <li class="md-nav__item">
   <a href="#datajoint.errors" class="md-nav__link">
-    datajoint.errors
+    errors
   </a>
   
 </li>
@@ -1734,7 +1748,7 @@
         
           <li class="md-nav__item">
   <a href="#datajoint.errors.DataJointError.suggest" class="md-nav__link">
-    suggest()
+    suggest
   </a>
   
 </li>
@@ -2087,12 +2101,13 @@
 <div class="doc doc-object doc-module">
 
 
-<a id="datajoint.errors"></a>
-  <div class="doc doc-contents first">
-  
-      <p>Exception classes for the DataJoint library</p>
 
-  
+<a id="datajoint.errors"></a>
+    <div class="doc doc-contents first">
+
+        <p>Exception classes for the DataJoint library</p>
+
+
 
   <div class="doc doc-children">
 
@@ -2107,22 +2122,22 @@
 
 
 <h2 id="datajoint.errors.DataJointError" class="doc doc-heading">
-          <code>DataJointError</code>
+            <code>DataJointError</code>
 
 
 <a href="#datajoint.errors.DataJointError" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-          <p class="doc doc-class-bases">
-            Bases: <code>Exception</code></p>
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code>Exception</code></p>
 
-  
-      <p>Base class for errors specific to DataJoint internal operation.</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/errors.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">14</span>
+        <p>Base class for errors specific to DataJoint internal operation.</p>
+
+              <details class="quote">
+                <summary>Source code in <code>datajoint/errors.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">14</span>
 <span class="normal">15</span>
 <span class="normal">16</span>
 <span class="normal">17</span>
@@ -2178,12 +2193,11 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span> <span class="o">+</span> <span class="n">args</span><span class="p">))</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
 
-  
+
 
   <div class="doc doc-children">
-
 
 
 
@@ -2194,72 +2208,69 @@
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.errors.DataJointError.suggest" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">suggest</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">suggest</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span></code>
 
 <a href="#datajoint.errors.DataJointError.suggest" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>regenerate the exception with additional arguments</p>
+    <div class="doc doc-contents ">
+
+        <p>regenerate the exception with additional arguments</p>
 
 
-
-  <p><strong>Parameters:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Type</th>
-        <th>Description</th>
-        <th>Default</th>
-      </tr>
-    </thead>
-    <tbody>
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td><code>args</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>addition arguments</p>
-            </div>
-          </td>
-          <td>
-                <code>()</code>
-          </td>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>args</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>addition arguments</p>
+              </div>
+            </td>
+            <td>
+                  <code>()</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>a new exception of the same type with the additional arguments</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>a new exception of the same type with the additional arguments</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/errors.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">34</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/errors.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">34</span>
 <span class="normal">35</span>
 <span class="normal">36</span>
 <span class="normal">37</span>
@@ -2275,8 +2286,8 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">args</span> <span class="o">+</span> <span class="n">args</span><span class="p">))</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
 
@@ -2285,7 +2296,7 @@
 
   </div>
 
-  </div>
+    </div>
 
 </div>
 
@@ -2299,22 +2310,22 @@
 
 
 <h2 id="datajoint.errors.LostConnectionError" class="doc doc-heading">
-          <code>LostConnectionError</code>
+            <code>LostConnectionError</code>
 
 
 <a href="#datajoint.errors.LostConnectionError" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-          <p class="doc doc-class-bases">
-            Bases: <code><a class="autorefs autorefs-internal" title="datajoint.errors.DataJointError" href="#datajoint.errors.DataJointError">DataJointError</a></code></p>
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="datajoint.errors.DataJointError" href="#datajoint.errors.DataJointError">DataJointError</a></code></p>
 
-  
-      <p>Loss of server connection</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/errors.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">45</span>
+        <p>Loss of server connection</p>
+
+              <details class="quote">
+                <summary>Source code in <code>datajoint/errors.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">45</span>
 <span class="normal">46</span>
 <span class="normal">47</span>
 <span class="normal">48</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">LostConnectionError</span><span class="p">(</span><span class="n">DataJointError</span><span class="p">):</span>
@@ -2322,9 +2333,19 @@
 <span class="sd">    Loss of server connection</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
 
   </div>
+
+    </div>
 
 </div>
 
@@ -2338,22 +2359,22 @@
 
 
 <h2 id="datajoint.errors.QueryError" class="doc doc-heading">
-          <code>QueryError</code>
+            <code>QueryError</code>
 
 
 <a href="#datajoint.errors.QueryError" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-          <p class="doc doc-class-bases">
-            Bases: <code><a class="autorefs autorefs-internal" title="datajoint.errors.DataJointError" href="#datajoint.errors.DataJointError">DataJointError</a></code></p>
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="datajoint.errors.DataJointError" href="#datajoint.errors.DataJointError">DataJointError</a></code></p>
 
-  
-      <p>Errors arising from queries to the database</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/errors.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">51</span>
+        <p>Errors arising from queries to the database</p>
+
+              <details class="quote">
+                <summary>Source code in <code>datajoint/errors.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">51</span>
 <span class="normal">52</span>
 <span class="normal">53</span>
 <span class="normal">54</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">QueryError</span><span class="p">(</span><span class="n">DataJointError</span><span class="p">):</span>
@@ -2361,9 +2382,19 @@
 <span class="sd">    Errors arising from queries to the database</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
 
   </div>
+
+    </div>
 
 </div>
 
@@ -2377,22 +2408,22 @@
 
 
 <h2 id="datajoint.errors.QuerySyntaxError" class="doc doc-heading">
-          <code>QuerySyntaxError</code>
+            <code>QuerySyntaxError</code>
 
 
 <a href="#datajoint.errors.QuerySyntaxError" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-          <p class="doc doc-class-bases">
-            Bases: <code><a class="autorefs autorefs-internal" title="datajoint.errors.QueryError" href="#datajoint.errors.QueryError">QueryError</a></code></p>
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="datajoint.errors.QueryError" href="#datajoint.errors.QueryError">QueryError</a></code></p>
 
-  
-      <p>Errors arising from incorrect query syntax</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/errors.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">58</span>
+        <p>Errors arising from incorrect query syntax</p>
+
+              <details class="quote">
+                <summary>Source code in <code>datajoint/errors.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">58</span>
 <span class="normal">59</span>
 <span class="normal">60</span>
 <span class="normal">61</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">QuerySyntaxError</span><span class="p">(</span><span class="n">QueryError</span><span class="p">):</span>
@@ -2400,9 +2431,19 @@
 <span class="sd">    Errors arising from incorrect query syntax</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
 
   </div>
+
+    </div>
 
 </div>
 
@@ -2416,22 +2457,22 @@
 
 
 <h2 id="datajoint.errors.AccessError" class="doc doc-heading">
-          <code>AccessError</code>
+            <code>AccessError</code>
 
 
 <a href="#datajoint.errors.AccessError" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-          <p class="doc doc-class-bases">
-            Bases: <code><a class="autorefs autorefs-internal" title="datajoint.errors.QueryError" href="#datajoint.errors.QueryError">QueryError</a></code></p>
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="datajoint.errors.QueryError" href="#datajoint.errors.QueryError">QueryError</a></code></p>
 
-  
-      <p>User access error: insufficient privileges.</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/errors.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">64</span>
+        <p>User access error: insufficient privileges.</p>
+
+              <details class="quote">
+                <summary>Source code in <code>datajoint/errors.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">64</span>
 <span class="normal">65</span>
 <span class="normal">66</span>
 <span class="normal">67</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">AccessError</span><span class="p">(</span><span class="n">QueryError</span><span class="p">):</span>
@@ -2439,9 +2480,19 @@
 <span class="sd">    User access error: insufficient privileges.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
 
   </div>
+
+    </div>
 
 </div>
 
@@ -2455,22 +2506,22 @@
 
 
 <h2 id="datajoint.errors.MissingTableError" class="doc doc-heading">
-          <code>MissingTableError</code>
+            <code>MissingTableError</code>
 
 
 <a href="#datajoint.errors.MissingTableError" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-          <p class="doc doc-class-bases">
-            Bases: <code><a class="autorefs autorefs-internal" title="datajoint.errors.DataJointError" href="#datajoint.errors.DataJointError">DataJointError</a></code></p>
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="datajoint.errors.DataJointError" href="#datajoint.errors.DataJointError">DataJointError</a></code></p>
 
-  
-      <p>Query on a table that has not been declared</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/errors.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">70</span>
+        <p>Query on a table that has not been declared</p>
+
+              <details class="quote">
+                <summary>Source code in <code>datajoint/errors.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">70</span>
 <span class="normal">71</span>
 <span class="normal">72</span>
 <span class="normal">73</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">MissingTableError</span><span class="p">(</span><span class="n">DataJointError</span><span class="p">):</span>
@@ -2478,9 +2529,19 @@
 <span class="sd">    Query on a table that has not been declared</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
 
   </div>
+
+    </div>
 
 </div>
 
@@ -2494,22 +2555,22 @@
 
 
 <h2 id="datajoint.errors.DuplicateError" class="doc doc-heading">
-          <code>DuplicateError</code>
+            <code>DuplicateError</code>
 
 
 <a href="#datajoint.errors.DuplicateError" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-          <p class="doc doc-class-bases">
-            Bases: <code><a class="autorefs autorefs-internal" title="datajoint.errors.QueryError" href="#datajoint.errors.QueryError">QueryError</a></code></p>
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="datajoint.errors.QueryError" href="#datajoint.errors.QueryError">QueryError</a></code></p>
 
-  
-      <p>An integrity error caused by a duplicate entry into a unique key</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/errors.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">76</span>
+        <p>An integrity error caused by a duplicate entry into a unique key</p>
+
+              <details class="quote">
+                <summary>Source code in <code>datajoint/errors.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">76</span>
 <span class="normal">77</span>
 <span class="normal">78</span>
 <span class="normal">79</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">DuplicateError</span><span class="p">(</span><span class="n">QueryError</span><span class="p">):</span>
@@ -2517,9 +2578,19 @@
 <span class="sd">    An integrity error caused by a duplicate entry into a unique key</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
 
   </div>
+
+    </div>
 
 </div>
 
@@ -2533,22 +2604,22 @@
 
 
 <h2 id="datajoint.errors.IntegrityError" class="doc doc-heading">
-          <code>IntegrityError</code>
+            <code>IntegrityError</code>
 
 
 <a href="#datajoint.errors.IntegrityError" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-          <p class="doc doc-class-bases">
-            Bases: <code><a class="autorefs autorefs-internal" title="datajoint.errors.QueryError" href="#datajoint.errors.QueryError">QueryError</a></code></p>
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="datajoint.errors.QueryError" href="#datajoint.errors.QueryError">QueryError</a></code></p>
 
-  
-      <p>An integrity error triggered by foreign key constraints</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/errors.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">82</span>
+        <p>An integrity error triggered by foreign key constraints</p>
+
+              <details class="quote">
+                <summary>Source code in <code>datajoint/errors.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">82</span>
 <span class="normal">83</span>
 <span class="normal">84</span>
 <span class="normal">85</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">IntegrityError</span><span class="p">(</span><span class="n">QueryError</span><span class="p">):</span>
@@ -2556,9 +2627,19 @@
 <span class="sd">    An integrity error triggered by foreign key constraints</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
 
   </div>
+
+    </div>
 
 </div>
 
@@ -2572,22 +2653,22 @@
 
 
 <h2 id="datajoint.errors.UnknownAttributeError" class="doc doc-heading">
-          <code>UnknownAttributeError</code>
+            <code>UnknownAttributeError</code>
 
 
 <a href="#datajoint.errors.UnknownAttributeError" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-          <p class="doc doc-class-bases">
-            Bases: <code><a class="autorefs autorefs-internal" title="datajoint.errors.QueryError" href="#datajoint.errors.QueryError">QueryError</a></code></p>
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="datajoint.errors.QueryError" href="#datajoint.errors.QueryError">QueryError</a></code></p>
 
-  
-      <p>User requests an attribute name not found in query heading</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/errors.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">88</span>
+        <p>User requests an attribute name not found in query heading</p>
+
+              <details class="quote">
+                <summary>Source code in <code>datajoint/errors.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">88</span>
 <span class="normal">89</span>
 <span class="normal">90</span>
 <span class="normal">91</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">UnknownAttributeError</span><span class="p">(</span><span class="n">QueryError</span><span class="p">):</span>
@@ -2595,9 +2676,19 @@
 <span class="sd">    User requests an attribute name not found in query heading</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
 
   </div>
+
+    </div>
 
 </div>
 
@@ -2611,22 +2702,22 @@
 
 
 <h2 id="datajoint.errors.MissingAttributeError" class="doc doc-heading">
-          <code>MissingAttributeError</code>
+            <code>MissingAttributeError</code>
 
 
 <a href="#datajoint.errors.MissingAttributeError" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-          <p class="doc doc-class-bases">
-            Bases: <code><a class="autorefs autorefs-internal" title="datajoint.errors.QueryError" href="#datajoint.errors.QueryError">QueryError</a></code></p>
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="datajoint.errors.QueryError" href="#datajoint.errors.QueryError">QueryError</a></code></p>
 
-  
-      <p>An error arising when a required attribute value is not provided in INSERT</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/errors.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">94</span>
+        <p>An error arising when a required attribute value is not provided in INSERT</p>
+
+              <details class="quote">
+                <summary>Source code in <code>datajoint/errors.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">94</span>
 <span class="normal">95</span>
 <span class="normal">96</span>
 <span class="normal">97</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">MissingAttributeError</span><span class="p">(</span><span class="n">QueryError</span><span class="p">):</span>
@@ -2634,9 +2725,19 @@
 <span class="sd">    An error arising when a required attribute value is not provided in INSERT</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
 
   </div>
+
+    </div>
 
 </div>
 
@@ -2650,22 +2751,22 @@
 
 
 <h2 id="datajoint.errors.MissingExternalFile" class="doc doc-heading">
-          <code>MissingExternalFile</code>
+            <code>MissingExternalFile</code>
 
 
 <a href="#datajoint.errors.MissingExternalFile" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-          <p class="doc doc-class-bases">
-            Bases: <code><a class="autorefs autorefs-internal" title="datajoint.errors.DataJointError" href="#datajoint.errors.DataJointError">DataJointError</a></code></p>
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="datajoint.errors.DataJointError" href="#datajoint.errors.DataJointError">DataJointError</a></code></p>
 
-  
-      <p>Error raised when an external file managed by DataJoint is no longer accessible</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/errors.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">100</span>
+        <p>Error raised when an external file managed by DataJoint is no longer accessible</p>
+
+              <details class="quote">
+                <summary>Source code in <code>datajoint/errors.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">100</span>
 <span class="normal">101</span>
 <span class="normal">102</span>
 <span class="normal">103</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">MissingExternalFile</span><span class="p">(</span><span class="n">DataJointError</span><span class="p">):</span>
@@ -2673,9 +2774,19 @@
 <span class="sd">    Error raised when an external file managed by DataJoint is no longer accessible</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
 
   </div>
+
+    </div>
 
 </div>
 
@@ -2689,22 +2800,22 @@
 
 
 <h2 id="datajoint.errors.BucketInaccessible" class="doc doc-heading">
-          <code>BucketInaccessible</code>
+            <code>BucketInaccessible</code>
 
 
 <a href="#datajoint.errors.BucketInaccessible" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-          <p class="doc doc-class-bases">
-            Bases: <code><a class="autorefs autorefs-internal" title="datajoint.errors.DataJointError" href="#datajoint.errors.DataJointError">DataJointError</a></code></p>
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="datajoint.errors.DataJointError" href="#datajoint.errors.DataJointError">DataJointError</a></code></p>
 
-  
-      <p>Error raised when a S3 bucket is inaccessible</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/errors.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">106</span>
+        <p>Error raised when a S3 bucket is inaccessible</p>
+
+              <details class="quote">
+                <summary>Source code in <code>datajoint/errors.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">106</span>
 <span class="normal">107</span>
 <span class="normal">108</span>
 <span class="normal">109</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">BucketInaccessible</span><span class="p">(</span><span class="n">DataJointError</span><span class="p">):</span>
@@ -2712,9 +2823,19 @@
 <span class="sd">    Error raised when a S3 bucket is inaccessible</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
 
   </div>
+
+    </div>
 
 </div>
 
@@ -2723,7 +2844,7 @@
 
   </div>
 
-  </div>
+    </div>
 
 </div>
 
@@ -2844,10 +2965,10 @@
       <div class="md-dialog__inner md-typeset"></div>
     </div>
     
-    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.74e28a9f.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.220ee61c.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.b425cdc4.min.js"></script>
       
     
   </body>

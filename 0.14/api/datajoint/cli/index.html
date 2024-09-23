@@ -9,24 +9,24 @@
       
       
       
-        <link rel="prev" href="../project/">
+        <link rel="prev" href="../blob/">
       
       
-        <link rel="next" href="../aggregation/">
+        <link rel="next" href="../condition/">
       
-      <link rel="icon" href="../../assets/images/company-logo-blue.png">
+      <link rel="icon" href="../../../assets/images/company-logo-blue.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.1.17">
     
     
       
-        <title>Join - DataJoint Documentation</title>
+        <title>cli.py - DataJoint Documentation</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.26e3688c.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.26e3688c.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ecc896b0.min.css">
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ecc896b0.min.css">
       
       
 
@@ -42,11 +42,11 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
     
-      <link rel="stylesheet" href="../../assets/stylesheets/extra.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/extra.css">
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -75,7 +75,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#join" class="md-skip">
+        <a href="#datajoint.cli" class="md-skip">
           Skip to content
         </a>
       
@@ -95,7 +95,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="DataJoint Documentation" class="md-header__button md-logo" aria-label="DataJoint Documentation" data-md-component="logo">
+    <a href="../../.." title="DataJoint Documentation" class="md-header__button md-logo" aria-label="DataJoint Documentation" data-md-component="logo">
       
   
   <?xml version="1.0" encoding="utf-8"?>
@@ -124,7 +124,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Join
+              cli.py
             
           </span>
         </div>
@@ -231,7 +231,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--integrated" aria-label="" data-md-level="0">
     <label class="md-nav__title" for="__drawer">
-        <a href="../.." title="DataJoint Documentation"
+        <a href="../../.." title="DataJoint Documentation"
             class="md-nav__button md-logo" aria-label="DataJoint Documentation" data-md-component="logo">
             
   
@@ -274,7 +274,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="../../.." class="md-nav__link">
         DataJoint Python
       </a>
     </li>
@@ -289,7 +289,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quick-start/" class="md-nav__link">
+      <a href="../../../quick-start/" class="md-nav__link">
         Quick Start Guide
       </a>
     </li>
@@ -331,7 +331,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/principles/" class="md-nav__link">
+      <a href="../../../concepts/principles/" class="md-nav__link">
         Principles
       </a>
     </li>
@@ -345,7 +345,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/data-model/" class="md-nav__link">
+      <a href="../../../concepts/data-model/" class="md-nav__link">
         Data Model
       </a>
     </li>
@@ -359,7 +359,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/data-pipelines/" class="md-nav__link">
+      <a href="../../../concepts/data-pipelines/" class="md-nav__link">
         Data Pipelines
       </a>
     </li>
@@ -373,7 +373,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/teamwork/" class="md-nav__link">
+      <a href="../../../concepts/teamwork/" class="md-nav__link">
         Teamwork
       </a>
     </li>
@@ -387,7 +387,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/terminology/" class="md-nav__link">
+      <a href="../../../concepts/terminology/" class="md-nav__link">
         Terminology
       </a>
     </li>
@@ -436,7 +436,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../sysadmin/database-admin/" class="md-nav__link">
+      <a href="../../../sysadmin/database-admin/" class="md-nav__link">
         Database Administration
       </a>
     </li>
@@ -450,7 +450,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../sysadmin/bulk-storage/" class="md-nav__link">
+      <a href="../../../sysadmin/bulk-storage/" class="md-nav__link">
         Bulk Storage Systems
       </a>
     </li>
@@ -464,7 +464,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../sysadmin/external-store/" class="md-nav__link">
+      <a href="../../../sysadmin/external-store/" class="md-nav__link">
         External Store
       </a>
     </li>
@@ -513,7 +513,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../client/install/" class="md-nav__link">
+      <a href="../../../client/install/" class="md-nav__link">
         Install
       </a>
     </li>
@@ -527,7 +527,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../client/credentials/" class="md-nav__link">
+      <a href="../../../client/credentials/" class="md-nav__link">
         Credentials
       </a>
     </li>
@@ -541,7 +541,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../client/settings/" class="md-nav__link">
+      <a href="../../../client/settings/" class="md-nav__link">
         Settings
       </a>
     </li>
@@ -555,7 +555,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../client/stores/" class="md-nav__link">
+      <a href="../../../client/stores/" class="md-nav__link">
         File Stores
       </a>
     </li>
@@ -604,7 +604,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/schema/" class="md-nav__link">
+      <a href="../../../design/schema/" class="md-nav__link">
         Schema Creation
       </a>
     </li>
@@ -645,7 +645,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/tables/tiers/" class="md-nav__link">
+      <a href="../../../design/tables/tiers/" class="md-nav__link">
         Table Tiers
       </a>
     </li>
@@ -659,7 +659,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/tables/declare/" class="md-nav__link">
+      <a href="../../../design/tables/declare/" class="md-nav__link">
         Declaration Syntax
       </a>
     </li>
@@ -673,7 +673,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/tables/primary/" class="md-nav__link">
+      <a href="../../../design/tables/primary/" class="md-nav__link">
         Primary Key
       </a>
     </li>
@@ -687,7 +687,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/tables/attributes/" class="md-nav__link">
+      <a href="../../../design/tables/attributes/" class="md-nav__link">
         Attributes
       </a>
     </li>
@@ -701,7 +701,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/tables/lookup/" class="md-nav__link">
+      <a href="../../../design/tables/lookup/" class="md-nav__link">
         Lookup Tables
       </a>
     </li>
@@ -715,7 +715,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/tables/manual/" class="md-nav__link">
+      <a href="../../../design/tables/manual/" class="md-nav__link">
         Manual Tables
       </a>
     </li>
@@ -729,7 +729,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/tables/blobs/" class="md-nav__link">
+      <a href="../../../design/tables/blobs/" class="md-nav__link">
         Blobs
       </a>
     </li>
@@ -743,7 +743,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/tables/attach/" class="md-nav__link">
+      <a href="../../../design/tables/attach/" class="md-nav__link">
         Attachments
       </a>
     </li>
@@ -757,7 +757,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/tables/filepath/" class="md-nav__link">
+      <a href="../../../design/tables/filepath/" class="md-nav__link">
         Filepaths
       </a>
     </li>
@@ -771,7 +771,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/tables/customtype/" class="md-nav__link">
+      <a href="../../../design/tables/customtype/" class="md-nav__link">
         Custom Datatypes
       </a>
     </li>
@@ -785,7 +785,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/tables/dependencies/" class="md-nav__link">
+      <a href="../../../design/tables/dependencies/" class="md-nav__link">
         Dependencies
       </a>
     </li>
@@ -799,7 +799,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/tables/indexes/" class="md-nav__link">
+      <a href="../../../design/tables/indexes/" class="md-nav__link">
         Indexes
       </a>
     </li>
@@ -813,7 +813,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/tables/master-part/" class="md-nav__link">
+      <a href="../../../design/tables/master-part/" class="md-nav__link">
         Master-Part Relationships
       </a>
     </li>
@@ -834,7 +834,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/diagrams/" class="md-nav__link">
+      <a href="../../../design/diagrams/" class="md-nav__link">
         Schema Diagrams
       </a>
     </li>
@@ -848,7 +848,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/normalization/" class="md-nav__link">
+      <a href="../../../design/normalization/" class="md-nav__link">
         Entity Normalization
       </a>
     </li>
@@ -862,7 +862,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/integrity/" class="md-nav__link">
+      <a href="../../../design/integrity/" class="md-nav__link">
         Data Integrity
       </a>
     </li>
@@ -876,7 +876,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/recall/" class="md-nav__link">
+      <a href="../../../design/recall/" class="md-nav__link">
         Schema Recall
       </a>
     </li>
@@ -890,7 +890,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/drop/" class="md-nav__link">
+      <a href="../../../design/drop/" class="md-nav__link">
         Schema Drop
       </a>
     </li>
@@ -904,7 +904,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../design/alter/" class="md-nav__link">
+      <a href="../../../design/alter/" class="md-nav__link">
         Schema Modification
       </a>
     </li>
@@ -938,7 +938,7 @@
         
         
         <div class="md-nav__link md-nav__link--index ">
-          <a href="../../manipulation/">Data Manipulations</a>
+          <a href="../../../manipulation/">Data Manipulations</a>
           
             <label for="__nav_7">
               <span class="md-nav__icon md-icon"></span>
@@ -959,7 +959,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../manipulation/insert/" class="md-nav__link">
+      <a href="../../../manipulation/insert/" class="md-nav__link">
         Insert
       </a>
     </li>
@@ -973,7 +973,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../manipulation/delete/" class="md-nav__link">
+      <a href="../../../manipulation/delete/" class="md-nav__link">
         Delete
       </a>
     </li>
@@ -987,7 +987,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../manipulation/update/" class="md-nav__link">
+      <a href="../../../manipulation/update/" class="md-nav__link">
         Update
       </a>
     </li>
@@ -1001,7 +1001,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../manipulation/transactions/" class="md-nav__link">
+      <a href="../../../manipulation/transactions/" class="md-nav__link">
         Transactions
       </a>
     </li>
@@ -1021,16 +1021,14 @@
 
   
   
-    
-  
   
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
       
       
       
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
       
       
       
@@ -1039,7 +1037,7 @@
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
         <label class="md-nav__title" for="__nav_8">
           <span class="md-nav__icon md-icon"></span>
           Data Queries
@@ -1052,7 +1050,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../principles/" class="md-nav__link">
+      <a href="../../../query/principles/" class="md-nav__link">
         Principles
       </a>
     </li>
@@ -1066,7 +1064,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../example-schema/" class="md-nav__link">
+      <a href="../../../query/example-schema/" class="md-nav__link">
         Example Schema
       </a>
     </li>
@@ -1080,7 +1078,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fetch/" class="md-nav__link">
+      <a href="../../../query/fetch/" class="md-nav__link">
         Fetch
       </a>
     </li>
@@ -1094,7 +1092,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../iteration/" class="md-nav__link">
+      <a href="../../../query/iteration/" class="md-nav__link">
         Iteration
       </a>
     </li>
@@ -1108,7 +1106,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../operators/" class="md-nav__link">
+      <a href="../../../query/operators/" class="md-nav__link">
         Operators
       </a>
     </li>
@@ -1122,7 +1120,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../restrict/" class="md-nav__link">
+      <a href="../../../query/restrict/" class="md-nav__link">
         Restrict
       </a>
     </li>
@@ -1136,7 +1134,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../project/" class="md-nav__link">
+      <a href="../../../query/project/" class="md-nav__link">
         Projection
       </a>
     </li>
@@ -1148,79 +1146,11 @@
               
   
   
-    
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          Join
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../../query/join/" class="md-nav__link">
         Join
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#join-operator" class="md-nav__link">
-    Join operator *
-  </a>
-  
-    <nav class="md-nav" aria-label="Join operator *">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#principles-of-joins" class="md-nav__link">
-    Principles of joins
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#examples-of-joins" class="md-nav__link">
-    Examples of joins
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#properties-of-join" class="md-nav__link">
-    Properties of join
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1232,7 +1162,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../aggregation/" class="md-nav__link">
+      <a href="../../../query/aggregation/" class="md-nav__link">
         Aggregation
       </a>
     </li>
@@ -1246,7 +1176,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../union/" class="md-nav__link">
+      <a href="../../../query/union/" class="md-nav__link">
         Union
       </a>
     </li>
@@ -1260,7 +1190,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../universals/" class="md-nav__link">
+      <a href="../../../query/universals/" class="md-nav__link">
         Universal Sets
       </a>
     </li>
@@ -1274,7 +1204,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../query-caching/" class="md-nav__link">
+      <a href="../../../query/query-caching/" class="md-nav__link">
         Query Caching
       </a>
     </li>
@@ -1323,7 +1253,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../compute/make/" class="md-nav__link">
+      <a href="../../../compute/make/" class="md-nav__link">
         Make Method
       </a>
     </li>
@@ -1337,7 +1267,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../compute/populate/" class="md-nav__link">
+      <a href="../../../compute/populate/" class="md-nav__link">
         Populate
       </a>
     </li>
@@ -1351,7 +1281,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../compute/key-source/" class="md-nav__link">
+      <a href="../../../compute/key-source/" class="md-nav__link">
         Key Source
       </a>
     </li>
@@ -1365,7 +1295,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../compute/distributed/" class="md-nav__link">
+      <a href="../../../compute/distributed/" class="md-nav__link">
         Distributed Computing
       </a>
     </li>
@@ -1387,7 +1317,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../publish-data/" class="md-nav__link">
+      <a href="../../../publish-data/" class="md-nav__link">
         Publish Data
       </a>
     </li>
@@ -1429,7 +1359,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../internal/transpilation/" class="md-nav__link">
+      <a href="../../../internal/transpilation/" class="md-nav__link">
         SQL Transpilation
       </a>
     </li>
@@ -1478,7 +1408,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../tutorials/json/" class="md-nav__link">
+      <a href="../../../tutorials/json/" class="md-nav__link">
         Using the type
       </a>
     </li>
@@ -1500,7 +1430,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../faq/" class="md-nav__link">
+      <a href="../../../faq/" class="md-nav__link">
         FAQ
       </a>
     </li>
@@ -1515,7 +1445,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../develop/" class="md-nav__link">
+      <a href="../../../develop/" class="md-nav__link">
         Developer Guide
       </a>
     </li>
@@ -1530,7 +1460,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../citation/" class="md-nav__link">
+      <a href="../../../citation/" class="md-nav__link">
         Citation
       </a>
     </li>
@@ -1545,7 +1475,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../changelog/" class="md-nav__link">
+      <a href="../../../changelog/" class="md-nav__link">
         Changelog
       </a>
     </li>
@@ -1558,14 +1488,16 @@
 
   
   
+    
+  
   
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
       
       
       
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_17" >
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_17" checked>
       
       
       
@@ -1574,7 +1506,7 @@
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_17_label" aria-expanded="false">
+      <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_17_label" aria-expanded="true">
         <label class="md-nav__title" for="__nav_17">
           <span class="md-nav__icon md-icon"></span>
           API
@@ -1585,14 +1517,16 @@
               
   
   
+    
+  
   
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
       
       
       
-      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_17_1" >
+      <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_17_1" checked>
       
       
       
@@ -1601,7 +1535,7 @@
           <span class="md-nav__icon md-icon"></span>
         </label>
       
-      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_17_1_label" aria-expanded="false">
+      <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_17_1_label" aria-expanded="true">
         <label class="md-nav__title" for="__nav_17_1">
           <span class="md-nav__icon md-icon"></span>
           datajoint
@@ -1614,7 +1548,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/datajoint/__init__/" class="md-nav__link">
+      <a href="../__init__/" class="md-nav__link">
         __init__.py
       </a>
     </li>
@@ -1628,7 +1562,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/datajoint/admin/" class="md-nav__link">
+      <a href="../admin/" class="md-nav__link">
         admin.py
       </a>
     </li>
@@ -1642,7 +1576,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/datajoint/attribute_adapter/" class="md-nav__link">
+      <a href="../attribute_adapter/" class="md-nav__link">
         attribute_adapter.py
       </a>
     </li>
@@ -1656,7 +1590,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/datajoint/autopopulate/" class="md-nav__link">
+      <a href="../autopopulate/" class="md-nav__link">
         autopopulate.py
       </a>
     </li>
@@ -1670,7 +1604,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/datajoint/blob/" class="md-nav__link">
+      <a href="../blob/" class="md-nav__link">
         blob.py
       </a>
     </li>
@@ -1682,11 +1616,55 @@
               
   
   
+    
   
-    <li class="md-nav__item">
-      <a href="../../api/datajoint/cli/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          cli.py
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         cli.py
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#datajoint.cli" class="md-nav__link">
+    cli
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#datajoint.cli.cli" class="md-nav__link">
+    cli
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1698,7 +1676,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/datajoint/condition/" class="md-nav__link">
+      <a href="../condition/" class="md-nav__link">
         condition.py
       </a>
     </li>
@@ -1712,7 +1690,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/datajoint/connection/" class="md-nav__link">
+      <a href="../connection/" class="md-nav__link">
         connection.py
       </a>
     </li>
@@ -1726,7 +1704,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/datajoint/declare/" class="md-nav__link">
+      <a href="../declare/" class="md-nav__link">
         declare.py
       </a>
     </li>
@@ -1740,7 +1718,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/datajoint/dependencies/" class="md-nav__link">
+      <a href="../dependencies/" class="md-nav__link">
         dependencies.py
       </a>
     </li>
@@ -1754,7 +1732,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/datajoint/diagram/" class="md-nav__link">
+      <a href="../diagram/" class="md-nav__link">
         diagram.py
       </a>
     </li>
@@ -1768,7 +1746,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/datajoint/errors/" class="md-nav__link">
+      <a href="../errors/" class="md-nav__link">
         errors.py
       </a>
     </li>
@@ -1782,7 +1760,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/datajoint/expression/" class="md-nav__link">
+      <a href="../expression/" class="md-nav__link">
         expression.py
       </a>
     </li>
@@ -1796,7 +1774,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/datajoint/external/" class="md-nav__link">
+      <a href="../external/" class="md-nav__link">
         external.py
       </a>
     </li>
@@ -1810,7 +1788,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/datajoint/fetch/" class="md-nav__link">
+      <a href="../fetch/" class="md-nav__link">
         fetch.py
       </a>
     </li>
@@ -1824,7 +1802,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/datajoint/hash/" class="md-nav__link">
+      <a href="../hash/" class="md-nav__link">
         hash.py
       </a>
     </li>
@@ -1838,7 +1816,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/datajoint/heading/" class="md-nav__link">
+      <a href="../heading/" class="md-nav__link">
         heading.py
       </a>
     </li>
@@ -1852,7 +1830,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/datajoint/jobs/" class="md-nav__link">
+      <a href="../jobs/" class="md-nav__link">
         jobs.py
       </a>
     </li>
@@ -1866,7 +1844,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/datajoint/logging/" class="md-nav__link">
+      <a href="../logging/" class="md-nav__link">
         logging.py
       </a>
     </li>
@@ -1880,7 +1858,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/datajoint/plugin/" class="md-nav__link">
+      <a href="../plugin/" class="md-nav__link">
         plugin.py
       </a>
     </li>
@@ -1894,7 +1872,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/datajoint/preview/" class="md-nav__link">
+      <a href="../preview/" class="md-nav__link">
         preview.py
       </a>
     </li>
@@ -1908,7 +1886,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/datajoint/s3/" class="md-nav__link">
+      <a href="../s3/" class="md-nav__link">
         s3.py
       </a>
     </li>
@@ -1922,7 +1900,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/datajoint/schemas/" class="md-nav__link">
+      <a href="../schemas/" class="md-nav__link">
         schemas.py
       </a>
     </li>
@@ -1936,7 +1914,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/datajoint/settings/" class="md-nav__link">
+      <a href="../settings/" class="md-nav__link">
         settings.py
       </a>
     </li>
@@ -1950,7 +1928,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/datajoint/table/" class="md-nav__link">
+      <a href="../table/" class="md-nav__link">
         table.py
       </a>
     </li>
@@ -1964,7 +1942,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/datajoint/user_tables/" class="md-nav__link">
+      <a href="../user_tables/" class="md-nav__link">
         user_tables.py
       </a>
     </li>
@@ -1978,7 +1956,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/datajoint/utils/" class="md-nav__link">
+      <a href="../utils/" class="md-nav__link">
         utils.py
       </a>
     </li>
@@ -1992,7 +1970,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/datajoint/version/" class="md-nav__link">
+      <a href="../version/" class="md-nav__link">
         version.py
       </a>
     </li>
@@ -2027,42 +2005,221 @@
                 
                   
 
-  
-  
+
+  <h1>cli.py</h1>
+
+<div class="doc doc-object doc-module">
 
 
-<h1 id="join">Join<a class="headerlink" href="#join" title="Permanent link">&para;</a></h1>
-<h2 id="join-operator">Join operator <code>*</code><a class="headerlink" href="#join-operator" title="Permanent link">&para;</a></h2>
-<p>The Join operator <code>A * B</code> combines the matching information in <code>A</code> and <code>B</code>.
-The result contains all matching combinations of entities from both arguments.</p>
-<h3 id="principles-of-joins">Principles of joins<a class="headerlink" href="#principles-of-joins" title="Permanent link">&para;</a></h3>
-<ol>
-<li>The operands <code>A</code> and <code>B</code> must be <strong>join-compatible</strong>.</li>
-<li>The primary key of the result is the union of the primary keys of the operands.</li>
-</ol>
-<h3 id="examples-of-joins">Examples of joins<a class="headerlink" href="#examples-of-joins" title="Permanent link">&para;</a></h3>
-<p>Example 1 : When the operands have no common attributes, the result is the cross 
-product -- all combinations of entities.</p>
-<p><img alt="join-example1" src="../../images/join-example1.png" style="width:464px; align:center" /></p>
-<p>Example 2 : When the operands have common attributes, only entities with matching 
-values are kept.</p>
-<p><img alt="join-example2" src="../../images/join-example2.png" style="width:689px; align:center" /></p>
-<p>Example 3 : Joining on secondary attribute.</p>
-<p><img alt="join-example3" src="../../images/join-example3.png" style="width:689px; align:center" /></p>
-<h3 id="properties-of-join">Properties of join<a class="headerlink" href="#properties-of-join" title="Permanent link">&para;</a></h3>
-<ol>
-<li>
-<p>When <code>A</code> and <code>B</code> have the same attributes, the join <code>A * B</code> becomes equivalent to 
-the set intersection <code>A</code> ∩ <code>B</code>.
-   Hence, DataJoint does not need a separate intersection operator.</p>
-</li>
-<li>
-<p>Commutativity: <code>A * B</code> is equivalent to <code>B * A</code>.</p>
-</li>
-<li>
-<p>Associativity: <code>(A * B) * C</code> is equivalent to <code>A * (B * C)</code>.</p>
-</li>
-</ol>
+
+<a id="datajoint.cli"></a>
+    <div class="doc doc-contents first">
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h2 id="datajoint.cli.cli" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">cli</span><span class="p">(</span><span class="n">args</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#datajoint.cli.cli" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Console interface for DataJoint Python</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>args</code></td>
+            <td>
+                  <code>list</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>List of arguments to be passed in, defaults to reading stdin</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+            <details class="quote">
+              <summary>Source code in <code>datajoint/cli.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 7</span>
+<span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span>
+<span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span>
+<span class="normal">61</span>
+<span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span>
+<span class="normal">65</span>
+<span class="normal">66</span>
+<span class="normal">67</span>
+<span class="normal">68</span>
+<span class="normal">69</span>
+<span class="normal">70</span>
+<span class="normal">71</span>
+<span class="normal">72</span>
+<span class="normal">73</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">cli</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Console interface for DataJoint Python</span>
+
+<span class="sd">    :param args: List of arguments to be passed in, defaults to reading stdin</span>
+<span class="sd">    :type args: list, optional</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span>
+        <span class="n">prog</span><span class="o">=</span><span class="s2">&quot;datajoint&quot;</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;DataJoint console interface.&quot;</span><span class="p">,</span>
+        <span class="n">conflict_handler</span><span class="o">=</span><span class="s2">&quot;resolve&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;-V&quot;</span><span class="p">,</span> <span class="s2">&quot;--version&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;version&quot;</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">dj</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">dj</span><span class="o">.</span><span class="n">__version__</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;-u&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;--user&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="n">dj</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;database.user&quot;</span><span class="p">],</span>
+        <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Datajoint username&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;-p&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;--password&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="n">dj</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;database.password&quot;</span><span class="p">],</span>
+        <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Datajoint password&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;-h&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;--host&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="n">dj</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;database.host&quot;</span><span class="p">],</span>
+        <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Datajoint host&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;-s&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;--schemas&quot;</span><span class="p">,</span>
+        <span class="n">nargs</span><span class="o">=</span><span class="s2">&quot;+&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+        <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;A list of virtual module mappings in `db:schema ...` format&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">kwargs</span> <span class="o">=</span> <span class="nb">vars</span><span class="p">(</span><span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">args</span><span class="p">))</span>
+    <span class="n">mods</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;user&quot;</span><span class="p">]:</span>
+        <span class="n">dj</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;database.user&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;user&quot;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;password&quot;</span><span class="p">]:</span>
+        <span class="n">dj</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;database.password&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;password&quot;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;host&quot;</span><span class="p">]:</span>
+        <span class="n">dj</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;database.host&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;host&quot;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;schemas&quot;</span><span class="p">]:</span>
+        <span class="k">for</span> <span class="n">vm</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;schemas&quot;</span><span class="p">]:</span>
+            <span class="n">d</span><span class="p">,</span> <span class="n">m</span> <span class="o">=</span> <span class="n">vm</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">)</span>
+            <span class="n">mods</span><span class="p">[</span><span class="n">m</span><span class="p">]</span> <span class="o">=</span> <span class="n">dj</span><span class="o">.</span><span class="n">create_virtual_module</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+
+    <span class="n">banner</span> <span class="o">=</span> <span class="s2">&quot;dj repl</span><span class="se">\n</span><span class="s2">&quot;</span>
+    <span class="k">if</span> <span class="n">mods</span><span class="p">:</span>
+        <span class="n">modstr</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">&quot;  - </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">m</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">mods</span><span class="p">)</span>
+        <span class="n">banner</span> <span class="o">+=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">schema modules:</span><span class="se">\n\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="n">modstr</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+    <span class="n">interact</span><span class="p">(</span><span class="n">banner</span><span class="p">,</span> <span class="n">local</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">ChainMap</span><span class="p">(</span><span class="n">mods</span><span class="p">,</span> <span class="nb">locals</span><span class="p">(),</span> <span class="nb">globals</span><span class="p">())))</span>
+
+    <span class="k">raise</span> <span class="ne">SystemExit</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
 
 
 
@@ -2181,10 +2338,10 @@ the set intersection <code>A</code> ∩ <code>B</code>.
       <div class="md-dialog__inner md-typeset"></div>
     </div>
     
-    <script id="__config" type="application/json">{"base": "../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.b425cdc4.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.b425cdc4.min.js"></script>
       
     
   </body>

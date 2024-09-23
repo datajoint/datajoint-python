@@ -15,7 +15,7 @@
         <link rel="next" href="../autopopulate/">
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.19">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.1.17">
     
     
       
@@ -23,7 +23,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.eebd395e.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.26e3688c.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ecc896b0.min.css">
@@ -1409,7 +1409,7 @@
   
     <li class="md-nav__item">
       <a href="../../../tutorials/json/" class="md-nav__link">
-        Using the json type
+        Using the type
       </a>
     </li>
   
@@ -1607,7 +1607,7 @@
       
         <li class="md-nav__item">
   <a href="#datajoint.attribute_adapter" class="md-nav__link">
-    datajoint.attribute_adapter
+    attribute_adapter
   </a>
   
 </li>
@@ -1629,14 +1629,14 @@
         
           <li class="md-nav__item">
   <a href="#datajoint.attribute_adapter.AttributeAdapter.get" class="md-nav__link">
-    get()
+    get
   </a>
   
 </li>
         
           <li class="md-nav__item">
   <a href="#datajoint.attribute_adapter.AttributeAdapter.put" class="md-nav__link">
-    put()
+    put
   </a>
   
 </li>
@@ -1648,7 +1648,7 @@
       
         <li class="md-nav__item">
   <a href="#datajoint.attribute_adapter.get_adapter" class="md-nav__link">
-    get_adapter()
+    get_adapter
   </a>
   
 </li>
@@ -1684,6 +1684,20 @@
     <li class="md-nav__item">
       <a href="../blob/" class="md-nav__link">
         blob.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        cli.py
       </a>
     </li>
   
@@ -2031,12 +2045,17 @@
 <div class="doc doc-object doc-module">
 
 
-<a id="datajoint.attribute_adapter"></a>
-  <div class="doc doc-contents first">
 
-  
+<a id="datajoint.attribute_adapter"></a>
+    <div class="doc doc-contents first">
+
+
 
   <div class="doc doc-children">
+
+
+
+
 
 
 
@@ -2049,20 +2068,20 @@
 
 
 <h2 id="datajoint.attribute_adapter.AttributeAdapter" class="doc doc-heading">
-          <code>AttributeAdapter</code>
+            <code>AttributeAdapter</code>
 
 
 <a href="#datajoint.attribute_adapter.AttributeAdapter" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
+    <div class="doc doc-contents ">
 
-  
-      <p>Base class for adapter objects for user-defined attribute types.</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/attribute_adapter.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 6</span>
+        <p>Base class for adapter objects for user-defined attribute types.</p>
+
+              <details class="quote">
+                <summary>Source code in <code>datajoint/attribute_adapter.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 6</span>
 <span class="normal"> 7</span>
 <span class="normal"> 8</span>
 <span class="normal"> 9</span>
@@ -2122,9 +2141,9 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Undefined attribute adapter&quot;</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
 
-  
+
 
   <div class="doc doc-children">
 
@@ -2139,8 +2158,8 @@
 
 
 <h3 id="datajoint.attribute_adapter.AttributeAdapter.attribute_type" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">attribute_type</span></code>
-  
+            <code class="highlight language-python"><span class="n">attribute_type</span></code>
+
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
@@ -2148,36 +2167,34 @@
 <a href="#datajoint.attribute_adapter.AttributeAdapter.attribute_type" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      
+    <div class="doc doc-contents ">
+
+        
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>a supported DataJoint attribute type to use; e.g. "longblob", "blob@store"</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
-  </div>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>a supported DataJoint attribute type to use; e.g. "longblob", "blob@store"</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+    </div>
 
 </div>
-
 
 
 
@@ -2187,72 +2204,69 @@
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.attribute_adapter.AttributeAdapter.get" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">get</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">get</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></code>
 
 <a href="#datajoint.attribute_adapter.AttributeAdapter.get" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>convert value retrieved from the the attribute in a table into the adapted type</p>
+    <div class="doc doc-contents ">
+
+        <p>convert value retrieved from the the attribute in a table into the adapted type</p>
 
 
-
-  <p><strong>Parameters:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Type</th>
-        <th>Description</th>
-        <th>Default</th>
-      </tr>
-    </thead>
-    <tbody>
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td><code>value</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>value from the database</p>
-            </div>
-          </td>
-          <td>
-              <em>required</em>
-          </td>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>value</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>value from the database</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>object of the adapted type</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>object of the adapted type</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/attribute_adapter.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">18</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/attribute_adapter.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">18</span>
 <span class="normal">19</span>
 <span class="normal">20</span>
 <span class="normal">21</span>
@@ -2270,11 +2284,10 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Undefined attribute adapter&quot;</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -2284,72 +2297,69 @@
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.attribute_adapter.AttributeAdapter.put" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">put</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">put</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span></code>
 
 <a href="#datajoint.attribute_adapter.AttributeAdapter.put" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>convert an object of the adapted type into a value that DataJoint can store in a table attribute</p>
+    <div class="doc doc-contents ">
+
+        <p>convert an object of the adapted type into a value that DataJoint can store in a table attribute</p>
 
 
-
-  <p><strong>Parameters:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Type</th>
-        <th>Description</th>
-        <th>Default</th>
-      </tr>
-    </thead>
-    <tbody>
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td><code>obj</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>an object of the adapted type</p>
-            </div>
-          </td>
-          <td>
-              <em>required</em>
-          </td>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>obj</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>an object of the adapted type</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>value to store in the database</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>value to store in the database</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/attribute_adapter.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">28</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/attribute_adapter.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">28</span>
 <span class="normal">29</span>
 <span class="normal">30</span>
 <span class="normal">31</span>
@@ -2365,8 +2375,8 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Undefined attribute adapter&quot;</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
 
@@ -2375,14 +2385,9 @@
 
   </div>
 
-  </div>
+    </div>
 
 </div>
-
-
-
-
-
 
 
 
@@ -2392,20 +2397,19 @@
 <div class="doc doc-object doc-function">
 
 
-
 <h2 id="datajoint.attribute_adapter.get_adapter" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">get_adapter</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="n">adapter_name</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">get_adapter</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="n">adapter_name</span><span class="p">)</span></code>
 
 <a href="#datajoint.attribute_adapter.get_adapter" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>Extract the AttributeAdapter object by its name from the context and validate.</p>
+    <div class="doc doc-contents ">
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/attribute_adapter.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">38</span>
+        <p>Extract the AttributeAdapter object by its name from the context and validate.</p>
+
+            <details class="quote">
+              <summary>Source code in <code>datajoint/attribute_adapter.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">38</span>
 <span class="normal">39</span>
 <span class="normal">40</span>
 <span class="normal">41</span>
@@ -2473,8 +2477,8 @@
         <span class="p">)</span>
     <span class="k">return</span> <span class="n">adapter</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
 
@@ -2483,7 +2487,7 @@
 
   </div>
 
-  </div>
+    </div>
 
 </div>
 
@@ -2604,10 +2608,10 @@
       <div class="md-dialog__inner md-typeset"></div>
     </div>
     
-    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.74e28a9f.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.220ee61c.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.b425cdc4.min.js"></script>
       
     
   </body>

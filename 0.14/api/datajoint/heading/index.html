@@ -15,7 +15,7 @@
         <link rel="next" href="../jobs/">
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.19">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.1.17">
     
     
       
@@ -23,7 +23,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.eebd395e.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.26e3688c.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ecc896b0.min.css">
@@ -1409,7 +1409,7 @@
   
     <li class="md-nav__item">
       <a href="../../../tutorials/json/" class="md-nav__link">
-        Using the json type
+        Using the type
       </a>
     </li>
   
@@ -1618,6 +1618,20 @@
   
   
     <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        cli.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../condition/" class="md-nav__link">
         condition.py
       </a>
@@ -1789,7 +1803,7 @@
       
         <li class="md-nav__item">
   <a href="#datajoint.heading" class="md-nav__link">
-    datajoint.heading
+    heading
   </a>
   
 </li>
@@ -1804,7 +1818,7 @@
         
           <li class="md-nav__item">
   <a href="#datajoint.heading.Attribute.todict" class="md-nav__link">
-    todict()
+    todict
   </a>
   
 </li>
@@ -1852,35 +1866,35 @@
         
           <li class="md-nav__item">
   <a href="#datajoint.heading.Heading.as_sql" class="md-nav__link">
-    as_sql()
+    as_sql
   </a>
   
 </li>
         
           <li class="md-nav__item">
   <a href="#datajoint.heading.Heading.select" class="md-nav__link">
-    select()
+    select
   </a>
   
 </li>
         
           <li class="md-nav__item">
   <a href="#datajoint.heading.Heading.join" class="md-nav__link">
-    join()
+    join
   </a>
   
 </li>
         
           <li class="md-nav__item">
   <a href="#datajoint.heading.Heading.set_primary_key" class="md-nav__link">
-    set_primary_key()
+    set_primary_key
   </a>
   
 </li>
         
           <li class="md-nav__item">
   <a href="#datajoint.heading.Heading.make_subquery_heading" class="md-nav__link">
-    make_subquery_heading()
+    make_subquery_heading
   </a>
   
 </li>
@@ -2086,10 +2100,11 @@
 <div class="doc doc-object doc-module">
 
 
-<a id="datajoint.heading"></a>
-  <div class="doc doc-contents first">
 
-  
+<a id="datajoint.heading"></a>
+    <div class="doc doc-contents first">
+
+
 
   <div class="doc doc-children">
 
@@ -2116,23 +2131,22 @@
 
 
 <h2 id="datajoint.heading.Attribute" class="doc doc-heading">
-          <code>Attribute</code>
+            <code>Attribute</code>
 
 
 <a href="#datajoint.heading.Attribute" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-          <p class="doc doc-class-bases">
-            Bases: <code><span title="collections.namedtuple">namedtuple</span>(&#39;_Attribute&#39;, <span title="datajoint.heading.default_attribute_properties">default_attribute_properties</span>)</code></p>
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="collections.namedtuple">namedtuple</span>(&#39;_Attribute&#39;, <span title="datajoint.heading.default_attribute_properties">default_attribute_properties</span>)</code></p>
 
-  
-      <p>Properties of a table column (attribute)</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/heading.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">46</span>
-<span class="normal">47</span>
+        <p>Properties of a table column (attribute)</p>
+
+              <details class="quote">
+                <summary>Source code in <code>datajoint/heading.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">47</span>
 <span class="normal">48</span>
 <span class="normal">49</span>
 <span class="normal">50</span>
@@ -2168,7 +2182,8 @@
 <span class="normal">80</span>
 <span class="normal">81</span>
 <span class="normal">82</span>
-<span class="normal">83</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Attribute</span><span class="p">(</span><span class="n">namedtuple</span><span class="p">(</span><span class="s2">&quot;_Attribute&quot;</span><span class="p">,</span> <span class="n">default_attribute_properties</span><span class="p">)):</span>
+<span class="normal">83</span>
+<span class="normal">84</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Attribute</span><span class="p">(</span><span class="n">namedtuple</span><span class="p">(</span><span class="s2">&quot;_Attribute&quot;</span><span class="p">,</span> <span class="n">default_attribute_properties</span><span class="p">)):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Properties of a table column (attribute)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -2207,12 +2222,11 @@
         <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">attribute_expression</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;`&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">attribute_expression</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&quot;`&quot;</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
 
-  
+
 
   <div class="doc doc-children">
-
 
 
 
@@ -2223,27 +2237,26 @@
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.heading.Attribute.todict" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">todict</span><span class="p">()</span></code>
+            <code class="highlight language-python"><span class="n">todict</span><span class="p">()</span></code>
 
 <a href="#datajoint.heading.Attribute.todict" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>Convert namedtuple to dict.</p>
+    <div class="doc doc-contents ">
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/heading.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">51</span>
-<span class="normal">52</span>
-<span class="normal">53</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">todict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <p>Convert namedtuple to dict.</p>
+
+            <details class="quote">
+              <summary>Source code in <code>datajoint/heading.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">todict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert namedtuple to dict.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="nb">dict</span><span class="p">((</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_fields</span><span class="p">))</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
 
@@ -2257,8 +2270,8 @@
 
 
 <h3 id="datajoint.heading.Attribute.sql_type" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">sql_type</span></code>
-  
+            <code class="highlight language-python"><span class="n">sql_type</span></code>
+
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
@@ -2266,33 +2279,32 @@
 <a href="#datajoint.heading.Attribute.sql_type" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      
+    <div class="doc doc-contents ">
+
+        
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>datatype (as string) in database. In most cases, it is the same as self.type</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
-  </div>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>datatype (as string) in database. In most cases, it is the same as self.type</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+    </div>
 
 </div>
 
@@ -2306,8 +2318,8 @@
 
 
 <h3 id="datajoint.heading.Attribute.sql_comment" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">sql_comment</span></code>
-  
+            <code class="highlight language-python"><span class="n">sql_comment</span></code>
+
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
@@ -2315,33 +2327,32 @@
 <a href="#datajoint.heading.Attribute.sql_comment" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      
+    <div class="doc doc-contents ">
+
+        
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>full comment for the SQL declaration. Includes custom type specification</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
-  </div>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>full comment for the SQL declaration. Includes custom type specification</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+    </div>
 
 </div>
 
@@ -2355,8 +2366,8 @@
 
 
 <h3 id="datajoint.heading.Attribute.sql" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">sql</span></code>
-  
+            <code class="highlight language-python"><span class="n">sql</span></code>
+
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
@@ -2364,35 +2375,34 @@
 <a href="#datajoint.heading.Attribute.sql" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>Convert primary key attribute tuple into its SQL CREATE TABLE clause.
+    <div class="doc doc-contents ">
+
+        <p>Convert primary key attribute tuple into its SQL CREATE TABLE clause.
 Default values are not reflected.
 This is used for declaring foreign keys in referencing tables</p>
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>SQL code for attribute declaration</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
-  </div>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>SQL code for attribute declaration</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+    </div>
 
 </div>
 
@@ -2401,7 +2411,7 @@ This is used for declaring foreign keys in referencing tables</p>
 
   </div>
 
-  </div>
+    </div>
 
 </div>
 
@@ -2415,23 +2425,22 @@ This is used for declaring foreign keys in referencing tables</p>
 
 
 <h2 id="datajoint.heading.Heading" class="doc doc-heading">
-          <code>Heading</code>
+            <code>Heading</code>
 
 
 <a href="#datajoint.heading.Heading" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
+    <div class="doc doc-contents ">
 
-  
-      <p>Local class for table headings.
+
+        <p>Local class for table headings.
 Heading contains the property attributes, which is an dict in which the keys are
 the attribute names and the values are Attributes.</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/heading.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 86</span>
-<span class="normal"> 87</span>
+              <details class="quote">
+                <summary>Source code in <code>datajoint/heading.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 87</span>
 <span class="normal"> 88</span>
 <span class="normal"> 89</span>
 <span class="normal"> 90</span>
@@ -2870,7 +2879,13 @@ the attribute names and the values are Attributes.</p>
 <span class="normal">523</span>
 <span class="normal">524</span>
 <span class="normal">525</span>
-<span class="normal">526</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Heading</span><span class="p">:</span>
+<span class="normal">526</span>
+<span class="normal">527</span>
+<span class="normal">528</span>
+<span class="normal">529</span>
+<span class="normal">530</span>
+<span class="normal">531</span>
+<span class="normal">532</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Heading</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Local class for table headings.</span>
 <span class="sd">    Heading contains the property attributes, which is an dict in which the keys are</span>
@@ -2907,7 +2922,7 @@ the attribute names and the values are Attributes.</p>
     <span class="k">def</span> <span class="nf">attributes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_attributes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_init_from_database</span><span class="p">()</span>  <span class="c1"># lazy loading from database</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_attributes</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_attributes</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">v</span><span class="o">.</span><span class="n">is_hidden</span><span class="p">}</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">names</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -2980,10 +2995,12 @@ the attribute names and the values are Attributes.</p>
 <span class="sd">        represent heading as the SQL SELECT clause.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
-            <span class="s2">&quot;`</span><span class="si">%s</span><span class="s2">`&quot;</span> <span class="o">%</span> <span class="n">name</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">attribute_expression</span> <span class="ow">is</span> <span class="kc">None</span>
-            <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">attribute_expression</span>
-            <span class="o">+</span> <span class="p">(</span><span class="s2">&quot; as `</span><span class="si">%s</span><span class="s2">`&quot;</span> <span class="o">%</span> <span class="n">name</span> <span class="k">if</span> <span class="n">include_aliases</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="p">(</span>
+                <span class="s2">&quot;`</span><span class="si">%s</span><span class="s2">`&quot;</span> <span class="o">%</span> <span class="n">name</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">attribute_expression</span> <span class="ow">is</span> <span class="kc">None</span>
+                <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">attribute_expression</span>
+                <span class="o">+</span> <span class="p">(</span><span class="s2">&quot; as `</span><span class="si">%s</span><span class="s2">`&quot;</span> <span class="o">%</span> <span class="n">name</span> <span class="k">if</span> <span class="n">include_aliases</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="p">)</span>
             <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">fields</span>
         <span class="p">)</span>
 
@@ -3085,6 +3102,7 @@ the attribute names and the values are Attributes.</p>
                 <span class="n">store</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                 <span class="n">is_external</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                 <span class="n">attribute_expression</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">is_hidden</span><span class="o">=</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">),</span>
             <span class="p">)</span>
 
             <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">TYPE_PATTERN</span><span class="p">[</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">])</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;INTEGER&quot;</span><span class="p">,</span> <span class="s2">&quot;FLOAT&quot;</span><span class="p">)):</span>
@@ -3158,9 +3176,11 @@ the attribute names and the values are Attributes.</p>
                     <span class="n">is_blob</span><span class="o">=</span><span class="n">category</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;INTERNAL_BLOB&quot;</span><span class="p">,</span> <span class="s2">&quot;EXTERNAL_BLOB&quot;</span><span class="p">),</span>
                     <span class="n">uuid</span><span class="o">=</span><span class="n">category</span> <span class="o">==</span> <span class="s2">&quot;UUID&quot;</span><span class="p">,</span>
                     <span class="n">is_external</span><span class="o">=</span><span class="n">category</span> <span class="ow">in</span> <span class="n">EXTERNAL_TYPES</span><span class="p">,</span>
-                    <span class="n">store</span><span class="o">=</span><span class="n">attr</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;@&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
-                    <span class="k">if</span> <span class="n">category</span> <span class="ow">in</span> <span class="n">EXTERNAL_TYPES</span>
-                    <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="n">store</span><span class="o">=</span><span class="p">(</span>
+                        <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;@&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+                        <span class="k">if</span> <span class="n">category</span> <span class="ow">in</span> <span class="n">EXTERNAL_TYPES</span>
+                        <span class="k">else</span> <span class="kc">None</span>
+                    <span class="p">),</span>
                 <span class="p">)</span>
 
             <span class="k">if</span> <span class="n">attr</span><span class="p">[</span><span class="s2">&quot;in_key&quot;</span><span class="p">]</span> <span class="ow">and</span> <span class="nb">any</span><span class="p">(</span>
@@ -3312,9 +3332,9 @@ the attribute names and the values are Attributes.</p>
             <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
         <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
 
-  
+
 
   <div class="doc doc-children">
 
@@ -3329,8 +3349,8 @@ the attribute names and the values are Attributes.</p>
 
 
 <h3 id="datajoint.heading.Heading.as_dtype" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">as_dtype</span></code>
-  
+            <code class="highlight language-python"><span class="n">as_dtype</span></code>
+
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
@@ -3338,13 +3358,12 @@ the attribute names and the values are Attributes.</p>
 <a href="#datajoint.heading.Heading.as_dtype" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>represent the heading as a numpy dtype</p>
-  </div>
+    <div class="doc doc-contents ">
+
+        <p>represent the heading as a numpy dtype</p>
+    </div>
 
 </div>
-
 
 
 
@@ -3354,21 +3373,19 @@ the attribute names and the values are Attributes.</p>
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.heading.Heading.as_sql" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">as_sql</span><span class="p">(</span><span class="n">fields</span><span class="p">,</span> <span class="n">include_aliases</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">as_sql</span><span class="p">(</span><span class="n">fields</span><span class="p">,</span> <span class="n">include_aliases</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
 
 <a href="#datajoint.heading.Heading.as_sql" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>represent heading as the SQL SELECT clause.</p>
+    <div class="doc doc-contents ">
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/heading.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">191</span>
-<span class="normal">192</span>
+        <p>represent heading as the SQL SELECT clause.</p>
+
+            <details class="quote">
+              <summary>Source code in <code>datajoint/heading.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">192</span>
 <span class="normal">193</span>
 <span class="normal">194</span>
 <span class="normal">195</span>
@@ -3377,23 +3394,27 @@ the attribute names and the values are Attributes.</p>
 <span class="normal">198</span>
 <span class="normal">199</span>
 <span class="normal">200</span>
-<span class="normal">201</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">as_sql</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">include_aliases</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">as_sql</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">include_aliases</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    represent heading as the SQL SELECT clause.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
-        <span class="s2">&quot;`</span><span class="si">%s</span><span class="s2">`&quot;</span> <span class="o">%</span> <span class="n">name</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">attribute_expression</span> <span class="ow">is</span> <span class="kc">None</span>
-        <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">attribute_expression</span>
-        <span class="o">+</span> <span class="p">(</span><span class="s2">&quot; as `</span><span class="si">%s</span><span class="s2">`&quot;</span> <span class="o">%</span> <span class="n">name</span> <span class="k">if</span> <span class="n">include_aliases</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="p">(</span>
+            <span class="s2">&quot;`</span><span class="si">%s</span><span class="s2">`&quot;</span> <span class="o">%</span> <span class="n">name</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">attribute_expression</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">attribute_expression</span>
+            <span class="o">+</span> <span class="p">(</span><span class="s2">&quot; as `</span><span class="si">%s</span><span class="s2">`&quot;</span> <span class="o">%</span> <span class="n">name</span> <span class="k">if</span> <span class="n">include_aliases</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
         <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">fields</span>
     <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -3403,82 +3424,74 @@ the attribute names and the values are Attributes.</p>
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.heading.Heading.select" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">select</span><span class="p">(</span><span class="n">select_list</span><span class="p">,</span> <span class="n">rename_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">compute_map</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">select</span><span class="p">(</span><span class="n">select_list</span><span class="p">,</span> <span class="n">rename_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">compute_map</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 <a href="#datajoint.heading.Heading.select" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>derive a new heading by selecting, renaming, or computing attributes.
+    <div class="doc doc-contents ">
+
+        <p>derive a new heading by selecting, renaming, or computing attributes.
 In relational algebra these operators are known as project, rename, and extend.</p>
 
 
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>select_list</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>the full list of existing attributes to include</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>rename_map</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>dictionary of renamed attributes: keys=new names, values=old names</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>compute_map</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>a direction of computed attributes This low-level method performs no error checking.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-  <p><strong>Parameters:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Type</th>
-        <th>Description</th>
-        <th>Default</th>
-      </tr>
-    </thead>
-    <tbody>
-        <tr>
-          <td><code>select_list</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>the full list of existing attributes to include</p>
-            </div>
-          </td>
-          <td>
-              <em>required</em>
-          </td>
-        </tr>
-        <tr>
-          <td><code>rename_map</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>dictionary of renamed attributes: keys=new names, values=old names</p>
-            </div>
-          </td>
-          <td>
-                <code>None</code>
-          </td>
-        </tr>
-        <tr>
-          <td><code>compute_map</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>a direction of computed attributes This low-level method performs no error checking.</p>
-            </div>
-          </td>
-          <td>
-                <code>None</code>
-          </td>
-        </tr>
-    </tbody>
-  </table>
-
-          <details class="quote">
-            <summary>Source code in <code>datajoint/heading.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">442</span>
-<span class="normal">443</span>
-<span class="normal">444</span>
-<span class="normal">445</span>
-<span class="normal">446</span>
-<span class="normal">447</span>
-<span class="normal">448</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/heading.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">448</span>
 <span class="normal">449</span>
 <span class="normal">450</span>
 <span class="normal">451</span>
@@ -3503,7 +3516,13 @@ In relational algebra these operators are known as project, rename, and extend.<
 <span class="normal">470</span>
 <span class="normal">471</span>
 <span class="normal">472</span>
-<span class="normal">473</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">select</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">select_list</span><span class="p">,</span> <span class="n">rename_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">compute_map</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="normal">473</span>
+<span class="normal">474</span>
+<span class="normal">475</span>
+<span class="normal">476</span>
+<span class="normal">477</span>
+<span class="normal">478</span>
+<span class="normal">479</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">select</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">select_list</span><span class="p">,</span> <span class="n">rename_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">compute_map</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    derive a new heading by selecting, renaming, or computing attributes.</span>
 <span class="sd">    In relational algebra these operators are known as project, rename, and extend.</span>
@@ -3536,11 +3555,10 @@ In relational algebra these operators are known as project, rename, and extend.<
     <span class="p">)</span>
     <span class="k">return</span> <span class="n">Heading</span><span class="p">(</span><span class="n">chain</span><span class="p">(</span><span class="n">copy_attrs</span><span class="p">,</span> <span class="n">compute_attrs</span><span class="p">))</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -3550,27 +3568,20 @@ In relational algebra these operators are known as project, rename, and extend.<
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.heading.Heading.join" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">join</span><span class="p">(</span><span class="n">other</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">join</span><span class="p">(</span><span class="n">other</span><span class="p">)</span></code>
 
 <a href="#datajoint.heading.Heading.join" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>Join two headings into a new one.
+    <div class="doc doc-contents ">
+
+        <p>Join two headings into a new one.
 It assumes that self and other are headings that share no common dependent attributes.</p>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/heading.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">475</span>
-<span class="normal">476</span>
-<span class="normal">477</span>
-<span class="normal">478</span>
-<span class="normal">479</span>
-<span class="normal">480</span>
-<span class="normal">481</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/heading.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">481</span>
 <span class="normal">482</span>
 <span class="normal">483</span>
 <span class="normal">484</span>
@@ -3586,7 +3597,13 @@ It assumes that self and other are headings that share no common dependent attri
 <span class="normal">494</span>
 <span class="normal">495</span>
 <span class="normal">496</span>
-<span class="normal">497</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">join</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+<span class="normal">497</span>
+<span class="normal">498</span>
+<span class="normal">499</span>
+<span class="normal">500</span>
+<span class="normal">501</span>
+<span class="normal">502</span>
+<span class="normal">503</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">join</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Join two headings into a new one.</span>
 <span class="sd">    It assumes that self and other are headings that share no common dependent attributes.</span>
@@ -3610,11 +3627,10 @@ It assumes that self and other are headings that share no common dependent attri
         <span class="p">]</span>
     <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -3624,27 +3640,20 @@ It assumes that self and other are headings that share no common dependent attri
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.heading.Heading.set_primary_key" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">set_primary_key</span><span class="p">(</span><span class="n">primary_key</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">set_primary_key</span><span class="p">(</span><span class="n">primary_key</span><span class="p">)</span></code>
 
 <a href="#datajoint.heading.Heading.set_primary_key" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>Create a new heading with the specified primary key.
+    <div class="doc doc-contents ">
+
+        <p>Create a new heading with the specified primary key.
 This low-level method performs no error checking.</p>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/heading.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">499</span>
-<span class="normal">500</span>
-<span class="normal">501</span>
-<span class="normal">502</span>
-<span class="normal">503</span>
-<span class="normal">504</span>
-<span class="normal">505</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/heading.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">505</span>
 <span class="normal">506</span>
 <span class="normal">507</span>
 <span class="normal">508</span>
@@ -3655,7 +3664,13 @@ This low-level method performs no error checking.</p>
 <span class="normal">513</span>
 <span class="normal">514</span>
 <span class="normal">515</span>
-<span class="normal">516</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">set_primary_key</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">primary_key</span><span class="p">):</span>
+<span class="normal">516</span>
+<span class="normal">517</span>
+<span class="normal">518</span>
+<span class="normal">519</span>
+<span class="normal">520</span>
+<span class="normal">521</span>
+<span class="normal">522</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">set_primary_key</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">primary_key</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Create a new heading with the specified primary key.</span>
 <span class="sd">    This low-level method performs no error checking.</span>
@@ -3674,11 +3689,10 @@ This low-level method performs no error checking.</p>
         <span class="p">)</span>
     <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -3688,29 +3702,28 @@ This low-level method performs no error checking.</p>
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.heading.Heading.make_subquery_heading" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">make_subquery_heading</span><span class="p">()</span></code>
+            <code class="highlight language-python"><span class="n">make_subquery_heading</span><span class="p">()</span></code>
 
 <a href="#datajoint.heading.Heading.make_subquery_heading" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>Create a new heading with removed attribute sql_expressions.
+    <div class="doc doc-contents ">
+
+        <p>Create a new heading with removed attribute sql_expressions.
 Used by subqueries, which resolve the sql_expressions.</p>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/heading.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">518</span>
-<span class="normal">519</span>
-<span class="normal">520</span>
-<span class="normal">521</span>
-<span class="normal">522</span>
-<span class="normal">523</span>
-<span class="normal">524</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/heading.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">524</span>
 <span class="normal">525</span>
-<span class="normal">526</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">make_subquery_heading</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="normal">526</span>
+<span class="normal">527</span>
+<span class="normal">528</span>
+<span class="normal">529</span>
+<span class="normal">530</span>
+<span class="normal">531</span>
+<span class="normal">532</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">make_subquery_heading</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Create a new heading with removed attribute sql_expressions.</span>
 <span class="sd">    Used by subqueries, which resolve the sql_expressions.</span>
@@ -3720,8 +3733,8 @@ Used by subqueries, which resolve the sql_expressions.</p>
         <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
     <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
 
@@ -3730,7 +3743,7 @@ Used by subqueries, which resolve the sql_expressions.</p>
 
   </div>
 
-  </div>
+    </div>
 
 </div>
 
@@ -3739,7 +3752,7 @@ Used by subqueries, which resolve the sql_expressions.</p>
 
   </div>
 
-  </div>
+    </div>
 
 </div>
 
@@ -3860,10 +3873,10 @@ Used by subqueries, which resolve the sql_expressions.</p>
       <div class="md-dialog__inner md-typeset"></div>
     </div>
     
-    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.74e28a9f.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.220ee61c.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.b425cdc4.min.js"></script>
       
     
   </body>

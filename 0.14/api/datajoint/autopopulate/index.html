@@ -15,7 +15,7 @@
         <link rel="next" href="../blob/">
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.19">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.1.17">
     
     
       
@@ -23,7 +23,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.eebd395e.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.26e3688c.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ecc896b0.min.css">
@@ -1409,7 +1409,7 @@
   
     <li class="md-nav__item">
       <a href="../../../tutorials/json/" class="md-nav__link">
-        Using the json type
+        Using the type
       </a>
     </li>
   
@@ -1621,7 +1621,7 @@
       
         <li class="md-nav__item">
   <a href="#datajoint.autopopulate" class="md-nav__link">
-    datajoint.autopopulate
+    autopopulate
   </a>
   
 </li>
@@ -1643,7 +1643,7 @@
         
           <li class="md-nav__item">
   <a href="#datajoint.autopopulate.AutoPopulate.make" class="md-nav__link">
-    make()
+    make
   </a>
   
 </li>
@@ -1657,14 +1657,14 @@
         
           <li class="md-nav__item">
   <a href="#datajoint.autopopulate.AutoPopulate.populate" class="md-nav__link">
-    populate()
+    populate
   </a>
   
 </li>
         
           <li class="md-nav__item">
   <a href="#datajoint.autopopulate.AutoPopulate.progress" class="md-nav__link">
-    progress()
+    progress
   </a>
   
 </li>
@@ -1691,6 +1691,20 @@
     <li class="md-nav__item">
       <a href="../blob/" class="md-nav__link">
         blob.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        cli.py
       </a>
     </li>
   
@@ -2038,12 +2052,13 @@
 <div class="doc doc-object doc-module">
 
 
-<a id="datajoint.autopopulate"></a>
-  <div class="doc doc-contents first">
-  
-      <p>This module defines class dj.AutoPopulate</p>
 
-  
+<a id="datajoint.autopopulate"></a>
+    <div class="doc doc-contents first">
+
+        <p>This module defines class dj.AutoPopulate</p>
+
+
 
   <div class="doc doc-children">
 
@@ -2078,23 +2093,22 @@
 
 
 <h2 id="datajoint.autopopulate.AutoPopulate" class="doc doc-heading">
-          <code>AutoPopulate</code>
+            <code>AutoPopulate</code>
 
 
 <a href="#datajoint.autopopulate.AutoPopulate" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
+    <div class="doc doc-contents ">
 
-  
-      <p>AutoPopulate is a mixin class that adds the method populate() to a Table class.
+
+        <p>AutoPopulate is a mixin class that adds the method populate() to a Table class.
 Auto-populated tables must inherit from both Table and AutoPopulate,
 must define the property <code>key_source</code>, and must define the callback method <code>make</code>.</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/autopopulate.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 45</span>
-<span class="normal"> 46</span>
+              <details class="quote">
+                <summary>Source code in <code>datajoint/autopopulate.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 46</span>
 <span class="normal"> 47</span>
 <span class="normal"> 48</span>
 <span class="normal"> 49</span>
@@ -2397,7 +2411,36 @@ must define the property <code>key_source</code>, and must define the callback m
 <span class="normal">346</span>
 <span class="normal">347</span>
 <span class="normal">348</span>
-<span class="normal">349</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">AutoPopulate</span><span class="p">:</span>
+<span class="normal">349</span>
+<span class="normal">350</span>
+<span class="normal">351</span>
+<span class="normal">352</span>
+<span class="normal">353</span>
+<span class="normal">354</span>
+<span class="normal">355</span>
+<span class="normal">356</span>
+<span class="normal">357</span>
+<span class="normal">358</span>
+<span class="normal">359</span>
+<span class="normal">360</span>
+<span class="normal">361</span>
+<span class="normal">362</span>
+<span class="normal">363</span>
+<span class="normal">364</span>
+<span class="normal">365</span>
+<span class="normal">366</span>
+<span class="normal">367</span>
+<span class="normal">368</span>
+<span class="normal">369</span>
+<span class="normal">370</span>
+<span class="normal">371</span>
+<span class="normal">372</span>
+<span class="normal">373</span>
+<span class="normal">374</span>
+<span class="normal">375</span>
+<span class="normal">376</span>
+<span class="normal">377</span>
+<span class="normal">378</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">AutoPopulate</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    AutoPopulate is a mixin class that adds the method populate() to a Table class.</span>
 <span class="sd">    Auto-populated tables must inherit from both Table and AutoPopulate,</span>
@@ -2507,6 +2550,7 @@ must define the property <code>key_source</code>, and must define the callback m
     <span class="k">def</span> <span class="nf">populate</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="o">*</span><span class="n">restrictions</span><span class="p">,</span>
+        <span class="n">keys</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">suppress_errors</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">return_exception_objects</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="n">reserve_jobs</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
@@ -2523,6 +2567,8 @@ must define the property <code>key_source</code>, and must define the callback m
 
 <span class="sd">        :param restrictions: a list of restrictions each restrict</span>
 <span class="sd">            (table.key_source - target.proj())</span>
+<span class="sd">        :param keys: The list of keys (dicts) to send to self.make().</span>
+<span class="sd">            If None (default), then use self.key_source to query they keys.</span>
 <span class="sd">        :param suppress_errors: if True, do not terminate execution.</span>
 <span class="sd">        :param return_exception_objects: return error objects instead of just error messages</span>
 <span class="sd">        :param reserve_jobs: if True, reserve jobs to populate in asynchronous fashion</span>
@@ -2535,6 +2581,9 @@ must define the property <code>key_source</code>, and must define the callback m
 <span class="sd">            to be passed down to each ``make()`` call. Computation arguments should be</span>
 <span class="sd">            specified within the pipeline e.g. using a `dj.Lookup` table.</span>
 <span class="sd">        :type make_kwargs: dict, optional</span>
+<span class="sd">        :return: a dict with two keys</span>
+<span class="sd">            &quot;success_count&quot;: the count of successful ``make()`` calls in this ``populate()`` call</span>
+<span class="sd">            &quot;error_list&quot;: the error list that is filled if `suppress_errors` is True</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">in_transaction</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">&quot;Populate cannot be called during a transaction.&quot;</span><span class="p">)</span>
@@ -2557,14 +2606,17 @@ must define the property <code>key_source</code>, and must define the callback m
 
             <span class="n">old_handler</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGTERM</span><span class="p">,</span> <span class="n">handler</span><span class="p">)</span>
 
-        <span class="n">keys</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_jobs_to_do</span><span class="p">(</span><span class="n">restrictions</span><span class="p">)</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">)</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s2">&quot;KEY&quot;</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="n">limit</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">keys</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">keys</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_jobs_to_do</span><span class="p">(</span><span class="n">restrictions</span><span class="p">)</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">)</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span>
+                <span class="s2">&quot;KEY&quot;</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="n">limit</span>
+            <span class="p">)</span>
 
-        <span class="c1"># exclude &quot;error&quot; or &quot;ignore&quot; jobs</span>
+        <span class="c1"># exclude &quot;error&quot;, &quot;ignore&quot; or &quot;reserved&quot; jobs</span>
         <span class="k">if</span> <span class="n">reserve_jobs</span><span class="p">:</span>
             <span class="n">exclude_key_hashes</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="n">jobs</span>
                 <span class="o">&amp;</span> <span class="p">{</span><span class="s2">&quot;table_name&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">table_name</span><span class="p">}</span>
-                <span class="o">&amp;</span> <span class="s1">&#39;status in (&quot;error&quot;, &quot;ignore&quot;)&#39;</span>
+                <span class="o">&amp;</span> <span class="s1">&#39;status in (&quot;error&quot;, &quot;ignore&quot;, &quot;reserved&quot;)&#39;</span>
             <span class="p">)</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s2">&quot;key_hash&quot;</span><span class="p">)</span>
             <span class="n">keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">key</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span> <span class="k">if</span> <span class="n">key_hash</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">exclude_key_hashes</span><span class="p">]</span>
 
@@ -2577,49 +2629,62 @@ must define the property <code>key_source</code>, and must define the callback m
 
         <span class="n">keys</span> <span class="o">=</span> <span class="n">keys</span><span class="p">[:</span><span class="n">max_calls</span><span class="p">]</span>
         <span class="n">nkeys</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">nkeys</span><span class="p">:</span>
-            <span class="k">return</span>
-
-        <span class="n">processes</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">_</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="p">(</span><span class="n">processes</span><span class="p">,</span> <span class="n">nkeys</span><span class="p">,</span> <span class="n">mp</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">())</span> <span class="k">if</span> <span class="n">_</span><span class="p">)</span>
 
         <span class="n">error_list</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">populate_kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
-            <span class="n">suppress_errors</span><span class="o">=</span><span class="n">suppress_errors</span><span class="p">,</span>
-            <span class="n">return_exception_objects</span><span class="o">=</span><span class="n">return_exception_objects</span><span class="p">,</span>
-            <span class="n">make_kwargs</span><span class="o">=</span><span class="n">make_kwargs</span><span class="p">,</span>
-        <span class="p">)</span>
+        <span class="n">success_list</span> <span class="o">=</span> <span class="p">[]</span>
 
-        <span class="k">if</span> <span class="n">processes</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">(</span>
-                <span class="n">tqdm</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="n">desc</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span> <span class="k">if</span> <span class="n">display_progress</span> <span class="k">else</span> <span class="n">keys</span>
-            <span class="p">):</span>
-                <span class="n">error</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_populate1</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">jobs</span><span class="p">,</span> <span class="o">**</span><span class="n">populate_kwargs</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">error</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">error_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">error</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># spawn multiple processes</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>  <span class="c1"># disconnect parent process from MySQL server</span>
-            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">_conn</span><span class="o">.</span><span class="n">ctx</span>  <span class="c1"># SSLContext is not pickleable</span>
-            <span class="k">with</span> <span class="n">mp</span><span class="o">.</span><span class="n">Pool</span><span class="p">(</span>
-                <span class="n">processes</span><span class="p">,</span> <span class="n">_initialize_populate</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">jobs</span><span class="p">,</span> <span class="n">populate_kwargs</span><span class="p">)</span>
-            <span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">,</span> <span class="p">(</span>
-                <span class="n">tqdm</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Processes: &quot;</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="n">nkeys</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">display_progress</span>
-                <span class="k">else</span> <span class="n">contextlib</span><span class="o">.</span><span class="n">nullcontext</span><span class="p">()</span>
-            <span class="p">)</span> <span class="k">as</span> <span class="n">progress_bar</span><span class="p">:</span>
-                <span class="k">for</span> <span class="n">error</span> <span class="ow">in</span> <span class="n">pool</span><span class="o">.</span><span class="n">imap</span><span class="p">(</span><span class="n">_call_populate1</span><span class="p">,</span> <span class="n">keys</span><span class="p">,</span> <span class="n">chunksize</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
-                    <span class="k">if</span> <span class="n">error</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                        <span class="n">error_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">error</span><span class="p">)</span>
-                    <span class="k">if</span> <span class="n">display_progress</span><span class="p">:</span>
-                        <span class="n">progress_bar</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>  <span class="c1"># reconnect parent process to MySQL server</span>
+        <span class="k">if</span> <span class="n">nkeys</span><span class="p">:</span>
+            <span class="n">processes</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">_</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="p">(</span><span class="n">processes</span><span class="p">,</span> <span class="n">nkeys</span><span class="p">,</span> <span class="n">mp</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">())</span> <span class="k">if</span> <span class="n">_</span><span class="p">)</span>
+
+            <span class="n">populate_kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                <span class="n">suppress_errors</span><span class="o">=</span><span class="n">suppress_errors</span><span class="p">,</span>
+                <span class="n">return_exception_objects</span><span class="o">=</span><span class="n">return_exception_objects</span><span class="p">,</span>
+                <span class="n">make_kwargs</span><span class="o">=</span><span class="n">make_kwargs</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">processes</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">(</span>
+                    <span class="n">tqdm</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="n">desc</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">display_progress</span>
+                    <span class="k">else</span> <span class="n">keys</span>
+                <span class="p">):</span>
+                    <span class="n">status</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_populate1</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">jobs</span><span class="p">,</span> <span class="o">**</span><span class="n">populate_kwargs</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">status</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+                        <span class="n">success_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+                    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">status</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+                        <span class="n">error_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">assert</span> <span class="n">status</span> <span class="ow">is</span> <span class="kc">False</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># spawn multiple processes</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>  <span class="c1"># disconnect parent process from MySQL server</span>
+                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">_conn</span><span class="o">.</span><span class="n">ctx</span>  <span class="c1"># SSLContext is not pickleable</span>
+                <span class="k">with</span> <span class="n">mp</span><span class="o">.</span><span class="n">Pool</span><span class="p">(</span>
+                    <span class="n">processes</span><span class="p">,</span> <span class="n">_initialize_populate</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">jobs</span><span class="p">,</span> <span class="n">populate_kwargs</span><span class="p">)</span>
+                <span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">,</span> <span class="p">(</span>
+                    <span class="n">tqdm</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Processes: &quot;</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="n">nkeys</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">display_progress</span>
+                    <span class="k">else</span> <span class="n">contextlib</span><span class="o">.</span><span class="n">nullcontext</span><span class="p">()</span>
+                <span class="p">)</span> <span class="k">as</span> <span class="n">progress_bar</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">status</span> <span class="ow">in</span> <span class="n">pool</span><span class="o">.</span><span class="n">imap</span><span class="p">(</span><span class="n">_call_populate1</span><span class="p">,</span> <span class="n">keys</span><span class="p">,</span> <span class="n">chunksize</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+                        <span class="k">if</span> <span class="n">status</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+                            <span class="n">success_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+                        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">status</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+                            <span class="n">error_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="k">assert</span> <span class="n">status</span> <span class="ow">is</span> <span class="kc">False</span>
+                        <span class="k">if</span> <span class="n">display_progress</span><span class="p">:</span>
+                            <span class="n">progress_bar</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>  <span class="c1"># reconnect parent process to MySQL server</span>
 
         <span class="c1"># restore original signal handler:</span>
         <span class="k">if</span> <span class="n">reserve_jobs</span><span class="p">:</span>
             <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGTERM</span><span class="p">,</span> <span class="n">old_handler</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">suppress_errors</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">error_list</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;success_count&quot;</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="n">success_list</span><span class="p">),</span>
+            <span class="s2">&quot;error_list&quot;</span><span class="p">:</span> <span class="n">error_list</span><span class="p">,</span>
+        <span class="p">}</span>
 
     <span class="k">def</span> <span class="nf">_populate1</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">jobs</span><span class="p">,</span> <span class="n">suppress_errors</span><span class="p">,</span> <span class="n">return_exception_objects</span><span class="p">,</span> <span class="n">make_kwargs</span><span class="o">=</span><span class="kc">None</span>
@@ -2630,55 +2695,61 @@ must define the property <code>key_source</code>, and must define the callback m
 <span class="sd">        :param key: dict specifying job to populate</span>
 <span class="sd">        :param suppress_errors: bool if errors should be suppressed and returned</span>
 <span class="sd">        :param return_exception_objects: if True, errors must be returned as objects</span>
-<span class="sd">        :return: (key, error) when suppress_errors=True, otherwise None</span>
+<span class="sd">        :return: (key, error) when suppress_errors=True,</span>
+<span class="sd">            True if successfully invoke one `make()` call, otherwise False</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># use the legacy `_make_tuples` callback.</span>
         <span class="n">make</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_tuples</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_make_tuples&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">make</span>
 
-        <span class="k">if</span> <span class="n">jobs</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">jobs</span><span class="o">.</span><span class="n">reserve</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">table_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_job_key</span><span class="p">(</span><span class="n">key</span><span class="p">)):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">start_transaction</span><span class="p">()</span>
-            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">:</span>  <span class="c1"># already populated</span>
+        <span class="k">if</span> <span class="n">jobs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">jobs</span><span class="o">.</span><span class="n">reserve</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">table_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_job_key</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">start_transaction</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">:</span>  <span class="c1"># already populated</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">cancel_transaction</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">jobs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">jobs</span><span class="o">.</span><span class="n">complete</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">table_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_job_key</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Making </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">full_table_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="n">_allow_insert</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">make</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">key</span><span class="p">),</span> <span class="o">**</span><span class="p">(</span><span class="n">make_kwargs</span> <span class="ow">or</span> <span class="p">{}))</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">KeyboardInterrupt</span><span class="p">,</span> <span class="ne">SystemExit</span><span class="p">,</span> <span class="ne">Exception</span><span class="p">)</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">cancel_transaction</span><span class="p">()</span>
-                <span class="k">if</span> <span class="n">jobs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">jobs</span><span class="o">.</span><span class="n">complete</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">table_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_job_key</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
+            <span class="k">except</span> <span class="n">LostConnectionError</span><span class="p">:</span>
+                <span class="k">pass</span>
+            <span class="n">error_message</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{exception}{msg}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">exception</span><span class="o">=</span><span class="n">error</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+                <span class="n">msg</span><span class="o">=</span><span class="s2">&quot;: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">error</span><span class="p">)</span> <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">error</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Error making </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">full_table_name</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">error_message</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">jobs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># show error name and error message (if any)</span>
+                <span class="n">jobs</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">table_name</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_job_key</span><span class="p">(</span><span class="n">key</span><span class="p">),</span>
+                    <span class="n">error_message</span><span class="o">=</span><span class="n">error_message</span><span class="p">,</span>
+                    <span class="n">error_stack</span><span class="o">=</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">(),</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">suppress_errors</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">error</span><span class="p">,</span> <span class="ne">SystemExit</span><span class="p">):</span>
+                <span class="k">raise</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Making </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">full_table_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="n">_allow_insert</span> <span class="o">=</span> <span class="kc">True</span>
-                <span class="k">try</span><span class="p">:</span>
-                    <span class="n">make</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">key</span><span class="p">),</span> <span class="o">**</span><span class="p">(</span><span class="n">make_kwargs</span> <span class="ow">or</span> <span class="p">{}))</span>
-                <span class="k">except</span> <span class="p">(</span><span class="ne">KeyboardInterrupt</span><span class="p">,</span> <span class="ne">SystemExit</span><span class="p">,</span> <span class="ne">Exception</span><span class="p">)</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>
-                    <span class="k">try</span><span class="p">:</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">cancel_transaction</span><span class="p">()</span>
-                    <span class="k">except</span> <span class="n">LostConnectionError</span><span class="p">:</span>
-                        <span class="k">pass</span>
-                    <span class="n">error_message</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{exception}{msg}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-                        <span class="n">exception</span><span class="o">=</span><span class="n">error</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
-                        <span class="n">msg</span><span class="o">=</span><span class="s2">&quot;: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">error</span><span class="p">)</span> <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">error</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
-                    <span class="p">)</span>
-                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;Error making </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">full_table_name</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">error_message</span><span class="si">}</span><span class="s2">&quot;</span>
-                    <span class="p">)</span>
-                    <span class="k">if</span> <span class="n">jobs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                        <span class="c1"># show error name and error message (if any)</span>
-                        <span class="n">jobs</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">table_name</span><span class="p">,</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">_job_key</span><span class="p">(</span><span class="n">key</span><span class="p">),</span>
-                            <span class="n">error_message</span><span class="o">=</span><span class="n">error_message</span><span class="p">,</span>
-                            <span class="n">error_stack</span><span class="o">=</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">(),</span>
-                        <span class="p">)</span>
-                    <span class="k">if</span> <span class="ow">not</span> <span class="n">suppress_errors</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">error</span><span class="p">,</span> <span class="ne">SystemExit</span><span class="p">):</span>
-                        <span class="k">raise</span>
-                    <span class="k">else</span><span class="p">:</span>
-                        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">error</span><span class="p">)</span>
-                        <span class="k">return</span> <span class="n">key</span><span class="p">,</span> <span class="n">error</span> <span class="k">if</span> <span class="n">return_exception_objects</span> <span class="k">else</span> <span class="n">error_message</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">commit_transaction</span><span class="p">()</span>
-                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;Success making </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">full_table_name</span><span class="si">}</span><span class="s2">&quot;</span>
-                    <span class="p">)</span>
-                    <span class="k">if</span> <span class="n">jobs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                        <span class="n">jobs</span><span class="o">.</span><span class="n">complete</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">table_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_job_key</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
-                <span class="k">finally</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="n">_allow_insert</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">error</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">key</span><span class="p">,</span> <span class="n">error</span> <span class="k">if</span> <span class="n">return_exception_objects</span> <span class="k">else</span> <span class="n">error_message</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">commit_transaction</span><span class="p">()</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Success making </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">full_table_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">jobs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">jobs</span><span class="o">.</span><span class="n">complete</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">table_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_job_key</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="n">_allow_insert</span> <span class="o">=</span> <span class="kc">False</span>
 
     <span class="k">def</span> <span class="nf">progress</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">restrictions</span><span class="p">,</span> <span class="n">display</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -2703,9 +2774,9 @@ must define the property <code>key_source</code>, and must define the callback m
             <span class="p">)</span>
         <span class="k">return</span> <span class="n">remaining</span><span class="p">,</span> <span class="n">total</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
 
-  
+
 
   <div class="doc doc-children">
 
@@ -2720,8 +2791,8 @@ must define the property <code>key_source</code>, and must define the callback m
 
 
 <h3 id="datajoint.autopopulate.AutoPopulate.key_source" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">key_source</span></code>
-  
+            <code class="highlight language-python"><span class="n">key_source</span></code>
+
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
@@ -2729,36 +2800,34 @@ must define the property <code>key_source</code>, and must define the callback m
 <a href="#datajoint.autopopulate.AutoPopulate.key_source" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      
+    <div class="doc doc-contents ">
+
+        
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>the query expression that yields primary key values to be passed, sequentially, to the <code>make</code> method when populate() is called. The default value is the join of the parent tables references from the primary key. Subclasses may override they key_source to change the scope or the granularity of the make calls.</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
-  </div>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>the query expression that yields primary key values to be passed, sequentially, to the <code>make</code> method when populate() is called. The default value is the join of the parent tables references from the primary key. Subclasses may override they key_source to change the scope or the granularity of the make calls.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+    </div>
 
 </div>
-
 
 
 
@@ -2768,30 +2837,29 @@ must define the property <code>key_source</code>, and must define the callback m
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.autopopulate.AutoPopulate.make" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">make</span><span class="p">(</span><span class="n">key</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">make</span><span class="p">(</span><span class="n">key</span><span class="p">)</span></code>
 
 <a href="#datajoint.autopopulate.AutoPopulate.make" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>Derived classes must implement method <code>make</code> that fetches data from tables
+    <div class="doc doc-contents ">
+
+        <p>Derived classes must implement method <code>make</code> that fetches data from tables
 above them in the dependency hierarchy, restricting by the given key,
 computes secondary attributes, and inserts the new tuples into self.</p>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/autopopulate.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 92</span>
-<span class="normal"> 93</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/autopopulate.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 93</span>
 <span class="normal"> 94</span>
 <span class="normal"> 95</span>
 <span class="normal"> 96</span>
 <span class="normal"> 97</span>
 <span class="normal"> 98</span>
 <span class="normal"> 99</span>
-<span class="normal">100</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">make</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+<span class="normal">100</span>
+<span class="normal">101</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">make</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Derived classes must implement method `make` that fetches data from tables</span>
 <span class="sd">    above them in the dependency hierarchy, restricting by the given key,</span>
@@ -2801,8 +2869,8 @@ computes secondary attributes, and inserts the new tuples into self.</p>
         <span class="s2">&quot;Subclasses of AutoPopulate must implement the method `make`&quot;</span>
     <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
 
@@ -2816,8 +2884,8 @@ computes secondary attributes, and inserts the new tuples into self.</p>
 
 
 <h3 id="datajoint.autopopulate.AutoPopulate.target" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">target</span></code>
-  
+            <code class="highlight language-python"><span class="n">target</span></code>
+
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
@@ -2825,36 +2893,34 @@ computes secondary attributes, and inserts the new tuples into self.</p>
 <a href="#datajoint.autopopulate.AutoPopulate.target" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      
+    <div class="doc doc-contents ">
+
+        
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>table to be populated. In the typical case, dj.AutoPopulate is mixed into a dj.Table class by inheritance and the target is self.</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
-  </div>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>table to be populated. In the typical case, dj.AutoPopulate is mixed into a dj.Table class by inheritance and the target is self.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+    </div>
 
 </div>
-
 
 
 
@@ -2864,169 +2930,201 @@ computes secondary attributes, and inserts the new tuples into self.</p>
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.autopopulate.AutoPopulate.populate" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">populate</span><span class="p">(</span><span class="o">*</span><span class="n">restrictions</span><span class="p">,</span> <span class="n">suppress_errors</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">return_exception_objects</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">reserve_jobs</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="s1">&#39;original&#39;</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">max_calls</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">display_progress</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">processes</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">make_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">populate</span><span class="p">(</span><span class="o">*</span><span class="n">restrictions</span><span class="p">,</span> <span class="n">keys</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">suppress_errors</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">return_exception_objects</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">reserve_jobs</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="s1">&#39;original&#39;</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">max_calls</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">display_progress</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">processes</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">make_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 <a href="#datajoint.autopopulate.AutoPopulate.populate" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p><code>table.populate()</code> calls <code>table.make(key)</code> for every primary key in
+    <div class="doc doc-contents ">
+
+        <p><code>table.populate()</code> calls <code>table.make(key)</code> for every primary key in
 <code>self.key_source</code> for which there is not already a tuple in table.</p>
 
 
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>restrictions</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>a list of restrictions each restrict (table.key_source - target.proj())</p>
+              </div>
+            </td>
+            <td>
+                  <code>()</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>keys</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The list of keys (dicts) to send to self.make(). If None (default), then use self.key_source to query they keys.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>suppress_errors</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>if True, do not terminate execution.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>return_exception_objects</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>return error objects instead of just error messages</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>reserve_jobs</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>if True, reserve jobs to populate in asynchronous fashion</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>order</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>"original"|"reverse"|"random"  - the order of execution</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;original&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>limit</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>if not None, check at most this many keys</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>max_calls</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>if not None, populate at most this many keys</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>display_progress</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>if True, report progress_bar</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>processes</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>number of processes to use. Set to None to use all cores</p>
+              </div>
+            </td>
+            <td>
+                  <code>1</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>make_kwargs</code></td>
+            <td>
+                  <code>dict, optional</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Keyword arguments which do not affect the result of computation to be passed down to each <code>make()</code> call. Computation arguments should be specified within the pipeline e.g. using a <code>dj.Lookup</code> table.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-  <p><strong>Parameters:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Type</th>
-        <th>Description</th>
-        <th>Default</th>
-      </tr>
-    </thead>
-    <tbody>
-        <tr>
-          <td><code>restrictions</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>a list of restrictions each restrict (table.key_source - target.proj())</p>
-            </div>
-          </td>
-          <td>
-                <code>()</code>
-          </td>
-        </tr>
-        <tr>
-          <td><code>suppress_errors</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>if True, do not terminate execution.</p>
-            </div>
-          </td>
-          <td>
-                <code>False</code>
-          </td>
-        </tr>
-        <tr>
-          <td><code>return_exception_objects</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>return error objects instead of just error messages</p>
-            </div>
-          </td>
-          <td>
-                <code>False</code>
-          </td>
-        </tr>
-        <tr>
-          <td><code>reserve_jobs</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>if True, reserve jobs to populate in asynchronous fashion</p>
-            </div>
-          </td>
-          <td>
-                <code>False</code>
-          </td>
-        </tr>
-        <tr>
-          <td><code>order</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>"original"|"reverse"|"random"  - the order of execution</p>
-            </div>
-          </td>
-          <td>
-                <code>&#39;original&#39;</code>
-          </td>
-        </tr>
-        <tr>
-          <td><code>limit</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>if not None, check at most this many keys</p>
-            </div>
-          </td>
-          <td>
-                <code>None</code>
-          </td>
-        </tr>
-        <tr>
-          <td><code>max_calls</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>if not None, populate at most this many keys</p>
-            </div>
-          </td>
-          <td>
-                <code>None</code>
-          </td>
-        </tr>
-        <tr>
-          <td><code>display_progress</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>if True, report progress_bar</p>
-            </div>
-          </td>
-          <td>
-                <code>False</code>
-          </td>
-        </tr>
-        <tr>
-          <td><code>processes</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>number of processes to use. Set to None to use all cores</p>
-            </div>
-          </td>
-          <td>
-                <code>1</code>
-          </td>
-        </tr>
-        <tr>
-          <td><code>make_kwargs</code></td>
-          <td>
-                <code>dict, optional</code>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>Keyword arguments which do not affect the result of computation to be passed down to each <code>make()</code> call. Computation arguments should be specified within the pipeline e.g. using a <code>dj.Lookup</code> table.</p>
-            </div>
-          </td>
-          <td>
-                <code>None</code>
-          </td>
-        </tr>
-    </tbody>
-  </table>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/autopopulate.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">152</span>
-<span class="normal">153</span>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>a dict with two keys "success_count": the count of successful <code>make()</code> calls in this <code>populate()</code> call "error_list": the error list that is filled if <code>suppress_errors</code> is True</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+            <details class="quote">
+              <summary>Source code in <code>datajoint/autopopulate.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">153</span>
 <span class="normal">154</span>
 <span class="normal">155</span>
 <span class="normal">156</span>
@@ -3140,9 +3238,33 @@ computes secondary attributes, and inserts the new tuples into self.</p>
 <span class="normal">264</span>
 <span class="normal">265</span>
 <span class="normal">266</span>
-<span class="normal">267</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">populate</span><span class="p">(</span>
+<span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
+<span class="normal">274</span>
+<span class="normal">275</span>
+<span class="normal">276</span>
+<span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">populate</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="o">*</span><span class="n">restrictions</span><span class="p">,</span>
+    <span class="n">keys</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">suppress_errors</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="n">return_exception_objects</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="n">reserve_jobs</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
@@ -3159,6 +3281,8 @@ computes secondary attributes, and inserts the new tuples into self.</p>
 
 <span class="sd">    :param restrictions: a list of restrictions each restrict</span>
 <span class="sd">        (table.key_source - target.proj())</span>
+<span class="sd">    :param keys: The list of keys (dicts) to send to self.make().</span>
+<span class="sd">        If None (default), then use self.key_source to query they keys.</span>
 <span class="sd">    :param suppress_errors: if True, do not terminate execution.</span>
 <span class="sd">    :param return_exception_objects: return error objects instead of just error messages</span>
 <span class="sd">    :param reserve_jobs: if True, reserve jobs to populate in asynchronous fashion</span>
@@ -3171,6 +3295,9 @@ computes secondary attributes, and inserts the new tuples into self.</p>
 <span class="sd">        to be passed down to each ``make()`` call. Computation arguments should be</span>
 <span class="sd">        specified within the pipeline e.g. using a `dj.Lookup` table.</span>
 <span class="sd">    :type make_kwargs: dict, optional</span>
+<span class="sd">    :return: a dict with two keys</span>
+<span class="sd">        &quot;success_count&quot;: the count of successful ``make()`` calls in this ``populate()`` call</span>
+<span class="sd">        &quot;error_list&quot;: the error list that is filled if `suppress_errors` is True</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">in_transaction</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">DataJointError</span><span class="p">(</span><span class="s2">&quot;Populate cannot be called during a transaction.&quot;</span><span class="p">)</span>
@@ -3193,14 +3320,17 @@ computes secondary attributes, and inserts the new tuples into self.</p>
 
         <span class="n">old_handler</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGTERM</span><span class="p">,</span> <span class="n">handler</span><span class="p">)</span>
 
-    <span class="n">keys</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_jobs_to_do</span><span class="p">(</span><span class="n">restrictions</span><span class="p">)</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">)</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s2">&quot;KEY&quot;</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="n">limit</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">keys</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">keys</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_jobs_to_do</span><span class="p">(</span><span class="n">restrictions</span><span class="p">)</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">)</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span>
+            <span class="s2">&quot;KEY&quot;</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="n">limit</span>
+        <span class="p">)</span>
 
-    <span class="c1"># exclude &quot;error&quot; or &quot;ignore&quot; jobs</span>
+    <span class="c1"># exclude &quot;error&quot;, &quot;ignore&quot; or &quot;reserved&quot; jobs</span>
     <span class="k">if</span> <span class="n">reserve_jobs</span><span class="p">:</span>
         <span class="n">exclude_key_hashes</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">jobs</span>
             <span class="o">&amp;</span> <span class="p">{</span><span class="s2">&quot;table_name&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="o">.</span><span class="n">table_name</span><span class="p">}</span>
-            <span class="o">&amp;</span> <span class="s1">&#39;status in (&quot;error&quot;, &quot;ignore&quot;)&#39;</span>
+            <span class="o">&amp;</span> <span class="s1">&#39;status in (&quot;error&quot;, &quot;ignore&quot;, &quot;reserved&quot;)&#39;</span>
         <span class="p">)</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s2">&quot;key_hash&quot;</span><span class="p">)</span>
         <span class="n">keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">key</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span> <span class="k">if</span> <span class="n">key_hash</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">exclude_key_hashes</span><span class="p">]</span>
 
@@ -3213,55 +3343,67 @@ computes secondary attributes, and inserts the new tuples into self.</p>
 
     <span class="n">keys</span> <span class="o">=</span> <span class="n">keys</span><span class="p">[:</span><span class="n">max_calls</span><span class="p">]</span>
     <span class="n">nkeys</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">nkeys</span><span class="p">:</span>
-        <span class="k">return</span>
-
-    <span class="n">processes</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">_</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="p">(</span><span class="n">processes</span><span class="p">,</span> <span class="n">nkeys</span><span class="p">,</span> <span class="n">mp</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">())</span> <span class="k">if</span> <span class="n">_</span><span class="p">)</span>
 
     <span class="n">error_list</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="n">populate_kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
-        <span class="n">suppress_errors</span><span class="o">=</span><span class="n">suppress_errors</span><span class="p">,</span>
-        <span class="n">return_exception_objects</span><span class="o">=</span><span class="n">return_exception_objects</span><span class="p">,</span>
-        <span class="n">make_kwargs</span><span class="o">=</span><span class="n">make_kwargs</span><span class="p">,</span>
-    <span class="p">)</span>
+    <span class="n">success_list</span> <span class="o">=</span> <span class="p">[]</span>
 
-    <span class="k">if</span> <span class="n">processes</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">(</span>
-            <span class="n">tqdm</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="n">desc</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span> <span class="k">if</span> <span class="n">display_progress</span> <span class="k">else</span> <span class="n">keys</span>
-        <span class="p">):</span>
-            <span class="n">error</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_populate1</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">jobs</span><span class="p">,</span> <span class="o">**</span><span class="n">populate_kwargs</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">error</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">error_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">error</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="c1"># spawn multiple processes</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>  <span class="c1"># disconnect parent process from MySQL server</span>
-        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">_conn</span><span class="o">.</span><span class="n">ctx</span>  <span class="c1"># SSLContext is not pickleable</span>
-        <span class="k">with</span> <span class="n">mp</span><span class="o">.</span><span class="n">Pool</span><span class="p">(</span>
-            <span class="n">processes</span><span class="p">,</span> <span class="n">_initialize_populate</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">jobs</span><span class="p">,</span> <span class="n">populate_kwargs</span><span class="p">)</span>
-        <span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">,</span> <span class="p">(</span>
-            <span class="n">tqdm</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Processes: &quot;</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="n">nkeys</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">display_progress</span>
-            <span class="k">else</span> <span class="n">contextlib</span><span class="o">.</span><span class="n">nullcontext</span><span class="p">()</span>
-        <span class="p">)</span> <span class="k">as</span> <span class="n">progress_bar</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">error</span> <span class="ow">in</span> <span class="n">pool</span><span class="o">.</span><span class="n">imap</span><span class="p">(</span><span class="n">_call_populate1</span><span class="p">,</span> <span class="n">keys</span><span class="p">,</span> <span class="n">chunksize</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
-                <span class="k">if</span> <span class="n">error</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">error_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">error</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">display_progress</span><span class="p">:</span>
-                    <span class="n">progress_bar</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>  <span class="c1"># reconnect parent process to MySQL server</span>
+    <span class="k">if</span> <span class="n">nkeys</span><span class="p">:</span>
+        <span class="n">processes</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">_</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="p">(</span><span class="n">processes</span><span class="p">,</span> <span class="n">nkeys</span><span class="p">,</span> <span class="n">mp</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">())</span> <span class="k">if</span> <span class="n">_</span><span class="p">)</span>
+
+        <span class="n">populate_kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">suppress_errors</span><span class="o">=</span><span class="n">suppress_errors</span><span class="p">,</span>
+            <span class="n">return_exception_objects</span><span class="o">=</span><span class="n">return_exception_objects</span><span class="p">,</span>
+            <span class="n">make_kwargs</span><span class="o">=</span><span class="n">make_kwargs</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">processes</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">(</span>
+                <span class="n">tqdm</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="n">desc</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">display_progress</span>
+                <span class="k">else</span> <span class="n">keys</span>
+            <span class="p">):</span>
+                <span class="n">status</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_populate1</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">jobs</span><span class="p">,</span> <span class="o">**</span><span class="n">populate_kwargs</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">status</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+                    <span class="n">success_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">status</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+                    <span class="n">error_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">assert</span> <span class="n">status</span> <span class="ow">is</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># spawn multiple processes</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>  <span class="c1"># disconnect parent process from MySQL server</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">_conn</span><span class="o">.</span><span class="n">ctx</span>  <span class="c1"># SSLContext is not pickleable</span>
+            <span class="k">with</span> <span class="n">mp</span><span class="o">.</span><span class="n">Pool</span><span class="p">(</span>
+                <span class="n">processes</span><span class="p">,</span> <span class="n">_initialize_populate</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">jobs</span><span class="p">,</span> <span class="n">populate_kwargs</span><span class="p">)</span>
+            <span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">,</span> <span class="p">(</span>
+                <span class="n">tqdm</span><span class="p">(</span><span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Processes: &quot;</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="n">nkeys</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">display_progress</span>
+                <span class="k">else</span> <span class="n">contextlib</span><span class="o">.</span><span class="n">nullcontext</span><span class="p">()</span>
+            <span class="p">)</span> <span class="k">as</span> <span class="n">progress_bar</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">status</span> <span class="ow">in</span> <span class="n">pool</span><span class="o">.</span><span class="n">imap</span><span class="p">(</span><span class="n">_call_populate1</span><span class="p">,</span> <span class="n">keys</span><span class="p">,</span> <span class="n">chunksize</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">status</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+                        <span class="n">success_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+                    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">status</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+                        <span class="n">error_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">assert</span> <span class="n">status</span> <span class="ow">is</span> <span class="kc">False</span>
+                    <span class="k">if</span> <span class="n">display_progress</span><span class="p">:</span>
+                        <span class="n">progress_bar</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>  <span class="c1"># reconnect parent process to MySQL server</span>
 
     <span class="c1"># restore original signal handler:</span>
     <span class="k">if</span> <span class="n">reserve_jobs</span><span class="p">:</span>
         <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGTERM</span><span class="p">,</span> <span class="n">old_handler</span><span class="p">)</span>
 
-    <span class="k">if</span> <span class="n">suppress_errors</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">error_list</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;success_count&quot;</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="n">success_list</span><span class="p">),</span>
+        <span class="s2">&quot;error_list&quot;</span><span class="p">:</span> <span class="n">error_list</span><span class="p">,</span>
+    <span class="p">}</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -3271,64 +3413,62 @@ computes secondary attributes, and inserts the new tuples into self.</p>
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.autopopulate.AutoPopulate.progress" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">progress</span><span class="p">(</span><span class="o">*</span><span class="n">restrictions</span><span class="p">,</span> <span class="n">display</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">progress</span><span class="p">(</span><span class="o">*</span><span class="n">restrictions</span><span class="p">,</span> <span class="n">display</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
 
 <a href="#datajoint.autopopulate.AutoPopulate.progress" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>Report the progress of populating the table.</p>
+    <div class="doc doc-contents ">
+
+        <p>Report the progress of populating the table.</p>
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>(remaining, total) -- numbers of tuples to be populated</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>(remaining, total) -- numbers of tuples to be populated</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/autopopulate.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">328</span>
-<span class="normal">329</span>
-<span class="normal">330</span>
-<span class="normal">331</span>
-<span class="normal">332</span>
-<span class="normal">333</span>
-<span class="normal">334</span>
-<span class="normal">335</span>
-<span class="normal">336</span>
-<span class="normal">337</span>
-<span class="normal">338</span>
-<span class="normal">339</span>
-<span class="normal">340</span>
-<span class="normal">341</span>
-<span class="normal">342</span>
-<span class="normal">343</span>
-<span class="normal">344</span>
-<span class="normal">345</span>
-<span class="normal">346</span>
-<span class="normal">347</span>
-<span class="normal">348</span>
-<span class="normal">349</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">progress</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">restrictions</span><span class="p">,</span> <span class="n">display</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/autopopulate.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">357</span>
+<span class="normal">358</span>
+<span class="normal">359</span>
+<span class="normal">360</span>
+<span class="normal">361</span>
+<span class="normal">362</span>
+<span class="normal">363</span>
+<span class="normal">364</span>
+<span class="normal">365</span>
+<span class="normal">366</span>
+<span class="normal">367</span>
+<span class="normal">368</span>
+<span class="normal">369</span>
+<span class="normal">370</span>
+<span class="normal">371</span>
+<span class="normal">372</span>
+<span class="normal">373</span>
+<span class="normal">374</span>
+<span class="normal">375</span>
+<span class="normal">376</span>
+<span class="normal">377</span>
+<span class="normal">378</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">progress</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">restrictions</span><span class="p">,</span> <span class="n">display</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Report the progress of populating the table.</span>
 <span class="sd">    :return: (remaining, total) -- numbers of tuples to be populated</span>
@@ -3351,8 +3491,8 @@ computes secondary attributes, and inserts the new tuples into self.</p>
         <span class="p">)</span>
     <span class="k">return</span> <span class="n">remaining</span><span class="p">,</span> <span class="n">total</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
 
@@ -3361,7 +3501,7 @@ computes secondary attributes, and inserts the new tuples into self.</p>
 
   </div>
 
-  </div>
+    </div>
 
 </div>
 
@@ -3370,7 +3510,7 @@ computes secondary attributes, and inserts the new tuples into self.</p>
 
   </div>
 
-  </div>
+    </div>
 
 </div>
 
@@ -3491,10 +3631,10 @@ computes secondary attributes, and inserts the new tuples into self.</p>
       <div class="md-dialog__inner md-typeset"></div>
     </div>
     
-    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.74e28a9f.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.220ee61c.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.b425cdc4.min.js"></script>
       
     
   </body>

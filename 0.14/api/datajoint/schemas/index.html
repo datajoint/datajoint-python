@@ -15,7 +15,7 @@
         <link rel="next" href="../settings/">
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.19">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.1.17">
     
     
       
@@ -23,7 +23,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.eebd395e.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.26e3688c.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ecc896b0.min.css">
@@ -1409,7 +1409,7 @@
   
     <li class="md-nav__item">
       <a href="../../../tutorials/json/" class="md-nav__link">
-        Using the json type
+        Using the type
       </a>
     </li>
   
@@ -1606,6 +1606,20 @@
     <li class="md-nav__item">
       <a href="../blob/" class="md-nav__link">
         blob.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        cli.py
       </a>
     </li>
   
@@ -1873,14 +1887,14 @@
       
         <li class="md-nav__item">
   <a href="#datajoint.schemas" class="md-nav__link">
-    datajoint.schemas
+    schemas
   </a>
   
 </li>
       
         <li class="md-nav__item">
   <a href="#datajoint.schemas.ordered_dir" class="md-nav__link">
-    ordered_dir()
+    ordered_dir
   </a>
   
 </li>
@@ -1895,7 +1909,7 @@
         
           <li class="md-nav__item">
   <a href="#datajoint.schemas.Schema.activate" class="md-nav__link">
-    activate()
+    activate
   </a>
   
 </li>
@@ -1909,14 +1923,14 @@
         
           <li class="md-nav__item">
   <a href="#datajoint.schemas.Schema.spawn_missing_classes" class="md-nav__link">
-    spawn_missing_classes()
+    spawn_missing_classes
   </a>
   
 </li>
         
           <li class="md-nav__item">
   <a href="#datajoint.schemas.Schema.drop" class="md-nav__link">
-    drop()
+    drop
   </a>
   
 </li>
@@ -1937,14 +1951,14 @@
         
           <li class="md-nav__item">
   <a href="#datajoint.schemas.Schema.save" class="md-nav__link">
-    save()
+    save
   </a>
   
 </li>
         
           <li class="md-nav__item">
   <a href="#datajoint.schemas.Schema.list_tables" class="md-nav__link">
-    list_tables()
+    list_tables
   </a>
   
 </li>
@@ -1963,7 +1977,7 @@
       
         <li class="md-nav__item">
   <a href="#datajoint.schemas.list_schemas" class="md-nav__link">
-    list_schemas()
+    list_schemas
   </a>
   
 </li>
@@ -2080,12 +2094,64 @@
 <div class="doc doc-object doc-module">
 
 
-<a id="datajoint.schemas"></a>
-  <div class="doc doc-contents first">
 
-  
+<a id="datajoint.schemas"></a>
+    <div class="doc doc-contents first">
+
+
 
   <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -2109,73 +2175,71 @@
 <div class="doc doc-object doc-function">
 
 
-
 <h2 id="datajoint.schemas.ordered_dir" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">ordered_dir</span><span class="p">(</span><span class="n">class_</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">ordered_dir</span><span class="p">(</span><span class="n">class_</span><span class="p">)</span></code>
 
 <a href="#datajoint.schemas.ordered_dir" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>List (most) attributes of the class including inherited ones, similar to <code>dir</code> built-in function,
+    <div class="doc doc-contents ">
+
+        <p>List (most) attributes of the class including inherited ones, similar to <code>dir</code> built-in function,
 but respects order of attribute declaration as much as possible.</p>
 
 
-
-  <p><strong>Parameters:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Type</th>
-        <th>Description</th>
-        <th>Default</th>
-      </tr>
-    </thead>
-    <tbody>
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td><code>class_</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>class to list members for</p>
-            </div>
-          </td>
-          <td>
-              <em>required</em>
-          </td>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>class_</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>class to list members for</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>a list of attributes declared in class_ and its superclasses</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>a list of attributes declared in class_ and its superclasses</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/schemas.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">22</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/schemas.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">21</span>
+<span class="normal">22</span>
 <span class="normal">23</span>
 <span class="normal">24</span>
 <span class="normal">25</span>
@@ -2185,8 +2249,7 @@ but respects order of attribute declaration as much as possible.</p>
 <span class="normal">29</span>
 <span class="normal">30</span>
 <span class="normal">31</span>
-<span class="normal">32</span>
-<span class="normal">33</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">ordered_dir</span><span class="p">(</span><span class="n">class_</span><span class="p">):</span>
+<span class="normal">32</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">ordered_dir</span><span class="p">(</span><span class="n">class_</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    List (most) attributes of the class including inherited ones, similar to `dir` built-in function,</span>
 <span class="sd">    but respects order of attribute declaration as much as possible.</span>
@@ -2199,8 +2262,8 @@ but respects order of attribute declaration as much as possible.</p>
         <span class="n">attr_list</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">c</span><span class="o">.</span><span class="vm">__dict__</span> <span class="k">if</span> <span class="n">e</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">attr_list</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">attr_list</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
 
@@ -2214,21 +2277,22 @@ but respects order of attribute declaration as much as possible.</p>
 
 
 <h2 id="datajoint.schemas.Schema" class="doc doc-heading">
-          <code>Schema</code>
+            <code>Schema</code>
 
 
 <a href="#datajoint.schemas.Schema" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
+    <div class="doc doc-contents ">
 
-  
-      <p>A schema object is a decorator for UserTable classes that binds them to their database.
+
+        <p>A schema object is a decorator for UserTable classes that binds them to their database.
 It also specifies the namespace <code>context</code> in which other UserTable classes are defined.</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/schemas.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 36</span>
+              <details class="quote">
+                <summary>Source code in <code>datajoint/schemas.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 35</span>
+<span class="normal"> 36</span>
 <span class="normal"> 37</span>
 <span class="normal"> 38</span>
 <span class="normal"> 39</span>
@@ -2681,8 +2745,7 @@ It also specifies the namespace <code>context</code> in which other UserTable cl
 <span class="normal">486</span>
 <span class="normal">487</span>
 <span class="normal">488</span>
-<span class="normal">489</span>
-<span class="normal">490</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Schema</span><span class="p">:</span>
+<span class="normal">489</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Schema</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A schema object is a decorator for UserTable classes that binds them to their database.</span>
 <span class="sd">    It also specifies the namespace `context` in which other UserTable classes are defined.</span>
@@ -3062,6 +3125,7 @@ It also specifies the namespace <code>context</code> in which other UserTable cl
 
 <span class="sd">        :return: a string containing the body of a complete Python module defining this schema.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">dependencies</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_assert_exists</span><span class="p">()</span>
         <span class="n">module_count</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
         <span class="c1"># add virtual modules for referenced modules with names vmod0, vmod1, ...</span>
@@ -3100,10 +3164,8 @@ It also specifies the namespace <code>context</code> in which other UserTable cl
                 <span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">    &quot;</span> <span class="o">+</span> <span class="n">indent</span><span class="p">),</span>
             <span class="p">)</span>
 
-        <span class="n">diagram</span> <span class="o">=</span> <span class="n">Diagram</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
-        <span class="n">body</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
-            <span class="n">make_class_definition</span><span class="p">(</span><span class="n">table</span><span class="p">)</span> <span class="k">for</span> <span class="n">table</span> <span class="ow">in</span> <span class="n">diagram</span><span class="o">.</span><span class="n">topological_sort</span><span class="p">()</span>
-        <span class="p">)</span>
+        <span class="n">tables</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">dependencies</span><span class="o">.</span><span class="n">topo_sort</span><span class="p">()</span>
+        <span class="n">body</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">make_class_definition</span><span class="p">(</span><span class="n">table</span><span class="p">)</span> <span class="k">for</span> <span class="n">table</span> <span class="ow">in</span> <span class="n">tables</span><span class="p">)</span>
         <span class="n">python_code</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
             <span class="p">(</span>
                 <span class="s1">&#39;&quot;&quot;&quot;This module was auto-generated by datajoint from an existing schema&quot;&quot;&quot;&#39;</span><span class="p">,</span>
@@ -3129,21 +3191,21 @@ It also specifies the namespace <code>context</code> in which other UserTable cl
 
 <span class="sd">        :return: A list of table names from the database schema.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">dependencies</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
         <span class="k">return</span> <span class="p">[</span>
             <span class="n">t</span>
             <span class="k">for</span> <span class="n">d</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="p">(</span>
                 <span class="n">full_t</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;`&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
-                <span class="k">for</span> <span class="n">full_t</span> <span class="ow">in</span> <span class="n">Diagram</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">topological_sort</span><span class="p">()</span>
+                <span class="k">for</span> <span class="n">full_t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">dependencies</span><span class="o">.</span><span class="n">topo_sort</span><span class="p">()</span>
             <span class="p">)</span>
             <span class="k">if</span> <span class="n">d</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">database</span>
         <span class="p">]</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
 
-  
+
 
   <div class="doc doc-children">
-
 
 
 
@@ -3154,102 +3216,101 @@ It also specifies the namespace <code>context</code> in which other UserTable cl
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.schemas.Schema.activate" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">activate</span><span class="p">(</span><span class="n">schema_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">connection</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">create_schema</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">create_tables</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">add_objects</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">activate</span><span class="p">(</span><span class="n">schema_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">connection</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">create_schema</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">create_tables</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">add_objects</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 <a href="#datajoint.schemas.Schema.activate" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>Associate database schema <code>schema_name</code>. If the schema does not exist, attempt to
+    <div class="doc doc-contents ">
+
+        <p>Associate database schema <code>schema_name</code>. If the schema does not exist, attempt to
 create it on the server.</p>
 
 
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>schema_name</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>the database schema to associate. schema_name=None is used to assert that the schema has already been activated.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>connection</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Connection object. Defaults to datajoint.conn().</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>create_schema</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If False, do not create the schema and raise an error if missing.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>create_tables</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If False, do not create tables and raise errors when attempting to access missing tables.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>add_objects</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>a mapping with additional objects to make available to the context in which table classes are declared.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-  <p><strong>Parameters:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Type</th>
-        <th>Description</th>
-        <th>Default</th>
-      </tr>
-    </thead>
-    <tbody>
-        <tr>
-          <td><code>schema_name</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>the database schema to associate. schema_name=None is used to assert that the schema has already been activated.</p>
-            </div>
-          </td>
-          <td>
-                <code>None</code>
-          </td>
-        </tr>
-        <tr>
-          <td><code>connection</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>Connection object. Defaults to datajoint.conn().</p>
-            </div>
-          </td>
-          <td>
-                <code>None</code>
-          </td>
-        </tr>
-        <tr>
-          <td><code>create_schema</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>If False, do not create the schema and raise an error if missing.</p>
-            </div>
-          </td>
-          <td>
-                <code>None</code>
-          </td>
-        </tr>
-        <tr>
-          <td><code>create_tables</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>If False, do not create tables and raise errors when attempting to access missing tables.</p>
-            </div>
-          </td>
-          <td>
-                <code>None</code>
-          </td>
-        </tr>
-        <tr>
-          <td><code>add_objects</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>a mapping with additional objects to make available to the context in which table classes are declared.</p>
-            </div>
-          </td>
-          <td>
-                <code>None</code>
-          </td>
-        </tr>
-    </tbody>
-  </table>
-
-          <details class="quote">
-            <summary>Source code in <code>datajoint/schemas.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 83</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/schemas.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 82</span>
+<span class="normal"> 83</span>
 <span class="normal"> 84</span>
 <span class="normal"> 85</span>
 <span class="normal"> 86</span>
@@ -3320,8 +3381,7 @@ create it on the server.</p>
 <span class="normal">151</span>
 <span class="normal">152</span>
 <span class="normal">153</span>
-<span class="normal">154</span>
-<span class="normal">155</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">activate</span><span class="p">(</span>
+<span class="normal">154</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">activate</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">schema_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
@@ -3395,8 +3455,8 @@ create it on the server.</p>
             <span class="n">context</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">add_objects</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_decorate_master</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
 
@@ -3410,8 +3470,8 @@ create it on the server.</p>
 
 
 <h3 id="datajoint.schemas.Schema.size_on_disk" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">size_on_disk</span></code>
-  
+            <code class="highlight language-python"><span class="n">size_on_disk</span></code>
+
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
@@ -3419,36 +3479,34 @@ create it on the server.</p>
 <a href="#datajoint.schemas.Schema.size_on_disk" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      
+    <div class="doc doc-contents ">
+
+        
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>size of the entire schema in bytes</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
-  </div>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>size of the entire schema in bytes</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+    </div>
 
 </div>
-
 
 
 
@@ -3458,50 +3516,49 @@ create it on the server.</p>
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.schemas.Schema.spawn_missing_classes" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">spawn_missing_classes</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">spawn_missing_classes</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 <a href="#datajoint.schemas.Schema.spawn_missing_classes" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>Creates the appropriate python user table classes from tables in the schema and places them
+    <div class="doc doc-contents ">
+
+        <p>Creates the appropriate python user table classes from tables in the schema and places them
 in the context.</p>
 
 
-
-  <p><strong>Parameters:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Type</th>
-        <th>Description</th>
-        <th>Default</th>
-      </tr>
-    </thead>
-    <tbody>
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td><code>context</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>alternative context to place the missing classes into, e.g. locals()</p>
-            </div>
-          </td>
-          <td>
-                <code>None</code>
-          </td>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>context</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>alternative context to place the missing classes into, e.g. locals()</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/schemas.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">283</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/schemas.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">282</span>
+<span class="normal">283</span>
 <span class="normal">284</span>
 <span class="normal">285</span>
 <span class="normal">286</span>
@@ -3558,8 +3615,7 @@ in the context.</p>
 <span class="normal">337</span>
 <span class="normal">338</span>
 <span class="normal">339</span>
-<span class="normal">340</span>
-<span class="normal">341</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">spawn_missing_classes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="normal">340</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">spawn_missing_classes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Creates the appropriate python user table classes from tables in the schema and places them</span>
 <span class="sd">    in the context.</span>
@@ -3619,11 +3675,10 @@ in the context.</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">_decorate_table</span><span class="p">(</span><span class="n">part_class</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">,</span> <span class="n">assert_declared</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="nb">setattr</span><span class="p">(</span><span class="n">master_class</span><span class="p">,</span> <span class="n">class_name</span><span class="p">,</span> <span class="n">part_class</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -3633,20 +3688,20 @@ in the context.</p>
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.schemas.Schema.drop" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">drop</span><span class="p">(</span><span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">drop</span><span class="p">(</span><span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
 
 <a href="#datajoint.schemas.Schema.drop" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>Drop the associated schema if it exists</p>
+    <div class="doc doc-contents ">
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/schemas.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">343</span>
+        <p>Drop the associated schema if it exists</p>
+
+            <details class="quote">
+              <summary>Source code in <code>datajoint/schemas.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">342</span>
+<span class="normal">343</span>
 <span class="normal">344</span>
 <span class="normal">345</span>
 <span class="normal">346</span>
@@ -3677,8 +3732,7 @@ in the context.</p>
 <span class="normal">371</span>
 <span class="normal">372</span>
 <span class="normal">373</span>
-<span class="normal">374</span>
-<span class="normal">375</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">drop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="normal">374</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">drop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Drop the associated schema if it exists</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -3712,8 +3766,8 @@ in the context.</p>
                 <span class="s2">&quot;has failed. Check permissions.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">database</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">database</span><span class="p">)</span>
             <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
 
@@ -3727,8 +3781,8 @@ in the context.</p>
 
 
 <h3 id="datajoint.schemas.Schema.exists" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">exists</span></code>
-  
+            <code class="highlight language-python"><span class="n">exists</span></code>
+
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
@@ -3736,33 +3790,32 @@ in the context.</p>
 <a href="#datajoint.schemas.Schema.exists" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      
+    <div class="doc doc-contents ">
+
+        
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>true if the associated schema exists on the server</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
-  </div>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>true if the associated schema exists on the server</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+    </div>
 
 </div>
 
@@ -3776,8 +3829,8 @@ in the context.</p>
 
 
 <h3 id="datajoint.schemas.Schema.jobs" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">jobs</span></code>
-  
+            <code class="highlight language-python"><span class="n">jobs</span></code>
+
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
@@ -3785,36 +3838,34 @@ in the context.</p>
 <a href="#datajoint.schemas.Schema.jobs" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>schema.jobs provides a view of the job reservation table for the schema</p>
+    <div class="doc doc-contents ">
+
+        <p>schema.jobs provides a view of the job reservation table for the schema</p>
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>jobs table</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
-  </div>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>jobs table</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+    </div>
 
 </div>
-
 
 
 
@@ -3824,44 +3875,43 @@ in the context.</p>
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.schemas.Schema.save" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">save</span><span class="p">(</span><span class="n">python_filename</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">save</span><span class="p">(</span><span class="n">python_filename</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 <a href="#datajoint.schemas.Schema.save" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>Generate the code for a module that recreates the schema.
+    <div class="doc doc-contents ">
+
+        <p>Generate the code for a module that recreates the schema.
 This method is in preparation for a future release and is not officially supported.</p>
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>a string containing the body of a complete Python module defining this schema.</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>a string containing the body of a complete Python module defining this schema.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/schemas.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">409</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/schemas.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">408</span>
+<span class="normal">409</span>
 <span class="normal">410</span>
 <span class="normal">411</span>
 <span class="normal">412</span>
@@ -3924,15 +3974,14 @@ This method is in preparation for a future release and is not officially support
 <span class="normal">469</span>
 <span class="normal">470</span>
 <span class="normal">471</span>
-<span class="normal">472</span>
-<span class="normal">473</span>
-<span class="normal">474</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">python_filename</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="normal">472</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">python_filename</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Generate the code for a module that recreates the schema.</span>
 <span class="sd">    This method is in preparation for a future release and is not officially supported.</span>
 
 <span class="sd">    :return: a string containing the body of a complete Python module defining this schema.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">dependencies</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_assert_exists</span><span class="p">()</span>
     <span class="n">module_count</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
     <span class="c1"># add virtual modules for referenced modules with names vmod0, vmod1, ...</span>
@@ -3971,10 +4020,8 @@ This method is in preparation for a future release and is not officially support
             <span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">    &quot;</span> <span class="o">+</span> <span class="n">indent</span><span class="p">),</span>
         <span class="p">)</span>
 
-    <span class="n">diagram</span> <span class="o">=</span> <span class="n">Diagram</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
-    <span class="n">body</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
-        <span class="n">make_class_definition</span><span class="p">(</span><span class="n">table</span><span class="p">)</span> <span class="k">for</span> <span class="n">table</span> <span class="ow">in</span> <span class="n">diagram</span><span class="o">.</span><span class="n">topological_sort</span><span class="p">()</span>
-    <span class="p">)</span>
+    <span class="n">tables</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">dependencies</span><span class="o">.</span><span class="n">topo_sort</span><span class="p">()</span>
+    <span class="n">body</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">make_class_definition</span><span class="p">(</span><span class="n">table</span><span class="p">)</span> <span class="k">for</span> <span class="n">table</span> <span class="ow">in</span> <span class="n">tables</span><span class="p">)</span>
     <span class="n">python_code</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
         <span class="p">(</span>
             <span class="s1">&#39;&quot;&quot;&quot;This module was auto-generated by datajoint from an existing schema&quot;&quot;&quot;&#39;</span><span class="p">,</span>
@@ -3993,11 +4040,10 @@ This method is in preparation for a future release and is not officially support
     <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">python_filename</span><span class="p">,</span> <span class="s2">&quot;wt&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
         <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">python_code</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -4007,44 +4053,44 @@ This method is in preparation for a future release and is not officially support
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.schemas.Schema.list_tables" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">list_tables</span><span class="p">()</span></code>
+            <code class="highlight language-python"><span class="n">list_tables</span><span class="p">()</span></code>
 
 <a href="#datajoint.schemas.Schema.list_tables" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>Return a list of all tables in the schema except tables with ~ in first character such
+    <div class="doc doc-contents ">
+
+        <p>Return a list of all tables in the schema except tables with ~ in first character such
 as ~logs and ~job</p>
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>A list of table names from the database schema.</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A list of table names from the database schema.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/schemas.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">476</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/schemas.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">474</span>
+<span class="normal">475</span>
+<span class="normal">476</span>
 <span class="normal">477</span>
 <span class="normal">478</span>
 <span class="normal">479</span>
@@ -4057,25 +4103,25 @@ as ~logs and ~job</p>
 <span class="normal">486</span>
 <span class="normal">487</span>
 <span class="normal">488</span>
-<span class="normal">489</span>
-<span class="normal">490</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">list_tables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="normal">489</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">list_tables</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Return a list of all tables in the schema except tables with ~ in first character such</span>
 <span class="sd">    as ~logs and ~job</span>
 
 <span class="sd">    :return: A list of table names from the database schema.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">dependencies</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
     <span class="k">return</span> <span class="p">[</span>
         <span class="n">t</span>
         <span class="k">for</span> <span class="n">d</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="p">(</span>
             <span class="n">full_t</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;`&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">full_t</span> <span class="ow">in</span> <span class="n">Diagram</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">topological_sort</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">full_t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">dependencies</span><span class="o">.</span><span class="n">topo_sort</span><span class="p">()</span>
         <span class="p">)</span>
         <span class="k">if</span> <span class="n">d</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">database</span>
     <span class="p">]</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
 
@@ -4084,53 +4130,9 @@ as ~logs and ~job</p>
 
   </div>
 
-  </div>
+    </div>
 
 </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -4142,23 +4144,24 @@ as ~logs and ~job</p>
 
 
 <h2 id="datajoint.schemas.VirtualModule" class="doc doc-heading">
-          <code>VirtualModule</code>
+            <code>VirtualModule</code>
 
 
 <a href="#datajoint.schemas.VirtualModule" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-          <p class="doc doc-class-bases">
-            Bases: <code>types.<span title="types.ModuleType">ModuleType</span></code></p>
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="types.ModuleType">ModuleType</span></code></p>
 
-  
-      <p>A virtual module imitates a Python module representing a DataJoint schema from table definitions in the database.
+
+        <p>A virtual module imitates a Python module representing a DataJoint schema from table definitions in the database.
 It declares the schema objects and a class for each table.</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/schemas.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">493</span>
+              <details class="quote">
+                <summary>Source code in <code>datajoint/schemas.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">492</span>
+<span class="normal">493</span>
 <span class="normal">494</span>
 <span class="normal">495</span>
 <span class="normal">496</span>
@@ -4195,8 +4198,7 @@ It declares the schema objects and a class for each table.</p>
 <span class="normal">527</span>
 <span class="normal">528</span>
 <span class="normal">529</span>
-<span class="normal">530</span>
-<span class="normal">531</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">VirtualModule</span><span class="p">(</span><span class="n">types</span><span class="o">.</span><span class="n">ModuleType</span><span class="p">):</span>
+<span class="normal">530</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">VirtualModule</span><span class="p">(</span><span class="n">types</span><span class="o">.</span><span class="n">ModuleType</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A virtual module imitates a Python module representing a DataJoint schema from table definitions in the database.</span>
 <span class="sd">    It declares the schema objects and a class for each table.</span>
@@ -4236,9 +4238,9 @@ It declares the schema objects and a class for each table.</p>
         <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="s2">&quot;schema&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">_schema</span>
         <span class="n">_schema</span><span class="o">.</span><span class="n">spawn_missing_classes</span><span class="p">(</span><span class="n">context</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
 
-  
+
 
   <div class="doc doc-children">
 
@@ -4248,10 +4250,9 @@ It declares the schema objects and a class for each table.</p>
 
   </div>
 
-  </div>
+    </div>
 
 </div>
-
 
 
 
@@ -4261,72 +4262,70 @@ It declares the schema objects and a class for each table.</p>
 <div class="doc doc-object doc-function">
 
 
-
 <h2 id="datajoint.schemas.list_schemas" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">list_schemas</span><span class="p">(</span><span class="n">connection</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">list_schemas</span><span class="p">(</span><span class="n">connection</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 <a href="#datajoint.schemas.list_schemas" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-  
-      
+    <div class="doc doc-contents ">
+
+        
 
 
-
-  <p><strong>Parameters:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Type</th>
-        <th>Description</th>
-        <th>Default</th>
-      </tr>
-    </thead>
-    <tbody>
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td><code>connection</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>a dj.Connection object</p>
-            </div>
-          </td>
-          <td>
-                <code>None</code>
-          </td>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>connection</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>a dj.Connection object</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>list of all accessible schemas on the server</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>list of all accessible schemas on the server</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/schemas.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">534</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/schemas.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">533</span>
+<span class="normal">534</span>
 <span class="normal">535</span>
 <span class="normal">536</span>
 <span class="normal">537</span>
@@ -4337,11 +4336,8 @@ It declares the schema objects and a class for each table.</p>
 <span class="normal">542</span>
 <span class="normal">543</span>
 <span class="normal">544</span>
-<span class="normal">545</span>
-<span class="normal">546</span>
-<span class="normal">547</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">list_schemas</span><span class="p">(</span><span class="n">connection</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="normal">545</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">list_schemas</span><span class="p">(</span><span class="n">connection</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-
 <span class="sd">    :param connection: a dj.Connection object</span>
 <span class="sd">    :return: list of all accessible schemas on the server</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -4354,29 +4350,17 @@ It declares the schema objects and a class for each table.</p>
         <span class="p">)</span>
     <span class="p">]</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
   </div>
 
-  </div>
+    </div>
 
 </div>
 
@@ -4497,10 +4481,10 @@ It declares the schema objects and a class for each table.</p>
       <div class="md-dialog__inner md-typeset"></div>
     </div>
     
-    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.74e28a9f.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.220ee61c.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.b425cdc4.min.js"></script>
       
     
   </body>

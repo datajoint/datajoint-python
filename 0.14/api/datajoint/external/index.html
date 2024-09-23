@@ -15,7 +15,7 @@
         <link rel="next" href="../fetch/">
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.19">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.1.17">
     
     
       
@@ -23,7 +23,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.eebd395e.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.26e3688c.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ecc896b0.min.css">
@@ -1409,7 +1409,7 @@
   
     <li class="md-nav__item">
       <a href="../../../tutorials/json/" class="md-nav__link">
-        Using the json type
+        Using the type
       </a>
     </li>
   
@@ -1618,6 +1618,20 @@
   
   
     <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        cli.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../condition/" class="md-nav__link">
         condition.py
       </a>
@@ -1747,14 +1761,14 @@
       
         <li class="md-nav__item">
   <a href="#datajoint.external" class="md-nav__link">
-    datajoint.external
+    external
   </a>
   
 </li>
       
         <li class="md-nav__item">
   <a href="#datajoint.external.subfold" class="md-nav__link">
-    subfold()
+    subfold
   </a>
   
 </li>
@@ -1769,42 +1783,42 @@
         
           <li class="md-nav__item">
   <a href="#datajoint.external.ExternalTable.exists" class="md-nav__link">
-    exists()
+    exists
   </a>
   
 </li>
         
           <li class="md-nav__item">
   <a href="#datajoint.external.ExternalTable.put" class="md-nav__link">
-    put()
+    put
   </a>
   
 </li>
         
           <li class="md-nav__item">
   <a href="#datajoint.external.ExternalTable.get" class="md-nav__link">
-    get()
+    get
   </a>
   
 </li>
         
           <li class="md-nav__item">
   <a href="#datajoint.external.ExternalTable.download_attachment" class="md-nav__link">
-    download_attachment()
+    download_attachment
   </a>
   
 </li>
         
           <li class="md-nav__item">
   <a href="#datajoint.external.ExternalTable.upload_filepath" class="md-nav__link">
-    upload_filepath()
+    upload_filepath
   </a>
   
 </li>
         
           <li class="md-nav__item">
   <a href="#datajoint.external.ExternalTable.download_filepath" class="md-nav__link">
-    download_filepath()
+    download_filepath
   </a>
   
 </li>
@@ -1818,28 +1832,28 @@
         
           <li class="md-nav__item">
   <a href="#datajoint.external.ExternalTable.fetch_external_paths" class="md-nav__link">
-    fetch_external_paths()
+    fetch_external_paths
   </a>
   
 </li>
         
           <li class="md-nav__item">
   <a href="#datajoint.external.ExternalTable.unused" class="md-nav__link">
-    unused()
+    unused
   </a>
   
 </li>
         
           <li class="md-nav__item">
   <a href="#datajoint.external.ExternalTable.used" class="md-nav__link">
-    used()
+    used
   </a>
   
 </li>
         
           <li class="md-nav__item">
   <a href="#datajoint.external.ExternalTable.delete" class="md-nav__link">
-    delete()
+    delete
   </a>
   
 </li>
@@ -2094,12 +2108,44 @@
 <div class="doc doc-object doc-module">
 
 
-<a id="datajoint.external"></a>
-  <div class="doc doc-contents first">
 
-  
+<a id="datajoint.external"></a>
+    <div class="doc doc-contents first">
+
+
 
   <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -2115,20 +2161,19 @@
 <div class="doc doc-object doc-function">
 
 
-
 <h2 id="datajoint.external.subfold" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">subfold</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">folds</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">subfold</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">folds</span><span class="p">)</span></code>
 
 <a href="#datajoint.external.subfold" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>subfolding for external storage:   e.g.  subfold('aBCdefg', (2, 3))  --&gt;  ['ab','cde']</p>
+    <div class="doc doc-contents ">
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/external.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">23</span>
+        <p>subfolding for external storage:   e.g.  subfold('aBCdefg', (2, 3))  --&gt;  ['ab','cde']</p>
+
+            <details class="quote">
+              <summary>Source code in <code>datajoint/external.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">23</span>
 <span class="normal">24</span>
 <span class="normal">25</span>
 <span class="normal">26</span>
@@ -2146,8 +2191,8 @@
         <span class="k">else</span> <span class="p">()</span>
     <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
 
@@ -2161,23 +2206,23 @@
 
 
 <h2 id="datajoint.external.ExternalTable" class="doc doc-heading">
-          <code>ExternalTable</code>
+            <code>ExternalTable</code>
 
 
 <a href="#datajoint.external.ExternalTable" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-          <p class="doc doc-class-bases">
-            Bases: <code><a class="autorefs autorefs-internal" title="datajoint.table.Table" href="../table/#datajoint.table.Table">Table</a></code></p>
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="datajoint.table.Table" href="../table/#datajoint.table.Table">Table</a></code></p>
 
-  
-      <p>The table tracking externally stored objects.
+
+        <p>The table tracking externally stored objects.
 Declare as ExternalTable(connection, database)</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/external.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 34</span>
+              <details class="quote">
+                <summary>Source code in <code>datajoint/external.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 34</span>
 <span class="normal"> 35</span>
 <span class="normal"> 36</span>
 <span class="normal"> 37</span>
@@ -2608,7 +2653,12 @@ Declare as ExternalTable(connection, database)</p>
 <span class="normal">462</span>
 <span class="normal">463</span>
 <span class="normal">464</span>
-<span class="normal">465</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">ExternalTable</span><span class="p">(</span><span class="n">Table</span><span class="p">):</span>
+<span class="normal">465</span>
+<span class="normal">466</span>
+<span class="normal">467</span>
+<span class="normal">468</span>
+<span class="normal">469</span>
+<span class="normal">470</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">ExternalTable</span><span class="p">(</span><span class="n">Table</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    The table tracking externally stored objects.</span>
 <span class="sd">    Declare as ExternalTable(connection, database)</span>
@@ -2718,7 +2768,12 @@ Declare as ExternalTable(connection, database)</p>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;protocol&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;s3&quot;</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">s3</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">external_path</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spec</span><span class="p">[</span><span class="s2">&quot;protocol&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;file&quot;</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">external_path</span><span class="p">)</span><span class="o">.</span><span class="n">read_bytes</span><span class="p">()</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">external_path</span><span class="p">)</span><span class="o">.</span><span class="n">read_bytes</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">MissingExternalFile</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Missing external file </span><span class="si">{</span><span class="n">external_path</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span> <span class="kn">from</span> <span class="kc">None</span>
         <span class="k">assert</span> <span class="kc">False</span>
 
     <span class="k">def</span> <span class="nf">_remove_external_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">external_path</span><span class="p">):</span>
@@ -3041,9 +3096,9 @@ Declare as ExternalTable(connection, database)</p>
                             <span class="p">)</span>
             <span class="k">return</span> <span class="n">error_list</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
 
-  
+
 
   <div class="doc doc-children">
 
@@ -3053,55 +3108,52 @@ Declare as ExternalTable(connection, database)</p>
 
 
 
-
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.external.ExternalTable.exists" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">exists</span><span class="p">(</span><span class="n">external_filepath</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">exists</span><span class="p">(</span><span class="n">external_filepath</span><span class="p">)</span></code>
 
 <a href="#datajoint.external.ExternalTable.exists" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      
+    <div class="doc doc-contents ">
+
+        
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>True if the external file is accessible</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>True if the external file is accessible</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/external.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">156</span>
-<span class="normal">157</span>
-<span class="normal">158</span>
-<span class="normal">159</span>
-<span class="normal">160</span>
-<span class="normal">161</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/external.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">161</span>
 <span class="normal">162</span>
 <span class="normal">163</span>
-<span class="normal">164</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">exists</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">external_filepath</span><span class="p">):</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">exists</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">external_filepath</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    :return: True if the external file is accessible</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -3111,11 +3163,10 @@ Declare as ExternalTable(connection, database)</p>
         <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">external_filepath</span><span class="p">)</span><span class="o">.</span><span class="n">is_file</span><span class="p">()</span>
     <span class="k">assert</span> <span class="kc">False</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -3125,25 +3176,19 @@ Declare as ExternalTable(connection, database)</p>
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.external.ExternalTable.put" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">put</span><span class="p">(</span><span class="n">blob</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">put</span><span class="p">(</span><span class="n">blob</span><span class="p">)</span></code>
 
 <a href="#datajoint.external.ExternalTable.put" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>put a binary string (blob) in external store</p>
+    <div class="doc doc-contents ">
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/external.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">168</span>
-<span class="normal">169</span>
-<span class="normal">170</span>
-<span class="normal">171</span>
-<span class="normal">172</span>
-<span class="normal">173</span>
+        <p>put a binary string (blob) in external store</p>
+
+            <details class="quote">
+              <summary>Source code in <code>datajoint/external.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">173</span>
 <span class="normal">174</span>
 <span class="normal">175</span>
 <span class="normal">176</span>
@@ -3152,7 +3197,12 @@ Declare as ExternalTable(connection, database)</p>
 <span class="normal">179</span>
 <span class="normal">180</span>
 <span class="normal">181</span>
-<span class="normal">182</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">put</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">blob</span><span class="p">):</span>
+<span class="normal">182</span>
+<span class="normal">183</span>
+<span class="normal">184</span>
+<span class="normal">185</span>
+<span class="normal">186</span>
+<span class="normal">187</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">put</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">blob</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    put a binary string (blob) in external store</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -3168,11 +3218,10 @@ Declare as ExternalTable(connection, database)</p>
     <span class="p">)</span>
     <span class="k">return</span> <span class="n">uuid</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -3182,25 +3231,19 @@ Declare as ExternalTable(connection, database)</p>
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.external.ExternalTable.get" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">get</span><span class="p">(</span><span class="n">uuid</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">get</span><span class="p">(</span><span class="n">uuid</span><span class="p">)</span></code>
 
 <a href="#datajoint.external.ExternalTable.get" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>get an object from external store.</p>
+    <div class="doc doc-contents ">
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/external.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">184</span>
-<span class="normal">185</span>
-<span class="normal">186</span>
-<span class="normal">187</span>
-<span class="normal">188</span>
-<span class="normal">189</span>
+        <p>get an object from external store.</p>
+
+            <details class="quote">
+              <summary>Source code in <code>datajoint/external.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">189</span>
 <span class="normal">190</span>
 <span class="normal">191</span>
 <span class="normal">192</span>
@@ -3230,7 +3273,12 @@ Declare as ExternalTable(connection, database)</p>
 <span class="normal">216</span>
 <span class="normal">217</span>
 <span class="normal">218</span>
-<span class="normal">219</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">uuid</span><span class="p">):</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">uuid</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    get an object from external store.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -3267,11 +3315,10 @@ Declare as ExternalTable(connection, database)</p>
             <span class="n">safe_write</span><span class="p">(</span><span class="n">cache_path</span> <span class="o">/</span> <span class="n">uuid</span><span class="o">.</span><span class="n">hex</span><span class="p">,</span> <span class="n">blob</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">blob</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -3281,32 +3328,30 @@ Declare as ExternalTable(connection, database)</p>
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.external.ExternalTable.download_attachment" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">download_attachment</span><span class="p">(</span><span class="n">uuid</span><span class="p">,</span> <span class="n">attachment_name</span><span class="p">,</span> <span class="n">download_path</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">download_attachment</span><span class="p">(</span><span class="n">uuid</span><span class="p">,</span> <span class="n">attachment_name</span><span class="p">,</span> <span class="n">download_path</span><span class="p">)</span></code>
 
 <a href="#datajoint.external.ExternalTable.download_attachment" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>save attachment from memory buffer into the save_path</p>
+    <div class="doc doc-contents ">
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/external.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">245</span>
-<span class="normal">246</span>
-<span class="normal">247</span>
-<span class="normal">248</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">download_attachment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">uuid</span><span class="p">,</span> <span class="n">attachment_name</span><span class="p">,</span> <span class="n">download_path</span><span class="p">):</span>
+        <p>save attachment from memory buffer into the save_path</p>
+
+            <details class="quote">
+              <summary>Source code in <code>datajoint/external.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">download_attachment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">uuid</span><span class="p">,</span> <span class="n">attachment_name</span><span class="p">,</span> <span class="n">download_path</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;save attachment from memory buffer into the save_path&quot;&quot;&quot;</span>
     <span class="n">external_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_uuid_path</span><span class="p">(</span><span class="n">uuid</span><span class="p">,</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="n">attachment_name</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_download_file</span><span class="p">(</span><span class="n">external_path</span><span class="p">,</span> <span class="n">download_path</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -3316,27 +3361,21 @@ Declare as ExternalTable(connection, database)</p>
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.external.ExternalTable.upload_filepath" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">upload_filepath</span><span class="p">(</span><span class="n">local_filepath</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">upload_filepath</span><span class="p">(</span><span class="n">local_filepath</span><span class="p">)</span></code>
 
 <a href="#datajoint.external.ExternalTable.upload_filepath" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>Raise exception if an external entry already exists with a different contents checksum.
+    <div class="doc doc-contents ">
+
+        <p>Raise exception if an external entry already exists with a different contents checksum.
 Otherwise, copy (with overwrite) file to remote and
 If an external entry exists with the same checksum, then no copying should occur</p>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/external.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">252</span>
-<span class="normal">253</span>
-<span class="normal">254</span>
-<span class="normal">255</span>
-<span class="normal">256</span>
-<span class="normal">257</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/external.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">257</span>
 <span class="normal">258</span>
 <span class="normal">259</span>
 <span class="normal">260</span>
@@ -3376,7 +3415,12 @@ If an external entry exists with the same checksum, then no copying should occur
 <span class="normal">294</span>
 <span class="normal">295</span>
 <span class="normal">296</span>
-<span class="normal">297</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">upload_filepath</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">local_filepath</span><span class="p">):</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">upload_filepath</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">local_filepath</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Raise exception if an external entry already exists with a different contents checksum.</span>
 <span class="sd">    Otherwise, copy (with overwrite) file to remote and</span>
@@ -3423,11 +3467,10 @@ If an external entry exists with the same checksum, then no copying should occur
         <span class="p">)</span>
     <span class="k">return</span> <span class="n">uuid</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -3437,77 +3480,69 @@ If an external entry exists with the same checksum, then no copying should occur
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.external.ExternalTable.download_filepath" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">download_filepath</span><span class="p">(</span><span class="n">filepath_hash</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">download_filepath</span><span class="p">(</span><span class="n">filepath_hash</span><span class="p">)</span></code>
 
 <a href="#datajoint.external.ExternalTable.download_filepath" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>sync a file from external store to the local stage</p>
+    <div class="doc doc-contents ">
+
+        <p>sync a file from external store to the local stage</p>
 
 
-
-  <p><strong>Parameters:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Type</th>
-        <th>Description</th>
-        <th>Default</th>
-      </tr>
-    </thead>
-    <tbody>
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td><code>filepath_hash</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>The hash (UUID) of the relative_path</p>
-            </div>
-          </td>
-          <td>
-              <em>required</em>
-          </td>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>filepath_hash</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The hash (UUID) of the relative_path</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>hash (UUID) of the contents of the downloaded file or Nones</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>hash (UUID) of the contents of the downloaded file or Nones</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/external.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">299</span>
-<span class="normal">300</span>
-<span class="normal">301</span>
-<span class="normal">302</span>
-<span class="normal">303</span>
-<span class="normal">304</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/external.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">304</span>
 <span class="normal">305</span>
 <span class="normal">306</span>
 <span class="normal">307</span>
@@ -3546,7 +3581,12 @@ If an external entry exists with the same checksum, then no copying should occur
 <span class="normal">340</span>
 <span class="normal">341</span>
 <span class="normal">342</span>
-<span class="normal">343</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">download_filepath</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath_hash</span><span class="p">):</span>
+<span class="normal">343</span>
+<span class="normal">344</span>
+<span class="normal">345</span>
+<span class="normal">346</span>
+<span class="normal">347</span>
+<span class="normal">348</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">download_filepath</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath_hash</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    sync a file from external store to the local stage</span>
 
@@ -3592,8 +3632,8 @@ If an external entry exists with the same checksum, then no copying should occur
             <span class="p">)</span>
         <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">local_filepath</span><span class="p">),</span> <span class="n">contents_hash</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
 
@@ -3607,8 +3647,8 @@ If an external entry exists with the same checksum, then no copying should occur
 
 
 <h3 id="datajoint.external.ExternalTable.references" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">references</span></code>
-  
+            <code class="highlight language-python"><span class="n">references</span></code>
+
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
@@ -3616,36 +3656,34 @@ If an external entry exists with the same checksum, then no copying should occur
 <a href="#datajoint.external.ExternalTable.references" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      
+    <div class="doc doc-contents ">
+
+        
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>generator of referencing table names and their referencing columns</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
-  </div>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>generator of referencing table names and their referencing columns</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+    </div>
 
 </div>
-
 
 
 
@@ -3655,55 +3693,48 @@ If an external entry exists with the same checksum, then no copying should occur
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.external.ExternalTable.fetch_external_paths" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">fetch_external_paths</span><span class="p">(</span><span class="o">**</span><span class="n">fetch_kwargs</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">fetch_external_paths</span><span class="p">(</span><span class="o">**</span><span class="n">fetch_kwargs</span><span class="p">)</span></code>
 
 <a href="#datajoint.external.ExternalTable.fetch_external_paths" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>generate complete external filepaths from the query.
+    <div class="doc doc-contents ">
+
+        <p>generate complete external filepaths from the query.
 Each element is a tuple: (uuid, path)</p>
 
 
-
-  <p><strong>Parameters:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Type</th>
-        <th>Description</th>
-        <th>Default</th>
-      </tr>
-    </thead>
-    <tbody>
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td><code>fetch_kwargs</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>keyword arguments to pass to fetch</p>
-            </div>
-          </td>
-          <td>
-                <code>{}</code>
-          </td>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>fetch_kwargs</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>keyword arguments to pass to fetch</p>
+              </div>
+            </td>
+            <td>
+                  <code>{}</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/external.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">366</span>
-<span class="normal">367</span>
-<span class="normal">368</span>
-<span class="normal">369</span>
-<span class="normal">370</span>
-<span class="normal">371</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/external.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">371</span>
 <span class="normal">372</span>
 <span class="normal">373</span>
 <span class="normal">374</span>
@@ -3718,7 +3749,12 @@ Each element is a tuple: (uuid, path)</p>
 <span class="normal">383</span>
 <span class="normal">384</span>
 <span class="normal">385</span>
-<span class="normal">386</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">fetch_external_paths</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">fetch_kwargs</span><span class="p">):</span>
+<span class="normal">386</span>
+<span class="normal">387</span>
+<span class="normal">388</span>
+<span class="normal">389</span>
+<span class="normal">390</span>
+<span class="normal">391</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">fetch_external_paths</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">fetch_kwargs</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    generate complete external filepaths from the query.</span>
 <span class="sd">    Each element is a tuple: (uuid, path)</span>
@@ -3740,11 +3776,10 @@ Each element is a tuple: (uuid, path)</p>
         <span class="n">paths</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">item</span><span class="p">[</span><span class="s2">&quot;hash&quot;</span><span class="p">],</span> <span class="n">path</span><span class="p">))</span>
     <span class="k">return</span> <span class="n">paths</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -3754,54 +3789,52 @@ Each element is a tuple: (uuid, path)</p>
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.external.ExternalTable.unused" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">unused</span><span class="p">()</span></code>
+            <code class="highlight language-python"><span class="n">unused</span><span class="p">()</span></code>
 
 <a href="#datajoint.external.ExternalTable.unused" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>query expression for unused hashes</p>
+    <div class="doc doc-contents ">
+
+        <p>query expression for unused hashes</p>
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>self restricted to elements that are not in use by any tables in the schema</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>self restricted to elements that are not in use by any tables in the schema</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/external.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">388</span>
-<span class="normal">389</span>
-<span class="normal">390</span>
-<span class="normal">391</span>
-<span class="normal">392</span>
-<span class="normal">393</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/external.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">393</span>
 <span class="normal">394</span>
 <span class="normal">395</span>
 <span class="normal">396</span>
 <span class="normal">397</span>
 <span class="normal">398</span>
-<span class="normal">399</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">unused</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="normal">399</span>
+<span class="normal">400</span>
+<span class="normal">401</span>
+<span class="normal">402</span>
+<span class="normal">403</span>
+<span class="normal">404</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">unused</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    query expression for unused hashes</span>
 
@@ -3814,11 +3847,10 @@ Each element is a tuple: (uuid, path)</p>
         <span class="k">for</span> <span class="n">ref</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">references</span>
     <span class="p">]</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -3828,54 +3860,52 @@ Each element is a tuple: (uuid, path)</p>
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.external.ExternalTable.used" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">used</span><span class="p">()</span></code>
+            <code class="highlight language-python"><span class="n">used</span><span class="p">()</span></code>
 
 <a href="#datajoint.external.ExternalTable.used" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>query expression for used hashes</p>
+    <div class="doc doc-contents ">
+
+        <p>query expression for used hashes</p>
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>self restricted to elements that in use by tables in the schema</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>self restricted to elements that in use by tables in the schema</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/external.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">401</span>
-<span class="normal">402</span>
-<span class="normal">403</span>
-<span class="normal">404</span>
-<span class="normal">405</span>
-<span class="normal">406</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/external.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">406</span>
 <span class="normal">407</span>
 <span class="normal">408</span>
 <span class="normal">409</span>
 <span class="normal">410</span>
 <span class="normal">411</span>
-<span class="normal">412</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">used</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="normal">412</span>
+<span class="normal">413</span>
+<span class="normal">414</span>
+<span class="normal">415</span>
+<span class="normal">416</span>
+<span class="normal">417</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">used</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    query expression for used hashes</span>
 
@@ -3888,11 +3918,10 @@ Each element is a tuple: (uuid, path)</p>
         <span class="k">for</span> <span class="n">ref</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">references</span>
     <span class="p">]</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -3902,116 +3931,108 @@ Each element is a tuple: (uuid, path)</p>
 <div class="doc doc-object doc-function">
 
 
-
 <h3 id="datajoint.external.ExternalTable.delete" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">delete</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">delete_external_files</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">display_progress</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">errors_as_string</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">delete</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">delete_external_files</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">display_progress</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">errors_as_string</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
 
 <a href="#datajoint.external.ExternalTable.delete" class="headerlink" title="Permanent link">&para;</a></h3>
 
 
-  <div class="doc doc-contents ">
-  
-      
+    <div class="doc doc-contents ">
+
+        
 
 
-
-  <p><strong>Parameters:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Type</th>
-        <th>Description</th>
-        <th>Default</th>
-      </tr>
-    </thead>
-    <tbody>
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td><code>delete_external_files</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>True or False. If False, only the tracking info is removed from the external store table but the external files remain intact. If True, then the external files themselves are deleted too.</p>
-            </div>
-          </td>
-          <td>
-                <code>None</code>
-          </td>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
         </tr>
-        <tr>
-          <td><code>errors_as_string</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>If True any errors returned when deleting from external files will be strings</p>
-            </div>
-          </td>
-          <td>
-                <code>True</code>
-          </td>
-        </tr>
-        <tr>
-          <td><code>limit</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>(integer) limit the number of items to delete</p>
-            </div>
-          </td>
-          <td>
-                <code>None</code>
-          </td>
-        </tr>
-        <tr>
-          <td><code>display_progress</code></td>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>if True, display progress as files are cleaned up</p>
-            </div>
-          </td>
-          <td>
-                <code>True</code>
-          </td>
-        </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code>delete_external_files</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>True or False. If False, only the tracking info is removed from the external store table but the external files remain intact. If True, then the external files themselves are deleted too.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>errors_as_string</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>If True any errors returned when deleting from external files will be strings</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>limit</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>(integer) limit the number of items to delete</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code>display_progress</code></td>
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>if True, display progress as files are cleaned up</p>
+              </div>
+            </td>
+            <td>
+                  <code>True</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>if deleting external files, returns errors</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>if deleting external files, returns errors</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/external.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">414</span>
-<span class="normal">415</span>
-<span class="normal">416</span>
-<span class="normal">417</span>
-<span class="normal">418</span>
-<span class="normal">419</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/external.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">419</span>
 <span class="normal">420</span>
 <span class="normal">421</span>
 <span class="normal">422</span>
@@ -4057,7 +4078,12 @@ Each element is a tuple: (uuid, path)</p>
 <span class="normal">462</span>
 <span class="normal">463</span>
 <span class="normal">464</span>
-<span class="normal">465</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">delete</span><span class="p">(</span>
+<span class="normal">465</span>
+<span class="normal">466</span>
+<span class="normal">467</span>
+<span class="normal">468</span>
+<span class="normal">469</span>
+<span class="normal">470</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">delete</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">delete_external_files</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -4110,8 +4136,8 @@ Each element is a tuple: (uuid, path)</p>
                         <span class="p">)</span>
         <span class="k">return</span> <span class="n">error_list</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
 
@@ -4120,29 +4146,9 @@ Each element is a tuple: (uuid, path)</p>
 
   </div>
 
-  </div>
+    </div>
 
 </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -4154,30 +4160,25 @@ Each element is a tuple: (uuid, path)</p>
 
 
 <h2 id="datajoint.external.ExternalMapping" class="doc doc-heading">
-          <code>ExternalMapping</code>
+            <code>ExternalMapping</code>
 
 
 <a href="#datajoint.external.ExternalMapping" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-          <p class="doc doc-class-bases">
-            Bases: <code><span title="collections.abc.Mapping">Mapping</span></code></p>
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="collections.abc.Mapping">Mapping</span></code></p>
 
-  
-      <p>The external manager contains all the tables for all external stores for a given schema
+
+        <p>The external manager contains all the tables for all external stores for a given schema
 :Example:
     e = ExternalMapping(schema)
     external_table = e[store]</p>
 
-            <details class="quote">
-              <summary>Source code in <code>datajoint/external.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">468</span>
-<span class="normal">469</span>
-<span class="normal">470</span>
-<span class="normal">471</span>
-<span class="normal">472</span>
-<span class="normal">473</span>
+              <details class="quote">
+                <summary>Source code in <code>datajoint/external.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">473</span>
 <span class="normal">474</span>
 <span class="normal">475</span>
 <span class="normal">476</span>
@@ -4212,7 +4213,12 @@ Each element is a tuple: (uuid, path)</p>
 <span class="normal">505</span>
 <span class="normal">506</span>
 <span class="normal">507</span>
-<span class="normal">508</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">ExternalMapping</span><span class="p">(</span><span class="n">Mapping</span><span class="p">):</span>
+<span class="normal">508</span>
+<span class="normal">509</span>
+<span class="normal">510</span>
+<span class="normal">511</span>
+<span class="normal">512</span>
+<span class="normal">513</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">ExternalMapping</span><span class="p">(</span><span class="n">Mapping</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    The external manager contains all the tables for all external stores for a given schema</span>
 <span class="sd">    :Example:</span>
@@ -4254,9 +4260,9 @@ Each element is a tuple: (uuid, path)</p>
     <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tables</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
-            </details>
+              </details>
 
-  
+
 
   <div class="doc doc-children">
 
@@ -4266,20 +4272,16 @@ Each element is a tuple: (uuid, path)</p>
 
   </div>
 
-  </div>
+    </div>
 
 </div>
 
 
 
 
-
-
-
-
   </div>
 
-  </div>
+    </div>
 
 </div>
 
@@ -4400,10 +4402,10 @@ Each element is a tuple: (uuid, path)</p>
       <div class="md-dialog__inner md-typeset"></div>
     </div>
     
-    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.74e28a9f.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.220ee61c.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.b425cdc4.min.js"></script>
       
     
   </body>

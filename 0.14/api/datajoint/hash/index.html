@@ -15,7 +15,7 @@
         <link rel="next" href="../heading/">
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.19">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.1.17">
     
     
       
@@ -23,7 +23,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.eebd395e.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.26e3688c.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.ecc896b0.min.css">
@@ -1409,7 +1409,7 @@
   
     <li class="md-nav__item">
       <a href="../../../tutorials/json/" class="md-nav__link">
-        Using the json type
+        Using the type
       </a>
     </li>
   
@@ -1618,6 +1618,20 @@
   
   
     <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        cli.py
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../condition/" class="md-nav__link">
         condition.py
       </a>
@@ -1775,21 +1789,21 @@
       
         <li class="md-nav__item">
   <a href="#datajoint.hash" class="md-nav__link">
-    datajoint.hash
+    hash
   </a>
   
 </li>
       
         <li class="md-nav__item">
   <a href="#datajoint.hash.key_hash" class="md-nav__link">
-    key_hash()
+    key_hash
   </a>
   
 </li>
       
         <li class="md-nav__item">
   <a href="#datajoint.hash.uuid_from_stream" class="md-nav__link">
-    uuid_from_stream()
+    uuid_from_stream
   </a>
   
 </li>
@@ -2004,13 +2018,13 @@
 <div class="doc doc-object doc-module">
 
 
-<a id="datajoint.hash"></a>
-  <div class="doc doc-contents first">
 
-  
+<a id="datajoint.hash"></a>
+    <div class="doc doc-contents first">
+
+
 
   <div class="doc doc-children">
-
 
 
 
@@ -2021,22 +2035,21 @@
 <div class="doc doc-object doc-function">
 
 
-
 <h2 id="datajoint.hash.key_hash" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">key_hash</span><span class="p">(</span><span class="n">mapping</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">key_hash</span><span class="p">(</span><span class="n">mapping</span><span class="p">)</span></code>
 
 <a href="#datajoint.hash.key_hash" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>32-byte hash of the mapping's key values sorted by the key name.
+    <div class="doc doc-contents ">
+
+        <p>32-byte hash of the mapping's key values sorted by the key name.
 This is often used to convert a long primary key value into a shorter hash.
 For example, the JobTable in datajoint.jobs uses this function to hash the primary key of autopopulated tables.</p>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/hash.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 7</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/hash.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 7</span>
 <span class="normal"> 8</span>
 <span class="normal"> 9</span>
 <span class="normal">10</span>
@@ -2056,11 +2069,10 @@ For example, the JobTable in datajoint.jobs uses this function to hash the prima
         <span class="n">hashed</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span>
     <span class="k">return</span> <span class="n">hashed</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
-
 
 
 
@@ -2070,44 +2082,42 @@ For example, the JobTable in datajoint.jobs uses this function to hash the prima
 <div class="doc doc-object doc-function">
 
 
-
 <h2 id="datajoint.hash.uuid_from_stream" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">uuid_from_stream</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">init_string</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">uuid_from_stream</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">init_string</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span></code>
 
 <a href="#datajoint.hash.uuid_from_stream" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
-  <div class="doc doc-contents ">
-  
-      <p>:stream: stream object or open file handle
+    <div class="doc doc-contents ">
+
+        <p>:stream: stream object or open file handle
 :init_string: string to initialize the checksum</p>
 
 
-
-  <p><strong>Returns:</strong></p>
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
         <tr>
-          <td>
-          </td>
-          <td>
-            <div class="doc-md-description">
-              <p>16-byte digest of stream data</p>
-            </div>
-          </td>
+          <th>Type</th>
+          <th>Description</th>
         </tr>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>16-byte digest of stream data</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
-          <details class="quote">
-            <summary>Source code in <code>datajoint/hash.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">19</span>
+            <details class="quote">
+              <summary>Source code in <code>datajoint/hash.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">19</span>
 <span class="normal">20</span>
 <span class="normal">21</span>
 <span class="normal">22</span>
@@ -2133,8 +2143,8 @@ For example, the JobTable in datajoint.jobs uses this function to hash the prima
         <span class="n">hashed</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">uuid</span><span class="o">.</span><span class="n">UUID</span><span class="p">(</span><span class="nb">bytes</span><span class="o">=</span><span class="n">hashed</span><span class="o">.</span><span class="n">digest</span><span class="p">())</span>
 </code></pre></div></td></tr></table></div>
-          </details>
-  </div>
+            </details>
+    </div>
 
 </div>
 
@@ -2143,7 +2153,7 @@ For example, the JobTable in datajoint.jobs uses this function to hash the prima
 
   </div>
 
-  </div>
+    </div>
 
 </div>
 
@@ -2264,10 +2274,10 @@ For example, the JobTable in datajoint.jobs uses this function to hash the prima
       <div class="md-dialog__inner md-typeset"></div>
     </div>
     
-    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.74e28a9f.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.220ee61c.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.b425cdc4.min.js"></script>
       
     
   </body>
