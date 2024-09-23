@@ -189,7 +189,7 @@ jobs:
           prerelease: false
           draft: false
       - name: Fetch pip artifacts
-        uses: actions/download-artifact@v4.1.7
+        uses: actions/download-artifact@v3
         with:
           name: pip-datajoint-${{env.DJ_VERSION}}
           path: dist
@@ -222,7 +222,7 @@ jobs:
             -e TWINE_USERNAME=${TWINE_USERNAME} -e TWINE_PASSWORD=${TWINE_PASSWORD} app \
             sh -c "pip install twine && python -m twine upload dist/*"
       - name: Login to DockerHub
-        uses: docker/login-action@v1
+        uses: docker/login-action@v3
         with:
           username: ${{secrets.docker_username}}
           password: ${{secrets.docker_password}}
