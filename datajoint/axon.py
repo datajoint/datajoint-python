@@ -69,179 +69,6 @@ def _client_login(
     return jwt_payload["access_token"]
 
 
-def start_server(q: multiprocessing.Queue, callback_port: int):
-    """
-    Starts Flask HTTP server.
-    Since werkzeug 2.0.3 has vulnerability issue, has to upgrade and
-    werkzeug.environ.shutdown_server() is deprecated after 2.0.3.
-    """
-    app = flask.Flask("browser-interface")
-
-    @app.route("/login-cancelled")
-    def login_cancelled():
-        """
-        Accepts requests which will cancel the user login.
-        """
-        q.put({"cancelled": True, "code": None})
-        return """
-            <!doctype html>
-            <html>
-            <head>
-                <script>
-                window.onload = function load() {
-                window.open('', '_self', '');
-                window.close();
-                };
-                </script>
-            </head>
-            <body>
-            </body>
-            </html>
-            """
-
-    @app.route("/login-completed")
-    def login_completed():
-        """
-        Redirect after user has successfully logged in.
-        """
-        code = flask.request.args.get("code")
-        q.put({"cancelled": False, "code": code})
-        return """
-            <!doctype html>
-            <html>
-            <head>
-                <script>
-                window.onload = function load() {
-                window.open('', '_self', '');
-                window.close();
-                };
-                </script>
-            </head>
-            <body>DataJoint login completed! Feel free to close this tab if it did not close automatically.</body>
-            </html>
-            """
-
-    app.run(host="0.0.0.0", port=callback_port, debug=False)
-
-
-def _oidc_login(
-    auth_client_id: str,
-    auth_url: str = f"https://{LOOKUP_SERVICE_AUTH[issuer]['PROVIDER']}{LOOKUP_SERVICE_AUTH[issuer]['ROUTE']}/auth",
-    lookup_service_allowed_origin: str = LOOKUP_SERVICE_ALLOWED_ORIGIN,
-    lookup_service_domain: str = LOOKUP_SERVICE_DOMAIN,
-    lookup_service_route: str = LOOKUP_SERVICE_ROUTE,
-    lookup_service_auth_provider: str = LOOKUP_SERVICE_AUTH[issuer]["PROVIDER"],
-    code_challenge: str = "ubNp9Y0Y_FOENQ_Pz3zppyv2yyt0XtJsaPqUgGW9heA",
-    code_challenge_method: str = "S256",
-    code_verifier: str = "kFn5ZwL6ggOwU1OzKx0E1oZibIMC1ZbMC1WEUXcCV5mFoi015I9nB9CrgUJRkc3oiQT8uBbrvRvVzahM8OS0xJ51XdYaTdAlFeHsb6OZuBPmLD400ozVPrwCE192rtqI",
-    callback_port: int = 28282,
-    delay_seconds: int = 60,
-):
-    """
-    Primary OIDC login flow.
-    """
-
-    # Prepare user
-    log.warning(
-        "User authentication required to use DataJoint SciOps CLI tools. We'll be "
-        "launching a web browser to authenticate your DataJoint account."
-    )
-    # allocate variables for access and context
-    code = None
-    cancelled = True
-    # Prepare HTTP server to communicate with browser
-    logging.getLogger("werkzeug").setLevel(logging.ERROR)
-
-    q = multiprocessing.Queue()
-    server = multiprocessing.Process(
-        target=start_server,
-        args=(
-            q,
-            callback_port,
-        ),
-    )
-    server.start()
-    # build url
-    query_params = dict(
-        scope="openid",
-        response_type="code",
-        client_id=auth_client_id,
-        code_challenge=code_challenge,
-        code_challenge_method=code_challenge_method,
-        redirect_uri=f"http://localhost:{callback_port}/login-completed",
-    )
-    link = f"{auth_url}?{urllib.parse.urlencode(query_params)}"
-    # attempt to launch browser or provide instructions
-    browser_available = True
-    try:
-        webbrowser.get()
-    except webbrowser.Error:
-        browser_available = False
-    if browser_available:
-        log.info("Browser available. Launching...")
-        webbrowser.open(link, new=2)
-    else:
-        log.warning(
-            "Browser unavailable. On a browser client, please navigate to the "
-            f"following link to login: {link}"
-        )
-    # cancel_process = multiprocessing.Process(
-    #     target=_delayed_request,
-    #     kwargs=dict(
-    #         url=f"http://localhost:{callback_port}/login-cancelled",
-    #         delay=delay_seconds,
-    #     ),
-    # )
-    # # cancel_process.start()
-    queue_in_flask = q.get(block=True)
-    cancelled = queue_in_flask["cancelled"]
-    code = queue_in_flask["code"]
-    # server.terminate()
-    # cancel_process.terminate()
-    # received a response
-    if cancelled:
-        server.terminate()
-        raise Exception(
-            "User login cancelled. User must be logged in to use DataJoint SciOps CLI tools."
-        )
-    else:
-        # generate user info
-        connection = http.client.HTTPSConnection(lookup_service_domain)
-        headers = {
-            "Content-type": "application/json",
-            "Origin": lookup_service_allowed_origin,
-        }
-        body = json.dumps(
-            {
-                "auth_provider": lookup_service_auth_provider,
-                "redirect_uri": f"http://localhost:{callback_port}/login-completed",
-                "code_verifier": code_verifier,
-                "client_id": auth_client_id,
-                "code": code,
-            }
-        )
-        connection.request("POST", lookup_service_route, body, headers)
-        response = connection.getresponse().read().decode()
-        try:
-            userdata = json.loads(response)
-            log.info("User successfully authenticated.")
-            return (
-                userdata["access_token"],
-                userdata["username"],
-                userdata["refresh_token"],
-            )
-        except json.decoder.JSONDecodeError:
-            log.error(response)
-            raise Exception("Login failed")
-        finally:
-            server.terminate()
-
-
-def _delayed_request(*, url: str, delay: str = 0):
-    time.sleep(delay)
-    return urllib.request.urlopen(url)
-
-
 def _decode_bearer_token(bearer_token):
     log.debug(f"bearer_token: {bearer_token}")
     jwt_data = json.loads(
@@ -249,31 +76,6 @@ def _decode_bearer_token(bearer_token):
     )
     log.debug(f"jwt_data: {jwt_data}")
     return jwt_data
-
-
-if sys.platform.startswith('win'):
-    # First define a modified version of Popen.
-    class _Popen(forking.Popen):
-        def __init__(self, *args, **kw):
-            if hasattr(sys, 'frozen'):
-                # We have to set original _MEIPASS2 value from sys._MEIPASS
-                # to get --onefile mode working.
-                os.putenv('_MEIPASS2', sys._MEIPASS)
-            try:
-                super(_Popen, self).__init__(*args, **kw)
-            finally:
-                if hasattr(sys, 'frozen'):
-                    # On some platforms (e.g. AIX) 'os.unsetenv()' is not
-                    # available. In those cases we cannot delete the variable
-                    # but only set it to the empty string. The bootloader
-                    # can handle this case.
-                    if hasattr(os, 'unsetenv'):
-                        os.unsetenv('_MEIPASS2')
-                    else:
-                        os.putenv('_MEIPASS2', '')
-
-    # Second override 'Popen' class with our modified version.
-    forking.Popen = _Popen
 
 
 class Session:
@@ -300,14 +102,10 @@ class Session:
                 auth_client_secret=self.auth_client_secret,
             )
             self.jwt = _decode_bearer_token(self.bearer_token)
-        elif not bearer_token:
-            self.bearer_token, self.user, self.refresh_token = _oidc_login(
-                auth_client_id=auth_client_id,
-            )
-            self.jwt = _decode_bearer_token(self.bearer_token)
         else:
+            assert bearer_token, "Bearer token is required for user authentication."
             self.jwt = _decode_bearer_token(self.bearer_token)
-            time_to_live = (self.jwt["exp"] - datetime.utcnow().timestamp()) / 60 / 60
+            time_to_live = (self.jwt["exp"] - datetime.now(datetime.timezone.utc).timestamp()) / 60 / 60
             log.info(
                 f"Reusing provided bearer token with a life of {time_to_live} [HR]"
             )
@@ -332,6 +130,7 @@ class Session:
             )
             self.jwt = _decode_bearer_token(self.bearer_token)
         else:
+            assert self.refresh_token, "Refresh token is required for user authentication."
             # generate user info
             connection = http.client.HTTPSConnection(lookup_service_domain)
             headers = {
