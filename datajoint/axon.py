@@ -6,6 +6,11 @@ import os
 import sys
 import flask
 import webbrowser
+import requests_oauthlib
+import oauthlib
+from oauthlib.oauth2 import BackendApplicationClient
+from requests_oauthlib import OAuth2Session
+import requests
 import urllib
 import http.client
 import botocore
@@ -250,3 +255,68 @@ class RefreshableBotoSession:
         autorefresh_session = boto3.Session(botocore_session=session)
 
         return autorefresh_session
+
+def get_s3_client(
+    aws_account_id: str,
+    s3_role: str,
+    auth_client_id: str,
+    auth_client_secret: str = None,
+    bearer_token: str = None,
+    well_known_url: str = "https://keycloak-qa.datajoint.io/realms/datajoint/.well-known/openid-configuration",
+):
+    """
+    Get S3 client with the given credentials.
+
+    Parameters
+    ----------
+    aws_account_id : str
+        AWS account ID
+
+    s3_role : str
+        S3 role
+
+    auth_client_id : str
+        Auth client ID
+
+    auth_client_secret : str (optional)
+        Auth client secret
+
+    bearer_token : str (optional)
+        Bearer token
+
+    well_known_url : str (optional)
+        Well-known URL for the OpenID configuration
+
+    Returns
+    -------
+    boto3.client
+        S3 client
+    """
+    # Get token URL from well-known URL
+    well_known_resp = requests.get(well_known_url)
+    assert well_known_resp.status_code == 200, f"Failed to get well-known URL: {well_known_url}"
+    well_known_data = well_known_resp.json()
+    token_url = well_known_data.get("token_endpoint")
+    assert token_url, f"Token URL not found in well-known data: {well_known_data=}"
+
+    # Client credentials flow
+    token = _client_credentials_flow(
+        auth_client_id, auth_client_secret, token_url
+    )
+
+    #
+
+
+def _client_credentials_flow(client_id, client_secret, token_url):
+    client = BackendApplicationClient(client_id=client_id)
+    oauth = OAuth2Session(client=client)
+    try:
+        return oauth.fetch_token(
+            token_url=token_url,
+            client_id=client_id,
+            client_secret=client_secret,
+        )
+    except oauthlib.oauth2.rfc6749.errors.UnauthorizedClientError as e:
+        msg = f"Error getting OAuth2 client: {e.description}"
+        log.error(msg)
+        raise ValueError(msg) from e

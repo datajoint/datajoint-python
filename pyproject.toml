@@ -45,12 +45,15 @@ classifiers = [
 test = [
   "pytest",
   "pytest-cov",
+  "pytest-dotenv",
   "black==24.2.0",
   "flake8",
   "moto[s3]>=4.2.13",
 ]
 axon = [
   "boto3",
+  "requests_oauthlib",
+  "requests",
 ]
 
 [project.urls]
