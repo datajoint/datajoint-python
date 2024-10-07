@@ -47,6 +47,10 @@ test = [
   "pytest-cov",
   "black==24.2.0",
   "flake8",
+  "moto[s3]>=4.2.13",
+]
+axon = [
+  "boto3",
 ]
 
 [project.urls]

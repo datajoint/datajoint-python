@@ -10,14 +10,13 @@ import urllib
 import http.client
 import botocore
 import botocore.config
-from .log import log
+from .logging import logger as log
 from time import time
 import multiprocessing
 
 import boto3
 from botocore.credentials import RefreshableCredentials
 from botocore.session import get_session
-from djsciops import settings as djsciops_settings
 try:
     # Python 3.4+
     if sys.platform.startswith('win'):
@@ -46,7 +45,7 @@ LOOKUP_SERVICE_AUTH = {
         "ROUTE": "/realms/datajoint/protocol/openid-connect",
     },
 }
-issuer = djsciops_settings.get_config()["djauth"]["issuer"]
+issuer = "https://keycloak-qa.datajoint.io/realms/datajoint"
 
 
 def _client_login(
@@ -66,6 +65,7 @@ def _client_login(
     )
     connection.request("POST", auth_provider_token_route, body, headers)
     jwt_payload = json.loads(connection.getresponse().read().decode())
+    assert "access_token" in jwt_payload, f"Access token not found in response: {jwt_payload=}."
     return jwt_payload["access_token"]
 
 

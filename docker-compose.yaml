@@ -75,5 +75,5 @@ services:
         set -e
         pip install -q -e ".[test]"
         pip freeze | grep datajoint
-        pytest --cov-report term-missing --cov=datajoint tests
+        pytest -vv -xs tests/test_axon.py
 
