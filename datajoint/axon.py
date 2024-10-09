@@ -96,7 +96,7 @@ class Session:
         self.s3_role = s3_role
         self.auth_client_id = auth_client_id
         self.auth_client_secret = auth_client_secret
-        self.sts_arn = f"arn:aws:iam::{aws_account_id}:role/{s3_role}"
+        self.sts_arn = f"arn:aws:iam::{self.aws_account_id}:role/{self.s3_role}"
         self.user = "client_credentials"
         self.refresh_token = None
         self.jwt = None
@@ -304,10 +304,11 @@ def get_s3_client(
         auth_client_id, auth_client_secret, token_url
     )
 
+    breakpoint()
     #
 
 
-def _client_credentials_flow(client_id, client_secret, token_url):
+def _client_credentials_flow(client_id, client_secret, token_url) -> oauthlib.oauth2.rfc6749.tokens.OAuth2Token:
     client = BackendApplicationClient(client_id=client_id)
     oauth = OAuth2Session(client=client)
     try:
