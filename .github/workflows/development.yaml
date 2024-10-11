@@ -61,6 +61,8 @@ jobs:
         py_ver: ["3.9"]
         mysql_ver: ["8.0", "5.7"]
         include:
+          - py_ver: "3.13"
+            mysql_ver: "8.0"
           - py_ver: "3.12"
             mysql_ver: "8.0"
           - py_ver: "3.11"
