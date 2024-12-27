@@ -157,10 +157,10 @@ with external groups.
 ## Summary of DataJoint features
 
 1. A free, open-source framework for scientific data pipelines and workflow management
-1. Data hosting in cloud or in-house
-1. MySQL, filesystems, S3, and Globus for data management
-1. Define, visualize, and query data pipelines from MATLAB or Python
-1. Enter and view data through GUIs
-1. Concurrent access by multiple users and computational agents
-1. Data integrity: identification, dependencies, groupings
-1. Automated distributed computation
+2. Data hosting in cloud or in-house
+3. MySQL, filesystems, S3, and Globus for data management
+4. Define, visualize, and query data pipelines from MATLAB or Python
+5. Enter and view data through GUIs
+6. Concurrent access by multiple users and computational agents
+7. Data integrity: identification, dependencies, groupings
+8. Automated distributed computation

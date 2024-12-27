@@ -179,7 +179,7 @@ grouped together by common prefixes. For example, a lab may have a
 collection of schemas that begin with `common_`. Some common
 processing may be organized into several schemas that begin with
 `pipeline_`. Typically each user has all privileges to schemas that
-begin with her username.
+begin with their username.
 
 For example, alice may have privileges to select and insert data from
 the common schemas (but not create new tables), and have all
