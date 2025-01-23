@@ -1,6 +1,6 @@
 # Data Integrity
 
-The term **data integrity** describes  guarantees made by the data management process 
+The term **data integrity** describes guarantees made by the data management process 
 that prevent errors and corruption in data due to technical failures and human errors 
 arising in the course of continuous use by multiple agents.
 DataJoint pipelines respect the following forms of data integrity: **entity 

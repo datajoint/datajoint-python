@@ -1,4 +1,4 @@
-# Overview
+# Blobs
 
 DataJoint provides functionality for serializing and deserializing complex data types
 into binary blobs for efficient storage and compatibility with MATLAB's mYm
