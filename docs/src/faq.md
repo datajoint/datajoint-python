@@ -4,8 +4,8 @@
 
 It is common to enter data during experiments using a graphical user interface.
 
-1. The [DataJoint Works](https://works.datajoint.com) platform is a web-based, fully
-managed service to host and execute data pipelines.
+1. The [DataJoint Works](https://works.datajoint.com) platform is a web-based,
+   end-to-end platform to host and execute data pipelines.
 
 2. [DataJoint LabBook](https://github.com/datajoint/datajoint-labbook) is an open 
 source project for data entry but is no longer actively maintained.
