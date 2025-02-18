@@ -195,7 +195,7 @@ class Connection:
         connect_host_hook(self)
         if self.is_connected:
             logger.info(
-                "DataJoint {version} connected {user}@{host}:{port}".format(
+                "DataJoint {version} connected to {user}@{host}:{port}".format(
                     version=__version__, **self.conn_info
                 )
             )

@@ -118,7 +118,7 @@ class Config(collections.abc.MutableMapping):
         if filename is None:
             filename = LOCALCONFIG
         with open(filename, "r") as fid:
-            logger.info(f"Reading dj.config from {filename}")
+            logger.info(f"DataJoint is configured from {os.path.abspath(filename)}")
             self._conf.update(json.load(fid))
 
     def save_local(self, verbose=False):
@@ -254,7 +254,7 @@ class Config(collections.abc.MutableMapping):
             if key == "loglevel":
                 if value not in valid_logging_levels:
                     raise ValueError(
-                        f"{'value'} is not a valid logging value {tuple(valid_logging_levels)}"
+                        f"'{value}' is not a valid logging value {tuple(valid_logging_levels)}"
                     )
                 logger.setLevel(value)
 
@@ -265,11 +265,9 @@ config_files = (
     os.path.expanduser(n) for n in (LOCALCONFIG, os.path.join("~", GLOBALCONFIG))
 )
 try:
-    config_file = next(n for n in config_files if os.path.exists(n))
+    config.load(next(n for n in config_files if os.path.exists(n)))
 except StopIteration:
-    pass
-else:
-    config.load(config_file)
+    logger.info("No config file was found.")
 
 # override login credentials with environment variables
 mapping = {
@@ -298,7 +296,7 @@ mapping = {
     if v is not None
 }
 if mapping:
-    logger.info(f"Loaded settings {tuple(mapping)} from environment variables.")
+    logger.info(f"Overloaded settings {tuple(mapping)} from environment variables.")
     config.update(mapping)
 
 logger.setLevel(log_levels[config["loglevel"]])
