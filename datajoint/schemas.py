@@ -482,8 +482,8 @@ class Schema:
         return [
             t
             for d, t in (
-                full_t.replace("`", "").split(".")
-                for full_t in self.connection.dependencies.topo_sort()
+                table_name.replace("`", "").split(".")
+                for table_name in self.connection.dependencies.topo_sort()
             )
             if d == self.database
         ]
