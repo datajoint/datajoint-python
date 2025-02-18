@@ -338,7 +338,7 @@ class AutoPopulate:
                 computed_result = next(gen)  # perform the computation
                 gen = make(dict(key), **(make_kwargs or {}))  # restart make
                 # fetch and insert inside a transaction
-                self.connnection.start_transaction()
+                self.connection.start_transaction()
                 fetched_data = next(gen)
                 if (
                     fetch_hash
