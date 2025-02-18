@@ -4,6 +4,7 @@ version = "0.14.3"
 dependencies = [
   "numpy",
   "pymysql>=0.7.2",
+  "deepdiff",
   "pyparsing",
   "ipython",
   "pandas",
