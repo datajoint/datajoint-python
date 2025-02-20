@@ -336,9 +336,9 @@ class AutoPopulate:
                     fetched_data, ignore_iterable_order=False
                 )[fetched_data]
                 computed_result = next(gen)  # perform the computation
-                gen = make(dict(key), **(make_kwargs or {}))  # restart make
                 # fetch and insert inside a transaction
                 self.connection.start_transaction()
+                gen = make(dict(key), **(make_kwargs or {}))  # restart make
                 fetched_data = next(gen)
                 if (
                     fetch_hash

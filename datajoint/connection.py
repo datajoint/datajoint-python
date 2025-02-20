@@ -349,7 +349,7 @@ class Connection:
         except errors.LostConnectionError:
             if not reconnect:
                 raise
-            logger.warning("MySQL server has gone away. Reconnecting to the server.")
+            logger.warning("Reconnecting to MySQL server.")
             connect_host_hook(self)
             if self._in_transaction:
                 self.cancel_transaction()
