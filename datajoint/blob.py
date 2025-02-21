@@ -204,7 +204,7 @@ class Blob:
             return self.pack_dict(obj)
         if isinstance(obj, str):
             return self.pack_string(obj)
-        if isinstance(obj, collections.abc.ByteString):
+        if isinstance(obj, collections.abc.Buffer):
             return self.pack_bytes(obj)
         if isinstance(obj, collections.abc.MutableSequence):
             return self.pack_list(obj)
