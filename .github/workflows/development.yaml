@@ -49,7 +49,7 @@ jobs:
           echo "DJ_VERSION=${DJ_VERSION}" >> $GITHUB_ENV
       - if: matrix.py_ver == '3.9' && matrix.distro == 'debian'
         name: Add pip artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: pip-datajoint-${{env.DJ_VERSION}}
           path: dist
@@ -191,7 +191,7 @@ jobs:
           prerelease: false
           draft: false
       - name: Fetch pip artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: pip-datajoint-${{env.DJ_VERSION}}
           path: dist
