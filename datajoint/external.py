@@ -278,7 +278,7 @@ class ExternalTable(Table):
 
         # check if the remote file already exists and verify that it matches
         check_hash = (self & {"hash": uuid}).fetch("contents_hash")
-        if check_hash:
+        if check_hash.size:
             # the tracking entry exists, check that it's the same file as before
             if contents_hash != check_hash[0]:
                 raise DataJointError(
