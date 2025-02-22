@@ -574,7 +574,6 @@ def test_union_multiple(schema_simp_pop):
 
 
 class TestDjTop:
-
     def test_restrictions_by_top(self, schema_simp_pop):
         a = L() & dj.Top()
         b = L() & dj.Top(order_by=["cond_in_l", "KEY"])
