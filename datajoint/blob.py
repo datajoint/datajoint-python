@@ -8,7 +8,6 @@ from itertools import repeat
 import collections
 from decimal import Decimal
 import datetime
-import typing as tp
 import uuid
 import numpy as np
 from .errors import DataJointError
