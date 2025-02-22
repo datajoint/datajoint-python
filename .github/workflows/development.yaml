@@ -111,7 +111,7 @@ jobs:
           flake8 --ignore=E203,E722,W503 datajoint \
                  --count --max-complexity=62 --max-line-length=127 --statistics \
                  --per-file-ignores='datajoint/diagram.py:C901'
-          black --required-version '24.2.0' --check -v datajoint tests
+          black --required-version '24.2.0' --check -v datajoint tests --diff
   codespell:
     name: Check for spelling errors
     permissions:
