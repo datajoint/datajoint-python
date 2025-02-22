@@ -398,9 +398,7 @@ def _make_attribute_alter(new, old, primary_key):
                         command=(
                             "ADD"
                             if (old_name or new_name) not in old_names
-                            else "MODIFY"
-                            if not old_name
-                            else "CHANGE `%s`" % old_name
+                            else "MODIFY" if not old_name else "CHANGE `%s`" % old_name
                         ),
                         new_def=new_def,
                         after="" if after is None else "AFTER `%s`" % after,
