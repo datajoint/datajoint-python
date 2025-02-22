@@ -52,7 +52,7 @@ def repr_html(query_expression):
     info = heading.table_status
     tuples = rel.fetch(limit=config["display.limit"] + 1, format="array")
     has_more = len(tuples) > config["display.limit"]
-    tuples = tuples[0 : config["display.limit"]]
+    tuples = tuples[0:config["display.limit"]]
 
     css = """
     <style type="text/css">

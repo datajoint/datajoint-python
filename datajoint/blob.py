@@ -113,14 +113,14 @@ class Blob:
         try:
             # decompress
             prefix = next(
-                p for p in compression if self._blob[self._pos :].startswith(p)
+                p for p in compression if self._blob[self._pos:].startswith(p)
             )
         except StopIteration:
             pass  # assume uncompressed but could be unrecognized compression
         else:
             self._pos += len(prefix)
             blob_size = self.read_value()
-            blob = compression[prefix](self._blob[self._pos :])
+            blob = compression[prefix](self._blob[self._pos:])
             assert len(blob) == blob_size
             self._blob = blob
             self._pos = 0
@@ -558,7 +558,7 @@ class Blob:
 
     def read_zero_terminated_string(self):
         target = self._blob.find(b"\0", self._pos)
-        data = self._blob[self._pos : target].decode()
+        data = self._blob[self._pos:target].decode()
         self._pos = target + 1
         return data
 
@@ -571,7 +571,7 @@ class Blob:
 
     def read_binary(self, size):
         self._pos += int(size)
-        return self._blob[self._pos - int(size) : self._pos]
+        return self._blob[self._pos - int(size):self._pos]
 
     def pack(self, obj, compress):
         self.protocol = b"mYm\0"  # will be replaced with dj0 if new features are used
