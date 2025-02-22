@@ -359,7 +359,6 @@ def test_long_table_name(schema_any):
 
 
 def test_regex_mismatch(schema_any):
-
     class IndexAttribute(dj.Manual):
         definition = """
         index: int

@@ -22,7 +22,7 @@ SUPPORT_MIGRATED_BLOBS = True  # support blobs migrated from datajoint 0.11.*
 
 def subfold(name, folds):
     """
-    subfolding for external storage:   e.g.  subfold('aBCdefg', (2, 3))  -->  ['ab','cde']
+    subfolding for external storage: e.g.  subfold('aBCdefg', (2, 3))  -->  ['ab','cde']
     """
     return (
         (name[: folds[0]].lower(),) + subfold(name[folds[0] :], folds[1:])
@@ -278,7 +278,7 @@ class ExternalTable(Table):
 
         # check if the remote file already exists and verify that it matches
         check_hash = (self & {"hash": uuid}).fetch("contents_hash")
-        if check_hash:
+        if check_hash.size:
             # the tracking entry exists, check that it's the same file as before
             if contents_hash != check_hash[0]:
                 raise DataJointError(

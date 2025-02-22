@@ -12,6 +12,7 @@ from .errors import DataJointError, LostConnectionError
 import signal
 import multiprocessing as mp
 import contextlib
+import deepdiff
 
 # noinspection PyExceptionInherit,PyCallingNonCallable
 
@@ -309,17 +310,46 @@ class AutoPopulate:
         ):
             return False
 
-        self.connection.start_transaction()
+        # if make is a generator, it transaction can be delayed until the final stage
+        is_generator = inspect.isgeneratorfunction(make)
+        if not is_generator:
+            self.connection.start_transaction()
+
         if key in self.target:  # already populated
-            self.connection.cancel_transaction()
+            if not is_generator:
+                self.connection.cancel_transaction()
             if jobs is not None:
                 jobs.complete(self.target.table_name, self._job_key(key))
             return False
 
         logger.debug(f"Making {key} -> {self.target.full_table_name}")
         self.__class__._allow_insert = True
+
         try:
-            make(dict(key), **(make_kwargs or {}))
+            if not is_generator:
+                make(dict(key), **(make_kwargs or {}))
+            else:
+                # tripartite make - transaction is delayed until the final stage
+                gen = make(dict(key), **(make_kwargs or {}))
+                fetched_data = next(gen)
+                fetch_hash = deepdiff.DeepHash(
+                    fetched_data, ignore_iterable_order=False
+                )[fetched_data]
+                computed_result = next(gen)  # perform the computation
+                # fetch and insert inside a transaction
+                self.connection.start_transaction()
+                gen = make(dict(key), **(make_kwargs or {}))  # restart make
+                fetched_data = next(gen)
+                if (
+                    fetch_hash
+                    != deepdiff.DeepHash(fetched_data, ignore_iterable_order=False)[
+                        fetched_data
+                    ]
+                ):  # rollback due to referential integrity fail
+                    self.connection.cancel_transaction()
+                    return False
+                gen.send(computed_result)  # insert
+
         except (KeyboardInterrupt, SystemExit, Exception) as error:
             try:
                 self.connection.cancel_transaction()

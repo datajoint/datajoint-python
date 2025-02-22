@@ -12,7 +12,7 @@ import re
 import pathlib
 
 from .settings import config
-from . import errors
+from . import errors, __version__
 from .dependencies import Dependencies
 from .blob import pack, unpack
 from .hash import uuid_from_buffer
@@ -190,15 +190,20 @@ class Connection:
         self.conn_info["ssl_input"] = use_tls
         self.conn_info["host_input"] = host_input
         self.init_fun = init_fun
-        logger.info("Connecting {user}@{host}:{port}".format(**self.conn_info))
         self._conn = None
         self._query_cache = None
         connect_host_hook(self)
         if self.is_connected:
-            logger.info("Connected {user}@{host}:{port}".format(**self.conn_info))
+            logger.info(
+                "DataJoint {version} connected to {user}@{host}:{port}".format(
+                    version=__version__, **self.conn_info
+                )
+            )
             self.connection_id = self.query("SELECT connection_id()").fetchone()[0]
         else:
-            raise errors.LostConnectionError("Connection failed.")
+            raise errors.LostConnectionError(
+                "Connection failed {user}@{host}:{port}".format(**self.conn_info)
+            )
         self._in_transaction = False
         self.schemas = dict()
         self.dependencies = Dependencies(self)
@@ -344,7 +349,7 @@ class Connection:
         except errors.LostConnectionError:
             if not reconnect:
                 raise
-            logger.warning("MySQL server has gone away. Reconnecting to the server.")
+            logger.warning("Reconnecting to MySQL server.")
             connect_host_hook(self)
             if self._in_transaction:
                 self.cancel_transaction()
