@@ -8,6 +8,7 @@ from itertools import repeat
 import collections
 from decimal import Decimal
 import datetime
+import typing as tp
 import uuid
 import numpy as np
 from .errors import DataJointError
@@ -204,7 +205,7 @@ class Blob:
             return self.pack_dict(obj)
         if isinstance(obj, str):
             return self.pack_string(obj)
-        if isinstance(obj, collections.abc.Buffer):
+        if isinstance(obj, (bytes, bytearray)):
             return self.pack_bytes(obj)
         if isinstance(obj, collections.abc.MutableSequence):
             return self.pack_list(obj)
