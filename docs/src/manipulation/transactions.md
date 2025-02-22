@@ -6,7 +6,7 @@ interrupting the sequence of such operations halfway would leave the data in an 
 state. 
 While the sequence is in progress, other processes accessing the database will not see 
 the partial results until the transaction is complete.
-The sequence make include [data queries](../query/principles.md) and 
+The sequence may include [data queries](../query/principles.md) and 
 [manipulations](index.md).
 
 In such cases, the sequence of operations may be enclosed in a transaction. 
