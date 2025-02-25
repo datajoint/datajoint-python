@@ -16,7 +16,7 @@
 		"ghcr.io/guiyomh/features/vim:0": {}
 	},
 	"onCreateCommand": "pip install -e .",
-	"postStartCommand": "MYSQL_VER=8.0 MINIO_VER=RELEASE.2022-08-11T04-37-28Z docker compose -f local-docker-compose.yml down && MYSQL_VER=8.0 MINIO_VER=RELEASE.2022-08-11T04-37-28Z docker compose -f local-docker-compose.yml up --build --wait",
+	"postStartCommand": "MYSQL_VER=8.0 MINIO_VER=RELEASE.2022-08-11T04-37-28Z docker compose -f local-docker-compose.yml down && docker volume prune -f && MYSQL_VER=8.0 MINIO_VER=RELEASE.2022-08-11T04-37-28Z docker compose -f local-docker-compose.yml up --build --wait",
 	"forwardPorts": [
 		80,
 		443,

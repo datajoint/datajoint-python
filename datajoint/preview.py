@@ -68,9 +68,11 @@ def repr_html(query_expression):
         }
         .Table tr:nth-child(odd){
             background: #ffffff;
+            color: #000000;
         }
         .Table tr:nth-child(even){
             background: #f3f1ff;
+            color: #000000;
         }
         /* Tooltip container */
         .djtooltip {

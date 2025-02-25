@@ -2,59 +2,24 @@
 Collection of test cases to test connection module.
 """
 
-from nose.tools import assert_true, assert_equal
 import datajoint as dj
-import numpy as np
 from datajoint import DataJointError
-from . import CONN_INFO, PREFIX
+import numpy as np
+from . import CONN_INFO_ROOT, connection_root, connection_test
+
+from . import PREFIX
+import pytest
 
 
-def test_dj_conn():
-    """
-    Should be able to establish a connection
-    """
-    c = dj.conn(**CONN_INFO)
-    assert_true(c.is_connected)
+@pytest.fixture
+def schema(connection_test):
+    schema = dj.Schema(PREFIX + "_transactions", locals(), connection=connection_test)
+    yield schema
+    schema.drop()
 
 
-def test_dj_connection_class():
-    """
-    Should be able to establish a connection
-    """
-    c = dj.Connection(**CONN_INFO)
-    assert_true(c.is_connected)
-
-
-def test_persistent_dj_conn():
-    """
-    conn() method should provide persistent connection across calls.
-    Setting reset=True should create a new persistent connection.
-    """
-    c1 = dj.conn(**CONN_INFO)
-    c2 = dj.conn()
-    c3 = dj.conn(**CONN_INFO)
-    c4 = dj.conn(reset=True, **CONN_INFO)
-    c5 = dj.conn(**CONN_INFO)
-    assert_true(c1 is c2)
-    assert_true(c1 is c3)
-    assert_true(c1 is not c4)
-    assert_true(c4 is c5)
-
-
-def test_repr():
-    c1 = dj.conn(**CONN_INFO)
-    assert_true("disconnected" not in repr(c1) and "connected" in repr(c1))
-
-
-class TestTransactions:
-    """
-    test transaction management
-    """
-
-    schema = dj.Schema(
-        PREFIX + "_transactions", locals(), connection=dj.conn(**CONN_INFO)
-    )
-
+@pytest.fixture
+def Subjects(schema):
     @schema
     class Subjects(dj.Manual):
         definition = """
@@ -65,63 +30,90 @@ class TestTransactions:
         species = "mouse"           : enum('mouse', 'monkey', 'human')   # species
         """
 
-    @classmethod
-    def setup_class(cls):
-        cls.table = cls.Subjects()
-        cls.conn = dj.conn(**CONN_INFO)
+    yield Subjects
+    Subjects.drop()
 
-    def teardown(self):
-        self.table.delete_quick()
 
-    def test_active(self):
-        with self.conn.transaction as conn:
-            assert_true(conn.in_transaction, "Transaction is not active")
+def test_dj_conn():
+    """
+    Should be able to establish a connection as root user
+    """
+    c = dj.conn(**CONN_INFO_ROOT)
+    assert c.is_connected
 
-    def test_transaction_rollback(self):
-        """Test transaction cancellation using a with statement"""
-        tmp = np.array(
-            [(1, "Peter", "mouse"), (2, "Klara", "monkey")],
-            self.table.heading.as_dtype,
-        )
 
-        self.table.delete()
-        with self.conn.transaction:
-            self.table.insert1(tmp[0])
-        try:
-            with self.conn.transaction:
-                self.table.insert1(tmp[1])
-                raise DataJointError("Testing rollback")
-        except DataJointError:
-            pass
-        assert_equal(
-            len(self.table),
-            1,
-            "Length is not 1. Expected because rollback should have happened.",
-        )
-        assert_equal(
-            len(self.table & "subject_id = 2"),
-            0,
-            "Length is not 0. Expected because rollback should have happened.",
-        )
+def test_dj_connection_class(connection_test):
+    """
+    Should be able to establish a connection as test user
+    """
+    assert connection_test.is_connected
 
-    def test_cancel(self):
-        """Tests cancelling a transaction explicitly"""
-        tmp = np.array(
-            [(1, "Peter", "mouse"), (2, "Klara", "monkey")],
-            self.table.heading.as_dtype,
-        )
-        self.table.delete_quick()
-        self.table.insert1(tmp[0])
-        self.conn.start_transaction()
-        self.table.insert1(tmp[1])
-        self.conn.cancel_transaction()
-        assert_equal(
-            len(self.table),
-            1,
-            "Length is not 1. Expected because rollback should have happened.",
-        )
-        assert_equal(
-            len(self.table & "subject_id = 2"),
-            0,
-            "Length is not 0. Expected because rollback should have happened.",
-        )
+
+def test_persistent_dj_conn():
+    """
+    conn() method should provide persistent connection across calls.
+    Setting reset=True should create a new persistent connection.
+    """
+    c1 = dj.conn(**CONN_INFO_ROOT)
+    c2 = dj.conn()
+    c3 = dj.conn(**CONN_INFO_ROOT)
+    c4 = dj.conn(reset=True, **CONN_INFO_ROOT)
+    c5 = dj.conn(**CONN_INFO_ROOT)
+    assert c1 is c2
+    assert c1 is c3
+    assert c1 is not c4
+    assert c4 is c5
+
+
+def test_repr():
+    c1 = dj.conn(**CONN_INFO_ROOT)
+    assert "disconnected" not in repr(c1) and "connected" in repr(c1)
+
+
+def test_active(connection_test):
+    with connection_test.transaction as conn:
+        assert conn.in_transaction, "Transaction is not active"
+
+
+def test_transaction_rollback(connection_test, Subjects):
+    """Test transaction cancellation using a with statement"""
+    tmp = np.array(
+        [(1, "Peter", "mouse"), (2, "Klara", "monkey")],
+        Subjects.heading.as_dtype,
+    )
+
+    Subjects.delete()
+    with connection_test.transaction:
+        Subjects.insert1(tmp[0])
+    try:
+        with connection_test.transaction:
+            Subjects.insert1(tmp[1])
+            raise DataJointError("Testing rollback")
+    except DataJointError:
+        pass
+    assert (
+        len(Subjects()) == 1
+    ), "Length is not 1. Expected because rollback should have happened."
+
+    assert (
+        len(Subjects & "subject_id = 2") == 0
+    ), "Length is not 0. Expected because rollback should have happened."
+
+
+def test_cancel(connection_test, Subjects):
+    """Tests cancelling a transaction explicitly"""
+    tmp = np.array(
+        [(1, "Peter", "mouse"), (2, "Klara", "monkey")],
+        Subjects.heading.as_dtype,
+    )
+    Subjects.delete_quick()
+    Subjects.insert1(tmp[0])
+    connection_test.start_transaction()
+    Subjects.insert1(tmp[1])
+    connection_test.cancel_transaction()
+    assert (
+        len(Subjects()) == 1
+    ), "Length is not 1. Expected because rollback should have happened."
+    assert (
+        len(Subjects & "subject_id = 2") == 0
+    ), "Length is not 0. Expected because rollback should have happened."

@@ -449,7 +449,7 @@ class Blob:
         )
 
     def read_struct(self):
-        """deserialize matlab stuct"""
+        """deserialize matlab struct"""
         n_dims = self.read_value()
         shape = self.read_value(count=n_dims)
         n_elem = np.prod(shape, dtype=int)

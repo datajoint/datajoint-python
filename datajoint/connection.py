@@ -113,16 +113,16 @@ def conn(
     :param init_fun: initialization function
     :param reset: whether the connection should be reset or not
     :param use_tls: TLS encryption option. Valid options are: True (required), False
-        (required no TLS), None (TLS prefered, default), dict (Manually specify values per
+        (required no TLS), None (TLS preferred, default), dict (Manually specify values per
         https://dev.mysql.com/doc/refman/5.7/en/connection-options.html#encrypted-connection-options).
     """
     if not hasattr(conn, "connection") or reset:
         host = host if host is not None else config["database.host"]
         user = user if user is not None else config["database.user"]
         password = password if password is not None else config["database.password"]
-        if user is None:  # pragma: no cover
+        if user is None:
             user = input("Please enter DataJoint username: ")
-        if password is None:  # pragma: no cover
+        if password is None:
             password = getpass(prompt="Please enter DataJoint password: ")
         init_fun = (
             init_fun if init_fun is not None else config["connection.init_function"]
