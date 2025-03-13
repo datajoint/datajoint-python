@@ -11,7 +11,9 @@ repos:
   rev: v5.0.0
   hooks:
   - id: check-yaml
+    exclude: 'docs/mkdocs.yaml' # exclude mkdocs.yaml since pymdownx.emoji !! usage
   - id: check-json
+    exclude: '(.vscode|.devcontainer)' # exclude these since // was used for comments
   - id: check-toml
   - id: trailing-whitespace
   - id: end-of-file-fixer
@@ -20,23 +22,26 @@ repos:
   rev: v2.4.1
   hooks:
     - id: codespell
+- repo: https://github.com/pycqa/isort
+  rev: 5.12.0  # Use the latest stable version
+  hooks:
+    - id: isort
+      args:
+        - --profile=black  # Optional, makes isort compatible with Black
 - repo: https://github.com/psf/black
-  rev: 24.2.0
+  rev: 24.2.0 # matching versions in pyproject.toml and github actions
   hooks:
   - id: black
-    args:
-      - --required-version='24.2.0'
-      - -check
-      - -v=datajoint,tests
-      - --diff
+    args: ["--check", "-v", "datajoint", "tests", "--diff"] # --required-version is conflicting with pre-commit
 - repo: https://github.com/PyCQA/flake8
   rev: 7.1.2
   hooks:
   - id: flake8
     args:
-      - --ignore=E203,E722,W503 datajoint
+      - --ignore=E203,E722,W503
       - --count
       - --max-complexity=62
       - --max-line-length=127
       - --statistics
-      - --per-file-ignores='datajoint/diagram.py:C901'
+      - --per-file-ignores=datajoint/diagram.py:C901
+    files: datajoint # a lot of files in tests are not compliant
