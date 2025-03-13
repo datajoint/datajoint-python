@@ -16,7 +16,7 @@ jobs:
           stale-issue-label: "stale"
           stale-issue-message: "This issue is stale because it has been open for 45 days with no activity."
           days-before-issue-close: 365 # for initial period, suggest 30
-          close-issue-message: "This issue was closed because it has been inactive for 365 days since being marked as stale."
+          close-issue-message: "This issue was closed because it has been inactive for 365 days since being marked as stale, please reopen if it's still applicable."
           days-before-pr-stale: 45 # for initial period, suggest 15
           days-before-pr-close: 365 # for initial period, suggest 30
           repo-token: ${{ secrets.GITHUB_TOKEN }}
