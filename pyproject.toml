@@ -44,6 +44,7 @@ classifiers = [
 
 [project.optional-dependencies]
 test = [
+  "pre-commit",
   "pytest",
   "pytest-cov",
   "black==24.2.0",
