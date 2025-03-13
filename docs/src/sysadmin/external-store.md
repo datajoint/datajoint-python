@@ -255,19 +255,19 @@ to upgrade to DataJoint v0.12, the following process should be followed:
   5. Migrate external tracking tables for each schema to use the new format. For 
   instance in Python:
 
-     ```python
-     import datajoint.migrate as migrate
-     db_schema_name='schema_1'
-     external_store='raw'
-     migrate.migrate_dj011_external_blob_storage_to_dj012(db_schema_name, external_store)
-     ```
+    ```python
+    import datajoint.migrate as migrate
+    db_schema_name='schema_1'
+    external_store='raw'
+    migrate.migrate_dj011_external_blob_storage_to_dj012(db_schema_name, external_store)
+    ```
 
   6. Verify pipeline functionality after this process has completed. For instance in 
   Python:
 
-     ```python
-     x = myschema.TableWithExternal.fetch('external_field', limit=1)[0]
-     ```
+    ```python
+    x = myschema.TableWithExternal.fetch('external_field', limit=1)[0]
+    ```
 
 Note: This migration function is provided on a best-effort basis, and will
   convert the external tracking tables into a format which is compatible
