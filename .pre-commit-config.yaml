@@ -45,3 +45,6 @@ repos:
       - --statistics
       - --per-file-ignores=datajoint/diagram.py:C901
     files: datajoint # a lot of files in tests are not compliant
+
+## Suggest to add pytest hook that runs unit test | Prerequisite: split unit/integration test
+## https://github.com/datajoint/datajoint-python/issues/1211
