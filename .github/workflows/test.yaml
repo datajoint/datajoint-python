@@ -43,15 +43,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{matrix.py_ver}}
-      - name: Run primary tests
+      - name: Integration test
         env:
           PY_VER: ${{matrix.py_ver}}
-          DJ_PASS: password
           MYSQL_VER: ${{matrix.mysql_ver}}
-          DISTRO: alpine
-          MINIO_VER: RELEASE.2021-09-03T03-56-13Z
-          DOCKER_CLIENT_TIMEOUT: "120"
-          COMPOSE_HTTP_TIMEOUT: "120"
+          # taking default variables set in docker-compose.yaml to sync with local test
         run: |
           export HOST_UID=$(id -u)
           docker compose --profile test up --quiet-pull --build --exit-code-from djtest djtest

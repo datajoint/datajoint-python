@@ -1,5 +1,6 @@
 [project]
 name = "datajoint"
+# should to be auto synced with datajoint/version.py:__version__
 version = "0.14.4"
 dependencies = [
   "numpy",
@@ -18,7 +19,7 @@ dependencies = [
   "cryptography",
   "urllib3"
 ]
-requires-python = ">=3.8,<4.0"
+requires-python = ">=3.9,<4.0"
 authors = [
   {name = "Dimitri Yatsenko", email = "dimitri@datajoint.com"},
   {name = "Raphael Guzman"},
@@ -29,17 +30,36 @@ maintainers = [
   {name = "Dimitri Yatsenko", email = "dimitri@datajoint.com"},
   {name = "DataJoint Contributors", email = "support@datajoint.com"},
 ]
-description = "A relational data pipeline framework."
+# manually sync here: https://datajoint.com/docs/core/datajoint-python/latest/#welcome-to-datajoint-for-python
+description = "DataJoint for Python is a framework for scientific workflow management based on relational principles. DataJoint is built on the foundation of the relational data model and prescribes a consistent method for organizing, populating, computing, and querying data."
 readme = "README.md"
 license = {file = "LICENSE.txt"}
 keywords = [
     "database",
-    "data pipelines",
-    "scientific computing",
-    "automated research workflows",
+    "automated",
+    "automation",
+    "compute",
+    "data",
+    "pipeline",
+    "workflow",
+    "scientific",
+    "science",
+    "research",
+    "neuroscience",
+    "bioinformatics",
+    "bio-informatics",
+    "datajoint",
 ]
+# https://pypi.org/classifiers/
 classifiers = [
-  "Programming Language :: Python"
+  "Programming Language :: Python",
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Healthcare Industry",
+  "License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+  "Topic :: Scientific/Engineering :: Neuroscience", # Not standard, but just in case
 ]
 
 [project.optional-dependencies]
@@ -56,7 +76,7 @@ Homepage = "https://datajoint.com/docs"
 Documentation = "https://datajoint.com/docs"
 Repository = "https://github.com/datajoint/datajoint-python"
 "Bug Tracker" = "https://github.com/datajoint/datajoint-python/issues"
-Changelog = "https://github.com/datajoint/datajoint-python/blob/master/CHANGELOG.md"
+"Release Notes" = "https://github.com/datajoint/datajoint-python/releases"
 
 [project.entry-points."console_scripts"]
 dj = "datajoint.cli:cli"

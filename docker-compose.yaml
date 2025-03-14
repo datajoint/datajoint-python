@@ -15,7 +15,7 @@ services:
       retries: 5
       interval: 15s
   minio:
-    image: minio/minio:${MINIO_VER:-RELEASE.2022-08-11T04-37-28Z}
+    image: minio/minio:${MINIO_VER:-RELEASE.2025-02-28T09-55-16Z}
     environment:
       - MINIO_ACCESS_KEY=datajoint
       - MINIO_SECRET_KEY=datajoint
