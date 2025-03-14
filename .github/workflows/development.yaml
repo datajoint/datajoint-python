@@ -13,8 +13,53 @@ on:
       - "!gh-pages" # exclude gh-pages branch
       - "!stage*" # exclude branches beginning with stage
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v3
+    # enforce the same check as pre-commit
+    # but only run important checks
+    - uses: pre-commit/action@v3.0.1
+      with:
+        extra_args: codespell --all-files
+    - uses: pre-commit/action@v3.0.1
+      with:
+        extra_args: black --all-files
+    - uses: pre-commit/action@v3.0.1
+      with:
+        extra_args: flake8 --all-files
+  test:
+    runs-on: ubuntu-latest
+    need: lint
+    strategy:
+      matrix:
+        py_ver: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        mysql_ver: ["8.0"]
+        include:
+          - py_ver: "3.9"
+            mysql_ver: "5.7"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{matrix.py_ver}}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{matrix.py_ver}}
+      - name: Run primary tests
+        env:
+          PY_VER: ${{matrix.py_ver}}
+          DJ_PASS: password
+          MYSQL_VER: ${{matrix.mysql_ver}}
+          DISTRO: alpine
+          MINIO_VER: RELEASE.2021-09-03T03-56-13Z
+          DOCKER_CLIENT_TIMEOUT: "120"
+          COMPOSE_HTTP_TIMEOUT: "120"
+        run: |
+          export HOST_UID=$(id -u)
+          docker compose --profile test up --quiet-pull --build --exit-code-from djtest djtest
   build:
     runs-on: ubuntu-latest
+    need: test
     strategy:
       matrix:
         include:
@@ -54,74 +99,6 @@ jobs:
           name: pip-datajoint-${{env.DJ_VERSION}}
           path: dist
           retention-days: 1
-  test:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        py_ver: ["3.9", "3.10", "3.11", "3.12", "3.13"]
-        mysql_ver: ["8.0"]
-        include:
-          - py_ver: "3.9"
-            mysql_ver: "5.7"
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python ${{matrix.py_ver}}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{matrix.py_ver}}
-      - name: Run primary tests
-        env:
-          PY_VER: ${{matrix.py_ver}}
-          DJ_PASS: password
-          MYSQL_VER: ${{matrix.mysql_ver}}
-          DISTRO: alpine
-          MINIO_VER: RELEASE.2021-09-03T03-56-13Z
-          DOCKER_CLIENT_TIMEOUT: "120"
-          COMPOSE_HTTP_TIMEOUT: "120"
-        run: |
-          export HOST_UID=$(id -u)
-          docker compose --profile test up --quiet-pull --build --exit-code-from djtest djtest
-  lint:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        py_ver: ["3.11"]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python ${{matrix.py_ver}}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{matrix.py_ver}}
-      - name: Install dependencies
-        run: |
-          python3 -m pip install --upgrade pip
-          python3 -m pip install ".[test]"
-      - name: Run syntax tests
-        run: flake8 datajoint --count --select=E9,F63,F7,F82 --show-source --statistics
-      - name: Run style tests
-        run: |
-          flake8 --ignore=E203,E722,W503 datajoint \
-                 --count --max-complexity=62 --max-line-length=127 --statistics \
-                 --per-file-ignores='datajoint/diagram.py:C901'
-          black --required-version '24.2.0' --check -v datajoint tests --diff
-  codespell:
-    name: Check for spelling errors
-    permissions:
-      contents: read
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Codespell
-        uses: codespell-project/actions-codespell@v2
-  call-publish-docs:
-    if: |
-      github.event_name == 'push' &&
-      startsWith(github.ref, 'refs/tags')
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: ./.github/workflows/docs.yaml
   publish-release:
     if: |
       github.event_name == 'push' &&
@@ -220,3 +197,12 @@ jobs:
                   && docker tag "${IMAGE}:${TAG}" "${IMAGE}:latest" \
                   && docker push "${IMAGE}:latest" \
               || echo "skipping 'latest' tag..."
+  # only release docs when a release is published
+  call-publish-docs:
+    if: |
+      github.event_name == 'push' &&
+      startsWith(github.ref, 'refs/tags')
+    needs: publish-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ./.github/workflows/docs.yaml
