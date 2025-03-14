@@ -1,10 +1,13 @@
-import pytest
 import hashlib
 from pathlib import Path
-from datajoint import DataJointError
+
+import pytest
+
 import datajoint as dj
-from .schema_university import *
+from datajoint import DataJointError
+
 from . import schema_university
+from .schema_university import *
 
 
 def _hash4(table):

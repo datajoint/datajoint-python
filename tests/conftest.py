@@ -1,30 +1,27 @@
-import datajoint as dj
-from packaging import version
-from typing import Dict, List
-import os
-from os import environ, remove
-import minio
-import urllib3
-import certifi
-import shutil
-import pytest
-import networkx as nx
 import json
+import os
+import shutil
+from os import environ, remove
 from pathlib import Path
+from typing import Dict, List
+
+import certifi
+import minio
+import networkx as nx
+import pytest
+import urllib3
+from packaging import version
+
+import datajoint as dj
 from datajoint import errors
 from datajoint.errors import (
     ADAPTED_TYPE_SWITCH,
     FILEPATH_FEATURE_SWITCH,
     DataJointError,
 )
-from . import (
-    schema,
-    schema_simple,
-    schema_advanced,
-    schema_adapted,
-    schema_external,
-    schema_uuid as schema_uuid_module,
-)
+
+from . import schema, schema_adapted, schema_advanced, schema_external, schema_simple
+from . import schema_uuid as schema_uuid_module
 
 
 @pytest.fixture(scope="session")

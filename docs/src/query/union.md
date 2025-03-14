@@ -1,20 +1,20 @@
 # Union
 
-The union operator is not yet implemented -- this page serves as the specification for 
+The union operator is not yet implemented -- this page serves as the specification for
 the upcoming implementation.
 Union is rarely needed in practice.
 
 ## Union operator `+`
 
 The result of the union operator `A + B` contains all the entities from both operands.
-[Entity normalization](../design/normalization.md) requires that the operands in a 
-union both belong to the same entity type with the same primary key using homologous 
+[Entity normalization](../design/normalization.md) requires that the operands in a
+union both belong to the same entity type with the same primary key using homologous
 attributes.
 In the absence of any secondary attributes, the result of a union is the simple set union.
 
-When secondary attributes are present, they must have the same names and datatypes in 
+When secondary attributes are present, they must have the same names and datatypes in
 both operands.
-The two operands must also be **disjoint**, without any duplicate primary key values 
+The two operands must also be **disjoint**, without any duplicate primary key values
 across both inputs.
 These requirements prevent ambiguity of attribute values and preserve entity identity.
 
@@ -27,9 +27,9 @@ These requirements prevent ambiguity of attribute values and preserve entity ide
    Otherwise, an error will be raised.
 4. The result `A + B` will have the same primary key as `A` and `B`.
 5. The result `A + B` will have all the non-key attributes from both `A` and `B`.
-6. For entities that are found in both `A` and `B` (based on the primary key), the 
+6. For entities that are found in both `A` and `B` (based on the primary key), the
 secondary attributes will be filled from the corresponding entities in `A` and `B`.
-7. For entities that are only found in either `A` or `B`, the other operand's secondary 
+7. For entities that are only found in either `A` or `B`, the other operand's secondary
 attributes will filled with null values.
 
 ## Examples of union

@@ -1,6 +1,8 @@
 import pytest
-import datajoint as dj
 from pytest import raises
+
+import datajoint as dj
+
 from .schema import *
 from .schema_simple import *
 

@@ -1,9 +1,11 @@
-import datajoint as dj
 import inspect
-import networkx as nx
 import json
-from pathlib import Path
 import tempfile
+from pathlib import Path
+
+import networkx as nx
+
+import datajoint as dj
 
 
 class GraphAdapter(dj.AttributeAdapter):

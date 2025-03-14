@@ -2,10 +2,11 @@
 Collection of test cases to test connection module.
 """
 
-import datajoint as dj
-from datajoint import DataJointError
 import numpy as np
 import pytest
+
+import datajoint as dj
+from datajoint import DataJointError
 
 
 class Subjects(dj.Manual):

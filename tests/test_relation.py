@@ -1,11 +1,14 @@
-import pytest
-from inspect import getmembers
 import re
-import pandas
+from inspect import getmembers
+from unittest.mock import patch
+
 import numpy as np
+import pandas
+import pytest
+
 import datajoint as dj
 from datajoint.table import Table
-from unittest.mock import patch
+
 from . import schema
 
 

@@ -1,6 +1,7 @@
 import numpy as np
-import datajoint as dj
 import pytest
+
+import datajoint as dj
 
 
 class NanTest(dj.Manual):

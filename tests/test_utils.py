@@ -2,13 +2,10 @@
 Collection of test cases to test core module.
 """
 
-from datajoint import DataJointError
-from datajoint.utils import (
-    from_camel_case,
-    to_camel_case,
-    is_camel_case,
-)
 import pytest
+
+from datajoint import DataJointError
+from datajoint.utils import from_camel_case, is_camel_case, to_camel_case
 
 
 def test_is_camel_case():

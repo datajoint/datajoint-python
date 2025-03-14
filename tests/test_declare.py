@@ -1,9 +1,12 @@
-import pytest
-from .schema import *
-import datajoint as dj
 import inspect
+
+import pytest
+
+import datajoint as dj
 from datajoint.declare import declare
 from datajoint.settings import config
+
+from .schema import *
 
 
 @pytest.fixture(scope="function")

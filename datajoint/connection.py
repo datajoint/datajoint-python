@@ -3,20 +3,22 @@ This module contains the Connection class that manages the connection to the dat
 the ``conn`` function that provides access to a persistent connection in datajoint.
 """
 
+import logging
+import pathlib
+import re
 import warnings
 from contextlib import contextmanager
-import pymysql as client
-import logging
 from getpass import getpass
-import re
-import pathlib
 
-from .settings import config
-from . import errors, __version__
-from .dependencies import Dependencies
+import pymysql as client
+
+from . import errors
 from .blob import pack, unpack
+from .dependencies import Dependencies
 from .hash import uuid_from_buffer
 from .plugin import connection_plugins
+from .settings import config
+from .version import __version__
 
 logger = logging.getLogger(__name__.split(".")[0])
 query_log_max_length = 300

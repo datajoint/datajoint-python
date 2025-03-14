@@ -2,10 +2,12 @@
 Collection of test cases to test admin module.
 """
 
-import datajoint as dj
 import os
+
 import pymysql
 import pytest
+
+import datajoint as dj
 
 
 @pytest.fixture()

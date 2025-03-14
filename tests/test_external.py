@@ -1,10 +1,13 @@
+import os
+
 import numpy as np
 from numpy.testing import assert_array_equal
-from datajoint.external import ExternalTable
-from datajoint.blob import pack, unpack
+
 import datajoint as dj
-from .schema_external import SimpleRemote, Simple
-import os
+from datajoint.blob import pack, unpack
+from datajoint.external import ExternalTable
+
+from .schema_external import Simple, SimpleRemote
 
 
 def test_external_put(schema_ext, mock_stores, mock_cache):
