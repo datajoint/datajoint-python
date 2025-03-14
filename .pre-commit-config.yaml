@@ -36,6 +36,15 @@ repos:
 - repo: https://github.com/PyCQA/flake8
   rev: 7.1.2
   hooks:
+  # syntax tests
+  - id: flake8
+    args:
+      - --select=E9,F63,F7,F82
+      - --count
+      - --show-source
+      - --statistics
+    files: datajoint # a lot of files in tests are not compliant
+  # style tests
   - id: flake8
     args:
       - --ignore=E203,E722,W503
