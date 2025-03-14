@@ -7,37 +7,21 @@ jobs:
     strategy:
       matrix:
         include:
-          - py_ver: "3.9"
-            distro: debian
-            image: djbase
+          - py_ver: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     env:
       PY_VER: ${{matrix.py_ver}}
-      DISTRO: ${{matrix.distro}}
-      IMAGE: ${{matrix.image}}
-      DOCKER_CLIENT_TIMEOUT: "120"
-      COMPOSE_HTTP_TIMEOUT: "120"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: ${{matrix.py_ver}}
-      - name: Validate version and release notes
-        run: |
-          DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py)
-          RELEASE_BODY=$(python3 -c \
-            'print(open("./CHANGELOG.md").read().split("\n\n")[1].split("\n", 1)[1])' \
-          )
-          echo "DJ_VERSION=${DJ_VERSION}" >> $GITHUB_ENV
-          echo "RELEASE_BODY<<EOF" >> $GITHUB_ENV
-          echo "$RELEASE_BODY" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
       - name: Build pip artifacts
         run: |
+          DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py)
+          echo "DJ_VERSION=${DJ_VERSION}" >> $GITHUB_ENV
           python3 -m pip install build
           python3 -m build .
-          echo "DJ_VERSION=${DJ_VERSION}" >> $GITHUB_ENV
-      - if: matrix.py_ver == '3.9' && matrix.distro == 'debian'
-        name: Add pip artifacts
+      - name: Add pip artifacts
         uses: actions/upload-artifact@v4
         with:
           name: pip-datajoint-${{env.DJ_VERSION}}
