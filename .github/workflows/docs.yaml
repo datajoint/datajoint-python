@@ -1,6 +1,7 @@
 name: Manual docs release
 on:
   workflow_dispatch:
+  workflow_call:
 jobs:
   publish-docs:
     runs-on: ubuntu-latest
