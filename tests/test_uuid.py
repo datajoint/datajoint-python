@@ -1,8 +1,11 @@
-import pytest
 import uuid
-from .schema_uuid import Basic, Item, Topic
-from datajoint import DataJointError
 from itertools import count
+
+import pytest
+
+from datajoint import DataJointError
+
+from .schema_uuid import Basic, Item, Topic
 
 
 def test_uuid(schema_uuid):

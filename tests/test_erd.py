@@ -1,6 +1,7 @@
 import datajoint as dj
-from .schema_simple import LOCALS_SIMPLE, A, B, D, E, G, L, OutfitLaunch
+
 from .schema_advanced import *
+from .schema_simple import LOCALS_SIMPLE, A, B, D, E, G, L, OutfitLaunch
 
 
 def test_decorator(schema_simp):

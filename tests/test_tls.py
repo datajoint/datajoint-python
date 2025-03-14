@@ -1,6 +1,7 @@
 import pytest
-import datajoint as dj
 from pymysql.err import OperationalError
+
+import datajoint as dj
 
 
 def test_secure_connection(db_creds_test, connection_test):

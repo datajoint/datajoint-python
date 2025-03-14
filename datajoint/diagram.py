@@ -1,14 +1,14 @@
-import networkx as nx
 import functools
+import inspect
 import io
 import logging
-import inspect
-from .table import Table
-from .dependencies import topo_sort
-from .user_tables import Manual, Imported, Computed, Lookup, Part, _get_tier, _AliasNode
-from .errors import DataJointError
-from .table import lookup_class_name
 
+import networkx as nx
+
+from .dependencies import topo_sort
+from .errors import DataJointError
+from .table import Table, lookup_class_name
+from .user_tables import Computed, Imported, Lookup, Manual, Part, _AliasNode, _get_tier
 
 try:
     from matplotlib import pyplot as plt

@@ -1,7 +1,7 @@
 # Datatypes
 
 DataJoint supports the following datatypes.
-To conserve database resources, use the smallest and most restrictive datatype 
+To conserve database resources, use the smallest and most restrictive datatype
 sufficient for your data.
 This also ensures that only valid data are entered into the pipeline.
 
@@ -14,11 +14,11 @@ This also ensures that only valid data are entered into the pipeline.
 -  `int`: a 32-bit integer number, ranging from -2,147,483,648 to 2,147,483,647.
 -  `int unsigned`: a 32-bit positive integer, ranging from 0 to 4,294,967,295.
 -  `enum`: one of several explicitly enumerated values specified as strings.
-   Use this datatype instead of text strings to avoid spelling variations and to save 
+   Use this datatype instead of text strings to avoid spelling variations and to save
    storage space.
-   For example, the datatype for an anesthesia attribute could be 
+   For example, the datatype for an anesthesia attribute could be
    `enum("urethane", "isoflurane", "fentanyl")`.
-   Do not use enums in primary keys due to the difficulty of changing their definitions 
+   Do not use enums in primary keys due to the difficulty of changing their definitions
    consistently in multiple tables.
 
 -  `date`: date as `'YYYY-MM-DD'`.
@@ -28,9 +28,9 @@ This also ensures that only valid data are entered into the pipeline.
    The default value may be set to `CURRENT_TIMESTAMP`.
    Unlike `datetime`, a `timestamp` value will be adjusted to the local time zone.
 
--  `char(N)`: a character string up to *N* characters (but always takes the entire *N* 
+-  `char(N)`: a character string up to *N* characters (but always takes the entire *N*
 bytes to store).
--  `varchar(N)`: a text string of arbitrary length up to *N* characters that takes 
+-  `varchar(N)`: a text string of arbitrary length up to *N* characters that takes
 *M+1* or *M+2* bytes of storage, where *M* is the actual length of each stored string.
 -  `float`: a single-precision floating-point number.
    Takes 4 bytes.
@@ -38,20 +38,20 @@ bytes to store).
 
 -  `double`: a double-precision floating-point number.
    Takes 8 bytes.
-   Because equality comparisons are error-prone, neither `float` nor `double` should be 
+   Because equality comparisons are error-prone, neither `float` nor `double` should be
    used in primary keys.
--  `decimal(N,F)`: a fixed-point number with *N* total decimal digits and *F* 
+-  `decimal(N,F)`: a fixed-point number with *N* total decimal digits and *F*
 fractional digits.
-   This datatype is well suited to represent numbers whose magnitude is well defined 
-   and does not warrant the use of floating-point representation or requires precise 
+   This datatype is well suited to represent numbers whose magnitude is well defined
+   and does not warrant the use of floating-point representation or requires precise
    decimal representations (e.g. dollars and cents).
-   Because of its well-defined precision, `decimal` values can be used in equality 
+   Because of its well-defined precision, `decimal` values can be used in equality
    comparison and be included in primary keys.
 
--  `longblob`: arbitrary numeric array (e.g. matrix, image, structure), up to 4 
+-  `longblob`: arbitrary numeric array (e.g. matrix, image, structure), up to 4
 [GiB](http://en.wikipedia.org/wiki/Gibibyte) in size.
    Numeric arrays are compatible between MATLAB and Python (NumPy).
-   The `longblob` and other `blob` datatypes can be configured to store data 
+   The `longblob` and other `blob` datatypes can be configured to store data
    [externally](../../sysadmin/external-store.md) by using the `blob@store` syntax.
 
 ## Less common (but supported) datatypes
@@ -59,11 +59,11 @@ fractional digits.
 -  `decimal(N,F) unsigned`: same as `decimal`, but limited to nonnegative values.
 -  `mediumint` a 24-bit integer number, ranging from -8,388,608 to 8,388,607.
 -  `mediumint unsigned`: a 24-bit positive integer, ranging from 0 to 16,777,216.
--  `mediumblob`: arbitrary numeric array, up to 16 
+-  `mediumblob`: arbitrary numeric array, up to 16
 [MiB](http://en.wikipedia.org/wiki/Mibibyte)
--  `blob`: arbitrary numeric array, up to 64 
+-  `blob`: arbitrary numeric array, up to 64
 [KiB](http://en.wikipedia.org/wiki/Kibibyte)
--  `tinyblob`: arbitrary numeric array, up to 256 bytes (actually smaller due to header 
+-  `tinyblob`: arbitrary numeric array, up to 256 bytes (actually smaller due to header
 info).
 
 ## Special DataJoint-only datatypes
@@ -71,10 +71,10 @@ info).
 These types abstract certain kinds of non-database data to facilitate use
 together with DataJoint.
 
-- `attach`: a [file attachment](attach.md) similar to email attachments facillitating 
+- `attach`: a [file attachment](attach.md) similar to email attachments facillitating
 sending/receiving an opaque data file to/from a DataJoint pipeline.
 
-- `filepath@store`: a [filepath](filepath.md) used to link non-DataJoint managed files 
+- `filepath@store`: a [filepath](filepath.md) used to link non-DataJoint managed files
 into a DataJoint pipeline.
 
 ## Datatypes not (yet) supported
@@ -84,5 +84,5 @@ into a DataJoint pipeline.
 -  `longtext`
 -  `bit`
 
-For additional information about these datatypes, see 
+For additional information about these datatypes, see
 http://dev.mysql.com/doc/refman/5.6/en/data-types.html

@@ -1,17 +1,19 @@
 """ methods for generating SQL WHERE clauses from datajoint restriction conditions """
 
-import inspect
 import collections
-import re
-import uuid
 import datetime
 import decimal
+import inspect
+import json
+import re
+import uuid
+from dataclasses import dataclass
+from typing import List, Union
+
 import numpy
 import pandas
-import json
+
 from .errors import DataJointError
-from typing import Union, List
-from dataclasses import dataclass
 
 JSON_PATTERN = re.compile(
     r"^(?P<attr>\w+)(\.(?P<path>[\w.*\[\]]+))?(:(?P<type>[\w(,\s)]+))?$"
@@ -143,7 +145,7 @@ def make_condition(query_expression, condition, columns):
         condition.
     :return: an SQL condition string or a boolean value.
     """
-    from .expression import QueryExpression, Aggregation, U
+    from .expression import Aggregation, QueryExpression, U
 
     def prep_value(k, v):
         """prepare SQL condition"""

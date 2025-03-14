@@ -1,10 +1,11 @@
 import os
-from .hash import key_hash
 import platform
-from .table import Table
-from .settings import config
+
 from .errors import DuplicateError
+from .hash import key_hash
 from .heading import Heading
+from .settings import config
+from .table import Table
 
 ERROR_MESSAGE_LENGTH = 2047
 TRUNCATION_APPENDIX = "...truncated"

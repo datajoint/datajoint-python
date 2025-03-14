@@ -1,10 +1,12 @@
-import pymysql
+import logging
 from getpass import getpass
+
+import pymysql
 from packaging import version
+
 from .connection import conn
 from .settings import config
 from .utils import user_choice
-import logging
 
 logger = logging.getLogger(__name__.split(".")[0])
 

@@ -1,18 +1,19 @@
-import numpy as np
-from collections import namedtuple, defaultdict
-from itertools import chain
-import re
 import logging
-from .errors import DataJointError, _support_filepath_types, FILEPATH_FEATURE_SWITCH
+import re
+from collections import defaultdict, namedtuple
+from itertools import chain
+
+import numpy as np
+
+from .attribute_adapter import AttributeAdapter, get_adapter
 from .declare import (
-    UUID_DATA_TYPE,
-    SPECIAL_TYPES,
-    TYPE_PATTERN,
     EXTERNAL_TYPES,
     NATIVE_TYPES,
+    SPECIAL_TYPES,
+    TYPE_PATTERN,
+    UUID_DATA_TYPE,
 )
-from .attribute_adapter import get_adapter, AttributeAdapter
-
+from .errors import FILEPATH_FEATURE_SWITCH, DataJointError, _support_filepath_types
 
 logger = logging.getLogger(__name__.split(".")[0])
 

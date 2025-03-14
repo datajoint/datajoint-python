@@ -57,7 +57,7 @@ Next, please install DataJoint via one of the following:
     - Ensure you have [pip](https://pip.pypa.io/en/stable/installation/) installed.
     - Install [graphviz](https://graphviz.org/download/#linux) pre-requisite for
         diagram visualization.
-    
+
     To install:
 
     ```bash
@@ -88,7 +88,7 @@ Next, please install DataJoint via one of the following:
     dj.config["database.password"] = "{password}"
     ```
 
-    These configuration settings can be saved either locally or system-wide using one 
+    These configuration settings can be saved either locally or system-wide using one
     of the following commands:
     ```python
     dj.config.save_local()
@@ -108,9 +108,9 @@ Next, please install DataJoint via one of the following:
     }
     ```
 
-    These settings will be loaded whenever a Python instance is launched from this 
-    directory. To configure settings globally, save a similar file as 
-    `.datajoint_config.json` in your home directory. A local config, if present, will 
+    These settings will be loaded whenever a Python instance is launched from this
+    directory. To configure settings globally, save a similar file as
+    `.datajoint_config.json` in your home directory. A local config, if present, will
     take precedent over global settings.
 
 ## Data Pipeline Definition
@@ -240,16 +240,16 @@ Let's add data for a rectangle:
 Rectangle.insert1(dict(shape_id=1, shape_height=2, shape_width=4))
 ```
 
-Given the following [table definition](./design/tables/declare.md), we can insert data 
-as tuples, dicts, pandas dataframes, or pathlib `Path` relative paths to local CSV 
+Given the following [table definition](./design/tables/declare.md), we can insert data
+as tuples, dicts, pandas dataframes, or pathlib `Path` relative paths to local CSV
 files.
 
-```python      
+```python
 mouse_id: int            # unique mouse id
 ---
 dob: date                # mouse date of birth
 sex: enum('M', 'F', 'U') # sex of mouse - Male, Female, or Unknown
-``` 
+```
 
 === "Tuple"
 
@@ -289,16 +289,16 @@ sex: enum('M', 'F', 'U') # sex of mouse - Male, Female, or Unknown
 === "CSV"
 
     Given the following CSV in the current working directory as `mice.csv`
-    
+
     ```console
     mouse_id,dob,sex
     1,2016-11-19,M
     2,2016-11-20,U
     5,2016-12-25,F
     ```
-    
+
     We can import as follows:
-    
+
     ```python
     from pathlib import Path
     mouse.insert(Path('./mice.csv'))

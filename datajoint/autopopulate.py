@@ -1,18 +1,20 @@
 """This module defines class dj.AutoPopulate"""
 
-import logging
-import datetime
-import traceback
-import random
-import inspect
-from tqdm import tqdm
-from .hash import key_hash
-from .expression import QueryExpression, AndList
-from .errors import DataJointError, LostConnectionError
-import signal
-import multiprocessing as mp
 import contextlib
+import datetime
+import inspect
+import logging
+import multiprocessing as mp
+import random
+import signal
+import traceback
+
 import deepdiff
+from tqdm import tqdm
+
+from .errors import DataJointError, LostConnectionError
+from .expression import AndList, QueryExpression
+from .hash import key_hash
 
 # noinspection PyExceptionInherit,PyCallingNonCallable
 

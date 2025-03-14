@@ -1,8 +1,11 @@
-import types
-import pytest
 import inspect
-import datajoint as dj
+import types
 from inspect import getmembers
+
+import pytest
+
+import datajoint as dj
+
 from . import schema
 
 

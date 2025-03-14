@@ -3,10 +3,11 @@ Hosts the table tiers, user tables should be derived from.
 """
 
 import re
-from .table import Table
+
 from .autopopulate import AutoPopulate
-from .utils import from_camel_case, ClassProperty
 from .errors import DataJointError
+from .table import Table
+from .utils import ClassProperty, from_camel_case
 
 _base_regexp = r"[a-z][a-z0-9]*(_[a-z][a-z0-9]*)*"
 

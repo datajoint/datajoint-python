@@ -2,11 +2,14 @@
 Regression tests for issues 386, 449, 484, and 558 — all related to processing complex aggregations and projections.
 """
 
-import pytest
-import datajoint as dj
 import uuid
-from .schema_uuid import Topic, Item, top_level_namespace_id
-from .schema_aggr_regress import R, Q, S, A, B, X, LOCALS_AGGR_REGRESS
+
+import pytest
+
+import datajoint as dj
+
+from .schema_aggr_regress import LOCALS_AGGR_REGRESS, A, B, Q, R, S, X
+from .schema_uuid import Item, Topic, top_level_namespace_id
 
 
 @pytest.fixture(scope="function")

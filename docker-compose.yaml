@@ -76,4 +76,3 @@ services:
         pip install -q -e ".[test]"
         pip freeze | grep datajoint
         pytest --cov-report term-missing --cov=datajoint tests
-

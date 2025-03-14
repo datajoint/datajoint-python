@@ -1,19 +1,20 @@
-import warnings
-import logging
-import inspect
-import re
 import collections
+import inspect
 import itertools
+import logging
+import re
+import types
+import warnings
+
 from .connection import conn
-from .settings import config
-from .errors import DataJointError, AccessError
-from .jobs import JobTable
+from .errors import AccessError, DataJointError
 from .external import ExternalMapping
 from .heading import Heading
-from .utils import user_choice, to_camel_case
-from .user_tables import Part, Computed, Imported, Manual, Lookup, _get_tier
-from .table import lookup_class_name, Log, FreeTable
-import types
+from .jobs import JobTable
+from .settings import config
+from .table import FreeTable, Log, lookup_class_name
+from .user_tables import Computed, Imported, Lookup, Manual, Part, _get_tier
+from .utils import to_camel_case, user_choice
 
 logger = logging.getLogger(__name__.split(".")[0])
 

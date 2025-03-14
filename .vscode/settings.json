@@ -17,5 +17,5 @@
     "[dockercompose]": {
         "editor.defaultFormatter": "disable"
     },
-    "files.autoSave": "off"
+    //"files.autoSave": "off"
 }

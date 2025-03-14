@@ -1,9 +1,11 @@
-import pytest
 import inspect
-from datajoint.declare import declare
-import datajoint as dj
+
 import numpy as np
+import pytest
 from packaging.version import Version
+
+import datajoint as dj
+from datajoint.declare import declare
 
 if Version(dj.conn().query("select @@version;").fetchone()[0]) < Version("8.0.0"):
     pytest.skip("These tests require MySQL >= v8.0.0", allow_module_level=True)

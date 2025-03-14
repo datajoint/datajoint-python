@@ -2,23 +2,23 @@
 
 ## Theoretical Foundations
 
-*DataJoint Core* implements a systematic framework for the joint management of 
-structured scientific data and its associated computations. 
-The framework builds on the theoretical foundations of the 
+*DataJoint Core* implements a systematic framework for the joint management of
+structured scientific data and its associated computations.
+The framework builds on the theoretical foundations of the
 [Relational Model](https://en.wikipedia.org/wiki/Relational_model) and
 the [Entity-Relationship Model](https://en.wikipedia.org/wiki/Entity%E2%80%93relationship_model),
-introducing a number of critical clarifications for the effective use of databases as 
-scientific data pipelines. 
-Notably, DataJoint introduces the concept of *computational dependencies* as a native 
+introducing a number of critical clarifications for the effective use of databases as
+scientific data pipelines.
+Notably, DataJoint introduces the concept of *computational dependencies* as a native
 first-class citizen of the data model.
-This integration of data structure and computation into a single model, defines a new 
+This integration of data structure and computation into a single model, defines a new
 class of *computational scientific databases*.
 
-This page defines the key principles of this model without attachment to a specific 
-implementation while a more complete description of the model can be found in 
+This page defines the key principles of this model without attachment to a specific
+implementation while a more complete description of the model can be found in
 [Yatsenko et al, 2018](https://doi.org/10.48550/arXiv.1807.11104).
 
-DataJoint developers are developing these principles into an 
+DataJoint developers are developing these principles into an
 [open standard](https://en.wikipedia.org/wiki/Open_standard) to allow multiple
 alternative implementations.
 
@@ -28,18 +28,18 @@ alternative implementations.
 
 DataJoint uses only one data structure in all its operations—the *entity set*.
 
-1. All data are represented in the form of *entity sets*, i.e. an ordered collection of 
-*entities*. 
-2. All entities of an entity set belong to the same well-defined entity class and have 
-the same set of named attributes. 
-3. Attributes in an entity set has a *data type* (or *domain*), representing the set of 
+1. All data are represented in the form of *entity sets*, i.e. an ordered collection of
+*entities*.
+2. All entities of an entity set belong to the same well-defined entity class and have
+the same set of named attributes.
+3. Attributes in an entity set has a *data type* (or *domain*), representing the set of
 its valid values.
-4. Each entity in an entity set provides the *attribute values* for all of the 
+4. Each entity in an entity set provides the *attribute values* for all of the
 attributes of its entity class.
-5. Each entity set has a *primary key*, *i.e.* a subset of attributes that, jointly, 
+5. Each entity set has a *primary key*, *i.e.* a subset of attributes that, jointly,
 uniquely identify any entity in the set.
 
-These formal terms have more common (even if less precise) variants: 
+These formal terms have more common (even if less precise) variants:
 
 | formal | common |
 |:-:|:--:|
@@ -54,14 +54,14 @@ A collection of *stored tables* make up a *database*.
 
 DataJoint introduces a streamlined syntax for defining a stored table.
 
-Each line in the definition defines an attribute with its name, data type, an optional 
+Each line in the definition defines an attribute with its name, data type, an optional
 default value, and an optional comment in the format:
 
 ```python
 name [=default] : type [# comment]
 ```
 
-Primary attributes come first and are separated from the rest of the attributes with 
+Primary attributes come first and are separated from the rest of the attributes with
 the divider `---`.
 
 For example, the following code defines the entity set for entities of class `Employee`:
@@ -72,13 +72,13 @@ employee_id : int
 ssn = null : int     # optional social security number
 date_of_birth : date
 gender : enum('male', 'female', 'other')
-home_address="" : varchar(1000) 
+home_address="" : varchar(1000)
 primary_phone="" : varchar(12)
 ```
 
 ### Data Tiers
 
-Stored tables are designated into one of four *tiers* indicating how their data 
+Stored tables are designated into one of four *tiers* indicating how their data
 originates.
 
 |  table tier | data origin |
@@ -92,36 +92,36 @@ originates.
 
 ### Data Normalization
 
-A collection of data is considered normalized when organized into a collection of 
-entity sets, where each entity set represents a well-defined entity class with all its 
-attributes applicable to each entity in the set and the same primary key identifying 
+A collection of data is considered normalized when organized into a collection of
+entity sets, where each entity set represents a well-defined entity class with all its
+attributes applicable to each entity in the set and the same primary key identifying
 
-The normalization procedure often includes splitting data from one table into several 
-tables, one for each proper entity set. 
+The normalization procedure often includes splitting data from one table into several
+tables, one for each proper entity set.
 
 ### Databases and Schemas
 
-Stored tables are named and grouped into namespaces called *schemas*. 
-A collection of schemas make up a *database*. 
-A *database* has a globally unique address or name. 
-A *schema* has a unique name within its database. 
-Within a *connection* to a particular database, a stored table is identified as 
+Stored tables are named and grouped into namespaces called *schemas*.
+A collection of schemas make up a *database*.
+A *database* has a globally unique address or name.
+A *schema* has a unique name within its database.
+Within a *connection* to a particular database, a stored table is identified as
 `schema.Table`.
 A schema typically groups tables that are logically related.
 
-## Dependencies 
+## Dependencies
 
-Entity sets can form referential dependencies that express and 
+Entity sets can form referential dependencies that express and
 
-### Diagramming 
+### Diagramming
 
 ## Data integrity
 
 ### Entity integrity
 
-*Entity integrity* is the guarantee made by the data management process of the 1:1 
-mapping between real-world entities and their digital representations. 
-In practice, entity integrity is ensured when it is made clear 
+*Entity integrity* is the guarantee made by the data management process of the 1:1
+mapping between real-world entities and their digital representations.
+In practice, entity integrity is ensured when it is made clear
 
 ### Referential integrity
 
@@ -129,8 +129,8 @@ In practice, entity integrity is ensured when it is made clear
 
 ## Data manipulations
 
-## Data queries 
+## Data queries
 
-### Query Operators 
+### Query Operators
 
 ## Pipeline computations

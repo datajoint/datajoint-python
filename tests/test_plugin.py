@@ -1,8 +1,10 @@
+from os import path
+
+import pkg_resources
 import pytest
+
 import datajoint.errors as djerr
 import datajoint.plugin as p
-import pkg_resources
-from os import path
 
 
 @pytest.mark.skip(reason="marked for deprecation")

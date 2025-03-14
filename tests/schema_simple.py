@@ -2,15 +2,17 @@
 A simple, abstract schema to test relational algebra
 """
 
-import random
-import datajoint as dj
-import itertools
 import hashlib
+import inspect
+import itertools
+import random
 import uuid
+from datetime import date, timedelta
+
 import faker
 import numpy as np
-from datetime import date, timedelta
-import inspect
+
+import datajoint as dj
 
 
 class SelectPK(dj.Lookup):

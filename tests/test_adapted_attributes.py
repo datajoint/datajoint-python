@@ -1,9 +1,12 @@
 import os
-import pytest
 import tempfile
-import datajoint as dj
-import networkx as nx
 from itertools import zip_longest
+
+import networkx as nx
+import pytest
+
+import datajoint as dj
+
 from . import schema_adapted
 from .schema_adapted import Connectivity, Layout
 

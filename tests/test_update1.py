@@ -1,8 +1,10 @@
-import pytest
 import os
-import numpy as np
-from pathlib import Path
 import tempfile
+from pathlib import Path
+
+import numpy as np
+import pytest
+
 import datajoint as dj
 from datajoint import DataJointError
 

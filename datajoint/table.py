@@ -1,30 +1,32 @@
 import collections
-import itertools
+import csv
 import inspect
+import itertools
+import json
+import logging
 import platform
+import re
+import uuid
+from pathlib import Path
+from typing import Union
+
 import numpy as np
 import pandas
-import logging
-import uuid
-import csv
-import re
-import json
-from pathlib import Path
-from .settings import config
-from .declare import declare, alter
-from .condition import make_condition
-from .expression import QueryExpression
+
 from . import blob
-from .utils import user_choice, get_master, is_camel_case
-from .heading import Heading
+from .condition import make_condition
+from .declare import alter, declare
 from .errors import (
-    DuplicateError,
     AccessError,
     DataJointError,
-    UnknownAttributeError,
+    DuplicateError,
     IntegrityError,
+    UnknownAttributeError,
 )
-from typing import Union
+from .expression import QueryExpression
+from .heading import Heading
+from .settings import config
+from .utils import get_master, is_camel_case, user_choice
 from .version import __version__ as version
 
 logger = logging.getLogger(__name__.split(".")[0])
