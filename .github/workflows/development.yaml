@@ -59,7 +59,7 @@ jobs:
           docker compose --profile test up --quiet-pull --build --exit-code-from djtest djtest
   build:
     runs-on: ubuntu-latest
-    need: test
+    needs: test
     strategy:
       matrix:
         include:
