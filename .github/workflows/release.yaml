@@ -20,6 +20,8 @@ jobs:
       PY_VER: ${{matrix.py_ver}}
       TWINE_USERNAME: ${{secrets.twine_username}}
       TWINE_PASSWORD: ${{secrets.twine_password}}
+      TWINE_TEST_USERNAME: ${{secrets.twine_test_username}}
+      TWINE_TEST_PASSWORD: ${{secrets.twine_test_password}}
       TESTPYPI: ${{ github.event.inputs.testpypi }}
     steps:
       - uses: actions/checkout@v4
@@ -39,7 +41,13 @@ jobs:
       - name: Publish package
         run: |
           export HOST_UID=$(id -u)
-          [ "$TESTPYPI" == "true" ] && export TWINE_REPOSITORY="testpypi" || export TWINE_REPOSITORY="pypi"
+          if [ "$TESTPYPI" == "true" ]; then
+            export TWINE_REPOSITORY="testpypi"
+            export TWINE_USERNAME=${TWINE_TEST_USERNAME}
+            export TWINE_PASSWORD=${TWINE_TEST_PASSWORD}
+          else
+            export TWINE_REPOSITORY="pypi"
+          fi
           docker compose run --build --quiet-pull \
             -e TWINE_USERNAME=${TWINE_USERNAME} \
             -e TWINE_PASSWORD=${TWINE_PASSWORD} \
