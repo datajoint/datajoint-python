@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       testpypi:
-        description: 'Release to TestPyPI then skip the rest'
+        description: 'Release to TestPyPI then skip following flow'
         default: 'false'
         type: choice
         options:

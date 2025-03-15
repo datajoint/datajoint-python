@@ -57,6 +57,7 @@ repos:
 - repo: https://github.com/rhysd/actionlint
   rev: v1.7.7
   hooks:
+  # lint github actions workflow yaml
   - id: actionlint
 
 ## Suggest to add pytest hook that runs unit test | Prerequisite: split unit/integration test
