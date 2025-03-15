@@ -1,7 +1,7 @@
 [project]
 name = "datajoint"
-# should to be auto synced with datajoint/version.py:__version__
-version = "0.14.4"
+# dynamically set in tools.setuptools.dynamic
+dynamic = ["version"]
 dependencies = [
   "numpy",
   "pymysql>=0.7.2",
@@ -64,11 +64,18 @@ classifiers = [
 
 [project.optional-dependencies]
 test = [
-  "pre-commit",
   "pytest",
   "pytest-cov",
+]
+dev = [
+  "pre-commit",
   "black==24.2.0",
   "flake8",
+  "isort",
+  "codespell",
+  # including test
+  "pytest",
+  "pytest-cov",
 ]
 
 [project.urls]
@@ -84,6 +91,9 @@ datajoint = "datajoint.cli:cli"
 
 [tool.setuptools]
 packages = ["datajoint"]
+
+[tool.setuptools.dynamic]
+version = { attr = "datajoint.version.__version__"}
 
 [build-system]
 requires = [
