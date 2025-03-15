@@ -89,15 +89,15 @@ Repository = "https://github.com/datajoint/datajoint-python"
 dj = "datajoint.cli:cli"
 datajoint = "datajoint.cli:cli"
 
-[tool.setuptools]
-packages = ["datajoint"]
-
-[tool.setuptools.dynamic]
-version = { attr = "datajoint.version.__version__"}
-
 [build-system]
 requires = [
     "setuptools>=60",
     "setuptools-scm>=8.0"
 ]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["datajoint"]
+
+[tool.setuptools.dynamic]
+version = { attr = "datajoint.version.__version__"}
