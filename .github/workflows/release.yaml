@@ -1,6 +1,14 @@
 name: Release
 on:
   workflow_dispatch:
+  inputs:
+    testpypi:
+      description: 'Release to TestPyPI then skip the rest'
+      default: 'false'
+      type: choice
+      options:
+        - 'true'
+        - 'false'
 jobs:
   build-release:
     runs-on: ubuntu-latest
@@ -12,6 +20,7 @@ jobs:
       PY_VER: ${{matrix.py_ver}}
       TWINE_USERNAME: ${{secrets.twine_username}}
       TWINE_PASSWORD: ${{secrets.twine_password}}
+      TESTPYPI: ${{ github.event.inputs.testpypi }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{matrix.py_ver}}
@@ -30,15 +39,20 @@ jobs:
       - name: Publish package
         run: |
           export HOST_UID=$(id -u)
+          [ "$TESTPYPI" == "true" ] && export TWINE_REPOSITORY="testpypi" || export TWINE_REPOSITORY="pypi"
           docker compose run --build --quiet-pull \
-            -e TWINE_USERNAME=${TWINE_USERNAME} -e TWINE_PASSWORD=${TWINE_PASSWORD} app \
-            sh -c "pip install twine && python -m twine upload dist/*"
+            -e TWINE_USERNAME=${TWINE_USERNAME} \
+            -e TWINE_PASSWORD=${TWINE_PASSWORD} \
+            -e TWINE_REPOSITORY=${TWINE_REPOSITORY} \
+            app sh -c "pip install twine && python -m twine upload dist/*"
       - name: Login to DockerHub
+        if: ${{ github.event.inputs.testpypi == 'false' }}
         uses: docker/login-action@v3
         with:
           username: ${{secrets.docker_username}}
           password: ${{secrets.docker_password}}
       - name: Publish image
+        if: ${{ github.event.inputs.testpypi == 'false' }}
         run: |
           IMAGE=$(docker images --filter "reference=datajoint/datajoint*" --format "{{.Repository}}")
           TAG=$(docker images --filter "reference=datajoint/datajoint*" --format "{{.Tag}}")
@@ -51,6 +65,7 @@ jobs:
               || echo "skipping 'latest' tag..."
       # Make sure all above release targets are done first, then make a GH release
       - name: Make release notes
+        if: ${{ github.event.inputs.testpypi == 'false' }}
         run: |
           DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py)
           RELEASE_BODY=$(python -c \
@@ -61,6 +76,7 @@ jobs:
           echo "$RELEASE_BODY" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
       - name: Create GH release
+        if: ${{ github.event.inputs.testpypi == 'false' }}
         id: create_gh_release
         uses: actions/create-release@v1
         env:
@@ -73,6 +89,7 @@ jobs:
           draft: false
       # Upload package as release assets
       - name: Upload pip wheel asset to release
+        if: ${{ github.event.inputs.testpypi == 'false' }}
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
@@ -82,6 +99,7 @@ jobs:
           asset_name: pip-datajoint-${{env.DJ_VERSION}}.whl
           asset_content_type: application/zip
       - name: Upload pip sdist asset to release
+        if: ${{ github.event.inputs.testpypi == 'false' }}
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
@@ -92,6 +110,7 @@ jobs:
           asset_content_type: application/gzip
   # only release docs when a release is published
   call-publish-docs:
+    if: ${{ github.event.inputs.testpypi == 'false' }}
     needs: build-release
     runs-on: ubuntu-latest
     steps:
