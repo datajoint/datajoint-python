@@ -1,14 +1,14 @@
 name: Release
 on:
   workflow_dispatch:
-  inputs:
-    testpypi:
-      description: 'Release to TestPyPI then skip the rest'
-      default: 'false'
-      type: choice
-      options:
-        - 'true'
-        - 'false'
+    inputs:
+      testpypi:
+        description: 'Release to TestPyPI then skip the rest'
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
 jobs:
   build-release:
     runs-on: ubuntu-latest
