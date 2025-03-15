@@ -23,7 +23,7 @@ Here are some options that provide a great developer experience:
   - Ensure you have [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
   - Ensure you have [Docker](https://docs.docker.com/get-docker/)
   - `git clone` the codebase repository and open it in VSCode
-  - Issue the following command in the terminal to build and run the Docker container: `HOST_UID=$(id -u) PY_VER=3.11 DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py) docker compose --profile test run --rm -it djtest -- sh -c 'pip install -qe ".[test]" && bash'`
+  - Issue the following command in the terminal to build and run the Docker container: `HOST_UID=$(id -u) PY_VER=3.11 DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py) docker compose --profile test run --rm -it djtest -- sh -c 'pip install -qe ".[dev]" && bash'`
   - Issue the following command in the terminal to stop the Docker compose stack: `docker compose --profile test down`
 
 ## Features
