@@ -54,6 +54,10 @@ repos:
       - --statistics
       - --per-file-ignores=datajoint/diagram.py:C901
     files: datajoint # a lot of files in tests are not compliant
+- repo: https://github.com/rhysd/actionlint
+  rev: v1.7.7
+  hooks:
+  - id: actionlint
 
 ## Suggest to add pytest hook that runs unit test | Prerequisite: split unit/integration test
 ## https://github.com/datajoint/datajoint-python/issues/1211
