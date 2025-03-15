@@ -2,108 +2,32 @@ name: Release
 on:
   workflow_dispatch:
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - py_ver: ["3.9", "3.10", "3.11", "3.12", "3.13"]
-    env:
-      PY_VER: ${{matrix.py_ver}}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{matrix.py_ver}}
-      - name: Build pip artifacts
-        run: |
-          DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py)
-          echo "DJ_VERSION=${DJ_VERSION}" >> $GITHUB_ENV
-          python3 -m pip install build
-          python3 -m build .
-      - name: Add pip artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: pip-datajoint-${{env.DJ_VERSION}}
-          path: dist
-          retention-days: 1
-  publish-release:
-    if: |
-      github.event_name == 'push' &&
-      startsWith(github.ref, 'refs/tags')
-    needs: build
+  build-release:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         include:
           - py_ver: "3.9"
-            distro: debian
-            image: djbase
     env:
       PY_VER: ${{matrix.py_ver}}
-      DISTRO: ${{matrix.distro}}
-      IMAGE: ${{matrix.image}}
       TWINE_USERNAME: ${{secrets.twine_username}}
       TWINE_PASSWORD: ${{secrets.twine_password}}
-      DOCKER_CLIENT_TIMEOUT: "120"
-      COMPOSE_HTTP_TIMEOUT: "120"
-    outputs:
-      release_upload_url: ${{steps.create_gh_release.outputs.upload_url}}
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{matrix.py_ver}}
         uses: actions/setup-python@v5
         with:
           python-version: ${{matrix.py_ver}}
-      - name: Determine package version
+      # Merging build and release steps just for the simplicity,
+      # since datajoint-python doesn't have platform specific dependencies or binaries,
+      # and the build process is fairly fast, so removed upload/download artifacts
+      - name: Build package
         run: |
-          DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py)
-          RELEASE_BODY=$(python -c \
-            'print(open("./CHANGELOG.md").read().split("\n\n")[1].split("\n", 1)[1])' \
-          )
-          echo "DJ_VERSION=${DJ_VERSION}" >> $GITHUB_ENV
-          echo "RELEASE_BODY<<EOF" >> $GITHUB_ENV
-          echo "$RELEASE_BODY" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-      - name: Create GH release
-        id: create_gh_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
-        with:
-          tag_name: ${{env.DJ_VERSION}}
-          release_name: Release ${{env.DJ_VERSION}}
-          body: ${{env.RELEASE_BODY}}
-          prerelease: false
-          draft: false
-      - name: Fetch pip artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: pip-datajoint-${{env.DJ_VERSION}}
-          path: dist
-      - name: Determine pip artifact paths
-        run: |
+          python -m pip install build
+          python -m build .
           echo "DJ_WHEEL_PATH=$(ls dist/datajoint-*.whl)" >> $GITHUB_ENV
           echo "DJ_SDIST_PATH=$(ls dist/datajoint-*.tar.gz)" >> $GITHUB_ENV
-      - name: Upload pip wheel asset to release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
-        with:
-          upload_url: ${{steps.create_gh_release.outputs.upload_url}}
-          asset_path: ${{env.DJ_WHEEL_PATH}}
-          asset_name: pip-datajoint-${{env.DJ_VERSION}}.whl
-          asset_content_type: application/zip
-      - name: Upload pip sdist asset to release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
-        with:
-          upload_url: ${{steps.create_gh_release.outputs.upload_url}}
-          asset_path: ${{env.DJ_SDIST_PATH}}
-          asset_name: pip-datajoint-${{env.DJ_VERSION}}.tar.gz
-          asset_content_type: application/gzip
-      - name: Publish pip release
+      - name: Publish package
         run: |
           export HOST_UID=$(id -u)
           docker compose run --build --quiet-pull \
@@ -125,12 +49,50 @@ jobs:
                   && docker tag "${IMAGE}:${TAG}" "${IMAGE}:latest" \
                   && docker push "${IMAGE}:latest" \
               || echo "skipping 'latest' tag..."
+      # Make sure all above release targets are done first, then make a GH release
+      - name: Make release notes
+        run: |
+          DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py)
+          RELEASE_BODY=$(python -c \
+            'print(open("./CHANGELOG.md").read().split("\n\n")[1].split("\n", 1)[1])' \
+          )
+          echo "DJ_VERSION=${DJ_VERSION}" >> $GITHUB_ENV
+          echo "RELEASE_BODY<<EOF" >> $GITHUB_ENV
+          echo "$RELEASE_BODY" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+      - name: Create GH release
+        id: create_gh_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        with:
+          tag_name: ${{env.DJ_VERSION}}
+          release_name: Release ${{env.DJ_VERSION}}
+          body: ${{env.RELEASE_BODY}}
+          prerelease: false
+          draft: false
+      # Upload package as release assets
+      - name: Upload pip wheel asset to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        with:
+          upload_url: ${{steps.create_gh_release.outputs.upload_url}}
+          asset_path: ${{env.DJ_WHEEL_PATH}}
+          asset_name: pip-datajoint-${{env.DJ_VERSION}}.whl
+          asset_content_type: application/zip
+      - name: Upload pip sdist asset to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        with:
+          upload_url: ${{steps.create_gh_release.outputs.upload_url}}
+          asset_path: ${{env.DJ_SDIST_PATH}}
+          asset_name: pip-datajoint-${{env.DJ_VERSION}}.tar.gz
+          asset_content_type: application/gzip
   # only release docs when a release is published
   call-publish-docs:
-    if: |
-      github.event_name == 'push' &&
-      startsWith(github.ref, 'refs/tags')
-    needs: publish-release
+    needs: build-release
     runs-on: ubuntu-latest
     steps:
       - uses: ./.github/workflows/docs.yaml

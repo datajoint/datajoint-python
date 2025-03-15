@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=60"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "datajoint"
 # dynamically set in tools.setuptools.dynamic
@@ -57,10 +61,22 @@ classifiers = [
   "Intended Audience :: Science/Research",
   "Intended Audience :: Healthcare Industry",
   "License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)",
+  "Topic :: Software Development :: Libraries :: Python Modules",
   "Topic :: Scientific/Engineering",
   "Topic :: Scientific/Engineering :: Bio-Informatics",
   "Topic :: Scientific/Engineering :: Neuroscience", # Not standard, but just in case
 ]
+
+[project.urls]
+Homepage = "https://datajoint.com/docs"
+Documentation = "https://datajoint.com/docs"
+Repository = "https://github.com/datajoint/datajoint-python"
+"Bug Tracker" = "https://github.com/datajoint/datajoint-python/issues"
+"Release Notes" = "https://github.com/datajoint/datajoint-python/releases"
+
+[project.entry-points."console_scripts"]
+dj = "datajoint.cli:cli"
+datajoint = "datajoint.cli:cli"
 
 [project.optional-dependencies]
 test = [
@@ -78,23 +94,8 @@ dev = [
   "pytest-cov",
 ]
 
-[project.urls]
-Homepage = "https://datajoint.com/docs"
-Documentation = "https://datajoint.com/docs"
-Repository = "https://github.com/datajoint/datajoint-python"
-"Bug Tracker" = "https://github.com/datajoint/datajoint-python/issues"
-"Release Notes" = "https://github.com/datajoint/datajoint-python/releases"
-
-[project.entry-points."console_scripts"]
-dj = "datajoint.cli:cli"
-datajoint = "datajoint.cli:cli"
-
-[build-system]
-requires = [
-    "setuptools>=60",
-    "setuptools-scm>=8.0"
-]
-build-backend = "setuptools.build_meta"
+[tool.isort]
+profile = "black"
 
 [tool.setuptools]
 packages = ["datajoint"]
