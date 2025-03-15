@@ -12,6 +12,8 @@ on:
 jobs:
   build-release:
     runs-on: ubuntu-latest
+    # Use the oldest supported version to build, just in case there are issues
+    # for our case, this doesn't matter that much, since the build is for 3.x
     strategy:
       matrix:
         include:
