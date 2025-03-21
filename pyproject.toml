@@ -16,7 +16,8 @@ dependencies = [
   "otumat",
   "faker",
   "cryptography",
-  "urllib3"
+  "urllib3",
+  "setuptools",
 ]
 requires-python = ">=3.8,<4.0"
 authors = [
