@@ -36,10 +36,10 @@
   </td>
 </tr>
 <tr>
-  <td>Build Status</td>
+  <td>Test Status</td>
   <td>
     <a href="https://github.com/datajoint/datajoint-python/actions/workflows/development.yaml">
-      <img src="https://github.com/datajoint/datajoint-python/actions/workflows/development.yaml/badge.svg" alt="build status" />
+      <img src="https://github.com/datajoint/datajoint-python/actions/workflows/development.yaml/badge.svg" alt="test status" />
     </a>
   </td>
 </tr>
