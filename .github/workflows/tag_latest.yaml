@@ -1,0 +1,16 @@
+name: Tag latest
+on:
+  # Once draft release is released, trigger the docs release
+  release:
+    types:
+      ## stable release only
+      - released
+jobs:
+  tag-latest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tag latest
+        run: |
+          git tag -f latest
+          git push origin latest

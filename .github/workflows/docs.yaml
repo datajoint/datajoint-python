@@ -1,7 +1,14 @@
-name: Manual docs release
+name: Docs release
 on:
+  # manually trigger
   workflow_dispatch:
-  workflow_call:
+  # Once draft release is released, trigger the docs release
+  release:
+    types:
+      ## pre-release and stable release
+      #- published
+      ## stable release only
+      - released
 jobs:
   publish-docs:
     runs-on: ubuntu-latest

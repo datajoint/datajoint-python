@@ -1,8 +1,10 @@
 # https://github.com/actions/labeler
+breaking:
+- head-branch: ['breaking', 'BREAKING']
 bug:
 - head-branch: ['fix', 'FIX', 'bug', 'BUG']
-enhancement:
-- head-branch: ['feat', 'FEAT', 'enhance', 'improve', 'IMPR', 'DJEP']
+feature:
+- head-branch: ['feat', 'FEAT']
 documentation:
 - changed-files:
   - any-glob-to-any-file:
@@ -11,6 +13,8 @@ documentation:
     - README.md
     - CHANGELOG.md
     - CONTRIBUTING.md
+enhancement:
+- head-branch: ['enhance', 'improve', 'IMPR', 'DJEP']
 enhancement:
 - changed-files:
   - any-glob-to-any-file:
