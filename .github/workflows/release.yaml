@@ -48,21 +48,21 @@ jobs:
           echo "DJ_WHEEL_PATH=$(ls dist/datajoint-*.whl)" >> $GITHUB_ENV
           echo "DJ_SDIST_PATH=$(ls dist/datajoint-*.tar.gz)" >> $GITHUB_ENV
           echo "DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py)" >> $GITHUB_OUTPUT
-      - name: Publish package
-        run: |
-          export HOST_UID=$(id -u)
-          if [ "$TESTPYPI" == "true" ]; then
-            export TWINE_REPOSITORY="testpypi"
-            export TWINE_USERNAME=${TWINE_TEST_USERNAME}
-            export TWINE_PASSWORD=${TWINE_TEST_PASSWORD}
-          else
-            export TWINE_REPOSITORY="pypi"
-          fi
-          docker compose run --build --quiet-pull \
-            -e TWINE_USERNAME=${TWINE_USERNAME} \
-            -e TWINE_PASSWORD=${TWINE_PASSWORD} \
-            -e TWINE_REPOSITORY=${TWINE_REPOSITORY} \
-            app sh -c "pip install twine && python -m twine upload dist/*"
+      # - name: Publish package
+      #   run: |
+      #     export HOST_UID=$(id -u)
+      #     if [ "$TESTPYPI" == "true" ]; then
+      #       export TWINE_REPOSITORY="testpypi"
+      #       export TWINE_USERNAME=${TWINE_TEST_USERNAME}
+      #       export TWINE_PASSWORD=${TWINE_TEST_PASSWORD}
+      #     else
+      #       export TWINE_REPOSITORY="pypi"
+      #     fi
+      #     docker compose run --build --quiet-pull \
+      #       -e TWINE_USERNAME=${TWINE_USERNAME} \
+      #       -e TWINE_PASSWORD=${TWINE_PASSWORD} \
+      #       -e TWINE_REPOSITORY=${TWINE_REPOSITORY} \
+      #       app sh -c "pip install twine && python -m twine upload dist/*"
       # Drafts your next Release notes as Pull Requests are merged into "master"
       - name: Draft release notes
         id: create_gh_release
