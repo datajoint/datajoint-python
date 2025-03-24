@@ -10,6 +10,10 @@ on:
       - released
 
 jobs:
+  call-publish-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ./.github/workflows/docs.yaml
   update-version:
     permissions:
       # write permission is required to update version.py
@@ -20,11 +24,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Publish docs
-        call-publish-docs:
-        runs-on: ubuntu-latest
-        steps:
-          - uses: ./.github/workflows/docs.yaml
       - name: Update version.py
         id: update_version
         run: |
