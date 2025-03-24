@@ -1,0 +1,22 @@
+# https://github.com/actions/labeler
+bug:
+- head-branch: ['fix', 'FIX', 'bug', 'BUG']
+enhancement:
+- head-branch: ['feat', 'FEAT', 'enhance', 'improve', 'IMPR', 'DJEP']
+documentation:
+- changed-files:
+  - any-glob-to-any-file:
+    - docs/**
+    - images/**
+    - README.md
+    - CHANGELOG.md
+    - CONTRIBUTING.md
+enhancement:
+- changed-files:
+  - any-glob-to-any-file:
+    - '**'
+    - '!docs/**'
+    - '!images/**'
+    - '!README.md'
+    - '!CHANGELOG.md'
+    - '!CONTRIBUTING.md'
