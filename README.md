@@ -5,6 +5,20 @@
 
 # Welcome to DataJoint for Python!
 
+<style>
+th {
+  display: none;
+}
+tr {
+  border: 1px solid black;
+}
+</style>
+
+|asdf|asdf|
+------ | -----
+Stuff  | More things
+
+
 DataJoint for Python is a framework for scientific workflow management based on
 relational principles. DataJoint is built on the foundation of the relational data
 model and prescribes a consistent method for organizing, populating, computing, and
