@@ -7,13 +7,11 @@
   <td>PyPI</td>
   <td>
     <a href="https://pypi.org/project/datajoint/">
-      <img src="https://img.shields.io/pypi/v/datajoint?color=blue
-      " alt="pypi release" />
+      <img src="https://img.shields.io/pypi/v/datajoint?color=blue" alt="pypi release" />
     </a>
     <br>
     <a href="https://pypi.org/project/datajoint/">
-      <img src="https://img.shields.io/pypi/dm/datajoint?color=yellow
-    " alt="pypi downloads" />
+      <img src="https://img.shields.io/pypi/dm/datajoint?color=yellow" alt="pypi downloads" />
     </a>
   </td>
 </tr>
@@ -21,13 +19,11 @@
   <td>Conda Forge</td>
   <td>
     <a href="https://anaconda.org/conda-forge/datajoint">
-      <img src="https://img.shields.io/conda/vn/conda-forge/datajoint
-      ?color=brightgreen" alt="conda-forge release" />
+      <img src="https://img.shields.io/conda/vn/conda-forge/datajoint?color=brightgreen" alt="conda-forge release" />
     </a>
     <br>
     <a href="https://anaconda.org/conda-forge/datajoint">
-      <img src="https://img.shields.io/conda/dn/conda-forge/datajoint
-      ?color=brightgreen" alt="conda-forge downloads" />
+      <img src="https://img.shields.io/conda/dn/conda-forge/datajoint?color=brightgreen" alt="conda-forge downloads" />
     </a>
   </td>
 </tr>
@@ -35,8 +31,7 @@
   <td>Since Release</td>
   <td>
     <a href="https://github.com/datajoint/datajoint-python/compare/latest...master">
-      <img src="https://img.shields.io/github/commits-since/datajoint/datajoint-python/latest?color=red
-      " alt="commit since last release" />
+      <img src="https://img.shields.io/github/commits-since/datajoint/datajoint-python/latest?color=red" alt="commit since last release" />
     </a>
   </td>
 </tr>
@@ -68,8 +63,7 @@
   <td>License</td>
   <td>
     <a href="https://github.com/datajoint/datajoint-python/blob/master/LICENSE.txt">
-      <img src="https://img.shields.io/github/license/datajoint/datajoint-python
-    " alt="LGPL-2.1" />
+      <img src="https://img.shields.io/github/license/datajoint/datajoint-python" alt="LGPL-2.1" />
     </a>
   </td>
 </tr>
