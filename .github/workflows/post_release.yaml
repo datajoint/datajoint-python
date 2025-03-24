@@ -36,3 +36,14 @@ jobs:
           git add datajoint/version.py
           git commit -m "Update version.py to $VERSION"
           git push
+  slack-notification:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post text to a Slack channel
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload: |
+            channel: ${{ secrets.SLACK_CHANNEL_ID }}
+            text: "howdy <@channel>!"
