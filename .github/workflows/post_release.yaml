@@ -1,4 +1,4 @@
-name: Update version.py on Release
+name: Post Release
 
 on:
   # Once draft release is released, trigger the docs release
