@@ -13,6 +13,6 @@ jobs:
     - uses: actions/labeler@v5
       with:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
-        configuration-path: .github/labeler.yaml
+        configuration-path: .github/pr_labeler.yaml
         sync-labels: true
         dot: true
