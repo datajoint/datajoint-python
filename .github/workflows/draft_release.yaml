@@ -26,6 +26,6 @@ jobs:
         with:
           config-name: release_drafter.yaml
           disable-autolabeler: true
-          name: ${{ github.event.inputs.testpypi == 'true' && 'test' || github.event.release.name }}
+          name: ${{ github.event.inputs.testpypi == 'true' && 'Test $RESOLVED_VERSION' || 'Release $RESOLVED_VERSION' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -10,7 +10,7 @@ version-resolver:
       - 'documentation'
       - 'enhancement'
       - 'bug'
-name-template: 'Release $RESOLVED_VERSION'
+name-template: '$RESOLVED_VERSION'
 tag-template: 'v$RESOLVED_VERSION'
 categories:
   - title: '💥 Breaking Changes'

@@ -38,7 +38,6 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
       # new release needs the updated version.py
       - name: Update version.py
-        id: update_version
         run: |
           VERSION=$(echo "${{ github.event.release.name }}" | grep -oP '\d+\.\d+\.\d+')
           sed -i "s/^__version__ = .*/__version__ = \"$VERSION\"/" datajoint/version.py
@@ -68,31 +67,35 @@ jobs:
           echo "DJ_SDIST_PATH=$(ls dist/datajoint-*.tar.gz)" >> $GITHUB_ENV
           echo "NEW_VERSION=${{github.event.release.resolved_version}}" >> $GITHUB_ENV
       - name: Publish package
+        id: publish
+        env:
+          RELEASE_NAME: ${{ github.event.release.name }}
         run: |
-          # TODO - if test pypi or not
           export HOST_UID=$(id -u)
-          if [ "$TESTPYPI" == "true" ]; then
+          if [[ "$RELEASE_NAME" =~ ^Test ]]; then
             LATEST_PYPI=$(curl -s https://test.pypi.org/pypi/datajoint/json | jq -r '.info.version')
+            echo "TEST_PYPI=true" >> $GITHUB_ENV
             export TWINE_REPOSITORY="testpypi"
             export TWINE_USERNAME=${TWINE_TEST_USERNAME}
             export TWINE_PASSWORD=${TWINE_TEST_PASSWORD}
           else
             LATEST_PYPI=$(curl -s https://pypi.org/pypi/datajoint/json | jq -r '.info.version')
+            echo "TEST_PYPI=false" >> $GITHUB_ENV
             export TWINE_REPOSITORY="pypi"
           fi
           # Check if the new version is different from the latest on PyPI, avoid re-uploading error
           if [ "$NEW_VERSION" != "$LATEST_PYPI" ]; then
-            docker compose run --build --quiet-pull \
-            -e TWINE_USERNAME=${TWINE_USERNAME} \
-            -e TWINE_PASSWORD=${TWINE_PASSWORD} \
-            -e TWINE_REPOSITORY=${TWINE_REPOSITORY} \
-            app sh -c "pip install twine && python -m twine upload dist/*"
+            # docker compose run --build --quiet-pull \
+            # -e TWINE_USERNAME=${TWINE_USERNAME} \
+            # -e TWINE_PASSWORD=${TWINE_PASSWORD} \
+            # -e TWINE_REPOSITORY=${TWINE_REPOSITORY} \
+            # app sh -c "pip install twine && python -m twine upload dist/*"
+            echo "Uploading to $TWINE_REPOSITORY"
           else
             echo "::warning::Latest version $LATEST_PYPI on $TWINE_REPOSITORY is the new version $NEW_VERSION"
           fi
       # Upload package as release assets
       - name: Upload pip wheel asset to release
-        if: ${{ github.event.inputs.testpypi == 'false' }}
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
@@ -102,7 +105,6 @@ jobs:
           asset_name: pip-datajoint-${{env.DJ_VERSION}}.whl
           asset_content_type: application/zip
       - name: Upload pip sdist asset to release
-        if: ${{ github.event.inputs.testpypi == 'false' }}
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
@@ -122,10 +124,8 @@ jobs:
             --base master \
             --head ${{ env.BRANCH_NAME }} \
             --reviewer dimitri-yatsenko,yambottle,ttngu207
-  slack-notification:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Post a message in a channel
+      - name: Post release notification to Slack
+        if: ${{ env.TEST_PYPI == 'false' }}
         uses: slackapi/slack-github-action@v2.0.0
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
