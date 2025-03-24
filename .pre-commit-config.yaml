@@ -15,8 +15,6 @@ repos:
   - id: check-json
     exclude: '(.vscode|.devcontainer)' # exclude these since // was used for comments
   - id: check-toml
-  - id: trailing-whitespace
-  - id: end-of-file-fixer
   - id: check-added-large-files
 - repo: https://github.com/codespell-project/codespell
   rev: v2.4.1
@@ -36,6 +34,15 @@ repos:
 - repo: https://github.com/PyCQA/flake8
   rev: 7.1.2
   hooks:
+  # syntax tests
+  - id: flake8
+    args:
+      - --select=E9,F63,F7,F82
+      - --count
+      - --show-source
+      - --statistics
+    files: datajoint # a lot of files in tests are not compliant
+  # style tests
   - id: flake8
     args:
       - --ignore=E203,E722,W503
@@ -45,6 +52,11 @@ repos:
       - --statistics
       - --per-file-ignores=datajoint/diagram.py:C901
     files: datajoint # a lot of files in tests are not compliant
+- repo: https://github.com/rhysd/actionlint
+  rev: v1.7.7
+  hooks:
+  # lint github actions workflow yaml
+  - id: actionlint
 
 ## Suggest to add pytest hook that runs unit test | Prerequisite: split unit/integration test
 ## https://github.com/datajoint/datajoint-python/issues/1211
