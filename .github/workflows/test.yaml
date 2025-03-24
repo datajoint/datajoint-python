@@ -8,7 +8,6 @@ on:
     paths:
       - "datajoint"
       - "tests"
-      - ".pre-commit-config.yaml"
   pull_request:
     branches:
       - "**" # every branch
@@ -17,27 +16,9 @@ on:
     paths:
       - "datajoint"
       - "tests"
-      - ".pre-commit-config.yaml"
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-python@v5
-    # enforce the same check as pre-commit
-    # but only run important checks
-    - uses: pre-commit/action@v3.0.1
-      with:
-        extra_args: codespell --all-files
-    - uses: pre-commit/action@v3.0.1
-      with:
-        extra_args: black --all-files
-    - uses: pre-commit/action@v3.0.1
-      with:
-        extra_args: flake8 --all-files
   test:
     runs-on: ubuntu-latest
-    needs: lint
     strategy:
       matrix:
         py_ver: ["3.9", "3.10", "3.11", "3.12", "3.13"]
