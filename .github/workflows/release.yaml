@@ -32,6 +32,15 @@ jobs:
       TWINE_TEST_PASSWORD: ${{secrets.twine_test_password}}
       TESTPYPI: ${{ github.event.inputs.testpypi }}
     steps:
+      # Drafts your next Release notes as Pull Requests are merged into "master"
+      - name: Draft release notes
+        id: create_gh_release
+        uses: release-drafter/release-drafter@v6
+        with:
+          config-name: release_drafter.yaml
+          disable-autolabeler: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/checkout@v4
       - name: Set up Python ${{matrix.py_ver}}
         uses: actions/setup-python@v5
@@ -47,7 +56,7 @@ jobs:
           python -m build .
           echo "DJ_WHEEL_PATH=$(ls dist/datajoint-*.whl)" >> $GITHUB_ENV
           echo "DJ_SDIST_PATH=$(ls dist/datajoint-*.tar.gz)" >> $GITHUB_ENV
-          echo "NEW_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py)" >> $GITHUB_ENV
+          echo "NEW_VERSION=${{steps.create_gh_release.outputs.resolved_version}}" >> $GITHUB_ENV
       - name: Publish package
         run: |
           export HOST_UID=$(id -u)
@@ -68,18 +77,8 @@ jobs:
             -e TWINE_REPOSITORY=${TWINE_REPOSITORY} \
             app sh -c "pip install twine && python -m twine upload dist/*"
           else
-            echo "::warning::The latest version $LATEST_PYPI on $TWINE_REPOSITORY is the new version $NEW_VERSION"
+            echo "::warning::Latest version $LATEST_PYPI on $TWINE_REPOSITORY is the new version $NEW_VERSION"
           fi
-      # Drafts your next Release notes as Pull Requests are merged into "master"
-      - name: Draft release notes
-        id: create_gh_release
-        uses: release-drafter/release-drafter@v6
-        if: ${{ github.event.inputs.testpypi == 'false' }}
-        with:
-          config-name: release_drafter.yaml
-          disable-autolabeler: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # Upload package as release assets
       - name: Upload pip wheel asset to release
         if: ${{ github.event.inputs.testpypi == 'false' }}

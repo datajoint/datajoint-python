@@ -1,0 +1,39 @@
+name: Update version.py on Release
+
+on:
+  # Once draft release is released, trigger the docs release
+  release:
+    types:
+      ## pre-release and stable release
+      #- published
+      ## stable release only
+      - released
+
+jobs:
+  update-version:
+    permissions:
+      # write permission is required to update version.py
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish docs
+        call-publish-docs:
+        runs-on: ubuntu-latest
+        steps:
+          - uses: ./.github/workflows/docs.yaml
+      - name: Update version.py
+        id: update_version
+        run: |
+          VERSION=$(echo "${{ github.event.release.name }}" | grep -oP '\d+\.\d+\.\d+')
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          sed -i "s/^__version__ = .*/__version__ = \"$VERSION\"/" datajoint/version.py
+          # Commit the changes
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add datajoint/version.py
+          git commit -m "Update version.py to $VERSION"
+          git push

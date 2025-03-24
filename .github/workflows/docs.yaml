@@ -2,14 +2,9 @@ name: Docs release
 on:
   # manually trigger
   workflow_dispatch:
-  # Once draft release is released, trigger the docs release
-  release:
-    types:
-      ## pre-release and stable release
-      #- published
-      ## stable release only
-      - released
-run-name: "📚 Release docs ${{ github.event.release.tag_name }}"
+  # been called by other workflows
+  workflow_call:
+
 jobs:
   publish-docs:
     runs-on: ubuntu-latest
