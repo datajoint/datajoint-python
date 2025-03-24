@@ -1,22 +1,92 @@
-[![DOI](https://zenodo.org/badge/16774/datajoint/datajoint-python.svg)](https://zenodo.org/badge/latestdoi/16774/datajoint/datajoint-python)
-[![Coverage Status](https://coveralls.io/repos/datajoint/datajoint-python/badge.svg?branch=master&service=github)](https://coveralls.io/github/datajoint/datajoint-python?branch=master)
-[![PyPI version](https://badge.fury.io/py/datajoint.svg)](http://badge.fury.io/py/datajoint)
-[![Slack](https://img.shields.io/badge/slack-chat-green.svg)](https://datajoint.slack.com/)
-
 # Welcome to DataJoint for Python!
 
-<style>
-th {
-  display: none;
-}
-tr {
-  border: 1px solid black;
-}
-</style>
+<table>
+<!-- Thank Zarr for providing badge insights! -->
+<!-- https://github.com/zarr-developers/zarr-python/blob/main/README.md -->
+<tr>
+  <td>PyPI</td>
+  <td>
+    <a href="https://pypi.org/project/datajoint/">
+      <img src="https://img.shields.io/pypi/v/datajoint?color=blue
+      " alt="pypi release" />
+    </a>
+    <br>
+    <a href="https://pypi.org/project/datajoint/">
+      <img src="https://img.shields.io/pypi/dm/datajoint?color=yellow
+    " alt="pypi downloads" />
+    </a>
+  </td>
+</tr>
+<tr>
+  <td>Conda Forge</td>
+  <td>
+    <a href="https://anaconda.org/conda-forge/datajoint">
+      <img src="https://img.shields.io/conda/vn/conda-forge/datajoint
+      ?color=brightgreen" alt="conda-forge release" />
+    </a>
+    <br>
+    <a href="https://anaconda.org/conda-forge/datajoint">
+      <img src="https://img.shields.io/conda/dn/conda-forge/datajoint
+      ?color=brightgreen" alt="conda-forge downloads" />
+    </a>
+  </td>
+</tr>
+<tr>
+  <td>Since Release</td>
+  <td>
+    <a href="https://github.com/datajoint/datajoint-python/compare/latest...master">
+      <img src="https://img.shields.io/github/commits-since/datajoint/datajoint-python/latest?color=red
+      " alt="commit since last release" />
+    </a>
+  </td>
+</tr>
+<tr>
+  <td>Build Status</td>
+  <td>
+    <a href="https://github.com/datajoint/datajoint-python/actions/workflows/development.yaml">
+      <img src="https://github.com/datajoint/datajoint-python/actions/workflows/development.yaml/badge.svg" alt="build status" />
+    </a>
+  </td>
+</tr>
+<tr>
+  <td>Coverage</td>
+  <td>
+    <a href="https://coveralls.io/github/datajoint/datajoint-python?branch=master">
+      <img src="https://coveralls.io/repos/datajoint/datajoint-python/badge.svg?branch=master&service=github"/ alt="coverage">
+    </a>
+  </td>
+</tr>
+<tr>
+	<td>Developer Chat</td>
+	<td>
+		<a href="https://datajoint.slack.com/">
+      <img src="https://img.shields.io/badge/slack-datajoint-purple.svg" alt="datajoint slack"/>
+		</a>
+	</td>
+</tr>
+<tr>
+  <td>License</td>
+  <td>
+    <a href="https://github.com/datajoint/datajoint-python/blob/master/LICENSE.txt">
+      <img src="https://img.shields.io/github/license/datajoint/datajoint-python
+    " alt="LGPL-2.1" />
+    </a>
+  </td>
+</tr>
+<tr>
+	<td>Citation</td>
+	<td>
+		<a href="https://doi.org/10.1101/031658">
+			<img src="https://img.shields.io/badge/DOI-10.1101/bioRxiv.031658-B31B1B.svg" alt="bioRxiv">
+		</a>
+    <br>
+    <a href="https://doi.org/10.5281/zenodo.6829062">
+      <img src="https://zenodo.org/badge/DOI/10.5281/zenodo.6829062.svg" alt="zenodo">
+		</a>
+	</td>
+</tr>
 
-|asdf|asdf|
------- | -----
-Stuff  | More things
+</table>
 
 
 DataJoint for Python is a framework for scientific workflow management based on
