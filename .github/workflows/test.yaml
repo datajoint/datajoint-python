@@ -5,11 +5,19 @@ on:
       - "**" # every branch
       - "!gh-pages" # exclude gh-pages branch
       - "!stage*" # exclude branches beginning with stage
+    paths:
+      - "datajoint"
+      - "tests"
+      - ".pre-commit-config.yaml"
   pull_request:
     branches:
       - "**" # every branch
       - "!gh-pages" # exclude gh-pages branch
       - "!stage*" # exclude branches beginning with stage
+    paths:
+      - "datajoint"
+      - "tests"
+      - ".pre-commit-config.yaml"
 jobs:
   lint:
     runs-on: ubuntu-latest
