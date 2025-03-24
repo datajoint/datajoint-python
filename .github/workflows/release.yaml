@@ -47,22 +47,29 @@ jobs:
           python -m build .
           echo "DJ_WHEEL_PATH=$(ls dist/datajoint-*.whl)" >> $GITHUB_ENV
           echo "DJ_SDIST_PATH=$(ls dist/datajoint-*.tar.gz)" >> $GITHUB_ENV
-          echo "DJ_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py)" >> $GITHUB_OUTPUT
-      # - name: Publish package
-      #   run: |
-      #     export HOST_UID=$(id -u)
-      #     if [ "$TESTPYPI" == "true" ]; then
-      #       export TWINE_REPOSITORY="testpypi"
-      #       export TWINE_USERNAME=${TWINE_TEST_USERNAME}
-      #       export TWINE_PASSWORD=${TWINE_TEST_PASSWORD}
-      #     else
-      #       export TWINE_REPOSITORY="pypi"
-      #     fi
-      #     docker compose run --build --quiet-pull \
-      #       -e TWINE_USERNAME=${TWINE_USERNAME} \
-      #       -e TWINE_PASSWORD=${TWINE_PASSWORD} \
-      #       -e TWINE_REPOSITORY=${TWINE_REPOSITORY} \
-      #       app sh -c "pip install twine && python -m twine upload dist/*"
+          echo "NEW_VERSION=$(grep -oP '\d+\.\d+\.\d+' datajoint/version.py)" >> $GITHUB_ENV
+      - name: Publish package
+        run: |
+          export HOST_UID=$(id -u)
+          if [ "$TESTPYPI" == "true" ]; then
+            LATEST_PYPI=$(curl -s https://test.pypi.org/pypi/datajoint/json | jq -r '.info.version')
+            export TWINE_REPOSITORY="testpypi"
+            export TWINE_USERNAME=${TWINE_TEST_USERNAME}
+            export TWINE_PASSWORD=${TWINE_TEST_PASSWORD}
+          else
+            LATEST_PYPI=$(curl -s https://pypi.org/pypi/datajoint/json | jq -r '.info.version')
+            export TWINE_REPOSITORY="pypi"
+          fi
+          # Check if the new version is different from the latest on PyPI, avoid re-uploading error
+          if [ "$NEW_VERSION" != "$LATEST_PYPI" ]; then
+            docker compose run --build --quiet-pull \
+            -e TWINE_USERNAME=${TWINE_USERNAME} \
+            -e TWINE_PASSWORD=${TWINE_PASSWORD} \
+            -e TWINE_REPOSITORY=${TWINE_REPOSITORY} \
+            app sh -c "pip install twine && python -m twine upload dist/*"
+          else
+            echo "::warning::The latest version $LATEST_PYPI on $TWINE_REPOSITORY is the new version $NEW_VERSION"
+          fi
       # Drafts your next Release notes as Pull Requests are merged into "master"
       - name: Draft release notes
         id: create_gh_release

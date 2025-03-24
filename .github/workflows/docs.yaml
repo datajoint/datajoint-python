@@ -9,6 +9,7 @@ on:
       #- published
       ## stable release only
       - released
+run-name: "📚 Release docs ${{ github.event.release.tag_name }}"
 jobs:
   publish-docs:
     runs-on: ubuntu-latest
