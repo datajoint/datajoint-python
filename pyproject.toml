@@ -1,6 +1,11 @@
+[build-system]
+requires = ["setuptools>=60"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "datajoint"
-version = "0.14.3"
+# dynamically set in tools.setuptools.dynamic
+dynamic = ["version"]
 dependencies = [
   "numpy",
   "pymysql>=0.7.2",
@@ -16,9 +21,10 @@ dependencies = [
   "otumat",
   "faker",
   "cryptography",
-  "urllib3"
+  "urllib3",
+  "setuptools",
 ]
-requires-python = ">=3.8,<4.0"
+requires-python = ">=3.9,<4.0"
 authors = [
   {name = "Dimitri Yatsenko", email = "dimitri@datajoint.com"},
   {name = "Raphael Guzman"},
@@ -29,26 +35,37 @@ maintainers = [
   {name = "Dimitri Yatsenko", email = "dimitri@datajoint.com"},
   {name = "DataJoint Contributors", email = "support@datajoint.com"},
 ]
-description = "A relational data pipeline framework."
+# manually sync here: https://datajoint.com/docs/core/datajoint-python/latest/#welcome-to-datajoint-for-python
+description = "DataJoint for Python is a framework for scientific workflow management based on relational principles. DataJoint is built on the foundation of the relational data model and prescribes a consistent method for organizing, populating, computing, and querying data."
 readme = "README.md"
 license = {file = "LICENSE.txt"}
 keywords = [
     "database",
-    "data pipelines",
-    "scientific computing",
-    "automated research workflows",
+    "automated",
+    "automation",
+    "compute",
+    "data",
+    "pipeline",
+    "workflow",
+    "scientific",
+    "science",
+    "research",
+    "neuroscience",
+    "bioinformatics",
+    "bio-informatics",
+    "datajoint",
 ]
+# https://pypi.org/classifiers/
 classifiers = [
-  "Programming Language :: Python"
-]
-
-[project.optional-dependencies]
-test = [
-  "pre-commit",
-  "pytest",
-  "pytest-cov",
-  "black==24.2.0",
-  "flake8",
+  "Programming Language :: Python",
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Healthcare Industry",
+  "License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+  "Topic :: Scientific/Engineering :: Neuroscience", # Not standard, but just in case
 ]
 
 [project.urls]
@@ -56,18 +73,33 @@ Homepage = "https://datajoint.com/docs"
 Documentation = "https://datajoint.com/docs"
 Repository = "https://github.com/datajoint/datajoint-python"
 "Bug Tracker" = "https://github.com/datajoint/datajoint-python/issues"
-Changelog = "https://github.com/datajoint/datajoint-python/blob/master/CHANGELOG.md"
+"Release Notes" = "https://github.com/datajoint/datajoint-python/releases"
 
 [project.entry-points."console_scripts"]
 dj = "datajoint.cli:cli"
 datajoint = "datajoint.cli:cli"
 
+[project.optional-dependencies]
+test = [
+  "pytest",
+  "pytest-cov",
+]
+dev = [
+  "pre-commit",
+  "black==24.2.0",
+  "flake8",
+  "isort",
+  "codespell",
+  # including test
+  "pytest",
+  "pytest-cov",
+]
+
+[tool.isort]
+profile = "black"
+
 [tool.setuptools]
 packages = ["datajoint"]
 
-[build-system]
-requires = [
-    "setuptools>=60",
-    "setuptools-scm>=8.0"
-]
-build-backend = "setuptools.build_meta"
+[tool.setuptools.dynamic]
+version = { attr = "datajoint.version.__version__"}
