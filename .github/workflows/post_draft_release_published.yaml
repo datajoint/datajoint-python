@@ -85,12 +85,11 @@ jobs:
           fi
           # Check if the new version is different from the latest on PyPI, avoid re-uploading error
           if [ "$NEW_VERSION" != "$LATEST_PYPI" ]; then
-            # docker compose run --build --quiet-pull \
-            # -e TWINE_USERNAME=${TWINE_USERNAME} \
-            # -e TWINE_PASSWORD=${TWINE_PASSWORD} \
-            # -e TWINE_REPOSITORY=${TWINE_REPOSITORY} \
-            # app sh -c "pip install twine && python -m twine upload dist/*"
-            echo "Uploading to $TWINE_REPOSITORY"
+            docker compose run --build --quiet-pull \
+            -e TWINE_USERNAME=${TWINE_USERNAME} \
+            -e TWINE_PASSWORD=${TWINE_PASSWORD} \
+            -e TWINE_REPOSITORY=${TWINE_REPOSITORY} \
+            app sh -c "pip install twine && python -m twine upload dist/*"
           else
             echo "::warning::Latest version $LATEST_PYPI on $TWINE_REPOSITORY is the new version $NEW_VERSION"
           fi
