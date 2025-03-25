@@ -30,16 +30,32 @@
 <tr>
   <td>Since Release</td>
   <td>
-    <a href="https://github.com/datajoint/datajoint-python/compare/latest...master">
-      <img src="https://img.shields.io/github/commits-since/datajoint/datajoint-python/latest?color=red" alt="commit since last release" />
+    <a id="commit-since-release-link" href="https://github.com/datajoint/datajoint-python/compare/latest...master">
+      <img id="commit-since-release-img" src="https://img.shields.io/github/commits-since/datajoint/datajoint-python/latest?color=red" alt="commit since last release" />
     </a>
   </td>
 </tr>
 <tr>
   <td>Test Status</td>
   <td>
-    <a href="https://github.com/datajoint/datajoint-python/actions/workflows/development.yaml">
-      <img src="https://github.com/datajoint/datajoint-python/actions/workflows/development.yaml/badge.svg" alt="test status" />
+    <a href="https://github.com/datajoint/datajoint-python/actions/workflows/test.yaml">
+      <img src="https://github.com/datajoint/datajoint-python/actions/workflows/pages/test/badge.svg" alt="test status" />
+    </a>
+  </td>
+</tr>
+<tr>
+  <td>Release Status</td>
+  <td>
+    <a href="https://github.com/datajoint/datajoint-python/actions/workflows/post_draft_release_published.yaml">
+      <img src="https://github.com/datajoint/datajoint-python/actions/workflows/pages/post_draft_release_published/badge.svg" alt="release status" />
+    </a>
+  </td>
+</tr>
+<tr>
+  <td>Doc Status</td>
+  <td>
+    <a href="https://datajoint.com/docs">
+      <img src="https://github.com/datajoint/datajoint-python/actions/workflows/pages/pages-build-deployment/badge.svg" alt="doc status" />
     </a>
   </td>
 </tr>

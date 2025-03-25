@@ -1,7 +1,10 @@
-name: Manual docs release
+name: Docs release
 on:
+  # manually trigger
   workflow_dispatch:
+  # been called by other workflows
   workflow_call:
+
 jobs:
   publish-docs:
     runs-on: ubuntu-latest
