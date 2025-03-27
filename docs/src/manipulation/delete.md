@@ -1,9 +1,9 @@
 # Delete
 
-The `delete` method deletes entities from a table and all dependent entries in 
+The `delete` method deletes entities from a table and all dependent entries in
 dependent tables.
 
-Delete is often used in conjunction with the [restriction](../query/restrict.md) 
+Delete is often used in conjunction with the [restriction](../query/restrict.md)
 operator to define the subset of entities to delete.
 Delete is performed as an atomic transaction so that partial deletes never occur.
 
@@ -22,7 +22,7 @@ tuning.VonMises.delete()
 
 ## Deleting from part tables
 
-Entities in a [part table](../design/tables/master-part.md) are usually removed as a 
+Entities in a [part table](../design/tables/master-part.md) are usually removed as a
 consequence of deleting the master table.
 
 To enforce this workflow, calling `delete` directly on a part table produces an error.

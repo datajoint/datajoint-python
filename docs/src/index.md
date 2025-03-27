@@ -1,14 +1,14 @@
 # Welcome to DataJoint for Python!
 
-DataJoint for Python is a framework for scientific workflow management based on 
-relational principles. DataJoint is built on the foundation of the relational data 
-model and prescribes a consistent method for organizing, populating, computing, and 
+DataJoint for Python is a framework for scientific workflow management based on
+relational principles. DataJoint is built on the foundation of the relational data
+model and prescribes a consistent method for organizing, populating, computing, and
 querying data.
 
-DataJoint was initially developed in 2009 by Dimitri Yatsenko in Andreas Tolias' Lab at 
-Baylor College of Medicine for the distributed processing and management of large 
-volumes of data streaming from regular experiments. Starting in 2011, DataJoint has 
-been available as an open-source project adopted by other labs and improved through 
+DataJoint was initially developed in 2009 by Dimitri Yatsenko in Andreas Tolias' Lab at
+Baylor College of Medicine for the distributed processing and management of large
+volumes of data streaming from regular experiments. Starting in 2011, DataJoint has
+been available as an open-source project adopted by other labs and improved through
 contributions from several developers.
 Presently, the primary developer of DataJoint open-source software is the company [DataJoint](https://datajoint.com){:target="_blank"}.
 

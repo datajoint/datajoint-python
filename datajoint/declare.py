@@ -3,13 +3,15 @@ This module hosts functions to convert DataJoint table definitions into mysql ta
 declare the corresponding mysql tables.
 """
 
-import re
-import pyparsing as pp
 import logging
+import re
 from hashlib import sha1
-from .errors import DataJointError, _support_filepath_types, FILEPATH_FEATURE_SWITCH
+
+import pyparsing as pp
+
 from .attribute_adapter import get_adapter
 from .condition import translate_attribute
+from .errors import FILEPATH_FEATURE_SWITCH, DataJointError, _support_filepath_types
 from .settings import config
 
 UUID_DATA_TYPE = "binary(16)"
@@ -163,8 +165,8 @@ def compile_foreign_key(
     :param index_sql: list of INDEX declaration statements, duplicate or redundant indexes are ok.
     """
     # Parse and validate
-    from .table import Table
     from .expression import QueryExpression
+    from .table import Table
 
     try:
         result = foreign_key_parser.parseString(line)

@@ -20,17 +20,17 @@ A data model is defined by considering the following key aspects:
 
 ## Types of data models
 
-Among the most familiar data models are those based on files and folders: data of any 
-kind are lumped together into binary strings called **files**, files are collected into 
+Among the most familiar data models are those based on files and folders: data of any
+kind are lumped together into binary strings called **files**, files are collected into
 folders, and folders can be nested within other folders to create a folder hierarchy.
 
 Another family of data models are various **tabular models**.
-For example, items in CSV files are listed in rows, and the attributes of each item are 
+For example, items in CSV files are listed in rows, and the attributes of each item are
 stored in columns.
-Various **spreadsheet** models allow forming dependencies between cells and groups of 
+Various **spreadsheet** models allow forming dependencies between cells and groups of
 cells, including complex calculations.
 
-The **object data model** is common in programming, where data are represented as 
+The **object data model** is common in programming, where data are represented as
 objects in memory with properties and methods for transformations of such data.
 
 ## Relational data model
@@ -47,11 +47,11 @@ columns (often called attributes).
 
 **Data representation:**
   Data are represented and manipulated in the form of relations.
-  A relation is a set (i.e. an unordered collection) of entities of values for each of 
+  A relation is a set (i.e. an unordered collection) of entities of values for each of
   the respective named attributes of the relation.
-  Base relations represent stored data while derived relations are formed from base 
+  Base relations represent stored data while derived relations are formed from base
   relations through query expressions.
-  A collection of base relations with their attributes, domain constraints, uniqueness 
+  A collection of base relations with their attributes, domain constraints, uniqueness
   constraints, and referential constraints is called a schema.
 
 **Domain constraints:** 
@@ -62,7 +62,7 @@ columns (often called attributes).
 
 **Uniqueness constraints:**
   Entities within relations are addressed by values of their attributes.
-  To identify and relate data elements, uniqueness constraints are imposed on subsets 
+  To identify and relate data elements, uniqueness constraints are imposed on subsets
   of attributes.
   Such subsets are then referred to as keys.
   One key in a relation is designated as the primary key used for referencing its elements.
@@ -70,30 +70,30 @@ columns (often called attributes).
 **Referential constraints:**
   Associations among data are established by means of referential constraints with the 
   help of foreign keys.
-  A referential constraint on relation A referencing relation B allows only those 
+  A referential constraint on relation A referencing relation B allows only those
   entities in A whose foreign key attributes match the key attributes of an entity in B.
 
 **Declarative queries:**
   Data queries are formulated through declarative, as opposed to imperative, 
   specifications of sought results.
-  This means that query expressions convey the logic for the result rather than the 
+  This means that query expressions convey the logic for the result rather than the
   procedure for obtaining it.
-  Formal languages for query expressions include relational algebra, relational 
+  Formal languages for query expressions include relational algebra, relational
   calculus, and SQL.
 
-The relational model has many advantages over both hierarchical file systems and 
-tabular models for maintaining data integrity and providing flexible access to 
+The relational model has many advantages over both hierarchical file systems and
+tabular models for maintaining data integrity and providing flexible access to
 interesting subsets of the data.
 
-Popular implementations of the relational data model rely on the Structured Query 
+Popular implementations of the relational data model rely on the Structured Query
 Language (SQL).
-SQL comprises distinct sublanguages for schema definition, data manipulation, and data 
+SQL comprises distinct sublanguages for schema definition, data manipulation, and data
 queries.
-SQL thoroughly dominates in the space of relational databases and is often conflated 
+SQL thoroughly dominates in the space of relational databases and is often conflated
 with the relational data model in casual discourse.
-Various terminologies are used to describe related concepts from the relational data 
+Various terminologies are used to describe related concepts from the relational data
 model.
-Similar to spreadsheets, relations are often visualized as tables with *attributes* 
+Similar to spreadsheets, relations are often visualized as tables with *attributes*
 corresponding to *columns* and *entities* corresponding to *rows*.
 In particular, SQL uses the terms *table*, *column*, and *row*.
 
@@ -126,8 +126,8 @@ DataJoint comprises:
 + a [diagramming](../design/diagrams.md) notation for visualizing relationships between 
 modeled entities
 
-The key refinement of DataJoint over other relational data models and their 
-implementations is DataJoint's support of 
+The key refinement of DataJoint over other relational data models and their
+implementations is DataJoint's support of
 [entity normalization](../design/normalization.md).
 
 ### Core principles of the DataJoint model

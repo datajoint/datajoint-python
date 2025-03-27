@@ -2,10 +2,12 @@
 Sample schema with realistic tables for testing
 """
 
-import random
-import numpy as np
-import datajoint as dj
 import inspect
+import random
+
+import numpy as np
+
+import datajoint as dj
 
 
 class TTest(dj.Lookup):

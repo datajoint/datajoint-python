@@ -1,7 +1,9 @@
-import pytest
-from datajoint import DataJointError
-import datajoint as dj
 import pymysql
+import pytest
+
+import datajoint as dj
+from datajoint import DataJointError
+
 from . import schema
 
 

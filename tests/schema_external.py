@@ -2,10 +2,12 @@
 A schema for testing external attributes
 """
 
-import tempfile
 import inspect
-import datajoint as dj
+import tempfile
+
 import numpy as np
+
+import datajoint as dj
 
 
 class Simple(dj.Manual):

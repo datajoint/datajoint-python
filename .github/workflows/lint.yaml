@@ -1,0 +1,29 @@
+name: Lint
+on:
+  push:
+    branches:
+      - "**" # every branch
+      - "!gh-pages" # exclude gh-pages branch
+      - "!stage*" # exclude branches beginning with stage
+  pull_request:
+    branches:
+      - "**" # every branch
+      - "!gh-pages" # exclude gh-pages branch
+      - "!stage*" # exclude branches beginning with stage
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+    # enforce the same check as pre-commit
+    # but only run important checks
+    - uses: pre-commit/action@v3.0.1
+      with:
+        extra_args: codespell --all-files
+    - uses: pre-commit/action@v3.0.1
+      with:
+        extra_args: black --all-files
+    - uses: pre-commit/action@v3.0.1
+      with:
+        extra_args: flake8 --all-files

@@ -1,8 +1,9 @@
 """General-purpose utilities"""
 
 import re
-from pathlib import Path
 import shutil
+from pathlib import Path
+
 from .errors import DataJointError
 
 

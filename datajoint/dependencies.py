@@ -1,7 +1,9 @@
-import networkx as nx
 import itertools
 import re
 from collections import defaultdict
+
+import networkx as nx
+
 from .errors import DataJointError
 
 

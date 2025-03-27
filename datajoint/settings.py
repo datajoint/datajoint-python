@@ -1,14 +1,15 @@
 """
-Settings for DataJoint.
+Settings for DataJoint
 """
 
-from contextlib import contextmanager
+import collections
 import json
+import logging
 import os
 import pprint
-import logging
-import collections
+from contextlib import contextmanager
 from enum import Enum
+
 from .errors import DataJointError
 
 LOCALCONFIG = "dj_local_conf.json"
@@ -48,7 +49,8 @@ default = dict(
         "database.use_tls": None,
         "enable_python_native_blobs": True,  # python-native/dj0 encoding support
         "add_hidden_timestamp": False,
-        "filepath_checksum_size_limit": None,  # file size limit for when to disable checksums
+        # file size limit for when to disable checksums
+        "filepath_checksum_size_limit": None,
     }
 )
 
@@ -117,6 +119,7 @@ class Config(collections.abc.MutableMapping):
         if filename is None:
             filename = LOCALCONFIG
         with open(filename, "r") as fid:
+            logger.info(f"DataJoint is configured from {os.path.abspath(filename)}")
             self._conf.update(json.load(fid))
 
     def save_local(self, verbose=False):
@@ -236,7 +239,8 @@ class Config(collections.abc.MutableMapping):
 
         def __init__(self, *args, **kwargs):
             self._conf = dict(default)
-            self._conf.update(dict(*args, **kwargs))  # use the free update to set keys
+            # use the free update to set keys
+            self._conf.update(dict(*args, **kwargs))
 
         def __getitem__(self, key):
             return self._conf[key]
@@ -250,7 +254,9 @@ class Config(collections.abc.MutableMapping):
             valid_logging_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
             if key == "loglevel":
                 if value not in valid_logging_levels:
-                    raise ValueError(f"{'value'} is not a valid logging value")
+                    raise ValueError(
+                        f"'{value}' is not a valid logging value {tuple(valid_logging_levels)}"
+                    )
                 logger.setLevel(value)
 
 
@@ -260,11 +266,9 @@ config_files = (
     os.path.expanduser(n) for n in (LOCALCONFIG, os.path.join("~", GLOBALCONFIG))
 )
 try:
-    config_file = next(n for n in config_files if os.path.exists(n))
+    config.load(next(n for n in config_files if os.path.exists(n)))
 except StopIteration:
-    pass
-else:
-    config.load(config_file)
+    logger.info("No config file was found.")
 
 # override login credentials with environment variables
 mapping = {
@@ -292,6 +296,8 @@ mapping = {
     )
     if v is not None
 }
-config.update(mapping)
+if mapping:
+    logger.info(f"Overloaded settings {tuple(mapping)} from environment variables.")
+    config.update(mapping)
 
 logger.setLevel(log_levels[config["loglevel"]])

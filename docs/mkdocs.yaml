@@ -6,17 +6,17 @@ repo_name: datajoint/datajoint-python
 nav:
   - DataJoint Python: index.md
   - Quick Start Guide: quick-start.md
-  - Concepts: 
+  - Concepts:
     - Principles: concepts/principles.md
     - Data Model: concepts/data-model.md
     - Data Pipelines: concepts/data-pipelines.md
     - Teamwork: concepts/teamwork.md
     - Terminology: concepts/terminology.md
-  - System Administration: 
+  - System Administration:
     - Database Administration: sysadmin/database-admin.md
     - Bulk Storage Systems: sysadmin/bulk-storage.md
     - External Store: sysadmin/external-store.md
-  - Client Configuration: 
+  - Client Configuration:
     - Install: client/install.md
     - Credentials: client/credentials.md
     - Settings: client/settings.md
@@ -38,7 +38,7 @@ nav:
       - Indexes: design/tables/indexes.md
       - Master-Part Relationships: design/tables/master-part.md
     - Schema Diagrams: design/diagrams.md
-    - Entity Normalization: design/normalization.md 
+    - Entity Normalization: design/normalization.md
     - Data Integrity: design/integrity.md
     - Schema Recall: design/recall.md
     - Schema Drop: design/drop.md

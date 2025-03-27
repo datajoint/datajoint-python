@@ -1,5 +1,7 @@
 from numpy.testing import assert_almost_equal
+
 import datajoint as dj
+
 from . import schema_external
 
 

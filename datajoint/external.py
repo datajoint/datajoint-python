@@ -1,15 +1,17 @@
-from pathlib import Path, PurePosixPath, PureWindowsPath
-from collections.abc import Mapping
-from tqdm import tqdm
 import logging
-from .settings import config
+from collections.abc import Mapping
+from pathlib import Path, PurePosixPath, PureWindowsPath
+
+from tqdm import tqdm
+
+from . import errors, s3
+from .declare import EXTERNAL_TABLE_ROOT
 from .errors import DataJointError, MissingExternalFile
 from .hash import uuid_from_buffer, uuid_from_file
-from .table import Table, FreeTable
 from .heading import Heading
-from .declare import EXTERNAL_TABLE_ROOT
-from . import s3, errors
-from .utils import safe_write, safe_copy
+from .settings import config
+from .table import FreeTable, Table
+from .utils import safe_copy, safe_write
 
 logger = logging.getLogger(__name__.split(".")[0])
 
@@ -22,7 +24,7 @@ SUPPORT_MIGRATED_BLOBS = True  # support blobs migrated from datajoint 0.11.*
 
 def subfold(name, folds):
     """
-    subfolding for external storage:   e.g.  subfold('aBCdefg', (2, 3))  -->  ['ab','cde']
+    subfolding for external storage: e.g.  subfold('aBCdefg', (2, 3))  -->  ['ab','cde']
     """
     return (
         (name[: folds[0]].lower(),) + subfold(name[folds[0] :], folds[1:])
@@ -278,7 +280,7 @@ class ExternalTable(Table):
 
         # check if the remote file already exists and verify that it matches
         check_hash = (self & {"hash": uuid}).fetch("contents_hash")
-        if check_hash:
+        if check_hash.size:
             # the tracking entry exists, check that it's the same file as before
             if contents_hash != check_hash[0]:
                 raise DataJointError(

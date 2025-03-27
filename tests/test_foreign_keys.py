@@ -1,4 +1,5 @@
 from datajoint.declare import declare
+
 from .schema_advanced import *
 
 

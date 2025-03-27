@@ -2,29 +2,29 @@
 
 ## Data management in a science project
 
-Science labs organize their projects as a sequence of activities of experiment design, 
+Science labs organize their projects as a sequence of activities of experiment design,
 data acquisition, and processing and analysis.
 
 ![data science in a science lab](../images/data-science-before.png){: style="width:510px; display:block; margin: 0 auto;"}
 
 <figcaption style="text-align: center;">Workflow and dataflow in a common findings-centered approach to data science in a science lab.</figcaption>
 
-Many labs lack a uniform data management strategy that would span longitudinally across 
+Many labs lack a uniform data management strategy that would span longitudinally across
 the entire project lifecycle as well as laterally across different projects.
 
-Prior to publishing their findings, the research team may need to publish the data to 
+Prior to publishing their findings, the research team may need to publish the data to
 support their findings.
-Without a data management system, this requires custom repackaging of the data to 
-conform to the [FAIR principles](https://www.nature.com/articles/sdata201618) for 
+Without a data management system, this requires custom repackaging of the data to
+conform to the [FAIR principles](https://www.nature.com/articles/sdata201618) for
 scientific data management.
 
 ## Data-centric project organization
 
-DataJoint is designed to support a data-centric approach to large science projects in 
-which data are viewed as a principal output of the research project and are managed 
+DataJoint is designed to support a data-centric approach to large science projects in
+which data are viewed as a principal output of the research project and are managed
 systematically throughout in a single framework through the entire process.
 
-This approach requires formulating a general data science plan and upfront investment 
+This approach requires formulating a general data science plan and upfront investment
 for setting up resources and processes and training the teams.
 The team uses DataJoint to build data pipelines to support multiple projects.
 
@@ -32,7 +32,7 @@ The team uses DataJoint to build data pipelines to support multiple projects.
 
 <figcaption style="text-align: center;">Workflow and dataflow in a data pipeline-centered approach.</figcaption>
 
-Data pipelines support project data across their entire lifecycle, including the 
+Data pipelines support project data across their entire lifecycle, including the
 following functions
 
 - experiment design
@@ -44,13 +44,13 @@ following functions
 - visualization of analysis results
 - export for sharing and publishing
 
-Through all these activities, all these data are made accessible to all authorized 
-participants and distributed computations can be done in parallel without compromising 
+Through all these activities, all these data are made accessible to all authorized
+participants and distributed computations can be done in parallel without compromising
 data integrity.
 
 ## Team roles
 
-The adoption of a uniform data management framework allows separation of roles and 
+The adoption of a uniform data management framework allows separation of roles and
 division of labor among team members, leading to greater efficiency and better scaling.
 
 ![data science in a science lab](../images/data-engineering.png){: style="width:510px; display:block; margin: 0 auto;"}
@@ -89,9 +89,9 @@ interfaces, exports and imports.
 The System Administration section of this tutorial contains materials helpful in 
 accomplishing these tasks.
 
-DataJoint is designed to delineate a clean boundary between **data science** and **data 
+DataJoint is designed to delineate a clean boundary between **data science** and **data
 engineering**.
-This allows data scientists to use the same uniform data model for data pipelines 
+This allows data scientists to use the same uniform data model for data pipelines
 backed by a variety of information technologies.
-This delineation also enables economies of scale as a single data engineering team can 
+This delineation also enables economies of scale as a single data engineering team can
 support a wide spectrum of science projects.

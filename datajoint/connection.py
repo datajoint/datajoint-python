@@ -3,20 +3,22 @@ This module contains the Connection class that manages the connection to the dat
 the ``conn`` function that provides access to a persistent connection in datajoint.
 """
 
+import logging
+import pathlib
+import re
 import warnings
 from contextlib import contextmanager
-import pymysql as client
-import logging
 from getpass import getpass
-import re
-import pathlib
 
-from .settings import config
+import pymysql as client
+
 from . import errors
-from .dependencies import Dependencies
 from .blob import pack, unpack
+from .dependencies import Dependencies
 from .hash import uuid_from_buffer
 from .plugin import connection_plugins
+from .settings import config
+from .version import __version__
 
 logger = logging.getLogger(__name__.split(".")[0])
 query_log_max_length = 300
@@ -190,15 +192,20 @@ class Connection:
         self.conn_info["ssl_input"] = use_tls
         self.conn_info["host_input"] = host_input
         self.init_fun = init_fun
-        logger.info("Connecting {user}@{host}:{port}".format(**self.conn_info))
         self._conn = None
         self._query_cache = None
         connect_host_hook(self)
         if self.is_connected:
-            logger.info("Connected {user}@{host}:{port}".format(**self.conn_info))
+            logger.info(
+                "DataJoint {version} connected to {user}@{host}:{port}".format(
+                    version=__version__, **self.conn_info
+                )
+            )
             self.connection_id = self.query("SELECT connection_id()").fetchone()[0]
         else:
-            raise errors.LostConnectionError("Connection failed.")
+            raise errors.LostConnectionError(
+                "Connection failed {user}@{host}:{port}".format(**self.conn_info)
+            )
         self._in_transaction = False
         self.schemas = dict()
         self.dependencies = Dependencies(self)
@@ -344,7 +351,7 @@ class Connection:
         except errors.LostConnectionError:
             if not reconnect:
                 raise
-            logger.warning("MySQL server has gone away. Reconnecting to the server.")
+            logger.warning("Reconnecting to MySQL server.")
             connect_host_hook(self)
             if self._in_transaction:
                 self.cancel_transaction()

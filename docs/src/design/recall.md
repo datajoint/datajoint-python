@@ -113,7 +113,7 @@ Student - StudentMajor
 
 ### Creating a virtual module
 
-Virtual modules provide a way to access the classes corresponding to tables in a 
+Virtual modules provide a way to access the classes corresponding to tables in a
 DataJoint schema without having to create local files.
 
 `spawn_missing_classes` creates the new classes in the local namespace.
@@ -124,7 +124,7 @@ equivalent to the Python command:
 import university as uni
 ```
 
-We can mimic this import without having access to `university.py` using the 
+We can mimic this import without having access to `university.py` using the
 `VirtualModule` class object:
 
 ```python

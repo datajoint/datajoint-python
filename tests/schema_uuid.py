@@ -1,5 +1,6 @@
-import uuid
 import inspect
+import uuid
+
 import datajoint as dj
 
 top_level_namespace_id = uuid.UUID("00000000-0000-0000-0000-000000000000")

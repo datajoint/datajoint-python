@@ -1,12 +1,13 @@
-name: Manual docs release
+name: Docs release
 on:
+  # manually trigger
   workflow_dispatch:
+  # been called by other workflows
+  workflow_call:
+
 jobs:
   publish-docs:
     runs-on: ubuntu-latest
-    env:
-      DOCKER_CLIENT_TIMEOUT: "120"
-      COMPOSE_HTTP_TIMEOUT: "120"
     steps:
       - uses: actions/checkout@v4
       - name: Deploy docs

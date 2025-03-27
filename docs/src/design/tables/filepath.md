@@ -1,13 +1,13 @@
 # Filepath Datatype
 
-Note: Filepath Datatype is available as a preview feature in DataJoint Python v0.12. 
-This means that the feature is required to be explicitly enabled. To do so, make sure 
+Note: Filepath Datatype is available as a preview feature in DataJoint Python v0.12.
+This means that the feature is required to be explicitly enabled. To do so, make sure
 to set the environment variable `FILEPATH_FEATURE_SWITCH=TRUE` prior to use.
 
 ## Configuration & Usage
 
-Corresponding to issue 
-[#481](https://github.com/datajoint/datajoint-python/issues/481), 
+Corresponding to issue
+[#481](https://github.com/datajoint/datajoint-python/issues/481),
 the `filepath` attribute type links DataJoint records to files already
 managed outside of DataJoint. This can aid in sharing data with
 other systems such as allowing an image viewer application to
@@ -16,7 +16,7 @@ tables to reference data which reside outside of DataJoint
 pipelines.
 
 To define a table using the `filepath` datatype, an existing DataJoint
-[store](../../sysadmin/external-store.md) should be created and then referenced in the 
+[store](../../sysadmin/external-store.md) should be created and then referenced in the
 new table definition. For example, given a simple store:
 
 ```python
@@ -38,7 +38,7 @@ class ScanImages(dj.Manual):
     -> Session
     image_id:    int
     ---
-    image_path:  filepath@data 
+    image_path:  filepath@data
     """
 ```
 
@@ -79,9 +79,9 @@ as follows:
 
 ### Disable Fetch Verification
 
-Note: Skipping the checksum is not recommended as it ensures file integrity i.e. 
-downloaded files are not corrupted. With S3 stores, most of the time to complete a 
-`.fetch()` is from the file download itself as opposed to evaluating the checksum. This 
+Note: Skipping the checksum is not recommended as it ensures file integrity i.e.
+downloaded files are not corrupted. With S3 stores, most of the time to complete a
+`.fetch()` is from the file download itself as opposed to evaluating the checksum. This
 option will primarily benefit `filepath` usage connected to a local `file` store.
 
 To disable checksums you can set a threshold in bytes

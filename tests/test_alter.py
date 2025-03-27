@@ -1,8 +1,11 @@
-import pytest
 import re
+
+import pytest
+
 import datajoint as dj
+
 from . import schema as schema_any_module
-from .schema_alter import Experiment, Parent, LOCALS_ALTER
+from .schema_alter import LOCALS_ALTER, Experiment, Parent
 
 COMBINED_CONTEXT = {
     **schema_any_module.LOCALS_ANY,

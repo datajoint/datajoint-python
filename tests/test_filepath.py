@@ -1,11 +1,14 @@
-import pytest
-import datajoint as dj
-import os
-from pathlib import Path
-import random
-from .schema_external import Filepath, FilepathS3
-import logging
 import io
+import logging
+import os
+import random
+from pathlib import Path
+
+import pytest
+
+import datajoint as dj
+
+from .schema_external import Filepath, FilepathS3
 
 
 def test_path_match(schema_ext, enable_filepath_feature, minio_client, store="repo"):

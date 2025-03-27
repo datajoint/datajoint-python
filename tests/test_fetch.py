@@ -1,16 +1,19 @@
-import pytest
-from typing import List
-from operator import itemgetter
-import itertools
-import numpy as np
 import decimal
-import pandas
-import warnings
-from . import schema
-import datajoint as dj
-import os
-import logging
 import io
+import itertools
+import logging
+import os
+import warnings
+from operator import itemgetter
+from typing import List
+
+import numpy as np
+import pandas
+import pytest
+
+import datajoint as dj
+
+from . import schema
 
 
 def test_getattribute(subject):

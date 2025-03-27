@@ -1,8 +1,9 @@
 """Generate the api pages and navigation."""
 
-import mkdocs_gen_files
-from pathlib import Path
 import os
+from pathlib import Path
+
+import mkdocs_gen_files
 
 package = os.getenv("PACKAGE")
 nav = mkdocs_gen_files.Nav()

@@ -1,10 +1,12 @@
+import os
 import pprint
 import random
 import string
+
 import pytest
-from datajoint import DataJointError, settings
+
 import datajoint as dj
-import os
+from datajoint import DataJointError, settings
 
 __author__ = "Fabian Sinz"
 

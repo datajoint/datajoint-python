@@ -1,13 +1,16 @@
-import pytest
-import datajoint as dj
 import timeit
-import numpy as np
 import uuid
-from decimal import Decimal
 from datetime import datetime
-from datajoint.blob import pack, unpack
+from decimal import Decimal
+
+import numpy as np
+import pytest
 from numpy.testing import assert_array_equal
 from pytest import approx
+
+import datajoint as dj
+from datajoint.blob import pack, unpack
+
 from .schema import Longblob
 
 

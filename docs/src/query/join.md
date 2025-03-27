@@ -12,12 +12,12 @@ The result contains all matching combinations of entities from both arguments.
 
 ### Examples of joins
 
-Example 1 : When the operands have no common attributes, the result is the cross 
+Example 1 : When the operands have no common attributes, the result is the cross
 product -- all combinations of entities.
 
 ![join-example1](../images/join-example1.png){: style="width:464px; align:center"}
 
-Example 2 : When the operands have common attributes, only entities with matching 
+Example 2 : When the operands have common attributes, only entities with matching
 values are kept.
 
 ![join-example2](../images/join-example2.png){: style="width:689px; align:center"}
@@ -28,7 +28,7 @@ Example 3 : Joining on secondary attribute.
 
 ### Properties of join
 
-1. When `A` and `B` have the same attributes, the join `A * B` becomes equivalent to 
+1. When `A` and `B` have the same attributes, the join `A * B` becomes equivalent to
 the set intersection `A` ∩ `B`.
    Hence, DataJoint does not need a separate intersection operator.
 

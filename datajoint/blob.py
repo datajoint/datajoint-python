@@ -3,16 +3,17 @@
 compatibility with Matlab-based serialization implemented by mYm.
 """
 
-import zlib
-from itertools import repeat
 import collections
-from decimal import Decimal
 import datetime
 import uuid
+import zlib
+from decimal import Decimal
+from itertools import repeat
+
 import numpy as np
+
 from .errors import DataJointError
 from .settings import config
-
 
 deserialize_lookup = {
     0: {"dtype": None, "scalar_type": "UNKNOWN"},
@@ -204,7 +205,7 @@ class Blob:
             return self.pack_dict(obj)
         if isinstance(obj, str):
             return self.pack_string(obj)
-        if isinstance(obj, collections.abc.ByteString):
+        if isinstance(obj, (bytes, bytearray)):
             return self.pack_bytes(obj)
         if isinstance(obj, collections.abc.MutableSequence):
             return self.pack_list(obj)
