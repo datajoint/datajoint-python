@@ -30,7 +30,7 @@
 <tr>
   <td>Since Release</td>
   <td>
-    <a id="commit-since-release-link" href="https://github.com/datajoint/datajoint-python/compare/latest...master">
+    <a id="commit-since-release-link" href="https://github.com/datajoint/datajoint-python/compare/v0.14.3...master">
       <img id="commit-since-release-img" src="https://img.shields.io/github/commits-since/datajoint/datajoint-python/latest?color=red" alt="commit since last release" />
     </a>
   </td>
