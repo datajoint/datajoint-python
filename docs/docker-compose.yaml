@@ -1,36 +1,31 @@
-# MODE="LIVE|QA|BUILD" PACKAGE=datajoint UPSTREAM_REPO=https://github.com/datajoint/datajoint-python.git HOST_UID=$(id -u) docker compose -f docs/docker-compose.yaml up --build
-version: "2.4"
+# MODE="LIVE|QA|BUILD" LATEST_TAG=$(git describe --tags --abbrev=0) docker compose up --build
 services:
   docs:
     build:
-      dockerfile: docs/.docker/Dockerfile
-      context: ../
-      args:
-        - PACKAGE
-    image: ${PACKAGE}_python-docs
+      context: .
+      dockerfile: Dockerfile
+    image: datajoint-python-docs
     environment:
-      - PACKAGE
-      - UPSTREAM_REPO
       - MODE
+      - LATEST_TAG
     volumes:
       - ..:/main
-    user: ${HOST_UID}:anaconda
     ports:
-      - 80:80
+      - 8000:8000
     command:
       - sh
       - -c
       - |
         set -e
         if echo "$${MODE}" | grep -i live &>/dev/null; then
-            mkdocs serve --config-file ./docs/mkdocs.yaml -a 0.0.0.0:80
+            mkdocs serve --config-file mkdocs.yaml -a 0.0.0.0:8000
         elif echo "$${MODE}" | grep -iE "qa|build" &>/dev/null; then
             git branch -D gh-pages || true
             git fetch $${UPSTREAM_REPO} gh-pages:gh-pages || true
-            mike deploy --config-file ./docs/mkdocs.yaml -u $$(grep -oE '\d+\.\d+' /main/$${PACKAGE}/version.py) latest
-            mike set-default --config-file ./docs/mkdocs.yaml latest
+            mike deploy --config-file mkdocs.yaml -u $$LATEST_TAG latest
+            mike set-default --config-file mkdocs.yaml latest
             if echo "$${MODE}" | grep -i qa &>/dev/null; then
-                mike serve --config-file ./docs/mkdocs.yaml -a 0.0.0.0:80
+                mike serve --config-file mkdocs.yaml -a 0.0.0.0:8000
             fi
         else
             echo "Unexpected mode..."
