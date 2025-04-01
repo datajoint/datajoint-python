@@ -1,13 +1,16 @@
-FROM python:3-alpine
+FROM python:3
 
 WORKDIR /main
-COPY mkdocs.yaml mkdocs.yaml
-COPY src/ src/
-COPY pip_requirements.txt pip_requirements.txt
+COPY ./docs/pip_requirements.txt /main/docs/pip_requirements.txt
+COPY ./datajoint /main/datajoint/
+COPY ./pyproject.toml /main/pyproject.toml
 
-ARG BOT_PAT
 RUN \
-    apk add --no-cache git && \
-    pip install --no-cache-dir -r /main/pip_requirements.txt
-    #&& \
-    #pip install --no-cache git+https://${BOT_PAT}@github.com/datajoint/mkdocs-material-insiders.git@master
+    # Install docs dependencies
+    pip install --no-cache-dir -r /main/docs/pip_requirements.txt && \
+    # Install datajoint
+    pip install --no-cache-dir -e /main/
+
+# Install dependencies first and use docker cache
+# modify docs content won't cause image rebuild
+COPY ./docs/ /main/docs/

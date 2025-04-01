@@ -36,13 +36,22 @@ source .venv/bin/activate
 
 Then install the required packages:
 ```bash
-pip install -r pip_requirements.txt
+# go to the repo's root directory to generate API docs
+# cd ~/datajoint-python/
+
+# install mkdocs related requirements
+pip install -r ./docs/pip_requirements.txt
+# install datajoint, since API docs are generated from the package
+pip install -e .[dev]
 ```
 
-Run mkdocs at: http://127.0.0.1:8000/docs/
+Run mkdocs at: http://127.0.0.1:8000/
 ```bash
+# go to the repo's root directory to generate API docs
+# cd ~/datajoint-python/
+
 # It will automatically reload the docs when changes are made
-mkdocs serve --config-file ./mkdocs.yaml
+mkdocs serve --config-file ./docs/mkdocs.yaml
 ```
 
 ## With Docker
@@ -57,7 +66,7 @@ Then run the following:
 MODE="LIVE" docker compose up --build
 ```
 
-Navigate to http://127.0.0.1:8000/docs/ to preview the changes.
+Navigate to http://127.0.0.1:8000/ to preview the changes.
 
 This setup supports live-reloading so all that is needed is to save the markdown files
 and/or `mkdocs.yaml` file to trigger a reload.
@@ -67,10 +76,8 @@ and/or `mkdocs.yaml` file to trigger a reload.
 > TL;DR: We need to do it this way for hosting, please keep it as is.
 
 ```log
-WARNING -  A reference to 'core/datajoint-python/' is included in the 'nav' configuration, which is not found
-           in the documentation files.
-INFO    -  Doc file 'index.md' contains an unrecognized relative link './core/datajoint-python/', it was left
-           as is.
+INFO    -  Doc file 'index.md' contains an unrecognized relative link './develop', it was left as is. Did you mean
+           'develop.md'?
 ```
 
 - We use reverse proxy to proxy our docs sites, here is the proxy flow:
@@ -84,9 +91,7 @@ INFO    -  Doc file 'index.md' contains an unrecognized relative link './core/da
 
 
 ```log
-WARNING -  Doc file 'partnerships/openephysgui.md' contains a link
-           '../../images/community-partnerships-openephysgui-logo.png', but the target
-           '../images/community-partnerships-openephysgui-logo.png' is not found among documentation files.
-           Did you mean '../images/community-partnerships-openephysgui-logo.png'?
+WARNING -  Doc file 'query/operators.md' contains a link '../../../images/concepts-operators-restriction.png', but
+           the target '../../images/concepts-operators-restriction.png' is not found among documentation files.
 ```
 - We use Github Pages to host our docs, the image references needs to follow the mkdocs's build directory structure, under `site/` directory once you run mkdocs.
