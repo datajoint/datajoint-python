@@ -34,7 +34,7 @@ restriction appending the new condition to the input's restriction.
 
 Property `support` represents the `FROM` clause and contains a list of either
 `QueryExpression` objects or table names in the case of base queries.
-The joint operator `*` adds new elements to the `support` attribute.
+The join operator `*` adds new elements to the `support` attribute.
 
 At least one element must be present in `support`. Multiple elements in `support`
 indicate a join.
@@ -56,10 +56,10 @@ self: `heading`, `restriction`, and `support`.
 
 The input object is treated as a subquery in the following cases:
 
-1. A restriction is applied that uses alias attributes in the heading
-1. A projection uses an alias attribute to create a new alias attribute.
-1. A join is performed on an alias attribute.
-1. An Aggregation is used a restriction.
+1. A restriction is applied that uses alias attributes in the heading.
+2. A projection uses an alias attribute to create a new alias attribute.
+3. A join is performed on an alias attribute.
+4. An Aggregation is used a restriction. 
 
 An error arises if
 
@@ -117,8 +117,8 @@ input — the *aggregated* query expression.
 The SQL equivalent of aggregation is
 
 1. the NATURAL LEFT JOIN of the two inputs.
-1. followed by a GROUP BY on the primary key arguments of the first input
-1. followed by a projection.
+2. followed by a GROUP BY on the primary key arguments of the first input
+3. followed by a projection.
 
 The projection works the same as `.proj` with respect to the first input.
 With respect to the second input, the projection part of aggregation allows only

@@ -191,3 +191,15 @@ experiments that are part of sessions performed by Alice.
 query = Session & 'user = "Alice"'
 Experiment & query
 ```
+
+## Restriction by `dj.Top`
+
+Restriction by `dj.Top` returns the number of entities specified by the `limit`
+argument. These entities can be returned in the order specified by the `order_by`
+argument. And finally, the `offset` argument can be used to offset the returned entities
+which is useful for pagination in web applications.
+
+```python
+# Return the first 10 sessions in descending order of session date
+Session & dj.Top(limit=10, order_by='session_date DESC')
+```
