@@ -1,10 +1,11 @@
 """Generate the api pages and navigation."""
 
-import mkdocs_gen_files
-from pathlib import Path
 import os
+from pathlib import Path
 
-package = os.getenv("PACKAGE")
+import mkdocs_gen_files
+
+package = os.getenv("PACKAGE", "datajoint")
 nav = mkdocs_gen_files.Nav()
 for path in sorted(Path(package).glob("**/*.py")):
     with mkdocs_gen_files.open(f"api/{path.with_suffix('')}.md", "w") as f:
