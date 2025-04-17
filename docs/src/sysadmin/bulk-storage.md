@@ -8,18 +8,17 @@ significant and useful for a number of reasons.
 
 ### Cost
 
-One of these is that the high-performance storage commonly used in
-database systems is more expensive than that used in more typical
-commodity storage, and so storing the smaller identifying information
-typically used in queries on fast, relational database storage and
-storing the larger bulk data used for analysis or processing on lower
-cost commodity storage can allow for large savings in storage expense.
+One reason is that the high-performance storage commonly used in database systems is
+more expensive than typical commodity storage. Therefore, storing the smaller identifying
+information typically used in queries on fast, relational database storage and storing
+the larger bulk data used for analysis or processing on lower cost commodity storage
+enables large savings in storage expense.
 
 ### Flexibility
 
 Storing bulk data separately also facilitates more flexibility in
 usage, since the bulk data can managed using separate maintenance
-processes than that in the relational storage.
+processes than those in the relational storage.
 
 For example, larger relational databases may require many hours to be
 restored in the event of system failures. If the relational portion of
@@ -40,11 +39,10 @@ been retrieved in previous queries.
 
 ### Data Sharing
 
-DataJoint provides pluggable support for different external bulk
-storage backends, which can provide benefits for data sharing by
-publishing bulk data to S3-Protocol compatible data shares both in the
-cloud and on locally managed systems and other common tools for data
-sharing, such as Globus, etc.
+DataJoint provides pluggable support for different external bulk storage backends,
+allowing data sharing by publishing bulk data to S3-Protocol compatible data shares both
+in the cloud and on locally managed systems and other common tools for data sharing,
+such as Globus, etc.
 
 ## Bulk Storage Scenarios
 

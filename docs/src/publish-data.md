@@ -23,12 +23,12 @@ populated DataJoint pipeline.
 One example of publishing a DataJoint pipeline as a docker container is
 > Sinz, F., Ecker, A.S., Fahey, P., Walker, E., Cobos, E., Froudarakis, E., Yatsenko, D., Pitkow, Z., Reimer, J. and Tolias, A., 2018. Stimulus domain transfer in recurrent models for large scale cortical population prediction on video. In Advances in Neural Information Processing Systems (pp. 7198-7209).  https://www.biorxiv.org/content/early/2018/10/25/452672
 
-The code and the data can be found at https://github.com/sinzlab/Sinz2018_NIPS
+The code and the data can be found at [https://github.com/sinzlab/Sinz2018_NIPS](https://github.com/sinzlab/Sinz2018_NIPS).
 
 ## Exporting into a collection of files
 
-Another option for publishing and archiving data is to  export the data from the
+Another option for publishing and archiving data is to export the data from the 
 DataJoint pipeline into a collection of files.
-DataJoint provides features for exporting and importing sections of the pipeline.
-Several ongoing projects are implementing the capability to export from DataJoint
+DataJoint provides features for exporting and importing sections of the pipeline. 
+Several ongoing projects are implementing the capability to export from DataJoint 
 pipelines into [Neurodata Without Borders](https://www.nwb.org/) files.

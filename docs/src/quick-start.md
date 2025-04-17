@@ -1,5 +1,14 @@
 # Quick Start Guide
 
+## Tutorials
+
+The easiest way to get started is through the [DataJoint
+Tutorials](https://github.com/datajoint/datajoint-tutorials). These tutorials are
+configured to run using [GitHub Codespaces](https://github.com/features/codespaces)
+where the full environment including the database is already set up. 
+
+Advanced users can install DataJoint locally. Please see the installation instructions below.
+
 ## Installation
 
 First, please [install Python](https://www.python.org/downloads/) version
