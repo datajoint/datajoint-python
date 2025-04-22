@@ -5,10 +5,9 @@
 Science labs organize their projects as a sequence of activities of experiment design,
 data acquisition, and processing and analysis.
 
-<figure markdown>
-     ![data science in a science lab](../images/data-science-before.png){: style="width:520px; align:center"}
-     <figcaption>Workflow and dataflow in a common findings-centered approach to data science in a science lab.</figcaption>
-</figure>
+![data science in a science lab](../images/data-science-before.png){: style="width:510px; display:block; margin: 0 auto;"}
+
+<figcaption style="text-align: center;">Workflow and dataflow in a common findings-centered approach to data science in a science lab.</figcaption>
 
 Many labs lack a uniform data management strategy that would span longitudinally across
 the entire project lifecycle as well as laterally across different projects.
@@ -29,10 +28,9 @@ This approach requires formulating a general data science plan and upfront inves
 for setting up resources and processes and training the teams.
 The team uses DataJoint to build data pipelines to support multiple projects.
 
-<figure markdown>
-     ![data science in a science lab](../images/data-science-after.png){: style="width:510px; align:center"}
-     <figcaption>Workflow and dataflow in a data pipeline-centered approach.</figcaption>
-</figure>
+![data science in a science lab](../images/data-science-after.png){: style="width:510px; display:block; margin: 0 auto;"}
+
+<figcaption style="text-align: center;">Workflow and dataflow in a data pipeline-centered approach.</figcaption>
 
 Data pipelines support project data across their entire lifecycle, including the
 following functions
@@ -55,42 +53,41 @@ data integrity.
 The adoption of a uniform data management framework allows separation of roles and
 division of labor among team members, leading to greater efficiency and better scaling.
 
-<figure markdown>
-     ![data science vs engineering](../images/data-engineering.png){: style="width:350px; align:center"}
-     <figcaption>Distinct responsibilities of data science and data engineering.</figcaption>
-</figure>
+![data science in a science lab](../images/data-engineering.png){: style="width:510px; display:block; margin: 0 auto;"}
 
-Scientists
+<figcaption style="text-align: center;">Distinct responsibilities of data science and data engineering.</figcaption>
 
-    design and conduct experiments, collecting data.
-    They interact with the data pipeline through graphical user interfaces designed by
-    others.
-    They understand what analysis is used to test their hypotheses.
+### Scientists
 
-Data scientists
+Design and conduct experiments, collecting data.
+They interact with the data pipeline through graphical user interfaces designed by 
+others.
+They understand what analysis is used to test their hypotheses.
 
-    have the domain expertise and select and implement the processing and analysis
-    methods for experimental data.
-    Data scientists are in charge of defining and managing the data pipeline using
-    DataJoint's data model, but they may not know the details of the underlying
-    architecture.
-    They interact with the pipeline using client programming interfaces directly from
-    languages such as MATLAB and Python.
+### Data scientists
 
-    The bulk of this manual is written for working data scientists, except for System
-    Administration.
+Have the domain expertise and select and implement the processing and analysis 
+methods for experimental data.
+Data scientists are in charge of defining and managing the data pipeline using 
+DataJoint's data model, but they may not know the details of the underlying 
+architecture.
+They interact with the pipeline using client programming interfaces directly from 
+languages such as MATLAB and Python.
 
-Data engineers
+The bulk of this manual is written for working data scientists, except for System 
+Administration.
 
-    work with the data scientists to support the data pipeline.
-    They rely on their understanding of the DataJoint data model to configure and
-    administer the required IT resources such as database servers, data storage
-    servers, networks, cloud instances, [Globus](https://globus.org) endpoints, etc.
-    Data engineers can provide general solutions such as web hosting, data publishing,
-    interfaces, exports and imports.
+### Data engineers
 
-    The System Administration section of this tutorial contains materials helpful in
-    accomplishing these tasks.
+Work with the data scientists to support the data pipeline.
+They rely on their understanding of the DataJoint data model to configure and 
+administer the required IT resources such as database servers, data storage 
+servers, networks, cloud instances, [Globus](https://globus.org) endpoints, etc.
+Data engineers can provide general solutions such as web hosting, data publishing, 
+interfaces, exports and imports.
+
+The System Administration section of this tutorial contains materials helpful in 
+accomplishing these tasks.
 
 DataJoint is designed to delineate a clean boundary between **data science** and **data
 engineering**.
