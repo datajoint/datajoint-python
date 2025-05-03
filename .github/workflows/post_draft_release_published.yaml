@@ -132,7 +132,7 @@ jobs:
             --body "This PR updates \`version.py\` to match the latest release: ${{ github.event.release.name }}" \
             --base master \
             --head ${{ env.BRANCH_NAME }} \
-            --reviewer dimitri-yatsenko,yambottle,ttngu207
+            --reviewer dimitri-yatsenko,drewyangdev,ttngu207
       - name: Post release notification to Slack
         if: ${{ env.TEST_PYPI == 'false' }}
         uses: slackapi/slack-github-action@v2.0.0
