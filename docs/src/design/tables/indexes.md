@@ -35,7 +35,7 @@ To make searches faster on fields other than the primary key or a foreign key, y
 add a secondary index explicitly.
 
 Regular indexes are declared as `index(attr1, ..., attrN)` on a separate line anywhere in
-the table declration (below the primary key divide).
+the table declaration (below the primary key divide).
 
 Indexes can be declared with unique constraint as `unique index (attr1, ..., attrN)`.
 
