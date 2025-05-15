@@ -54,7 +54,7 @@
 <tr>
   <td>Doc Status</td>
   <td>
-    <a href="https://datajoint.com/docs">
+    <a href="https://docs.datajoint.com">
       <img src="https://github.com/datajoint/datajoint-python/actions/workflows/pages/pages-build-deployment/badge.svg" alt="doc status" />
     </a>
   </td>
@@ -68,12 +68,12 @@
   </td>
 </tr>
 <tr>
-	<td>Developer Chat</td>
-	<td>
-		<a href="https://datajoint.slack.com/">
+ <td>Developer Chat</td>
+ <td>
+  <a href="https://datajoint.slack.com/">
       <img src="https://img.shields.io/badge/slack-datajoint-purple.svg" alt="datajoint slack"/>
-		</a>
-	</td>
+  </a>
+ </td>
 </tr>
 <tr>
   <td>License</td>
@@ -84,20 +84,19 @@
   </td>
 </tr>
 <tr>
-	<td>Citation</td>
-	<td>
-		<a href="https://doi.org/10.1101/031658">
-			<img src="https://img.shields.io/badge/DOI-10.1101/bioRxiv.031658-B31B1B.svg" alt="bioRxiv">
-		</a>
+ <td>Citation</td>
+ <td>
+  <a href="https://doi.org/10.1101/031658">
+   <img src="https://img.shields.io/badge/DOI-10.1101/bioRxiv.031658-B31B1B.svg" alt="bioRxiv">
+  </a>
     <br>
     <a href="https://doi.org/10.5281/zenodo.6829062">
       <img src="https://zenodo.org/badge/DOI/10.5281/zenodo.6829062.svg" alt="zenodo">
-		</a>
-	</td>
+  </a>
+ </td>
 </tr>
 
 </table>
-
 
 DataJoint for Python is a framework for scientific workflow management based on
 relational principles. DataJoint is built on the foundation of the relational data
@@ -110,7 +109,7 @@ volumes of data streaming from regular experiments. Starting in 2011, DataJoint 
 been available as an open-source project adopted by other labs and improved through
 contributions from several developers.
 Presently, the primary developer of DataJoint open-source software is the company
-DataJoint (https://datajoint.com).
+DataJoint (<https://datajoint.com>).
 
 ## Data Pipeline Example
 
@@ -132,13 +131,13 @@ DataJoint (https://datajoint.com).
      pip install datajoint
      ```
 
-- [Documentation & Tutorials](https://datajoint.com/docs/core/datajoint-python/)
+- [Documentation & Tutorials](https://docs.datajoint.com/core/datajoint-python/)
 
 - [Interactive Tutorials](https://github.com/datajoint/datajoint-tutorials) on GitHub Codespaces
 
-- [DataJoint Elements](https://datajoint.com/docs/elements/) - Catalog of example pipelines for neuroscience experiments
+- [DataJoint Elements](https://docs.datajoint.com/elements/) - Catalog of example pipelines for neuroscience experiments
 
 - Contribute
-  - [Contribution Guidelines](https://datajoint.com/docs/about/contribute/)
+  - [Contribution Guidelines](https://docs.datajoint.com/about/contribute/)
 
-  - [Developer Guide](https://datajoint.com/docs/core/datajoint-python/latest/develop/)
+  - [Developer Guide](https://docs.datajoint.com/core/datajoint-python/latest/develop/)

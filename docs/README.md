@@ -1,6 +1,6 @@
 # Contribute to DataJoint Documentation
 
-This is the home for DataJoint software documentation as hosted at https://datajoint.com/docs/core/datajoint-python/latest/
+This is the home for DataJoint software documentation as hosted at https://docs.datajoint.com/core/datajoint-python/latest/.
 
 ## VSCode Linter Extensions and Settings
 
@@ -88,7 +88,6 @@ INFO    -  Doc file 'index.md' contains an unrecognized relative link './develop
     - `/docs/` is the landing/navigation page hosted by datajoint/datajoint-docs's github pages
     - `/docs/core/datajoint-python/` is the actual docs site hosted by datajoint/datajoint-python's github pages
     - `/docs/elements/element-*/` is the actual docs site hosted by each element's github pages
-
 
 ```log
 WARNING -  Doc file 'query/operators.md' contains a link '../../../images/concepts-operators-restriction.png', but
