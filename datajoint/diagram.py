@@ -35,7 +35,7 @@ if not diagram_active:
         Entity relationship diagram, currently disabled due to the lack of required packages: matplotlib and pygraphviz.
 
         To enable Diagram feature, please install both matplotlib and pygraphviz. For instructions on how to install
-        these two packages, refer to https://datajoint.com/docs/core/datajoint-python/0.14/client/install/
+        these two packages, refer to https://docs.datajoint.com/core/datajoint-python/0.14/client/install/
         """
 
         def __init__(self, *args, **kwargs):

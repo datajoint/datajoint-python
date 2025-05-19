@@ -12,7 +12,7 @@ source project for data entry but is no longer actively maintained.
 
 ## Does DataJoint support other programming languages?
 
-DataJoint [Python](https://datajoint.com/docs/core/datajoint-python/) is the most
+DataJoint [Python](https://docs.datajoint.com/core/datajoint-python/) is the most
 up-to-date version and all future development will focus on the Python API. The 
 [Matlab](https://datajoint.com/docs/core/datajoint-matlab/) API was actively developed
 through 2023. Previous projects implemented some DataJoint features in
