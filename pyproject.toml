@@ -1,0 +1,105 @@
+[build-system]
+requires = ["setuptools>=60"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "datajoint"
+# dynamically set in tools.setuptools.dynamic
+dynamic = ["version"]
+dependencies = [
+  "numpy",
+  "pymysql>=0.7.2",
+  "deepdiff",
+  "pyparsing",
+  "ipython",
+  "pandas",
+  "tqdm",
+  "networkx",
+  "pydot",
+  "minio>=7.0.0",
+  "matplotlib",
+  "otumat",
+  "faker",
+  "cryptography",
+  "urllib3",
+  "setuptools",
+]
+requires-python = ">=3.9,<4.0"
+authors = [
+  {name = "Dimitri Yatsenko", email = "dimitri@datajoint.com"},
+  {name = "Raphael Guzman"},
+  {name = "Edgar Walker"},
+  {name = "DataJoint Contributors", email = "support@datajoint.com"},
+]
+maintainers = [
+  {name = "Dimitri Yatsenko", email = "dimitri@datajoint.com"},
+  {name = "DataJoint Contributors", email = "support@datajoint.com"},
+]
+# manually sync here: https://docs.datajoint.com/core/datajoint-python/latest/#welcome-to-datajoint-for-python
+description = "DataJoint for Python is a framework for scientific workflow management based on relational principles. DataJoint is built on the foundation of the relational data model and prescribes a consistent method for organizing, populating, computing, and querying data."
+readme = "README.md"
+license = {file = "LICENSE.txt"}
+keywords = [
+    "database",
+    "automated",
+    "automation",
+    "compute",
+    "data",
+    "pipeline",
+    "workflow",
+    "scientific",
+    "science",
+    "research",
+    "neuroscience",
+    "bioinformatics",
+    "bio-informatics",
+    "datajoint",
+]
+# https://pypi.org/classifiers/
+classifiers = [
+  "Programming Language :: Python",
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Healthcare Industry",
+  "License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.urls]
+Homepage = "https://docs.datajoint.com/"
+Documentation = "https://docs.datajoint.com/"
+Repository = "https://github.com/datajoint/datajoint-python"
+"Bug Tracker" = "https://github.com/datajoint/datajoint-python/issues"
+"Release Notes" = "https://github.com/datajoint/datajoint-python/releases"
+
+[project.entry-points."console_scripts"]
+dj = "datajoint.cli:cli"
+datajoint = "datajoint.cli:cli"
+
+[project.optional-dependencies]
+test = [
+  "pytest",
+  "pytest-cov",
+]
+dev = [
+  "pre-commit",
+  "black==24.2.0",
+  "flake8",
+  "isort",
+  "codespell",
+  # including test
+  "pytest",
+  "pytest-cov",
+]
+
+[tool.isort]
+profile = "black"
+
+[tool.setuptools]
+packages = ["datajoint"]
+
+[tool.setuptools.dynamic]
+version = { attr = "datajoint.version.__version__"}

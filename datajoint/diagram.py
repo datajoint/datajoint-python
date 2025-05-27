@@ -1,15 +1,14 @@
-import networkx as nx
-import re
 import functools
+import inspect
 import io
 import logging
-import inspect
-from .table import Table
-from .dependencies import unite_master_parts
-from .user_tables import Manual, Imported, Computed, Lookup, Part
-from .errors import DataJointError
-from .table import lookup_class_name
 
+import networkx as nx
+
+from .dependencies import topo_sort
+from .errors import DataJointError
+from .table import Table, lookup_class_name
+from .user_tables import Computed, Imported, Lookup, Manual, Part, _AliasNode, _get_tier
 
 try:
     from matplotlib import pyplot as plt
@@ -27,29 +26,6 @@ except:
 
 
 logger = logging.getLogger(__name__.split(".")[0])
-user_table_classes = (Manual, Lookup, Computed, Imported, Part)
-
-
-class _AliasNode:
-    """
-    special class to indicate aliased foreign keys
-    """
-
-    pass
-
-
-def _get_tier(table_name):
-    if not table_name.startswith("`"):
-        return _AliasNode
-    else:
-        try:
-            return next(
-                tier
-                for tier in user_table_classes
-                if re.fullmatch(tier.tier_regexp, table_name.split("`")[-2])
-            )
-        except StopIteration:
-            return None
 
 
 if not diagram_active:
@@ -59,8 +35,7 @@ if not diagram_active:
         Entity relationship diagram, currently disabled due to the lack of required packages: matplotlib and pygraphviz.
 
         To enable Diagram feature, please install both matplotlib and pygraphviz. For instructions on how to install
-        these two packages, refer to http://docs.datajoint.io/setup/Install-and-connect.html#python and
-        http://tutorials.datajoint.io/setting-up/datajoint-python.html
+        these two packages, refer to https://docs.datajoint.com/core/datajoint-python/0.14/client/install/
         """
 
         def __init__(self, *args, **kwargs):
@@ -72,19 +47,22 @@ else:
 
     class Diagram(nx.DiGraph):
         """
-        Entity relationship diagram.
+        Schema diagram showing tables and foreign keys between in the form of a directed
+        acyclic graph (DAG).  The diagram is derived from the connection.dependencies object.
 
         Usage:
 
         >>>  diag = Diagram(source)
 
-        source can be a base table object, a base table class, a schema, or a module that has a schema.
+        source can be a table object, a table class, a schema, or a module that has a schema.
 
         >>> diag.draw()
 
         draws the diagram using pyplot
 
         diag1 + diag2  - combines the two diagrams.
+        diag1 - diag2  - difference between diagrams
+        diag1 * diag2  - intersection of diagrams
         diag + n   - expands n levels of successors
         diag - n   - expands n levels of predecessors
         Thus dj.Diagram(schema.Table)+1-1 defines the diagram of immediate ancestors and descendants of schema.Table
@@ -94,6 +72,7 @@ else:
         """
 
         def __init__(self, source, context=None):
+
             if isinstance(source, Diagram):
                 # copy constructor
                 self.nodes_to_show = set(source.nodes_to_show)
@@ -154,7 +133,7 @@ else:
 
         def add_parts(self):
             """
-            Adds to the diagram the part tables of tables already included in the diagram
+            Adds to the diagram the part tables of all master tables already in the diagram
             :return:
             """
 
@@ -178,16 +157,6 @@ else:
                 if any(is_part(n, m) for m in self.nodes_to_show)
             )
             return self
-
-        def topological_sort(self):
-            """:return:  list of nodes in topological order"""
-            return unite_master_parts(
-                list(
-                    nx.algorithms.dag.topological_sort(
-                        nx.DiGraph(self).subgraph(self.nodes_to_show)
-                    )
-                )
-            )
 
         def __add__(self, arg):
             """
@@ -256,6 +225,10 @@ else:
             self.nodes_to_show.intersection_update(arg.nodes_to_show)
             return self
 
+        def topo_sort(self):
+            """return nodes in lexicographical topological order"""
+            return topo_sort(self)
+
         def _make_graph(self):
             """
             Make the self.graph - a graph object ready for drawing
@@ -299,6 +272,36 @@ else:
                 )
             nx.relabel_nodes(graph, mapping, copy=False)
             return graph
+
+        @staticmethod
+        def _encapsulate_edge_attributes(graph):
+            """
+            Modifies the `nx.Graph`'s edge attribute `attr_map` to be a string representation
+            of the attribute map, and encapsulates the string in double quotes.
+            Changes the graph in place.
+
+            Implements workaround described in
+            https://github.com/pydot/pydot/issues/258#issuecomment-795798099
+            """
+            for u, v, *_, edgedata in graph.edges(data=True):
+                if "attr_map" in edgedata:
+                    graph.edges[u, v]["attr_map"] = '"{0}"'.format(edgedata["attr_map"])
+
+        @staticmethod
+        def _encapsulate_node_names(graph):
+            """
+            Modifies the `nx.Graph`'s node names string representations encapsulated in
+            double quotes.
+            Changes the graph in place.
+
+            Implements workaround described in
+            https://github.com/datajoint/datajoint-python/pull/1176
+            """
+            nx.relabel_nodes(
+                graph,
+                {node: '"{0}"'.format(node) for node in graph.nodes()},
+                copy=False,
+            )
 
         def make_dot(self):
             graph = self._make_graph()
@@ -368,6 +371,8 @@ else:
                 for node, d in dict(graph.nodes(data=True)).items()
             }
 
+            self._encapsulate_node_names(graph)
+            self._encapsulate_edge_attributes(graph)
             dot = nx.drawing.nx_pydot.to_pydot(graph)
             for node in dot.get_nodes():
                 node.set_shape("circle")
@@ -385,11 +390,15 @@ else:
                     assert issubclass(cls, Table)
                     description = cls().describe(context=self.context).split("\n")
                     description = (
-                        "-" * 30
-                        if q.startswith("---")
-                        else q.replace("->", "&#8594;")
-                        if "->" in q
-                        else q.split(":")[0]
+                        (
+                            "-" * 30
+                            if q.startswith("---")
+                            else (
+                                q.replace("->", "&#8594;")
+                                if "->" in q
+                                else q.split(":")[0]
+                            )
+                        )
                         for q in description
                         if not q.startswith("#")
                     )
@@ -404,9 +413,14 @@ else:
 
             for edge in dot.get_edges():
                 # see https://graphviz.org/doc/info/attrs.html
-                src = edge.get_source().strip('"')
-                dest = edge.get_destination().strip('"')
+                src = edge.get_source()
+                dest = edge.get_destination()
                 props = graph.get_edge_data(src, dest)
+                if props is None:
+                    raise DataJointError(
+                        "Could not find edge with source "
+                        "'{}' and destination '{}'".format(src, dest)
+                    )
                 edge.set_color("#00000040")
                 edge.set_style("solid" if props["primary"] else "dashed")
                 master_part = graph.nodes[dest][

@@ -1,19 +1,19 @@
+import itertools
+import json
+import numbers
+import uuid
 from functools import partial
 from pathlib import Path
-import logging
-import pandas
-import itertools
-import re
-import json
+
 import numpy as np
-import uuid
-import numbers
+import pandas
+
+from datajoint.condition import Top
+
 from . import blob, hash
 from .errors import DataJointError
 from .settings import config
 from .utils import safe_write
-
-logger = logging.getLogger(__name__.split(".")[0])
 
 
 class key:
@@ -119,21 +119,6 @@ def _get(connection, attr, data, squeeze, download_path):
     )
 
 
-def _flatten_attribute_list(primary_key, attrs):
-    """
-    :param primary_key: list of attributes in primary key
-    :param attrs: list of attribute names, which may include "KEY", "KEY DESC" or "KEY ASC"
-    :return: generator of attributes where "KEY" is replaces with its component attributes
-    """
-    for a in attrs:
-        if re.match(r"^\s*KEY(\s+[aA][Ss][Cc])?\s*$", a):
-            yield from primary_key
-        elif re.match(r"^\s*KEY\s+[Dd][Ee][Ss][Cc]\s*$", a):
-            yield from (q + " DESC" for q in primary_key)
-        else:
-            yield a
-
-
 class Fetch:
     """
     A fetch object that handles retrieving elements from the table expression.
@@ -153,7 +138,7 @@ class Fetch:
         format=None,
         as_dict=None,
         squeeze=False,
-        download_path="."
+        download_path=".",
     ):
         """
         Fetches the expression results from the database into an np.array or list of dictionaries and
@@ -174,13 +159,13 @@ class Fetch:
         :param download_path: for fetches that download data, e.g. attachments
         :return: the contents of the table in the form of a structured numpy.array or a dict list
         """
-        if order_by is not None:
-            # if 'order_by' passed in a string, make into list
-            if isinstance(order_by, str):
-                order_by = [order_by]
-            # expand "KEY" or "KEY DESC"
-            order_by = list(
-                _flatten_attribute_list(self._expression.primary_key, order_by)
+        if offset or order_by or limit:
+            self._expression = self._expression.restrict(
+                Top(
+                    limit,
+                    order_by,
+                    offset,
+                )
             )
 
         attrs_as_dict = as_dict and attrs
@@ -212,13 +197,6 @@ class Fetch:
                     'use "array" or "frame"'.format(format)
                 )
 
-        if limit is None and offset is not None:
-            logger.warning(
-                "Offset set, but no limit. Setting limit to a large number. "
-                "Consider setting a limit explicitly."
-            )
-            limit = 8000000000  # just a very large number to effect no limit
-
         get = partial(
             _get,
             self._expression.connection,
@@ -244,20 +222,20 @@ class Fetch:
                 ]
             else:
                 return_values = [
-                    list(
-                        (to_dicts if as_dict else lambda x: x)(
-                            ret[self._expression.primary_key]
+                    (
+                        list(
+                            (to_dicts if as_dict else lambda x: x)(
+                                ret[self._expression.primary_key]
+                            )
                         )
+                        if is_key(attribute)
+                        else ret[attribute]
                     )
-                    if is_key(attribute)
-                    else ret[attribute]
                     for attribute in attrs
                 ]
                 ret = return_values[0] if len(attrs) == 1 else return_values
         else:  # fetch all attributes as a numpy.record_array or pandas.DataFrame
-            cur = self._expression.cursor(
-                as_dict=as_dict, limit=limit, offset=offset, order_by=order_by
-            )
+            cur = self._expression.cursor(as_dict=as_dict)
             heading = self._expression.heading
             if as_dict:
                 ret = [
@@ -272,12 +250,14 @@ class Fetch:
                     else np.dtype(
                         [
                             (
-                                name,
-                                type(value),
-                            )  # use the first element to determine blob type
-                            if heading[name].is_blob
-                            and isinstance(value, numbers.Number)
-                            else (name, heading.as_dtype[name])
+                                (
+                                    name,
+                                    type(value),
+                                )  # use the first element to determine blob type
+                                if heading[name].is_blob
+                                and isinstance(value, numbers.Number)
+                                else (name, heading.as_dtype[name])
+                            )
                             for value, name in zip(ret[0], heading.as_dtype.names)
                         ]
                     )
@@ -353,9 +333,11 @@ class Fetch1:
                     "fetch1 should only return one tuple. %d tuples found" % len(result)
                 )
             return_values = tuple(
-                next(to_dicts(result[self._expression.primary_key]))
-                if is_key(attribute)
-                else result[attribute][0]
+                (
+                    next(to_dicts(result[self._expression.primary_key]))
+                    if is_key(attribute)
+                    else result[attribute][0]
+                )
                 for attribute in attrs
             )
             ret = return_values[0] if len(attrs) == 1 else return_values

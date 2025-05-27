@@ -1,8 +1,8 @@
 ---
 name: Feature request
 about: Suggest an idea for a new feature
-title: ''
-labels: 'enhancement, awaiting-triage'
+title: "FEAT: "
+labels: ["enhancement", "triage"]
 assignees: ''
 
 ---
@@ -10,7 +10,7 @@ assignees: ''
 ## Feature Request
 
 ### Problem
-A clear and concise description how this idea has manifested and the context. Elaborate on the need for this feature and/or what could be improved. Ex. I'm always frustrated when [...]
+A clear and concise description how this idea has manifested and the context. Elaborate on the need for this feature. Ex. I'm always frustrated when [...]
 
 ### Requirements
 A clear and concise description of the requirements to satisfy the new feature. Detail what you expect from a successful implementation of the feature. Ex. When using this feature, it should [...]

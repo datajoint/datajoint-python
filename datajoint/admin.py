@@ -1,9 +1,12 @@
-import pymysql
+import logging
 from getpass import getpass
+
+import pymysql
+from packaging import version
+
 from .connection import conn
 from .settings import config
 from .utils import user_choice
-import logging
 
 logger = logging.getLogger(__name__.split(".")[0])
 
@@ -14,9 +17,16 @@ def set_password(new_password=None, connection=None, update_config=None):
         new_password = getpass("New password: ")
         confirm_password = getpass("Confirm password: ")
         if new_password != confirm_password:
-            logger.warn("Failed to confirm the password! Aborting password change.")
+            logger.warning("Failed to confirm the password! Aborting password change.")
             return
-    connection.query("SET PASSWORD = PASSWORD('%s')" % new_password)
+
+    if version.parse(
+        connection.query("select @@version;").fetchone()[0]
+    ) >= version.parse("5.7"):
+        # SET PASSWORD is deprecated as of MySQL 5.7 and removed in 8+
+        connection.query("ALTER USER user() IDENTIFIED BY '%s';" % new_password)
+    else:
+        connection.query("SET PASSWORD = PASSWORD('%s')" % new_password)
     logger.info("Password updated.")
 
     if update_config or (

@@ -1,4 +1,5 @@
 import re
+
 from .errors import DataJointError, _support_adapted_types
 from .plugin import type_plugins
 

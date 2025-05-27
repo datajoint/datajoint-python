@@ -1,30 +1,32 @@
 import collections
-import itertools
+import csv
 import inspect
+import itertools
+import json
+import logging
 import platform
+import re
+import uuid
+from pathlib import Path
+from typing import Union
+
 import numpy as np
 import pandas
-import logging
-import uuid
-import csv
-import re
-import json
-from pathlib import Path
-from .settings import config
-from .declare import declare, alter
-from .condition import make_condition
-from .expression import QueryExpression
+
 from . import blob
-from .utils import user_choice, get_master
-from .heading import Heading
+from .condition import make_condition
+from .declare import alter, declare
 from .errors import (
-    DuplicateError,
     AccessError,
     DataJointError,
-    UnknownAttributeError,
+    DuplicateError,
     IntegrityError,
+    UnknownAttributeError,
 )
-from typing import Union
+from .expression import QueryExpression
+from .heading import Heading
+from .settings import config
+from .utils import get_master, is_camel_case, user_choice
 from .version import __version__ as version
 
 logger = logging.getLogger(__name__.split(".")[0])
@@ -76,6 +78,10 @@ class Table(QueryExpression):
         return self._table_name
 
     @property
+    def class_name(self):
+        return self.__class__.__name__
+
+    @property
     def definition(self):
         raise NotImplementedError(
             "Subclasses of Table must implement the `definition` property"
@@ -92,6 +98,14 @@ class Table(QueryExpression):
             raise DataJointError(
                 "Cannot declare new tables inside a transaction, "
                 "e.g. from inside a populate/make call"
+            )
+        # Enforce strict CamelCase #1150
+        if not is_camel_case(self.class_name):
+            raise DataJointError(
+                "Table class name `{name}` is invalid. Please use CamelCase. ".format(
+                    name=self.class_name
+                )
+                + "Classes defining tables should be formatted in strict CamelCase."
             )
         sql, external_stores = declare(self.full_table_name, self.definition, context)
         sql = sql.format(database=self.database)
@@ -184,7 +198,6 @@ class Table(QueryExpression):
 
     def children(self, primary=None, as_objects=False, foreign_key_info=False):
         """
-
         :param primary: if None, then all children are returned. If True, then only foreign keys composed of
             primary key attributes are considered.  If False, return foreign keys including at least one
             secondary attribute.
@@ -206,7 +219,6 @@ class Table(QueryExpression):
 
     def descendants(self, as_objects=False):
         """
-
         :param as_objects: False - a list of table names; True - a list of table objects.
         :return: list of tables descendants in topological order.
         """
@@ -218,7 +230,6 @@ class Table(QueryExpression):
 
     def ancestors(self, as_objects=False):
         """
-
         :param as_objects: False - a list of table names; True - a list of table objects.
         :return: list of tables ancestors in topological order.
         """
@@ -234,6 +245,7 @@ class Table(QueryExpression):
 
         :param as_objects: if False (default), the output is a dict describing the foreign keys. If True, return table objects.
         """
+        self.connection.dependencies.load(force=False)
         nodes = [
             node
             for node in self.connection.dependencies.nodes
@@ -415,7 +427,8 @@ class Table(QueryExpression):
             self.connection.query(query)
             return
 
-        field_list = []  # collects the field list from first row (passed by reference)
+        # collects the field list from first row (passed by reference)
+        field_list = []
         rows = list(
             self.__make_row_to_insert(row, field_list, ignore_extra_fields)
             for row in rows
@@ -474,6 +487,7 @@ class Table(QueryExpression):
         transaction: bool = True,
         safemode: Union[bool, None] = None,
         force_parts: bool = False,
+        force_masters: bool = False,
     ) -> int:
         """
         Deletes the contents of the table and its dependent tables, recursively.
@@ -485,6 +499,8 @@ class Table(QueryExpression):
             safemode: If `True`, prohibit nested transactions and prompt to confirm. Default
                 is `dj.config['safemode']`.
             force_parts: Delete from parts even when not deleting from their masters.
+            force_masters: If `True`, include part/master pairs in the cascade.
+                Default is `False`.
 
         Returns:
             Number of deleted rows (excluding those from dependent tables).
@@ -495,6 +511,7 @@ class Table(QueryExpression):
             DataJointError: Deleting a part table before its master.
         """
         deleted = set()
+        visited_masters = set()
 
         def cascade(table):
             """service function to perform cascading deletes recursively."""
@@ -504,7 +521,8 @@ class Table(QueryExpression):
                     delete_count = table.delete_quick(get_count=True)
                 except IntegrityError as error:
                     match = foreign_key_error_regexp.match(error.args[0]).groupdict()
-                    if "`.`" not in match["child"]:  # if schema name missing, use table
+                    # if schema name missing, use table
+                    if "`.`" not in match["child"]:
                         match["child"] = "{}.{}".format(
                             table.full_table_name.split(".")[0], match["child"]
                         )
@@ -547,13 +565,34 @@ class Table(QueryExpression):
                         and match["fk_attrs"] == match["pk_attrs"]
                     ):
                         child._restriction = table._restriction
+                        child._restriction_attributes = table.restriction_attributes
                     elif match["fk_attrs"] != match["pk_attrs"]:
                         child &= table.proj(
                             **dict(zip(match["fk_attrs"], match["pk_attrs"]))
                         )
                     else:
                         child &= table.proj()
-                    cascade(child)
+
+                    master_name = get_master(child.full_table_name)
+                    if (
+                        force_masters
+                        and master_name
+                        and master_name != table.full_table_name
+                        and master_name not in visited_masters
+                    ):
+                        master = FreeTable(table.connection, master_name)
+                        master._restriction_attributes = set()
+                        master._restriction = [
+                            make_condition(  # &= may cause in target tables in subquery
+                                master,
+                                (master.proj() & child.proj()).fetch(),
+                                master._restriction_attributes,
+                            )
+                        ]
+                        visited_masters.add(master_name)
+                        cascade(master)
+                    else:
+                        cascade(child)
                 else:
                     deleted.add(table.full_table_name)
                     logger.info(
@@ -607,6 +646,8 @@ class Table(QueryExpression):
                 logger.warn("Nothing to delete.")
             if transaction:
                 self.connection.cancel_transaction()
+        elif not transaction:
+            logger.info("Delete completed")
         else:
             if not safemode or user_choice("Commit deletes?", default="no") == "yes":
                 if transaction:
@@ -758,9 +799,11 @@ class Table(QueryExpression):
             if do_include:
                 attributes_declared.add(attr.name)
                 definition += "%-20s : %-28s %s\n" % (
-                    attr.name
-                    if attr.default is None
-                    else "%s=%s" % (attr.name, attr.default),
+                    (
+                        attr.name
+                        if attr.default is None
+                        else "%s=%s" % (attr.name, attr.default)
+                    ),
                     "%s%s"
                     % (attr.type, " auto_increment" if attr.autoincrement else ""),
                     "# " + attr.comment if attr.comment else "",
@@ -923,7 +966,8 @@ def lookup_class_name(name, context, depth=3):
     while nodes:
         node = nodes.pop(0)
         for member_name, member in node["context"].items():
-            if not member_name.startswith("_"):  # skip IPython's implicit variables
+            # skip IPython's implicit variables
+            if not member_name.startswith("_"):
                 if inspect.isclass(member) and issubclass(member, Table):
                     if member.full_table_name == name:  # found it!
                         return ".".join([node["context_name"], member_name]).lstrip(".")

@@ -1,6 +1,6 @@
 {
     "editor.formatOnPaste": false,
-    "editor.formatOnSave": true,
+    "editor.formatOnSave": false,
     "editor.rulers": [
         94
     ],
@@ -17,5 +17,5 @@
     "[dockercompose]": {
         "editor.defaultFormatter": "disable"
     },
-    "files.autoSave": "off"
+    //"files.autoSave": "off"
 }

@@ -1,18 +1,19 @@
-import numpy as np
-from collections import namedtuple, defaultdict
-from itertools import chain
-import re
 import logging
-from .errors import DataJointError, _support_filepath_types, FILEPATH_FEATURE_SWITCH
+import re
+from collections import defaultdict, namedtuple
+from itertools import chain
+
+import numpy as np
+
+from .attribute_adapter import AttributeAdapter, get_adapter
 from .declare import (
-    UUID_DATA_TYPE,
-    SPECIAL_TYPES,
-    TYPE_PATTERN,
     EXTERNAL_TYPES,
     NATIVE_TYPES,
+    SPECIAL_TYPES,
+    TYPE_PATTERN,
+    UUID_DATA_TYPE,
 )
-from .attribute_adapter import get_adapter, AttributeAdapter
-
+from .errors import FILEPATH_FEATURE_SWITCH, DataJointError, _support_filepath_types
 
 logger = logging.getLogger(__name__.split(".")[0])
 
@@ -33,6 +34,7 @@ default_attribute_properties = (
         is_attachment=False,
         is_filepath=False,
         is_external=False,
+        is_hidden=False,
         adapter=None,
         store=None,
         unsupported=False,
@@ -120,7 +122,7 @@ class Heading:
     def attributes(self):
         if self._attributes is None:
             self._init_from_database()  # lazy loading from database
-        return self._attributes
+        return {k: v for k, v in self._attributes.items() if not v.is_hidden}
 
     @property
     def names(self):
@@ -193,10 +195,12 @@ class Heading:
         represent heading as the SQL SELECT clause.
         """
         return ",".join(
-            "`%s`" % name
-            if self.attributes[name].attribute_expression is None
-            else self.attributes[name].attribute_expression
-            + (" as `%s`" % name if include_aliases else "")
+            (
+                "`%s`" % name
+                if self.attributes[name].attribute_expression is None
+                else self.attributes[name].attribute_expression
+                + (" as `%s`" % name if include_aliases else "")
+            )
             for name in fields
         )
 
@@ -298,6 +302,7 @@ class Heading:
                 store=None,
                 is_external=False,
                 attribute_expression=None,
+                is_hidden=attr["name"].startswith("_"),
             )
 
             if any(TYPE_PATTERN[t].match(attr["type"]) for t in ("INTEGER", "FLOAT")):
@@ -371,9 +376,11 @@ class Heading:
                     is_blob=category in ("INTERNAL_BLOB", "EXTERNAL_BLOB"),
                     uuid=category == "UUID",
                     is_external=category in EXTERNAL_TYPES,
-                    store=attr["type"].split("@")[1]
-                    if category in EXTERNAL_TYPES
-                    else None,
+                    store=(
+                        attr["type"].split("@")[1]
+                        if category in EXTERNAL_TYPES
+                        else None
+                    ),
                 )
 
             if attr["in_key"] and any(

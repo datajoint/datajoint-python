@@ -1,32 +1,70 @@
-import networkx as nx
 import itertools
 import re
 from collections import defaultdict
+
+import networkx as nx
+
 from .errors import DataJointError
 
 
-def unite_master_parts(lst):
+def extract_master(part_table):
     """
-    re-order a list of table names so that part tables immediately follow their master tables without breaking
-    the topological order.
-    Without this correction, a simple topological sort may insert other descendants between master and parts.
-    The input list must be topologically sorted.
-    :example:
-    unite_master_parts(
-        ['`s`.`a`', '`s`.`a__q`', '`s`.`b`', '`s`.`c`', '`s`.`c__q`', '`s`.`b__q`', '`s`.`d`', '`s`.`a__r`']) ->
-        ['`s`.`a`', '`s`.`a__q`', '`s`.`a__r`', '`s`.`b`', '`s`.`b__q`', '`s`.`c`', '`s`.`c__q`', '`s`.`d`']
+    given a part table name, return master part. None if not a part table
     """
-    for i in range(2, len(lst)):
-        name = lst[i]
-        match = re.match(r"(?P<master>`\w+`.`#?\w+)__\w+`", name)
-        if match:  # name is a part table
-            master = match.group("master")
-            for j in range(i - 1, -1, -1):
-                if lst[j] == master + "`" or lst[j].startswith(master + "__"):
-                    # move from the ith position to the (j+1)th position
-                    lst[j + 1 : i + 1] = [name] + lst[j + 1 : i]
-                    break
-    return lst
+    match = re.match(r"(?P<master>`\w+`.`#?\w+)__\w+`", part_table)
+    return match["master"] + "`" if match else None
+
+
+def topo_sort(graph):
+    """
+    topological sort of a dependency graph that keeps part tables together with their masters
+    :return: list of table names in topological order
+    """
+
+    graph = nx.DiGraph(graph)  # make a copy
+
+    # collapse alias nodes
+    alias_nodes = [node for node in graph if node.isdigit()]
+    for node in alias_nodes:
+        try:
+            direct_edge = (
+                next(x for x in graph.in_edges(node))[0],
+                next(x for x in graph.out_edges(node))[1],
+            )
+        except StopIteration:
+            pass  # a disconnected alias node
+        else:
+            graph.add_edge(*direct_edge)
+    graph.remove_nodes_from(alias_nodes)
+
+    # Add parts' dependencies to their masters' dependencies
+    # to ensure correct topological ordering of the masters.
+    for part in graph:
+        # find the part's master
+        if (master := extract_master(part)) in graph:
+            for edge in graph.in_edges(part):
+                parent = edge[0]
+                if master not in (parent, extract_master(parent)):
+                    # if parent is neither master nor part of master
+                    graph.add_edge(parent, master)
+    sorted_nodes = list(nx.topological_sort(graph))
+
+    # bring parts up to their masters
+    pos = len(sorted_nodes) - 1
+    placed = set()
+    while pos > 1:
+        part = sorted_nodes[pos]
+        if (master := extract_master(part)) not in graph or part in placed:
+            pos -= 1
+        else:
+            placed.add(part)
+            insert_pos = sorted_nodes.index(master) + 1
+            if pos > insert_pos:
+                # move the part to the position immediately after its master
+                del sorted_nodes[pos]
+                sorted_nodes.insert(insert_pos, part)
+
+    return sorted_nodes
 
 
 class Dependencies(nx.DiGraph):
@@ -131,6 +169,10 @@ class Dependencies(nx.DiGraph):
             raise DataJointError("DataJoint can only work with acyclic dependencies")
         self._loaded = True
 
+    def topo_sort(self):
+        """:return: list of tables names in topological order"""
+        return topo_sort(self)
+
     def parents(self, table_name, primary=None):
         """
         :param table_name: `schema`.`table`
@@ -167,10 +209,8 @@ class Dependencies(nx.DiGraph):
         :return: all dependent tables sorted in topological order.  Self is included.
         """
         self.load(force=False)
-        nodes = self.subgraph(nx.algorithms.dag.descendants(self, full_table_name))
-        return unite_master_parts(
-            [full_table_name] + list(nx.algorithms.dag.topological_sort(nodes))
-        )
+        nodes = self.subgraph(nx.descendants(self, full_table_name))
+        return [full_table_name] + nodes.topo_sort()
 
     def ancestors(self, full_table_name):
         """
@@ -178,11 +218,5 @@ class Dependencies(nx.DiGraph):
         :return: all dependent tables sorted in topological order.  Self is included.
         """
         self.load(force=False)
-        nodes = self.subgraph(nx.algorithms.dag.ancestors(self, full_table_name))
-        return list(
-            reversed(
-                unite_master_parts(
-                    list(nx.algorithms.dag.topological_sort(nodes)) + [full_table_name]
-                )
-            )
-        )
+        nodes = self.subgraph(nx.ancestors(self, full_table_name))
+        return reversed(nodes.topo_sort() + [full_table_name])

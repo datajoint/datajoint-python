@@ -2,12 +2,17 @@
 This module hosts functions to convert DataJoint table definitions into mysql table definitions, and to
 declare the corresponding mysql tables.
 """
-import re
-import pyparsing as pp
+
 import logging
-from .errors import DataJointError, _support_filepath_types, FILEPATH_FEATURE_SWITCH
+import re
+from hashlib import sha1
+
+import pyparsing as pp
+
 from .attribute_adapter import get_adapter
 from .condition import translate_attribute
+from .errors import FILEPATH_FEATURE_SWITCH, DataJointError, _support_filepath_types
+from .settings import config
 
 UUID_DATA_TYPE = "binary(16)"
 MAX_TABLE_NAME_LENGTH = 64
@@ -160,8 +165,8 @@ def compile_foreign_key(
     :param index_sql: list of INDEX declaration statements, duplicate or redundant indexes are ok.
     """
     # Parse and validate
-    from .table import Table
     from .expression import QueryExpression
+    from .table import Table
 
     try:
         result = foreign_key_parser.parseString(line)
@@ -309,6 +314,19 @@ def declare(full_table_name, definition, context):
         external_stores,
     ) = prepare_declare(definition, context)
 
+    if config.get("add_hidden_timestamp", False):
+        metadata_attr_sql = [
+            "`_{full_table_name}_timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP"
+        ]
+        attribute_sql.extend(
+            attr.format(
+                full_table_name=sha1(
+                    full_table_name.replace("`", "").encode("utf-8")
+                ).hexdigest()
+            )
+            for attr in metadata_attr_sql
+        )
+
     if not primary_key:
         raise DataJointError("Table must have a primary key")
 
@@ -382,9 +400,7 @@ def _make_attribute_alter(new, old, primary_key):
                         command=(
                             "ADD"
                             if (old_name or new_name) not in old_names
-                            else "MODIFY"
-                            if not old_name
-                            else "CHANGE `%s`" % old_name
+                            else "MODIFY" if not old_name else "CHANGE `%s`" % old_name
                         ),
                         new_def=new_def,
                         after="" if after is None else "AFTER `%s`" % after,
@@ -443,9 +459,11 @@ def compile_index(line, index_sql):
             return f"`{attr}`"
         return f"({attr})"
 
-    match = re.match(
-        r"(?P<unique>unique\s+)?index\s*\(\s*(?P<args>.*)\)", line, re.I
-    ).groupdict()
+    match = re.match(r"(?P<unique>unique\s+)?index\s*\(\s*(?P<args>.*)\)", line, re.I)
+    if match is None:
+        raise DataJointError(f'Table definition syntax error in line "{line}"')
+    match = match.groupdict()
+
     attr_list = re.findall(r"(?:[^,(]|\([^)]*\))+", match["args"])
     index_sql.append(
         "{unique}index ({attrs})".format(
