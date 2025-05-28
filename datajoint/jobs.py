@@ -1,6 +1,8 @@
 import os
 import datetime
 import platform
+import json
+from typing import Dict, Any, Union
 
 from .errors import DuplicateError
 from .hash import key_hash
@@ -32,18 +34,19 @@ class JobTable(Table):
         key_hash  :char(32)  # key hash
         ---
         status  :enum('reserved','error','ignore','scheduled','success') 
-        key=null  :blob  # structure containing the key
+        key=null  :json  # structure containing the key for querying
         error_message=""  :varchar({error_message_length})  # error message returned if failed
         error_stack=null  :mediumblob  # error stack if failed
         user="" :varchar(255) # database user
         host=""  :varchar(255)  # system hostname
         pid=0  :int unsigned  # system process id
         connection_id = 0  : bigint unsigned      # connection_id()
-        timestamp  :timestamp   # the scheduled time (UTC) for the job to run at or after
+        timestamp  :timestamp   # timestamp of the job status change or scheduled time
         run_duration=null  : float  # run duration in seconds
         run_version=""  : varchar(255) # some string representation of the code/env version of a run (e.g. git commit hash)
         index(table_name, status)
         index(status)
+        index(timestamp)  # for ordering jobs
         """.format(
             database=database, error_message_length=ERROR_MESSAGE_LENGTH
         )
@@ -69,13 +72,24 @@ class JobTable(Table):
 
     def schedule(self, table_name, key, seconds_delay=0, force=False):
         """
-        Schedule a job for computation.
+        Schedule a job for computation in the DataJoint pipeline.
 
-        :param table_name: `database`.`table_name`
-        :param key: the dict of the job's primary key
-        :param seconds_delay: add time delay (in second) in scheduling this job
-        :param force: force scheduling this job (even if it is in error/ignore status)
-        :return: True if schedule job successfully. False = the jobs already exists with a different status
+        This method manages job scheduling with the following key behaviors:
+        1. Creates a new job entry if one doesn't exist
+        2. Updates existing jobs based on their current status:
+           - Allows rescheduling if job is in error/ignore status and force=True
+           - Prevents rescheduling if job is already scheduled/reserved/success
+        3. Records job metadata including host, process ID, and user info
+        4. Supports delayed execution through seconds_delay parameter
+
+        Args:
+            table_name: Full table name in format `database`.`table_name`
+            key: Dictionary containing the job's primary key
+            seconds_delay: Optional delay in seconds before job execution (default: 0)
+            force: If True, allows rescheduling jobs in error/ignore status (default: False)
+
+        Returns:
+            bool: True if job was successfully scheduled, False if job already exists with incompatible status
         """
         job_key = dict(table_name=table_name, key_hash=key_hash(key))
         if self & job_key:
@@ -91,7 +105,7 @@ class JobTable(Table):
             host=platform.node(),
             pid=os.getpid(),
             connection_id=self.connection.connection_id,
-            key=key,
+            key=_jsonify(key),
             user=self._user,
             timestamp=datetime.datetime.utcnow()
             + datetime.timedelta(seconds=seconds_delay),
@@ -122,7 +136,7 @@ class JobTable(Table):
             host=platform.node(),
             pid=os.getpid(),
             connection_id=self.connection.connection_id,
-            key=key,
+            key=_jsonify(key),
             user=self._user,
             timestamp=datetime.datetime.utcnow(),
         )
@@ -160,7 +174,7 @@ class JobTable(Table):
             host=platform.node(),
             pid=os.getpid(),
             connection_id=self.connection.connection_id,
-            key=key,
+            key=_jsonify(key),
             error_message=message,
             user=self._user,
             timestamp=datetime.datetime.utcnow(),
@@ -196,7 +210,7 @@ class JobTable(Table):
                     pid=os.getpid(),
                     connection_id=self.connection.connection_id,
                     user=self._user,
-                    key=key,
+                    key=_jsonify(key),
                     run_duration=run_duration,
                     run_version=run_version,
                     timestamp=datetime.datetime.utcnow(),
@@ -230,7 +244,7 @@ class JobTable(Table):
                     pid=os.getpid(),
                     connection_id=self.connection.connection_id,
                     user=self._user,
-                    key=key,
+                    key=_jsonify(key),
                     error_message=error_message,
                     error_stack=error_stack,
                     timestamp=datetime.datetime.utcnow(),
@@ -238,3 +252,11 @@ class JobTable(Table):
                 replace=True,
                 ignore_extra_fields=True,
             )
+
+
+def _jsonify(key: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Ensure the key is JSON serializable by converting to JSON and back.
+    Uses str() as fallback for any non-serializable objects.
+    """
+    return json.loads(json.dumps(key, default=str))
