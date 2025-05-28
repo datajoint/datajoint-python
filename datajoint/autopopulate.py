@@ -448,14 +448,45 @@ class AutoPopulate:
     def jobs(self):
         return self._Jobs & {"table_name": self.target.table_name}
 
-    def schedule_jobs(self, *restrictions, purge_invalid_jobs=True):
+    def schedule_jobs(self, *restrictions, purge_invalid_jobs=True, min_scheduling_interval=None):
         """
-        Schedule new jobs for this autopopulate table
-        :param restrictions: a list of restrictions each restrict
-            (table.key_source - target.proj())
-        :param purge_invalid_jobs: if True, remove invalid entry from the jobs table (potentially expensive operation)
-        :return:
+        Schedule new jobs for this autopopulate table by finding keys that need computation.
+        
+        This method implements an optimization strategy to avoid excessive scheduling:
+        1. First checks if any jobs were scheduled recently (within min_scheduling_interval)
+        2. If recent jobs exist, skips scheduling to prevent database load
+        3. Otherwise, finds keys that need computation and schedules them
+        
+        The method also optionally purges invalid jobs (jobs that no longer exist in key_source)
+        to maintain database cleanliness.
+        
+        Args:
+            restrictions: a list of restrictions each restrict (table.key_source - target.proj())
+            purge_invalid_jobs: if True, remove invalid entry from the jobs table (potentially expensive operation)
+            min_scheduling_interval: minimum time in seconds that must have passed since last job scheduling.
+                If None, uses the value from dj.config["min_scheduling_interval"] (default: None)
+            
+        Returns:
+            None
         """
+        if min_scheduling_interval is None:
+            min_scheduling_interval = config["min_scheduling_interval"]
+
+        # First check if we have any recent jobs
+        if min_scheduling_interval > 0:
+            recent_jobs = len(
+                self.jobs
+                & {"status": "scheduled"}
+                & f"timestamp <= UTC_TIMESTAMP()"  # Only consider jobs up to current UTC time
+                & f"timestamp >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL {min_scheduling_interval} SECOND)"
+            )
+            if recent_jobs > 0:
+                logger.debug(
+                    f"Skipping job scheduling for `{to_camel_case(self.target.table_name)}` - "
+                    f"found {recent_jobs} jobs created within last {min_scheduling_interval} seconds"
+                )
+                return
+
         try:
             with self.connection.transaction:
                 schedule_count = 0
