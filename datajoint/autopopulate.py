@@ -206,37 +206,37 @@ class AutoPopulate:
             raise DataJointError(
                 "The order argument must be one of %s" % str(valid_order)
             )
+        
+        if schedule_jobs:
+            self.schedule_jobs(*restrictions)
+
         # define and set up signal handler for SIGTERM:
         if reserve_jobs:
             def handler(signum, frame):
                 logger.info("Populate terminated by SIGTERM")
                 raise SystemExit("SIGTERM received")
-
             old_handler = signal.signal(signal.SIGTERM, handler)
 
-            if schedule_jobs:
-                self.schedule_jobs(*restrictions)
-
-            keys = (
-                self._Jobs
-                & {"table_name": self.target.table_name}
-                & 'status = "scheduled"'
-            ).fetch("key", limit=limit)
-
-            if restrictions:
-                # hitting the `key_source` again to apply the restrictions
-                # this is expensive/suboptimal
-                keys = (self._jobs_to_do(restrictions) & keys).fetch("KEY", limit=limit)
-        else:
-            if keys is None:
+        # retrieve `keys` if not provided
+        if keys is None:
+            if reserve_jobs:
+                keys = (
+                    self.jobs
+                    & {'status': 'scheduled'}
+                ).fetch("key", order_by="timestamp", limit=limit)
+                if restrictions:
+                    # hitting the `key_source` again to apply the restrictions
+                    # this is expensive/suboptimal
+                    keys = (self._jobs_to_do(restrictions) & keys).fetch("KEY")
+            else:
                 keys = (self._jobs_to_do(restrictions) - self.target).fetch(
                     "KEY", limit=limit
                 )
+        else:
             # exclude "error", "ignore" or "reserved" jobs
             if reserve_jobs:
                 exclude_key_hashes = (
-                    self._Jobs
-                    & {"table_name": self.target.table_name}
+                    self.jobs
                     & 'status in ("error", "ignore", "reserved")'
                 ).fetch("key_hash")
                 keys = [key for key in keys if key_hash(key) not in exclude_key_hashes]
