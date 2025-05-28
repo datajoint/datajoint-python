@@ -235,7 +235,7 @@ class AutoPopulate:
             # exclude "error", "ignore" or "reserved" jobs
             if reserve_jobs:
                 exclude_key_hashes = (
-                    jobs
+                    self._Jobs
                     & {"table_name": self.target.table_name}
                     & 'status in ("error", "ignore", "reserved")'
                 ).fetch("key_hash")
