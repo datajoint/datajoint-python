@@ -453,8 +453,8 @@ class AutoPopulate:
         Schedule new jobs for this autopopulate table by finding keys that need computation.
         
         This method implements an optimization strategy to avoid excessive scheduling:
-        1. First checks if any jobs were scheduled recently (within min_scheduling_interval)
-        2. If recent jobs exist, skips scheduling to prevent database load
+        1. First checks if jobs were scheduled recently (within min_scheduling_interval)
+        2. If recent scheduling event exists, skips scheduling to prevent database load
         3. Otherwise, finds keys that need computation and schedules them
         
         The method also optionally purges invalid jobs (jobs that no longer exist in key_source)
@@ -469,22 +469,23 @@ class AutoPopulate:
         Returns:
             None
         """
+        __scheduled_event = {
+            "table_name": self.target.table_name,
+            "__type__": "jobs scheduling event"
+            }
+        
         if min_scheduling_interval is None:
             min_scheduling_interval = config["min_scheduling_interval"]
 
-        # First check if we have any recent jobs
         if min_scheduling_interval > 0:
-            recent_jobs = len(
-                self.jobs
-                & {"status": "scheduled"}
-                & f"timestamp <= UTC_TIMESTAMP()"  # Only consider jobs up to current UTC time
+            recent_scheduling_event = (
+                self._Jobs
+                & {"table_name": f"__{self.target.table_name}__"}
+                & {"key_hash": key_hash(__scheduled_event)}
                 & f"timestamp >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL {min_scheduling_interval} SECOND)"
             )
-            if recent_jobs > 0:
-                logger.debug(
-                    f"Skipping job scheduling for `{to_camel_case(self.target.table_name)}` - "
-                    f"found {recent_jobs} jobs created within last {min_scheduling_interval} seconds"
-                )
+            if recent_scheduling_event:
+                logger.debug(f"Skipping jobs scheduling for `{to_camel_case(self.target.table_name)}` (most recent scheduling event was within {min_scheduling_interval} seconds)")
                 return
 
         try:
@@ -495,6 +496,8 @@ class AutoPopulate:
         except Exception as e:
             logger.exception(str(e))
         else:
+            self._Jobs.ignore(f"__{self.target.table_name}__", __scheduled_event,
+                               message=f"Jobs scheduling event: {__scheduled_event['table_name']}")
             logger.info(
                 f"{schedule_count} new jobs scheduled for `{to_camel_case(self.target.table_name)}`"
             )
@@ -510,14 +513,12 @@ class AutoPopulate:
         This is potentially a time-consuming process - but should not expect to have to run very often
         """
 
-        jobs_query = self._Jobs & {"table_name": self.target.table_name}
-
-        invalid_count = len(jobs_query) - len(self._jobs_to_do({}))
+        invalid_count = len(self.jobs) - len(self._jobs_to_do({}))
         invalid_removed = 0
         if invalid_count > 0:
-            for key, job_key in zip(*jobs_query.fetch("KEY", "key")):
+            for key, job_key in zip(*self.jobs.fetch("KEY", "key")):
                 if not (self._jobs_to_do({}) & job_key):
-                    (jobs_query & key).delete()
+                    (self.jobs & key).delete()
                     invalid_removed += 1
 
             logger.info(
