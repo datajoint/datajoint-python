@@ -479,13 +479,13 @@ class AutoPopulate:
 
         if min_scheduling_interval > 0:
             recent_scheduling_event = (
-                self._Jobs
+                self._Jobs.proj(last_scheduled="TIMESTAMPDIFF(SECOND, timestamp, UTC_TIMESTAMP())")
                 & {"table_name": f"__{self.target.table_name}__"}
                 & {"key_hash": key_hash(__scheduled_event)}
-                & f"timestamp >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL {min_scheduling_interval} SECOND)"
+                & f"last_scheduled >= {min_scheduling_interval}"
             )
             if recent_scheduling_event:
-                logger.debug(f"Skipping jobs scheduling for `{to_camel_case(self.target.table_name)}` (most recent scheduling event was within {min_scheduling_interval} seconds)")
+                logger.debug(f"Skipping jobs scheduling for `{to_camel_case(self.target.table_name)}` (last scheduling event was {recent_scheduling_event.fetch1('last_scheduled')} seconds ago)")
                 return
 
         try:
