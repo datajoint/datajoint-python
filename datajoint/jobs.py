@@ -94,7 +94,7 @@ class JobTable(Table):
         job_key = dict(table_name=table_name, key_hash=key_hash(key))
         if self & job_key:
             current_status = (self & job_key).fetch1("status")
-            if current_status in ("scheduled", "reserved", "success") or (
+            if current_status in ("scheduled", "reserved") or (
                 current_status in ("error", "ignore") and not force
             ):
                 return False
