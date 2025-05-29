@@ -507,20 +507,36 @@ class AutoPopulate:
 
     def purge_invalid_jobs(self):
         """
-        Check and remove any invalid/outdated jobs in the JobTable for this autopopulate table
-        Job keys that are in the JobTable (regardless of status) but are no longer in the `key_source`
-        (e.g. jobs added but entries in upstream table(s) got deleted)
-        This is potentially a time-consuming process - but should not expect to have to run very often
+        Check and remove any invalid/outdated jobs in the JobTable for this autopopulate table.
+        
+        This method handles two types of invalid jobs:
+        1. Jobs that are no longer in the `key_source` (e.g. entries in upstream table(s) got deleted)
+        2. Jobs with "success" status that are no longer in the target table (e.g. entries in target table got deleted)
+        
+        The method is potentially time-consuming as it needs to:
+        - Compare all jobs against the current key_source
+        - For success jobs, verify their existence in the target table
+        - Delete any jobs that fail these checks
+        
+        This cleanup should not need to run very often, but helps maintain database consistency.
         """
-
-        invalid_count = len(self.jobs) - len(self._jobs_to_do({}))
         invalid_removed = 0
-        if invalid_count > 0:
-            for key, job_key in zip(*self.jobs.fetch("KEY", "key")):
-                if not (self._jobs_to_do({}) & job_key):
+
+        invalid_success = len(self.jobs & "status = 'success'") - len(self.target)
+        if invalid_success > 0:
+            for key, job_key in zip(*(self.jobs & "status = 'success'").fetch("KEY", "key")):
+                if not (self.target & job_key):
                     (self.jobs & key).delete()
                     invalid_removed += 1
 
-            logger.info(
-                f"{invalid_removed}/{invalid_count} invalid jobs removed for `{to_camel_case(self.target.table_name)}`"
-            )
+        keys2do = self._jobs_to_do({}).fetch("KEY")
+        invalid_incomplete = len(self.jobs & "status != 'success'") - len(keys2do)
+        if invalid_incomplete > 0:
+            for key, job_key in zip(*(self.jobs & "status != 'success'").fetch("KEY", "key")):
+                if job_key not in keys2do:
+                    (self.jobs & key).delete()
+                    invalid_removed += 1
+
+        logger.info(
+            f"{invalid_removed} invalid jobs removed for `{to_camel_case(self.target.table_name)}`"
+        )
