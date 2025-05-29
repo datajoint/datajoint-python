@@ -219,7 +219,7 @@ class JobTable(Table):
                 ignore_extra_fields=True,
             )
 
-    def error(self, table_name, key, error_message, error_stack=None):
+    def error(self, table_name, key, error_message, error_stack=None, run_duration=None, run_version=""):
         """
         Log an error message.  The job reservation is replaced with an error entry.
         if an error occurs, leave an entry describing the problem
@@ -228,6 +228,8 @@ class JobTable(Table):
         :param key: the dict of the job's primary key
         :param error_message: string error message
         :param error_stack: stack trace
+        :param run_duration: duration in second of the job run
+        :param run_version: some string representation of the code/env version of a run (e.g. git commit hash)
         """
         if len(error_message) > ERROR_MESSAGE_LENGTH:
             error_message = (
@@ -247,6 +249,8 @@ class JobTable(Table):
                     key=_jsonify(key),
                     error_message=error_message,
                     error_stack=error_stack,
+                    run_duration=run_duration,
+                    run_version=run_version,
                     timestamp=datetime.datetime.utcnow(),
                 ),
                 replace=True,
