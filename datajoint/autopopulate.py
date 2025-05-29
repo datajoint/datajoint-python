@@ -208,7 +208,7 @@ class AutoPopulate:
             )
         
         if schedule_jobs:
-            self.schedule_jobs(*restrictions)
+            self.schedule_jobs(*restrictions, purge_invalid_jobs=False)
 
         # define and set up signal handler for SIGTERM:
         if reserve_jobs:
