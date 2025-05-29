@@ -482,7 +482,7 @@ class AutoPopulate:
                 self._Jobs.proj(last_scheduled="TIMESTAMPDIFF(SECOND, timestamp, UTC_TIMESTAMP())")
                 & {"table_name": f"__{self.target.table_name}__"}
                 & {"key_hash": key_hash(__scheduled_event)}
-                & f"last_scheduled >= {min_scheduling_interval}"
+                & f"last_scheduled <= {min_scheduling_interval}"
             )
             if recent_scheduling_event:
                 logger.debug(f"Skipping jobs scheduling for `{to_camel_case(self.target.table_name)}` (last scheduling event was {recent_scheduling_event.fetch1('last_scheduled')} seconds ago)")
