@@ -485,7 +485,7 @@ class AutoPopulate:
                 & f"last_scheduled <= {min_scheduling_interval}"
             )
             if recent_scheduling_event:
-                logger.debug(f"Skipping jobs scheduling for `{to_camel_case(self.target.table_name)}` (last scheduling event was {recent_scheduling_event.fetch1('last_scheduled')} seconds ago)")
+                logger.info(f"Skip jobs scheduling for `{to_camel_case(self.target.table_name)}` (last scheduled {recent_scheduling_event.fetch1('last_scheduled')} seconds ago)")
                 return
 
         try:
