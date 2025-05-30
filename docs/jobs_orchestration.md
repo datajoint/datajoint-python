@@ -14,7 +14,7 @@ The jobs table (`~jobs`) is a system table that tracks the state and execution o
   - `error`: Job failed with an error
   - `ignore`: Job is marked to be ignored
   - `success`: Job completed successfully
-- `key`: JSON structure containing the job's primary key
+- `key`: JSON structure containing the job's primary key (query-able)
 - `error_message`: Error message if job failed
 - `error_stack`: Stack trace if job failed
 - `user`: Database user who created the job
