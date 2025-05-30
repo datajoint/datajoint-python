@@ -1,4 +1,4 @@
-# DataJoint Jobs System
+# DataJoint Jobs Orchestration mechanism
 
 This document describes the behavior and mechanism of DataJoint's jobs reservation and execution system.
 
