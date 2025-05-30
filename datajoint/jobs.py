@@ -43,7 +43,7 @@ class JobTable(Table):
         connection_id = 0  : bigint unsigned      # connection_id()
         timestamp  :timestamp   # timestamp of the job status change or scheduled time
         run_duration=null  : float  # run duration in seconds
-        run_version=""  : varchar(255) # some string representation of the code/env version of a run (e.g. git commit hash)
+        run_metadata=null  :json  # metadata about the run (e.g. code version, environment info)
         index(table_name, status)
         index(status)
         index(timestamp)  # for ordering jobs
@@ -185,14 +185,15 @@ class JobTable(Table):
 
         return True
 
-    def complete(self, table_name, key, run_duration=None, run_version=""):
+    def complete(self, table_name, key, run_duration=None, run_metadata=None):
         """
         Log a completed job.  When a job is completed, its reservation entry is deleted.
 
-        :param table_name: `database`.`table_name`
-        :param key: the dict of the job's primary key
-        :param run_duration: duration in second of the job run
-        :param run_version: some string representation of the code/env version of a run (e.g. git commit hash)
+        Args:
+            table_name: `database`.`table_name`
+            key: the dict of the job's primary key
+            run_duration: duration in second of the job run
+            run_metadata: dict containing metadata about the run (e.g. code version, environment info)
         """
         job_key = dict(table_name=table_name, key_hash=key_hash(key))
         if self & job_key:
@@ -212,24 +213,25 @@ class JobTable(Table):
                     user=self._user,
                     key=_jsonify(key),
                     run_duration=run_duration,
-                    run_version=run_version,
+                    run_metadata=_jsonify(run_metadata) if run_metadata else None,
                     timestamp=datetime.datetime.utcnow(),
                 ),
                 replace=True,
                 ignore_extra_fields=True,
             )
 
-    def error(self, table_name, key, error_message, error_stack=None, run_duration=None, run_version=""):
+    def error(self, table_name, key, error_message, error_stack=None, run_duration=None, run_metadata=None):
         """
         Log an error message.  The job reservation is replaced with an error entry.
         if an error occurs, leave an entry describing the problem
 
-        :param table_name: `database`.`table_name`
-        :param key: the dict of the job's primary key
-        :param error_message: string error message
-        :param error_stack: stack trace
-        :param run_duration: duration in second of the job run
-        :param run_version: some string representation of the code/env version of a run (e.g. git commit hash)
+        Args:
+            table_name: `database`.`table_name`
+            key: the dict of the job's primary key
+            error_message: string error message
+            error_stack: stack trace
+            run_duration: duration in second of the job run
+            run_metadata: dict containing metadata about the run (e.g. code version, environment info)
         """
         if len(error_message) > ERROR_MESSAGE_LENGTH:
             error_message = (
@@ -250,7 +252,7 @@ class JobTable(Table):
                     error_message=error_message,
                     error_stack=error_stack,
                     run_duration=run_duration,
-                    run_version=run_version,
+                    run_metadata=_jsonify(run_metadata) if run_metadata else None,
                     timestamp=datetime.datetime.utcnow(),
                 ),
                 replace=True,

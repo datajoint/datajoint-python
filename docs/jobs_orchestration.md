@@ -23,7 +23,7 @@ The jobs table (`~jobs`) is a system table that tracks the state and execution o
 - `connection_id`: Database connection ID
 - `timestamp`: When the job status was last changed
 - `run_duration`: How long the job took to execute (in seconds)
-- `run_version`: Version information of the code/environment
+- `run_metadata`: JSON structure containing metadata about the run (e.g. code version, environment info, system state)
 
 ## Job Scheduling Process
 
