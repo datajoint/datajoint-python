@@ -36,7 +36,7 @@ Presently, the primary developer of DataJoint open-source software is the compan
 
 - [Interactive Tutorials](https://github.com/datajoint/datajoint-tutorials){:target="_blank"} on GitHub Codespaces
 
-- [DataJoint Elements](https://docs.datajoint.com/elements/) - Catalog of example pipelines for neuroscience experiments
+- [DataJoint Elements](https://docs.datajoint.com/datajoint-docs/elements/) - Catalog of example pipelines for neuroscience experiments
 
 - Contribute
   - [Development Environment](./develop)
