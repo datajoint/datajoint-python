@@ -131,7 +131,7 @@ DataJoint (<https://datajoint.com>).
      pip install datajoint
      ```
 
-- [Documentation & Tutorials](https://docs.datajoint.com/core/datajoint-python/)
+- [Documentation & Tutorials](https://docs.datajoint.com/datajoint-python/)
 
 - [Interactive Tutorials](https://github.com/datajoint/datajoint-tutorials) on GitHub Codespaces
 
@@ -140,4 +140,4 @@ DataJoint (<https://datajoint.com>).
 - Contribute
   - [Contribution Guidelines](https://docs.datajoint.com/about/contribute/)
 
-  - [Developer Guide](https://docs.datajoint.com/core/datajoint-python/latest/develop/)
+  - [Developer Guide](https://docs.datajoint.com/datajoint-python/latest/develop/) 
