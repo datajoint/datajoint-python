@@ -138,6 +138,6 @@ DataJoint (<https://datajoint.com>).
 - [DataJoint Elements](https://docs.datajoint.com/datajoint-docs/elements/) - Catalog of example pipelines for neuroscience experiments
 
 - Contribute
-  - [Contribution Guidelines](https://docs.datajoint.com/about/contribute/)
+  - [Contribution Guidelines](https://docs.datajoint.com/datajoint-docs/about/contribute/)
 
   - [Developer Guide](https://docs.datajoint.com/datajoint-python/latest/develop/) 

@@ -41,4 +41,4 @@ Presently, the primary developer of DataJoint open-source software is the compan
 - Contribute
   - [Development Environment](./develop)
 
-  - [Guidelines](https://docs.datajoint.com/about/contribute/)
+  - [Guidelines](https://docs.datajoint.com/datajoint-docs/about/contribute/)
