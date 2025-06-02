@@ -1,6 +1,6 @@
 # Contribute to DataJoint Documentation
 
-This is the home for DataJoint software documentation as hosted at https://docs.datajoint.com/datajoint-python/latest/.
+This is the home for DataJoint software documentation as hosted at https://docs.datajoint.com/core/datajoint-python/latest/.
 
 ## VSCode Linter Extensions and Settings
 
