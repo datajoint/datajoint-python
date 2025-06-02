@@ -392,4 +392,4 @@ dj.U().aggr(Session, n="max(session)") # (3)
 
 `dj.U()`, as shown in the last example above, is often useful for integer IDs.
 For an example of this process, see the source code for
-[Element Array Electrophysiology's `insert_new_params`](https://docs.datajoint.com/datajoint-docs/elements/element-array-ephys/latest/api/element_array_ephys/ephys_acute/#element_array_ephys.ephys_acute.ClusteringParamSet.insert_new_params).
+[Element Array Electrophysiology's `insert_new_params`](https://docs.datajoint.com/elements/element-array-ephys/latest/api/element_array_ephys/ephys_acute/#element_array_ephys.ephys_acute.ClusteringParamSet.insert_new_params).
