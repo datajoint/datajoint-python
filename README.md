@@ -131,13 +131,13 @@ DataJoint (<https://datajoint.com>).
      pip install datajoint
      ```
 
-- [Documentation & Tutorials](https://docs.datajoint.com/core/datajoint-python/)
+- [Documentation & Tutorials](https://docs.datajoint.com/datajoint-python/)
 
 - [Interactive Tutorials](https://github.com/datajoint/datajoint-tutorials) on GitHub Codespaces
 
-- [DataJoint Elements](https://docs.datajoint.com/elements/) - Catalog of example pipelines for neuroscience experiments
+- [DataJoint Elements](https://docs.datajoint.com/datajoint-docs/elements/) - Catalog of example pipelines for neuroscience experiments
 
 - Contribute
-  - [Contribution Guidelines](https://docs.datajoint.com/about/contribute/)
+  - [Contribution Guidelines](https://docs.datajoint.com/datajoint-docs/about/contribute/)
 
-  - [Developer Guide](https://docs.datajoint.com/core/datajoint-python/latest/develop/)
+  - [Developer Guide](https://docs.datajoint.com/datajoint-python/latest/develop/) 
