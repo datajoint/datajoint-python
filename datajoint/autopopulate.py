@@ -95,13 +95,75 @@ class AutoPopulate:
 
     def make(self, key):
         """
-        Derived classes must implement method `make` that fetches data from tables
-        above them in the dependency hierarchy, restricting by the given key,
-        computes secondary attributes, and inserts the new tuples into self.
+        This method must be implemented by derived classes to perform automated computation.
+        The method must implement the following three steps:
+
+        1. Fetch data from tables above in the dependency hierarchy, restricted by the given key.
+        2. Compute secondary attributes based on the fetched data.
+        3. Insert the new tuples into the current table.
+
+        The method can be implemented either as:
+        (a) Regular method: All three steps are performed in a single database transaction.
+            The method must return None.
+        (b) Generator method: 
+            The make method is split into three functions: 
+            - `make_fetch`: Fetches data from the parent tables.
+            - `make_compute`: Computes secondary attributes based on the fetched data.
+            - `make_insert`: Inserts the computed data into the current table.
+
+            Then populate logic is executes as follows:
+
+            <pseudocode>
+            fetched_data1 = self.make_fetch(key)
+            computed_result = self.make_compute(key, *fetched_data1)
+            begin transaction:
+                fetched_data2 = self.make_fetch(key)
+                if fetched_data1 != fetched_data2:
+                    cancel transaction
+                else:
+                    self.make_insert(key, *computed_result)
+                    commit_transaction
+            <pseudocode>
+    
+        Importantly, the output of make_fetch is a tuple that serves as the input into `make_compute`.
+        The output of `make_compute` is a tuple that serves as the input into `make_insert`.
+
+        The functionality must be strictly divided between these three methods:
+        - All database queries must be completed in `make_fetch`.
+        - All computation must be completed in `make_compute`.
+        - All database inserts must be completed in `make_insert`.
+
+        DataJoint may programmatically enforce this separation in the future.
+
+        :param key: The primary key value used to restrict the data fetching.
+        :raises NotImplementedError: If the derived class does not implement the required methods.
         """
-        raise NotImplementedError(
-            "Subclasses of AutoPopulate must implement the method `make`"
-        )
+
+        if not (
+            hasattr(self, "make_fetch")
+            and hasattr(self, "make_insert")
+            and hasattr(self, "make_compute")
+        ):
+            # user must implement `make`
+            raise NotImplementedError(
+                "Subclasses of AutoPopulate must implement the method `make` or (`make_fetch` + `make_compute` + `make_insert`)"
+            )
+
+        # User has implemented `_fetch`, `_compute`, and `_insert` methods instead
+
+        # Step 1: Fetch data from parent tables
+        fetched_data = self.make_fetch(key)  # fetched_data is a tuple
+        computed_result = yield fetched_data  # passed as input into make_compute
+
+        # Step 2: If computed result is not passed in, compute the result
+        if computed_result is None:
+            # this is only executed in the first invocation
+            computed_result = self.make_compute(key, *fetched_data)
+            yield computed_result  # this is passed to the second invocation of make
+
+        # Step 3: Insert the computed result into the current table.
+        self.make_insert(key, *computed_result)
+        yield
 
     @property
     def target(self):
@@ -352,6 +414,8 @@ class AutoPopulate:
                     ]
                 ):  # rollback due to referential integrity fail
                     self.connection.cancel_transaction()
+                    logger.warning(
+                        f"Referential integrity failed for {key} -> {self.target.full_table_name}")
                     return False
                 gen.send(computed_result)  # insert
 
