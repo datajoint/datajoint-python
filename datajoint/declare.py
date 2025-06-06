@@ -302,7 +302,7 @@ def declare(full_table_name, definition, context):
                 name=table_name, max_length=MAX_TABLE_NAME_LENGTH
             )
         )
-
+    
     (
         table_comment,
         primary_key,
