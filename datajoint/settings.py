@@ -51,6 +51,8 @@ default = dict(
         "add_hidden_timestamp": False,
         # file size limit for when to disable checksums
         "filepath_checksum_size_limit": None,
+        # minimum time in seconds between job scheduling operations
+        "min_scheduling_interval": 5,
     }
 )
 

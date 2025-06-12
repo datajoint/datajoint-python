@@ -1,5 +1,4 @@
 """This module defines class dj.AutoPopulate"""
-
 import contextlib
 import datetime
 import inspect
@@ -15,6 +14,8 @@ from tqdm import tqdm
 from .errors import DataJointError, LostConnectionError
 from .expression import AndList, QueryExpression
 from .hash import key_hash
+from .settings import config
+from .utils import user_choice, to_camel_case
 
 # noinspection PyExceptionInherit,PyCallingNonCallable
 
@@ -24,14 +25,14 @@ logger = logging.getLogger(__name__.split(".")[0])
 # --- helper functions for multiprocessing --
 
 
-def _initialize_populate(table, jobs, populate_kwargs):
+def _initialize_populate(table, reserve_jobs, populate_kwargs):
     """
     Initialize the process for multiprocessing.
     Saves the unpickled copy of the table to the current process and reconnects.
     """
     process = mp.current_process()
     process.table = table
-    process.jobs = jobs
+    process.reserve_jobs = reserve_jobs
     process.populate_kwargs = populate_kwargs
     table.connection.connect()  # reconnect
 
@@ -43,7 +44,9 @@ def _call_populate1(key):
     :return: key, error if error, otherwise None
     """
     process = mp.current_process()
-    return process.table._populate1(key, process.jobs, **process.populate_kwargs)
+    return process.table._populate1(
+        key, process.reserve_jobs, **process.populate_kwargs
+    )
 
 
 class AutoPopulate:
@@ -91,6 +94,7 @@ class AutoPopulate:
             self._key_source = _rename_attributes(*parents[0])
             for q in parents[1:]:
                 self._key_source *= _rename_attributes(*q)
+
         return self._key_source
 
     def make(self, key):
@@ -228,6 +232,7 @@ class AutoPopulate:
         display_progress=False,
         processes=1,
         make_kwargs=None,
+        schedule_jobs=True,
     ):
         """
         ``table.populate()`` calls ``table.make(key)`` for every primary key in
@@ -249,6 +254,8 @@ class AutoPopulate:
             to be passed down to each ``make()`` call. Computation arguments should be
             specified within the pipeline e.g. using a `dj.Lookup` table.
         :type make_kwargs: dict, optional
+        :param schedule_jobs: if True, run schedule_jobs before doing populate (default: True),
+            only applicable if reserved_jobs is True
         :return: a dict with two keys
             "success_count": the count of successful ``make()`` calls in this ``populate()`` call
             "error_list": the error list that is filled if `suppress_errors` is True
@@ -261,32 +268,40 @@ class AutoPopulate:
             raise DataJointError(
                 "The order argument must be one of %s" % str(valid_order)
             )
-        jobs = (
-            self.connection.schemas[self.target.database].jobs if reserve_jobs else None
-        )
+        
+        if schedule_jobs:
+            self.schedule_jobs(*restrictions, purge_invalid_jobs=False)
 
         # define and set up signal handler for SIGTERM:
         if reserve_jobs:
-
             def handler(signum, frame):
                 logger.info("Populate terminated by SIGTERM")
                 raise SystemExit("SIGTERM received")
-
             old_handler = signal.signal(signal.SIGTERM, handler)
 
+        # retrieve `keys` if not provided
         if keys is None:
-            keys = (self._jobs_to_do(restrictions) - self.target).fetch(
-                "KEY", limit=limit
-            )
-
-        # exclude "error", "ignore" or "reserved" jobs
-        if reserve_jobs:
-            exclude_key_hashes = (
-                jobs
-                & {"table_name": self.target.table_name}
-                & 'status in ("error", "ignore", "reserved")'
-            ).fetch("key_hash")
-            keys = [key for key in keys if key_hash(key) not in exclude_key_hashes]
+            if reserve_jobs:
+                keys = (
+                    self.jobs
+                    & {'status': 'scheduled'}
+                ).fetch("key", order_by="timestamp", limit=limit)
+                if restrictions:
+                    # hitting the `key_source` again to apply the restrictions
+                    # this is expensive/suboptimal
+                    keys = (self._jobs_to_do(restrictions) & keys).fetch("KEY")
+            else:
+                keys = (self._jobs_to_do(restrictions) - self.target).fetch(
+                    "KEY", limit=limit
+                )
+        else:
+            # exclude "error", "ignore" or "reserved" jobs
+            if reserve_jobs:
+                exclude_key_hashes = (
+                    self.jobs
+                    & 'status in ("error", "ignore", "reserved")'
+                ).fetch("key_hash")
+                keys = [key for key in keys if key_hash(key) not in exclude_key_hashes]
 
         if order == "reverse":
             keys.reverse()
@@ -316,7 +331,7 @@ class AutoPopulate:
                     if display_progress
                     else keys
                 ):
-                    status = self._populate1(key, jobs, **populate_kwargs)
+                    status = self._populate1(key, reserve_jobs, **populate_kwargs)
                     if status is True:
                         success_list.append(1)
                     elif isinstance(status, tuple):
@@ -358,11 +373,16 @@ class AutoPopulate:
         }
 
     def _populate1(
-        self, key, jobs, suppress_errors, return_exception_objects, make_kwargs=None
+        self,
+        key,
+        reserve_jobs,
+        suppress_errors,
+        return_exception_objects,
+        make_kwargs=None,
     ):
         """
         populates table for one source key, calling self.make inside a transaction.
-        :param jobs: the jobs table or None if not reserve_jobs
+        :param reserve_jobs: if True, reserve jobs to populate in asynchronous fashion
         :param key: dict specifying job to populate
         :param suppress_errors: bool if errors should be suppressed and returned
         :param return_exception_objects: if True, errors must be returned as objects
@@ -372,7 +392,7 @@ class AutoPopulate:
         # use the legacy `_make_tuples` callback.
         make = self._make_tuples if hasattr(self, "_make_tuples") else self.make
 
-        if jobs is not None and not jobs.reserve(
+        if reserve_jobs and not self._Jobs.reserve(
             self.target.table_name, self._job_key(key)
         ):
             return False
@@ -385,12 +405,12 @@ class AutoPopulate:
         if key in self.target:  # already populated
             if not is_generator:
                 self.connection.cancel_transaction()
-            if jobs is not None:
-                jobs.complete(self.target.table_name, self._job_key(key))
+            self._Jobs.complete(self.target.table_name, self._job_key(key))
             return False
 
         logger.debug(f"Making {key} -> {self.target.full_table_name}")
         self.__class__._allow_insert = True
+        make_start = datetime.datetime.utcnow()
 
         try:
             if not is_generator:
@@ -431,13 +451,16 @@ class AutoPopulate:
             logger.debug(
                 f"Error making {key} -> {self.target.full_table_name} - {error_message}"
             )
-            if jobs is not None:
+            if reserve_jobs:
                 # show error name and error message (if any)
-                jobs.error(
+                self._Jobs.error(
                     self.target.table_name,
                     self._job_key(key),
                     error_message=error_message,
                     error_stack=traceback.format_exc(),
+                    run_duration=(
+                        datetime.datetime.utcnow() - make_start
+                    ).total_seconds(),
                 )
             if not suppress_errors or isinstance(error, SystemExit):
                 raise
@@ -446,9 +469,14 @@ class AutoPopulate:
                 return key, error if return_exception_objects else error_message
         else:
             self.connection.commit_transaction()
+            self._Jobs.complete(
+                self.target.table_name,
+                self._job_key(key),
+                run_duration=(
+                    datetime.datetime.utcnow() - make_start
+                ).total_seconds(),
+            )
             logger.debug(f"Success making {key} -> {self.target.full_table_name}")
-            if jobs is not None:
-                jobs.complete(self.target.table_name, self._job_key(key))
             return True
         finally:
             self.__class__._allow_insert = False
@@ -475,3 +503,104 @@ class AutoPopulate:
                 ),
             )
         return remaining, total
+
+    @property
+    def _Jobs(self):
+        return self.connection.schemas[self.target.database].jobs
+
+    @property
+    def jobs(self):
+        return self._Jobs & {"table_name": self.target.table_name}
+
+    def schedule_jobs(self, *restrictions, purge_invalid_jobs=True, min_scheduling_interval=None):
+        """
+        Schedule new jobs for this autopopulate table by finding keys that need computation.
+        
+        This method implements an optimization strategy to avoid excessive scheduling:
+        1. First checks if jobs were scheduled recently (within min_scheduling_interval)
+        2. If recent scheduling event exists, skips scheduling to prevent database load
+        3. Otherwise, finds keys that need computation and schedules them
+        
+        The method also optionally purges invalid jobs (jobs that no longer exist in key_source)
+        to maintain database cleanliness.
+        
+        Args:
+            restrictions: a list of restrictions each restrict (table.key_source - target.proj())
+            purge_invalid_jobs: if True, remove invalid entry from the jobs table (potentially expensive operation)
+            min_scheduling_interval: minimum time in seconds that must have passed since last job scheduling.
+                If None, uses the value from dj.config["min_scheduling_interval"] (default: None)
+            
+        Returns:
+            None
+        """
+        __scheduled_event = {
+            "table_name": self.target.table_name,
+            "__type__": "jobs scheduling event"
+            }
+        
+        if min_scheduling_interval is None:
+            min_scheduling_interval = config["min_scheduling_interval"]
+
+        if min_scheduling_interval > 0:
+            recent_scheduling_event = (
+                self._Jobs.proj(last_scheduled="TIMESTAMPDIFF(SECOND, timestamp, UTC_TIMESTAMP())")
+                & {"table_name": f"__{self.target.table_name}__"}
+                & {"key_hash": key_hash(__scheduled_event)}
+                & f"last_scheduled <= {min_scheduling_interval}"
+            )
+            if recent_scheduling_event:
+                logger.info(f"Skip jobs scheduling for `{to_camel_case(self.target.table_name)}` (last scheduled {recent_scheduling_event.fetch1('last_scheduled')} seconds ago)")
+                return
+
+        try:
+            with self.connection.transaction:
+                schedule_count = 0
+                for key in (self._jobs_to_do(restrictions) - self.target).fetch("KEY"):
+                    schedule_count += self._Jobs.schedule(self.target.table_name, key)
+        except Exception as e:
+            logger.exception(str(e))
+        else:
+            self._Jobs.ignore(f"__{self.target.table_name}__", __scheduled_event,
+                               message=f"Jobs scheduling event: {__scheduled_event['table_name']}")
+            logger.info(
+                f"{schedule_count} new jobs scheduled for `{to_camel_case(self.target.table_name)}`"
+            )
+        finally:
+            if purge_invalid_jobs:
+                self.purge_invalid_jobs()
+
+    def purge_invalid_jobs(self):
+        """
+        Check and remove any invalid/outdated jobs in the JobTable for this autopopulate table.
+        
+        This method handles two types of invalid jobs:
+        1. Jobs that are no longer in the `key_source` (e.g. entries in upstream table(s) got deleted)
+        2. Jobs with "success" status that are no longer in the target table (e.g. entries in target table got deleted)
+        
+        The method is potentially time-consuming as it needs to:
+        - Compare all jobs against the current key_source
+        - For success jobs, verify their existence in the target table
+        - Delete any jobs that fail these checks
+        
+        This cleanup should not need to run very often, but helps maintain database consistency.
+        """
+        invalid_removed = 0
+
+        invalid_success = len(self.jobs & "status = 'success'") - len(self.target)
+        if invalid_success > 0:
+            for key, job_key in zip(*(self.jobs & "status = 'success'").fetch("KEY", "key")):
+                if not (self.target & job_key):
+                    (self.jobs & key).delete()
+                    invalid_removed += 1
+
+        keys2do = self._jobs_to_do({}).fetch("KEY")
+        invalid_incomplete = len(self.jobs & "status != 'success'") - len(keys2do)
+        if invalid_incomplete > 0:
+            for key, job_key in zip(*(self.jobs & "status != 'success'").fetch("KEY", "key")):
+                if job_key not in keys2do:
+                    (self.jobs & key).delete()
+                    invalid_removed += 1
+
+        logger.info(
+            f"{invalid_removed} invalid jobs removed for `{to_camel_case(self.target.table_name)}`"
+        )
