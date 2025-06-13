@@ -412,11 +412,10 @@ class AutoPopulate:
                     != deepdiff.DeepHash(fetched_data, ignore_iterable_order=False)[
                         fetched_data
                     ]
-                ):  # rollback due to referential integrity fail
-                    self.connection.cancel_transaction()
-                    logger.warning(
-                        f"Referential integrity failed for {key} -> {self.target.full_table_name}")
-                    return False
+                ):  # raise error if fetched data has changed
+                    raise DataJointError(
+                        "Referential integrity failed - the `make_fetch` data has changed."
+                    )
                 gen.send(computed_result)  # insert
 
         except (KeyboardInterrupt, SystemExit, Exception) as error:
