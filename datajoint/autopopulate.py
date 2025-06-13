@@ -414,7 +414,7 @@ class AutoPopulate:
                     ]
                 ):  # raise error if fetched data has changed
                     raise DataJointError(
-                        "Referential integrity failed - the `make_fetch` data has changed."
+                        "Referential integrity failed! The `make_fetch` data has changed"
                     )
                 gen.send(computed_result)  # insert
 
