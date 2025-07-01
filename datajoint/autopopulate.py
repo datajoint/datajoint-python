@@ -7,6 +7,8 @@ import multiprocessing as mp
 import random
 import signal
 import traceback
+import os
+import platform
 
 import deepdiff
 from tqdm import tqdm
@@ -270,7 +272,7 @@ class AutoPopulate:
             )
         
         if schedule_jobs:
-            self.schedule_jobs(*restrictions, purge_invalid_jobs=False)
+            self.schedule_jobs(*restrictions)
 
         # define and set up signal handler for SIGTERM:
         if reserve_jobs:
@@ -344,7 +346,7 @@ class AutoPopulate:
                 del self.connection._conn.ctx  # SSLContext is not pickleable
                 with (
                     mp.Pool(
-                        processes, _initialize_populate, (self, jobs, populate_kwargs)
+                        processes, _initialize_populate, (self, True, populate_kwargs)
                     ) as pool,
                     (
                         tqdm(desc="Processes: ", total=nkeys)
@@ -375,10 +377,10 @@ class AutoPopulate:
     def _populate1(
         self,
         key,
-        reserve_jobs,
-        suppress_errors,
-        return_exception_objects,
-        make_kwargs=None,
+        reserve_jobs: bool,
+        suppress_errors: bool,
+        return_exception_objects: bool,
+        make_kwargs: dict = None,
     ):
         """
         populates table for one source key, calling self.make inside a transaction.
@@ -475,6 +477,7 @@ class AutoPopulate:
                     datetime.datetime.utcnow() - make_start
                 ).total_seconds(),
             )
+
             logger.debug(f"Success making {key} -> {self.target.full_table_name}")
             return True
         finally:
@@ -511,7 +514,7 @@ class AutoPopulate:
     def jobs(self):
         return self._Jobs & {"table_name": self.target.table_name}
 
-    def schedule_jobs(self, *restrictions, purge_invalid_jobs=True, min_scheduling_interval=None):
+    def schedule_jobs(self, *restrictions, purge_jobs=False, min_scheduling_interval=None):
         """
         Schedule new jobs for this autopopulate table by finding keys that need computation.
         
@@ -525,7 +528,7 @@ class AutoPopulate:
         
         Args:
             restrictions: a list of restrictions each restrict (table.key_source - target.proj())
-            purge_invalid_jobs: if True, remove invalid entry from the jobs table (potentially expensive operation)
+            purge_jobs: if True, remove orphaned jobs from the jobs table (potentially expensive operation)
             min_scheduling_interval: minimum time in seconds that must have passed since last job scheduling.
                 If None, uses the value from dj.config["min_scheduling_interval"] (default: None)
             
@@ -565,14 +568,14 @@ class AutoPopulate:
                 f"{schedule_count} new jobs scheduled for `{to_camel_case(self.target.table_name)}`"
             )
         finally:
-            if purge_invalid_jobs:
-                self.purge_invalid_jobs()
+            if purge_jobs:
+                self.purge_jobs()
 
-    def purge_invalid_jobs(self):
+    def purge_jobs(self):
         """
-        Check and remove any invalid/outdated jobs in the JobTable for this autopopulate table.
+        Check and remove any orphaned/outdated jobs in the JobTable for this autopopulate table.
         
-        This method handles two types of invalid jobs:
+        This method handles two types of orphaned jobs:
         1. Jobs that are no longer in the `key_source` (e.g. entries in upstream table(s) got deleted)
         2. Jobs with "success" status that are no longer in the target table (e.g. entries in target table got deleted)
         
