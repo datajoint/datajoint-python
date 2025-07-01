@@ -72,21 +72,22 @@ The `populate()` method orchestrates the job execution process:
    - For reserved jobs:
      - Updates job status to `reserved` during processing
      - Records execution metrics (duration, version)
-     - Updates status to `success` or `error` on completion
+     - On successful completion: remove job from the jobs table
+     - On error: update job status to `error`
    - Records errors and execution metrics
 
 4. **Cleanup**:
-   - Optionally purges invalid jobs
+   - Optionally purges orphaned/outdated jobs
 
 ## Job Cleanup Process
 
-The `purge_invalid_jobs` method maintains database consistency by removing invalid jobs:
+The `purge_jobs` method maintains database consistency by removing orphaned jobs:
 
-1. **Invalid Success Jobs**:
+1. **Orphaned Success Jobs**:
    - Identifies jobs marked as `success` but not present in the target table
    - These typically occur when target table entries are deleted
 
-2. **Invalid Incomplete Jobs**:
+2. **Orphaned Incomplete Jobs**:
    - Identifies jobs in `scheduled`/`error`/`ignore` state that are no longer in the `key_source`
    - These typically occur when upstream table entries are deleted
 
@@ -106,8 +107,8 @@ The "freshness" and consistency of the jobs table depends on regular maintenance
    - Example: Run every few minutes in a cron job for active pipelines
    - Event-driven approach: `inserts` in upstream tables auto trigger this step
 
-2. **Cleanup** (`purge_invalid_jobs`):
-   - Removes invalid or outdated jobs
+2. **Cleanup** (`purge_jobs`):
+   - Removes orphaned or outdated jobs
    - Should be run periodically to maintain consistency
    - More resource-intensive than scheduling
    - Example: Run daily during low-activity periods
@@ -115,7 +116,7 @@ The "freshness" and consistency of the jobs table depends on regular maintenance
 
 The balance between these operations affects:
 - How quickly new jobs are discovered and scheduled
-- How long invalid jobs remain in the table
+- How long orphaned jobs remain in the table
 - Database size and query performance
 - Overall system responsiveness
 
@@ -128,5 +129,5 @@ dj.config["min_scheduling_interval"] = 300  # 5 minutes
 # (implement as a cron job or scheduled task)
 def daily_cleanup():
     for table in your_pipeline_tables:
-        table.purge_invalid_jobs()
+        table.purge_jobs()
 ``` 
