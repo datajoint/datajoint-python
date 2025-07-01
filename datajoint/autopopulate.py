@@ -528,7 +528,7 @@ class AutoPopulate:
         return self._Jobs & {"table_name": self.target.table_name}
 
     def schedule_jobs(
-        self, *restrictions, purge_jobs=False, min_scheduling_interval=None
+        self, *restrictions, min_scheduling_interval=None
     ):
         """
         Schedule new jobs for this autopopulate table by finding keys that need computation.
@@ -538,12 +538,8 @@ class AutoPopulate:
         2. If recent scheduling event exists, skips scheduling to prevent database load
         3. Otherwise, finds keys that need computation and schedules them
 
-        The method also optionally purges invalid jobs (jobs that no longer exist in key_source)
-        to maintain database cleanliness.
-
         Args:
             restrictions: a list of restrictions each restrict (table.key_source - target.proj())
-            purge_jobs: if True, remove orphaned jobs from the jobs table (potentially expensive operation)
             min_scheduling_interval: minimum time in seconds that must have passed since last job scheduling.
                 If None, uses the value from dj.config["min_scheduling_interval"] (default: None)
 
@@ -589,11 +585,8 @@ class AutoPopulate:
             logger.info(
                 f"{schedule_count} new jobs scheduled for `{to_camel_case(self.target.table_name)}`"
             )
-        finally:
-            if purge_jobs:
-                self.purge_jobs()
 
-    def purge_jobs(self):
+    def cleanup_jobs(self):
         """
         Check and remove any orphaned/outdated jobs in the JobTable for this autopopulate table.
 

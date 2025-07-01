@@ -77,11 +77,11 @@ The `populate()` method orchestrates the job execution process:
    - Records errors and execution metrics
 
 4. **Cleanup**:
-   - Optionally purges orphaned/outdated jobs
+   - Optionally clean up orphaned/outdated jobs
 
 ## Job Cleanup Process
 
-The `purge_jobs` method maintains database consistency by removing orphaned jobs:
+The `cleanup_jobs` method maintains database consistency by removing orphaned jobs:
 
 1. **Orphaned Success Jobs**:
    - Identifies jobs marked as `success` but not present in the target table
@@ -107,7 +107,7 @@ The "freshness" and consistency of the jobs table depends on regular maintenance
    - Example: Run every few minutes in a cron job for active pipelines
    - Event-driven approach: `inserts` in upstream tables auto trigger this step
 
-2. **Cleanup** (`purge_jobs`):
+2. **Cleanup** (`cleanup_jobs`):
    - Removes orphaned or outdated jobs
    - Should be run periodically to maintain consistency
    - More resource-intensive than scheduling
@@ -129,5 +129,5 @@ dj.config["min_scheduling_interval"] = 300  # 5 minutes
 # (implement as a cron job or scheduled task)
 def daily_cleanup():
     for table in your_pipeline_tables:
-        table.purge_jobs()
+        table.cleanup_jobs()
 ``` 
