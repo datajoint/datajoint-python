@@ -196,7 +196,15 @@ class JobTable(Table):
         job_key = dict(table_name=table_name, key_hash=key_hash(key))
         (self & job_key).delete()
 
-    def error(self, table_name, key, error_message, error_stack=None, run_duration=None, run_metadata=None):
+    def error(
+        self,
+        table_name,
+        key,
+        error_message,
+        error_stack=None,
+        run_duration=None,
+        run_metadata=None,
+    ):
         """
         Log an error message.  The job reservation is replaced with an error entry.
         if an error occurs, leave an entry describing the problem

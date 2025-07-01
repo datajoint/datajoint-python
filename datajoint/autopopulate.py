@@ -1,4 +1,5 @@
 """This module defines class dj.AutoPopulate"""
+
 import contextlib
 import datetime
 import inspect
@@ -270,24 +271,25 @@ class AutoPopulate:
             raise DataJointError(
                 "The order argument must be one of %s" % str(valid_order)
             )
-        
+
         if schedule_jobs:
             self.schedule_jobs(*restrictions)
 
         # define and set up signal handler for SIGTERM:
         if reserve_jobs:
+
             def handler(signum, frame):
                 logger.info("Populate terminated by SIGTERM")
                 raise SystemExit("SIGTERM received")
+
             old_handler = signal.signal(signal.SIGTERM, handler)
 
         # retrieve `keys` if not provided
         if keys is None:
             if reserve_jobs:
-                keys = (
-                    self.jobs
-                    & {'status': 'scheduled'}
-                ).fetch("key", order_by="timestamp", limit=limit)
+                keys = (self.jobs & {"status": "scheduled"}).fetch(
+                    "key", order_by="timestamp", limit=limit
+                )
                 if restrictions:
                     # hitting the `key_source` again to apply the restrictions
                     # this is expensive/suboptimal
@@ -300,8 +302,7 @@ class AutoPopulate:
             # exclude "error", "ignore" or "reserved" jobs
             if reserve_jobs:
                 exclude_key_hashes = (
-                    self.jobs
-                    & 'status in ("error", "ignore", "reserved")'
+                    self.jobs & 'status in ("error", "ignore", "reserved")'
                 ).fetch("key_hash")
                 keys = [key for key in keys if key_hash(key) not in exclude_key_hashes]
 
@@ -473,15 +474,15 @@ class AutoPopulate:
             self._Jobs.complete(
                 self.target.table_name,
                 self._job_key(key),
-                run_duration=(
-                    datetime.datetime.utcnow() - make_start
-                ).total_seconds(),
+                run_duration=(datetime.datetime.utcnow() - make_start).total_seconds(),
             )
             # Update the _job column with the job metadata for newly populated entries
             if "_job" in self.target.heading._attributes:
                 job_metadata = {
                     "execution_time": make_start,
-                    "execution_duration": (datetime.datetime.utcnow() - make_start).total_seconds(),
+                    "execution_duration": (
+                        datetime.datetime.utcnow() - make_start
+                    ).total_seconds(),
                     "host": platform.node(),
                     "pid": os.getpid(),
                     "connection_id": self.connection.connection_id,
@@ -526,44 +527,50 @@ class AutoPopulate:
     def jobs(self):
         return self._Jobs & {"table_name": self.target.table_name}
 
-    def schedule_jobs(self, *restrictions, purge_jobs=False, min_scheduling_interval=None):
+    def schedule_jobs(
+        self, *restrictions, purge_jobs=False, min_scheduling_interval=None
+    ):
         """
         Schedule new jobs for this autopopulate table by finding keys that need computation.
-        
+
         This method implements an optimization strategy to avoid excessive scheduling:
         1. First checks if jobs were scheduled recently (within min_scheduling_interval)
         2. If recent scheduling event exists, skips scheduling to prevent database load
         3. Otherwise, finds keys that need computation and schedules them
-        
+
         The method also optionally purges invalid jobs (jobs that no longer exist in key_source)
         to maintain database cleanliness.
-        
+
         Args:
             restrictions: a list of restrictions each restrict (table.key_source - target.proj())
             purge_jobs: if True, remove orphaned jobs from the jobs table (potentially expensive operation)
             min_scheduling_interval: minimum time in seconds that must have passed since last job scheduling.
                 If None, uses the value from dj.config["min_scheduling_interval"] (default: None)
-            
+
         Returns:
             None
         """
         __scheduled_event = {
             "table_name": self.target.table_name,
-            "__type__": "jobs scheduling event"
-            }
-        
+            "__type__": "jobs scheduling event",
+        }
+
         if min_scheduling_interval is None:
             min_scheduling_interval = config["min_scheduling_interval"]
 
         if min_scheduling_interval > 0:
             recent_scheduling_event = (
-                self._Jobs.proj(last_scheduled="TIMESTAMPDIFF(SECOND, timestamp, UTC_TIMESTAMP())")
+                self._Jobs.proj(
+                    last_scheduled="TIMESTAMPDIFF(SECOND, timestamp, UTC_TIMESTAMP())"
+                )
                 & {"table_name": f"__{self.target.table_name}__"}
                 & {"key_hash": key_hash(__scheduled_event)}
                 & f"last_scheduled <= {min_scheduling_interval}"
             )
             if recent_scheduling_event:
-                logger.info(f"Skip jobs scheduling for `{to_camel_case(self.target.table_name)}` (last scheduled {recent_scheduling_event.fetch1('last_scheduled')} seconds ago)")
+                logger.info(
+                    f"Skip jobs scheduling for `{to_camel_case(self.target.table_name)}` (last scheduled {recent_scheduling_event.fetch1('last_scheduled')} seconds ago)"
+                )
                 return
 
         try:
@@ -574,8 +581,11 @@ class AutoPopulate:
         except Exception as e:
             logger.exception(str(e))
         else:
-            self._Jobs.ignore(f"__{self.target.table_name}__", __scheduled_event,
-                               message=f"Jobs scheduling event: {__scheduled_event['table_name']}")
+            self._Jobs.ignore(
+                f"__{self.target.table_name}__",
+                __scheduled_event,
+                message=f"Jobs scheduling event: {__scheduled_event['table_name']}",
+            )
             logger.info(
                 f"{schedule_count} new jobs scheduled for `{to_camel_case(self.target.table_name)}`"
             )
@@ -586,21 +596,23 @@ class AutoPopulate:
     def purge_jobs(self):
         """
         Check and remove any orphaned/outdated jobs in the JobTable for this autopopulate table.
-        
+
         This method handles two types of orphaned jobs:
         1. Jobs that are no longer in the `key_source` (e.g. entries in upstream table(s) got deleted)
         2. Jobs with "success" status that are no longer in the target table (e.g. entries in target table got deleted)
-        
+
         The method is potentially time-consuming as it needs to:
         - Compare all jobs against the current key_source
         - For success jobs, verify their existence in the target table
         - Delete any jobs that fail these checks
-        
+
         This cleanup should not need to run very often, but helps maintain database consistency.
         """
         invalid_removed = 0
 
-        incomplete_query = self.jobs & {"table_name": self.target.table_name} & "status != 'success'"
+        incomplete_query = (
+            self.jobs & {"table_name": self.target.table_name} & "status != 'success'"
+        )
         if incomplete_query:
             keys2do = self._jobs_to_do({}).fetch("KEY")
             invalid_incomplete = len(incomplete_query) - len(keys2do)
