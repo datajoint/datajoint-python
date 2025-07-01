@@ -600,15 +600,6 @@ class AutoPopulate:
         """
         invalid_removed = 0
 
-        success_query = self.jobs & {"table_name": self.target.table_name} & "status = 'success'"
-        if success_query:
-            invalid_success = len(success_query) - len(self.target)
-            if invalid_success > 0:
-                for key, job_key in zip(*success_query.fetch("KEY", "key")):
-                    if not (self.target & job_key):
-                        (self.jobs & key).delete()
-                        invalid_removed += 1
-
         incomplete_query = self.jobs & {"table_name": self.target.table_name} & "status != 'success'"
         if incomplete_query:
             keys2do = self._jobs_to_do({}).fetch("KEY")

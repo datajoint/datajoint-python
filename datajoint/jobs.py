@@ -185,40 +185,16 @@ class JobTable(Table):
 
         return True
 
-    def complete(self, table_name, key, run_duration=None, run_metadata=None):
+    def complete(self, table_name, key):
         """
         Log a completed job.  When a job is completed, its reservation entry is deleted.
 
         Args:
             table_name: `database`.`table_name`
             key: the dict of the job's primary key
-            run_duration: duration in second of the job run
-            run_metadata: dict containing metadata about the run (e.g. code version, environment info)
         """
         job_key = dict(table_name=table_name, key_hash=key_hash(key))
-        if self & job_key:
-            current_status = (self & job_key).fetch1("status")
-            if current_status == "success":
-                return
-
-        with config(enable_python_native_blobs=True):
-            self.insert1(
-                dict(
-                    table_name=table_name,
-                    key_hash=key_hash(key),
-                    status="success",
-                    host=platform.node(),
-                    pid=os.getpid(),
-                    connection_id=self.connection.connection_id,
-                    user=self._user,
-                    key=_jsonify(key),
-                    run_duration=run_duration,
-                    run_metadata=_jsonify(run_metadata) if run_metadata else None,
-                    timestamp=datetime.datetime.utcnow(),
-                ),
-                replace=True,
-                ignore_extra_fields=True,
-            )
+        (self & job_key).delete()
 
     def error(self, table_name, key, error_message, error_stack=None, run_duration=None, run_metadata=None):
         """
