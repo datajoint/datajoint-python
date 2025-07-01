@@ -327,6 +327,13 @@ def declare(full_table_name, definition, context):
             for attr in metadata_attr_sql
         )
 
+    # Add hidden _job column for imported and computed tables
+    if table_name.startswith(("_", "__")):
+        # This is an imported or computed table (single or double underscore prefix)
+        attribute_sql.append(
+            "`_job` json NULL COMMENT 'Hidden column for job tracking metadata'"
+        )
+
     if not primary_key:
         raise DataJointError("Table must have a primary key")
 

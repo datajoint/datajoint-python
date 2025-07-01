@@ -427,3 +427,32 @@ def test_add_hidden_timestamp_disabled(disable_add_hidden_timestamp, schema_any)
     ), msg
     assert not any(a.is_hidden for a in Experiment().heading._attributes.values()), msg
     assert not any(a.is_hidden for a in Experiment().heading.attributes.values()), msg
+
+
+def test_hidden_job_column_for_imported_computed_tables(schema_any):
+    """Test that hidden _job column is added to imported and computed tables but not manual/lookup tables"""
+    
+    # Manual and Lookup tables should NOT have _job column
+    manual_attrs = Image().heading._attributes
+    lookup_attrs = Subject().heading._attributes
+    
+    assert not any(a.name == "_job" for a in manual_attrs.values()), "Manual table should not have _job column"
+    assert not any(a.name == "_job" for a in lookup_attrs.values()), "Lookup table should not have _job column"
+    
+    # Imported and Computed tables SHOULD have _job column
+    imported_attrs = Experiment().heading._attributes
+    computed_attrs = SigIntTable().heading._attributes
+    
+    assert any(a.name == "_job" for a in imported_attrs.values()), "Imported table should have _job column"
+    assert any(a.name == "_job" for a in computed_attrs.values()), "Computed table should have _job column"
+    
+    # Verify the _job column is hidden and has correct type
+    imported_job_attr = next(a for a in imported_attrs.values() if a.name == "_job")
+    computed_job_attr = next(a for a in computed_attrs.values() if a.name == "_job")
+    
+    assert imported_job_attr.is_hidden, "_job column should be hidden"
+    assert computed_job_attr.is_hidden, "_job column should be hidden"
+    assert "json" in imported_job_attr.sql.lower(), "_job column should be JSON type"
+    assert "json" in computed_job_attr.sql.lower(), "_job column should be JSON type"
+    assert "null" in imported_job_attr.sql.lower(), "_job column should be nullable"
+    assert "null" in computed_job_attr.sql.lower(), "_job column should be nullable"
