@@ -477,6 +477,18 @@ class AutoPopulate:
                     datetime.datetime.utcnow() - make_start
                 ).total_seconds(),
             )
+            # Update the _job column with the job metadata for newly populated entries
+            if "_job" in self.target.heading._attributes:
+                job_metadata = {
+                    "execution_time": make_start,
+                    "execution_duration": (datetime.datetime.utcnow() - make_start).total_seconds(),
+                    "host": platform.node(),
+                    "pid": os.getpid(),
+                    "connection_id": self.connection.connection_id,
+                    "user": self._Jobs._user,
+                }
+                for k in (self.target & key).fetch("KEY"):
+                    self.target.update1({**k, "_job": job_metadata})
 
             logger.debug(f"Success making {key} -> {self.target.full_table_name}")
             return True
