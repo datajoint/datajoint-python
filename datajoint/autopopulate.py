@@ -601,20 +601,15 @@ class AutoPopulate:
 
         This cleanup should not need to run very often, but helps maintain database consistency.
         """
-        invalid_removed = 0
-
-        incomplete_query = (
-            self.jobs & {"table_name": self.target.table_name} & "status != 'success'"
-        )
-        if incomplete_query:
+        removed = 0
+        if len(self.jobs):
             keys2do = self._jobs_to_do({}).fetch("KEY")
-            invalid_incomplete = len(incomplete_query) - len(keys2do)
-            if invalid_incomplete > 0:
-                for key, job_key in zip(*incomplete_query.fetch("KEY", "key")):
+            if len(self.jobs) - len(keys2do) > 0:
+                for key, job_key in zip(*self.jobs.fetch("KEY", "key")):
                     if job_key not in keys2do:
                         (self.jobs & key).delete()
-                        invalid_removed += 1
+                        removed += 1
 
         logger.info(
-            f"{invalid_removed} invalid jobs removed for `{to_camel_case(self.target.table_name)}`"
+            f"{removed} invalid jobs removed for `{to_camel_case(self.target.table_name)}`"
         )
