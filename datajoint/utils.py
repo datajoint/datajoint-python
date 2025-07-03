@@ -147,3 +147,5 @@ def parse_sql(filepath):
                     if line.endswith(delimiter):
                         yield " ".join(statement)
                         statement = []
+        if statement:
+            yield " ".join(statement)
