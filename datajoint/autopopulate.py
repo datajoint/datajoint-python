@@ -1,18 +1,20 @@
 """This module defines class dj.AutoPopulate"""
 
-import logging
-import datetime
-import traceback
-import random
-import inspect
-from tqdm import tqdm
-from .hash import key_hash
-from .expression import QueryExpression, AndList
-from .errors import DataJointError, LostConnectionError
-import signal
-import multiprocessing as mp
 import contextlib
+import datetime
+import inspect
+import logging
+import multiprocessing as mp
+import random
+import signal
+import traceback
+
 import deepdiff
+from tqdm import tqdm
+
+from .errors import DataJointError, LostConnectionError
+from .expression import AndList, QueryExpression
+from .hash import key_hash
 
 # noinspection PyExceptionInherit,PyCallingNonCallable
 
@@ -103,8 +105,8 @@ class AutoPopulate:
         The method can be implemented either as:
         (a) Regular method: All three steps are performed in a single database transaction.
             The method must return None.
-        (b) Generator method: 
-            The make method is split into three functions: 
+        (b) Generator method:
+            The make method is split into three functions:
             - `make_fetch`: Fetches data from the parent tables.
             - `make_compute`: Computes secondary attributes based on the fetched data.
             - `make_insert`: Inserts the computed data into the current table.
@@ -122,7 +124,7 @@ class AutoPopulate:
                     self.make_insert(key, *computed_result)
                     commit_transaction
             <pseudocode>
-    
+
         Importantly, the output of make_fetch is a tuple that serves as the input into `make_compute`.
         The output of `make_compute` is a tuple that serves as the input into `make_insert`.
 
@@ -324,13 +326,16 @@ class AutoPopulate:
                 # spawn multiple processes
                 self.connection.close()  # disconnect parent process from MySQL server
                 del self.connection._conn.ctx  # SSLContext is not pickleable
-                with mp.Pool(
-                    processes, _initialize_populate, (self, jobs, populate_kwargs)
-                ) as pool, (
-                    tqdm(desc="Processes: ", total=nkeys)
-                    if display_progress
-                    else contextlib.nullcontext()
-                ) as progress_bar:
+                with (
+                    mp.Pool(
+                        processes, _initialize_populate, (self, jobs, populate_kwargs)
+                    ) as pool,
+                    (
+                        tqdm(desc="Processes: ", total=nkeys)
+                        if display_progress
+                        else contextlib.nullcontext()
+                    ) as progress_bar,
+                ):
                     for status in pool.imap(_call_populate1, keys, chunksize=1):
                         if status is True:
                             success_list.append(1)
@@ -406,11 +411,10 @@ class AutoPopulate:
                     != deepdiff.DeepHash(fetched_data, ignore_iterable_order=False)[
                         fetched_data
                     ]
-                ):  # rollback due to referential integrity fail
-                    self.connection.cancel_transaction()
-                    logger.warning(
-                        f"Referential integrity failed for {key} -> {self.target.full_table_name}")
-                    return False
+                ):  # raise error if fetched data has changed
+                    raise DataJointError(
+                        "Referential integrity failed! The `make_fetch` data has changed"
+                    )
                 gen.send(computed_result)  # insert
 
         except (KeyboardInterrupt, SystemExit, Exception) as error:

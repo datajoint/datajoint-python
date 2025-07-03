@@ -55,24 +55,23 @@ __all__ = [
     "cli",
 ]
 
-from .logging import logger
-from .version import __version__
-from .settings import config
-from .connection import conn, Connection
-from .schemas import Schema
-from .schemas import VirtualModule, list_schemas
-from .table import Table, FreeTable
-from .user_tables import Manual, Lookup, Imported, Computed, Part
-from .expression import Not, AndList, U, Top
-from .diagram import Diagram
-from .admin import set_password, kill
+from . import errors
+from .admin import kill, set_password
+from .attribute_adapter import AttributeAdapter
 from .blob import MatCell, MatStruct
+from .cli import cli
+from .connection import Connection, conn
+from .diagram import Diagram
+from .errors import DataJointError
+from .expression import AndList, Not, Top, U
 from .fetch import key
 from .hash import key_hash
-from .attribute_adapter import AttributeAdapter
-from . import errors
-from .errors import DataJointError
-from .cli import cli
+from .logging import logger
+from .schemas import Schema, VirtualModule, list_schemas
+from .settings import config
+from .table import FreeTable, Table
+from .user_tables import Computed, Imported, Lookup, Manual, Part
+from .version import __version__
 
 ERD = Di = Diagram  # Aliases for Diagram
 schema = Schema  # Aliases for Schema

@@ -1,8 +1,9 @@
 import numpy as np
 import pytest
+from numpy.testing import assert_array_equal
+
 import datajoint as dj
 from datajoint.blob import pack, unpack
-from numpy.testing import assert_array_equal
 
 
 class Blob(dj.Manual):

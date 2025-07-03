@@ -1,5 +1,6 @@
-import datajoint as dj
 import inspect
+
+import datajoint as dj
 
 
 class Student(dj.Manual):

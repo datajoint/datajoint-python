@@ -1,9 +1,12 @@
-import pytest
-from . import schema
-from datajoint.jobs import ERROR_MESSAGE_LENGTH, TRUNCATION_APPENDIX
 import random
 import string
+
+import pytest
+
 import datajoint as dj
+from datajoint.jobs import ERROR_MESSAGE_LENGTH, TRUNCATION_APPENDIX
+
+from . import schema
 
 
 def test_reserve_job(subject, schema_any):

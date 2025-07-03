@@ -1,36 +1,38 @@
-# MODE="LIVE|QA|BUILD" PACKAGE=datajoint UPSTREAM_REPO=https://github.com/datajoint/datajoint-python.git HOST_UID=$(id -u) docker compose -f docs/docker-compose.yaml up --build
-version: "2.4"
+# MODE="LIVE|QA|BUILD" PACKAGE=datajoint UPSTREAM_REPO=https://github.com/datajoint/datajoint-python.git docker compose up --build
 services:
   docs:
     build:
-      dockerfile: docs/.docker/Dockerfile
-      context: ../
-      args:
-        - PACKAGE
-    image: ${PACKAGE}_python-docs
+      # some docs need to be dynamically generated from the datajoint PACKAGE
+      context: ..
+      dockerfile: docs/Dockerfile
+    image: datajoint-python-docs
     environment:
-      - PACKAGE
-      - UPSTREAM_REPO
-      - MODE
+      MODE: ${MODE:-LIVE} # specify mode: LIVE, QA, BUILD
+      # specify package to generate API docs
+      PACKAGE: ${PACKAGE:-datajoint}
+      UPSTREAM_REPO: ${UPSTREAM_REPO:-https://github.com/datajoint/datajoint-python.git}
     volumes:
       - ..:/main
-    user: ${HOST_UID}:anaconda
     ports:
-      - 80:80
+      - 8000:8000
     command:
-      - sh
+      - bash
       - -c
       - |
         set -e
         if echo "$${MODE}" | grep -i live &>/dev/null; then
-            mkdocs serve --config-file ./docs/mkdocs.yaml -a 0.0.0.0:80
+            mkdocs serve --config-file /main/docs/mkdocs.yaml -a 0.0.0.0:8000
         elif echo "$${MODE}" | grep -iE "qa|build" &>/dev/null; then
+            git config --global --add safe.directory /main
+            git config --global user.name "GitHub Action"
+            git config --global user.email "action@github.com"
+            git config --global pull.rebase false
             git branch -D gh-pages || true
             git fetch $${UPSTREAM_REPO} gh-pages:gh-pages || true
-            mike deploy --config-file ./docs/mkdocs.yaml -u $$(grep -oE '\d+\.\d+' /main/$${PACKAGE}/version.py) latest
-            mike set-default --config-file ./docs/mkdocs.yaml latest
+            mike deploy --ignore-remote-status --config-file /main/docs/mkdocs.yaml -u $$(grep -oP '\d+\.\d+' /main/$${PACKAGE}/version.py) latest
+            # mike set-default --config-file /main/docs/mkdocs.yaml latest
             if echo "$${MODE}" | grep -i qa &>/dev/null; then
-                mike serve --config-file ./docs/mkdocs.yaml -a 0.0.0.0:80
+                mike serve --config-file /main/docs/mkdocs.yaml -a 0.0.0.0:8000
             fi
         else
             echo "Unexpected mode..."

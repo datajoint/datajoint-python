@@ -3,7 +3,7 @@
 Manual tables are populated during experiments through a variety of interfaces.
 Not all manual information is entered by typing.
 Automated software can enter it directly into the database.
-What makes a manual table manual is that it does not perform any computations within 
+What makes a manual table manual is that it does not perform any computations within
 the DataJoint pipeline.
 
 The following code defines three manual tables `Animal`, `Session`, and `Scan`:

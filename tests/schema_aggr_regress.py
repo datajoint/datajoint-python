@@ -1,6 +1,7 @@
-import datajoint as dj
-import itertools
 import inspect
+import itertools
+
+import datajoint as dj
 
 
 class R(dj.Lookup):

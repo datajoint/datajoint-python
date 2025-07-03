@@ -1,14 +1,14 @@
-import networkx as nx
 import functools
+import inspect
 import io
 import logging
-import inspect
-from .table import Table
-from .dependencies import topo_sort
-from .user_tables import Manual, Imported, Computed, Lookup, Part, _get_tier, _AliasNode
-from .errors import DataJointError
-from .table import lookup_class_name
 
+import networkx as nx
+
+from .dependencies import topo_sort
+from .errors import DataJointError
+from .table import Table, lookup_class_name
+from .user_tables import Computed, Imported, Lookup, Manual, Part, _AliasNode, _get_tier
 
 try:
     from matplotlib import pyplot as plt
@@ -35,7 +35,7 @@ if not diagram_active:
         Entity relationship diagram, currently disabled due to the lack of required packages: matplotlib and pygraphviz.
 
         To enable Diagram feature, please install both matplotlib and pygraphviz. For instructions on how to install
-        these two packages, refer to https://datajoint.com/docs/core/datajoint-python/0.14/client/install/
+        these two packages, refer to https://docs.datajoint.com/core/datajoint-python/0.14/client/install/
         """
 
         def __init__(self, *args, **kwargs):

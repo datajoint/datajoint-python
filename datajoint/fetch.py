@@ -1,13 +1,15 @@
-from functools import partial
-from pathlib import Path
-import pandas
 import itertools
 import json
-import numpy as np
-import uuid
 import numbers
+import uuid
+from functools import partial
+from pathlib import Path
+
+import numpy as np
+import pandas
 
 from datajoint.condition import Top
+
 from . import blob, hash
 from .errors import DataJointError
 from .settings import config

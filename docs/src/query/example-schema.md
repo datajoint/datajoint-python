@@ -4,10 +4,10 @@ The example schema below contains data for a university enrollment system.
 Information about students, departments, courses, etc. are organized in multiple tables.
 
 Warning:
-  Empty primary keys, such as in the `CurrentTerm` table, are not yet supported by 
+  Empty primary keys, such as in the `CurrentTerm` table, are not yet supported by
   DataJoint.
   This feature will become available in a future release.
-  See [Issue #113](https://github.com/datajoint/datajoint-python/issues/113) for more 
+  See [Issue #113](https://github.com/datajoint/datajoint-python/issues/113) for more
   information.
 
 ```python

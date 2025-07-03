@@ -2,13 +2,14 @@
 Settings for DataJoint
 """
 
-from contextlib import contextmanager
+import collections
 import json
+import logging
 import os
 import pprint
-import logging
-import collections
+from contextlib import contextmanager
 from enum import Enum
+
 from .errors import DataJointError
 
 LOCALCONFIG = "dj_local_conf.json"

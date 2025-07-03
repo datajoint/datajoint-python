@@ -1,9 +1,11 @@
 import pytest
-from .schema_external import SimpleRemote
+from minio import Minio
+
+from datajoint.blob import pack
 from datajoint.errors import DataJointError
 from datajoint.hash import uuid_from_buffer
-from datajoint.blob import pack
-from minio import Minio
+
+from .schema_external import SimpleRemote
 
 
 def test_connection(http_client, minio_client, s3_creds):

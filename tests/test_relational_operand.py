@@ -1,13 +1,16 @@
-import pytest
+import datetime
 import random
 import string
-import pandas
-import datetime
+
 import numpy as np
+import pandas
+import pytest
+
 import datajoint as dj
 from datajoint.errors import DataJointError
-from .schema_simple import *
+
 from .schema import *
+from .schema_simple import *
 
 
 @pytest.fixture

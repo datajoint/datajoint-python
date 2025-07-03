@@ -3,16 +3,17 @@
 compatibility with Matlab-based serialization implemented by mYm.
 """
 
-import zlib
-from itertools import repeat
 import collections
-from decimal import Decimal
 import datetime
 import uuid
+import zlib
+from decimal import Decimal
+from itertools import repeat
+
 import numpy as np
+
 from .errors import DataJointError
 from .settings import config
-
 
 deserialize_lookup = {
     0: {"dtype": None, "scalar_type": "UNKNOWN"},

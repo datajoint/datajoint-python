@@ -4,8 +4,8 @@
 
 ### Configuration & Usage
 
-Corresponding to issue 
-[#480](https://github.com/datajoint/datajoint-python/issues/480), 
+Corresponding to issue
+[#480](https://github.com/datajoint/datajoint-python/issues/480),
 the `attach` attribute type allows users to `attach` files into DataJoint
 schemas as DataJoint-managed files. This is in contrast to traditional `blobs`
 which are encodings of programming language data structures such as arrays.

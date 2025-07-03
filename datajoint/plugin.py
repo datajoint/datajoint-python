@@ -1,9 +1,11 @@
-from .settings import config
-import pkg_resources
+import logging
 from pathlib import Path
+
+import pkg_resources
 from cryptography.exceptions import InvalidSignature
 from otumat import hash_pkg, verify
-import logging
+
+from .settings import config
 
 logger = logging.getLogger(__name__.split(".")[0])
 

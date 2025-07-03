@@ -2,12 +2,14 @@
 AWS S3 operations
 """
 
+import logging
+import uuid
 from io import BytesIO
+from pathlib import Path
+
 import minio  # https://docs.minio.io/docs/python-client-api-reference
 import urllib3
-import uuid
-import logging
-from pathlib import Path
+
 from . import errors
 
 logger = logging.getLogger(__name__.split(".")[0])

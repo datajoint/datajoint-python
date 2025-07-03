@@ -1,5 +1,6 @@
-from datajoint import errors
 from pytest import raises
+
+from datajoint import errors
 
 
 def test_nullable_dependency(thing_tables):
@@ -21,6 +22,7 @@ def test_nullable_dependency(thing_tables):
 
 def test_topo_sort():
     import networkx as nx
+
     import datajoint as dj
 
     graph = nx.DiGraph(

@@ -1,6 +1,9 @@
 import os
+
 import pytest
+
 import datajoint as dj
+
 from . import schema, schema_privileges
 
 namespace = locals()
