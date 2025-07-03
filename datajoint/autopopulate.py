@@ -470,16 +470,9 @@ class AutoPopulate:
                 logger.error(error)
                 return key, error if return_exception_objects else error_message
         else:
-            self.connection.commit_transaction()
-            self._Jobs.complete(
-                self.target.table_name,
-                self._job_key(key),
-                run_duration=(datetime.datetime.utcnow() - make_start).total_seconds(),
-            )
             # Update the _job column with the job metadata for newly populated entries
             if "_job" in self.target.heading._attributes:
                 job_metadata = {
-                    "execution_time": make_start,
                     "execution_duration": (
                         datetime.datetime.utcnow() - make_start
                     ).total_seconds(),
@@ -490,7 +483,12 @@ class AutoPopulate:
                 }
                 for k in (self.target & key).fetch("KEY"):
                     self.target.update1({**k, "_job": job_metadata})
-
+            self.connection.commit_transaction()
+            self._Jobs.complete(
+                self.target.table_name,
+                self._job_key(key),
+                run_duration=(datetime.datetime.utcnow() - make_start).total_seconds(),
+            )
             logger.debug(f"Success making {key} -> {self.target.full_table_name}")
             return True
         finally:
