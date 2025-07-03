@@ -8,6 +8,8 @@ import multiprocessing as mp
 import random
 import signal
 import traceback
+import os
+import platform
 
 import deepdiff
 from tqdm import tqdm
@@ -15,6 +17,8 @@ from tqdm import tqdm
 from .errors import DataJointError, LostConnectionError
 from .expression import AndList, QueryExpression
 from .hash import key_hash
+from .settings import config
+from .utils import user_choice, to_camel_case
 
 # noinspection PyExceptionInherit,PyCallingNonCallable
 
@@ -24,14 +28,14 @@ logger = logging.getLogger(__name__.split(".")[0])
 # --- helper functions for multiprocessing --
 
 
-def _initialize_populate(table, jobs, populate_kwargs):
+def _initialize_populate(table, reserve_jobs, populate_kwargs):
     """
     Initialize the process for multiprocessing.
     Saves the unpickled copy of the table to the current process and reconnects.
     """
     process = mp.current_process()
     process.table = table
-    process.jobs = jobs
+    process.reserve_jobs = reserve_jobs
     process.populate_kwargs = populate_kwargs
     table.connection.connect()  # reconnect
 
@@ -43,7 +47,9 @@ def _call_populate1(key):
     :return: key, error if error, otherwise None
     """
     process = mp.current_process()
-    return process.table._populate1(key, process.jobs, **process.populate_kwargs)
+    return process.table._populate1(
+        key, process.reserve_jobs, **process.populate_kwargs
+    )
 
 
 class AutoPopulate:
@@ -91,6 +97,7 @@ class AutoPopulate:
             self._key_source = _rename_attributes(*parents[0])
             for q in parents[1:]:
                 self._key_source *= _rename_attributes(*q)
+
         return self._key_source
 
     def make(self, key):
@@ -105,8 +112,8 @@ class AutoPopulate:
         The method can be implemented either as:
         (a) Regular method: All three steps are performed in a single database transaction.
             The method must return None.
-        (b) Generator method: 
-            The make method is split into three functions: 
+        (b) Generator method:
+            The make method is split into three functions:
             - `make_fetch`: Fetches data from the parent tables.
             - `make_compute`: Computes secondary attributes based on the fetched data.
             - `make_insert`: Inserts the computed data into the current table.
@@ -124,7 +131,7 @@ class AutoPopulate:
                     self.make_insert(key, *computed_result)
                     commit_transaction
             <pseudocode>
-    
+
         Importantly, the output of make_fetch is a tuple that serves as the input into `make_compute`.
         The output of `make_compute` is a tuple that serves as the input into `make_insert`.
 
@@ -228,6 +235,7 @@ class AutoPopulate:
         display_progress=False,
         processes=1,
         make_kwargs=None,
+        schedule_jobs=True,
     ):
         """
         ``table.populate()`` calls ``table.make(key)`` for every primary key in
@@ -249,6 +257,8 @@ class AutoPopulate:
             to be passed down to each ``make()`` call. Computation arguments should be
             specified within the pipeline e.g. using a `dj.Lookup` table.
         :type make_kwargs: dict, optional
+        :param schedule_jobs: if True, run schedule_jobs before doing populate (default: True),
+            only applicable if reserved_jobs is True
         :return: a dict with two keys
             "success_count": the count of successful ``make()`` calls in this ``populate()`` call
             "error_list": the error list that is filled if `suppress_errors` is True
@@ -261,9 +271,9 @@ class AutoPopulate:
             raise DataJointError(
                 "The order argument must be one of %s" % str(valid_order)
             )
-        jobs = (
-            self.connection.schemas[self.target.database].jobs if reserve_jobs else None
-        )
+
+        if schedule_jobs:
+            self.schedule_jobs(*restrictions)
 
         # define and set up signal handler for SIGTERM:
         if reserve_jobs:
@@ -274,19 +284,27 @@ class AutoPopulate:
 
             old_handler = signal.signal(signal.SIGTERM, handler)
 
+        # retrieve `keys` if not provided
         if keys is None:
-            keys = (self._jobs_to_do(restrictions) - self.target).fetch(
-                "KEY", limit=limit
-            )
-
-        # exclude "error", "ignore" or "reserved" jobs
-        if reserve_jobs:
-            exclude_key_hashes = (
-                jobs
-                & {"table_name": self.target.table_name}
-                & 'status in ("error", "ignore", "reserved")'
-            ).fetch("key_hash")
-            keys = [key for key in keys if key_hash(key) not in exclude_key_hashes]
+            if reserve_jobs:
+                keys = (self.jobs & {"status": "scheduled"}).fetch(
+                    "key", order_by="timestamp", limit=limit
+                )
+                if restrictions:
+                    # hitting the `key_source` again to apply the restrictions
+                    # this is expensive/suboptimal
+                    keys = (self._jobs_to_do(restrictions) & keys).fetch("KEY")
+            else:
+                keys = (self._jobs_to_do(restrictions) - self.target).fetch(
+                    "KEY", limit=limit
+                )
+        else:
+            # exclude "error", "ignore" or "reserved" jobs
+            if reserve_jobs:
+                exclude_key_hashes = (
+                    self.jobs & 'status in ("error", "ignore", "reserved")'
+                ).fetch("key_hash")
+                keys = [key for key in keys if key_hash(key) not in exclude_key_hashes]
 
         if order == "reverse":
             keys.reverse()
@@ -316,7 +334,7 @@ class AutoPopulate:
                     if display_progress
                     else keys
                 ):
-                    status = self._populate1(key, jobs, **populate_kwargs)
+                    status = self._populate1(key, reserve_jobs, **populate_kwargs)
                     if status is True:
                         success_list.append(1)
                     elif isinstance(status, tuple):
@@ -329,7 +347,7 @@ class AutoPopulate:
                 del self.connection._conn.ctx  # SSLContext is not pickleable
                 with (
                     mp.Pool(
-                        processes, _initialize_populate, (self, jobs, populate_kwargs)
+                        processes, _initialize_populate, (self, True, populate_kwargs)
                     ) as pool,
                     (
                         tqdm(desc="Processes: ", total=nkeys)
@@ -358,11 +376,16 @@ class AutoPopulate:
         }
 
     def _populate1(
-        self, key, jobs, suppress_errors, return_exception_objects, make_kwargs=None
+        self,
+        key,
+        reserve_jobs: bool,
+        suppress_errors: bool,
+        return_exception_objects: bool,
+        make_kwargs: dict = None,
     ):
         """
         populates table for one source key, calling self.make inside a transaction.
-        :param jobs: the jobs table or None if not reserve_jobs
+        :param reserve_jobs: if True, reserve jobs to populate in asynchronous fashion
         :param key: dict specifying job to populate
         :param suppress_errors: bool if errors should be suppressed and returned
         :param return_exception_objects: if True, errors must be returned as objects
@@ -372,7 +395,7 @@ class AutoPopulate:
         # use the legacy `_make_tuples` callback.
         make = self._make_tuples if hasattr(self, "_make_tuples") else self.make
 
-        if jobs is not None and not jobs.reserve(
+        if reserve_jobs and not self._Jobs.reserve(
             self.target.table_name, self._job_key(key)
         ):
             return False
@@ -385,12 +408,12 @@ class AutoPopulate:
         if key in self.target:  # already populated
             if not is_generator:
                 self.connection.cancel_transaction()
-            if jobs is not None:
-                jobs.complete(self.target.table_name, self._job_key(key))
+            self._Jobs.complete(self.target.table_name, self._job_key(key))
             return False
 
         logger.debug(f"Making {key} -> {self.target.full_table_name}")
         self.__class__._allow_insert = True
+        make_start = datetime.datetime.utcnow()
 
         try:
             if not is_generator:
@@ -412,11 +435,10 @@ class AutoPopulate:
                     != deepdiff.DeepHash(fetched_data, ignore_iterable_order=False)[
                         fetched_data
                     ]
-                ):  # rollback due to referential integrity fail
-                    self.connection.cancel_transaction()
-                    logger.warning(
-                        f"Referential integrity failed for {key} -> {self.target.full_table_name}")
-                    return False
+                ):  # raise error if fetched data has changed
+                    raise DataJointError(
+                        "Referential integrity failed! The `make_fetch` data has changed"
+                    )
                 gen.send(computed_result)  # insert
 
         except (KeyboardInterrupt, SystemExit, Exception) as error:
@@ -431,13 +453,16 @@ class AutoPopulate:
             logger.debug(
                 f"Error making {key} -> {self.target.full_table_name} - {error_message}"
             )
-            if jobs is not None:
+            if reserve_jobs:
                 # show error name and error message (if any)
-                jobs.error(
+                self._Jobs.error(
                     self.target.table_name,
                     self._job_key(key),
                     error_message=error_message,
                     error_stack=traceback.format_exc(),
+                    run_duration=(
+                        datetime.datetime.utcnow() - make_start
+                    ).total_seconds(),
                 )
             if not suppress_errors or isinstance(error, SystemExit):
                 raise
@@ -445,10 +470,26 @@ class AutoPopulate:
                 logger.error(error)
                 return key, error if return_exception_objects else error_message
         else:
+            # Update the _job column with the job metadata for newly populated entries
+            if "_job" in self.target.heading._attributes:
+                job_metadata = {
+                    "execution_duration": (
+                        datetime.datetime.utcnow() - make_start
+                    ).total_seconds(),
+                    "host": platform.node(),
+                    "pid": os.getpid(),
+                    "connection_id": self.connection.connection_id,
+                    "user": self._Jobs._user,
+                }
+                for k in (self.target & key).fetch("KEY"):
+                    self.target.update1({**k, "_job": job_metadata})
             self.connection.commit_transaction()
+            self._Jobs.complete(
+                self.target.table_name,
+                self._job_key(key),
+                run_duration=(datetime.datetime.utcnow() - make_start).total_seconds(),
+            )
             logger.debug(f"Success making {key} -> {self.target.full_table_name}")
-            if jobs is not None:
-                jobs.complete(self.target.table_name, self._job_key(key))
             return True
         finally:
             self.__class__._allow_insert = False
@@ -475,3 +516,98 @@ class AutoPopulate:
                 ),
             )
         return remaining, total
+
+    @property
+    def _Jobs(self):
+        return self.connection.schemas[self.target.database].jobs
+
+    @property
+    def jobs(self):
+        return self._Jobs & {"table_name": self.target.table_name}
+
+    def schedule_jobs(
+        self, *restrictions, min_scheduling_interval=None
+    ):
+        """
+        Schedule new jobs for this autopopulate table by finding keys that need computation.
+
+        This method implements an optimization strategy to avoid excessive scheduling:
+        1. First checks if jobs were scheduled recently (within min_scheduling_interval)
+        2. If recent scheduling event exists, skips scheduling to prevent database load
+        3. Otherwise, finds keys that need computation and schedules them
+
+        Args:
+            restrictions: a list of restrictions each restrict (table.key_source - target.proj())
+            min_scheduling_interval: minimum time in seconds that must have passed since last job scheduling.
+                If None, uses the value from dj.config["min_scheduling_interval"] (default: None)
+
+        Returns:
+            None
+        """
+        __scheduled_event = {
+            "table_name": self.target.table_name,
+            "__type__": "jobs scheduling event",
+        }
+
+        if min_scheduling_interval is None:
+            min_scheduling_interval = config["min_scheduling_interval"]
+
+        if min_scheduling_interval > 0:
+            recent_scheduling_event = (
+                self._Jobs.proj(
+                    last_scheduled="TIMESTAMPDIFF(SECOND, timestamp, UTC_TIMESTAMP())"
+                )
+                & {"table_name": f"__{self.target.table_name}__"}
+                & {"key_hash": key_hash(__scheduled_event)}
+                & f"last_scheduled <= {min_scheduling_interval}"
+            )
+            if recent_scheduling_event:
+                logger.info(
+                    f"Skip jobs scheduling for `{to_camel_case(self.target.table_name)}` (last scheduled {recent_scheduling_event.fetch1('last_scheduled')} seconds ago)"
+                )
+                return
+
+        try:
+            with self.connection.transaction:
+                schedule_count = 0
+                for key in (self._jobs_to_do(restrictions) - self.target).fetch("KEY"):
+                    schedule_count += self._Jobs.schedule(self.target.table_name, key)
+        except Exception as e:
+            logger.exception(str(e))
+        else:
+            self._Jobs.ignore(
+                f"__{self.target.table_name}__",
+                __scheduled_event,
+                message=f"Jobs scheduling event: {__scheduled_event['table_name']}",
+            )
+            logger.info(
+                f"{schedule_count} new jobs scheduled for `{to_camel_case(self.target.table_name)}`"
+            )
+
+    def cleanup_jobs(self):
+        """
+        Check and remove any orphaned/outdated jobs in the JobTable for this autopopulate table.
+
+        This method handles two types of orphaned jobs:
+        1. Jobs that are no longer in the `key_source` (e.g. entries in upstream table(s) got deleted)
+        2. Jobs with "success" status that are no longer in the target table (e.g. entries in target table got deleted)
+
+        The method is potentially time-consuming as it needs to:
+        - Compare all jobs against the current key_source
+        - For success jobs, verify their existence in the target table
+        - Delete any jobs that fail these checks
+
+        This cleanup should not need to run very often, but helps maintain database consistency.
+        """
+        removed = 0
+        if len(self.jobs):
+            keys2do = self._jobs_to_do({}).fetch("KEY")
+            if len(self.jobs) - len(keys2do) > 0:
+                for key, job_key in zip(*self.jobs.fetch("KEY", "key")):
+                    if job_key not in keys2do:
+                        (self.jobs & key).delete()
+                        removed += 1
+
+        logger.info(
+            f"{removed} invalid jobs removed for `{to_camel_case(self.target.table_name)}`"
+        )
