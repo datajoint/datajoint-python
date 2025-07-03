@@ -49,9 +49,9 @@ attribute type in a datajoint table class:
 import datajoint as dj
 
 class GraphAdapter(dj.AttributeAdapter):
-    
+
     attribute_type = 'longblob'   # this is how the attribute will be declared
-    
+
     def put(self, obj):
         # convert the nx.Graph object  into an edge list
         assert isinstance(obj, nx.Graph)
@@ -60,7 +60,7 @@ class GraphAdapter(dj.AttributeAdapter):
     def get(self, value):
         # convert edge list back into an nx.Graph
         return nx.Graph(value)
-    
+
 
 # instantiate for use as a datajoint type
 graph = GraphAdapter()
@@ -75,6 +75,6 @@ class Connectivity(dj.Manual):
     definition = """
     conn_id : int
     ---
-    conn_graph = null : <graph>  # a networkx.Graph object 
+    conn_graph = null : <graph>  # a networkx.Graph object
     """
 ```

@@ -60,33 +60,33 @@ division of labor among team members, leading to greater efficiency and better s
 ### Scientists
 
 Design and conduct experiments, collecting data.
-They interact with the data pipeline through graphical user interfaces designed by 
+They interact with the data pipeline through graphical user interfaces designed by
 others.
 They understand what analysis is used to test their hypotheses.
 
 ### Data scientists
 
-Have the domain expertise and select and implement the processing and analysis 
+Have the domain expertise and select and implement the processing and analysis
 methods for experimental data.
-Data scientists are in charge of defining and managing the data pipeline using 
-DataJoint's data model, but they may not know the details of the underlying 
+Data scientists are in charge of defining and managing the data pipeline using
+DataJoint's data model, but they may not know the details of the underlying
 architecture.
-They interact with the pipeline using client programming interfaces directly from 
+They interact with the pipeline using client programming interfaces directly from
 languages such as MATLAB and Python.
 
-The bulk of this manual is written for working data scientists, except for System 
+The bulk of this manual is written for working data scientists, except for System
 Administration.
 
 ### Data engineers
 
 Work with the data scientists to support the data pipeline.
-They rely on their understanding of the DataJoint data model to configure and 
-administer the required IT resources such as database servers, data storage 
+They rely on their understanding of the DataJoint data model to configure and
+administer the required IT resources such as database servers, data storage
 servers, networks, cloud instances, [Globus](https://globus.org) endpoints, etc.
-Data engineers can provide general solutions such as web hosting, data publishing, 
+Data engineers can provide general solutions such as web hosting, data publishing,
 interfaces, exports and imports.
 
-The System Administration section of this tutorial contains materials helpful in 
+The System Administration section of this tutorial contains materials helpful in
 accomplishing these tasks.
 
 DataJoint is designed to delineate a clean boundary between **data science** and **data
