@@ -1,4 +1,4 @@
-""" methods for generating previews of query expression results in python command line and Jupyter """
+"""methods for generating previews of query expression results in python command line and Jupyter"""
 
 from .settings import config
 

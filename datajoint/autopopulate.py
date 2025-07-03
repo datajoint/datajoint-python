@@ -147,7 +147,7 @@ class AutoPopulate:
             # user must implement `make`
             raise NotImplementedError(
                 "Subclasses of AutoPopulate must implement the method `make` "
-				"or (`make_fetch` + `make_compute` + `make_insert`)"
+                "or (`make_fetch` + `make_compute` + `make_insert`)"
             )
 
         # User has implemented `_fetch`, `_compute`, and `_insert` methods instead

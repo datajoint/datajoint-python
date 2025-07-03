@@ -140,7 +140,7 @@ class Blob:
                 "S": self.read_struct,  # matlab struct array
                 "C": self.read_cell_array,  # matlab cell array
                 # basic data types
-                "\xFF": self.read_none,  # None
+                "\xff": self.read_none,  # None
                 "\x01": self.read_tuple,  # a Sequence (e.g. tuple)
                 "\x02": self.read_list,  # a MutableSequence (e.g. list)
                 "\x03": self.read_set,  # a Set
@@ -401,7 +401,7 @@ class Blob:
 
     @staticmethod
     def pack_none():
-        return b"\xFF"
+        return b"\xff"
 
     def read_tuple(self):
         return tuple(
