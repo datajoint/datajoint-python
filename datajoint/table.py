@@ -137,7 +137,7 @@ class Table(QueryExpression):
         sql, external_stores = alter(self.definition, old_definition, context)
         if not sql:
             if prompt:
-                logger.warn("Nothing to alter.")
+                logger.warning("Nothing to alter.")
         else:
             sql = "ALTER TABLE {tab}\n\t".format(
                 tab=self.full_table_name
@@ -520,7 +520,13 @@ class Table(QueryExpression):
                 try:
                     delete_count = table.delete_quick(get_count=True)
                 except IntegrityError as error:
-                    match = foreign_key_error_regexp.match(error.args[0]).groupdict()
+                    match = foreign_key_error_regexp.match(error.args[0])
+                    if match is None:
+                        raise DataJointError(
+                            "Cascading deletes failed because the error message is missing foreign key information."
+                            "Make sure you have REFERENCES privilege to all dependent tables."
+                        ) from None
+                    match = match.groupdict()
                     # if schema name missing, use table
                     if "`.`" not in match["child"]:
                         match["child"] = "{}.{}".format(
@@ -643,7 +649,7 @@ class Table(QueryExpression):
         # Confirm and commit
         if delete_count == 0:
             if safemode:
-                logger.warn("Nothing to delete.")
+                logger.warning("Nothing to delete.")
             if transaction:
                 self.connection.cancel_transaction()
         elif not transaction:
@@ -653,12 +659,12 @@ class Table(QueryExpression):
                 if transaction:
                     self.connection.commit_transaction()
                 if safemode:
-                    logger.info("Deletes committed.")
+                    logger.info("Delete committed.")
             else:
                 if transaction:
                     self.connection.cancel_transaction()
                 if safemode:
-                    logger.warn("Deletes cancelled")
+                    logger.warning("Delete cancelled")
         return delete_count
 
     def drop_quick(self):
@@ -725,11 +731,6 @@ class Table(QueryExpression):
             as_dict=True,
         ).fetchone()
         return ret["Data_length"] + ret["Index_length"]
-
-    def show_definition(self):
-        raise AttributeError(
-            "show_definition is deprecated. Use the describe method instead."
-        )
 
     def describe(self, context=None, printout=False):
         """

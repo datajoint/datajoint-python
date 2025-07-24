@@ -59,7 +59,7 @@ The input object is treated as a subquery in the following cases:
 1. A restriction is applied that uses alias attributes in the heading.
 2. A projection uses an alias attribute to create a new alias attribute.
 3. A join is performed on an alias attribute.
-4. An Aggregation is used a restriction. 
+4. An Aggregation is used a restriction.
 
 An error arises if
 

@@ -54,7 +54,7 @@ columns (often called attributes).
   A collection of base relations with their attributes, domain constraints, uniqueness
   constraints, and referential constraints is called a schema.
 
-**Domain constraints:** 
+**Domain constraints:**
   Each attribute (column) in a table is associated with a specific attribute domain (or
   datatype, a set of possible values), ensuring that the data entered is valid.
   Attribute domains may not include relations, which keeps the data model
@@ -68,13 +68,13 @@ columns (often called attributes).
   One key in a relation is designated as the primary key used for referencing its elements.
 
 **Referential constraints:**
-  Associations among data are established by means of referential constraints with the 
+  Associations among data are established by means of referential constraints with the
   help of foreign keys.
   A referential constraint on relation A referencing relation B allows only those
   entities in A whose foreign key attributes match the key attributes of an entity in B.
 
 **Declarative queries:**
-  Data queries are formulated through declarative, as opposed to imperative, 
+  Data queries are formulated through declarative, as opposed to imperative,
   specifications of sought results.
   This means that query expressions convey the logic for the result rather than the
   procedure for obtaining it.
@@ -106,7 +106,7 @@ clarity, efficiency, workflow management, and precise and flexible data
 queries. By enforcing entity normalization,
 simplifying dependency declarations, offering a rich query algebra, and visualizing
 relationships through schema diagrams, DataJoint makes relational database programming
-more intuitive and robust for complex data pipelines. 
+more intuitive and robust for complex data pipelines.
 
 The model has emerged over a decade of continuous development of complex data
 pipelines for neuroscience experiments ([Yatsenko et al.,
@@ -123,7 +123,7 @@ DataJoint comprises:
 + a schema [definition](../design/tables/declare.md) language
 + a data [manipulation](../manipulation/index.md) language
 + a data [query](../query/principles.md) language
-+ a [diagramming](../design/diagrams.md) notation for visualizing relationships between 
++ a [diagramming](../design/diagrams.md) notation for visualizing relationships between
 modeled entities
 
 The key refinement of DataJoint over other relational data models and their

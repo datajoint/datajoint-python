@@ -100,7 +100,7 @@ class AutoPopulate:
 
         1. Fetch data from tables above in the dependency hierarchy, restricted by the given key.
         2. Compute secondary attributes based on the fetched data.
-        3. Insert the new tuples into the current table.
+        3. Insert the new tuple(s) into the current table.
 
         The method can be implemented either as:
         (a) Regular method: All three steps are performed in a single database transaction.
@@ -146,7 +146,8 @@ class AutoPopulate:
         ):
             # user must implement `make`
             raise NotImplementedError(
-                "Subclasses of AutoPopulate must implement the method `make` or (`make_fetch` + `make_compute` + `make_insert`)"
+                "Subclasses of AutoPopulate must implement the method `make` "
+                "or (`make_fetch` + `make_compute` + `make_insert`)"
             )
 
         # User has implemented `_fetch`, `_compute`, and `_insert` methods instead
@@ -265,9 +266,8 @@ class AutoPopulate:
             self.connection.schemas[self.target.database].jobs if reserve_jobs else None
         )
 
-        # define and set up signal handler for SIGTERM:
         if reserve_jobs:
-
+            # Define a signal handler for SIGTERM
             def handler(signum, frame):
                 logger.info("Populate terminated by SIGTERM")
                 raise SystemExit("SIGTERM received")

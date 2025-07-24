@@ -1,4 +1,4 @@
-""" methods for generating SQL WHERE clauses from datajoint restriction conditions """
+"""methods for generating SQL WHERE clauses from datajoint restriction conditions"""
 
 import collections
 import datetime

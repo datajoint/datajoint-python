@@ -7,13 +7,13 @@ It is common to enter data during experiments using a graphical user interface.
 1. The [DataJoint platform](https://works.datajoint.com) platform is a web-based,
    end-to-end platform to host and execute data pipelines.
 
-2. [DataJoint LabBook](https://github.com/datajoint/datajoint-labbook) is an open 
+2. [DataJoint LabBook](https://github.com/datajoint/datajoint-labbook) is an open
 source project for data entry but is no longer actively maintained.
 
 ## Does DataJoint support other programming languages?
 
 DataJoint [Python](https://docs.datajoint.com/core/datajoint-python/) is the most
-up-to-date version and all future development will focus on the Python API. The 
+up-to-date version and all future development will focus on the Python API. The
 [Matlab](https://datajoint.com/docs/core/datajoint-matlab/) API was actively developed
 through 2023. Previous projects implemented some DataJoint features in
 [Julia](https://github.com/BrainCOGS/neuronex_workshop_2018/tree/julia/julia) and
@@ -93,7 +93,7 @@ The entry of metadata can be manual, or it can be an automated part of data acqu
 into the database).
 
 Depending on their size and contents, raw data files can be stored in a number of ways.
-In the simplest and most common scenario, raw data continues to be stored in either a 
+In the simplest and most common scenario, raw data continues to be stored in either a
 local filesystem or in the cloud as collections of files and folders.
 The paths to these files are entered in the database (again, either manually or by
 automated processes).
@@ -101,8 +101,8 @@ This is the point at which the notion of a **data pipeline** begins.
 Below these "manual tables" that contain metadata and file paths are a series of tables
 that load raw data from these files, process it in some way, and insert derived or
 summarized data directly into the database.
-For example, in an imaging application, the very large raw `.TIFF` stacks would reside on 
-the filesystem, but the extracted fluorescent trace timeseries for each cell in the 
+For example, in an imaging application, the very large raw `.TIFF` stacks would reside on
+the filesystem, but the extracted fluorescent trace timeseries for each cell in the
 image would be stored as a numerical array directly in the database.
 Or the raw video used for animal tracking might be stored in a standard video format on
 the filesystem, but the computed X/Y positions of the animal would be stored in the
@@ -164,7 +164,7 @@ This brings us to the final important question:
 
 ## How do I get my data out?
 
-This is the fun part. See [queries](query/operators.md) for details of the DataJoint 
+This is the fun part. See [queries](query/operators.md) for details of the DataJoint
 query language directly from Python.
 
 ## Interfaces
