@@ -16,7 +16,7 @@
       
       
       <link rel="icon" href="../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.12">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.15">
     
     
       
@@ -24,7 +24,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.2afb09e1.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.342714a4.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
@@ -476,6 +476,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#types-of-data-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      Types of data models
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#relational-data-model" class="md-nav__link">
     <span class="md-ellipsis">
       Relational data model
@@ -500,11 +509,26 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#datajoint-is-a-refinement-of-the-relational-data-model" class="md-nav__link">
+  <a href="#the-datajoint-model" class="md-nav__link">
     <span class="md-ellipsis">
-      DataJoint is a refinement of the relational data model
+      The DataJoint Model
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="The DataJoint Model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-principles-of-the-datajoint-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      Core principles of the DataJoint model
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -821,7 +845,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../client/stores/" class="md-nav__link">
+      <a href="../../client/stores.md" class="md-nav__link">
         
   
   
@@ -2137,7 +2161,7 @@
   
   
   <span class="md-ellipsis">
-    Using the type
+    Using the json type
     
   </span>
   
@@ -2999,11 +3023,21 @@
 
 <h1 id="data-model">Data Model<a class="headerlink" href="#data-model" title="Permanent link">&para;</a></h1>
 <h2 id="what-is-a-data-model">What is a data model?<a class="headerlink" href="#what-is-a-data-model" title="Permanent link">&para;</a></h2>
-<p>A <strong>data model</strong> refers to a conceptual framework for thinking about data and about
-operations on data.
-A data model defines the mental toolbox of the data scientist; it has less to do with
-the architecture of the data systems, although architectures are often intertwined with
-data models.</p>
+<p>A <strong>data model</strong> is a conceptual framework that defines how data is organized,
+represented, and transformed. It gives us the components for creating blueprints for the
+structure and operations of data management systems, ensuring consistency and efficiency
+in data handling.</p>
+<p>Data management systems are built to accommodate these models, allowing us to manage
+data according to the principles laid out by the model. If you’re studying data science
+or engineering, you’ve likely encountered different data models, each providing a unique
+approach to organizing and manipulating data.</p>
+<p>A data model is defined by considering the following key aspects:</p>
+<ul>
+<li>What are the fundamental elements used to structure the data?</li>
+<li>What operations are available for defining, creating, and manipulating the data?</li>
+<li>What mechanisms exist to enforce the structure and rules governing valid data interactions?</li>
+</ul>
+<h2 id="types-of-data-models">Types of data models<a class="headerlink" href="#types-of-data-models" title="Permanent link">&para;</a></h2>
 <p>Among the most familiar data models are those based on files and folders: data of any
 kind are lumped together into binary strings called <strong>files</strong>, files are collected into
 folders, and folders can be nested within other folders to create a folder hierarchy.</p>
@@ -3016,15 +3050,14 @@ cells, including complex calculations.</p>
 objects in memory with properties and methods for transformations of such data.</p>
 <h2 id="relational-data-model">Relational data model<a class="headerlink" href="#relational-data-model" title="Permanent link">&para;</a></h2>
 <p>The <strong>relational model</strong> is a way of thinking about data as sets and operations on sets.
-Formalized almost a half-century ago
-(<a href="https://dl.acm.org/citation.cfm?doid=362384.362685">Codd, 1969</a>), the relational data
-model provides the most rigorous approach to structured data storage and the most
-precise approach to data querying.
-The model is defined by the principles of data representation, domain constraints,
-uniqueness constraints, referential constraints, and declarative queries as summarized
-below.</p>
+Formalized almost a half-century ago (<a href="https://dl.acm.org/citation.cfm?doid=362384.362685">Codd,
+1969</a>). The relational data model is
+one of the most powerful and precise ways to store and manage structured data. At its
+core, this model organizes all data into tables--representing mathematical
+relations---where each table consists of rows (representing mathematical tuples) and
+columns (often called attributes).</p>
 <h3 id="core-principles-of-the-relational-data-model">Core principles of the relational data model<a class="headerlink" href="#core-principles-of-the-relational-data-model" title="Permanent link">&para;</a></h3>
-<p><strong>Data representation</strong>
+<p><strong>Data representation:</strong>
   Data are represented and manipulated in the form of relations.
   A relation is a set (i.e. an unordered collection) of entities of values for each of
   the respective named attributes of the relation.
@@ -3032,23 +3065,23 @@ below.</p>
   relations through query expressions.
   A collection of base relations with their attributes, domain constraints, uniqueness
   constraints, and referential constraints is called a schema.</p>
-<p><strong>Domain constraints</strong>
-  Attribute values are drawn from corresponding attribute domains, i.e. predefined sets
-  of values.
-  Attribute domains may not include relations, which keeps the data model flat, i.e.
-  free of nested structures.</p>
-<p><strong>Uniqueness constraints</strong>
+<p><strong>Domain constraints:</strong>
+  Each attribute (column) in a table is associated with a specific attribute domain (or
+  datatype, a set of possible values), ensuring that the data entered is valid.
+  Attribute domains may not include relations, which keeps the data model
+  flat, i.e. free of nested structures.</p>
+<p><strong>Uniqueness constraints:</strong>
   Entities within relations are addressed by values of their attributes.
   To identify and relate data elements, uniqueness constraints are imposed on subsets
   of attributes.
   Such subsets are then referred to as keys.
   One key in a relation is designated as the primary key used for referencing its elements.</p>
-<p><strong>Referential constraints</strong>
+<p><strong>Referential constraints:</strong>
   Associations among data are established by means of referential constraints with the
   help of foreign keys.
   A referential constraint on relation A referencing relation B allows only those
   entities in A whose foreign key attributes match the key attributes of an entity in B.</p>
-<p><strong>Declarative queries</strong>
+<p><strong>Declarative queries:</strong>
   Data queries are formulated through declarative, as opposed to imperative,
   specifications of sought results.
   This means that query expressions convey the logic for the result rather than the
@@ -3069,22 +3102,24 @@ model.
 Similar to spreadsheets, relations are often visualized as tables with <em>attributes</em>
 corresponding to <em>columns</em> and <em>entities</em> corresponding to <em>rows</em>.
 In particular, SQL uses the terms <em>table</em>, <em>column</em>, and <em>row</em>.</p>
-<h2 id="datajoint-is-a-refinement-of-the-relational-data-model">DataJoint is a refinement of the relational data model<a class="headerlink" href="#datajoint-is-a-refinement-of-the-relational-data-model" title="Permanent link">&para;</a></h2>
+<h2 id="the-datajoint-model">The DataJoint Model<a class="headerlink" href="#the-datajoint-model" title="Permanent link">&para;</a></h2>
 <p>DataJoint is a conceptual refinement of the relational data model offering a more
-expressive and rigorous framework for database programming
-(<a href="https://arxiv.org/abs/1807.11104">Yatsenko et al., 2018</a>).
-The DataJoint model facilitates clear conceptual modeling, efficient schema design, and
-precise and flexible data queries.
-The model has emerged over a decade of continuous development of complex data pipelines
-for neuroscience experiments
-(<a href="https://www.biorxiv.org/content/early/2015/11/14/031658">Yatsenko et al., 2015</a>).
-DataJoint has allowed researchers with no prior knowledge of databases to collaborate
-effectively on common data pipelines sustaining data integrity and supporting flexible
-access.
-DataJoint is currently implemented as client libraries in MATLAB and Python.
-These libraries work by transpiling DataJoint queries into SQL before passing them on
-to conventional relational database systems that serve as the backend, in combination
-with bulk storage systems for storing large contiguous data objects.</p>
+expressive and rigorous framework for database programming (<a href="https://arxiv.org/abs/1807.11104">Yatsenko et al.,
+2018</a>). The DataJoint model facilitates conceptual
+clarity, efficiency, workflow management, and precise and flexible data
+queries. By enforcing entity normalization,
+simplifying dependency declarations, offering a rich query algebra, and visualizing
+relationships through schema diagrams, DataJoint makes relational database programming
+more intuitive and robust for complex data pipelines.</p>
+<p>The model has emerged over a decade of continuous development of complex data
+pipelines for neuroscience experiments (<a href="https://www.biorxiv.org/content/early/2015/11/14/031658">Yatsenko et al.,
+2015</a>). DataJoint has allowed
+researchers with no prior knowledge of databases to collaborate effectively on common
+data pipelines sustaining data integrity and supporting flexible access. DataJoint is
+currently implemented as client libraries in MATLAB and Python. These libraries work by
+transpiling DataJoint queries into SQL before passing them on to conventional relational
+database systems that serve as the backend, in combination with bulk storage systems for
+storing large contiguous data objects.</p>
 <p>DataJoint comprises:</p>
 <ul>
 <li>a schema <a href="../../design/tables/declare/">definition</a> language</li>
@@ -3096,6 +3131,40 @@ modeled entities</li>
 <p>The key refinement of DataJoint over other relational data models and their
 implementations is DataJoint's support of
 <a href="../../design/normalization/">entity normalization</a>.</p>
+<h3 id="core-principles-of-the-datajoint-model">Core principles of the DataJoint model<a class="headerlink" href="#core-principles-of-the-datajoint-model" title="Permanent link">&para;</a></h3>
+<p><strong>Entity Normalization</strong>
+  DataJoint enforces entity normalization, ensuring that every entity set (table) is
+  well-defined, with each element belonging to the same type, sharing the same
+  attributes, and distinguished by the same primary key. This principle reduces
+  redundancy and avoids data anomalies, similar to Boyce-Codd Normal Form, but with a
+  more intuitive structure than traditional SQL.</p>
+<p><strong>Simplified Schema Definition and Dependency Management</strong>
+  DataJoint introduces a schema definition language that is more expressive and less
+  error-prone than SQL. Dependencies are explicitly declared using arrow notation
+  (-&gt;), making referential constraints easier to understand and visualize. The
+  dependency structure is enforced as an acyclic directed graph, which simplifies
+  workflows by preventing circular dependencies.</p>
+<p><strong>Integrated Query Operators producing a Relational Algebra</strong>
+  DataJoint introduces five query operators (restrict, join, project, aggregate, and
+  union) with algebraic closure, allowing them to be combined seamlessly. These
+  operators are designed to maintain operational entity normalization, ensuring query
+  outputs remain valid entity sets.</p>
+<p><strong>Diagramming Notation for Conceptual Clarity</strong>
+  DataJoint’s schema diagrams simplify the representation of relationships between
+  entity sets compared to ERM diagrams. Relationships are expressed as dependencies
+  between entity sets, which are visualized using solid or dashed lines for primary
+  and secondary dependencies, respectively.</p>
+<p><strong>Unified Logic for Binary Operators</strong>
+  DataJoint simplifies binary operations by requiring attributes involved in joins or
+  comparisons to be homologous (i.e., sharing the same origin). This avoids the
+  ambiguity and pitfalls of natural joins in SQL, ensuring more predictable query
+  results.</p>
+<p><strong>Optimized Data Pipelines for Scientific Workflows</strong>
+  DataJoint treats the database as a data pipeline where each entity set defines a
+  step in the workflow. This makes it ideal for scientific experiments and complex
+  data processing, such as in neuroscience. Its MATLAB and Python libraries transpile
+  DataJoint queries into SQL, bridging the gap between scientific programming and
+  relational databases.</p>
 
 
 
@@ -3225,10 +3294,10 @@ implementations is DataJoint's support of
     
     
       
-      <script id="__config" type="application/json">{"base": "../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"base": "../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.c8b220af.min.js"></script>
+      <script src="../../assets/javascripts/bundle.56ea9cef.min.js"></script>
       
     
   </body>

@@ -9,10 +9,6 @@
       
       
       
-        <link rel="prev" href="../../internal/transpilation/">
-      
-      
-        <link rel="next" href="../../faq/">
       
       
       <link rel="icon" href="../../assets/images/company-logo-blue.png">
@@ -20,7 +16,7 @@
     
     
       
-        <title>Using the json type - DataJoint Documentation</title>
+        <title>Using the dj.Top restriction - DataJoint Documentation</title>
       
     
     
@@ -76,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#using-the-json-type" class="md-skip">
+        <a href="#using-the-djtop-restriction" class="md-skip">
           Skip to content
         </a>
       
@@ -126,7 +122,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Using the json type
+              Using the dj.Top restriction
             
           </span>
         </div>
@@ -2005,20 +2001,18 @@
       
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" >
         
           
           <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="0">
@@ -2034,7 +2028,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_12">
             <span class="md-nav__icon md-icon"></span>
             Tutorials
@@ -2045,32 +2039,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    Using the json type
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../json/" class="md-nav__link">
         
   
   
@@ -2081,80 +2053,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#table-definition" class="md-nav__link">
-    <span class="md-ellipsis">
-      Table Definition
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#insert" class="md-nav__link">
-    <span class="md-ellipsis">
-      Insert
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#restriction" class="md-nav__link">
-    <span class="md-ellipsis">
-      Restriction
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#projection" class="md-nav__link">
-    <span class="md-ellipsis">
-      Projection
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#describe" class="md-nav__link">
-    <span class="md-ellipsis">
-      Describe
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#cleanup" class="md-nav__link">
-    <span class="md-ellipsis">
-      Cleanup
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -3445,37 +3343,18 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </style>
 <!-- End of mermaid configuration --><div class="jupyter-wrapper">
 <div class="jp-Notebook" data-jp-theme-light="true" data-jp-theme-name="JupyterLab Light">
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=7fe24127-c0d0-4ff8-96b4-6ab0d9307e73">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h1 id="using-the-json-type">Using the json type<a class="anchor-link" href="#using-the-json-type">¶</a></h1>
+<h1 id="using-the-djtop-restriction">Using the dj.Top restriction<a class="anchor-link" href="#using-the-djtop-restriction">¶</a></h1>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=62450023">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<blockquote>
-<p>⚠️ Note the following before using the <code>json</code> type</p>
-<ul>
-<li>Supported only for MySQL &gt;= 8.0 when <a href="https://dev.mysql.com/doc/refman/8.0/en/json-search-functions.html#function_json-value">JSON_VALUE</a> introduced.</li>
-<li>Equivalent Percona is fully-compatible.</li>
-<li>MariaDB is not supported since <a href="https://mariadb.com/kb/en/json_value/#syntax">JSON_VALUE</a> does not allow type specification like MySQL's.</li>
-<li>Not yet supported in DataJoint MATLAB</li>
-</ul>
-</blockquote>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=67cf93d2">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3486,8 +3365,8 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=bc0b6f54-8f11-45f4-bf8d-e1058ee0056f">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3506,40 +3385,46 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </clipboard-copy>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">datajoint</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">dj</span>
+
+<span class="n">dj</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">"database.host"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"127.0.0.1"</span>
+<span class="n">schema</span> <span class="o">=</span> <span class="n">dj</span><span class="o">.</span><span class="n">Schema</span><span class="p">(</span><span class="s2">"university"</span><span class="p">)</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-1">import datajoint as dj</div>
+<div class="clipboard-copy-txt" id="cell-1">import datajoint as dj
+
+dj.config["database.host"] = "127.0.0.1"
+schema = dj.Schema("university")</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
+<pre>[2024-12-20 11:10:20,120][INFO]: Connecting root@127.0.0.1:3306
+[2024-12-20 11:10:20,259][INFO]: Connected root@127.0.0.1:3306
+</pre>
 </div>
 </div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=3544cab9-f2db-458a-9431-939bea5affc5">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="table-definition">Table Definition<a class="anchor-link" href="#table-definition">¶</a></h2>
+<h1 id="table-definition">Table Definition<a class="anchor-link" href="#table-definition">¶</a></h1>
 </div>
 </div>
 </div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=a2998c71">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>For this exercise, let's imagine we work for an awesome company that is organizing a fun RC car race across various teams in the company. Let's see which team has the fastest car! 🏎️</p>
-<p>This establishes 2 important entities: a <code>Team</code> and a <code>Car</code>. Normally the entities are mapped to their own dedicated table, however, let's assume that <code>Team</code> is well-structured but <code>Car</code> is less structured than we'd prefer. In other words, the structure for what makes up a <em>car</em> is varying too much between entries (perhaps because users of the pipeline haven't agreed yet on the definition? 🤷).</p>
-<p>This would make it a good use-case to keep <code>Team</code> as a table but make <code>Car</code> a <code>json</code> type defined within the <code>Team</code> table.</p>
-<p>Let's begin.</p>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=dc318298-b819-4f06-abbd-7bb7544dd431">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3557,30 +3442,44 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">schema</span> <span class="o">=</span> <span class="n">dj</span><span class="o">.</span><span class="n">Schema</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">dj</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">'database.user'</span><span class="p">]</span><span class="si">}</span><span class="s2">_json"</span><span class="p">)</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="nd">@schema</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Student</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
+    <span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
+<span class="s2">    student_id : int unsigned   # university-wide ID number</span>
+<span class="s2">    ---</span>
+<span class="s2">    first_name      : varchar(40)</span>
+<span class="s2">    last_name       : varchar(40)</span>
+<span class="s2">    sex             : enum('F', 'M', 'U')</span>
+<span class="s2">    date_of_birth   : date</span>
+<span class="s2">    home_address    : varchar(120) # mailing street address</span>
+<span class="s2">    home_city       : varchar(60)  # mailing address</span>
+<span class="s2">    home_state      : char(2)      # US state acronym: e.g. OH</span>
+<span class="s2">    home_zip        : char(10)     # zipcode e.g. 93979-4979</span>
+<span class="s2">    home_phone      : varchar(20)  # e.g. 414.657.6883x0881</span>
+<span class="s2">    """</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-2">schema = dj.Schema(f"{dj.config['database.user']}_json")</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>[2023-02-12 00:14:33,027][INFO]: Connecting root@fakeservices.datajoint.io:3306
-[2023-02-12 00:14:33,039][INFO]: Connected root@fakeservices.datajoint.io:3306
-</pre>
+<div class="clipboard-copy-txt" id="cell-2">@schema
+class Student(dj.Manual):
+    definition = """
+    student_id : int unsigned   # university-wide ID number
+    ---
+    first_name      : varchar(40)
+    last_name       : varchar(40)
+    sex             : enum('F', 'M', 'U')
+    date_of_birth   : date
+    home_address    : varchar(120) # mailing street address
+    home_city       : varchar(60)  # mailing address
+    home_state      : char(2)      # US state acronym: e.g. OH
+    home_zip        : char(10)     # zipcode e.g. 93979-4979
+    home_phone      : varchar(20)  # e.g. 414.657.6883x0881
+    """</div>
 </div>
 </div>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=4aaf96db-85d9-4e94-a4c3-3558f4cc6671">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3599,55 +3498,31 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </clipboard-copy>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="nd">@schema</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">Team</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Lookup</span><span class="p">):</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Department</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
     <span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
-<span class="s2">    # A team within a company</span>
-<span class="s2">    name: varchar(40)  # team name</span>
+<span class="s2">    dept : varchar(6)   # abbreviated department name, e.g. BIOL</span>
 <span class="s2">    ---</span>
-<span class="s2">    car=null: json  # A car belonging to a team (null to allow registering first but specifying car later)</span>
-<span class="s2">    </span>
-<span class="s2">    unique index(car.length:decimal(4, 1))  # Add an index if this key is frequently accessed</span>
+<span class="s2">    dept_name    : varchar(200)  # full department name</span>
+<span class="s2">    dept_address : varchar(200)  # mailing address</span>
+<span class="s2">    dept_phone   : varchar(20)</span>
 <span class="s2">    """</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-3">@schema
-class Team(dj.Lookup):
+class Department(dj.Manual):
     definition = """
-    # A team within a company
-    name: varchar(40)  # team name
+    dept : varchar(6)   # abbreviated department name, e.g. BIOL
     ---
-    car=null: json  # A car belonging to a team (null to allow registering first but specifying car later)
-    
-    unique index(car.length:decimal(4, 1))  # Add an index if this key is frequently accessed
+    dept_name    : varchar(200)  # full department name
+    dept_address : varchar(200)  # mailing address
+    dept_phone   : varchar(20)
     """</div>
 </div>
 </div>
 </div>
 </div>
 </div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=640bf7a7-9e07-4953-9c8a-304e55c467f8">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="insert">Insert<a class="anchor-link" href="#insert">¶</a></h2>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=7081e577">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>Let's suppose that engineering is first up to register their car.</p>
-</div>
-</div>
-</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=30f0d62e">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3665,72 +3540,30 @@ class Team(dj.Lookup):
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">Team</span><span class="o">.</span><span class="n">insert1</span><span class="p">(</span>
-    <span class="p">{</span>
-        <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"engineering"</span><span class="p">,</span>
-        <span class="s2">"car"</span><span class="p">:</span> <span class="p">{</span>
-            <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"Rever"</span><span class="p">,</span>
-            <span class="s2">"length"</span><span class="p">:</span> <span class="mf">20.5</span><span class="p">,</span>
-            <span class="s2">"inspected"</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-            <span class="s2">"tire_pressure"</span><span class="p">:</span> <span class="p">[</span><span class="mi">32</span><span class="p">,</span> <span class="mi">31</span><span class="p">,</span> <span class="mi">33</span><span class="p">,</span> <span class="mi">34</span><span class="p">],</span>
-            <span class="s2">"headlights"</span><span class="p">:</span> <span class="p">[</span>
-                <span class="p">{</span>
-                    <span class="s2">"side"</span><span class="p">:</span> <span class="s2">"left"</span><span class="p">,</span>
-                    <span class="s2">"hyper_white"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
-                <span class="p">},</span>
-                <span class="p">{</span>
-                    <span class="s2">"side"</span><span class="p">:</span> <span class="s2">"right"</span><span class="p">,</span>
-                    <span class="s2">"hyper_white"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
-                <span class="p">},</span>
-            <span class="p">],</span>
-        <span class="p">},</span>
-    <span class="p">}</span>
-<span class="p">)</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="nd">@schema</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">StudentMajor</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
+    <span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
+<span class="s2">    -&gt; Student</span>
+<span class="s2">    ---</span>
+<span class="s2">    -&gt; Department</span>
+<span class="s2">    declare_date :  date  # when student declared her major</span>
+<span class="s2">    """</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-4">Team.insert1(
-    {
-        "name": "engineering",
-        "car": {
-            "name": "Rever",
-            "length": 20.5,
-            "inspected": True,
-            "tire_pressure": [32, 31, 33, 34],
-            "headlights": [
-                {
-                    "side": "left",
-                    "hyper_white": None,
-                },
-                {
-                    "side": "right",
-                    "hyper_white": None,
-                },
-            ],
-        },
-    }
-)</div>
+<div class="clipboard-copy-txt" id="cell-4">@schema
+class StudentMajor(dj.Manual):
+    definition = """
+    -&gt; Student
+    ---
+    -&gt; Department
+    declare_date :  date  # when student declared her major
+    """</div>
 </div>
 </div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=ee5e4dcf">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>Next, business and marketing teams are up and register their cars.</p>
-<p>A few points to notice below:</p>
-<ul>
-<li>The person signing up on behalf of marketing does not know the specifics of the car during registration but another team member will be updating this soon before the race.</li>
-<li>Notice how the <code>business</code> and <code>engineering</code> teams appear to specify the same property but refer to it as <code>safety_inspected</code> and <code>inspected</code> respectfully.</li>
-</ul>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=b532e16c">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3748,79 +3581,173 @@ class Team(dj.Lookup):
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">Team</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span>
-    <span class="p">[</span>
-        <span class="p">{</span>
-            <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"marketing"</span><span class="p">,</span>
-            <span class="s2">"car"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="p">},</span>
-        <span class="p">{</span>
-            <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"business"</span><span class="p">,</span>
-            <span class="s2">"car"</span><span class="p">:</span> <span class="p">{</span>
-                <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"Chaching"</span><span class="p">,</span>
-                <span class="s2">"length"</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
-                <span class="s2">"safety_inspected"</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
-                <span class="s2">"tire_pressure"</span><span class="p">:</span> <span class="p">[</span><span class="mi">34</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">27</span><span class="p">,</span> <span class="mi">32</span><span class="p">],</span>
-                <span class="s2">"headlights"</span><span class="p">:</span> <span class="p">[</span>
-                    <span class="p">{</span>
-                        <span class="s2">"side"</span><span class="p">:</span> <span class="s2">"left"</span><span class="p">,</span>
-                        <span class="s2">"hyper_white"</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-                    <span class="p">},</span>
-                    <span class="p">{</span>
-                        <span class="s2">"side"</span><span class="p">:</span> <span class="s2">"right"</span><span class="p">,</span>
-                        <span class="s2">"hyper_white"</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
-                    <span class="p">},</span>
-                <span class="p">],</span>
-            <span class="p">},</span>
-        <span class="p">},</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="nd">@schema</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Course</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
+    <span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
+<span class="s2">    -&gt; Department</span>
+<span class="s2">    course  : int unsigned   # course number, e.g. 1010</span>
+<span class="s2">    ---</span>
+<span class="s2">    course_name :  varchar(200)  # e.g. "Neurobiology of Sensation and Movement."</span>
+<span class="s2">    credits     :  decimal(3,1)  # number of credits earned by completing the course</span>
+<span class="s2">    """</span>
+
+
+<span class="nd">@schema</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Term</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
+    <span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
+<span class="s2">    term_year : year</span>
+<span class="s2">    term      : enum('Spring', 'Summer', 'Fall')</span>
+<span class="s2">    """</span>
+
+
+<span class="nd">@schema</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Section</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
+    <span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
+<span class="s2">    -&gt; Course</span>
+<span class="s2">    -&gt; Term</span>
+<span class="s2">    section : char(1)</span>
+<span class="s2">    ---</span>
+<span class="s2">    auditorium   :  varchar(12)</span>
+<span class="s2">    """</span>
+
+
+<span class="nd">@schema</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CurrentTerm</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
+    <span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
+<span class="s2">    -&gt; Term</span>
+<span class="s2">    """</span>
+
+
+<span class="nd">@schema</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Enroll</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
+    <span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
+<span class="s2">    -&gt; Student</span>
+<span class="s2">    -&gt; Section</span>
+<span class="s2">    """</span>
+
+
+<span class="nd">@schema</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">LetterGrade</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Lookup</span><span class="p">):</span>
+    <span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
+<span class="s2">    grade : char(2)</span>
+<span class="s2">    ---</span>
+<span class="s2">    points : decimal(3,2)</span>
+<span class="s2">    """</span>
+    <span class="n">contents</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">[</span><span class="s2">"A"</span><span class="p">,</span> <span class="mf">4.00</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"A-"</span><span class="p">,</span> <span class="mf">3.67</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"B+"</span><span class="p">,</span> <span class="mf">3.33</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"B"</span><span class="p">,</span> <span class="mf">3.00</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"B-"</span><span class="p">,</span> <span class="mf">2.67</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"C+"</span><span class="p">,</span> <span class="mf">2.33</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"C"</span><span class="p">,</span> <span class="mf">2.00</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"C-"</span><span class="p">,</span> <span class="mf">1.67</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"D+"</span><span class="p">,</span> <span class="mf">1.33</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"D"</span><span class="p">,</span> <span class="mf">1.00</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"F"</span><span class="p">,</span> <span class="mf">0.00</span><span class="p">],</span>
     <span class="p">]</span>
-<span class="p">)</span>
+
+
+<span class="nd">@schema</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Grade</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
+    <span class="n">definition</span> <span class="o">=</span> <span class="s2">"""</span>
+<span class="s2">    -&gt; Enroll</span>
+<span class="s2">    ---</span>
+<span class="s2">    -&gt; LetterGrade</span>
+<span class="s2">    """</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-5">Team.insert(
-    [
-        {
-            "name": "marketing",
-            "car": None,
-        },
-        {
-            "name": "business",
-            "car": {
-                "name": "Chaching",
-                "length": 100,
-                "safety_inspected": False,
-                "tire_pressure": [34, 30, 27, 32],
-                "headlights": [
-                    {
-                        "side": "left",
-                        "hyper_white": True,
-                    },
-                    {
-                        "side": "right",
-                        "hyper_white": True,
-                    },
-                ],
-            },
-        },
+<div class="clipboard-copy-txt" id="cell-5">@schema
+class Course(dj.Manual):
+    definition = """
+    -&gt; Department
+    course  : int unsigned   # course number, e.g. 1010
+    ---
+    course_name :  varchar(200)  # e.g. "Neurobiology of Sensation and Movement."
+    credits     :  decimal(3,1)  # number of credits earned by completing the course
+    """
+
+
+@schema
+class Term(dj.Manual):
+    definition = """
+    term_year : year
+    term      : enum('Spring', 'Summer', 'Fall')
+    """
+
+
+@schema
+class Section(dj.Manual):
+    definition = """
+    -&gt; Course
+    -&gt; Term
+    section : char(1)
+    ---
+    auditorium   :  varchar(12)
+    """
+
+
+@schema
+class CurrentTerm(dj.Manual):
+    definition = """
+    -&gt; Term
+    """
+
+
+@schema
+class Enroll(dj.Manual):
+    definition = """
+    -&gt; Student
+    -&gt; Section
+    """
+
+
+@schema
+class LetterGrade(dj.Lookup):
+    definition = """
+    grade : char(2)
+    ---
+    points : decimal(3,2)
+    """
+    contents = [
+        ["A", 4.00],
+        ["A-", 3.67],
+        ["B+", 3.33],
+        ["B", 3.00],
+        ["B-", 2.67],
+        ["C+", 2.33],
+        ["C", 2.00],
+        ["C-", 1.67],
+        ["D+", 1.33],
+        ["D", 1.00],
+        ["F", 0.00],
     ]
-)</div>
+
+
+@schema
+class Grade(dj.Manual):
+    definition = """
+    -&gt; Enroll
+    ---
+    -&gt; LetterGrade
+    """</div>
 </div>
 </div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=57365de7">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>We can preview the table data much like normal but notice how the value of <code>car</code> behaves like other BLOB-like attributes.</p>
+<h1 id="insert">Insert<a class="anchor-link" href="#insert">¶</a></h1>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=0e3b517c">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3838,112 +3765,26 @@ class Team(dj.Lookup):
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">Team</span><span class="p">()</span>
-</pre></div>
-<div class="clipboard-copy-txt" id="cell-6">Team()</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child jp-OutputArea-executeResult">
-<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[6]:</div>
-<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
-<style type="text/css">
-        .Table{
-            border-collapse:collapse;
-        }
-        .Table th{
-            background: #A0A0A0; color: #ffffff; padding:4px; border:#f0e0e0 1px solid;
-            font-weight: normal; font-family: monospace; font-size: 100%;
-        }
-        .Table td{
-            padding:4px; border:#f0e0e0 1px solid; font-size:100%;
-        }
-        .Table tr:nth-child(odd){
-            background: #ffffff;
-        }
-        .Table tr:nth-child(even){
-            background: #f3f1ff;
-        }
-        /* Tooltip container */
-        .djtooltip {
-        }
-        /* Tooltip text */
-        .djtooltip .djtooltiptext {
-            visibility: hidden;
-            width: 120px;
-            background-color: black;
-            color: #fff;
-            text-align: center;
-            padding: 5px 0;
-            border-radius: 6px;
-            /* Position the tooltip text - see examples below! */
-            position: absolute;
-            z-index: 1;
-        }
-        #primary {
-            font-weight: bold;
-            color: black;
-        }
-        #nonprimary {
-            font-weight: normal;
-            color: white;
-        }
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">tqdm</span><span class="w"> </span><span class="kn">import</span> <span class="n">tqdm</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">faker</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">datetime</span>
 
-        /* Show the tooltip text when you mouse over the tooltip container */
-        .djtooltip:hover .djtooltiptext {
-            visibility: visible;
-        }
-    </style>
-<b>A team within a company</b>
-<div style="max-height:1000px;max-width:1500px;overflow:auto;">
-<table border="1" class="Table">
-<thead> <tr style="text-align: right;"> <th> <div class="djtooltip">
-<p id="primary">name</p>
-<span class="djtooltiptext">team name</span>
-</div></th><th><div class="djtooltip">
-<p id="nonprimary">car</p>
-<span class="djtooltiptext">A car belonging to a team (null to allow registering first but specifying car later)</span>
-</div> </th> </tr> </thead>
-<tbody> <tr> <td>marketing</td>
-<td>=BLOB=</td></tr><tr><td>engineering</td>
-<td>=BLOB=</td></tr><tr><td>business</td>
-<td>=BLOB=</td> </tr> </tbody>
-</table>
-<p>Total: 3</p></div>
+<span class="n">fake</span> <span class="o">=</span> <span class="n">faker</span><span class="o">.</span><span class="n">Faker</span><span class="p">()</span>
+</pre></div>
+<div class="clipboard-copy-txt" id="cell-6">from tqdm import tqdm
+import faker
+import random
+import datetime
+
+fake = faker.Faker()</div>
 </div>
 </div>
 </div>
 </div>
 </div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=c95cbbee-4ef7-4870-ad42-a60345a3644f">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="restriction">Restriction<a class="anchor-link" href="#restriction">¶</a></h2>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=8b454996">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>Now let's see what kinds of queries we can form to demostrate how we can query this pipeline.</p>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=81efda24">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -3961,90 +3802,64 @@ class Team(dj.Lookup):
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># Which team has a `car` equal to 100 inches long?</span>
-<span class="n">Team</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s2">"car.length"</span><span class="p">:</span> <span class="mi">100</span><span class="p">}</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">yield_students</span><span class="p">():</span>
+    <span class="n">fake_name</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"F"</span><span class="p">:</span> <span class="n">fake</span><span class="o">.</span><span class="n">name_female</span><span class="p">,</span> <span class="s2">"M"</span><span class="p">:</span> <span class="n">fake</span><span class="o">.</span><span class="n">name_male</span><span class="p">}</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>  <span class="c1"># ignore invalid values</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">sex</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">((</span><span class="s2">"F"</span><span class="p">,</span> <span class="s2">"M"</span><span class="p">))</span>
+            <span class="n">first_name</span><span class="p">,</span> <span class="n">last_name</span> <span class="o">=</span> <span class="n">fake_name</span><span class="p">[</span><span class="n">sex</span><span class="p">]()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">" "</span><span class="p">)[:</span><span class="mi">2</span><span class="p">]</span>
+            <span class="n">street_address</span><span class="p">,</span> <span class="n">city</span> <span class="o">=</span> <span class="n">fake</span><span class="o">.</span><span class="n">address</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
+            <span class="n">city</span><span class="p">,</span> <span class="n">state</span> <span class="o">=</span> <span class="n">city</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">", "</span><span class="p">)</span>
+            <span class="n">state</span><span class="p">,</span> <span class="n">zipcode</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">" "</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="nb">dict</span><span class="p">(</span>
+                <span class="n">first_name</span><span class="o">=</span><span class="n">first_name</span><span class="p">,</span>
+                <span class="n">last_name</span><span class="o">=</span><span class="n">last_name</span><span class="p">,</span>
+                <span class="n">sex</span><span class="o">=</span><span class="n">sex</span><span class="p">,</span>
+                <span class="n">home_address</span><span class="o">=</span><span class="n">street_address</span><span class="p">,</span>
+                <span class="n">home_city</span><span class="o">=</span><span class="n">city</span><span class="p">,</span>
+                <span class="n">home_state</span><span class="o">=</span><span class="n">state</span><span class="p">,</span>
+                <span class="n">home_zip</span><span class="o">=</span><span class="n">zipcode</span><span class="p">,</span>
+                <span class="n">date_of_birth</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span>
+                    <span class="n">fake</span><span class="o">.</span><span class="n">date_time_between</span><span class="p">(</span><span class="n">start_date</span><span class="o">=</span><span class="s2">"-35y"</span><span class="p">,</span> <span class="n">end_date</span><span class="o">=</span><span class="s2">"-15y"</span><span class="p">)</span><span class="o">.</span><span class="n">date</span><span class="p">()</span>
+                <span class="p">),</span>
+                <span class="n">home_phone</span><span class="o">=</span><span class="n">fake</span><span class="o">.</span><span class="n">phone_number</span><span class="p">()[:</span><span class="mi">20</span><span class="p">],</span>
+            <span class="p">)</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-7"># Which team has a `car` equal to 100 inches long?
-Team &amp; {"car.length": 100}</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child jp-OutputArea-executeResult">
-<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[7]:</div>
-<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
-<style type="text/css">
-        .Table{
-            border-collapse:collapse;
-        }
-        .Table th{
-            background: #A0A0A0; color: #ffffff; padding:4px; border:#f0e0e0 1px solid;
-            font-weight: normal; font-family: monospace; font-size: 100%;
-        }
-        .Table td{
-            padding:4px; border:#f0e0e0 1px solid; font-size:100%;
-        }
-        .Table tr:nth-child(odd){
-            background: #ffffff;
-        }
-        .Table tr:nth-child(even){
-            background: #f3f1ff;
-        }
-        /* Tooltip container */
-        .djtooltip {
-        }
-        /* Tooltip text */
-        .djtooltip .djtooltiptext {
-            visibility: hidden;
-            width: 120px;
-            background-color: black;
-            color: #fff;
-            text-align: center;
-            padding: 5px 0;
-            border-radius: 6px;
-            /* Position the tooltip text - see examples below! */
-            position: absolute;
-            z-index: 1;
-        }
-        #primary {
-            font-weight: bold;
-            color: black;
-        }
-        #nonprimary {
-            font-weight: normal;
-            color: white;
-        }
-
-        /* Show the tooltip text when you mouse over the tooltip container */
-        .djtooltip:hover .djtooltiptext {
-            visibility: visible;
-        }
-    </style>
-<b>A team within a company</b>
-<div style="max-height:1000px;max-width:1500px;overflow:auto;">
-<table border="1" class="Table">
-<thead> <tr style="text-align: right;"> <th> <div class="djtooltip">
-<p id="primary">name</p>
-<span class="djtooltiptext">team name</span>
-</div></th><th><div class="djtooltip">
-<p id="nonprimary">car</p>
-<span class="djtooltiptext">A car belonging to a team (null to allow registering first but specifying car later)</span>
-</div> </th> </tr> </thead>
-<tbody> <tr> <td>business</td>
-<td>=BLOB=</td> </tr> </tbody>
-</table>
-<p>Total: 1</p></div>
+<div class="clipboard-copy-txt" id="cell-7">def yield_students():
+    fake_name = {"F": fake.name_female, "M": fake.name_male}
+    while True:  # ignore invalid values
+        try:
+            sex = random.choice(("F", "M"))
+            first_name, last_name = fake_name[sex]().split(" ")[:2]
+            street_address, city = fake.address().split("\n")
+            city, state = city.split(", ")
+            state, zipcode = state.split(" ")
+        except ValueError:
+            continue
+        else:
+            yield dict(
+                first_name=first_name,
+                last_name=last_name,
+                sex=sex,
+                home_address=street_address,
+                home_city=city,
+                home_state=state,
+                home_zip=zipcode,
+                date_of_birth=str(
+                    fake.date_time_between(start_date="-35y", end_date="-15y").date()
+                ),
+                home_phone=fake.phone_number()[:20],
+            )</div>
 </div>
 </div>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=fd7b855d">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4062,90 +3877,218 @@ Team &amp; {"car.length": 100}</div>
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># Which team has a `car` less than 50 inches long?</span>
-<span class="n">Team</span> <span class="o">&amp;</span> <span class="s2">"car-&gt;&gt;'$.length' &lt; 50"</span>
-</pre></div>
-<div class="clipboard-copy-txt" id="cell-8"># Which team has a `car` less than 50 inches long?
-Team &amp; "car-&gt;&gt;'$.length' &lt; 50"</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child jp-OutputArea-executeResult">
-<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[8]:</div>
-<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
-<style type="text/css">
-        .Table{
-            border-collapse:collapse;
-        }
-        .Table th{
-            background: #A0A0A0; color: #ffffff; padding:4px; border:#f0e0e0 1px solid;
-            font-weight: normal; font-family: monospace; font-size: 100%;
-        }
-        .Table td{
-            padding:4px; border:#f0e0e0 1px solid; font-size:100%;
-        }
-        .Table tr:nth-child(odd){
-            background: #ffffff;
-        }
-        .Table tr:nth-child(even){
-            background: #f3f1ff;
-        }
-        /* Tooltip container */
-        .djtooltip {
-        }
-        /* Tooltip text */
-        .djtooltip .djtooltiptext {
-            visibility: hidden;
-            width: 120px;
-            background-color: black;
-            color: #fff;
-            text-align: center;
-            padding: 5px 0;
-            border-radius: 6px;
-            /* Position the tooltip text - see examples below! */
-            position: absolute;
-            z-index: 1;
-        }
-        #primary {
-            font-weight: bold;
-            color: black;
-        }
-        #nonprimary {
-            font-weight: normal;
-            color: white;
-        }
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">Student</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">student_id</span><span class="o">=</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">300</span><span class="p">),</span> <span class="n">yield_students</span><span class="p">()))</span>
 
-        /* Show the tooltip text when you mouse over the tooltip container */
-        .djtooltip:hover .djtooltiptext {
-            visibility: visible;
-        }
-    </style>
-<b>A team within a company</b>
-<div style="max-height:1000px;max-width:1500px;overflow:auto;">
-<table border="1" class="Table">
-<thead> <tr style="text-align: right;"> <th> <div class="djtooltip">
-<p id="primary">name</p>
-<span class="djtooltiptext">team name</span>
-</div></th><th><div class="djtooltip">
-<p id="nonprimary">car</p>
-<span class="djtooltiptext">A car belonging to a team (null to allow registering first but specifying car later)</span>
-</div> </th> </tr> </thead>
-<tbody> <tr> <td>engineering</td>
-<td>=BLOB=</td> </tr> </tbody>
-</table>
-<p>Total: 1</p></div>
+<span class="n">Department</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span>
+    <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">dept</span><span class="o">=</span><span class="n">dept</span><span class="p">,</span>
+        <span class="n">dept_name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+        <span class="n">dept_address</span><span class="o">=</span><span class="n">fake</span><span class="o">.</span><span class="n">address</span><span class="p">(),</span>
+        <span class="n">dept_phone</span><span class="o">=</span><span class="n">fake</span><span class="o">.</span><span class="n">phone_number</span><span class="p">()[:</span><span class="mi">20</span><span class="p">],</span>
+    <span class="p">)</span>
+    <span class="k">for</span> <span class="n">dept</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">[</span>
+        <span class="p">[</span><span class="s2">"CS"</span><span class="p">,</span> <span class="s2">"Computer Science"</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"BIOL"</span><span class="p">,</span> <span class="s2">"Life Sciences"</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"PHYS"</span><span class="p">,</span> <span class="s2">"Physics"</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"MATH"</span><span class="p">,</span> <span class="s2">"Mathematics"</span><span class="p">],</span>
+    <span class="p">]</span>
+<span class="p">)</span>
+
+<span class="n">StudentMajor</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span>
+    <span class="p">{</span><span class="o">**</span><span class="n">s</span><span class="p">,</span> <span class="o">**</span><span class="n">d</span><span class="p">,</span> <span class="s2">"declare_date"</span><span class="p">:</span> <span class="n">fake</span><span class="o">.</span><span class="n">date_between</span><span class="p">(</span><span class="n">start_date</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">(</span><span class="mi">1999</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))}</span>
+    <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+        <span class="n">Student</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s2">"KEY"</span><span class="p">),</span> <span class="n">random</span><span class="o">.</span><span class="n">choices</span><span class="p">(</span><span class="n">Department</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s2">"KEY"</span><span class="p">),</span> <span class="n">k</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">Student</span><span class="p">()))</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mf">0.75</span>
+<span class="p">)</span>
+
+<span class="c1"># from https://www.utah.edu/</span>
+<span class="n">Course</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span>
+    <span class="p">[</span>
+        <span class="p">[</span><span class="s2">"BIOL"</span><span class="p">,</span> <span class="mi">1006</span><span class="p">,</span> <span class="s2">"World of Dinosaurs"</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"BIOL"</span><span class="p">,</span> <span class="mi">1010</span><span class="p">,</span> <span class="s2">"Biology in the 21st Century"</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"BIOL"</span><span class="p">,</span> <span class="mi">1030</span><span class="p">,</span> <span class="s2">"Human Biology"</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"BIOL"</span><span class="p">,</span> <span class="mi">1210</span><span class="p">,</span> <span class="s2">"Principles of Biology"</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"BIOL"</span><span class="p">,</span> <span class="mi">2010</span><span class="p">,</span> <span class="s2">"Evolution &amp; Diversity of Life"</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"BIOL"</span><span class="p">,</span> <span class="mi">2020</span><span class="p">,</span> <span class="s2">"Principles of Cell Biology"</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"BIOL"</span><span class="p">,</span> <span class="mi">2021</span><span class="p">,</span> <span class="s2">"Principles of Cell Science"</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"BIOL"</span><span class="p">,</span> <span class="mi">2030</span><span class="p">,</span> <span class="s2">"Principles of Genetics"</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"BIOL"</span><span class="p">,</span> <span class="mi">2210</span><span class="p">,</span> <span class="s2">"Human Genetics"</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"BIOL"</span><span class="p">,</span> <span class="mi">2325</span><span class="p">,</span> <span class="s2">"Human Anatomy"</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"BIOL"</span><span class="p">,</span> <span class="mi">2330</span><span class="p">,</span> <span class="s2">"Plants &amp; Society"</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"BIOL"</span><span class="p">,</span> <span class="mi">2355</span><span class="p">,</span> <span class="s2">"Field Botany"</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"BIOL"</span><span class="p">,</span> <span class="mi">2420</span><span class="p">,</span> <span class="s2">"Human Physiology"</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"PHYS"</span><span class="p">,</span> <span class="mi">2040</span><span class="p">,</span> <span class="s2">"Classcal Theoretical Physics II"</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"PHYS"</span><span class="p">,</span> <span class="mi">2060</span><span class="p">,</span> <span class="s2">"Quantum Mechanics"</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"PHYS"</span><span class="p">,</span> <span class="mi">2100</span><span class="p">,</span> <span class="s2">"General Relativity and Cosmology"</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"PHYS"</span><span class="p">,</span> <span class="mi">2140</span><span class="p">,</span> <span class="s2">"Statistical Mechanics"</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"PHYS"</span><span class="p">,</span> <span class="mi">2210</span><span class="p">,</span> <span class="s2">"Physics for Scientists and Engineers I"</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"PHYS"</span><span class="p">,</span> <span class="mi">2220</span><span class="p">,</span> <span class="s2">"Physics for Scientists and Engineers II"</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"PHYS"</span><span class="p">,</span> <span class="mi">3210</span><span class="p">,</span> <span class="s2">"Physics for Scientists I (Honors)"</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"PHYS"</span><span class="p">,</span> <span class="mi">3220</span><span class="p">,</span> <span class="s2">"Physics for Scientists II (Honors)"</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"MATH"</span><span class="p">,</span> <span class="mi">1250</span><span class="p">,</span> <span class="s2">"Calculus for AP Students I"</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"MATH"</span><span class="p">,</span> <span class="mi">1260</span><span class="p">,</span> <span class="s2">"Calculus for AP Students II"</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"MATH"</span><span class="p">,</span> <span class="mi">1210</span><span class="p">,</span> <span class="s2">"Calculus I"</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"MATH"</span><span class="p">,</span> <span class="mi">1220</span><span class="p">,</span> <span class="s2">"Calculus II"</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"MATH"</span><span class="p">,</span> <span class="mi">2210</span><span class="p">,</span> <span class="s2">"Calculus III"</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"MATH"</span><span class="p">,</span> <span class="mi">2270</span><span class="p">,</span> <span class="s2">"Linear Algebra"</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"MATH"</span><span class="p">,</span> <span class="mi">2280</span><span class="p">,</span> <span class="s2">"Introduction to Differential Equations"</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"MATH"</span><span class="p">,</span> <span class="mi">3210</span><span class="p">,</span> <span class="s2">"Foundations of Analysis I"</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"MATH"</span><span class="p">,</span> <span class="mi">3220</span><span class="p">,</span> <span class="s2">"Foundations of Analysis II"</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"CS"</span><span class="p">,</span> <span class="mi">1030</span><span class="p">,</span> <span class="s2">"Foundations of Computer Science"</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"CS"</span><span class="p">,</span> <span class="mi">1410</span><span class="p">,</span> <span class="s2">"Introduction to Object-Oriented Programming"</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"CS"</span><span class="p">,</span> <span class="mi">2420</span><span class="p">,</span> <span class="s2">"Introduction to Algorithms &amp; Data Structures"</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"CS"</span><span class="p">,</span> <span class="mi">2100</span><span class="p">,</span> <span class="s2">"Discrete Structures"</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"CS"</span><span class="p">,</span> <span class="mi">3500</span><span class="p">,</span> <span class="s2">"Software Practice"</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"CS"</span><span class="p">,</span> <span class="mi">3505</span><span class="p">,</span> <span class="s2">"Software Practice II"</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"CS"</span><span class="p">,</span> <span class="mi">3810</span><span class="p">,</span> <span class="s2">"Computer Organization"</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"CS"</span><span class="p">,</span> <span class="mi">4400</span><span class="p">,</span> <span class="s2">"Computer Systems"</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"CS"</span><span class="p">,</span> <span class="mi">4150</span><span class="p">,</span> <span class="s2">"Algorithms"</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"CS"</span><span class="p">,</span> <span class="mi">3100</span><span class="p">,</span> <span class="s2">"Models of Computation"</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"CS"</span><span class="p">,</span> <span class="mi">3200</span><span class="p">,</span> <span class="s2">"Introduction to Scientific Computing"</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"CS"</span><span class="p">,</span> <span class="mi">4000</span><span class="p">,</span> <span class="s2">"Senior Capstone Project - Design Phase"</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"CS"</span><span class="p">,</span> <span class="mi">4500</span><span class="p">,</span> <span class="s2">"Senior Capstone Project"</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"CS"</span><span class="p">,</span> <span class="mi">4940</span><span class="p">,</span> <span class="s2">"Undergraduate Research"</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+        <span class="p">[</span><span class="s2">"CS"</span><span class="p">,</span> <span class="mi">4970</span><span class="p">,</span> <span class="s2">"Computer Science Bachelors Thesis"</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+    <span class="p">]</span>
+<span class="p">)</span>
+
+<span class="n">Term</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span>
+    <span class="nb">dict</span><span class="p">(</span><span class="n">term_year</span><span class="o">=</span><span class="n">year</span><span class="p">,</span> <span class="n">term</span><span class="o">=</span><span class="n">term</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">year</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1999</span><span class="p">,</span> <span class="mi">2019</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">term</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">"Spring"</span><span class="p">,</span> <span class="s2">"Summer"</span><span class="p">,</span> <span class="s2">"Fall"</span><span class="p">]</span>
+<span class="p">)</span>
+
+<span class="n">Term</span><span class="p">()</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">order_by</span><span class="o">=</span><span class="p">(</span><span class="s2">"term_year DESC"</span><span class="p">,</span> <span class="s2">"term DESC"</span><span class="p">),</span> <span class="n">as_dict</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="n">CurrentTerm</span><span class="p">()</span><span class="o">.</span><span class="n">insert1</span><span class="p">(</span>
+    <span class="p">{</span><span class="o">**</span><span class="n">Term</span><span class="p">()</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">order_by</span><span class="o">=</span><span class="p">(</span><span class="s2">"term_year DESC"</span><span class="p">,</span> <span class="s2">"term DESC"</span><span class="p">),</span> <span class="n">as_dict</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]}</span>
+<span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">make_section</span><span class="p">(</span><span class="n">prob</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="p">(</span><span class="n">Course</span> <span class="o">*</span> <span class="n">Term</span><span class="p">)</span><span class="o">.</span><span class="n">proj</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">sec</span> <span class="ow">in</span> <span class="s2">"abcd"</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">prob</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="k">yield</span> <span class="p">{</span>
+                <span class="o">**</span><span class="n">c</span><span class="p">,</span>
+                <span class="s2">"section"</span><span class="p">:</span> <span class="n">sec</span><span class="p">,</span>
+                <span class="s2">"auditorium"</span><span class="p">:</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="s2">"ABCDEF"</span><span class="p">)</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">)),</span>
+            <span class="p">}</span>
+
+
+<span class="n">Section</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">make_section</span><span class="p">(</span><span class="mf">0.5</span><span class="p">))</span>
+</pre></div>
+<div class="clipboard-copy-txt" id="cell-8">Student.insert(dict(k, student_id=i) for i, k in zip(range(100, 300), yield_students()))
+
+Department.insert(
+    dict(
+        dept=dept,
+        dept_name=name,
+        dept_address=fake.address(),
+        dept_phone=fake.phone_number()[:20],
+    )
+    for dept, name in [
+        ["CS", "Computer Science"],
+        ["BIOL", "Life Sciences"],
+        ["PHYS", "Physics"],
+        ["MATH", "Mathematics"],
+    ]
+)
+
+StudentMajor.insert(
+    {**s, **d, "declare_date": fake.date_between(start_date=datetime.date(1999, 1, 1))}
+    for s, d in zip(
+        Student.fetch("KEY"), random.choices(Department.fetch("KEY"), k=len(Student()))
+    )
+    if random.random() &lt; 0.75
+)
+
+# from https://www.utah.edu/
+Course.insert(
+    [
+        ["BIOL", 1006, "World of Dinosaurs", 3],
+        ["BIOL", 1010, "Biology in the 21st Century", 3],
+        ["BIOL", 1030, "Human Biology", 3],
+        ["BIOL", 1210, "Principles of Biology", 4],
+        ["BIOL", 2010, "Evolution &amp; Diversity of Life", 3],
+        ["BIOL", 2020, "Principles of Cell Biology", 3],
+        ["BIOL", 2021, "Principles of Cell Science", 4],
+        ["BIOL", 2030, "Principles of Genetics", 3],
+        ["BIOL", 2210, "Human Genetics", 3],
+        ["BIOL", 2325, "Human Anatomy", 4],
+        ["BIOL", 2330, "Plants &amp; Society", 3],
+        ["BIOL", 2355, "Field Botany", 2],
+        ["BIOL", 2420, "Human Physiology", 4],
+        ["PHYS", 2040, "Classcal Theoretical Physics II", 4],
+        ["PHYS", 2060, "Quantum Mechanics", 3],
+        ["PHYS", 2100, "General Relativity and Cosmology", 3],
+        ["PHYS", 2140, "Statistical Mechanics", 4],
+        ["PHYS", 2210, "Physics for Scientists and Engineers I", 4],
+        ["PHYS", 2220, "Physics for Scientists and Engineers II", 4],
+        ["PHYS", 3210, "Physics for Scientists I (Honors)", 4],
+        ["PHYS", 3220, "Physics for Scientists II (Honors)", 4],
+        ["MATH", 1250, "Calculus for AP Students I", 4],
+        ["MATH", 1260, "Calculus for AP Students II", 4],
+        ["MATH", 1210, "Calculus I", 4],
+        ["MATH", 1220, "Calculus II", 4],
+        ["MATH", 2210, "Calculus III", 3],
+        ["MATH", 2270, "Linear Algebra", 4],
+        ["MATH", 2280, "Introduction to Differential Equations", 4],
+        ["MATH", 3210, "Foundations of Analysis I", 4],
+        ["MATH", 3220, "Foundations of Analysis II", 4],
+        ["CS", 1030, "Foundations of Computer Science", 3],
+        ["CS", 1410, "Introduction to Object-Oriented Programming", 4],
+        ["CS", 2420, "Introduction to Algorithms &amp; Data Structures", 4],
+        ["CS", 2100, "Discrete Structures", 3],
+        ["CS", 3500, "Software Practice", 4],
+        ["CS", 3505, "Software Practice II", 3],
+        ["CS", 3810, "Computer Organization", 4],
+        ["CS", 4400, "Computer Systems", 4],
+        ["CS", 4150, "Algorithms", 3],
+        ["CS", 3100, "Models of Computation", 3],
+        ["CS", 3200, "Introduction to Scientific Computing", 3],
+        ["CS", 4000, "Senior Capstone Project - Design Phase", 3],
+        ["CS", 4500, "Senior Capstone Project", 3],
+        ["CS", 4940, "Undergraduate Research", 3],
+        ["CS", 4970, "Computer Science Bachelors Thesis", 3],
+    ]
+)
+
+Term.insert(
+    dict(term_year=year, term=term)
+    for year in range(1999, 2019)
+    for term in ["Spring", "Summer", "Fall"]
+)
+
+Term().fetch(order_by=("term_year DESC", "term DESC"), as_dict=True, limit=1)[0]
+
+CurrentTerm().insert1(
+    {**Term().fetch(order_by=("term_year DESC", "term DESC"), as_dict=True, limit=1)[0]}
+)
+
+
+def make_section(prob):
+    for c in (Course * Term).proj():
+        for sec in "abcd":
+            if random.random() &lt; prob:
+                break
+            yield {
+                **c,
+                "section": sec,
+                "auditorium": random.choice("ABCDEF") + str(random.randint(1, 100)),
+            }
+
+
+Section.insert(make_section(0.5))</div>
 </div>
 </div>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=b76ebb75">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -4163,11 +4106,65 @@ Team &amp; "car-&gt;&gt;'$.length' &lt; 50"</div>
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># Any team that has had their car inspected?</span>
-<span class="n">Team</span> <span class="o">&amp;</span> <span class="p">[{</span><span class="s2">"car.inspected:unsigned"</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span> <span class="p">{</span><span class="s2">"car.safety_inspected:unsigned"</span><span class="p">:</span> <span class="kc">True</span><span class="p">}]</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># Enrollment</span>
+<span class="n">terms</span> <span class="o">=</span> <span class="n">Term</span><span class="p">()</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s2">"KEY"</span><span class="p">)</span>
+<span class="n">quit_prob</span> <span class="o">=</span> <span class="mf">0.1</span>
+<span class="k">for</span> <span class="n">student</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">Student</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s2">"KEY"</span><span class="p">)):</span>
+    <span class="n">start_term</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">randrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">terms</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">term</span> <span class="ow">in</span> <span class="n">terms</span><span class="p">[</span><span class="n">start_term</span><span class="p">:]:</span>
+        <span class="k">if</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">quit_prob</span><span class="p">:</span>
+            <span class="k">break</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sections</span> <span class="o">=</span> <span class="p">((</span><span class="n">Section</span> <span class="o">&amp;</span> <span class="n">term</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">Course</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">Enroll</span> <span class="o">&amp;</span> <span class="n">student</span><span class="p">)))</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s2">"KEY"</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">sections</span><span class="p">:</span>
+                <span class="n">Enroll</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span>
+                    <span class="p">{</span><span class="o">**</span><span class="n">student</span><span class="p">,</span> <span class="o">**</span><span class="n">section</span><span class="p">}</span>
+                    <span class="k">for</span> <span class="n">section</span> <span class="ow">in</span> <span class="n">random</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span>
+                        <span class="n">sections</span><span class="p">,</span> <span class="n">random</span><span class="o">.</span><span class="n">randrange</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">sections</span><span class="p">)))</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
+
+<span class="c1"># assign random grades</span>
+<span class="n">grades</span> <span class="o">=</span> <span class="n">LetterGrade</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s2">"grade"</span><span class="p">)</span>
+
+<span class="n">grade_keys</span> <span class="o">=</span> <span class="n">Enroll</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="s2">"KEY"</span><span class="p">)</span>
+<span class="n">random</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">grade_keys</span><span class="p">)</span>
+<span class="n">grade_keys</span> <span class="o">=</span> <span class="n">grade_keys</span><span class="p">[:</span> <span class="nb">len</span><span class="p">(</span><span class="n">grade_keys</span><span class="p">)</span> <span class="o">*</span> <span class="mi">9</span> <span class="o">//</span> <span class="mi">10</span><span class="p">]</span>
+
+<span class="n">Grade</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span>
+    <span class="p">{</span><span class="o">**</span><span class="n">key</span><span class="p">,</span> <span class="s2">"grade"</span><span class="p">:</span> <span class="n">grade</span><span class="p">}</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">grade</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">grade_keys</span><span class="p">,</span> <span class="n">random</span><span class="o">.</span><span class="n">choices</span><span class="p">(</span><span class="n">grades</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">grade_keys</span><span class="p">)))</span>
+<span class="p">)</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-9"># Any team that has had their car inspected?
-Team &amp; [{"car.inspected:unsigned": True}, {"car.safety_inspected:unsigned": True}]</div>
+<div class="clipboard-copy-txt" id="cell-9"># Enrollment
+terms = Term().fetch("KEY")
+quit_prob = 0.1
+for student in tqdm(Student.fetch("KEY")):
+    start_term = random.randrange(len(terms))
+    for term in terms[start_term:]:
+        if random.random() &lt; quit_prob:
+            break
+        else:
+            sections = ((Section &amp; term) - (Course &amp; (Enroll &amp; student))).fetch("KEY")
+            if sections:
+                Enroll.insert(
+                    {**student, **section}
+                    for section in random.sample(
+                        sections, random.randrange(min(5, len(sections)))
+                    )
+                )
+
+# assign random grades
+grades = LetterGrade.fetch("grade")
+
+grade_keys = Enroll.fetch("KEY")
+random.shuffle(grade_keys)
+grade_keys = grade_keys[: len(grade_keys) * 9 // 10]
+
+Grade.insert(
+    {**key, "grade": grade}
+    for key, grade in zip(grade_keys, random.choices(grades, k=len(grade_keys)))
+)</div>
 </div>
 </div>
 </div>
@@ -4176,82 +4173,34 @@ Team &amp; [{"car.inspected:unsigned": True}, {"car.safety_inspected:unsigned": 
 <div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
 </div>
 <div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child jp-OutputArea-executeResult">
-<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[9]:</div>
-<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
-<style type="text/css">
-        .Table{
-            border-collapse:collapse;
-        }
-        .Table th{
-            background: #A0A0A0; color: #ffffff; padding:4px; border:#f0e0e0 1px solid;
-            font-weight: normal; font-family: monospace; font-size: 100%;
-        }
-        .Table td{
-            padding:4px; border:#f0e0e0 1px solid; font-size:100%;
-        }
-        .Table tr:nth-child(odd){
-            background: #ffffff;
-        }
-        .Table tr:nth-child(even){
-            background: #f3f1ff;
-        }
-        /* Tooltip container */
-        .djtooltip {
-        }
-        /* Tooltip text */
-        .djtooltip .djtooltiptext {
-            visibility: hidden;
-            width: 120px;
-            background-color: black;
-            color: #fff;
-            text-align: center;
-            padding: 5px 0;
-            border-radius: 6px;
-            /* Position the tooltip text - see examples below! */
-            position: absolute;
-            z-index: 1;
-        }
-        #primary {
-            font-weight: bold;
-            color: black;
-        }
-        #nonprimary {
-            font-weight: normal;
-            color: white;
-        }
-
-        /* Show the tooltip text when you mouse over the tooltip container */
-        .djtooltip:hover .djtooltiptext {
-            visibility: visible;
-        }
-    </style>
-<b>A team within a company</b>
-<div style="max-height:1000px;max-width:1500px;overflow:auto;">
-<table border="1" class="Table">
-<thead> <tr style="text-align: right;"> <th> <div class="djtooltip">
-<p id="primary">name</p>
-<span class="djtooltiptext">team name</span>
-</div></th><th><div class="djtooltip">
-<p id="nonprimary">car</p>
-<span class="djtooltiptext">A car belonging to a team (null to allow registering first but specifying car later)</span>
-</div> </th> </tr> </thead>
-<tbody> <tr> <td>engineering</td>
-<td>=BLOB=</td> </tr> </tbody>
-</table>
-<p>Total: 1</p></div>
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
+<pre>100%|██████████| 200/200 [00:27&lt;00:00,  7.17it/s]
+</pre>
 </div>
 </div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h1 id="djtop-restriction">dj.Top Restriction<a class="anchor-link" href="#djtop-restriction">¶</a></h1>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=b787784c">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [10]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [29]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-10">
@@ -4264,11 +4213,13 @@ Team &amp; [{"car.inspected:unsigned": True}, {"car.safety_inspected:unsigned": 
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># Which teams do not have hyper white lights for their first head light?</span>
-<span class="n">Team</span> <span class="o">&amp;</span> <span class="p">{</span><span class="s2">"car.headlights[0].hyper_white"</span><span class="p">:</span> <span class="kc">None</span><span class="p">}</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="p">(</span><span class="n">Grade</span> <span class="o">*</span> <span class="n">LetterGrade</span><span class="p">)</span> <span class="o">&amp;</span> <span class="s2">"term_year='2018'"</span> <span class="o">&amp;</span> <span class="n">dj</span><span class="o">.</span><span class="n">Top</span><span class="p">(</span>
+    <span class="n">limit</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">order_by</span><span class="o">=</span><span class="s2">"points DESC"</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="mi">5</span>
+<span class="p">)</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-10"># Which teams do not have hyper white lights for their first head light?
-Team &amp; {"car.headlights[0].hyper_white": None}</div>
+<div class="clipboard-copy-txt" id="cell-10">(Grade * LetterGrade) &amp; "term_year='2018'" &amp; dj.Top(
+    limit=5, order_by="points DESC", offset=5
+)</div>
 </div>
 </div>
 </div>
@@ -4278,7 +4229,7 @@ Team &amp; {"car.headlights[0].hyper_white": None}</div>
 </div>
 <div class="jp-OutputArea jp-Cell-outputArea">
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
-<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[10]:</div>
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[29]:</div>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
 <style type="text/css">
         .Table{
@@ -4293,9 +4244,11 @@ Team &amp; {"car.headlights[0].hyper_white": None}</div>
         }
         .Table tr:nth-child(odd){
             background: #ffffff;
+            color: #000000;
         }
         .Table tr:nth-child(even){
             background: #f3f1ff;
+            color: #000000;
         }
         /* Tooltip container */
         .djtooltip {
@@ -4327,71 +4280,83 @@ Team &amp; {"car.headlights[0].hyper_white": None}</div>
             visibility: visible;
         }
     </style>
-<b>A team within a company</b>
 <div style="max-height:1000px;max-width:1500px;overflow:auto;">
 <table border="1" class="Table">
 <thead> <tr style="text-align: right;"> <th> <div class="djtooltip">
-<p id="primary">name</p>
-<span class="djtooltiptext">team name</span>
+<p id="primary">student_id</p>
+<span class="djtooltiptext">university-wide ID number</span>
 </div></th><th><div class="djtooltip">
-<p id="nonprimary">car</p>
-<span class="djtooltiptext">A car belonging to a team (null to allow registering first but specifying car later)</span>
+<p id="primary">dept</p>
+<span class="djtooltiptext">abbreviated department name, e.g. BIOL</span>
+</div></th><th><div class="djtooltip">
+<p id="primary">course</p>
+<span class="djtooltiptext">course number, e.g. 1010</span>
+</div></th><th><div class="djtooltip">
+<p id="primary">term_year</p>
+<span class="djtooltiptext"></span>
+</div></th><th><div class="djtooltip">
+<p id="primary">term</p>
+<span class="djtooltiptext"></span>
+</div></th><th><div class="djtooltip">
+<p id="primary">section</p>
+<span class="djtooltiptext"></span>
+</div></th><th><div class="djtooltip">
+<p id="primary">grade</p>
+<span class="djtooltiptext"></span>
+</div></th><th><div class="djtooltip">
+<p id="nonprimary">points</p>
+<span class="djtooltiptext"></span>
 </div> </th> </tr> </thead>
-<tbody> <tr> <td>engineering</td>
-<td>=BLOB=</td></tr><tr><td>marketing</td>
-<td>=BLOB=</td> </tr> </tbody>
+<tbody> <tr> <td>100</td>
+<td>MATH</td>
+<td>2280</td>
+<td>2018</td>
+<td>Fall</td>
+<td>a</td>
+<td>A-</td>
+<td>3.67</td></tr><tr><td>191</td>
+<td>MATH</td>
+<td>2210</td>
+<td>2018</td>
+<td>Spring</td>
+<td>b</td>
+<td>A</td>
+<td>4.00</td></tr><tr><td>211</td>
+<td>CS</td>
+<td>2100</td>
+<td>2018</td>
+<td>Fall</td>
+<td>a</td>
+<td>A</td>
+<td>4.00</td></tr><tr><td>273</td>
+<td>PHYS</td>
+<td>2100</td>
+<td>2018</td>
+<td>Spring</td>
+<td>a</td>
+<td>A</td>
+<td>4.00</td></tr><tr><td>282</td>
+<td>BIOL</td>
+<td>2021</td>
+<td>2018</td>
+<td>Spring</td>
+<td>d</td>
+<td>A</td>
+<td>4.00</td> </tr> </tbody>
 </table>
-<p>Total: 2</p></div>
+<p>Total: 5</p></div>
 </div>
 </div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=5bcf0b5d">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>Notice that the previous query will satisfy the <code>None</code> check if it experiences any of the following scenarious:</p>
-<ul>
-<li>if entire record missing (<code>marketing</code> satisfies this)</li>
-<li>JSON key is missing</li>
-<li>JSON value is set to JSON <code>null</code> (<code>engineering</code> satisfies this)</li>
-</ul>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=bcf1682e-a0c7-4c2f-826b-0aec9052a694">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="projection">Projection<a class="anchor-link" href="#projection">¶</a></h2>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=daea110e">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>Projections can be quite useful with the <code>json</code> type since we can extract out just what we need. This allows greater query flexibility but more importantly, for us to be able to fetch only what is pertinent.</p>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=8fb8334a">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [11]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [35]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-11">
@@ -4404,19 +4369,17 @@ Team &amp; {"car.headlights[0].hyper_white": None}</div>
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># Only interested in the car names and the length but let the type be inferred</span>
-<span class="n">q_untyped</span> <span class="o">=</span> <span class="n">Team</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span>
-    <span class="n">car_name</span><span class="o">=</span><span class="s2">"car.name"</span><span class="p">,</span>
-    <span class="n">car_length</span><span class="o">=</span><span class="s2">"car.length"</span><span class="p">,</span>
-<span class="p">)</span>
-<span class="n">q_untyped</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="p">(</span>
+    <span class="p">(</span><span class="n">LetterGrade</span> <span class="o">*</span> <span class="n">Grade</span><span class="p">)</span>
+    <span class="o">&amp;</span> <span class="s2">"term_year='2018'"</span>
+    <span class="o">&amp;</span> <span class="n">dj</span><span class="o">.</span><span class="n">Top</span><span class="p">(</span><span class="n">limit</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">order_by</span><span class="o">=</span><span class="s2">"points DESC"</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="p">)</span><span class="o">.</span><span class="n">make_sql</span><span class="p">()</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-11"># Only interested in the car names and the length but let the type be inferred
-q_untyped = Team.proj(
-    car_name="car.name",
-    car_length="car.length",
-)
-q_untyped</div>
+<div class="clipboard-copy-txt" id="cell-11">(
+    (LetterGrade * Grade)
+    &amp; "term_year='2018'"
+    &amp; dj.Top(limit=10, order_by="points DESC", offset=0)
+).make_sql()</div>
 </div>
 </div>
 </div>
@@ -4426,88 +4389,21 @@ q_untyped</div>
 </div>
 <div class="jp-OutputArea jp-Cell-outputArea">
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
-<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[11]:</div>
-<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
-<style type="text/css">
-        .Table{
-            border-collapse:collapse;
-        }
-        .Table th{
-            background: #A0A0A0; color: #ffffff; padding:4px; border:#f0e0e0 1px solid;
-            font-weight: normal; font-family: monospace; font-size: 100%;
-        }
-        .Table td{
-            padding:4px; border:#f0e0e0 1px solid; font-size:100%;
-        }
-        .Table tr:nth-child(odd){
-            background: #ffffff;
-        }
-        .Table tr:nth-child(even){
-            background: #f3f1ff;
-        }
-        /* Tooltip container */
-        .djtooltip {
-        }
-        /* Tooltip text */
-        .djtooltip .djtooltiptext {
-            visibility: hidden;
-            width: 120px;
-            background-color: black;
-            color: #fff;
-            text-align: center;
-            padding: 5px 0;
-            border-radius: 6px;
-            /* Position the tooltip text - see examples below! */
-            position: absolute;
-            z-index: 1;
-        }
-        #primary {
-            font-weight: bold;
-            color: black;
-        }
-        #nonprimary {
-            font-weight: normal;
-            color: white;
-        }
-
-        /* Show the tooltip text when you mouse over the tooltip container */
-        .djtooltip:hover .djtooltiptext {
-            visibility: visible;
-        }
-    </style>
-<div style="max-height:1000px;max-width:1500px;overflow:auto;">
-<table border="1" class="Table">
-<thead> <tr style="text-align: right;"> <th> <div class="djtooltip">
-<p id="primary">name</p>
-<span class="djtooltiptext">team name</span>
-</div></th><th><div class="djtooltip">
-<p id="nonprimary">car_name</p>
-<span class="djtooltiptext">calculated attribute</span>
-</div></th><th><div class="djtooltip">
-<p id="nonprimary">car_length</p>
-<span class="djtooltiptext">calculated attribute</span>
-</div> </th> </tr> </thead>
-<tbody> <tr> <td>business</td>
-<td>Chaching</td>
-<td>100</td></tr><tr><td>engineering</td>
-<td>Rever</td>
-<td>20.5</td></tr><tr><td>marketing</td>
-<td>None</td>
-<td>None</td> </tr> </tbody>
-</table>
-<p>Total: 3</p></div>
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[35]:</div>
+<div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
+<pre>"SELECT `grade`,`student_id`,`dept`,`course`,`term_year`,`term`,`section`,`points` FROM `university`.`#letter_grade` NATURAL JOIN `university`.`grade` WHERE ( (term_year='2018')) ORDER BY `points` DESC LIMIT 10"</pre>
 </div>
 </div>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=bb5f0448">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [12]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [44]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-12">
@@ -4520,9 +4416,17 @@ q_untyped</div>
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">q_untyped</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">as_dict</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="p">(</span>
+    <span class="p">(</span><span class="n">Grade</span> <span class="o">*</span> <span class="n">LetterGrade</span><span class="p">)</span>
+    <span class="o">&amp;</span> <span class="s2">"term_year='2018'"</span>
+    <span class="o">&amp;</span> <span class="n">dj</span><span class="o">.</span><span class="n">Top</span><span class="p">(</span><span class="n">limit</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">order_by</span><span class="o">=</span><span class="s2">"points DESC"</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="p">)</span><span class="o">.</span><span class="n">make_sql</span><span class="p">()</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-12">q_untyped.fetch(as_dict=True)</div>
+<div class="clipboard-copy-txt" id="cell-12">(
+    (Grade * LetterGrade)
+    &amp; "term_year='2018'"
+    &amp; dj.Top(limit=20, order_by="points DESC", offset=0)
+).make_sql()</div>
 </div>
 </div>
 </div>
@@ -4532,23 +4436,21 @@ q_untyped</div>
 </div>
 <div class="jp-OutputArea jp-Cell-outputArea">
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
-<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[12]:</div>
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[44]:</div>
 <div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
-<pre>[{'name': 'business', 'car_name': 'Chaching', 'car_length': '100'},
- {'name': 'engineering', 'car_name': 'Rever', 'car_length': '20.5'},
- {'name': 'marketing', 'car_name': None, 'car_length': None}]</pre>
+<pre>"SELECT `student_id`,`dept`,`course`,`term_year`,`term`,`section`,`grade`,`points` FROM `university`.`grade` NATURAL JOIN `university`.`#letter_grade` WHERE ( (term_year='2018')) ORDER BY `points` DESC LIMIT 20"</pre>
 </div>
 </div>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=a307dfd7">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [13]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [47]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-13">
@@ -4561,19 +4463,13 @@ q_untyped</div>
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># Nevermind, I'll specify the type explicitly</span>
-<span class="n">q_typed</span> <span class="o">=</span> <span class="n">Team</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span>
-    <span class="n">car_name</span><span class="o">=</span><span class="s2">"car.name"</span><span class="p">,</span>
-    <span class="n">car_length</span><span class="o">=</span><span class="s2">"car.length:float"</span><span class="p">,</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="p">(</span><span class="n">Grade</span> <span class="o">*</span> <span class="n">LetterGrade</span><span class="p">)</span> <span class="o">&amp;</span> <span class="s2">"term_year='2018'"</span> <span class="o">&amp;</span> <span class="n">dj</span><span class="o">.</span><span class="n">Top</span><span class="p">(</span>
+    <span class="n">limit</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">order_by</span><span class="o">=</span><span class="s2">"points DESC"</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="mi">0</span>
 <span class="p">)</span>
-<span class="n">q_typed</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-13"># Nevermind, I'll specify the type explicitly
-q_typed = Team.proj(
-    car_name="car.name",
-    car_length="car.length:float",
-)
-q_typed</div>
+<div class="clipboard-copy-txt" id="cell-13">(Grade * LetterGrade) &amp; "term_year='2018'" &amp; dj.Top(
+    limit=20, order_by="points DESC", offset=0
+)</div>
 </div>
 </div>
 </div>
@@ -4583,7 +4479,7 @@ q_typed</div>
 </div>
 <div class="jp-OutputArea jp-Cell-outputArea">
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
-<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[13]:</div>
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[47]:</div>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
 <style type="text/css">
         .Table{
@@ -4598,9 +4494,11 @@ q_typed</div>
         }
         .Table tr:nth-child(odd){
             background: #ffffff;
+            color: #000000;
         }
         .Table tr:nth-child(even){
             background: #f3f1ff;
+            color: #000000;
         }
         /* Tooltip container */
         .djtooltip {
@@ -4635,36 +4533,130 @@ q_typed</div>
 <div style="max-height:1000px;max-width:1500px;overflow:auto;">
 <table border="1" class="Table">
 <thead> <tr style="text-align: right;"> <th> <div class="djtooltip">
-<p id="primary">name</p>
-<span class="djtooltiptext">team name</span>
+<p id="primary">student_id</p>
+<span class="djtooltiptext">university-wide ID number</span>
 </div></th><th><div class="djtooltip">
-<p id="nonprimary">car_name</p>
-<span class="djtooltiptext">calculated attribute</span>
+<p id="primary">dept</p>
+<span class="djtooltiptext">abbreviated department name, e.g. BIOL</span>
 </div></th><th><div class="djtooltip">
-<p id="nonprimary">car_length</p>
-<span class="djtooltiptext">calculated attribute</span>
+<p id="primary">course</p>
+<span class="djtooltiptext">course number, e.g. 1010</span>
+</div></th><th><div class="djtooltip">
+<p id="primary">term_year</p>
+<span class="djtooltiptext"></span>
+</div></th><th><div class="djtooltip">
+<p id="primary">term</p>
+<span class="djtooltiptext"></span>
+</div></th><th><div class="djtooltip">
+<p id="primary">section</p>
+<span class="djtooltiptext"></span>
+</div></th><th><div class="djtooltip">
+<p id="primary">grade</p>
+<span class="djtooltiptext"></span>
+</div></th><th><div class="djtooltip">
+<p id="nonprimary">points</p>
+<span class="djtooltiptext"></span>
 </div> </th> </tr> </thead>
-<tbody> <tr> <td>business</td>
-<td>Chaching</td>
-<td>100.0</td></tr><tr><td>engineering</td>
-<td>Rever</td>
-<td>20.5</td></tr><tr><td>marketing</td>
-<td>None</td>
-<td>None</td> </tr> </tbody>
+<tbody> <tr> <td>100</td>
+<td>CS</td>
+<td>3200</td>
+<td>2018</td>
+<td>Fall</td>
+<td>c</td>
+<td>A</td>
+<td>4.00</td></tr><tr><td>100</td>
+<td>MATH</td>
+<td>2280</td>
+<td>2018</td>
+<td>Fall</td>
+<td>a</td>
+<td>A-</td>
+<td>3.67</td></tr><tr><td>100</td>
+<td>PHYS</td>
+<td>2210</td>
+<td>2018</td>
+<td>Spring</td>
+<td>d</td>
+<td>A</td>
+<td>4.00</td></tr><tr><td>122</td>
+<td>CS</td>
+<td>1030</td>
+<td>2018</td>
+<td>Fall</td>
+<td>c</td>
+<td>B+</td>
+<td>3.33</td></tr><tr><td>131</td>
+<td>BIOL</td>
+<td>2030</td>
+<td>2018</td>
+<td>Spring</td>
+<td>a</td>
+<td>A</td>
+<td>4.00</td></tr><tr><td>131</td>
+<td>CS</td>
+<td>3200</td>
+<td>2018</td>
+<td>Fall</td>
+<td>b</td>
+<td>B+</td>
+<td>3.33</td></tr><tr><td>136</td>
+<td>BIOL</td>
+<td>2210</td>
+<td>2018</td>
+<td>Spring</td>
+<td>c</td>
+<td>B+</td>
+<td>3.33</td></tr><tr><td>136</td>
+<td>MATH</td>
+<td>2210</td>
+<td>2018</td>
+<td>Fall</td>
+<td>b</td>
+<td>B+</td>
+<td>3.33</td></tr><tr><td>141</td>
+<td>BIOL</td>
+<td>2010</td>
+<td>2018</td>
+<td>Summer</td>
+<td>c</td>
+<td>B+</td>
+<td>3.33</td></tr><tr><td>141</td>
+<td>CS</td>
+<td>2420</td>
+<td>2018</td>
+<td>Fall</td>
+<td>b</td>
+<td>A</td>
+<td>4.00</td></tr><tr><td>141</td>
+<td>CS</td>
+<td>3200</td>
+<td>2018</td>
+<td>Fall</td>
+<td>b</td>
+<td>A-</td>
+<td>3.67</td></tr><tr><td>182</td>
+<td>CS</td>
+<td>1410</td>
+<td>2018</td>
+<td>Summer</td>
+<td>c</td>
+<td>A-</td>
+<td>3.67</td> </tr> </tbody>
 </table>
-<p>Total: 3</p></div>
+<p>...</p>
+<p>Total: 20</p></div>
 </div>
 </div>
 </div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=8a93dbf9">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [14]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [41]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-14">
@@ -4677,9 +4669,13 @@ q_typed</div>
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">q_typed</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">as_dict</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="p">(</span><span class="n">LetterGrade</span> <span class="o">*</span> <span class="n">Grade</span><span class="p">)</span> <span class="o">&amp;</span> <span class="s2">"term_year='2018'"</span> <span class="o">&amp;</span> <span class="n">dj</span><span class="o">.</span><span class="n">Top</span><span class="p">(</span>
+    <span class="n">limit</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">order_by</span><span class="o">=</span><span class="s2">"points DESC"</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="mi">0</span>
+<span class="p">)</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-14">q_typed.fetch(as_dict=True)</div>
+<div class="clipboard-copy-txt" id="cell-14">(LetterGrade * Grade) &amp; "term_year='2018'" &amp; dj.Top(
+    limit=20, order_by="points DESC", offset=0
+)</div>
 </div>
 </div>
 </div>
@@ -4689,45 +4685,184 @@ q_typed</div>
 </div>
 <div class="jp-OutputArea jp-Cell-outputArea">
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
-<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[14]:</div>
-<div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
-<pre>[{'name': 'business', 'car_name': 'Chaching', 'car_length': 100.0},
- {'name': 'engineering', 'car_name': 'Rever', 'car_length': 20.5},
- {'name': 'marketing', 'car_name': None, 'car_length': None}]</pre>
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[41]:</div>
+<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
+<style type="text/css">
+        .Table{
+            border-collapse:collapse;
+        }
+        .Table th{
+            background: #A0A0A0; color: #ffffff; padding:4px; border:#f0e0e0 1px solid;
+            font-weight: normal; font-family: monospace; font-size: 100%;
+        }
+        .Table td{
+            padding:4px; border:#f0e0e0 1px solid; font-size:100%;
+        }
+        .Table tr:nth-child(odd){
+            background: #ffffff;
+            color: #000000;
+        }
+        .Table tr:nth-child(even){
+            background: #f3f1ff;
+            color: #000000;
+        }
+        /* Tooltip container */
+        .djtooltip {
+        }
+        /* Tooltip text */
+        .djtooltip .djtooltiptext {
+            visibility: hidden;
+            width: 120px;
+            background-color: black;
+            color: #fff;
+            text-align: center;
+            padding: 5px 0;
+            border-radius: 6px;
+            /* Position the tooltip text - see examples below! */
+            position: absolute;
+            z-index: 1;
+        }
+        #primary {
+            font-weight: bold;
+            color: black;
+        }
+        #nonprimary {
+            font-weight: normal;
+            color: white;
+        }
+
+        /* Show the tooltip text when you mouse over the tooltip container */
+        .djtooltip:hover .djtooltiptext {
+            visibility: visible;
+        }
+    </style>
+<div style="max-height:1000px;max-width:1500px;overflow:auto;">
+<table border="1" class="Table">
+<thead> <tr style="text-align: right;"> <th> <div class="djtooltip">
+<p id="primary">grade</p>
+<span class="djtooltiptext"></span>
+</div></th><th><div class="djtooltip">
+<p id="primary">student_id</p>
+<span class="djtooltiptext">university-wide ID number</span>
+</div></th><th><div class="djtooltip">
+<p id="primary">dept</p>
+<span class="djtooltiptext">abbreviated department name, e.g. BIOL</span>
+</div></th><th><div class="djtooltip">
+<p id="primary">course</p>
+<span class="djtooltiptext">course number, e.g. 1010</span>
+</div></th><th><div class="djtooltip">
+<p id="primary">term_year</p>
+<span class="djtooltiptext"></span>
+</div></th><th><div class="djtooltip">
+<p id="primary">term</p>
+<span class="djtooltiptext"></span>
+</div></th><th><div class="djtooltip">
+<p id="primary">section</p>
+<span class="djtooltiptext"></span>
+</div></th><th><div class="djtooltip">
+<p id="nonprimary">points</p>
+<span class="djtooltiptext"></span>
+</div> </th> </tr> </thead>
+<tbody> <tr> <td>A</td>
+<td>100</td>
+<td>CS</td>
+<td>3200</td>
+<td>2018</td>
+<td>Fall</td>
+<td>c</td>
+<td>4.00</td></tr><tr><td>A</td>
+<td>100</td>
+<td>PHYS</td>
+<td>2210</td>
+<td>2018</td>
+<td>Spring</td>
+<td>d</td>
+<td>4.00</td></tr><tr><td>A</td>
+<td>131</td>
+<td>BIOL</td>
+<td>2030</td>
+<td>2018</td>
+<td>Spring</td>
+<td>a</td>
+<td>4.00</td></tr><tr><td>A</td>
+<td>141</td>
+<td>CS</td>
+<td>2420</td>
+<td>2018</td>
+<td>Fall</td>
+<td>b</td>
+<td>4.00</td></tr><tr><td>A</td>
+<td>186</td>
+<td>PHYS</td>
+<td>2210</td>
+<td>2018</td>
+<td>Spring</td>
+<td>a</td>
+<td>4.00</td></tr><tr><td>A</td>
+<td>191</td>
+<td>MATH</td>
+<td>2210</td>
+<td>2018</td>
+<td>Spring</td>
+<td>b</td>
+<td>4.00</td></tr><tr><td>A</td>
+<td>211</td>
+<td>CS</td>
+<td>2100</td>
+<td>2018</td>
+<td>Fall</td>
+<td>a</td>
+<td>4.00</td></tr><tr><td>A</td>
+<td>273</td>
+<td>PHYS</td>
+<td>2100</td>
+<td>2018</td>
+<td>Spring</td>
+<td>a</td>
+<td>4.00</td></tr><tr><td>A</td>
+<td>282</td>
+<td>BIOL</td>
+<td>2021</td>
+<td>2018</td>
+<td>Spring</td>
+<td>d</td>
+<td>4.00</td></tr><tr><td>A-</td>
+<td>100</td>
+<td>MATH</td>
+<td>2280</td>
+<td>2018</td>
+<td>Fall</td>
+<td>a</td>
+<td>3.67</td></tr><tr><td>A-</td>
+<td>141</td>
+<td>CS</td>
+<td>3200</td>
+<td>2018</td>
+<td>Fall</td>
+<td>b</td>
+<td>3.67</td></tr><tr><td>A-</td>
+<td>182</td>
+<td>CS</td>
+<td>1410</td>
+<td>2018</td>
+<td>Summer</td>
+<td>c</td>
+<td>3.67</td> </tr> </tbody>
+</table>
+<p>...</p>
+<p>Total: 20</p></div>
 </div>
 </div>
 </div>
 </div>
 </div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=62dd0239-fa70-4369-81eb-3d46c5053fee">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="describe">Describe<a class="anchor-link" href="#describe">¶</a></h2>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=73d9df01">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>Lastly, the <code>.describe()</code> function on the <code>Team</code> table can help us generate the table's definition. This is useful if we are connected directly to the pipeline without the original source.</p>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=0e739932">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [16]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-15">
@@ -4740,105 +4875,9 @@ q_typed</div>
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">rebuilt_definition</span> <span class="o">=</span> <span class="n">Team</span><span class="o">.</span><span class="n">describe</span><span class="p">()</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">rebuilt_definition</span><span class="p">)</span>
-</pre></div>
-<div class="clipboard-copy-txt" id="cell-15">rebuilt_definition = Team.describe()
-print(rebuilt_definition)</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre># A team within a company
-name                 : varchar(40)                  # team name
----
-car=null             : json                         # A car belonging to a team (null to allow registering first but specifying car later)
-UNIQUE INDEX ((json_value(`car`, _utf8mb4'$.length' returning decimal(4, 1))))
-
-</pre>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=be1070d5-765b-4bc2-92de-8a6ffd885984">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="cleanup">Cleanup<a class="anchor-link" href="#cleanup">¶</a></h2>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=cb959927">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p>Finally, let's clean up what we created in this tutorial.</p>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=d9cc28a3-3ffd-4126-b7e9-bc6365040b93">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [17]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-<div class="CodeMirror cm-s-jupyter">
-<div class="zeroclipboard-container">
-<clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-16">
-<div>
-<span class="notice" hidden="">Copied!</span>
-<svg aria-hidden="true" class="clipboard-copy-icon" data-view-component="true" height="20" version="1.1" viewbox="0 0 16 16" width="20">
-<path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z" fill="currentColor" fill-rule="evenodd"></path>
-<path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z" fill="currentColor" fill-rule="evenodd"></path>
-</svg>
-</div>
-</clipboard-copy>
-</div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="n">schema</span><span class="o">.</span><span class="n">drop</span><span class="p">()</span>
-</pre></div>
-<div class="clipboard-copy-txt" id="cell-16">schema.drop()</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=68ad4340">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-<div class="CodeMirror cm-s-jupyter">
-<div class="zeroclipboard-container">
-<clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-17">
-<div>
-<span class="notice" hidden="">Copied!</span>
-<svg aria-hidden="true" class="clipboard-copy-icon" data-view-component="true" height="20" version="1.1" viewbox="0 0 16 16" width="20">
-<path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z" fill="currentColor" fill-rule="evenodd"></path>
-<path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z" fill="currentColor" fill-rule="evenodd"></path>
-</svg>
-</div>
-</clipboard-copy>
-</div>
 <div class="highlight-ipynb hl-python"><pre><span></span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-17"></div>
+<div class="clipboard-copy-txt" id="cell-15"></div>
 </div>
 </div>
 </div>

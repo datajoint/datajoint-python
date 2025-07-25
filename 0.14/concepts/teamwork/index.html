@@ -16,7 +16,7 @@
       
       
       <link rel="icon" href="../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.12">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.15">
     
     
       
@@ -24,7 +24,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.2afb09e1.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.342714a4.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
@@ -537,6 +537,39 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Team roles">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scientists" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scientists
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#data-scientists" class="md-nav__link">
+    <span class="md-ellipsis">
+      Data scientists
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#data-engineers" class="md-nav__link">
+    <span class="md-ellipsis">
+      Data engineers
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -806,7 +839,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../client/stores/" class="md-nav__link">
+      <a href="../../client/stores.md" class="md-nav__link">
         
   
   
@@ -2122,7 +2155,7 @@
   
   
   <span class="md-ellipsis">
-    Using the type
+    Using the json type
     
   </span>
   
@@ -2986,11 +3019,9 @@
 <h2 id="data-management-in-a-science-project">Data management in a science project<a class="headerlink" href="#data-management-in-a-science-project" title="Permanent link">&para;</a></h2>
 <p>Science labs organize their projects as a sequence of activities of experiment design,
 data acquisition, and processing and analysis.</p>
-<figure>
-<pre><code> ![data science in a science lab](../images/data-science-before.png){: style="width:520px; align:center"}
- &lt;figcaption&gt;Workflow and dataflow in a common findings-centered approach to data science in a science lab.&lt;/figcaption&gt;
-</code></pre>
-</figure>
+<p><img alt="data science in a science lab" src="../../images/data-science-before.png" style="width:510px; display:block; margin: 0 auto;" /></p>
+<figcaption style="text-align: center;">Workflow and dataflow in a common findings-centered approach to data science in a science lab.</figcaption>
+
 <p>Many labs lack a uniform data management strategy that would span longitudinally across
 the entire project lifecycle as well as laterally across different projects.</p>
 <p>Prior to publishing their findings, the research team may need to publish the data to
@@ -3005,11 +3036,9 @@ systematically throughout in a single framework through the entire process.</p>
 <p>This approach requires formulating a general data science plan and upfront investment
 for setting up resources and processes and training the teams.
 The team uses DataJoint to build data pipelines to support multiple projects.</p>
-<figure>
-<pre><code> ![data science in a science lab](../images/data-science-after.png){: style="width:510px; align:center"}
- &lt;figcaption&gt;Workflow and dataflow in a data pipeline-centered approach.&lt;/figcaption&gt;
-</code></pre>
-</figure>
+<p><img alt="data science in a science lab" src="../../images/data-science-after.png" style="width:510px; display:block; margin: 0 auto;" /></p>
+<figcaption style="text-align: center;">Workflow and dataflow in a data pipeline-centered approach.</figcaption>
+
 <p>Data pipelines support project data across their entire lifecycle, including the
 following functions</p>
 <ul>
@@ -3028,40 +3057,33 @@ data integrity.</p>
 <h2 id="team-roles">Team roles<a class="headerlink" href="#team-roles" title="Permanent link">&para;</a></h2>
 <p>The adoption of a uniform data management framework allows separation of roles and
 division of labor among team members, leading to greater efficiency and better scaling.</p>
-<figure>
-<pre><code> ![data science vs engineering](../images/data-engineering.png){: style="width:350px; align:center"}
- &lt;figcaption&gt;Distinct responsibilities of data science and data engineering.&lt;/figcaption&gt;
-</code></pre>
-</figure>
-<p>Scientists</p>
-<pre><code>design and conduct experiments, collecting data.
+<p><img alt="data science in a science lab" src="../../images/data-engineering.png" style="width:510px; display:block; margin: 0 auto;" /></p>
+<figcaption style="text-align: center;">Distinct responsibilities of data science and data engineering.</figcaption>
+
+<h3 id="scientists">Scientists<a class="headerlink" href="#scientists" title="Permanent link">&para;</a></h3>
+<p>Design and conduct experiments, collecting data.
 They interact with the data pipeline through graphical user interfaces designed by
 others.
-They understand what analysis is used to test their hypotheses.
-</code></pre>
-<p>Data scientists</p>
-<pre><code>have the domain expertise and select and implement the processing and analysis
+They understand what analysis is used to test their hypotheses.</p>
+<h3 id="data-scientists">Data scientists<a class="headerlink" href="#data-scientists" title="Permanent link">&para;</a></h3>
+<p>Have the domain expertise and select and implement the processing and analysis
 methods for experimental data.
 Data scientists are in charge of defining and managing the data pipeline using
 DataJoint's data model, but they may not know the details of the underlying
 architecture.
 They interact with the pipeline using client programming interfaces directly from
-languages such as MATLAB and Python.
-
-The bulk of this manual is written for working data scientists, except for System
-Administration.
-</code></pre>
-<p>Data engineers</p>
-<pre><code>work with the data scientists to support the data pipeline.
+languages such as MATLAB and Python.</p>
+<p>The bulk of this manual is written for working data scientists, except for System
+Administration.</p>
+<h3 id="data-engineers">Data engineers<a class="headerlink" href="#data-engineers" title="Permanent link">&para;</a></h3>
+<p>Work with the data scientists to support the data pipeline.
 They rely on their understanding of the DataJoint data model to configure and
 administer the required IT resources such as database servers, data storage
-servers, networks, cloud instances, [Globus](https://globus.org) endpoints, etc.
+servers, networks, cloud instances, <a href="https://globus.org">Globus</a> endpoints, etc.
 Data engineers can provide general solutions such as web hosting, data publishing,
-interfaces, exports and imports.
-
-The System Administration section of this tutorial contains materials helpful in
-accomplishing these tasks.
-</code></pre>
+interfaces, exports and imports.</p>
+<p>The System Administration section of this tutorial contains materials helpful in
+accomplishing these tasks.</p>
 <p>DataJoint is designed to delineate a clean boundary between <strong>data science</strong> and <strong>data
 engineering</strong>.
 This allows data scientists to use the same uniform data model for data pipelines
@@ -3197,10 +3219,10 @@ support a wide spectrum of science projects.</p>
     
     
       
-      <script id="__config" type="application/json">{"base": "../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"base": "../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.c8b220af.min.js"></script>
+      <script src="../../assets/javascripts/bundle.56ea9cef.min.js"></script>
       
     
   </body>

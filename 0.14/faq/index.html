@@ -16,7 +16,7 @@
       
       
       <link rel="icon" href="../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.12">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.15">
     
     
       
@@ -24,7 +24,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.2afb09e1.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.342714a4.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
@@ -735,7 +735,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../client/stores/" class="md-nav__link">
+      <a href="../client/stores.md" class="md-nav__link">
         
   
   
@@ -2051,7 +2051,7 @@
   
   
   <span class="md-ellipsis">
-    Using the type
+    Using the json type
     
   </span>
   
@@ -3057,18 +3057,19 @@
 <p>It is common to enter data during experiments using a graphical user interface.</p>
 <ol>
 <li>
-<p><a href="https://github.com/datajoint/datajoint-labbook">DataJoint LabBook</a> is an open
-source project for data entry.</p>
+<p>The <a href="https://works.datajoint.com">DataJoint platform</a> platform is a web-based,
+   end-to-end platform to host and execute data pipelines.</p>
 </li>
 <li>
-<p>The DataJoint Works platform is set up as a fully managed service to host and
-execute data pipelines.</p>
+<p><a href="https://github.com/datajoint/datajoint-labbook">DataJoint LabBook</a> is an open
+source project for data entry but is no longer actively maintained.</p>
 </li>
 </ol>
 <h2 id="does-datajoint-support-other-programming-languages">Does DataJoint support other programming languages?<a class="headerlink" href="#does-datajoint-support-other-programming-languages" title="Permanent link">&para;</a></h2>
-<p>DataJoint <a href="https://datajoint.com/docs/core/datajoint-python/">Python</a> and
-<a href="https://datajoint.com/docs/core/datajoint-matlab/">Matlab</a> APIs are both actively
-supported.  Previous projects implemented some DataJoint features in
+<p>DataJoint <a href="https://docs.datajoint.com/core/datajoint-python/">Python</a> is the most
+up-to-date version and all future development will focus on the Python API. The
+<a href="https://datajoint.com/docs/core/datajoint-matlab/">Matlab</a> API was actively developed
+through 2023. Previous projects implemented some DataJoint features in
 <a href="https://github.com/BrainCOGS/neuronex_workshop_2018/tree/julia/julia">Julia</a> and
 <a href="https://github.com/datajoint/datajoint-core">Rust</a>. DataJoint's data model and data
 representation are largely language independent, which means that any language with a
@@ -3134,7 +3135,7 @@ The entry of metadata can be manual, or it can be an automated part of data acqu
 (in this case the acquisition software itself is modified to enter information directly
 into the database).</p>
 <p>Depending on their size and contents, raw data files can be stored in a number of ways.
-In the simplest and most common scenario, raw data  continue to be stored in either a
+In the simplest and most common scenario, raw data continues to be stored in either a
 local filesystem or in the cloud as collections of files and folders.
 The paths to these files are entered in the database (again, either manually or by
 automated processes).
@@ -3142,7 +3143,7 @@ This is the point at which the notion of a <strong>data pipeline</strong> begins
 Below these "manual tables" that contain metadata and file paths are a series of tables
 that load raw data from these files, process it in some way, and insert derived or
 summarized data directly into the database.
-For example, in an imaging application, the very large raw .TIFF stacks would reside on
+For example, in an imaging application, the very large raw <code>.TIFF</code> stacks would reside on
 the filesystem, but the extracted fluorescent trace timeseries for each cell in the
 image would be stored as a numerical array directly in the database.
 Or the raw video used for animal tracking might be stored in a standard video format on
@@ -3195,8 +3196,8 @@ the file hierarchy, finding and loading the files of interest, and selecting the
 interesting parts of the data.</p>
 <p>This brings us to the final important question:</p>
 <h2 id="how-do-i-get-my-data-out">How do I get my data out?<a class="headerlink" href="#how-do-i-get-my-data-out" title="Permanent link">&para;</a></h2>
-<p>This is the fun part.  See <a href="../query/operators/">queries</a> for details of the DataJoint
-query language directly from MATLAB and Python.</p>
+<p>This is the fun part. See <a href="../query/operators/">queries</a> for details of the DataJoint
+query language directly from Python.</p>
 <h2 id="interfaces">Interfaces<a class="headerlink" href="#interfaces" title="Permanent link">&para;</a></h2>
 <p>Multiple interfaces may be used to get the data into and out of the pipeline.</p>
 <p>Some labs use third-party GUI applications such as
@@ -3344,10 +3345,10 @@ in Python.</p>
     
     
       
-      <script id="__config" type="application/json">{"base": "..", "features": ["toc.integrate", "content.code.annotate"], "search": "../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"base": "..", "features": ["toc.integrate", "content.code.annotate"], "search": "../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.c8b220af.min.js"></script>
+      <script src="../assets/javascripts/bundle.56ea9cef.min.js"></script>
       
     
   </body>

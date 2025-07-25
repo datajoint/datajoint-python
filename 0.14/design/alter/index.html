@@ -16,7 +16,7 @@
       
       
       <link rel="icon" href="../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.12">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.15">
     
     
       
@@ -24,7 +24,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.2afb09e1.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.342714a4.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
@@ -735,7 +735,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../client/stores/" class="md-nav__link">
+      <a href="../../client/stores.md" class="md-nav__link">
         
   
   
@@ -2063,7 +2063,7 @@
   
   
   <span class="md-ellipsis">
-    Using the type
+    Using the json type
     
   </span>
   
@@ -2924,6 +2924,47 @@
 
 
 <h1 id="altering-populated-pipelines">Altering Populated Pipelines<a class="headerlink" href="#altering-populated-pipelines" title="Permanent link">&para;</a></h1>
+<p>Tables can be altered after they have been declared and populated. This is useful when
+you want to add new secondary attributes or change the data type of existing attributes.
+Users can use the <code>definition</code> property to update a table's attributes and then use
+<code>alter</code> to apply the changes in the database. Currently, <code>alter</code> does not support
+changes to primary key attributes.</p>
+<p>Let's say we have a table <code>Student</code> with the following attributes:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@schema</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Student</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
+    <span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    student_id: int</span>
+<span class="s2">    ---</span>
+<span class="s2">    first_name: varchar(40)</span>
+<span class="s2">    last_name: varchar(40)</span>
+<span class="s2">    home_address: varchar(100)</span>
+<span class="s2">    &quot;&quot;&quot;</span>
+</code></pre></div>
+<p>We can modify the table to include a new attribute <code>email</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="n">Student</span><span class="o">.</span><span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">student_id: int</span>
+<span class="s2">---</span>
+<span class="s2">first_name: varchar(40)</span>
+<span class="s2">last_name: varchar(40)</span>
+<span class="s2">home_address: varchar(100)</span>
+<span class="s2">email: varchar(100)</span>
+<span class="s2">&quot;&quot;&quot;</span>
+<span class="n">Student</span><span class="o">.</span><span class="n">alter</span><span class="p">()</span>
+</code></pre></div>
+<p>The <code>alter</code> method will update the table in the database to include the new attribute
+<code>email</code> added by the user in the table's <code>definition</code> property.</p>
+<p>Similarly, you can modify the data type or length of an existing attribute. For example,
+to alter the <code>home_address</code> attribute to have a length of 200 characters:</p>
+<div class="highlight"><pre><span></span><code><span class="n">Student</span><span class="o">.</span><span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">student_id: int</span>
+<span class="s2">---</span>
+<span class="s2">first_name: varchar(40)</span>
+<span class="s2">last_name: varchar(40)</span>
+<span class="s2">home_address: varchar(200)</span>
+<span class="s2">email: varchar(100)</span>
+<span class="s2">&quot;&quot;&quot;</span>
+<span class="n">Student</span><span class="o">.</span><span class="n">alter</span><span class="p">()</span>
+</code></pre></div>
 
 
 
@@ -3053,10 +3094,10 @@
     
     
       
-      <script id="__config" type="application/json">{"base": "../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"base": "../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.c8b220af.min.js"></script>
+      <script src="../../assets/javascripts/bundle.56ea9cef.min.js"></script>
       
     
   </body>

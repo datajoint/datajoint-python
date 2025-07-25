@@ -16,7 +16,7 @@
       
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.12">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.15">
     
     
       
@@ -24,7 +24,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.2afb09e1.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.342714a4.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
@@ -735,7 +735,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../client/stores/" class="md-nav__link">
+      <a href="../../../client/stores.md" class="md-nav__link">
         
   
   
@@ -2051,7 +2051,7 @@
   
   
   <span class="md-ellipsis">
-    Using the type
+    Using the json type
     
   </span>
   
@@ -3766,7 +3766,7 @@ compatibility with Matlab-based serialization implemented by mYm.</p>
                 <span class="s2">&quot;S&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_struct</span><span class="p">,</span>  <span class="c1"># matlab struct array</span>
                 <span class="s2">&quot;C&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_cell_array</span><span class="p">,</span>  <span class="c1"># matlab cell array</span>
                 <span class="c1"># basic data types</span>
-                <span class="s2">&quot;</span><span class="se">\xFF</span><span class="s2">&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_none</span><span class="p">,</span>  <span class="c1"># None</span>
+                <span class="s2">&quot;</span><span class="se">\xff</span><span class="s2">&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_none</span><span class="p">,</span>  <span class="c1"># None</span>
                 <span class="s2">&quot;</span><span class="se">\x01</span><span class="s2">&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_tuple</span><span class="p">,</span>  <span class="c1"># a Sequence (e.g. tuple)</span>
                 <span class="s2">&quot;</span><span class="se">\x02</span><span class="s2">&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_list</span><span class="p">,</span>  <span class="c1"># a MutableSequence (e.g. list)</span>
                 <span class="s2">&quot;</span><span class="se">\x03</span><span class="s2">&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_set</span><span class="p">,</span>  <span class="c1"># a Set</span>
@@ -4027,7 +4027,7 @@ compatibility with Matlab-based serialization implemented by mYm.</p>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">pack_none</span><span class="p">():</span>
-        <span class="k">return</span> <span class="sa">b</span><span class="s2">&quot;</span><span class="se">\xFF</span><span class="s2">&quot;</span>
+        <span class="k">return</span> <span class="sa">b</span><span class="s2">&quot;</span><span class="se">\xff</span><span class="s2">&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">read_tuple</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span>
@@ -4872,10 +4872,10 @@ If convert_to_scalar, then convert zero-dimensional arrays to scalars</p>
     
     
       
-      <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.c8b220af.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.56ea9cef.min.js"></script>
       
     
   </body>

@@ -16,7 +16,7 @@
       
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.12">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.15">
     
     
       
@@ -24,7 +24,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.2afb09e1.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.342714a4.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#work-in-progress" class="md-skip">
+        <a href="#indexes" class="md-skip">
           Skip to content
         </a>
       
@@ -735,7 +735,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../client/stores/" class="md-nav__link">
+      <a href="../../../client/stores.md" class="md-nav__link">
         
   
   
@@ -1130,6 +1130,19 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Indexes
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -1141,6 +1154,43 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#indexes-for-single-primary-key-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Indexes for single primary key tables
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#indexes-for-tables-with-multiple-primary-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      Indexes for tables with multiple primary keys
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -2065,7 +2115,7 @@
   
   
   <span class="md-ellipsis">
-    Using the type
+    Using the json type
     
   </span>
   
@@ -2925,7 +2975,82 @@
   
 
 
-<h1 id="work-in-progress">Work in progress<a class="headerlink" href="#work-in-progress" title="Permanent link">&para;</a></h1>
+<h1 id="indexes">Indexes<a class="headerlink" href="#indexes" title="Permanent link">&para;</a></h1>
+<p>Table indexes are data structures that allow fast lookups by an indexed attribute or
+combination of attributes.</p>
+<p>In DataJoint, indexes are created by one of the three mechanisms:</p>
+<ol>
+<li>Primary key</li>
+<li>Foreign key</li>
+<li>Explicitly defined indexes</li>
+</ol>
+<p>The first two mechanisms are obligatory. Every table has a primary key, which serves as
+an unique index. Therefore, restrictions by a primary key are very fast. Foreign keys
+create additional indexes unless a suitable index already exists.</p>
+<h2 id="indexes-for-single-primary-key-tables">Indexes for single primary key tables<a class="headerlink" href="#indexes-for-single-primary-key-tables" title="Permanent link">&para;</a></h2>
+<p>Let’s say a mouse in the lab has a lab-specific ID but it also has a separate id issued
+by the animal facility.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@schema</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Mouse</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
+    <span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    mouse_id : int  # lab-specific ID</span>
+<span class="s2">    ---</span>
+<span class="s2">    tag_id : int  # animal facility ID</span>
+<span class="s2">    &quot;&quot;&quot;</span>
+</code></pre></div>
+<p>In this case, searching for a mouse by <code>mouse_id</code> is much faster than by <code>tag_id</code>
+because <code>mouse_id</code> is a primary key, and is therefore indexed.</p>
+<p>To make searches faster on fields other than the primary key or a foreign key, you can
+add a secondary index explicitly.</p>
+<p>Regular indexes are declared as <code>index(attr1, ..., attrN)</code> on a separate line anywhere in
+the table declaration (below the primary key divide).</p>
+<p>Indexes can be declared with unique constraint as <code>unique index (attr1, ..., attrN)</code>.</p>
+<p>Let’s redeclare the table with a unique index on <code>tag_id</code>.</p>
+<p><div class="highlight"><pre><span></span><code><span class="nd">@schema</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Mouse</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
+    <span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    mouse_id : int  # lab-specific ID</span>
+<span class="s2">    ---</span>
+<span class="s2">    tag_id : int  # animal facility ID</span>
+<span class="s2">    unique index (tag_id)</span>
+<span class="s2">    &quot;&quot;&quot;</span>
+</code></pre></div>
+Now, searches with <code>mouse_id</code> and <code>tag_id</code> are similarly fast.</p>
+<h2 id="indexes-for-tables-with-multiple-primary-keys">Indexes for tables with multiple primary keys<a class="headerlink" href="#indexes-for-tables-with-multiple-primary-keys" title="Permanent link">&para;</a></h2>
+<p>Let’s now imagine that rats in a lab are identified by the combination of <code>lab_name</code> and
+<code>rat_id</code> in a table <code>Rat</code>.</p>
+<p><div class="highlight"><pre><span></span><code><span class="nd">@schema</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Rat</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
+    <span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    lab_name : char(16)</span>
+<span class="s2">    rat_id : int unsigned # lab-specific ID</span>
+<span class="s2">    ---</span>
+<span class="s2">    date_of_birth = null : date</span>
+<span class="s2">    &quot;&quot;&quot;</span>
+</code></pre></div>
+Note that despite the fact that <code>rat_id</code> is in the index, searches by <code>rat_id</code> alone are not
+helped by the index because it is not first in the index. This is similar to searching for
+a word in a dictionary that orders words alphabetically. Searching by the first letters
+of a word is easy but searching by the last few letters of a word requires scanning the
+whole dictionary.</p>
+<p>In this table, the primary key is a unique index on the combination <code>(lab_name, rat_id)</code>.
+Therefore searches on these attributes or on <code>lab_name</code> alone are fast. But this index
+cannot help searches on <code>rat_id</code> alone. Similarly, searing by <code>date_of_birth</code> requires a
+full-table scan and is inefficient.</p>
+<p>To speed up searches by the <code>rat_id</code> and <code>date_of_birth</code>, we can explicit indexes to
+<code>Rat</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@schema</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Rat2</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
+    <span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    lab_name : char(16)</span>
+<span class="s2">    rat_id : int unsigned # lab-specific ID</span>
+<span class="s2">    ---</span>
+<span class="s2">    date_of_birth = null : date</span>
+
+<span class="s2">    index(rat_id)</span>
+<span class="s2">    index(date_of_birth)</span>
+<span class="s2">    &quot;&quot;&quot;</span>
+</code></pre></div>
 
 
 
@@ -3055,10 +3180,10 @@
     
     
       
-      <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.c8b220af.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.56ea9cef.min.js"></script>
       
     
   </body>

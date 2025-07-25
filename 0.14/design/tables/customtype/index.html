@@ -16,7 +16,7 @@
       
       
       <link rel="icon" href="../../../assets/images/company-logo-blue.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.12">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.15">
     
     
       
@@ -24,7 +24,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.2afb09e1.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.342714a4.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#work-in-progress" class="md-skip">
+        <a href="#custom-types" class="md-skip">
           Skip to content
         </a>
       
@@ -735,7 +735,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../client/stores/" class="md-nav__link">
+      <a href="../../../client/stores.md" class="md-nav__link">
         
   
   
@@ -1084,6 +1084,19 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Custom Datatypes
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -1095,6 +1108,49 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#uses-in-scientific-research" class="md-nav__link">
+    <span class="md-ellipsis">
+      Uses in Scientific Research
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Uses in Scientific Research">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-storing-graphs-in-datajoint" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example: Storing Graphs in DataJoint
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -2065,7 +2121,7 @@
   
   
   <span class="md-ellipsis">
-    Using the type
+    Using the json type
     
   </span>
   
@@ -2925,7 +2981,79 @@
   
 
 
-<h1 id="work-in-progress">Work in progress<a class="headerlink" href="#work-in-progress" title="Permanent link">&para;</a></h1>
+<h1 id="custom-types">Custom Types<a class="headerlink" href="#custom-types" title="Permanent link">&para;</a></h1>
+<p>In modern scientific research, data pipelines often involve complex workflows that
+generate diverse data types. From high-dimensional imaging data to machine learning
+models, these data types frequently exceed the basic representations supported by
+traditional relational databases. For example:</p>
+<ul>
+<li>A lab working on neural connectivity might use graph objects to represent brain
+  networks.</li>
+<li>Researchers processing raw imaging data might store custom objects for pre-processing
+  configurations.</li>
+<li>Computational biologists might store fitted machine learning models or parameter
+  objects for downstream predictions.</li>
+</ul>
+<p>To handle these diverse needs, DataJoint provides the <code>dj.AttributeAdapter</code> method. It
+enables researchers to store and retrieve complex, non-standard data types—like Python
+objects or data structures—in a relational database while maintaining the
+reproducibility, modularity, and query capabilities required for scientific workflows.</p>
+<h2 id="uses-in-scientific-research">Uses in Scientific Research<a class="headerlink" href="#uses-in-scientific-research" title="Permanent link">&para;</a></h2>
+<p>Imagine a neuroscience lab studying neural connectivity. Researchers might generate
+graphs (e.g., networkx.Graph) to represent connections between brain regions, where:</p>
+<ul>
+<li>Nodes are brain regions.</li>
+<li>Edges represent connections weighted by signal strength or another metric.</li>
+</ul>
+<p>Storing these graph objects in a database alongside other experimental data (e.g.,
+subject metadata, imaging parameters) ensures:</p>
+<ol>
+<li>Centralized Data Management: All experimental data and analysis results are stored
+   together for easy access and querying.</li>
+<li>Reproducibility: The exact graph objects used in analysis can be retrieved later for
+   validation or further exploration.</li>
+<li>Scalability: Graph data can be integrated into workflows for larger datasets or
+   across experiments.</li>
+</ol>
+<p>However, since graphs are not natively supported by relational databases, here’s where
+<code>dj.AttributeAdapter</code> becomes essential. It allows researchers to define custom logic for
+serializing graphs (e.g., as edge lists) and deserializing them back into Python
+objects, bridging the gap between advanced data types and the database.</p>
+<h3 id="example-storing-graphs-in-datajoint">Example: Storing Graphs in DataJoint<a class="headerlink" href="#example-storing-graphs-in-datajoint" title="Permanent link">&para;</a></h3>
+<p>To store a networkx.Graph object in a DataJoint table, researchers can define a custom
+attribute type in a datajoint table class:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">datajoint</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">dj</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">GraphAdapter</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">AttributeAdapter</span><span class="p">):</span>
+
+    <span class="n">attribute_type</span> <span class="o">=</span> <span class="s1">&#39;longblob&#39;</span>   <span class="c1"># this is how the attribute will be declared</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">put</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="c1"># convert the nx.Graph object  into an edge list</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">edges</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="c1"># convert edge list back into an nx.Graph</span>
+        <span class="k">return</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+
+<span class="c1"># instantiate for use as a datajoint type</span>
+<span class="n">graph</span> <span class="o">=</span> <span class="n">GraphAdapter</span><span class="p">()</span>
+
+
+<span class="c1"># define a table with a graph attribute</span>
+<span class="n">schema</span> <span class="o">=</span> <span class="n">dj</span><span class="o">.</span><span class="n">schema</span><span class="p">(</span><span class="s1">&#39;test_graphs&#39;</span><span class="p">)</span>
+
+
+<span class="nd">@schema</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Connectivity</span><span class="p">(</span><span class="n">dj</span><span class="o">.</span><span class="n">Manual</span><span class="p">):</span>
+    <span class="n">definition</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    conn_id : int</span>
+<span class="s2">    ---</span>
+<span class="s2">    conn_graph = null : &lt;graph&gt;  # a networkx.Graph object</span>
+<span class="s2">    &quot;&quot;&quot;</span>
+</code></pre></div>
 
 
 
@@ -3055,10 +3183,10 @@
     
     
       
-      <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.integrate", "content.code.annotate"], "search": "../../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.c8b220af.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.56ea9cef.min.js"></script>
       
     
   </body>
