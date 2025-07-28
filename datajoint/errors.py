@@ -5,31 +5,11 @@ Exception classes for the DataJoint library
 import os
 
 
-# --- Unverified Plugin Check ---
-class PluginWarning(Exception):
-    pass
-
-
 # --- Top Level ---
 class DataJointError(Exception):
     """
     Base class for errors specific to DataJoint internal operation.
     """
-
-    def __init__(self, *args):
-        from .plugin import connection_plugins, type_plugins
-
-        self.__cause__ = (
-            PluginWarning("Unverified DataJoint plugin detected.")
-            if any(
-                [
-                    any([not plugins[k]["verified"] for k in plugins])
-                    for plugins in [connection_plugins, type_plugins]
-                    if plugins
-                ]
-            )
-            else None
-        )
 
     def suggest(self, *args):
         """

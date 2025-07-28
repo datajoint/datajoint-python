@@ -18,16 +18,14 @@ dependencies = [
   "pydot",
   "minio>=7.0.0",
   "matplotlib",
-  "otumat",
   "faker",
-  "cryptography",
   "urllib3",
   "setuptools",
 ]
 requires-python = ">=3.9,<4.0"
 authors = [
   {name = "Dimitri Yatsenko", email = "dimitri@datajoint.com"},
-  {name = "Thinh Nguen", email = "thinh@datajoint.com"}
+  {name = "Thinh Nguen", email = "thinh@datajoint.com"},
   {name = "Raphael Guzman"},
   {name = "Edgar Walker"},
   {name = "DataJoint Contributors", email = "support@datajoint.com"},
