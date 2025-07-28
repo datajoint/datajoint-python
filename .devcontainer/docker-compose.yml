@@ -10,7 +10,7 @@ services:
     image: datajoint/datajoint-python-devcontainer:${PY_VER:-3.11}-${DISTRO:-bookworm}
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: .devcontainer/Dockerfile
       args:
         - PY_VER=${PY_VER:-3.11}
         - DISTRO=${DISTRO:-bookworm}
