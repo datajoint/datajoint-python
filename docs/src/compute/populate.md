@@ -232,8 +232,8 @@ class ImageAnalysis(dj.Computed):
     """
 
     def make(self, key):
-        fetched_data = (Image & key).fetch1('image'), 
-        computed_result = yield fetched_data 
+        image_data = (Image & key).fetch1('image')
+        computed_result = yield (image, ) # pack fetched_data
 
         if computed_result is None:
             # Expensive computation that could take hours
@@ -241,10 +241,10 @@ class ImageAnalysis(dj.Computed):
             start_time = time.time()
             result = complex_image_analysis(image_data)
             processing_time = time.time() - start_time
-            computed_result = result, processing_time
+            computed_result = result, processing_time  #pack
             yield computed_result
 
-        result, processing_time = computed_result
+        result, processing_time = computed_result # unpack
         self.insert1(dict(key, 
                          analysis_result=result,
                          processing_time=processing_time))
