@@ -26,7 +26,6 @@ query_log_max_length = 300
 cache_key = "query_cache"  # the key to lookup the query_cache folder in dj.config
 
 
-
 def translate_query_error(client_error, query):
     """
     Take client error and original query and return the corresponding DataJoint exception.
@@ -214,11 +213,9 @@ class Connection:
                     **{
                         k: v
                         for k, v in self.conn_info.items()
-                        if not (
-                            k in ["ssl_input"]
-                            or k == "ssl"
-                            and self.conn_info["ssl_input"] is None
-                        )
+                        if k == "ssl_input"
+                        or k == "ssl"
+                        and self.conn_info["ssl_input"] is None
                     },
                 )
         self._conn.autocommit(True)
