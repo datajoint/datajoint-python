@@ -233,7 +233,7 @@ class ImageAnalysis(dj.Computed):
 
     def make(self, key):
         image_data = (Image & key).fetch1('image')
-        computed_result = yield (image, ) # pack fetched_data
+        computed_result = yield (image_data, ) # pack fetched_data
 
         if computed_result is None:
             # Expensive computation that could take hours
