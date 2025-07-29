@@ -213,9 +213,11 @@ class Connection:
                     **{
                         k: v
                         for k, v in self.conn_info.items()
-                        if k == "ssl_input"
-                        or k == "ssl"
-                        and self.conn_info["ssl_input"] is None
+                        if not (
+                            k == "ssl_input"
+                            or k == "ssl"
+                            and self.conn_info["ssl_input"] is None
+                        )
                     },
                 )
         self._conn.autocommit(True)
