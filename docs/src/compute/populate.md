@@ -62,8 +62,7 @@ The `make` callback does three things:
 2. Computes and adds any missing attributes to the fields already in `key`.
 3. Inserts the entire entity into `self`.
 
-`make` may populate multiple entities in one call when `key` does not specify the
-entire primary key of the populated table.
+`make` may populate multiple entities in one call when `key` does not specify the entire primary key of the populated table.
 
 ## Populate
 

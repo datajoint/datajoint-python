@@ -27,6 +27,7 @@ dependencies = [
 requires-python = ">=3.9,<4.0"
 authors = [
   {name = "Dimitri Yatsenko", email = "dimitri@datajoint.com"},
+  {name = "Thinh Nguyen", email = "thinh@datajoint.com"},
   {name = "Raphael Guzman"},
   {name = "Edgar Walker"},
   {name = "DataJoint Contributors", email = "support@datajoint.com"},
