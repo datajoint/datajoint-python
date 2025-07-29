@@ -164,6 +164,7 @@ class Connection:
         self.init_fun = init_fun
         self._conn = None
         self._query_cache = None
+        self.connect()
         if self.is_connected:
             logger.info(
                 "DataJoint {version} connected to {user}@{host}:{port}".format(
