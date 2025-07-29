@@ -21,18 +21,18 @@ repos:
   hooks:
     - id: codespell
 - repo: https://github.com/pycqa/isort
-  rev: 5.12.0  # Use the latest stable version
+  rev: 6.0.1  # Use the latest stable version
   hooks:
     - id: isort
       args:
         - --profile=black  # Optional, makes isort compatible with Black
 - repo: https://github.com/psf/black
-  rev: 24.2.0 # matching versions in pyproject.toml and github actions
+  rev: 25.1.0 # matching versions in pyproject.toml and github actions
   hooks:
   - id: black
     args: ["--check", "-v", "datajoint", "tests", "--diff"] # --required-version is conflicting with pre-commit
 - repo: https://github.com/PyCQA/flake8
-  rev: 7.1.2
+  rev: 7.3.0
   hooks:
   # syntax tests
   - id: flake8

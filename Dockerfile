@@ -2,7 +2,7 @@ ARG IMAGE=mambaorg/micromamba:1.5-bookworm-slim
 FROM ${IMAGE}
 
 ARG CONDA_BIN=micromamba
-ARG PY_VER=3.9
+ARG PY_VER=3.11
 ARG HOST_UID=1000
 
 RUN ${CONDA_BIN} install --no-pin -qq -y -n base -c conda-forge \
