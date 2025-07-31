@@ -1,6 +1,6 @@
+from importlib.metadata import distribution
 from os import path
 
-import pkg_resources
 import pytest
 
 import datajoint.errors as djerr
@@ -10,8 +10,8 @@ import datajoint.plugin as p
 @pytest.mark.skip(reason="marked for deprecation")
 def test_check_pubkey():
     base_name = "datajoint"
-    base_meta = pkg_resources.get_distribution(base_name)
-    pubkey_meta = base_meta.get_metadata("{}.pub".format(base_name))
+    base_dist = distribution(base_name)
+    pubkey_meta = base_dist.read_text("{}.pub".format(base_name))
 
     with open(
         path.join(path.abspath(path.dirname(__file__)), "..", "datajoint.pub"), "r"
