@@ -64,7 +64,7 @@ The `make` callback does three things:
 
 A single `make` call  may populate multiple entities when `key` does not specify the
 entire primary key of the populated table, when the definition adds new attributes to the primary key.
-This is design is uncommon and not recommended. 
+This design is uncommon and not recommended. 
 The standard practice for autopopulated tables is to have its primary key composed of 
 foreign keys pointing to parent tables.
 
