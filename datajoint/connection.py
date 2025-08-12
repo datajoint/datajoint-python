@@ -16,7 +16,6 @@ from . import errors
 from .blob import pack, unpack
 from .dependencies import Dependencies
 from .hash import uuid_from_buffer
-from .plugin import connection_plugins
 from .settings import config
 from .version import __version__
 
@@ -25,34 +24,6 @@ query_log_max_length = 300
 
 
 cache_key = "query_cache"  # the key to lookup the query_cache folder in dj.config
-
-
-def get_host_hook(host_input):
-    if "://" in host_input:
-        plugin_name = host_input.split("://")[0]
-        try:
-            return connection_plugins[plugin_name]["object"].load().get_host(host_input)
-        except KeyError:
-            raise errors.DataJointError(
-                "Connection plugin '{}' not found.".format(plugin_name)
-            )
-    else:
-        return host_input
-
-
-def connect_host_hook(connection_obj):
-    if "://" in connection_obj.conn_info["host_input"]:
-        plugin_name = connection_obj.conn_info["host_input"].split("://")[0]
-        try:
-            connection_plugins[plugin_name]["object"].load().connect_host(
-                connection_obj
-            )
-        except KeyError:
-            raise errors.DataJointError(
-                "Connection plugin '{}' not found.".format(plugin_name)
-            )
-    else:
-        connection_obj.connect()
 
 
 def translate_query_error(client_error, query):
@@ -177,7 +148,6 @@ class Connection:
     """
 
     def __init__(self, host, user, password, port=None, init_fun=None, use_tls=None):
-        host_input, host = (host, get_host_hook(host))
         if ":" in host:
             # the port in the hostname overrides the port argument
             host, port = host.split(":")
@@ -190,11 +160,10 @@ class Connection:
                 use_tls if isinstance(use_tls, dict) else {"ssl": {}}
             )
         self.conn_info["ssl_input"] = use_tls
-        self.conn_info["host_input"] = host_input
         self.init_fun = init_fun
         self._conn = None
         self._query_cache = None
-        connect_host_hook(self)
+        self.connect()
         if self.is_connected:
             logger.info(
                 "DataJoint {version} connected to {user}@{host}:{port}".format(
@@ -232,7 +201,7 @@ class Connection:
                     **{
                         k: v
                         for k, v in self.conn_info.items()
-                        if k not in ["ssl_input", "host_input"]
+                        if k not in ["ssl_input"]
                     },
                 )
             except client.err.InternalError:
@@ -245,7 +214,7 @@ class Connection:
                         k: v
                         for k, v in self.conn_info.items()
                         if not (
-                            k in ["ssl_input", "host_input"]
+                            k == "ssl_input"
                             or k == "ssl"
                             and self.conn_info["ssl_input"] is None
                         )
@@ -352,7 +321,7 @@ class Connection:
             if not reconnect:
                 raise
             logger.warning("Reconnecting to MySQL server.")
-            connect_host_hook(self)
+            self.connect()
             if self._in_transaction:
                 self.cancel_transaction()
                 raise errors.LostConnectionError(

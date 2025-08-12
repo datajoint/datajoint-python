@@ -18,9 +18,7 @@ dependencies = [
   "pydot",
   "minio>=7.0.0",
   "matplotlib",
-  "otumat",
   "faker",
-  "cryptography",
   "urllib3",
   "setuptools",
 ]

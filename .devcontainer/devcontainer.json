@@ -24,6 +24,12 @@
 		8080,
 		9000
 	],
+	"mounts": [
+	  "type=bind,source=${env:SSH_AUTH_SOCK},target=/ssh-agent"
+	],
+	"containerEnv": {
+	  "SSH_AUTH_SOCK": "/ssh-agent"
+	},
 	// Uncomment the next line if you want start specific services in your Docker Compose config.
 	// "runServices": [],
 	// Uncomment the next line if you want to keep your containers running after VS Code shuts down.
