@@ -99,6 +99,7 @@ profile = "black"
 
 [tool.setuptools]
 packages = ["datajoint"]
+package-dir = {"" = "src"}
 
 [tool.setuptools.dynamic]
 version = { attr = "datajoint.version.__version__"}
