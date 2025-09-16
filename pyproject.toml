@@ -82,6 +82,7 @@ datajoint = "datajoint.cli:cli"
 test = [
   "pytest",
   "pytest-cov",
+  "pytest-env",
   "docker",
   "requests",
 ]
@@ -107,3 +108,15 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.dynamic]
 version = { attr = "datajoint.version.__version__"}
+
+[tool.pytest_env]
+# Default values - pytest fixtures will override with actual container details
+DJ_USER="root"
+DJ_PASS="password"
+DJ_TEST_USER="datajoint"
+DJ_TEST_PASSWORD="datajoint"
+S3_ACCESS_KEY="datajoint"
+S3_SECRET_KEY="datajoint"
+S3_BUCKET="datajoint.test"
+PYTHON_USER="dja"
+JUPYTER_PASSWORD="datajoint"

@@ -298,6 +298,14 @@ def enable_filepath_feature(monkeypatch):
 @pytest.fixture(scope="session")
 def db_creds_test(mysql_container) -> Dict:
     _, host, port = mysql_container
+    # Set environment variables for DataJoint at module level
+    os.environ["DJ_TEST_HOST"] = host
+    os.environ["DJ_TEST_PORT"] = str(port)
+
+    # Also update DataJoint's test configuration directly
+    dj.config["database.test.host"] = host
+    dj.config["database.test.port"] = port
+
     return dict(
         host=f"{host}:{port}",
         user=os.getenv("DJ_TEST_USER", "datajoint"),
@@ -308,6 +316,14 @@ def db_creds_test(mysql_container) -> Dict:
 @pytest.fixture(scope="session")
 def db_creds_root(mysql_container) -> Dict:
     _, host, port = mysql_container
+    # Set environment variables for DataJoint at module level
+    os.environ["DJ_HOST"] = host
+    os.environ["DJ_PORT"] = str(port)
+
+    # Also update DataJoint's configuration directly
+    dj.config["database.host"] = host
+    dj.config["database.port"] = port
+
     return dict(
         host=f"{host}:{port}",
         user=os.getenv("DJ_USER", "root"),
@@ -434,6 +450,8 @@ def connection_test(connection_root, prefix, db_creds_test):
 @pytest.fixture(scope="session")
 def s3_creds(minio_container) -> Dict:
     _, host, port = minio_container
+    # Set environment variable for S3 endpoint at module level
+    os.environ["S3_ENDPOINT"] = f"{host}:{port}"
     return dict(
         endpoint=f"{host}:{port}",
         access_key=os.environ.get("S3_ACCESS_KEY", "datajoint"),
