@@ -159,9 +159,9 @@ def mysql_container(docker_client):
         remove=True,
         healthcheck={
             "test": ["CMD", "mysqladmin", "ping", "-h", "localhost"],
-            "timeout": 30000000000,  # 30s in nanoseconds
+            "timeout": 30,
             "retries": 5,
-            "interval": 15000000000,  # 15s in nanoseconds
+            "interval": 15, 
         }
     )
 
