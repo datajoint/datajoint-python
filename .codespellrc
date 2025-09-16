@@ -2,4 +2,4 @@
 skip = .git,*.pdf,*.svg,*.csv,*.ipynb,*.drawio
 # Rever -- nobody knows
 # numer -- numerator variable
-ignore-words-list = rever,numer
+ignore-words-list = rever,numer,astroid
