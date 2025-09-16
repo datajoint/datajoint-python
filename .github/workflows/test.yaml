@@ -6,7 +6,7 @@ on:
       - "!gh-pages" # exclude gh-pages branch
       - "!stage*" # exclude branches beginning with stage
     paths:
-      - "datajoint"
+      - "src/datajoint"
       - "tests"
   pull_request:
     branches:
@@ -14,7 +14,7 @@ on:
       - "!gh-pages" # exclude gh-pages branch
       - "!stage*" # exclude branches beginning with stage
     paths:
-      - "datajoint"
+      - "src/datajoint"
       - "tests"
 jobs:
   test:
