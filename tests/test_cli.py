@@ -2,7 +2,6 @@
 Collection of test cases to test the dj cli
 """
 
-import json
 import subprocess
 
 import pytest

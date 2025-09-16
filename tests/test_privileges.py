@@ -1,5 +1,3 @@
-import os
-
 import pytest
 
 import datajoint as dj
@@ -79,25 +77,17 @@ class TestUnprivileged:
     def test_fail_create_schema(self, connection_djview):
         """creating a schema with no CREATE privilege"""
         with pytest.raises(dj.DataJointError):
-            return dj.Schema(
-                "forbidden_schema", namespace, connection=connection_djview
-            )
+            return dj.Schema("forbidden_schema", namespace, connection=connection_djview)
 
     def test_insert_failure(self, connection_djview, schema_any):
-        unprivileged = dj.Schema(
-            schema_any.database, namespace, connection=connection_djview
-        )
+        unprivileged = dj.Schema(schema_any.database, namespace, connection=connection_djview)
         unprivileged.spawn_missing_classes()
-        assert issubclass(Language, dj.Lookup) and len(Language()) == len(
-            schema.Language()
-        ), "failed to spawn missing classes"
+        assert issubclass(Language, dj.Lookup) and len(Language()) == len(schema.Language()), "failed to spawn missing classes"
         with pytest.raises(dj.DataJointError):
             Language().insert1(("Socrates", "Greek"))
 
     def test_failure_to_create_table(self, connection_djview, schema_any):
-        unprivileged = dj.Schema(
-            schema_any.database, namespace, connection=connection_djview
-        )
+        unprivileged = dj.Schema(schema_any.database, namespace, connection=connection_djview)
 
         @unprivileged
         class Try(dj.Manual):
@@ -113,8 +103,6 @@ class TestUnprivileged:
 
 class TestSubset:
     def test_populate_activate(self, connection_djsubset, schema_priv, prefix):
-        schema_priv.activate(
-            f"{prefix}_schema_privileges", create_schema=True, create_tables=False
-        )
+        schema_priv.activate(f"{prefix}_schema_privileges", create_schema=True, create_tables=False)
         schema_privileges.Child.populate()
         assert schema_privileges.Child.progress(display=False)[0] == 0

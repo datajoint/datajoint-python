@@ -19,9 +19,7 @@ def schema_simp_pop(schema_simp):
 
 def test_delete_tree(schema_simp_pop):
     assert not dj.config["safemode"], "safemode must be off for testing"
-    assert (
-        L() and A() and B() and B.C() and D() and E() and E.F()
-    ), "schema is not populated"
+    assert L() and A() and B() and B.C() and D() and E() and E.F(), "schema is not populated"
     A().delete()
     assert not A() or B() or B.C() or D() or E() or E.F(), "incomplete delete"
 
@@ -32,16 +30,12 @@ def test_stepwise_delete(schema_simp_pop):
     B.C().delete(force=True)
     assert not B.C(), "failed to delete child tables"
     B().delete()
-    assert (
-        not B()
-    ), "failed to delete from the parent table following child table deletion"
+    assert not B(), "failed to delete from the parent table following child table deletion"
 
 
 def test_delete_tree_restricted(schema_simp_pop):
     assert not dj.config["safemode"], "safemode must be off for testing"
-    assert (
-        L() and A() and B() and B.C() and D() and E() and E.F()
-    ), "schema is not populated"
+    assert L() and A() and B() and B.C() and D() and E() and E.F(), "schema is not populated"
     cond = "cond_in_a"
     rel = A() & cond
     rest = dict(
@@ -53,9 +47,7 @@ def test_delete_tree_restricted(schema_simp_pop):
         F=len(E.F() - rel),
     )
     rel.delete()
-    assert not (
-        rel or B() & rel or B.C() & rel or D() & rel or E() & rel or (E.F() & rel)
-    ), "incomplete delete"
+    assert not (rel or B() & rel or B.C() & rel or D() & rel or E() & rel or (E.F() & rel)), "incomplete delete"
     assert len(A()) == rest["A"], "invalid delete restriction"
     assert len(B()) == rest["B"], "invalid delete restriction"
     assert len(B.C()) == rest["C"], "invalid delete restriction"
@@ -66,9 +58,7 @@ def test_delete_tree_restricted(schema_simp_pop):
 
 def test_delete_lookup(schema_simp_pop):
     assert not dj.config["safemode"], "safemode must be off for testing"
-    assert bool(
-        L() and A() and B() and B.C() and D() and E() and E.F()
-    ), "schema is not populated"
+    assert bool(L() and A() and B() and B.C() and D() and E() and E.F()), "schema is not populated"
     L().delete()
     assert not bool(L() or D() or E() or E.F()), "incomplete delete"
     A().delete()  # delete all is necessary because delete L deletes from subtables.
@@ -76,9 +66,7 @@ def test_delete_lookup(schema_simp_pop):
 
 def test_delete_lookup_restricted(schema_simp_pop):
     assert not dj.config["safemode"], "safemode must be off for testing"
-    assert (
-        L() and A() and B() and B.C() and D() and E() and E.F()
-    ), "schema is not populated"
+    assert L() and A() and B() and B.C() and D() and E() and E.F(), "schema is not populated"
     rel = L() & "cond_in_l"
     original_count = len(L())
     deleted_count = len(rel)
@@ -96,10 +84,7 @@ def test_delete_complex_keys(schema_any):
     child_key_count = 1
     restriction = dict(
         {"parent_id_{}".format(i + 1): i for i in range(parent_key_count)},
-        **{
-            "child_id_{}".format(i + 1): (i + parent_key_count)
-            for i in range(child_key_count)
-        },
+        **{"child_id_{}".format(i + 1): (i + parent_key_count) for i in range(child_key_count)},
     )
     assert len(ComplexParent & restriction) == 1, "Parent record missing"
     assert len(ComplexChild & restriction) == 1, "Child record missing"

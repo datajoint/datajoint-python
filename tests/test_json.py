@@ -67,9 +67,7 @@ class Team(dj.Lookup):
 
 @pytest.fixture
 def schema_json(connection_test, prefix):
-    schema = dj.Schema(
-        prefix + "_json", context=dict(Team=Team), connection=connection_test
-    )
+    schema = dj.Schema(prefix + "_json", context=dict(Team=Team), connection=connection_test)
     schema(Team)
     yield schema
     schema.drop()
@@ -131,13 +129,9 @@ def test_restrict(schema_json):
 
     assert (Team & {"car.safety_inspected": "false"}).fetch1("name") == "business"
 
-    assert (Team & {"car.safety_inspected:unsigned": False}).fetch1(
-        "name"
-    ) == "business"
+    assert (Team & {"car.safety_inspected:unsigned": False}).fetch1("name") == "business"
 
-    assert (Team & {"car.headlights[0].hyper_white": None}).fetch(
-        "name", order_by="name", as_dict=True
-    ) == [
+    assert (Team & {"car.headlights[0].hyper_white": None}).fetch("name", order_by="name", as_dict=True) == [
         {"name": "engineering"},
         {"name": "marketing"},
     ]  # if entire record missing, JSON key is missing, or value set to JSON null
@@ -146,79 +140,64 @@ def test_restrict(schema_json):
 
     assert (Team & {"car.tire_pressure": [34, 30, 27, 32]}).fetch1("name") == "business"
 
-    assert (
-        Team & {"car.headlights[1]": {"side": "right", "hyper_white": True}}
-    ).fetch1("name") == "business"
+    assert (Team & {"car.headlights[1]": {"side": "right", "hyper_white": True}}).fetch1("name") == "business"
 
     # sql operators
-    assert (Team & "`car`->>'$.name' LIKE '%ching%'").fetch1(
-        "name"
-    ) == "business", "Missing substring"
+    assert (Team & "`car`->>'$.name' LIKE '%ching%'").fetch1("name") == "business", "Missing substring"
 
     assert (Team & "`car`->>'$.length' > 30").fetch1("name") == "business", "<= 30"
 
-    assert (
-        Team & "JSON_VALUE(`car`, '$.safety_inspected' RETURNING UNSIGNED) = 0"
-    ).fetch1("name") == "business", "Has `safety_inspected` set to `true`"
+    assert (Team & "JSON_VALUE(`car`, '$.safety_inspected' RETURNING UNSIGNED) = 0").fetch1(
+        "name"
+    ) == "business", "Has `safety_inspected` set to `true`"
 
     assert (Team & "`car`->>'$.headlights[0].hyper_white' = 'null'").fetch1(
         "name"
     ) == "engineering", "Has 1st `headlight` with `hyper_white` not set to `null`"
 
-    assert (Team & "`car`->>'$.inspected' IS NOT NULL").fetch1(
-        "name"
-    ) == "engineering", "Missing `inspected` key"
+    assert (Team & "`car`->>'$.inspected' IS NOT NULL").fetch1("name") == "engineering", "Missing `inspected` key"
 
     assert (Team & "`car`->>'$.tire_pressure' = '[34, 30, 27, 32]'").fetch1(
         "name"
     ) == "business", "`tire_pressure` array did not match"
 
-    assert (
-        Team
-        & """`car`->>'$.headlights[1]' = '{"side": "right", "hyper_white": true}'"""
-    ).fetch1("name") == "business", "2nd `headlight` object did not match"
+    assert (Team & """`car`->>'$.headlights[1]' = '{"side": "right", "hyper_white": true}'""").fetch1(
+        "name"
+    ) == "business", "2nd `headlight` object did not match"
 
 
 def test_proj(schema_json):
     # proj necessary since we need to rename indexed value into a proper attribute name
-    assert Team.proj(car_length="car.length").fetch(
-        as_dict=True, order_by="car_length"
-    ) == [
+    assert Team.proj(car_length="car.length").fetch(as_dict=True, order_by="car_length") == [
         {"name": "marketing", "car_length": None},
         {"name": "business", "car_length": "100"},
         {"name": "engineering", "car_length": "20.5"},
     ]
 
-    assert Team.proj(car_length="car.length:decimal(4, 1)").fetch(
-        as_dict=True, order_by="car_length"
-    ) == [
+    assert Team.proj(car_length="car.length:decimal(4, 1)").fetch(as_dict=True, order_by="car_length") == [
         {"name": "marketing", "car_length": None},
         {"name": "engineering", "car_length": 20.5},
         {"name": "business", "car_length": 100.0},
     ]
 
-    assert Team.proj(
-        car_width="JSON_VALUE(`car`, '$.length' RETURNING float) - 15"
-    ).fetch(as_dict=True, order_by="car_width") == [
+    assert Team.proj(car_width="JSON_VALUE(`car`, '$.length' RETURNING float) - 15").fetch(
+        as_dict=True, order_by="car_width"
+    ) == [
         {"name": "marketing", "car_width": None},
         {"name": "engineering", "car_width": 5.5},
         {"name": "business", "car_width": 85.0},
     ]
 
-    assert (
-        (Team & {"name": "engineering"}).proj(car_tire_pressure="car.tire_pressure")
-    ).fetch1("car_tire_pressure") == "[32, 31, 33, 34]"
+    assert ((Team & {"name": "engineering"}).proj(car_tire_pressure="car.tire_pressure")).fetch1(
+        "car_tire_pressure"
+    ) == "[32, 31, 33, 34]"
 
     assert np.array_equal(
-        Team.proj(car_inspected="car.inspected").fetch(
-            "car_inspected", order_by="name"
-        ),
+        Team.proj(car_inspected="car.inspected").fetch("car_inspected", order_by="name"),
         np.array([None, "true", None]),
     )
 
     assert np.array_equal(
-        Team.proj(car_inspected="car.inspected:unsigned").fetch(
-            "car_inspected", order_by="name"
-        ),
+        Team.proj(car_inspected="car.inspected:unsigned").fetch("car_inspected", order_by="name"),
         np.array([None, 1, None]),
     )

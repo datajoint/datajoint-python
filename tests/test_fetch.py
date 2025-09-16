@@ -1,11 +1,7 @@
 import decimal
-import io
 import itertools
-import logging
 import os
-import warnings
 from operator import itemgetter
-from typing import List
 
 import numpy as np
 import pandas
@@ -50,9 +46,7 @@ def test_order_by(lang, languages):
         languages.sort(key=itemgetter(1), reverse=ord_lang == "DESC")
         languages.sort(key=itemgetter(0), reverse=ord_name == "DESC")
         for c, l in zip(cur, languages):
-            assert np.all(
-                cc == ll for cc, ll in zip(c, l)
-            ), "Sorting order is different"
+            assert np.all(cc == ll for cc, ll in zip(c, l)), "Sorting order is different"
 
 
 def test_order_by_default(lang, languages):
@@ -119,9 +113,7 @@ def test_iter(lang, languages):
     # now as dict
     cur = lang.fetch(as_dict=True, order_by=("language", "name DESC"))
     for row, (tname, tlang) in list(zip(cur, languages)):
-        assert (
-            row["name"] == tname and row["language"] == tlang
-        ), "Values are not the same"
+        assert row["name"] == tname and row["language"] == tlang, "Values are not the same"
 
 
 def test_keys(lang, languages):
@@ -272,9 +264,7 @@ def test_fetch_format(subject):
 
         subject_notes, key, real_id = subject.fetch("subject_notes", dj.key, "real_id")
 
-        np.testing.assert_array_equal(
-            sorted(subject_notes), sorted(tmp["subject_notes"])
-        )
+        np.testing.assert_array_equal(sorted(subject_notes), sorted(tmp["subject_notes"]))
         np.testing.assert_array_equal(sorted(real_id), sorted(tmp["real_id"]))
         list1 = sorted(key, key=itemgetter("subject_id"))
         for l1, l2 in zip(list1, list2):

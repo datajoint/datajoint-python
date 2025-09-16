@@ -2,7 +2,6 @@ import re
 
 import pytest
 
-import datajoint as dj
 
 from . import schema as schema_any_module
 from .schema_alter import LOCALS_ALTER, Experiment, Parent
@@ -24,33 +23,21 @@ def schema_alter(connection_test, schema_any):
 
 class TestAlter:
     def verify_alter(self, schema_alter, table, attribute_sql):
-        definition_original = schema_alter.connection.query(
-            f"SHOW CREATE TABLE {table.full_table_name}"
-        ).fetchone()[1]
+        definition_original = schema_alter.connection.query(f"SHOW CREATE TABLE {table.full_table_name}").fetchone()[1]
         table.definition = table.definition_new
         table.alter(prompt=False)
-        definition_new = schema_alter.connection.query(
-            f"SHOW CREATE TABLE {table.full_table_name}"
-        ).fetchone()[1]
-        assert (
-            re.sub(f"{attribute_sql},\n  ", "", definition_new) == definition_original
-        )
+        definition_new = schema_alter.connection.query(f"SHOW CREATE TABLE {table.full_table_name}").fetchone()[1]
+        assert re.sub(f"{attribute_sql},\n  ", "", definition_new) == definition_original
 
     def test_alter(self, schema_alter):
-        original = schema_alter.connection.query(
-            "SHOW CREATE TABLE " + Experiment.full_table_name
-        ).fetchone()[1]
+        original = schema_alter.connection.query("SHOW CREATE TABLE " + Experiment.full_table_name).fetchone()[1]
         Experiment.definition = Experiment.definition1
         Experiment.alter(prompt=False, context=COMBINED_CONTEXT)
-        altered = schema_alter.connection.query(
-            "SHOW CREATE TABLE " + Experiment.full_table_name
-        ).fetchone()[1]
+        altered = schema_alter.connection.query("SHOW CREATE TABLE " + Experiment.full_table_name).fetchone()[1]
         assert original != altered
         Experiment.definition = Experiment.original_definition
         Experiment().alter(prompt=False, context=COMBINED_CONTEXT)
-        restored = schema_alter.connection.query(
-            "SHOW CREATE TABLE " + Experiment.full_table_name
-        ).fetchone()[1]
+        restored = schema_alter.connection.query("SHOW CREATE TABLE " + Experiment.full_table_name).fetchone()[1]
         assert altered != restored
         assert original == restored
 
@@ -58,9 +45,7 @@ class TestAlter:
         """
         https://github.com/datajoint/datajoint-python/issues/936
         """
-        self.verify_alter(
-            schema_alter, table=Parent.Child, attribute_sql="`child_id` .* DEFAULT NULL"
-        )
+        self.verify_alter(schema_alter, table=Parent.Child, attribute_sql="`child_id` .* DEFAULT NULL")
         self.verify_alter(
             schema_alter,
             table=Parent.Grandchild,

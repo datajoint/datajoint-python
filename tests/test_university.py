@@ -37,9 +37,7 @@ def schema_uni_inactive():
 @pytest.fixture
 def schema_uni(db_creds_test, schema_uni_inactive, connection_test, prefix):
     # Deferred activation
-    schema_uni_inactive.activate(
-        prefix + "_university", connection=dj.conn(**db_creds_test)
-    )
+    schema_uni_inactive.activate(prefix + "_university", connection=dj.conn(**db_creds_test))
     # ---------------  Fill University -------------------
     test_data_dir = Path(__file__).parent / "data"
     for table in (
@@ -62,9 +60,7 @@ def schema_uni(db_creds_test, schema_uni_inactive, connection_test, prefix):
 
 def test_activate_unauthorized(schema_uni_inactive, db_creds_test, connection_test):
     with pytest.raises(DataJointError):
-        schema_uni_inactive.activate(
-            "unauthorized", connection=dj.conn(**db_creds_test)
-        )
+        schema_uni_inactive.activate("unauthorized", connection=dj.conn(**db_creds_test))
 
 
 def test_fill(schema_uni):
@@ -87,22 +83,14 @@ def test_restrict(schema_uni):
     assert len(utahns1) == len(utahns2.fetch("KEY")) == 7
 
     # male nonutahns
-    sex1, state1 = ((Student & 'sex="M"') - {"home_state": "UT"}).fetch(
-        "sex", "home_state", order_by="student_id"
-    )
-    sex2, state2 = ((Student & 'sex="M"') - {"home_state": "UT"}).fetch(
-        "sex", "home_state", order_by="student_id"
-    )
+    sex1, state1 = ((Student & 'sex="M"') - {"home_state": "UT"}).fetch("sex", "home_state", order_by="student_id")
+    sex2, state2 = ((Student & 'sex="M"') - {"home_state": "UT"}).fetch("sex", "home_state", order_by="student_id")
     assert len(set(state1)) == len(set(state2)) == 44
     assert set(sex1).pop() == set(sex2).pop() == "M"
 
     # students from OK, NM, TX
-    s1 = (Student & [{"home_state": s} for s in ("OK", "NM", "TX")]).fetch(
-        "KEY", order_by="student_id"
-    )
-    s2 = (Student & 'home_state in ("OK", "NM", "TX")').fetch(
-        "KEY", order_by="student_id"
-    )
+    s1 = (Student & [{"home_state": s} for s in ("OK", "NM", "TX")]).fetch("KEY", order_by="student_id")
+    s2 = (Student & 'home_state in ("OK", "NM", "TX")').fetch("KEY", order_by="student_id")
     assert len(s1) == 11
     assert s1 == s2
 
@@ -139,34 +127,24 @@ def test_union(schema_uni):
 
 
 def test_aggr(schema_uni):
-    avg_grade_per_course = Course.aggr(
-        Grade * LetterGrade, avg_grade="round(avg(points), 2)"
-    )
+    avg_grade_per_course = Course.aggr(Grade * LetterGrade, avg_grade="round(avg(points), 2)")
     assert len(avg_grade_per_course) == 45
 
     # GPA
-    student_gpa = Student.aggr(
-        Course * Grade * LetterGrade, gpa="round(sum(points*credits)/sum(credits), 2)"
-    )
+    student_gpa = Student.aggr(Course * Grade * LetterGrade, gpa="round(sum(points*credits)/sum(credits), 2)")
     gpa = student_gpa.fetch("gpa")
     assert len(gpa) == 261
     assert 2 < gpa.mean() < 3
 
     # Sections in biology department with zero students in them
-    section = (Section & {"dept": "BIOL"}).aggr(
-        Enroll, n="count(student_id)", keep_all_rows=True
-    ) & "n=0"
+    section = (Section & {"dept": "BIOL"}).aggr(Enroll, n="count(student_id)", keep_all_rows=True) & "n=0"
     assert len(set(section.fetch("dept"))) == 1
     assert len(section) == 17
     assert bool(section)
 
     # Test correct use of ellipses in a similar query
-    section = (Section & {"dept": "BIOL"}).aggr(
-        Grade, ..., n="count(student_id)", keep_all_rows=True
-    ) & "n>1"
-    assert not any(
-        name in section.heading.names for name in Grade.heading.secondary_attributes
-    )
+    section = (Section & {"dept": "BIOL"}).aggr(Grade, ..., n="count(student_id)", keep_all_rows=True) & "n>1"
+    assert not any(name in section.heading.names for name in Grade.heading.secondary_attributes)
     assert len(set(section.fetch("dept"))) == 1
     assert len(section) == 168
     assert bool(section)

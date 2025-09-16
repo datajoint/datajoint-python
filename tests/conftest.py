@@ -1,26 +1,21 @@
-import json
 import os
-import shutil
-from os import environ, remove
-from pathlib import Path
+from os import remove
 from typing import Dict, List
 
 import certifi
 import minio
-import networkx as nx
 import pytest
 import urllib3
 from packaging import version
 
 import datajoint as dj
-from datajoint import errors
 from datajoint.errors import (
     ADAPTED_TYPE_SWITCH,
     FILEPATH_FEATURE_SWITCH,
     DataJointError,
 )
 
-from . import schema, schema_adapted, schema_advanced, schema_external, schema_simple
+from . import schema, schema_advanced, schema_external, schema_simple
 from . import schema_uuid as schema_uuid_module
 
 
@@ -85,9 +80,7 @@ def connection_root(connection_root_bare, prefix):
     dj.config["safemode"] = False
     conn_root = connection_root_bare
     # Create MySQL users
-    if version.parse(
-        conn_root.query("select @@version;").fetchone()[0]
-    ) >= version.parse("8.0.0"):
+    if version.parse(conn_root.query("select @@version;").fetchone()[0]) >= version.parse("8.0.0"):
         # create user if necessary on mysql8
         conn_root.query(
             """
@@ -120,9 +113,7 @@ def connection_root(connection_root_bare, prefix):
             IDENTIFIED BY 'datajoint';
             """
         )
-        conn_root.query(
-            "GRANT SELECT ON `djtest%%`.* TO 'djview'@'%%' IDENTIFIED BY 'djview';"
-        )
+        conn_root.query("GRANT SELECT ON `djtest%%`.* TO 'djview'@'%%' IDENTIFIED BY 'djview';")
         conn_root.query(
             """
             GRANT SELECT ON `djtest%%`.* TO 'djssl'@'%%'
@@ -156,9 +147,7 @@ def connection_test(connection_root, prefix, db_creds_test):
     permission = "ALL PRIVILEGES"
 
     # Create MySQL users
-    if version.parse(
-        connection_root.query("select @@version;").fetchone()[0]
-    ) >= version.parse("8.0.0"):
+    if version.parse(connection_root.query("select @@version;").fetchone()[0]) >= version.parse("8.0.0"):
         # create user if necessary on mysql8
         connection_root.query(
             f"""
@@ -214,12 +203,8 @@ def stores_config(s3_creds, tmpdir_factory):
             location="dj/repo",
             stage=tmpdir_factory.mktemp("repo-s3"),
         ),
-        "local": dict(
-            protocol="file", location=tmpdir_factory.mktemp("local"), subfolding=(1, 1)
-        ),
-        "share": dict(
-            s3_creds, protocol="s3", location="dj/store/repo", subfolding=(2, 4)
-        ),
+        "local": dict(protocol="file", location=tmpdir_factory.mktemp("local"), subfolding=(1, 1)),
+        "share": dict(s3_creds, protocol="s3", location="dj/store/repo", subfolding=(2, 4)),
     }
     return stores_config
 
@@ -248,9 +233,7 @@ def mock_cache(tmpdir_factory):
 
 @pytest.fixture
 def schema_any(connection_test, prefix):
-    schema_any = dj.Schema(
-        prefix + "_test1", schema.LOCALS_ANY, connection=connection_test
-    )
+    schema_any = dj.Schema(prefix + "_test1", schema.LOCALS_ANY, connection=connection_test)
     assert schema.LOCALS_ANY, "LOCALS_ANY is empty"
     try:
         schema_any.jobs.delete()
@@ -324,9 +307,7 @@ def thing_tables(schema_any):
 
 @pytest.fixture
 def schema_simp(connection_test, prefix):
-    schema = dj.Schema(
-        prefix + "_relational", schema_simple.LOCALS_SIMPLE, connection=connection_test
-    )
+    schema = dj.Schema(prefix + "_relational", schema_simple.LOCALS_SIMPLE, connection=connection_test)
     schema(schema_simple.SelectPK)
     schema(schema_simple.KeyPK)
     schema(schema_simple.IJ)
@@ -373,9 +354,7 @@ def schema_adv(connection_test, prefix):
 
 
 @pytest.fixture
-def schema_ext(
-    connection_test, enable_filepath_feature, mock_stores, mock_cache, prefix
-):
+def schema_ext(connection_test, enable_filepath_feature, mock_stores, mock_cache, prefix):
     schema = dj.Schema(
         prefix + "_extern",
         context=schema_external.LOCALS_EXTERNAL,
@@ -414,9 +393,7 @@ def http_client():
         timeout=30,
         cert_reqs="CERT_REQUIRED",
         ca_certs=certifi.where(),
-        retries=urllib3.Retry(
-            total=3, backoff_factor=0.2, status_forcelist=[500, 502, 503, 504]
-        ),
+        retries=urllib3.Retry(total=3, backoff_factor=0.2, status_forcelist=[500, 502, 503, 504]),
     )
     yield client
 
@@ -450,12 +427,7 @@ def minio_client(s3_creds, minio_client_bare, teardown=False):
 
     # Teardown S3
     objs = list(minio_client_bare.list_objects(s3_creds["bucket"], recursive=True))
-    objs = [
-        minio_client_bare.remove_object(
-            s3_creds["bucket"], o.object_name.encode("utf-8")
-        )
-        for o in objs
-    ]
+    objs = [minio_client_bare.remove_object(s3_creds["bucket"], o.object_name.encode("utf-8")) for o in objs]
     minio_client_bare.remove_bucket(s3_creds["bucket"])
 
 

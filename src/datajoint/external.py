@@ -26,11 +26,7 @@ def subfold(name, folds):
     """
     subfolding for external storage: e.g.  subfold('aBCdefg', (2, 3))  -->  ['ab','cde']
     """
-    return (
-        (name[: folds[0]].lower(),) + subfold(name[folds[0] :], folds[1:])
-        if folds
-        else ()
-    )
+    return (name[: folds[0]].lower(),) + subfold(name[folds[0] :], folds[1:]) if folds else ()
 
 
 class ExternalTable(Table):
@@ -58,9 +54,7 @@ class ExternalTable(Table):
             self.declare()
         self._s3 = None
         if self.spec["protocol"] == "file" and not Path(self.spec["location"]).is_dir():
-            raise FileNotFoundError(
-                "Inaccessible local directory %s" % self.spec["location"]
-            ) from None
+            raise FileNotFoundError("Inaccessible local directory %s" % self.spec["location"]) from None
 
     @property
     def definition(self):
@@ -94,8 +88,7 @@ class ExternalTable(Table):
             posix_path = PurePosixPath(PureWindowsPath(self.spec["location"]))
             location_path = (
                 Path(*posix_path.parts[1:])
-                if len(self.spec["location"]) > 0
-                and any(case in posix_path.parts[0] for case in ("\\", ":"))
+                if len(self.spec["location"]) > 0 and any(case in posix_path.parts[0] for case in ("\\", ":"))
                 else Path(posix_path)
             )
             return PurePosixPath(location_path, relative_filepath)
@@ -146,9 +139,7 @@ class ExternalTable(Table):
             try:
                 return Path(external_path).read_bytes()
             except FileNotFoundError:
-                raise errors.MissingExternalFile(
-                    f"Missing external file {external_path}"
-                ) from None
+                raise errors.MissingExternalFile(f"Missing external file {external_path}") from None
         assert False
 
     def _remove_external_file(self, external_path):
@@ -180,8 +171,7 @@ class ExternalTable(Table):
         self._upload_buffer(blob, self._make_uuid_path(uuid))
         # insert tracking info
         self.connection.query(
-            "INSERT INTO {tab} (hash, size) VALUES (%s, {size}) ON DUPLICATE KEY "
-            "UPDATE timestamp=CURRENT_TIMESTAMP".format(
+            "INSERT INTO {tab} (hash, size) VALUES (%s, {size}) ON DUPLICATE KEY " "UPDATE timestamp=CURRENT_TIMESTAMP".format(
                 tab=self.full_table_name, size=len(blob)
             ),
             args=(uuid.bytes,),
@@ -212,14 +202,10 @@ class ExternalTable(Table):
                 if not SUPPORT_MIGRATED_BLOBS:
                     raise
                 # blobs migrated from datajoint 0.11 are stored at explicitly defined filepaths
-                relative_filepath, contents_hash = (self & {"hash": uuid}).fetch1(
-                    "filepath", "contents_hash"
-                )
+                relative_filepath, contents_hash = (self & {"hash": uuid}).fetch1("filepath", "contents_hash")
                 if relative_filepath is None:
                     raise
-                blob = self._download_buffer(
-                    self._make_external_filepath(relative_filepath)
-                )
+                blob = self._download_buffer(self._make_external_filepath(relative_filepath))
             if cache_folder:
                 cache_path.mkdir(parents=True, exist_ok=True)
                 safe_write(cache_path / uuid.hex, blob)
@@ -264,18 +250,10 @@ class ExternalTable(Table):
         """
         local_filepath = Path(local_filepath)
         try:
-            relative_filepath = str(
-                local_filepath.relative_to(self.spec["stage"]).as_posix()
-            )
+            relative_filepath = str(local_filepath.relative_to(self.spec["stage"]).as_posix())
         except ValueError:
-            raise DataJointError(
-                "The path {path} is not in stage {stage}".format(
-                    path=local_filepath.parent, **self.spec
-                )
-            )
-        uuid = uuid_from_buffer(
-            init_string=relative_filepath
-        )  # hash relative path, not contents
+            raise DataJointError("The path {path} is not in stage {stage}".format(path=local_filepath.parent, **self.spec))
+        uuid = uuid_from_buffer(init_string=relative_filepath)  # hash relative path, not contents
         contents_hash = uuid_from_file(local_filepath)
 
         # check if the remote file already exists and verify that it matches
@@ -283,9 +261,7 @@ class ExternalTable(Table):
         if check_hash.size:
             # the tracking entry exists, check that it's the same file as before
             if contents_hash != check_hash[0]:
-                raise DataJointError(
-                    f"A different version of '{relative_filepath}' has already been placed."
-                )
+                raise DataJointError(f"A different version of '{relative_filepath}' has already been placed.")
         else:
             # upload the file and create its tracking entry
             self._upload_file(
@@ -316,37 +292,27 @@ class ExternalTable(Table):
             actual_size = Path(local_filepath).stat().st_size
             if expected_size != actual_size:
                 # this should never happen without outside interference
-                raise DataJointError(
-                    f"'{local_filepath}' downloaded but size did not match."
-                )
+                raise DataJointError(f"'{local_filepath}' downloaded but size did not match.")
             return limit is None or actual_size < limit
 
         if filepath_hash is not None:
-            relative_filepath, contents_hash, size = (
-                self & {"hash": filepath_hash}
-            ).fetch1("filepath", "contents_hash", "size")
+            relative_filepath, contents_hash, size = (self & {"hash": filepath_hash}).fetch1(
+                "filepath", "contents_hash", "size"
+            )
             external_path = self._make_external_filepath(relative_filepath)
             local_filepath = Path(self.spec["stage"]).absolute() / relative_filepath
 
             file_exists = Path(local_filepath).is_file() and (
-                not _need_checksum(local_filepath, size)
-                or uuid_from_file(local_filepath) == contents_hash
+                not _need_checksum(local_filepath, size) or uuid_from_file(local_filepath) == contents_hash
             )
 
             if not file_exists:
                 self._download_file(external_path, local_filepath)
-                if (
-                    _need_checksum(local_filepath, size)
-                    and uuid_from_file(local_filepath) != contents_hash
-                ):
+                if _need_checksum(local_filepath, size) and uuid_from_file(local_filepath) != contents_hash:
                     # this should never happen without outside interference
-                    raise DataJointError(
-                        f"'{local_filepath}' downloaded but did not pass checksum."
-                    )
+                    raise DataJointError(f"'{local_filepath}' downloaded but did not pass checksum.")
             if not _need_checksum(local_filepath, size):
-                logger.warning(
-                    f"Skipped checksum for file with hash: {contents_hash}, and path: {local_filepath}"
-                )
+                logger.warning(f"Skipped checksum for file with hash: {contents_hash}, and path: {local_filepath}")
             return str(local_filepath), contents_hash
 
     # --- UTILITIES ---
@@ -363,9 +329,7 @@ class ExternalTable(Table):
         SELECT concat('`', table_schema, '`.`', table_name, '`') as referencing_table, column_name
         FROM information_schema.key_column_usage
         WHERE referenced_table_name="{tab}" and referenced_table_schema="{db}"
-        """.format(
-                    tab=self.table_name, db=self.database
-                ),
+        """.format(tab=self.table_name, db=self.database),
                 as_dict=True,
             )
         )
@@ -399,10 +363,7 @@ class ExternalTable(Table):
         :return: self restricted to elements that are not in use by any tables in the schema
         """
         return self - [
-            FreeTable(self.connection, ref["referencing_table"]).proj(
-                hash=ref["column_name"]
-            )
-            for ref in self.references
+            FreeTable(self.connection, ref["referencing_table"]).proj(hash=ref["column_name"]) for ref in self.references
         ]
 
     def used(self):
@@ -412,10 +373,7 @@ class ExternalTable(Table):
         :return: self restricted to elements that in use by tables in the schema
         """
         return self & [
-            FreeTable(self.connection, ref["referencing_table"]).proj(
-                hash=ref["column_name"]
-            )
-            for ref in self.references
+            FreeTable(self.connection, ref["referencing_table"]).proj(hash=ref["column_name"]) for ref in self.references
         ]
 
     def delete(
@@ -436,10 +394,7 @@ class ExternalTable(Table):
         :return: if deleting external files, returns errors
         """
         if delete_external_files not in (True, False):
-            raise DataJointError(
-                "The delete_external_files argument must be set to either "
-                "True or False in delete()"
-            )
+            raise DataJointError("The delete_external_files argument must be set to either " "True or False in delete()")
 
         if not delete_external_files:
             self.unused().delete_quick()
@@ -485,11 +440,8 @@ class ExternalMapping(Mapping):
         self._tables = {}
 
     def __repr__(self):
-        return "External file tables for schema `{schema}`:\n    ".format(
-            schema=self.schema.database
-        ) + "\n    ".join(
-            '"{store}" {protocol}:{location}'.format(store=k, **v.spec)
-            for k, v in self.items()
+        return "External file tables for schema `{schema}`:\n    ".format(schema=self.schema.database) + "\n    ".join(
+            '"{store}" {protocol}:{location}'.format(store=k, **v.spec) for k, v in self.items()
         )
 
     def __getitem__(self, store):

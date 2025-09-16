@@ -61,27 +61,19 @@ def test_pack():
 
     x = -255
     y = unpack(pack(x))
-    assert (
-        x == y and isinstance(y, int) and not isinstance(y, np.ndarray)
-    ), "Scalar int did not match"
+    assert x == y and isinstance(y, int) and not isinstance(y, np.ndarray), "Scalar int did not match"
 
     x = -25523987234234287910987234987098245697129798713407812347
     y = unpack(pack(x))
-    assert (
-        x == y and isinstance(y, int) and not isinstance(y, np.ndarray)
-    ), "Unbounded int did not match"
+    assert x == y and isinstance(y, int) and not isinstance(y, np.ndarray), "Unbounded int did not match"
 
     x = 7.0
     y = unpack(pack(x))
-    assert (
-        x == y and isinstance(y, float) and not isinstance(y, np.ndarray)
-    ), "Scalar float did not match"
+    assert x == y and isinstance(y, float) and not isinstance(y, np.ndarray), "Scalar float did not match"
 
     x = 7j
     y = unpack(pack(x))
-    assert (
-        x == y and isinstance(y, complex) and not isinstance(y, np.ndarray)
-    ), "Complex scalar did not match"
+    assert x == y and isinstance(y, complex) and not isinstance(y, np.ndarray), "Complex scalar did not match"
 
     x = True
     assert unpack(pack(x)) is True, "Scalar bool did not match"
@@ -98,9 +90,7 @@ def test_pack():
     }
     y = unpack(pack(x))
     assert x == y, "Dict do not match!"
-    assert not isinstance(
-        ["range"][0], np.ndarray
-    ), "Scalar int was coerced into array."
+    assert not isinstance(["range"][0], np.ndarray), "Scalar int was coerced into array."
 
     x = uuid.uuid4()
     assert x == unpack(pack(x)), "UUID did not match"
@@ -142,9 +132,7 @@ def test_pack():
     assert x == unpack(pack(x)), "String object did not pack/unpack correctly"
 
     x = np.array(["yes"])
-    assert x == unpack(
-        pack(x)
-    ), "Numpy string array object did not pack/unpack correctly"
+    assert x == unpack(pack(x)), "Numpy string array object did not pack/unpack correctly"
 
     x = np.datetime64("1998").astype("datetime64[us]")
     assert x == unpack(pack(x))

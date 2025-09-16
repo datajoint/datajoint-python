@@ -1,10 +1,7 @@
-import pymysql
 import pytest
 
 import datajoint as dj
 from datajoint import DataJointError
-
-from . import schema
 
 
 def test_populate(trial, subject, experiment, ephys, channel):

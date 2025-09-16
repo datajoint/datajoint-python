@@ -123,8 +123,6 @@ def test_left_join_len(schema_uuid):
     Item.populate()
     Topic().add("jeff2")
     Topic().add("jeff3")
-    q = Topic.join(
-        Item - dict(topic_id=uuid.uuid5(top_level_namespace_id, "jeff")), left=True
-    )
+    q = Topic.join(Item - dict(topic_id=uuid.uuid5(top_level_namespace_id, "jeff")), left=True)
     qf = q.fetch()
     assert len(q) == len(qf)

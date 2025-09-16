@@ -1,4 +1,3 @@
-import pytest
 from pytest import raises
 
 import datajoint as dj
@@ -75,6 +74,4 @@ def test_aggr(schema_any, schema_simp):
     rel = ArgmaxTest()
     amax1 = (dj.U("val") * rel) & dj.U("secondary_key").aggr(rel, val="min(val)")
     amax2 = (dj.U("val") * rel) * dj.U("secondary_key").aggr(rel, val="min(val)")
-    assert (
-        len(amax1) == len(amax2) == rel.n
-    ), "Aggregated argmax with join and restriction does not yield the same length."
+    assert len(amax1) == len(amax2) == rel.n, "Aggregated argmax with join and restriction does not yield the same length."

@@ -44,9 +44,7 @@ def insert_blobs(schema):
     (6,'3D uint8 array',0x6D596D0041030000000000000002000000000000000300000000000000040000000000000009000000000000000102030405060708090A0B0C0D0E0F101112131415161718),
     (7,'3D complex array',0x6D596D0041030000000000000002000000000000000300000000000000040000000000000006000000010000000000000000C0724000000000000028C000000000000038C0000000000000000000000000000038C0000000000000000000000000000052C00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000052C00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000052C00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000AA4C58E87AB62B400000000000000000AA4C58E87AB62BC0000000000000008000000000000052400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000080000000000000008000000000000052C000000000000000800000000000000080000000000000008000000000000000800000000000000080
     );
-    """.format(
-            table_name=Blob.full_table_name
-        )
+    """.format(table_name=Blob.full_table_name)
     )
 
 
@@ -84,9 +82,7 @@ def test_complex_matlab_blobs(schema_blob_pop):
     assert_array_equal(blob, np.array([["string1", "string2"]]))
     assert_array_equal(blob, unpack(pack(blob)))
 
-    blob = blobs[
-        3
-    ]  # 'struct array'     struct('a', {1,2},  'b', {struct('c', magic(3)), struct('C', magic(5))})
+    blob = blobs[3]  # 'struct array'     struct('a', {1,2},  'b', {struct('c', magic(3)), struct('C', magic(5))})
     assert isinstance(blob, dj.MatStruct)
     assert tuple(blob.dtype.names) == ("a", "b")
     assert_array_equal(blob.a[0, 0], np.array([[1.0]]))
@@ -117,17 +113,13 @@ def test_complex_matlab_squeeze(schema_blob_pop):
     """
     test correct de-serialization of various blob types
     """
-    blob = (Blob & "id=1").fetch1(
-        "blob", squeeze=True
-    )  # 'simple string'    'character string'
+    blob = (Blob & "id=1").fetch1("blob", squeeze=True)  # 'simple string'    'character string'
     assert blob == "character string"
 
     blob = (Blob & "id=2").fetch1("blob", squeeze=True)  # '1D vector'        1:15:180
     assert_array_equal(blob, np.r_[1:180:15])
 
-    blob = (Blob & "id=3").fetch1(
-        "blob", squeeze=True
-    )  # 'string array'     {'string1'  'string2'}
+    blob = (Blob & "id=3").fetch1("blob", squeeze=True)  # 'string array'     {'string1'  'string2'}
     assert isinstance(blob, dj.MatCell)
     assert_array_equal(blob, np.array(["string1", "string2"]))
 
@@ -148,9 +140,7 @@ def test_complex_matlab_squeeze(schema_blob_pop):
     assert isinstance(blob[1].b, dj.MatStruct)
     assert tuple(blob[1].b.C.item().shape) == (5, 5)
 
-    blob = (Blob & "id=5").fetch1(
-        "blob", squeeze=True
-    )  # '3D double array'  reshape(1:24, [2,3,4])
+    blob = (Blob & "id=5").fetch1("blob", squeeze=True)  # '3D double array'  reshape(1:24, [2,3,4])
     assert np.array_equal(blob, np.r_[1:25].reshape((2, 3, 4), order="F"))
     assert blob.dtype == "float64"
 

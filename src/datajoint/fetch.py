@@ -51,11 +51,7 @@ def _get(connection, attr, data, squeeze, download_path):
     if attr.json:
         return json.loads(data)
 
-    extern = (
-        connection.schemas[attr.database].external[attr.store]
-        if attr.is_external
-        else None
-    )
+    extern = connection.schemas[attr.database].external[attr.store] if attr.is_external else None
 
     # apply attribute adapter if present
     adapt = attr.adapter.get if attr.adapter else lambda x: x
@@ -69,33 +65,19 @@ def _get(connection, attr, data, squeeze, download_path):
         # 3. if exists and checksum passes then return the local filepath
         # 4. Otherwise, download the remote file and return the new filepath
         _uuid = uuid.UUID(bytes=data) if attr.is_external else None
-        attachment_name = (
-            extern.get_attachment_name(_uuid)
-            if attr.is_external
-            else data.split(b"\0", 1)[0].decode()
-        )
+        attachment_name = extern.get_attachment_name(_uuid) if attr.is_external else data.split(b"\0", 1)[0].decode()
         local_filepath = Path(download_path) / attachment_name
         if local_filepath.is_file():
-            attachment_checksum = (
-                _uuid if attr.is_external else hash.uuid_from_buffer(data)
-            )
-            if attachment_checksum == hash.uuid_from_file(
-                local_filepath, init_string=attachment_name + "\0"
-            ):
-                return adapt(
-                    str(local_filepath)
-                )  # checksum passed, no need to download again
+            attachment_checksum = _uuid if attr.is_external else hash.uuid_from_buffer(data)
+            if attachment_checksum == hash.uuid_from_file(local_filepath, init_string=attachment_name + "\0"):
+                return adapt(str(local_filepath))  # checksum passed, no need to download again
             # generate the next available alias filename
             for n in itertools.count():
-                f = local_filepath.parent / (
-                    local_filepath.stem + "_%04x" % n + local_filepath.suffix
-                )
+                f = local_filepath.parent / (local_filepath.stem + "_%04x" % n + local_filepath.suffix)
                 if not f.is_file():
                     local_filepath = f
                     break
-                if attachment_checksum == hash.uuid_from_file(
-                    f, init_string=attachment_name + "\0"
-                ):
+                if attachment_checksum == hash.uuid_from_file(f, init_string=attachment_name + "\0"):
                     return adapt(str(f))  # checksum passed, no need to download again
         # Save attachment
         if attr.is_external:
@@ -172,29 +154,22 @@ class Fetch:
         if attrs_as_dict:
             # absorb KEY into attrs and prepare to return attributes as dict (issue #595)
             if any(is_key(k) for k in attrs):
-                attrs = list(self._expression.primary_key) + [
-                    a for a in attrs if a not in self._expression.primary_key
-                ]
+                attrs = list(self._expression.primary_key) + [a for a in attrs if a not in self._expression.primary_key]
         if as_dict is None:
             as_dict = bool(attrs)  # default to True for "KEY" and False otherwise
         # format should not be specified with attrs or is_dict=True
         if format is not None and (as_dict or attrs):
             raise DataJointError(
-                "Cannot specify output format when as_dict=True or "
-                "when attributes are selected to be fetched separately."
+                "Cannot specify output format when as_dict=True or " "when attributes are selected to be fetched separately."
             )
         if format not in {None, "array", "frame"}:
-            raise DataJointError(
-                "Fetch output format must be in "
-                '{{"array", "frame"}} but "{}" was given'.format(format)
-            )
+            raise DataJointError("Fetch output format must be in " '{{"array", "frame"}} but "{}" was given'.format(format))
 
         if not (attrs or as_dict) and format is None:
             format = config["fetch_format"]  # default to array
             if format not in {"array", "frame"}:
                 raise DataJointError(
-                    'Invalid entry "{}" in datajoint.config["fetch_format"]: '
-                    'use "array" or "frame"'.format(format)
+                    'Invalid entry "{}" in datajoint.config["fetch_format"]: ' 'use "array" or "frame"'.format(format)
                 )
 
         get = partial(
@@ -216,18 +191,11 @@ class Fetch:
                 format="array",
             )
             if attrs_as_dict:
-                ret = [
-                    {k: v for k, v in zip(ret.dtype.names, x) if k in attrs}
-                    for x in ret
-                ]
+                ret = [{k: v for k, v in zip(ret.dtype.names, x) if k in attrs} for x in ret]
             else:
                 return_values = [
                     (
-                        list(
-                            (to_dicts if as_dict else lambda x: x)(
-                                ret[self._expression.primary_key]
-                            )
-                        )
+                        list((to_dicts if as_dict else lambda x: x)(ret[self._expression.primary_key]))
                         if is_key(attribute)
                         else ret[attribute]
                     )
@@ -238,10 +206,7 @@ class Fetch:
             cur = self._expression.cursor(as_dict=as_dict)
             heading = self._expression.heading
             if as_dict:
-                ret = [
-                    dict((name, get(heading[name], d[name])) for name in heading.names)
-                    for d in cur
-                ]
+                ret = [dict((name, get(heading[name], d[name])) for name in heading.names) for d in cur]
             else:
                 ret = list(cur.fetchall())
                 record_type = (
@@ -254,8 +219,7 @@ class Fetch:
                                     name,
                                     type(value),
                                 )  # use the first element to determine blob type
-                                if heading[name].is_blob
-                                and isinstance(value, numbers.Number)
+                                if heading[name].is_blob and isinstance(value, numbers.Number)
                                 else (name, heading.as_dtype[name])
                             )
                             for value, name in zip(ret[0], heading.as_dtype.names)
@@ -307,9 +271,7 @@ class Fetch1:
             cur = self._expression.cursor(as_dict=True)
             ret = cur.fetchone()
             if not ret or cur.fetchone():
-                raise DataJointError(
-                    "fetch1 requires exactly one tuple in the input set."
-                )
+                raise DataJointError("fetch1 requires exactly one tuple in the input set.")
             ret = dict(
                 (
                     name,
@@ -325,19 +287,11 @@ class Fetch1:
             )
         else:  # fetch some attributes, return as tuple
             attributes = [a for a in attrs if not is_key(a)]
-            result = self._expression.proj(*attributes).fetch(
-                squeeze=squeeze, download_path=download_path, format="array"
-            )
+            result = self._expression.proj(*attributes).fetch(squeeze=squeeze, download_path=download_path, format="array")
             if len(result) != 1:
-                raise DataJointError(
-                    "fetch1 should only return one tuple. %d tuples found" % len(result)
-                )
+                raise DataJointError("fetch1 should only return one tuple. %d tuples found" % len(result))
             return_values = tuple(
-                (
-                    next(to_dicts(result[self._expression.primary_key]))
-                    if is_key(attribute)
-                    else result[attribute][0]
-                )
+                (next(to_dicts(result[self._expression.primary_key])) if is_key(attribute) else result[attribute][0])
                 for attribute in attrs
             )
             ret = return_values[0] if len(attrs) == 1 else return_values

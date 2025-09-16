@@ -1,7 +1,6 @@
 import random
 import string
 
-import pytest
 
 import datajoint as dj
 from datajoint.jobs import ERROR_MESSAGE_LENGTH, TRUNCATION_APPENDIX
@@ -19,9 +18,7 @@ def test_reserve_job(subject, schema_any):
 
     # refuse jobs
     for key in subject.fetch("KEY"):
-        assert not schema_any.jobs.reserve(
-            table_name, key
-        ), "failed to respect reservation"
+        assert not schema_any.jobs.reserve(table_name, key), "failed to respect reservation"
 
     # complete jobs
     for key in subject.fetch("KEY"):
@@ -38,9 +35,7 @@ def test_reserve_job(subject, schema_any):
 
     # refuse jobs with errors
     for key in subject.fetch("KEY"):
-        assert not schema_any.jobs.reserve(
-            table_name, key
-        ), "failed to ignore error jobs"
+        assert not schema_any.jobs.reserve(table_name, key), "failed to ignore error jobs"
 
     # clear error jobs
     (schema_any.jobs & dict(status="error")).delete()
@@ -95,12 +90,8 @@ def test_suppress_dj_errors(schema_any):
 
 def test_long_error_message(subject, schema_any):
     # create long error message
-    long_error_message = "".join(
-        random.choice(string.ascii_letters) for _ in range(ERROR_MESSAGE_LENGTH + 100)
-    )
-    short_error_message = "".join(
-        random.choice(string.ascii_letters) for _ in range(ERROR_MESSAGE_LENGTH // 2)
-    )
+    long_error_message = "".join(random.choice(string.ascii_letters) for _ in range(ERROR_MESSAGE_LENGTH + 100))
+    short_error_message = "".join(random.choice(string.ascii_letters) for _ in range(ERROR_MESSAGE_LENGTH // 2))
     assert subject
     table_name = "fake_table"
 
@@ -110,12 +101,8 @@ def test_long_error_message(subject, schema_any):
     schema_any.jobs.reserve(table_name, key)
     schema_any.jobs.error(table_name, key, long_error_message)
     error_message = schema_any.jobs.fetch1("error_message")
-    assert (
-        len(error_message) == ERROR_MESSAGE_LENGTH
-    ), "error message is longer than max allowed"
-    assert error_message.endswith(
-        TRUNCATION_APPENDIX
-    ), "appropriate ending missing for truncated error message"
+    assert len(error_message) == ERROR_MESSAGE_LENGTH, "error message is longer than max allowed"
+    assert error_message.endswith(TRUNCATION_APPENDIX), "appropriate ending missing for truncated error message"
     schema_any.jobs.delete()
 
     # test long error message
@@ -123,20 +110,14 @@ def test_long_error_message(subject, schema_any):
     schema_any.jobs.error(table_name, key, short_error_message)
     error_message = schema_any.jobs.fetch1("error_message")
     assert error_message == short_error_message, "error messages do not agree"
-    assert not error_message.endswith(
-        TRUNCATION_APPENDIX
-    ), "error message should not be truncated"
+    assert not error_message.endswith(TRUNCATION_APPENDIX), "error message should not be truncated"
     schema_any.jobs.delete()
 
 
 def test_long_error_stack(subject, schema_any):
     # create long error stack
-    STACK_SIZE = (
-        89942  # Does not fit into small blob (should be 64k, but found to be higher)
-    )
-    long_error_stack = "".join(
-        random.choice(string.ascii_letters) for _ in range(STACK_SIZE)
-    )
+    STACK_SIZE = 89942  # Does not fit into small blob (should be 64k, but found to be higher)
+    long_error_stack = "".join(random.choice(string.ascii_letters) for _ in range(STACK_SIZE))
     assert subject
     table_name = "fake_table"
 
