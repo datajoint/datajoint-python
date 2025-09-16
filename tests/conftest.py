@@ -29,7 +29,6 @@ from datajoint.errors import (
 from . import schema, schema_adapted, schema_advanced, schema_external, schema_simple
 from . import schema_uuid as schema_uuid_module
 
-
 # Configure logging for container management
 logger = logging.getLogger(__name__)
 
@@ -44,8 +43,6 @@ def pytest_configure(config):
     """Called after command line options have been parsed."""
     # This runs before pytest_sessionstart but still too early for containers
     pass
-
-
 
 
 # Global container registry for cleanup
@@ -64,18 +61,24 @@ def _get_docker_client():
 def _cleanup_containers():
     """Clean up any remaining containers"""
     if _active_containers:
-        logger.info(f"Emergency cleanup: {len(_active_containers)} containers to clean up")
+        logger.info(
+            f"Emergency cleanup: {len(_active_containers)} containers to clean up"
+        )
         try:
             client = _get_docker_client()
             for container_id in list(_active_containers):
                 try:
                     container = client.containers.get(container_id)
                     container.remove(force=True)
-                    logger.info(f"Emergency cleanup: removed container {container_id[:12]}")
+                    logger.info(
+                        f"Emergency cleanup: removed container {container_id[:12]}"
+                    )
                 except docker.errors.NotFound:
                     logger.debug(f"Container {container_id[:12]} already removed")
                 except Exception as e:
-                    logger.error(f"Error cleaning up container {container_id[:12]}: {e}")
+                    logger.error(
+                        f"Error cleaning up container {container_id[:12]}: {e}"
+                    )
                 finally:
                     _active_containers.discard(container_id)
         except Exception as e:
@@ -102,7 +105,9 @@ atexit.register(_cleanup_containers)
 
 def _signal_handler(signum, frame):
     """Handle signals to ensure container cleanup"""
-    logger.warning(f"Received signal {signum}, performing emergency container cleanup...")
+    logger.warning(
+        f"Received signal {signum}, performing emergency container cleanup..."
+    )
     _cleanup_containers()
 
     # Restore default signal handler and re-raise the signal
@@ -115,6 +120,7 @@ def _signal_handler(signum, frame):
 # In pytest, we'll rely on fixture teardown and atexit handlers primarily
 try:
     import pytest
+
     # If we're here, pytest is available, so only register SIGTERM (for CI/batch scenarios)
     signal.signal(signal.SIGTERM, _signal_handler)
     # Don't intercept SIGINT (Ctrl+C) to allow pytest's normal cancellation behavior
@@ -150,9 +156,7 @@ def mysql_container(docker_client):
     container = docker_client.containers.run(
         f"datajoint/mysql:{mysql_ver}",
         name=container_name,
-        environment={
-            "MYSQL_ROOT_PASSWORD": "password"
-        },
+        environment={"MYSQL_ROOT_PASSWORD": "password"},
         command="mysqld --default-authentication-plugin=mysql_native_password",
         ports={"3306/tcp": None},  # Let Docker assign random port
         detach=True,
@@ -162,7 +166,7 @@ def mysql_container(docker_client):
             "timeout": 30000000000,  # 30s in nanoseconds
             "retries": 5,
             "interval": 15000000000,  # 15s in nanoseconds
-        }
+        },
     )
 
     # Register container for cleanup
@@ -172,7 +176,9 @@ def mysql_container(docker_client):
     # Wait for health check
     max_wait = 120  # 2 minutes
     start_time = time.time()
-    logger.info(f"Waiting for MySQL container {container_name} to become healthy (max {max_wait}s)")
+    logger.info(
+        f"Waiting for MySQL container {container_name} to become healthy (max {max_wait}s)"
+    )
 
     while time.time() - start_time < max_wait:
         container.reload()
@@ -182,7 +188,9 @@ def mysql_container(docker_client):
             break
         time.sleep(2)
     else:
-        logger.error(f"MySQL container {container_name} failed to become healthy within {max_wait}s")
+        logger.error(
+            f"MySQL container {container_name} failed to become healthy within {max_wait}s"
+        )
         container.remove(force=True)
         raise RuntimeError("MySQL container failed to become healthy")
 
@@ -190,7 +198,9 @@ def mysql_container(docker_client):
     port_info = container.attrs["NetworkSettings"]["Ports"]["3306/tcp"]
     if port_info:
         host_port = port_info[0]["HostPort"]
-        logger.info(f"MySQL container {container_name} is healthy and accessible on localhost:{host_port}")
+        logger.info(
+            f"MySQL container {container_name} is healthy and accessible on localhost:{host_port}"
+        )
     else:
         raise RuntimeError("Failed to get MySQL port mapping")
 
@@ -223,14 +233,11 @@ def minio_container(docker_client):
     container = docker_client.containers.run(
         f"minio/minio:{minio_ver}",
         name=container_name,
-        environment={
-            "MINIO_ACCESS_KEY": "datajoint",
-            "MINIO_SECRET_KEY": "datajoint"
-        },
-        command=['server', '--address', ':9000', '/data'],
+        environment={"MINIO_ACCESS_KEY": "datajoint", "MINIO_SECRET_KEY": "datajoint"},
+        command=["server", "--address", ":9000", "/data"],
         ports={"9000/tcp": None},  # Let Docker assign random port
         detach=True,
-        remove=True
+        remove=True,
     )
 
     # Register container for cleanup
@@ -250,20 +257,26 @@ def minio_container(docker_client):
     minio_url = f"http://localhost:{host_port}"
     max_wait = 60
     start_time = time.time()
-    logger.info(f"Waiting for MinIO container {container_name} to become ready (max {max_wait}s)")
+    logger.info(
+        f"Waiting for MinIO container {container_name} to become ready (max {max_wait}s)"
+    )
 
     while time.time() - start_time < max_wait:
         try:
             response = requests.get(f"{minio_url}/minio/health/live", timeout=5)
             if response.status_code == 200:
-                logger.info(f"MinIO container {container_name} is ready and accessible at {minio_url}")
+                logger.info(
+                    f"MinIO container {container_name} is ready and accessible at {minio_url}"
+                )
                 break
         except requests.exceptions.RequestException:
             logger.debug(f"MinIO container {container_name} not ready yet, retrying...")
             pass
         time.sleep(2)
     else:
-        logger.error(f"MinIO container {container_name} failed to become ready within {max_wait}s")
+        logger.error(
+            f"MinIO container {container_name} failed to become ready within {max_wait}s"
+        )
         container.remove(force=True)
         raise RuntimeError("MinIO container failed to become ready")
 
@@ -336,7 +349,9 @@ def configure_datajoint_for_containers(mysql_container):
     os.environ["DJ_PORT"] = str(port)
 
     # Verify the environment variables were set
-    logger.info(f"🔧 Environment after setting: DJ_HOST={os.environ.get('DJ_HOST')}, DJ_PORT={os.environ.get('DJ_PORT')}")
+    logger.info(
+        f"🔧 Environment after setting: DJ_HOST={os.environ.get('DJ_HOST')}, DJ_PORT={os.environ.get('DJ_PORT')}"
+    )
 
     # Also update DataJoint's configuration directly for in-process connections
     dj.config["database.host"] = host
