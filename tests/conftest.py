@@ -1,14 +1,20 @@
+import atexit
 import json
+import logging
 import os
 import shutil
+import signal
+import time
 from os import environ, remove
 from pathlib import Path
 from typing import Dict, List
 
 import certifi
+import docker
 import minio
 import networkx as nx
 import pytest
+import requests
 import urllib3
 from packaging import version
 
@@ -22,6 +28,265 @@ from datajoint.errors import (
 
 from . import schema, schema_adapted, schema_advanced, schema_external, schema_simple
 from . import schema_uuid as schema_uuid_module
+
+# Configure logging for container management
+logger = logging.getLogger(__name__)
+
+
+def pytest_sessionstart(session):
+    """Called after the Session object has been created and configured."""
+    # This runs very early, before most fixtures, but we don't have container info yet
+    pass
+
+
+def pytest_configure(config):
+    """Called after command line options have been parsed."""
+    # This runs before pytest_sessionstart but still too early for containers
+    pass
+
+
+# Global container registry for cleanup
+_active_containers = set()
+_docker_client = None
+
+
+def _get_docker_client():
+    """Get or create docker client"""
+    global _docker_client
+    if _docker_client is None:
+        _docker_client = docker.from_env()
+    return _docker_client
+
+
+def _cleanup_containers():
+    """Clean up any remaining containers"""
+    if _active_containers:
+        logger.info(
+            f"Emergency cleanup: {len(_active_containers)} containers to clean up"
+        )
+        try:
+            client = _get_docker_client()
+            for container_id in list(_active_containers):
+                try:
+                    container = client.containers.get(container_id)
+                    container.remove(force=True)
+                    logger.info(
+                        f"Emergency cleanup: removed container {container_id[:12]}"
+                    )
+                except docker.errors.NotFound:
+                    logger.debug(f"Container {container_id[:12]} already removed")
+                except Exception as e:
+                    logger.error(
+                        f"Error cleaning up container {container_id[:12]}: {e}"
+                    )
+                finally:
+                    _active_containers.discard(container_id)
+        except Exception as e:
+            logger.error(f"Error during emergency cleanup: {e}")
+    else:
+        logger.debug("No containers to clean up")
+
+
+def _register_container(container):
+    """Register a container for cleanup"""
+    _active_containers.add(container.id)
+    logger.debug(f"Registered container {container.id[:12]} for cleanup")
+
+
+def _unregister_container(container):
+    """Unregister a container from cleanup"""
+    _active_containers.discard(container.id)
+    logger.debug(f"Unregistered container {container.id[:12]} from cleanup")
+
+
+# Register cleanup functions
+atexit.register(_cleanup_containers)
+
+
+def _signal_handler(signum, frame):
+    """Handle signals to ensure container cleanup"""
+    logger.warning(
+        f"Received signal {signum}, performing emergency container cleanup..."
+    )
+    _cleanup_containers()
+
+    # Restore default signal handler and re-raise the signal
+    # This allows pytest to handle the cancellation normally
+    signal.signal(signum, signal.SIG_DFL)
+    os.kill(os.getpid(), signum)
+
+
+# Register signal handlers for graceful cleanup, but only for non-interactive scenarios
+# In pytest, we'll rely on fixture teardown and atexit handlers primarily
+try:
+    import pytest
+
+    # If we're here, pytest is available, so only register SIGTERM (for CI/batch scenarios)
+    signal.signal(signal.SIGTERM, _signal_handler)
+    # Don't intercept SIGINT (Ctrl+C) to allow pytest's normal cancellation behavior
+except ImportError:
+    # If pytest isn't available, register both handlers
+    signal.signal(signal.SIGINT, _signal_handler)
+    signal.signal(signal.SIGTERM, _signal_handler)
+
+
+@pytest.fixture(scope="session")
+def docker_client():
+    """Docker client for managing containers."""
+    return _get_docker_client()
+
+
+@pytest.fixture(scope="session")
+def mysql_container(docker_client):
+    """Start MySQL container and wait for it to be healthy."""
+    mysql_ver = os.environ.get("MYSQL_VER", "8.0")
+    container_name = f"datajoint_test_mysql_{os.getpid()}"
+
+    logger.info(f"Starting MySQL container {container_name} with version {mysql_ver}")
+
+    # Remove existing container if it exists
+    try:
+        existing = docker_client.containers.get(container_name)
+        logger.info(f"Removing existing MySQL container {container_name}")
+        existing.remove(force=True)
+    except docker.errors.NotFound:
+        logger.debug(f"No existing MySQL container {container_name} found")
+
+    # Start MySQL container
+    container = docker_client.containers.run(
+        f"datajoint/mysql:{mysql_ver}",
+        name=container_name,
+        environment={"MYSQL_ROOT_PASSWORD": "password"},
+        command="mysqld --default-authentication-plugin=mysql_native_password",
+        ports={"3306/tcp": None},  # Let Docker assign random port
+        detach=True,
+        remove=True,
+        healthcheck={
+            "test": ["CMD", "mysqladmin", "ping", "-h", "localhost"],
+            "timeout": 30000000000,  # 30s in nanoseconds
+            "retries": 5,
+            "interval": 15000000000,  # 15s in nanoseconds
+        },
+    )
+
+    # Register container for cleanup
+    _register_container(container)
+    logger.info(f"MySQL container {container_name} started with ID {container.id[:12]}")
+
+    # Wait for health check
+    max_wait = 120  # 2 minutes
+    start_time = time.time()
+    logger.info(
+        f"Waiting for MySQL container {container_name} to become healthy (max {max_wait}s)"
+    )
+
+    while time.time() - start_time < max_wait:
+        container.reload()
+        health_status = container.attrs["State"]["Health"]["Status"]
+        logger.debug(f"MySQL container {container_name} health status: {health_status}")
+        if health_status == "healthy":
+            break
+        time.sleep(2)
+    else:
+        logger.error(
+            f"MySQL container {container_name} failed to become healthy within {max_wait}s"
+        )
+        container.remove(force=True)
+        raise RuntimeError("MySQL container failed to become healthy")
+
+    # Get the mapped port
+    port_info = container.attrs["NetworkSettings"]["Ports"]["3306/tcp"]
+    if port_info:
+        host_port = port_info[0]["HostPort"]
+        logger.info(
+            f"MySQL container {container_name} is healthy and accessible on localhost:{host_port}"
+        )
+    else:
+        raise RuntimeError("Failed to get MySQL port mapping")
+
+    yield container, "localhost", int(host_port)
+
+    # Cleanup
+    logger.info(f"Cleaning up MySQL container {container_name}")
+    _unregister_container(container)
+    container.remove(force=True)
+    logger.info(f"MySQL container {container_name} removed")
+
+
+@pytest.fixture(scope="session")
+def minio_container(docker_client):
+    """Start MinIO container and wait for it to be healthy."""
+    minio_ver = os.environ.get("MINIO_VER", "RELEASE.2025-02-28T09-55-16Z")
+    container_name = f"datajoint_test_minio_{os.getpid()}"
+
+    logger.info(f"Starting MinIO container {container_name} with version {minio_ver}")
+
+    # Remove existing container if it exists
+    try:
+        existing = docker_client.containers.get(container_name)
+        logger.info(f"Removing existing MinIO container {container_name}")
+        existing.remove(force=True)
+    except docker.errors.NotFound:
+        logger.debug(f"No existing MinIO container {container_name} found")
+
+    # Start MinIO container
+    container = docker_client.containers.run(
+        f"minio/minio:{minio_ver}",
+        name=container_name,
+        environment={"MINIO_ACCESS_KEY": "datajoint", "MINIO_SECRET_KEY": "datajoint"},
+        command=["server", "--address", ":9000", "/data"],
+        ports={"9000/tcp": None},  # Let Docker assign random port
+        detach=True,
+        remove=True,
+    )
+
+    # Register container for cleanup
+    _register_container(container)
+    logger.info(f"MinIO container {container_name} started with ID {container.id[:12]}")
+
+    # Get the mapped port
+    container.reload()
+    port_info = container.attrs["NetworkSettings"]["Ports"]["9000/tcp"]
+    if port_info:
+        host_port = port_info[0]["HostPort"]
+        logger.info(f"MinIO container {container_name} mapped to localhost:{host_port}")
+    else:
+        raise RuntimeError("Failed to get MinIO port mapping")
+
+    # Wait for MinIO to be ready
+    minio_url = f"http://localhost:{host_port}"
+    max_wait = 60
+    start_time = time.time()
+    logger.info(
+        f"Waiting for MinIO container {container_name} to become ready (max {max_wait}s)"
+    )
+
+    while time.time() - start_time < max_wait:
+        try:
+            response = requests.get(f"{minio_url}/minio/health/live", timeout=5)
+            if response.status_code == 200:
+                logger.info(
+                    f"MinIO container {container_name} is ready and accessible at {minio_url}"
+                )
+                break
+        except requests.exceptions.RequestException:
+            logger.debug(f"MinIO container {container_name} not ready yet, retrying...")
+            pass
+        time.sleep(2)
+    else:
+        logger.error(
+            f"MinIO container {container_name} failed to become ready within {max_wait}s"
+        )
+        container.remove(force=True)
+        raise RuntimeError("MinIO container failed to become ready")
+
+    yield container, "localhost", int(host_port)
+
+    # Cleanup
+    logger.info(f"Cleaning up MinIO container {container_name}")
+    _unregister_container(container)
+    container.remove(force=True)
+    logger.info(f"MinIO container {container_name} removed")
 
 
 @pytest.fixture(scope="session")
@@ -56,18 +321,51 @@ def enable_filepath_feature(monkeypatch):
 
 
 @pytest.fixture(scope="session")
-def db_creds_test() -> Dict:
+def db_creds_test(mysql_container) -> Dict:
+    _, host, port = mysql_container
+    # Set environment variables for DataJoint at module level
+    os.environ["DJ_TEST_HOST"] = host
+    os.environ["DJ_TEST_PORT"] = str(port)
+
+    # Also update DataJoint's test configuration directly
+    dj.config["database.test.host"] = host
+    dj.config["database.test.port"] = port
+
     return dict(
-        host=os.getenv("DJ_TEST_HOST", "db"),
+        host=f"{host}:{port}",
         user=os.getenv("DJ_TEST_USER", "datajoint"),
         password=os.getenv("DJ_TEST_PASSWORD", "datajoint"),
     )
 
 
+@pytest.fixture(scope="session", autouse=True)
+def configure_datajoint_for_containers(mysql_container):
+    """Configure DataJoint to use pytest-managed containers. Runs automatically for all tests."""
+    _, host, port = mysql_container
+
+    # Set environment variables FIRST - these will be inherited by subprocesses
+    logger.info(f"🔧 Setting environment: DJ_HOST={host}, DJ_PORT={port}")
+    os.environ["DJ_HOST"] = host
+    os.environ["DJ_PORT"] = str(port)
+
+    # Verify the environment variables were set
+    logger.info(
+        f"🔧 Environment after setting: DJ_HOST={os.environ.get('DJ_HOST')}, DJ_PORT={os.environ.get('DJ_PORT')}"
+    )
+
+    # Also update DataJoint's configuration directly for in-process connections
+    dj.config["database.host"] = host
+    dj.config["database.port"] = port
+
+    logger.info(f"🔧 Configured DataJoint to use MySQL container at {host}:{port}")
+    return host, port  # Return values so other fixtures can use them
+
+
 @pytest.fixture(scope="session")
-def db_creds_root() -> Dict:
+def db_creds_root(mysql_container) -> Dict:
+    _, host, port = mysql_container
     return dict(
-        host=os.getenv("DJ_HOST", "db"),
+        host=f"{host}:{port}",
         user=os.getenv("DJ_USER", "root"),
         password=os.getenv("DJ_PASS", "password"),
     )
@@ -190,9 +488,12 @@ def connection_test(connection_root, prefix, db_creds_test):
 
 
 @pytest.fixture(scope="session")
-def s3_creds() -> Dict:
+def s3_creds(minio_container) -> Dict:
+    _, host, port = minio_container
+    # Set environment variable for S3 endpoint at module level
+    os.environ["S3_ENDPOINT"] = f"{host}:{port}"
     return dict(
-        endpoint=os.environ.get("S3_ENDPOINT", "minio:9000"),
+        endpoint=f"{host}:{port}",
         access_key=os.environ.get("S3_ACCESS_KEY", "datajoint"),
         secret_key=os.environ.get("S3_SECRET_KEY", "datajoint"),
         bucket=os.environ.get("S3_BUCKET", "datajoint.test"),
