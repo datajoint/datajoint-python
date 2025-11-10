@@ -1,3 +1,5 @@
+import platform
+
 import pymysql
 import pytest
 
@@ -63,7 +65,9 @@ def test_populate_key_list(clean_autopopulate, subject, experiment, trial):
     assert n == ret["success_count"]
 
 
-def test_populate_exclude_error_and_ignore_jobs(clean_autopopulate, schema_any, subject, experiment):
+def test_populate_exclude_error_and_ignore_jobs(
+    clean_autopopulate, schema_any, subject, experiment
+):
     # test simple populate
     assert subject, "root tables are empty"
     assert not experiment, "table already filled?"
@@ -87,11 +91,15 @@ def test_allow_direct_insert(clean_autopopulate, subject, experiment):
     experiment.insert1(key, allow_direct_insert=True)
 
 
+@pytest.mark.skipif(
+    platform.system() == "Darwin",
+    reason="multiprocessing with spawn method (macOS default) cannot pickle thread locks",
+)
 @pytest.mark.parametrize("processes", [None, 2])
 def test_multi_processing(clean_autopopulate, subject, experiment, processes):
     assert subject, "root tables are empty"
     assert not experiment, "table already filled?"
-    experiment.populate(processes=None)
+    experiment.populate(processes=processes)
     assert len(experiment) == len(subject) * experiment.fake_experiments_per_subject
 
 
