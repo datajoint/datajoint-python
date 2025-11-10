@@ -50,7 +50,6 @@ repos:
       - --max-complexity=62
       - --max-line-length=127
       - --statistics
-      - --per-file-ignores=datajoint/diagram.py:C901
     files: src/ # a lot of files in tests are not compliant
 - repo: https://github.com/rhysd/actionlint
   rev: v1.7.7
