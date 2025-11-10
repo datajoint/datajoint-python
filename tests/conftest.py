@@ -45,6 +45,57 @@ def pytest_configure(config):
     pass
 
 
+@pytest.fixture
+def clean_autopopulate(experiment, trial, ephys):
+    """
+    Explicit cleanup fixture for autopopulate tests.
+
+    Cleans experiment/trial/ephys tables after test completes.
+    Tests must explicitly request this fixture to get cleanup.
+    """
+    yield
+    # Cleanup after test - delete in reverse dependency order
+    ephys.delete()
+    trial.delete()
+    experiment.delete()
+
+
+@pytest.fixture
+def clean_jobs(schema_any):
+    """
+    Explicit cleanup fixture for jobs tests.
+
+    Cleans jobs table before test runs.
+    Tests must explicitly request this fixture to get cleanup.
+    """
+    try:
+        schema_any.jobs.delete()
+    except DataJointError:
+        pass
+    yield
+
+
+@pytest.fixture
+def clean_test_tables(test, test_extra, test_no_extra):
+    """
+    Explicit cleanup fixture for relation tests using test tables.
+
+    Ensures test table has lookup data and restores clean state after test.
+    Tests must explicitly request this fixture to get cleanup.
+    """
+    # Ensure lookup data exists before test
+    if not test:
+        test.insert(test.contents, skip_duplicates=True)
+
+    yield
+
+    # Restore original state after test
+    test.delete()
+    test.insert(test.contents, skip_duplicates=True)
+    test_extra.delete()
+    test_no_extra.delete()
+
+
 # Global container registry for cleanup
 _active_containers = set()
 _docker_client = None
@@ -547,10 +598,67 @@ def mock_cache(tmpdir_factory):
         dj.config["cache"] = og_cache
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def schema_any(connection_test, prefix):
     schema_any = dj.Schema(
         prefix + "_test1", schema.LOCALS_ANY, connection=connection_test
+    )
+    assert schema.LOCALS_ANY, "LOCALS_ANY is empty"
+    try:
+        schema_any.jobs.delete()
+    except DataJointError:
+        pass
+    schema_any(schema.TTest)
+    schema_any(schema.TTest2)
+    schema_any(schema.TTest3)
+    schema_any(schema.NullableNumbers)
+    schema_any(schema.TTestExtra)
+    schema_any(schema.TTestNoExtra)
+    schema_any(schema.Auto)
+    schema_any(schema.User)
+    schema_any(schema.Subject)
+    schema_any(schema.Language)
+    schema_any(schema.Experiment)
+    schema_any(schema.Trial)
+    schema_any(schema.Ephys)
+    schema_any(schema.Image)
+    schema_any(schema.UberTrash)
+    schema_any(schema.UnterTrash)
+    schema_any(schema.SimpleSource)
+    schema_any(schema.SigIntTable)
+    schema_any(schema.SigTermTable)
+    schema_any(schema.DjExceptionName)
+    schema_any(schema.ErrorClass)
+    schema_any(schema.DecimalPrimaryKey)
+    schema_any(schema.IndexRich)
+    schema_any(schema.ThingA)
+    schema_any(schema.ThingB)
+    schema_any(schema.ThingC)
+    schema_any(schema.ThingD)
+    schema_any(schema.ThingE)
+    schema_any(schema.Parent)
+    schema_any(schema.Child)
+    schema_any(schema.ComplexParent)
+    schema_any(schema.ComplexChild)
+    schema_any(schema.SubjectA)
+    schema_any(schema.SessionA)
+    schema_any(schema.SessionStatusA)
+    schema_any(schema.SessionDateA)
+    schema_any(schema.Stimulus)
+    schema_any(schema.Longblob)
+    yield schema_any
+    try:
+        schema_any.jobs.delete()
+    except DataJointError:
+        pass
+    schema_any.drop()
+
+
+@pytest.fixture
+def schema_any_fresh(connection_test, prefix):
+    """Function-scoped schema_any for tests that need fresh schema state."""
+    schema_any = dj.Schema(
+        prefix + "_test1_fresh", schema.LOCALS_ANY, connection=connection_test
     )
     assert schema.LOCALS_ANY, "LOCALS_ANY is empty"
     try:
@@ -623,7 +731,7 @@ def thing_tables(schema_any):
     yield a, b, c, d, e
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def schema_simp(connection_test, prefix):
     schema = dj.Schema(
         prefix + "_relational", schema_simple.LOCALS_SIMPLE, connection=connection_test
@@ -653,7 +761,7 @@ def schema_simp(connection_test, prefix):
     schema.drop()
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def schema_adv(connection_test, prefix):
     schema = dj.Schema(
         prefix + "_advanced",
@@ -694,7 +802,7 @@ def schema_ext(
     schema.drop()
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def schema_uuid(connection_test, prefix):
     schema = dj.Schema(
         prefix + "_test1",

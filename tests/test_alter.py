@@ -14,12 +14,12 @@ COMBINED_CONTEXT = {
 
 
 @pytest.fixture
-def schema_alter(connection_test, schema_any):
-    # Overwrite Experiment and Parent nodes
-    schema_any(Experiment, context=LOCALS_ALTER)
-    schema_any(Parent, context=LOCALS_ALTER)
-    yield schema_any
-    schema_any.drop()
+def schema_alter(connection_test, schema_any_fresh):
+    # Overwrite Experiment and Parent nodes using fresh schema
+    schema_any_fresh(Experiment, context=LOCALS_ALTER)
+    schema_any_fresh(Parent, context=LOCALS_ALTER)
+    yield schema_any_fresh
+    schema_any_fresh.drop()
 
 
 class TestAlter:

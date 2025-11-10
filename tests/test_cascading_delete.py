@@ -8,6 +8,17 @@ from .schema_simple import A, B, D, E, G, L, Profile, Website
 
 @pytest.fixture
 def schema_simp_pop(schema_simp):
+    # Clean up tables first to ensure fresh state with module-scoped schema
+    # Delete in reverse dependency order
+    Profile().delete()
+    Website().delete()
+    G().delete()
+    E().delete()
+    D().delete()
+    B().delete()
+    L().delete()
+    A().delete()
+
     A().insert(A.contents, skip_duplicates=True)
     L().insert(L.contents, skip_duplicates=True)
     B().populate()
