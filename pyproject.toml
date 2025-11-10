@@ -22,7 +22,7 @@ dependencies = [
   "urllib3",
   "setuptools",
 ]
-requires-python = ">=3.9,<4.0"
+requires-python = ">=3.9,<3.14"
 authors = [
   {name = "Dimitri Yatsenko", email = "dimitri@datajoint.com"},
   {name = "Thinh Nguyen", email = "thinh@datajoint.com"},
@@ -125,7 +125,7 @@ JUPYTER_PASSWORD="datajoint"
 
 [tool.pixi.workspace]
 channels = ["conda-forge"]
-platforms = ["linux-64"]
+platforms = ["linux-64", "osx-arm64", "linux-aarch64"]
 
 [tool.pixi.pypi-dependencies]
 datajoint = { path = ".", editable = true }
@@ -138,4 +138,8 @@ test = { features = ["test"], solve-group = "default" }
 [tool.pixi.tasks]
 
 [tool.pixi.dependencies]
+python = ">=3.9,<3.14"
 graphviz = ">=13.1.2,<14"
+
+[tool.pixi.activation]
+scripts=["activate.sh"]
