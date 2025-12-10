@@ -7,11 +7,7 @@ import pytest
 import datajoint as dj
 
 from . import schema
-
-
-class Ephys(dj.Imported):
-    definition = """  # This is already declare in ./schema.py
-    """
+from .schema import Ephys
 
 
 def relation_selector(attr):
@@ -52,6 +48,7 @@ def schema_empty_module(schema_any, schema_empty):
 @pytest.fixture
 def schema_empty(connection_test, schema_any, prefix):
     context = {**schema.LOCALS_ANY, "Ephys": Ephys}
+    # Use the same database as schema_any so spawn_missing_classes can find the tables
     schema_empty = dj.Schema(
         prefix + "_test1", context=context, connection=connection_test
     )
@@ -59,7 +56,7 @@ def schema_empty(connection_test, schema_any, prefix):
     # load the rest of the classes
     schema_empty.spawn_missing_classes(context=context)
     yield schema_empty
-    schema_empty.drop()
+    # Don't drop the schema since schema_any still needs it
 
 
 def test_schema_size_on_disk(schema_any):

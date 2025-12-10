@@ -1,3 +1,5 @@
+import platform
+
 import pymysql
 import pytest
 
@@ -7,7 +9,7 @@ from datajoint import DataJointError
 from . import schema
 
 
-def test_populate(trial, subject, experiment, ephys, channel):
+def test_populate(clean_autopopulate, trial, subject, experiment, ephys, channel):
     # test simple populate
     assert subject, "root tables are empty"
     assert not experiment, "table already filled?"
@@ -33,7 +35,7 @@ def test_populate(trial, subject, experiment, ephys, channel):
     assert channel
 
 
-def test_populate_with_success_count(subject, experiment, trial):
+def test_populate_with_success_count(clean_autopopulate, subject, experiment, trial):
     # test simple populate
     assert subject, "root tables are empty"
     assert not experiment, "table already filled?"
@@ -51,7 +53,7 @@ def test_populate_with_success_count(subject, experiment, trial):
     assert len(trial.key_source & trial) == success_count
 
 
-def test_populate_key_list(subject, experiment, trial):
+def test_populate_key_list(clean_autopopulate, subject, experiment, trial):
     # test simple populate
     assert subject, "root tables are empty"
     assert not experiment, "table already filled?"
@@ -63,7 +65,9 @@ def test_populate_key_list(subject, experiment, trial):
     assert n == ret["success_count"]
 
 
-def test_populate_exclude_error_and_ignore_jobs(schema_any, subject, experiment):
+def test_populate_exclude_error_and_ignore_jobs(
+    clean_autopopulate, schema_any, subject, experiment
+):
     # test simple populate
     assert subject, "root tables are empty"
     assert not experiment, "table already filled?"
@@ -79,7 +83,7 @@ def test_populate_exclude_error_and_ignore_jobs(schema_any, subject, experiment)
     assert len(experiment.key_source & experiment) == len(experiment.key_source) - 2
 
 
-def test_allow_direct_insert(subject, experiment):
+def test_allow_direct_insert(clean_autopopulate, subject, experiment):
     assert subject, "root tables are empty"
     key = subject.fetch("KEY", limit=1)[0]
     key["experiment_id"] = 1000
@@ -87,15 +91,19 @@ def test_allow_direct_insert(subject, experiment):
     experiment.insert1(key, allow_direct_insert=True)
 
 
+@pytest.mark.skipif(
+    platform.system() == "Darwin",
+    reason="multiprocessing with spawn method (macOS default) cannot pickle thread locks",
+)
 @pytest.mark.parametrize("processes", [None, 2])
-def test_multi_processing(subject, experiment, processes):
+def test_multi_processing(clean_autopopulate, subject, experiment, processes):
     assert subject, "root tables are empty"
     assert not experiment, "table already filled?"
-    experiment.populate(processes=None)
+    experiment.populate(processes=processes)
     assert len(experiment) == len(subject) * experiment.fake_experiments_per_subject
 
 
-def test_allow_insert(subject, experiment):
+def test_allow_insert(clean_autopopulate, subject, experiment):
     assert subject, "root tables are empty"
     key = subject.fetch("KEY")[0]
     key["experiment_id"] = 1001

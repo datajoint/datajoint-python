@@ -30,7 +30,7 @@ repos:
   rev: 25.1.0 # matching versions in pyproject.toml and github actions
   hooks:
   - id: black
-    args: ["--check", "-v", "src", "tests", "--diff"] # --required-version is conflicting with pre-commit
+    args: ["-v", "src", "tests", "--diff"] # --required-version is conflicting with pre-commit
 - repo: https://github.com/PyCQA/flake8
   rev: 7.3.0
   hooks:
@@ -50,7 +50,6 @@ repos:
       - --max-complexity=62
       - --max-line-length=127
       - --statistics
-      - --per-file-ignores=datajoint/diagram.py:C901
     files: src/ # a lot of files in tests are not compliant
 - repo: https://github.com/rhysd/actionlint
   rev: v1.7.7

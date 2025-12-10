@@ -9,7 +9,7 @@ from datajoint.jobs import ERROR_MESSAGE_LENGTH, TRUNCATION_APPENDIX
 from . import schema
 
 
-def test_reserve_job(subject, schema_any):
+def test_reserve_job(clean_jobs, subject, schema_any):
     assert subject
     table_name = "fake_table"
 
@@ -47,7 +47,7 @@ def test_reserve_job(subject, schema_any):
     assert not schema_any.jobs, "failed to clear error jobs"
 
 
-def test_restrictions(schema_any):
+def test_restrictions(clean_jobs, schema_any):
     jobs = schema_any.jobs
     jobs.delete()
     jobs.reserve("a", {"key": "a1"})
@@ -62,7 +62,7 @@ def test_restrictions(schema_any):
     jobs.delete()
 
 
-def test_sigint(schema_any):
+def test_sigint(clean_jobs, schema_any):
     try:
         schema.SigIntTable().populate(reserve_jobs=True)
     except KeyboardInterrupt:
@@ -74,7 +74,7 @@ def test_sigint(schema_any):
     assert error_message == "KeyboardInterrupt"
 
 
-def test_sigterm(schema_any):
+def test_sigterm(clean_jobs, schema_any):
     try:
         schema.SigTermTable().populate(reserve_jobs=True)
     except SystemExit:
@@ -86,14 +86,14 @@ def test_sigterm(schema_any):
     assert error_message == "SystemExit: SIGTERM received"
 
 
-def test_suppress_dj_errors(schema_any):
+def test_suppress_dj_errors(clean_jobs, schema_any):
     """test_suppress_dj_errors: dj errors suppressible w/o native py blobs"""
     with dj.config(enable_python_native_blobs=False):
         schema.ErrorClass.populate(reserve_jobs=True, suppress_errors=True)
     assert len(schema.DjExceptionName()) == len(schema_any.jobs) > 0
 
 
-def test_long_error_message(subject, schema_any):
+def test_long_error_message(clean_jobs, subject, schema_any):
     # create long error message
     long_error_message = "".join(
         random.choice(string.ascii_letters) for _ in range(ERROR_MESSAGE_LENGTH + 100)
@@ -129,7 +129,7 @@ def test_long_error_message(subject, schema_any):
     schema_any.jobs.delete()
 
 
-def test_long_error_stack(subject, schema_any):
+def test_long_error_stack(clean_jobs, subject, schema_any):
     # create long error stack
     STACK_SIZE = (
         89942  # Does not fit into small blob (should be 64k, but found to be higher)

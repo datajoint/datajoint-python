@@ -28,7 +28,7 @@ except:
 logger = logging.getLogger(__name__.split(".")[0])
 
 
-if not diagram_active:
+if not diagram_active:  # noqa: C901
 
     class Diagram:
         """
