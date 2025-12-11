@@ -260,6 +260,7 @@ mapping = {
             "database.host",
             "database.user",
             "database.password",
+            "database.port",
             "external.aws_access_key_id",
             "external.aws_secret_access_key",
             "loglevel",
@@ -270,6 +271,7 @@ mapping = {
                 "DJ_HOST",
                 "DJ_USER",
                 "DJ_PASS",
+                "DJ_PORT",
                 "DJ_AWS_ACCESS_KEY_ID",
                 "DJ_AWS_SECRET_ACCESS_KEY",
                 "DJ_LOG_LEVEL",
@@ -278,6 +280,14 @@ mapping = {
     )
     if v is not None
 }
+
+# Convert DJ_PORT from string to int if present
+if "database.port" in mapping and mapping["database.port"] is not None:
+    try:
+        mapping["database.port"] = int(mapping["database.port"])
+    except ValueError:
+        logger.warning(f"Invalid DJ_PORT value: {mapping['database.port']}, using default port 3306")
+        del mapping["database.port"]
 if mapping:
     logger.info(f"Overloaded settings {tuple(mapping)} from environment variables.")
     config.update(mapping)

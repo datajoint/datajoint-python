@@ -22,7 +22,7 @@ dependencies = [
   "urllib3",
   "setuptools",
 ]
-requires-python = ">=3.9,<4.0"
+requires-python = ">=3.9,<3.14"
 authors = [
   {name = "Dimitri Yatsenko", email = "dimitri@datajoint.com"},
   {name = "Thinh Nguyen", email = "thinh@datajoint.com"},
@@ -78,11 +78,17 @@ Repository = "https://github.com/datajoint/datajoint-python"
 dj = "datajoint.cli:cli"
 datajoint = "datajoint.cli:cli"
 
-[project.optional-dependencies]
+[dependency-groups]
 test = [
   "pytest",
   "pytest-cov",
+  "pytest-env",
+  "docker",
+  "requests",
+  "graphviz"
 ]
+
+[project.optional-dependencies]
 dev = [
   "pre-commit",
   "ruff",

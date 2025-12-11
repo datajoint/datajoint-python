@@ -7,8 +7,18 @@ from packaging.version import Version
 import datajoint as dj
 from datajoint.declare import declare
 
-if Version(dj.conn().query("select @@version;").fetchone()[0]) < Version("8.0.0"):
-    pytest.skip("These tests require MySQL >= v8.0.0", allow_module_level=True)
+
+def mysql_version_check(connection):
+    """Check if MySQL version is >= 8.0.0"""
+    version_str = connection.query("select @@version;").fetchone()[0]
+    if Version(version_str) < Version("8.0.0"):
+        pytest.skip("These tests require MySQL >= v8.0.0")
+
+
+@pytest.fixture(scope="module", autouse=True)
+def check_mysql_version(connection_root):
+    """Automatically check MySQL version for all tests in this module"""
+    mysql_version_check(connection_root)
 
 
 class Team(dj.Lookup):

@@ -7,11 +7,7 @@ import pytest
 import datajoint as dj
 
 from . import schema
-
-
-class Ephys(dj.Imported):
-    definition = """  # This is already declare in ./schema.py
-    """
+from .schema import Ephys
 
 
 def relation_selector(attr):
@@ -57,7 +53,7 @@ def schema_empty(connection_test, schema_any, prefix):
     # load the rest of the classes
     schema_empty.spawn_missing_classes(context=context)
     yield schema_empty
-    schema_empty.drop()
+    # Don't drop the schema since schema_any still needs it
 
 
 def test_schema_size_on_disk(schema_any):
@@ -230,7 +226,7 @@ def test_uppercase_schema(db_creds_root):
         name: varchar(32)
         """
 
-    Schema_A = dj.VirtualModule("Schema_A", "Schema_A")
+    _ = dj.VirtualModule("Schema_A", "Schema_A")
 
     schema2 = dj.Schema("schema_b")
 
