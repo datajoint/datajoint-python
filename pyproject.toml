@@ -145,3 +145,37 @@ skip = ".git,*.pdf,*.svg,*.csv,*.ipynb,*.drawio"
 # numer -- numerator variable
 # astroid -- Python library name (not "asteroid")
 ignore-words-list = "rever,numer,astroid"
+
+[tool.pytest_env]
+# Default values - pytest fixtures will override with actual container details
+DJ_USER="root"
+DJ_PASS="password"
+DJ_TEST_USER="datajoint"
+DJ_TEST_PASSWORD="datajoint"
+S3_ACCESS_KEY="datajoint"
+S3_SECRET_KEY="datajoint"
+S3_BUCKET="datajoint.test"
+PYTHON_USER="dja"
+JUPYTER_PASSWORD="datajoint"
+
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-arm64", "linux-aarch64"]
+
+[tool.pixi.pypi-dependencies]
+datajoint = { path = ".", editable = true }
+
+[tool.pixi.environments]
+default = { solve-group = "default" }
+dev = { features = ["dev"], solve-group = "default" }
+test = { features = ["test"], solve-group = "default" }
+
+[tool.pixi.tasks]
+
+[tool.pixi.dependencies]
+python = ">=3.9,<3.14"
+graphviz = ">=13.1.2,<14"
+
+[tool.pixi.activation]
+scripts=["activate.sh"]
