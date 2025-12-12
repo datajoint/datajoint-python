@@ -15,9 +15,7 @@ import pandas
 
 from .errors import DataJointError
 
-JSON_PATTERN = re.compile(
-    r"^(?P<attr>\w+)(\.(?P<path>[\w.*\[\]]+))?(:(?P<type>[\w(,\s)]+))?$"
-)
+JSON_PATTERN = re.compile(r"^(?P<attr>\w+)(\.(?P<path>[\w.*\[\]]+))?(:(?P<type>[\w(,\s)]+))?$")
 
 
 def translate_attribute(key):
@@ -29,10 +27,7 @@ def translate_attribute(key):
         return match, match["attr"]
     else:
         return match, "json_value(`{}`, _utf8mb4'$.{}'{})".format(
-            *[
-                ((f" returning {v}" if k == "type" else v) if v else "")
-                for k, v in match.items()
-            ]
+            *[((f" returning {v}" if k == "type" else v) if v else "") for k, v in match.items()]
         )
 
 
@@ -115,21 +110,12 @@ def assert_join_compatibility(expr1, expr2):
 
     for rel in (expr1, expr2):
         if not isinstance(rel, (U, QueryExpression)):
-            raise DataJointError(
-                "Object %r is not a QueryExpression and cannot be joined." % rel
-            )
-    if not isinstance(expr1, U) and not isinstance(
-        expr2, U
-    ):  # dj.U is always compatible
+            raise DataJointError("Object %r is not a QueryExpression and cannot be joined." % rel)
+    if not isinstance(expr1, U) and not isinstance(expr2, U):  # dj.U is always compatible
         try:
             raise DataJointError(
                 "Cannot join query expressions on dependent attribute `%s`"
-                % next(
-                    r
-                    for r in set(expr1.heading.secondary_attributes).intersection(
-                        expr2.heading.secondary_attributes
-                    )
-                )
+                % next(r for r in set(expr1.heading.secondary_attributes).intersection(expr2.heading.secondary_attributes))
             )
         except StopIteration:
             pass  # all ok
@@ -152,11 +138,7 @@ def make_condition(query_expression, condition, columns):
         key_match, k = translate_attribute(k)
         if key_match["path"] is None:
             k = f"`{k}`"
-        if (
-            query_expression.heading[key_match["attr"]].json
-            and key_match["path"] is not None
-            and isinstance(v, dict)
-        ):
+        if query_expression.heading[key_match["attr"]].json and key_match["path"] is not None and isinstance(v, dict):
             return f"{k}='{json.dumps(v)}'"
         if v is None:
             return f"{k} IS NULL"
@@ -165,9 +147,7 @@ def make_condition(query_expression, condition, columns):
                 try:
                     v = uuid.UUID(v)
                 except (AttributeError, ValueError):
-                    raise DataJointError(
-                        "Badly formed UUID {v} in restriction by `{k}`".format(k=k, v=v)
-                    )
+                    raise DataJointError("Badly formed UUID {v} in restriction by `{k}`".format(k=k, v=v))
             return f"{k}=X'{v.bytes.hex()}'"
         if isinstance(
             v,
@@ -196,20 +176,12 @@ def make_condition(query_expression, condition, columns):
     # restrict by string
     if isinstance(condition, str):
         columns.update(extract_column_names(condition))
-        return combine_conditions(
-            negate, conditions=[condition.strip().replace("%", "%%")]
-        )  # escape %, see issue #376
+        return combine_conditions(negate, conditions=[condition.strip().replace("%", "%%")])  # escape %, see issue #376
 
     # restrict by AndList
     if isinstance(condition, AndList):
         # omit all conditions that evaluate to True
-        items = [
-            item
-            for item in (
-                make_condition(query_expression, cond, columns) for cond in condition
-            )
-            if item is not True
-        ]
+        items = [item for item in (make_condition(query_expression, cond, columns) for cond in condition) if item is not True]
         if any(item is False for item in items):
             return negate  # if any item is False, the whole thing is False
         if not items:
@@ -226,9 +198,7 @@ def make_condition(query_expression, condition, columns):
 
     # restrict by a mapping/dict -- convert to an AndList of string equality conditions
     if isinstance(condition, collections.abc.Mapping):
-        common_attributes = set(c.split(".", 1)[0] for c in condition).intersection(
-            query_expression.heading.names
-        )
+        common_attributes = set(c.split(".", 1)[0] for c in condition).intersection(query_expression.heading.names)
         if not common_attributes:
             return not negate  # no matching attributes -> evaluates to True
         columns.update(common_attributes)
@@ -243,9 +213,7 @@ def make_condition(query_expression, condition, columns):
 
     # restrict by a numpy record -- convert to an AndList of string equality conditions
     if isinstance(condition, numpy.void):
-        common_attributes = set(condition.dtype.fields).intersection(
-            query_expression.heading.names
-        )
+        common_attributes = set(condition.dtype.fields).intersection(query_expression.heading.names)
         if not common_attributes:
             return not negate  # no matching attributes -> evaluate to True
         columns.update(common_attributes)
@@ -267,9 +235,7 @@ def make_condition(query_expression, condition, columns):
     if isinstance(condition, QueryExpression):
         if check_compatibility:
             assert_join_compatibility(query_expression, condition)
-        common_attributes = [
-            q for q in condition.heading.names if q in query_expression.heading.names
-        ]
+        common_attributes = [q for q in condition.heading.names if q in query_expression.heading.names]
         columns.update(common_attributes)
         if isinstance(condition, Aggregation):
             condition = condition.make_subquery()
@@ -294,16 +260,10 @@ def make_condition(query_expression, condition, columns):
     except TypeError:
         raise DataJointError("Invalid restriction type %r" % condition)
     else:
-        or_list = [
-            item for item in or_list if item is not False
-        ]  # ignore False conditions
+        or_list = [item for item in or_list if item is not False]  # ignore False conditions
         if any(item is True for item in or_list):  # if any item is True, entirely True
             return not negate
-        return (
-            f"{'NOT ' if negate else ''} ({' OR '.join(or_list)})"
-            if or_list
-            else negate
-        )
+        return f"{'NOT ' if negate else ''} ({' OR '.join(or_list)})" if or_list else negate
 
 
 def extract_column_names(sql_expression):

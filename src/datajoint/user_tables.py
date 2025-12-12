@@ -52,11 +52,7 @@ class TableMeta(type):
 
     def __getattribute__(cls, name):
         # trigger instantiation for supported class attrs
-        return (
-            cls().__getattribute__(name)
-            if name in supported_class_attrs
-            else super().__getattribute__(name)
-        )
+        return cls().__getattribute__(name) if name in supported_class_attrs else super().__getattribute__(name)
 
     def __and__(cls, arg):
         return cls() & arg
@@ -103,9 +99,7 @@ class UserTable(Table, metaclass=TableMeta):
         """
         :return: a string containing the table definition using the DataJoint DDL.
         """
-        raise NotImplementedError(
-            'Subclasses of Table must implement the property "definition"'
-        )
+        raise NotImplementedError('Subclasses of Table must implement the property "definition"')
 
     @ClassProperty
     def connection(cls):
@@ -125,10 +119,7 @@ class UserTable(Table, metaclass=TableMeta):
         if cls not in {Manual, Imported, Lookup, Computed, Part, UserTable}:
             # for derived classes only
             if cls.database is None:
-                raise DataJointError(
-                    "Class %s is not properly declared (schema decorator not applied?)"
-                    % cls.__name__
-                )
+                raise DataJointError("Class %s is not properly declared (schema decorator not applied?)" % cls.__name__)
             return r"`{0:s}`.`{1:s}`".format(cls.database, cls.table_name)
 
 
@@ -149,9 +140,7 @@ class Lookup(UserTable):
     """
 
     _prefix = "#"
-    tier_regexp = (
-        r"(?P<lookup>" + _prefix + _base_regexp.replace("TIER", "lookup") + ")"
-    )
+    tier_regexp = r"(?P<lookup>" + _prefix + _base_regexp.replace("TIER", "lookup") + ")"
 
 
 class Imported(UserTable, AutoPopulate):
@@ -202,9 +191,7 @@ class Part(UserTable):
     @ClassProperty
     def full_table_name(cls):
         return (
-            None
-            if cls.database is None or cls.table_name is None
-            else r"`{0:s}`.`{1:s}`".format(cls.database, cls.table_name)
+            None if cls.database is None or cls.table_name is None else r"`{0:s}`.`{1:s}`".format(cls.database, cls.table_name)
         )
 
     @ClassProperty
@@ -213,11 +200,7 @@ class Part(UserTable):
 
     @ClassProperty
     def table_name(cls):
-        return (
-            None
-            if cls.master is None
-            else cls.master.table_name + "__" + from_camel_case(cls.__name__)
-        )
+        return None if cls.master is None else cls.master.table_name + "__" + from_camel_case(cls.__name__)
 
     def delete(self, force=False):
         """
@@ -226,9 +209,7 @@ class Part(UserTable):
         if force:
             super().delete(force_parts=True)
         else:
-            raise DataJointError(
-                "Cannot delete from a Part directly. Delete from master instead"
-            )
+            raise DataJointError("Cannot delete from a Part directly. Delete from master instead")
 
     def drop(self, force=False):
         """
@@ -237,9 +218,7 @@ class Part(UserTable):
         if force:
             super().drop()
         else:
-            raise DataJointError(
-                "Cannot drop a Part directly.  Delete from master instead"
-            )
+            raise DataJointError("Cannot drop a Part directly.  Delete from master instead")
 
     def alter(self, prompt=True, context=None):
         # without context, use declaration context which maps master keyword to master table
@@ -263,10 +242,6 @@ def _get_tier(table_name):
         return _AliasNode
     else:
         try:
-            return next(
-                tier
-                for tier in user_table_classes
-                if re.fullmatch(tier.tier_regexp, table_name.split("`")[-2])
-            )
+            return next(tier for tier in user_table_classes if re.fullmatch(tier.tier_regexp, table_name.split("`")[-2]))
         except StopIteration:
             return None

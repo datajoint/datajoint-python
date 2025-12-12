@@ -91,17 +91,47 @@ test = [
 [project.optional-dependencies]
 dev = [
   "pre-commit",
-  "black==24.2.0",
-  "flake8",
-  "isort",
+  "ruff",
   "codespell",
   # including test
   "pytest",
   "pytest-cov",
 ]
 
-[tool.isort]
-profile = "black"
+[tool.ruff]
+# Equivalent to flake8 configuration
+line-length = 127
+target-version = "py39"
+
+[tool.ruff.lint]
+# Enable specific rule sets equivalent to flake8 configuration
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "C90", # mccabe complexity
+]
+
+# Ignore specific rules (equivalent to flake8 --ignore)
+ignore = [
+    "E203",  # whitespace before ':'
+    "E722",  # bare except
+]
+
+# Per-file ignores (equivalent to flake8 --per-file-ignores)
+[tool.ruff.lint.per-file-ignores]
+"datajoint/diagram.py" = ["C901"]  # function too complex
+"tests/test_blob_matlab.py" = ["E501"]  # SQL hex strings cannot be broken across lines
+
+[tool.ruff.lint.mccabe]
+# Maximum complexity (equivalent to flake8 --max-complexity)
+max-complexity = 62
+
+[tool.ruff.format]
+# Use black-compatible formatting
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
 
 [tool.setuptools]
 packages = ["datajoint"]
@@ -109,6 +139,13 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.dynamic]
 version = { attr = "datajoint.version.__version__"}
+
+[tool.codespell]
+skip = ".git,*.pdf,*.svg,*.csv,*.ipynb,*.drawio"
+# Rever -- nobody knows
+# numer -- numerator variable
+# astroid -- Python library name (not "asteroid")
+ignore-words-list = "rever,numer,astroid"
 
 [tool.pytest_env]
 # Default values - pytest fixtures will override with actual container details

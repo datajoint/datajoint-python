@@ -39,9 +39,7 @@ if not diagram_active:  # noqa: C901
         """
 
         def __init__(self, *args, **kwargs):
-            logger.warning(
-                "Please install matplotlib and pygraphviz libraries to enable the Diagram feature."
-            )
+            logger.warning("Please install matplotlib and pygraphviz libraries to enable the Diagram feature.")
 
 else:
 
@@ -72,7 +70,6 @@ else:
         """
 
         def __init__(self, source, context=None):
-
             if isinstance(source, Diagram):
                 # copy constructor
                 self.nodes_to_show = set(source.nodes_to_show)
@@ -95,9 +92,7 @@ else:
                 try:
                     connection = source.schema.connection
                 except AttributeError:
-                    raise DataJointError(
-                        "Could not find database connection in %s" % repr(source[0])
-                    )
+                    raise DataJointError("Could not find database connection in %s" % repr(source[0]))
 
             # initialize graph from dependencies
             connection.dependencies.load()
@@ -114,9 +109,7 @@ else:
                     try:
                         database = source.schema.database
                     except AttributeError:
-                        raise DataJointError(
-                            "Cannot plot Diagram for %s" % repr(source)
-                        )
+                        raise DataJointError("Cannot plot Diagram for %s" % repr(source))
                 for node in self:
                     if node.startswith("`%s`" % database):
                         self.nodes_to_show.add(node)
@@ -145,17 +138,10 @@ else:
                 """
                 part = [s.strip("`") for s in part.split(".")]
                 master = [s.strip("`") for s in master.split(".")]
-                return (
-                    master[0] == part[0]
-                    and master[1] + "__" == part[1][: len(master[1]) + 2]
-                )
+                return master[0] == part[0] and master[1] + "__" == part[1][: len(master[1]) + 2]
 
             self = Diagram(self)  # copy
-            self.nodes_to_show.update(
-                n
-                for n in self.nodes()
-                if any(is_part(n, m) for m in self.nodes_to_show)
-            )
+            self.nodes_to_show.update(n for n in self.nodes() if any(is_part(n, m) for m in self.nodes_to_show))
             return self
 
         def __add__(self, arg):
@@ -172,17 +158,11 @@ else:
                     self.nodes_to_show.add(arg.full_table_name)
                 except AttributeError:
                     for i in range(arg):
-                        new = nx.algorithms.boundary.node_boundary(
-                            self, self.nodes_to_show
-                        )
+                        new = nx.algorithms.boundary.node_boundary(self, self.nodes_to_show)
                         if not new:
                             break
                         # add nodes referenced by aliased nodes
-                        new.update(
-                            nx.algorithms.boundary.node_boundary(
-                                self, (a for a in new if a.isdigit())
-                            )
-                        )
+                        new.update(nx.algorithms.boundary.node_boundary(self, (a for a in new if a.isdigit())))
                         self.nodes_to_show.update(new)
             return self
 
@@ -201,17 +181,11 @@ else:
                 except AttributeError:
                     for i in range(arg):
                         graph = nx.DiGraph(self).reverse()
-                        new = nx.algorithms.boundary.node_boundary(
-                            graph, self.nodes_to_show
-                        )
+                        new = nx.algorithms.boundary.node_boundary(graph, self.nodes_to_show)
                         if not new:
                             break
                         # add nodes referenced by aliased nodes
-                        new.update(
-                            nx.algorithms.boundary.node_boundary(
-                                graph, (a for a in new if a.isdigit())
-                            )
-                        )
+                        new.update(nx.algorithms.boundary.node_boundary(graph, (a for a in new if a.isdigit())))
                         self.nodes_to_show.update(new)
             return self
 
@@ -237,39 +211,24 @@ else:
             # attributes
             for name in self.nodes_to_show:
                 foreign_attributes = set(
-                    attr
-                    for p in self.in_edges(name, data=True)
-                    for attr in p[2]["attr_map"]
-                    if p[2]["primary"]
+                    attr for p in self.in_edges(name, data=True) for attr in p[2]["attr_map"] if p[2]["primary"]
                 )
                 self.nodes[name]["distinguished"] = (
-                    "primary_key" in self.nodes[name]
-                    and foreign_attributes < self.nodes[name]["primary_key"]
+                    "primary_key" in self.nodes[name] and foreign_attributes < self.nodes[name]["primary_key"]
                 )
             # include aliased nodes that are sandwiched between two displayed nodes
-            gaps = set(
-                nx.algorithms.boundary.node_boundary(self, self.nodes_to_show)
-            ).intersection(
-                nx.algorithms.boundary.node_boundary(
-                    nx.DiGraph(self).reverse(), self.nodes_to_show
-                )
+            gaps = set(nx.algorithms.boundary.node_boundary(self, self.nodes_to_show)).intersection(
+                nx.algorithms.boundary.node_boundary(nx.DiGraph(self).reverse(), self.nodes_to_show)
             )
             nodes = self.nodes_to_show.union(a for a in gaps if a.isdigit)
             # construct subgraph and rename nodes to class names
             graph = nx.DiGraph(nx.DiGraph(self).subgraph(nodes))
-            nx.set_node_attributes(
-                graph, name="node_type", values={n: _get_tier(n) for n in graph}
-            )
+            nx.set_node_attributes(graph, name="node_type", values={n: _get_tier(n) for n in graph})
             # relabel nodes to class names
-            mapping = {
-                node: lookup_class_name(node, self.context) or node
-                for node in graph.nodes()
-            }
+            mapping = {node: lookup_class_name(node, self.context) or node for node in graph.nodes()}
             new_names = [mapping.values()]
             if len(new_names) > len(set(new_names)):
-                raise DataJointError(
-                    "Some classes have identical names. The Diagram cannot be plotted."
-                )
+                raise DataJointError("Some classes have identical names. The Diagram cannot be plotted.")
             nx.relabel_nodes(graph, mapping, copy=False)
             return graph
 
@@ -366,10 +325,7 @@ else:
                     fixed=False,
                 ),
             }
-            node_props = {
-                node: label_props[d["node_type"]]
-                for node, d in dict(graph.nodes(data=True)).items()
-            }
+            node_props = {node: label_props[d["node_type"]] for node, d in dict(graph.nodes(data=True)).items()}
 
             self._encapsulate_node_names(graph)
             self._encapsulate_edge_attributes(graph)
@@ -390,24 +346,12 @@ else:
                     assert issubclass(cls, Table)
                     description = cls().describe(context=self.context).split("\n")
                     description = (
-                        (
-                            "-" * 30
-                            if q.startswith("---")
-                            else (
-                                q.replace("->", "&#8594;")
-                                if "->" in q
-                                else q.split(":")[0]
-                            )
-                        )
+                        ("-" * 30 if q.startswith("---") else (q.replace("->", "&#8594;") if "->" in q else q.split(":")[0]))
                         for q in description
                         if not q.startswith("#")
                     )
                     node.set_tooltip("&#13;".join(description))
-                node.set_label(
-                    "<<u>" + name + "</u>>"
-                    if node.get("distinguished") == "True"
-                    else name
-                )
+                node.set_label("<<u>" + name + "</u>>" if node.get("distinguished") == "True" else name)
                 node.set_color(props["color"])
                 node.set_style("filled")
 
@@ -417,15 +361,10 @@ else:
                 dest = edge.get_destination()
                 props = graph.get_edge_data(src, dest)
                 if props is None:
-                    raise DataJointError(
-                        "Could not find edge with source "
-                        "'{}' and destination '{}'".format(src, dest)
-                    )
+                    raise DataJointError("Could not find edge with source '{}' and destination '{}'".format(src, dest))
                 edge.set_color("#00000040")
                 edge.set_style("solid" if props["primary"] else "dashed")
-                master_part = graph.nodes[dest][
-                    "node_type"
-                ] is Part and dest.startswith(src + ".")
+                master_part = graph.nodes[dest]["node_type"] is Part and dest.startswith(src + ".")
                 edge.set_weight(3 if master_part else 1)
                 edge.set_arrowhead("none")
                 edge.set_penwidth(0.75 if props["multi"] else 2)

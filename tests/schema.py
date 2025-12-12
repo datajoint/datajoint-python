@@ -154,9 +154,7 @@ class Experiment(dj.Imported):
             dict(
                 key,
                 experiment_id=experiment_id,
-                experiment_date=(
-                    date.today() - timedelta(random.expovariate(1 / 30))
-                ).isoformat(),
+                experiment_date=(date.today() - timedelta(random.expovariate(1 / 30))).isoformat(),
                 username=random.choice(users),
             )
             for experiment_id in range(self.fake_experiments_per_subject)
@@ -186,10 +184,7 @@ class Trial(dj.Imported):
         for trial_id in range(10):
             key["trial_id"] = trial_id
             self.insert1(dict(key, start_time=random.random() * 1e9))
-            trial.insert(
-                dict(key, cond_idx=cond_idx, orientation=random.random() * 360)
-                for cond_idx in range(30)
-            )
+            trial.insert(dict(key, cond_idx=cond_idx, orientation=random.random() * 360) for cond_idx in range(30))
 
 
 class Ephys(dj.Imported):
@@ -214,9 +209,7 @@ class Ephys(dj.Imported):
         populate with random data
         """
         random.seed(str(key))
-        row = dict(
-            key, sampling_frequency=6000, duration=np.minimum(2, random.expovariate(1))
-        )
+        row = dict(key, sampling_frequency=6000, duration=np.minimum(2, random.expovariate(1)))
         self.insert1(row)
         number_samples = int(row["duration"] * row["sampling_frequency"] + 0.5)
         sub = self.Channel()
@@ -388,9 +381,7 @@ class ComplexParent(dj.Lookup):
 
 
 class ComplexChild(dj.Lookup):
-    definition = "\n".join(
-        ["-> ComplexParent"] + ["child_id_{}: int".format(i + 1) for i in range(1)]
-    )
+    definition = "\n".join(["-> ComplexParent"] + ["child_id_{}: int".format(i + 1) for i in range(1)])
     contents = [tuple(i for i in range(9))]
 
 

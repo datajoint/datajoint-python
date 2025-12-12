@@ -1,12 +1,8 @@
 import platform
-
-import pymysql
 import pytest
 
 import datajoint as dj
 from datajoint import DataJointError
-
-from . import schema
 
 
 def test_populate(clean_autopopulate, trial, subject, experiment, ephys, channel):
@@ -65,9 +61,7 @@ def test_populate_key_list(clean_autopopulate, subject, experiment, trial):
     assert n == ret["success_count"]
 
 
-def test_populate_exclude_error_and_ignore_jobs(
-    clean_autopopulate, schema_any, subject, experiment
-):
+def test_populate_exclude_error_and_ignore_jobs(clean_autopopulate, schema_any, subject, experiment):
     # test simple populate
     assert subject, "root tables are empty"
     assert not experiment, "table already filled?"

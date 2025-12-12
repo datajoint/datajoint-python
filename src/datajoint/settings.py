@@ -141,9 +141,7 @@ class Config(collections.abc.MutableMapping):
         try:
             spec = self["stores"][store]
         except KeyError:
-            raise DataJointError(
-                "Storage {store} is requested but not configured".format(store=store)
-            )
+            raise DataJointError("Storage {store} is requested but not configured".format(store=store))
 
         spec["subfolding"] = spec.get("subfolding", DEFAULT_SUBFOLDING)
         spec_keys = {  # REQUIRED in uppercase and allowed in lowercase
@@ -165,22 +163,14 @@ class Config(collections.abc.MutableMapping):
         try:
             spec_keys = spec_keys[spec.get("protocol", "").lower()]
         except KeyError:
-            raise DataJointError(
-                'Missing or invalid protocol in dj.config["stores"]["{store}"]'.format(
-                    store=store
-                )
-            )
+            raise DataJointError('Missing or invalid protocol in dj.config["stores"]["{store}"]'.format(store=store))
 
         # check that all required keys are present in spec
         try:
             raise DataJointError(
                 'dj.config["stores"]["{store}"] is missing "{k}"'.format(
                     store=store,
-                    k=next(
-                        k.lower()
-                        for k in spec_keys
-                        if k.isupper() and k.lower() not in spec
-                    ),
+                    k=next(k.lower() for k in spec_keys if k.isupper() and k.lower() not in spec),
                 )
             )
         except StopIteration:
@@ -191,11 +181,7 @@ class Config(collections.abc.MutableMapping):
             raise DataJointError(
                 'Invalid key "{k}" in dj.config["stores"]["{store}"]'.format(
                     store=store,
-                    k=next(
-                        k
-                        for k in spec
-                        if k.upper() not in spec_keys and k.lower() not in spec_keys
-                    ),
+                    k=next(k for k in spec if k.upper() not in spec_keys and k.lower() not in spec_keys),
                 )
             )
         except StopIteration:
@@ -254,17 +240,13 @@ class Config(collections.abc.MutableMapping):
             valid_logging_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
             if key == "loglevel":
                 if value not in valid_logging_levels:
-                    raise ValueError(
-                        f"'{value}' is not a valid logging value {tuple(valid_logging_levels)}"
-                    )
+                    raise ValueError(f"'{value}' is not a valid logging value {tuple(valid_logging_levels)}")
                 logger.setLevel(value)
 
 
 # Load configuration from file
 config = Config()
-config_files = (
-    os.path.expanduser(n) for n in (LOCALCONFIG, os.path.join("~", GLOBALCONFIG))
-)
+config_files = (os.path.expanduser(n) for n in (LOCALCONFIG, os.path.join("~", GLOBALCONFIG)))
 try:
     config.load(next(n for n in config_files if os.path.exists(n)))
 except StopIteration:

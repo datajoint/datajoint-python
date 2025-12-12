@@ -147,9 +147,7 @@ def test_insert_select_ignore_extra_fields2(clean_test_tables, test_no_extra, te
     test_no_extra.insert(test, ignore_extra_fields=True)
 
 
-def test_insert_select_ignore_extra_fields3(
-    clean_test_tables, test, test_no_extra, test_extra
-):
+def test_insert_select_ignore_extra_fields3(clean_test_tables, test, test_no_extra, test_extra):
     """make sure insert select works for from query result"""
     # Recreate table state from previous tests
     keyno = test.fetch("key").max() + 1
@@ -184,9 +182,7 @@ def test_replace(subject):
         skip_duplicates=True,
     )
     assert date != str((subject & key).fetch1("date_of_birth")), "inappropriate replace"
-    subject.insert1(
-        dict(key, real_id=7, date_of_birth=date, subject_notes=""), replace=True
-    )
+    subject.insert1(dict(key, real_id=7, date_of_birth=date, subject_notes=""), replace=True)
     assert date == str((subject & key).fetch1("date_of_birth")), "replace failed"
 
 
@@ -279,9 +275,7 @@ def test_table_regexp(schema_any):
 
     tiers = [dj.Imported, dj.Manual, dj.Lookup, dj.Computed]
     for name, rel in getmembers(schema, relation_selector):
-        assert re.match(
-            rel.tier_regexp, rel.table_name
-        ), "Regular expression does not match for {name}".format(name=name)
+        assert re.match(rel.tier_regexp, rel.table_name), "Regular expression does not match for {name}".format(name=name)
         for tier in tiers:
             assert issubclass(rel, tier) or not re.match(
                 tier.tier_regexp, rel.table_name

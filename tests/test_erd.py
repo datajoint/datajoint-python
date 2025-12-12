@@ -1,7 +1,6 @@
 import datajoint as dj
 
-from .schema_advanced import *
-from .schema_simple import LOCALS_SIMPLE, A, B, D, E, G, L, OutfitLaunch
+from .schema_simple import LOCALS_SIMPLE, A, B, D, E, G, L
 
 
 def test_decorator(schema_simp):
@@ -20,9 +19,7 @@ def test_dependencies(schema_simp):
     assert set(A().children()) == set([B.full_table_name, D.full_table_name])
     assert set(D().parents(primary=True)) == set([A.full_table_name])
     assert set(D().parents(primary=False)) == set([L.full_table_name])
-    assert set(deps.descendants(L.full_table_name)).issubset(
-        cls.full_table_name for cls in (L, D, E, E.F, E.G, E.H, E.M, G)
-    )
+    assert set(deps.descendants(L.full_table_name)).issubset(cls.full_table_name for cls in (L, D, E, E.F, E.G, E.H, E.M, G))
 
 
 def test_erd(schema_simp):
@@ -39,14 +36,10 @@ def test_erd_algebra(schema_simp):
     erd3 = erd1 * erd2
     erd4 = (erd0 + E).add_parts() - B - E
     assert erd0.nodes_to_show == set(cls.full_table_name for cls in [B])
-    assert erd1.nodes_to_show == set(
-        cls.full_table_name for cls in (B, B.C, E, E.F, E.G, E.H, E.M, G)
-    )
+    assert erd1.nodes_to_show == set(cls.full_table_name for cls in (B, B.C, E, E.F, E.G, E.H, E.M, G))
     assert erd2.nodes_to_show == set(cls.full_table_name for cls in (A, B, D, E, L))
     assert erd3.nodes_to_show == set(cls.full_table_name for cls in (B, E))
-    assert erd4.nodes_to_show == set(
-        cls.full_table_name for cls in (B.C, E.F, E.G, E.H, E.M)
-    )
+    assert erd4.nodes_to_show == set(cls.full_table_name for cls in (B.C, E.F, E.G, E.H, E.M))
 
 
 def test_repr_svg(schema_adv):

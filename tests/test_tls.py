@@ -5,20 +5,12 @@ import datajoint as dj
 
 
 def test_secure_connection(db_creds_test, connection_test):
-    result = (
-        dj.conn(reset=True, **db_creds_test)
-        .query("SHOW STATUS LIKE 'Ssl_cipher';")
-        .fetchone()[1]
-    )
+    result = dj.conn(reset=True, **db_creds_test).query("SHOW STATUS LIKE 'Ssl_cipher';").fetchone()[1]
     assert len(result) > 0
 
 
 def test_insecure_connection(db_creds_test, connection_test):
-    result = (
-        dj.conn(use_tls=False, reset=True, **db_creds_test)
-        .query("SHOW STATUS LIKE 'Ssl_cipher';")
-        .fetchone()[1]
-    )
+    result = dj.conn(use_tls=False, reset=True, **db_creds_test).query("SHOW STATUS LIKE 'Ssl_cipher';").fetchone()[1]
     assert result == ""
 
 

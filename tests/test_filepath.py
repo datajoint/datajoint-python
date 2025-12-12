@@ -30,9 +30,7 @@ def test_path_match(schema_ext, enable_filepath_feature, minio_client, store="re
     assert not managed_file.exists()
 
     # check filepath
-    assert (ext & {"hash": uuid}).fetch1("filepath") == str(
-        managed_file.relative_to(stage_path).as_posix()
-    )
+    assert (ext & {"hash": uuid}).fetch1("filepath") == str(managed_file.relative_to(stage_path).as_posix())
 
     # # Download the file and check its contents.
     restored_path, checksum = ext.download_filepath(uuid)
@@ -116,9 +114,7 @@ def test_duplicate_error(schema_ext, store):
 
 
 class TestFilepath:
-    def _test_filepath_class(
-        self, table=Filepath(), store="repo", verify_checksum=True
-    ):
+    def _test_filepath_class(self, table=Filepath(), store="repo", verify_checksum=True):
         if not verify_checksum:
             dj.config["filepath_checksum_size_limit"] = 0
         stage_path = dj.config["stores"][store]["stage"]
@@ -181,9 +177,7 @@ class TestFilepath:
         logger = logging.getLogger("datajoint")
         log_capture = io.StringIO()
         stream_handler = logging.StreamHandler(log_capture)
-        log_format = logging.Formatter(
-            "[%(asctime)s][%(funcName)s][%(levelname)s]: %(message)s"
-        )
+        log_format = logging.Formatter("[%(asctime)s][%(funcName)s][%(levelname)s]: %(message)s")
         stream_handler.setFormatter(log_format)
         stream_handler.set_name("test_limit_warning")
         logger.addHandler(stream_handler)
@@ -240,9 +234,7 @@ def test_delete_without_files(
     schema_ext.external[store].delete(delete_external_files=False)
 
 
-def test_return_string(
-    schema_ext, enable_filepath_feature, table=Filepath(), store="repo"
-):
+def test_return_string(schema_ext, enable_filepath_feature, table=Filepath(), store="repo"):
     """test returning string on fetch"""
     stage_path = dj.config["stores"][store]["stage"]
     # create a mock file

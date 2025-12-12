@@ -19,11 +19,7 @@ class JobTable(Table):
     def __init__(self, conn, database):
         self.database = database
         self._connection = conn
-        self._heading = Heading(
-            table_info=dict(
-                conn=conn, database=database, table_name=self.table_name, context=None
-            )
-        )
+        self._heading = Heading(table_info=dict(conn=conn, database=database, table_name=self.table_name, context=None))
         self._support = [self.full_table_name]
 
         self._definition = """    # job reservation table for `{database}`
@@ -39,9 +35,7 @@ class JobTable(Table):
         pid=0  :int unsigned  # system process id
         connection_id = 0  : bigint unsigned          # connection_id()
         timestamp=CURRENT_TIMESTAMP  :timestamp   # automatic timestamp
-        """.format(
-            database=database, error_message_length=ERROR_MESSAGE_LENGTH
-        )
+        """.format(database=database, error_message_length=ERROR_MESSAGE_LENGTH)
         if not self.is_declared:
             self.declare()
         self._user = self.connection.get_user()
@@ -140,10 +134,7 @@ class JobTable(Table):
         :param error_stack: stack trace
         """
         if len(error_message) > ERROR_MESSAGE_LENGTH:
-            error_message = (
-                error_message[: ERROR_MESSAGE_LENGTH - len(TRUNCATION_APPENDIX)]
-                + TRUNCATION_APPENDIX
-            )
+            error_message = error_message[: ERROR_MESSAGE_LENGTH - len(TRUNCATION_APPENDIX)] + TRUNCATION_APPENDIX
         with config(enable_python_native_blobs=True):
             self.insert1(
                 dict(

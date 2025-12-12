@@ -6,7 +6,20 @@ import datajoint as dj
 from datajoint.declare import declare
 from datajoint.settings import config
 
-from .schema import *
+from .schema import (
+    Auto,
+    Ephys,
+    Experiment,
+    IndexRich,
+    Subject,
+    TTest,
+    TTest2,
+    ThingA,  # noqa: F401 - needed in globals for foreign key resolution
+    ThingB,  # noqa: F401 - needed in globals for foreign key resolution
+    ThingC,
+    Trial,
+    User,
+)
 
 
 @pytest.fixture(scope="function")
@@ -178,48 +191,30 @@ def test_dependencies(schema_any):
     assert set(experiment.parents(primary=False)) == {user.full_table_name}
     assert experiment.full_table_name in user.children(primary=False)
     assert set(experiment.parents(primary=False)) == {user.full_table_name}
-    assert set(
-        s.full_table_name for s in experiment.parents(primary=False, as_objects=True)
-    ) == {user.full_table_name}
+    assert set(s.full_table_name for s in experiment.parents(primary=False, as_objects=True)) == {user.full_table_name}
 
     assert experiment.full_table_name in subject.descendants()
-    assert experiment.full_table_name in {
-        s.full_table_name for s in subject.descendants(as_objects=True)
-    }
+    assert experiment.full_table_name in {s.full_table_name for s in subject.descendants(as_objects=True)}
     assert subject.full_table_name in experiment.ancestors()
-    assert subject.full_table_name in {
-        s.full_table_name for s in experiment.ancestors(as_objects=True)
-    }
+    assert subject.full_table_name in {s.full_table_name for s in experiment.ancestors(as_objects=True)}
 
     assert trial.full_table_name in experiment.descendants()
-    assert trial.full_table_name in {
-        s.full_table_name for s in experiment.descendants(as_objects=True)
-    }
+    assert trial.full_table_name in {s.full_table_name for s in experiment.descendants(as_objects=True)}
     assert experiment.full_table_name in trial.ancestors()
-    assert experiment.full_table_name in {
-        s.full_table_name for s in trial.ancestors(as_objects=True)
-    }
+    assert experiment.full_table_name in {s.full_table_name for s in trial.ancestors(as_objects=True)}
 
     assert set(trial.children(primary=True)) == {
         ephys.full_table_name,
         trial.Condition.full_table_name,
     }
     assert set(trial.parts()) == {trial.Condition.full_table_name}
-    assert set(s.full_table_name for s in trial.parts(as_objects=True)) == {
-        trial.Condition.full_table_name
-    }
+    assert set(s.full_table_name for s in trial.parts(as_objects=True)) == {trial.Condition.full_table_name}
     assert set(ephys.parents(primary=True)) == {trial.full_table_name}
-    assert set(
-        s.full_table_name for s in ephys.parents(primary=True, as_objects=True)
-    ) == {trial.full_table_name}
+    assert set(s.full_table_name for s in ephys.parents(primary=True, as_objects=True)) == {trial.full_table_name}
     assert set(ephys.children(primary=True)) == {channel.full_table_name}
-    assert set(
-        s.full_table_name for s in ephys.children(primary=True, as_objects=True)
-    ) == {channel.full_table_name}
+    assert set(s.full_table_name for s in ephys.children(primary=True, as_objects=True)) == {channel.full_table_name}
     assert set(channel.parents(primary=True)) == {ephys.full_table_name}
-    assert set(
-        s.full_table_name for s in channel.parents(primary=True, as_objects=True)
-    ) == {ephys.full_table_name}
+    assert set(s.full_table_name for s in channel.parents(primary=True, as_objects=True)) == {ephys.full_table_name}
 
 
 def test_descendants_only_contain_part_table(schema_any):
@@ -388,42 +383,28 @@ def test_table_name_with_underscores(schema_any):
         """
 
     schema_any(TableNoUnderscores)
-    with pytest.raises(
-        dj.DataJointError, match="must be alphanumeric in CamelCase"
-    ) as e:
+    with pytest.raises(dj.DataJointError, match="must be alphanumeric in CamelCase"):
         schema_any(Table_With_Underscores)
 
 
 def test_add_hidden_timestamp_default_value():
     config_val = config.get("add_hidden_timestamp")
-    assert (
-        config_val is not None and not config_val
-    ), "Default value for add_hidden_timestamp is not False"
+    assert config_val is not None and not config_val, "Default value for add_hidden_timestamp is not False"
 
 
 def test_add_hidden_timestamp_enabled(enable_add_hidden_timestamp, schema_any_fresh):
     assert config["add_hidden_timestamp"], "add_hidden_timestamp is not enabled"
     msg = f"{Experiment().heading._attributes=}"
-    assert any(
-        a.name.endswith("_timestamp") for a in Experiment().heading._attributes.values()
-    ), msg
-    assert any(
-        a.name.startswith("_") for a in Experiment().heading._attributes.values()
-    ), msg
+    assert any(a.name.endswith("_timestamp") for a in Experiment().heading._attributes.values()), msg
+    assert any(a.name.startswith("_") for a in Experiment().heading._attributes.values()), msg
     assert any(a.is_hidden for a in Experiment().heading._attributes.values()), msg
     assert not any(a.is_hidden for a in Experiment().heading.attributes.values()), msg
 
 
 def test_add_hidden_timestamp_disabled(disable_add_hidden_timestamp, schema_any_fresh):
-    assert not config[
-        "add_hidden_timestamp"
-    ], "expected add_hidden_timestamp to be False"
+    assert not config["add_hidden_timestamp"], "expected add_hidden_timestamp to be False"
     msg = f"{Experiment().heading._attributes=}"
-    assert not any(
-        a.name.endswith("_timestamp") for a in Experiment().heading._attributes.values()
-    ), msg
-    assert not any(
-        a.name.startswith("_") for a in Experiment().heading._attributes.values()
-    ), msg
+    assert not any(a.name.endswith("_timestamp") for a in Experiment().heading._attributes.values()), msg
+    assert not any(a.name.startswith("_") for a in Experiment().heading._attributes.values()), msg
     assert not any(a.is_hidden for a in Experiment().heading._attributes.values()), msg
     assert not any(a.is_hidden for a in Experiment().heading.attributes.values()), msg
