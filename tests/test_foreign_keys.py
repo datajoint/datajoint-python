@@ -1,6 +1,12 @@
 from datajoint.declare import declare
 
-from .schema_advanced import *
+from .schema_advanced import (
+    Cell,  # noqa: F401 - needed in globals for foreign key resolution
+    GlobalSynapse,
+    LocalSynapse,
+    Parent,
+    Person,
+)
 
 
 def test_aliased_fk(schema_adv):

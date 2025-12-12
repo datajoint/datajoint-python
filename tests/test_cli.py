@@ -12,7 +12,7 @@ import datajoint as dj
 def test_cli_version(capsys):
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         dj.cli(args=["-V"])
-    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.type is SystemExit
     assert pytest_wrapped_e.value.code == 0
 
     captured_output = capsys.readouterr().out
@@ -22,7 +22,7 @@ def test_cli_version(capsys):
 def test_cli_help(capsys):
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         dj.cli(args=["--help"])
-    assert pytest_wrapped_e.type == SystemExit
+    assert pytest_wrapped_e.type is SystemExit
     assert pytest_wrapped_e.value.code == 0
 
     captured_output = capsys.readouterr().out

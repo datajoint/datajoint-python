@@ -76,7 +76,7 @@ class AutoPopulate:
         if self._key_source is None:
             parents = self.target.parents(primary=True, as_objects=True, foreign_key_info=True)
             if not parents:
-                raise DataJointError("A table must have dependencies " "from its primary key for auto-populate to work")
+                raise DataJointError("A table must have dependencies from its primary key for auto-populate to work")
             self._key_source = _rename_attributes(*parents[0])
             for q in parents[1:]:
                 self._key_source *= _rename_attributes(*q)
@@ -174,7 +174,7 @@ class AutoPopulate:
         """
         if self.restriction:
             raise DataJointError(
-                "Cannot call populate on a restricted table. " "Instead, pass conditions to populate() as arguments."
+                "Cannot call populate on a restricted table. Instead, pass conditions to populate() as arguments."
             )
         todo = self.key_source
 

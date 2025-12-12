@@ -45,7 +45,7 @@ def test_order_by(lang, languages):
         cur = lang.fetch(order_by=("name " + ord_name, "language " + ord_lang))
         languages.sort(key=itemgetter(1), reverse=ord_lang == "DESC")
         languages.sort(key=itemgetter(0), reverse=ord_name == "DESC")
-        for c, l in zip(cur, languages):
+        for c, l in zip(cur, languages):  # noqa: E741
             assert np.all(cc == ll for cc, ll in zip(c, l)), "Sorting order is different"
 
 
@@ -54,7 +54,7 @@ def test_order_by_default(lang, languages):
     cur = lang.fetch(order_by=("language", "name DESC"))
     languages.sort(key=itemgetter(0), reverse=True)
     languages.sort(key=itemgetter(1), reverse=False)
-    for c, l in zip(cur, languages):
+    for c, l in zip(cur, languages):  # noqa: E741
         assert np.all([cc == ll for cc, ll in zip(c, l)]), "Sorting order is different"
 
 
@@ -71,7 +71,7 @@ def test_order_by_limit(lang, languages):
     languages.sort(key=itemgetter(0), reverse=True)
     languages.sort(key=itemgetter(1), reverse=False)
     assert len(cur) == 4, "Length is not correct"
-    for c, l in list(zip(cur, languages))[:4]:
+    for c, l in list(zip(cur, languages))[:4]:  # noqa: E741
         assert np.all([cc == ll for cc, ll in zip(c, l)]), "Sorting order is different"
 
 
@@ -99,7 +99,7 @@ def test_limit_offset(lang, languages):
     languages.sort(key=itemgetter(0), reverse=True)
     languages.sort(key=itemgetter(1), reverse=False)
     assert len(cur) == 4, "Length is not correct"
-    for c, l in list(zip(cur, languages[2:6])):
+    for c, l in list(zip(cur, languages[2:6])):  # noqa: E741
         assert np.all([cc == ll for cc, ll in zip(c, l)]), "Sorting order is different"
 
 
@@ -161,7 +161,7 @@ def test_fetch1_step1(lang, languages):
 
 def test_misspelled_attribute(schema_any):
     with pytest.raises(dj.DataJointError):
-        f = (schema.Language & 'lang = "ENGLISH"').fetch()
+        (schema.Language & 'lang = "ENGLISH"').fetch()
 
 
 def test_repr(subject):
@@ -193,7 +193,7 @@ def test_offset(lang, languages):
     languages.sort(key=itemgetter(0), reverse=True)
     languages.sort(key=itemgetter(1), reverse=False)
     assert len(cur) == 4, "Length is not correct"
-    for c, l in list(zip(cur, languages[1:]))[:4]:
+    for c, l in list(zip(cur, languages[1:]))[:4]:  # noqa: E741
         assert np.all([cc == ll for cc, ll in zip(c, l)]), "Sorting order is different"
 
 

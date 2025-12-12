@@ -160,16 +160,16 @@ class Fetch:
         # format should not be specified with attrs or is_dict=True
         if format is not None and (as_dict or attrs):
             raise DataJointError(
-                "Cannot specify output format when as_dict=True or " "when attributes are selected to be fetched separately."
+                "Cannot specify output format when as_dict=True or when attributes are selected to be fetched separately."
             )
         if format not in {None, "array", "frame"}:
-            raise DataJointError("Fetch output format must be in " '{{"array", "frame"}} but "{}" was given'.format(format))
+            raise DataJointError('Fetch output format must be in {{"array", "frame"}} but "{}" was given'.format(format))
 
         if not (attrs or as_dict) and format is None:
             format = config["fetch_format"]  # default to array
             if format not in {"array", "frame"}:
                 raise DataJointError(
-                    'Invalid entry "{}" in datajoint.config["fetch_format"]: ' 'use "array" or "frame"'.format(format)
+                    'Invalid entry "{}" in datajoint.config["fetch_format"]: use "array" or "frame"'.format(format)
                 )
 
         get = partial(

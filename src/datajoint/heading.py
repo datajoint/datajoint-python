@@ -308,7 +308,7 @@ class Heading:
                             "#migration-between-datajoint-v0-11-and-v0-12"
                         )
                         raise DataJointError(
-                            "Legacy datatype `{type}`. Migrate your external stores to " "datajoint 0.12: {url}".format(
+                            "Legacy datatype `{type}`. Migrate your external stores to datajoint 0.12: {url}".format(
                                 url=url, **attr
                             )
                         )

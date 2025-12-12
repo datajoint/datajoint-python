@@ -171,7 +171,7 @@ class ExternalTable(Table):
         self._upload_buffer(blob, self._make_uuid_path(uuid))
         # insert tracking info
         self.connection.query(
-            "INSERT INTO {tab} (hash, size) VALUES (%s, {size}) ON DUPLICATE KEY " "UPDATE timestamp=CURRENT_TIMESTAMP".format(
+            "INSERT INTO {tab} (hash, size) VALUES (%s, {size}) ON DUPLICATE KEY UPDATE timestamp=CURRENT_TIMESTAMP".format(
                 tab=self.full_table_name, size=len(blob)
             ),
             args=(uuid.bytes,),
@@ -394,7 +394,7 @@ class ExternalTable(Table):
         :return: if deleting external files, returns errors
         """
         if delete_external_files not in (True, False):
-            raise DataJointError("The delete_external_files argument must be set to either " "True or False in delete()")
+            raise DataJointError("The delete_external_files argument must be set to either True or False in delete()")
 
         if not delete_external_files:
             self.unused().delete_quick()

@@ -93,7 +93,7 @@ class Table(QueryExpression):
             not allowed.
         """
         if self.connection.in_transaction:
-            raise DataJointError("Cannot declare new tables inside a transaction, " "e.g. from inside a populate/make call")
+            raise DataJointError("Cannot declare new tables inside a transaction, e.g. from inside a populate/make call")
         # Enforce strict CamelCase #1150
         if not is_camel_case(self.class_name):
             raise DataJointError(
@@ -118,9 +118,7 @@ class Table(QueryExpression):
         Alter the table definition from self.definition
         """
         if self.connection.in_transaction:
-            raise DataJointError(
-                "Cannot update table declaration inside a transaction, " "e.g. from inside a populate/make call"
-            )
+            raise DataJointError("Cannot update table declaration inside a transaction, e.g. from inside a populate/make call")
         if context is None:
             frame = inspect.currentframe().f_back
             context = dict(frame.f_globals, **frame.f_locals)
@@ -569,7 +567,7 @@ class Table(QueryExpression):
                     if transaction:
                         self.connection.cancel_transaction()
                     raise DataJointError(
-                        "Attempt to delete part table {part} before deleting from " "its master {master} first.".format(
+                        "Attempt to delete part table {part} before deleting from its master {master} first.".format(
                             part=part, master=master
                         )
                     )
@@ -614,7 +612,7 @@ class Table(QueryExpression):
         """
         if self.restriction:
             raise DataJointError(
-                "A table with an applied restriction cannot be dropped." " Call drop() on the unrestricted Table."
+                "A table with an applied restriction cannot be dropped. Call drop() on the unrestricted Table."
             )
         self.connection.dependencies.load()
         do_drop = True
@@ -625,7 +623,7 @@ class Table(QueryExpression):
             master = get_master(part)
             if master and master not in tables:
                 raise DataJointError(
-                    "Attempt to drop part table {part} before dropping " "its master. Drop {master} first.".format(
+                    "Attempt to drop part table {part} before dropping its master. Drop {master} first.".format(
                         part=part, master=master
                     )
                 )
@@ -799,8 +797,9 @@ class Table(QueryExpression):
             try:
                 if len(row) != len(self.heading):
                     raise DataJointError(
-                        "Invalid insert argument. Incorrect number of attributes: "
-                        "{given} given; {expected} expected".format(given=len(row), expected=len(self.heading))
+                        "Invalid insert argument. Incorrect number of attributes: {given} given; {expected} expected".format(
+                            given=len(row), expected=len(self.heading)
+                        )
                     )
             except TypeError:
                 raise DataJointError("Datatype %s cannot be inserted" % type(row))

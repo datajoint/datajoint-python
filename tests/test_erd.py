@@ -1,6 +1,5 @@
 import datajoint as dj
 
-from .schema_advanced import *
 from .schema_simple import LOCALS_SIMPLE, A, B, D, E, G, L
 
 

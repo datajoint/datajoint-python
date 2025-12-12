@@ -7,7 +7,18 @@ import datajoint as dj
 from datajoint import DataJointError
 
 from . import schema_university
-from .schema_university import *
+from .schema_university import (
+    Student,
+    Department,
+    StudentMajor,
+    Course,
+    Term,
+    Section,
+    CurrentTerm,
+    Enroll,
+    LetterGrade,
+    Grade,
+)
 
 
 def _hash4(table):

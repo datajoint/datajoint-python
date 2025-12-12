@@ -6,7 +6,20 @@ import datajoint as dj
 from datajoint.declare import declare
 from datajoint.settings import config
 
-from .schema import Auto, Ephys, Experiment, IndexRich, Subject, TTest, TTest2, ThingC, Trial, User
+from .schema import (
+    Auto,
+    Ephys,
+    Experiment,
+    IndexRich,
+    Subject,
+    TTest,
+    TTest2,
+    ThingA,  # noqa: F401 - needed in globals for foreign key resolution
+    ThingB,  # noqa: F401 - needed in globals for foreign key resolution
+    ThingC,
+    Trial,
+    User,
+)
 
 
 @pytest.fixture(scope="function")

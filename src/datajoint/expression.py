@@ -358,9 +358,9 @@ class QueryExpression:
         """
         named_attributes = {k: translate_attribute(v)[1] for k, v in named_attributes.items()}
         # new attributes in parentheses are included again with the new name without removing original
-        duplication_pattern = re.compile(rf'^\s*\(\s*(?!{"|".join(CONSTANT_LITERALS)})(?P<name>[a-zA-Z_]\w*)\s*\)\s*$')
+        duplication_pattern = re.compile(rf"^\s*\(\s*(?!{'|'.join(CONSTANT_LITERALS)})(?P<name>[a-zA-Z_]\w*)\s*\)\s*$")
         # attributes without parentheses renamed
-        rename_pattern = re.compile(rf'^\s*(?!{"|".join(CONSTANT_LITERALS)})(?P<name>[a-zA-Z_]\w*)\s*$')
+        rename_pattern = re.compile(rf"^\s*(?!{'|'.join(CONSTANT_LITERALS)})(?P<name>[a-zA-Z_]\w*)\s*$")
         replicate_map = {
             k: m.group("name") for k, m in ((k, duplication_pattern.match(v)) for k, v in named_attributes.items()) if m
         }
@@ -562,7 +562,7 @@ class QueryExpression:
             key = self._iter_keys.pop(0)
         except AttributeError:
             # self._iter_keys is missing because __iter__ has not been called.
-            raise TypeError("A QueryExpression object is not an iterator. " "Use iter(obj) to create an iterator.")
+            raise TypeError("A QueryExpression object is not an iterator. Use iter(obj) to create an iterator.")
         except IndexError:
             raise StopIteration
         else:

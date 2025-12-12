@@ -124,7 +124,7 @@ class Schema:
         if not self.exists:
             if not self.create_schema or not self.database:
                 raise DataJointError(
-                    "Database `{name}` has not yet been declared. " "Set argument create_schema=True to create it.".format(
+                    "Database `{name}` has not yet been declared. Set argument create_schema=True to create it.".format(
                         name=schema_name
                     )
                 )
@@ -134,7 +134,7 @@ class Schema:
                 self.connection.query("CREATE DATABASE `{name}`".format(name=schema_name))
             except AccessError:
                 raise DataJointError(
-                    "Schema `{name}` does not exist and could not be created. " "Check permissions.".format(name=schema_name)
+                    "Schema `{name}` does not exist and could not be created. Check permissions.".format(name=schema_name)
                 )
             else:
                 self.log("created")
@@ -220,7 +220,7 @@ class Schema:
             if len(contents) > len(instance):
                 if instance.heading.has_autoincrement:
                     warnings.warn(
-                        ("Contents has changed but cannot be inserted because " "{table} has autoincrement.").format(
+                        ("Contents has changed but cannot be inserted because {table} has autoincrement.").format(
                             table=instance.__class__.__name__
                         )
                     )
@@ -317,7 +317,7 @@ class Schema:
                 logger.debug("Schema `{database}` was dropped successfully.".format(database=self.database))
             except AccessError:
                 raise AccessError(
-                    "An attempt to drop schema `{database}` " "has failed. Check permissions.".format(database=self.database)
+                    "An attempt to drop schema `{database}` has failed. Check permissions.".format(database=self.database)
                 )
 
     @property
@@ -329,7 +329,7 @@ class Schema:
             raise DataJointError("Schema must be activated first.")
         return bool(
             self.connection.query(
-                "SELECT schema_name " "FROM information_schema.schemata " "WHERE schema_name = '{database}'".format(
+                "SELECT schema_name FROM information_schema.schemata WHERE schema_name = '{database}'".format(
                     database=self.database
                 )
             ).rowcount
@@ -382,7 +382,7 @@ class Schema:
                 )
 
             return ("" if tier == "Part" else "\n@schema\n") + (
-                "{indent}class {class_name}(dj.{tier}):\n" '{indent}    definition = """\n' '{indent}    {defi}"""'
+                '{indent}class {class_name}(dj.{tier}):\n{indent}    definition = """\n{indent}    {defi}"""'
             ).format(
                 class_name=class_name,
                 indent=indent,
@@ -476,6 +476,6 @@ def list_schemas(connection=None):
     return [
         r[0]
         for r in (connection or conn()).query(
-            "SELECT schema_name " "FROM information_schema.schemata " 'WHERE schema_name <> "information_schema"'
+            'SELECT schema_name FROM information_schema.schemata WHERE schema_name <> "information_schema"'
         )
     ]

@@ -361,7 +361,7 @@ else:
                 dest = edge.get_destination()
                 props = graph.get_edge_data(src, dest)
                 if props is None:
-                    raise DataJointError("Could not find edge with source " "'{}' and destination '{}'".format(src, dest))
+                    raise DataJointError("Could not find edge with source '{}' and destination '{}'".format(src, dest))
                 edge.set_color("#00000040")
                 edge.set_style("solid" if props["primary"] else "dashed")
                 master_part = graph.nodes[dest]["node_type"] is Part and dest.startswith(src + ".")

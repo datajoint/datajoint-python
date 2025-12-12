@@ -9,8 +9,8 @@ import pytest
 import datajoint as dj
 from datajoint.errors import DataJointError
 
-from .schema import *
-from .schema_simple import *
+from .schema import Child, Ephys, Experiment, Parent, SessionA, SessionDateA, SessionStatusA, SubjectA, TTest3, Trial
+from .schema_simple import F, IJ, JI, L, A, B, D, E, DataA, DataB, KeyPK, OutfitLaunch, ReservedWord, SelectPK, TTestUpdate
 
 
 @pytest.fixture
@@ -161,7 +161,7 @@ def test_project(schema_simp_pop):
     # projection after restriction
     cond = L() & "cond_in_l"
     assert len(D() & cond) + len(D() - cond) == len(D()), "failed semijoin or antijoin"
-    assert len((D() & cond).proj()) == len((D() & cond)), "projection failed: altered its argument" "s cardinality"
+    assert len((D() & cond).proj()) == len((D() & cond)), "projection failed: altered its arguments cardinality"
 
 
 def test_rename_non_dj_attribute(connection_test, schema_simp_pop, schema_any_pop, prefix):
@@ -183,13 +183,13 @@ def test_union(schema_simp_pop):
     assert len(IJ + JI) == len(z)
 
 
-def test_outer_union_fail(schema_simp_pop):
+def test_outer_union_fail_1(schema_simp_pop):
     """Union of two tables with different primary keys raises an error."""
     with pytest.raises(dj.DataJointError):
         A() + B()
 
 
-def test_outer_union_fail(schema_any_pop):
+def test_outer_union_fail_2(schema_any_pop):
     """Union of two tables with different primary keys raises an error."""
     t = Trial + Ephys
     t.fetch()
@@ -367,7 +367,7 @@ def test_date(schema_simp_pop):
     assert (F & "id=2").fetch1("date") == new_value
 
     F.update1(dict((F & "id=2").fetch1("KEY"), date=None))
-    assert (F & "id=2").fetch1("date") == None
+    assert (F & "id=2").fetch1("date") is None
 
 
 def test_join_project(schema_simp_pop):

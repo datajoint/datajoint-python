@@ -226,7 +226,7 @@ def test_uppercase_schema(db_creds_root):
         name: varchar(32)
         """
 
-    _ = dj.VirtualModule("Schema_A", "Schema_A")
+    Schema_A = dj.VirtualModule("Schema_A", "Schema_A")  # noqa: F841
 
     schema2 = dj.Schema("schema_b")
 
