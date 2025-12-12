@@ -121,6 +121,7 @@ ignore = [
 # Per-file ignores (equivalent to flake8 --per-file-ignores)
 [tool.ruff.lint.per-file-ignores]
 "datajoint/diagram.py" = ["C901"]  # function too complex
+"tests/test_blob_matlab.py" = ["E501"]  # SQL hex strings cannot be broken across lines
 
 [tool.ruff.lint.mccabe]
 # Maximum complexity (equivalent to flake8 --max-complexity)
