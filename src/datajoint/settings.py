@@ -12,63 +12,10 @@ from enum import Enum
 from typing import Any, Dict, Iterator, List, Literal, Optional, Tuple
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
+from pydantic.aliases import AliasChoices
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .errors import DataJointError
-
-
-class EnvSettingsSource(PydanticBaseSettingsSource):
-    """
-    Custom settings source that reads legacy DJ_* environment variables.
-
-    This is needed because DataJoint's historical environment variable names
-    don't follow pydantic's nested naming convention:
-    - DJ_HOST instead of DJ_DATABASE__HOST
-    - DJ_USER instead of DJ_DATABASE__USER
-    - DJ_PASS instead of DJ_DATABASE__PASSWORD
-
-    This maintains backward compatibility with existing deployments.
-    """
-
-    def get_field_value(self, field: Any, field_name: str) -> Tuple[Any, str, bool]:
-        """Required abstract method - not used as we override __call__"""
-        return None, field_name, False
-
-    def __call__(self) -> Dict[str, Any]:
-        d: Dict[str, Any] = {}
-
-        # Read only DJ_* environment variables
-        env_mapping = {
-            "DJ_HOST": ("database", "host"),
-            "DJ_USER": ("database", "user"),
-            "DJ_PASS": ("database", "password"),
-            "DJ_PORT": ("database", "port"),
-            "DJ_AWS_ACCESS_KEY_ID": ("external", "aws_access_key_id"),
-            "DJ_AWS_SECRET_ACCESS_KEY": ("external", "aws_secret_access_key"),
-            "DJ_LOG_LEVEL": ("loglevel",),
-        }
-
-        for env_var, path in env_mapping.items():
-            env_value = os.getenv(env_var)
-            if env_value is not None:
-                if len(path) == 1:
-                    # Top-level field
-                    d[path[0]] = env_value
-                else:
-                    # Nested field
-                    if path[0] not in d:
-                        d[path[0]] = {}
-                    if path[0] == "database" and path[1] == "port":
-                        # Convert port to integer
-                        try:
-                            d[path[0]][path[1]] = int(env_value)
-                        except ValueError:
-                            logger.warning(f"Invalid DJ_PORT value: {env_value}, using default")
-                    else:
-                        d[path[0]][path[1]] = env_value
-
-        return d
-
 
 LOCALCONFIG = "dj_local_conf.json"
 GLOBALCONFIG = ".datajoint_config.json"
@@ -162,7 +109,10 @@ class DataJointSettings(BaseSettings):
     display: DisplaySettings = Field(default_factory=DisplaySettings)
     external: ExternalSettings = Field(default_factory=ExternalSettings)
 
-    loglevel: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+    loglevel: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(
+        default="INFO",
+        validation_alias=AliasChoices("loglevel", "DJ_LOG_LEVEL"),
+    )
     safemode: bool = True
     fetch_format: Literal["array", "frame"] = "array"
     enable_python_native_blobs: bool = True
@@ -180,23 +130,6 @@ class DataJointSettings(BaseSettings):
         extra="allow",
         validate_assignment=True,
     )
-
-    @classmethod
-    def settings_customise_sources(
-        cls,
-        settings_cls: type[BaseSettings],
-        init_settings: PydanticBaseSettingsSource,
-        env_settings: PydanticBaseSettingsSource,
-        dotenv_settings: PydanticBaseSettingsSource,
-        file_secret_settings: PydanticBaseSettingsSource,
-    ) -> tuple[PydanticBaseSettingsSource, ...]:
-        """Use custom environment settings source to avoid conflicts"""
-        return (
-            init_settings,
-            EnvSettingsSource(settings_cls),
-            dotenv_settings,
-            file_secret_settings,
-        )
 
     @field_validator("cache", "query_cache", mode="before")
     @classmethod
