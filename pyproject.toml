@@ -21,6 +21,7 @@ dependencies = [
   "faker",
   "urllib3",
   "setuptools",
+  "pydantic-settings>=2.0.0",
 ]
 requires-python = ">=3.9,<3.14"
 authors = [
