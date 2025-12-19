@@ -3,7 +3,6 @@ A schema for testing external attributes
 """
 
 import inspect
-import tempfile
 
 import numpy as np
 

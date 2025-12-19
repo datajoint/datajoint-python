@@ -17,9 +17,7 @@ def cli(args: list = None):
         description="DataJoint console interface.",
         conflict_handler="resolve",
     )
-    parser.add_argument(
-        "-V", "--version", action="version", version=f"{dj.__name__} {dj.__version__}"
-    )
+    parser.add_argument("-V", "--version", action="version", version=f"{dj.__name__} {dj.__version__}")
     parser.add_argument(
         "-u",
         "--user",

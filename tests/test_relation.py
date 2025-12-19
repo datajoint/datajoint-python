@@ -80,7 +80,7 @@ def test_wrong_insert_type(user):
         user.insert1(3)
 
 
-def test_insert_select(subject, test, test2):
+def test_insert_select(clean_test_tables, subject, test, test2):
     test2.delete()
     test2.insert(test)
     assert len(test2) == len(test)
@@ -98,7 +98,7 @@ def test_insert_select(subject, test, test2):
     assert len(subject) == 2 * original_length
 
 
-def test_insert_pandas_roundtrip(test, test2):
+def test_insert_pandas_roundtrip(clean_test_tables, test, test2):
     """ensure fetched frames can be inserted"""
     test2.delete()
     n = len(test)
@@ -110,7 +110,7 @@ def test_insert_pandas_roundtrip(test, test2):
     assert len(test2) == n
 
 
-def test_insert_pandas_userframe(test, test2):
+def test_insert_pandas_userframe(clean_test_tables, test, test2):
     """
     ensure simple user-created frames (1 field, non-custom index)
     can be inserted without extra index adjustment
@@ -125,14 +125,14 @@ def test_insert_pandas_userframe(test, test2):
     assert len(test2) == n
 
 
-def test_insert_select_ignore_extra_fields0(test, test_extra):
+def test_insert_select_ignore_extra_fields0(clean_test_tables, test, test_extra):
     """need ignore extra fields for insert select"""
     test_extra.insert1((test.fetch("key").max() + 1, 0, 0))
     with pytest.raises(dj.DataJointError):
         test.insert(test_extra)
 
 
-def test_insert_select_ignore_extra_fields1(test, test_extra):
+def test_insert_select_ignore_extra_fields1(clean_test_tables, test, test_extra):
     """make sure extra fields works in insert select"""
     test_extra.delete()
     keyno = test.fetch("key").max() + 1
@@ -141,13 +141,13 @@ def test_insert_select_ignore_extra_fields1(test, test_extra):
     assert keyno in test.fetch("key")
 
 
-def test_insert_select_ignore_extra_fields2(test_no_extra, test):
+def test_insert_select_ignore_extra_fields2(clean_test_tables, test_no_extra, test):
     """make sure insert select still works when ignoring extra fields when there are none"""
     test_no_extra.delete()
     test_no_extra.insert(test, ignore_extra_fields=True)
 
 
-def test_insert_select_ignore_extra_fields3(test, test_no_extra, test_extra):
+def test_insert_select_ignore_extra_fields3(clean_test_tables, test, test_no_extra, test_extra):
     """make sure insert select works for from query result"""
     # Recreate table state from previous tests
     keyno = test.fetch("key").max() + 1
@@ -161,7 +161,7 @@ def test_insert_select_ignore_extra_fields3(test, test_no_extra, test_extra):
     test_no_extra.insert((test_extra & "`key`=" + keystr), ignore_extra_fields=True)
 
 
-def test_skip_duplicates(test_no_extra, test):
+def test_skip_duplicates(clean_test_tables, test_no_extra, test):
     """test that skip_duplicates works when inserting from another table"""
     test_no_extra.delete()
     test_no_extra.insert(test, ignore_extra_fields=True, skip_duplicates=True)
@@ -182,9 +182,7 @@ def test_replace(subject):
         skip_duplicates=True,
     )
     assert date != str((subject & key).fetch1("date_of_birth")), "inappropriate replace"
-    subject.insert1(
-        dict(key, real_id=7, date_of_birth=date, subject_notes=""), replace=True
-    )
+    subject.insert1(dict(key, real_id=7, date_of_birth=date, subject_notes=""), replace=True)
     assert date == str((subject & key).fetch1("date_of_birth")), "replace failed"
 
 
@@ -277,9 +275,7 @@ def test_table_regexp(schema_any):
 
     tiers = [dj.Imported, dj.Manual, dj.Lookup, dj.Computed]
     for name, rel in getmembers(schema, relation_selector):
-        assert re.match(
-            rel.tier_regexp, rel.table_name
-        ), "Regular expression does not match for {name}".format(name=name)
+        assert re.match(rel.tier_regexp, rel.table_name), "Regular expression does not match for {name}".format(name=name)
         for tier in tiers:
             assert issubclass(rel, tier) or not re.match(
                 tier.tier_regexp, rel.table_name

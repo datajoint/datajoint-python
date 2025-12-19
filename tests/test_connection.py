@@ -88,13 +88,9 @@ def test_transaction_rollback(schema_tx, connection_test):
             raise DataJointError("Testing rollback")
     except DataJointError:
         pass
-    assert (
-        len(Subjects()) == 1
-    ), "Length is not 1. Expected because rollback should have happened."
+    assert len(Subjects()) == 1, "Length is not 1. Expected because rollback should have happened."
 
-    assert (
-        len(Subjects & "subject_id = 2") == 0
-    ), "Length is not 0. Expected because rollback should have happened."
+    assert len(Subjects & "subject_id = 2") == 0, "Length is not 0. Expected because rollback should have happened."
 
 
 def test_cancel(schema_tx, connection_test):
@@ -108,9 +104,5 @@ def test_cancel(schema_tx, connection_test):
     connection_test.start_transaction()
     Subjects.insert1(tmp[1])
     connection_test.cancel_transaction()
-    assert (
-        len(Subjects()) == 1
-    ), "Length is not 1. Expected because rollback should have happened."
-    assert (
-        len(Subjects & "subject_id = 2") == 0
-    ), "Length is not 0. Expected because rollback should have happened."
+    assert len(Subjects()) == 1, "Length is not 1. Expected because rollback should have happened."
+    assert len(Subjects & "subject_id = 2") == 0, "Length is not 0. Expected because rollback should have happened."

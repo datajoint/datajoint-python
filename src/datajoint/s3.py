@@ -58,15 +58,11 @@ class Folder:
 
     def put(self, name, buffer):
         logger.debug("put: {}:{}".format(self.bucket, name))
-        return self.client.put_object(
-            self.bucket, str(name), BytesIO(buffer), length=len(buffer)
-        )
+        return self.client.put_object(self.bucket, str(name), BytesIO(buffer), length=len(buffer))
 
     def fput(self, local_file, name, metadata=None):
         logger.debug("fput: {} -> {}:{}".format(self.bucket, local_file, name))
-        return self.client.fput_object(
-            self.bucket, str(name), str(local_file), metadata=metadata
-        )
+        return self.client.fput_object(self.bucket, str(name), str(local_file), metadata=metadata)
 
     def get(self, name):
         logger.debug("get: {}:{}".format(self.bucket, name))

@@ -83,9 +83,7 @@ class Table(QueryExpression):
 
     @property
     def definition(self):
-        raise NotImplementedError(
-            "Subclasses of Table must implement the `definition` property"
-        )
+        raise NotImplementedError("Subclasses of Table must implement the `definition` property")
 
     def declare(self, context=None):
         """
@@ -95,16 +93,11 @@ class Table(QueryExpression):
             not allowed.
         """
         if self.connection.in_transaction:
-            raise DataJointError(
-                "Cannot declare new tables inside a transaction, "
-                "e.g. from inside a populate/make call"
-            )
+            raise DataJointError("Cannot declare new tables inside a transaction, e.g. from inside a populate/make call")
         # Enforce strict CamelCase #1150
         if not is_camel_case(self.class_name):
             raise DataJointError(
-                "Table class name `{name}` is invalid. Please use CamelCase. ".format(
-                    name=self.class_name
-                )
+                "Table class name `{name}` is invalid. Please use CamelCase. ".format(name=self.class_name)
                 + "Classes defining tables should be formatted in strict CamelCase."
             )
         sql, external_stores = declare(self.full_table_name, self.definition, context)
@@ -125,10 +118,7 @@ class Table(QueryExpression):
         Alter the table definition from self.definition
         """
         if self.connection.in_transaction:
-            raise DataJointError(
-                "Cannot update table declaration inside a transaction, "
-                "e.g. from inside a populate/make call"
-            )
+            raise DataJointError("Cannot update table declaration inside a transaction, e.g. from inside a populate/make call")
         if context is None:
             frame = inspect.currentframe().f_back
             context = dict(frame.f_globals, **frame.f_locals)
@@ -139,9 +129,7 @@ class Table(QueryExpression):
             if prompt:
                 logger.warning("Nothing to alter.")
         else:
-            sql = "ALTER TABLE {tab}\n\t".format(
-                tab=self.full_table_name
-            ) + ",\n\t".join(sql)
+            sql = "ALTER TABLE {tab}\n\t".format(tab=self.full_table_name) + ",\n\t".join(sql)
             if not prompt or user_choice(sql + "\n\nExecute?") == "yes":
                 try:
                     # declare all external tables before declaring main table
@@ -153,9 +141,7 @@ class Table(QueryExpression):
                     pass
                 else:
                     # reset heading
-                    self.__class__._heading = Heading(
-                        table_info=self.heading.table_info
-                    )
+                    self.__class__._heading = Heading(table_info=self.heading.table_info)
                     if prompt:
                         logger.info("Table altered")
                     self._log("Altered " + self.full_table_name)
@@ -170,9 +156,7 @@ class Table(QueryExpression):
         """
         :return: the selected attributes from the SQL SELECT statement.
         """
-        return (
-            "*" if select_fields is None else self.heading.project(select_fields).as_sql
-        )
+        return "*" if select_fields is None else self.heading.project(select_fields).as_sql
 
     def parents(self, primary=None, as_objects=False, foreign_key_info=False):
         """
@@ -260,9 +244,7 @@ class Table(QueryExpression):
         """
         return (
             self.connection.query(
-                'SHOW TABLES in `{database}` LIKE "{table_name}"'.format(
-                    database=self.database, table_name=self.table_name
-                )
+                'SHOW TABLES in `{database}` LIKE "{table_name}"'.format(database=self.database, table_name=self.table_name)
             ).rowcount
             > 0
         )
@@ -311,14 +293,9 @@ class Table(QueryExpression):
         if not isinstance(row, collections.abc.Mapping):
             raise DataJointError("The argument of update1 must be dict-like.")
         if not set(row).issuperset(self.primary_key):
-            raise DataJointError(
-                "The argument of update1 must supply all primary key values."
-            )
+            raise DataJointError("The argument of update1 must supply all primary key values.")
         try:
-            raise DataJointError(
-                "Attribute `%s` not found."
-                % next(k for k in row if k not in self.heading.names)
-            )
+            raise DataJointError("Attribute `%s` not found." % next(k for k in row if k not in self.heading.names))
         except StopIteration:
             pass  # ok
         if len(self.restriction):
@@ -327,11 +304,7 @@ class Table(QueryExpression):
         if len(self & key) != 1:
             raise DataJointError("Update can only be applied to one existing entry.")
         # UPDATE query
-        row = [
-            self.__make_placeholder(k, v)
-            for k, v in row.items()
-            if k not in self.primary_key
-        ]
+        row = [self.__make_placeholder(k, v) for k, v in row.items() if k not in self.primary_key]
         query = "UPDATE {table} SET {assignments} WHERE {where}".format(
             table=self.full_table_name,
             assignments=",".join("`%s`=%s" % r[:2] for r in row),
@@ -379,9 +352,7 @@ class Table(QueryExpression):
         if isinstance(rows, pandas.DataFrame):
             # drop 'extra' synthetic index for 1-field index case -
             # frames with more advanced indices should be prepared by user.
-            rows = rows.reset_index(
-                drop=len(rows.index.names) == 1 and not rows.index.names[0]
-            ).to_records(index=False)
+            rows = rows.reset_index(drop=len(rows.index.names) == 1 and not rows.index.names[0]).to_records(index=False)
 
         if isinstance(rows, Path):
             with open(rows, newline="") as data_file:
@@ -403,10 +374,7 @@ class Table(QueryExpression):
                 try:
                     raise DataJointError(
                         "Attribute %s not found. To ignore extra attributes in insert, "
-                        "set ignore_extra_fields=True."
-                        % next(
-                            name for name in rows.heading if name not in self.heading
-                        )
+                        "set ignore_extra_fields=True." % next(name for name in rows.heading if name not in self.heading)
                     )
                 except StopIteration:
                     pass
@@ -417,9 +385,7 @@ class Table(QueryExpression):
                 table=self.full_table_name,
                 select=rows.make_sql(fields),
                 duplicate=(
-                    " ON DUPLICATE KEY UPDATE `{pk}`={table}.`{pk}`".format(
-                        table=self.full_table_name, pk=self.primary_key[0]
-                    )
+                    " ON DUPLICATE KEY UPDATE `{pk}`={table}.`{pk}`".format(table=self.full_table_name, pk=self.primary_key[0])
                     if skip_duplicates
                     else ""
                 ),
@@ -429,43 +395,26 @@ class Table(QueryExpression):
 
         # collects the field list from first row (passed by reference)
         field_list = []
-        rows = list(
-            self.__make_row_to_insert(row, field_list, ignore_extra_fields)
-            for row in rows
-        )
+        rows = list(self.__make_row_to_insert(row, field_list, ignore_extra_fields) for row in rows)
         if rows:
             try:
                 query = "{command} INTO {destination}(`{fields}`) VALUES {placeholders}{duplicate}".format(
                     command="REPLACE" if replace else "INSERT",
                     destination=self.from_clause(),
                     fields="`,`".join(field_list),
-                    placeholders=",".join(
-                        "(" + ",".join(row["placeholders"]) + ")" for row in rows
-                    ),
+                    placeholders=",".join("(" + ",".join(row["placeholders"]) + ")" for row in rows),
                     duplicate=(
-                        " ON DUPLICATE KEY UPDATE `{pk}`=`{pk}`".format(
-                            pk=self.primary_key[0]
-                        )
-                        if skip_duplicates
-                        else ""
+                        " ON DUPLICATE KEY UPDATE `{pk}`=`{pk}`".format(pk=self.primary_key[0]) if skip_duplicates else ""
                     ),
                 )
                 self.connection.query(
                     query,
-                    args=list(
-                        itertools.chain.from_iterable(
-                            (v for v in r["values"] if v is not None) for r in rows
-                        )
-                    ),
+                    args=list(itertools.chain.from_iterable((v for v in r["values"] if v is not None) for r in rows)),
                 )
             except UnknownAttributeError as err:
-                raise err.suggest(
-                    "To ignore extra fields in insert, set ignore_extra_fields=True"
-                )
+                raise err.suggest("To ignore extra fields in insert, set ignore_extra_fields=True")
             except DuplicateError as err:
-                raise err.suggest(
-                    "To ignore duplicate entries in insert, set skip_duplicates=True"
-                )
+                raise err.suggest("To ignore duplicate entries in insert, set skip_duplicates=True")
 
     def delete_quick(self, get_count=False):
         """
@@ -474,11 +423,7 @@ class Table(QueryExpression):
         """
         query = "DELETE FROM " + self.full_table_name + self.where_clause()
         self.connection.query(query)
-        count = (
-            self.connection.query("SELECT ROW_COUNT()").fetchone()[0]
-            if get_count
-            else None
-        )
+        count = self.connection.query("SELECT ROW_COUNT()").fetchone()[0] if get_count else None
         self._log(query[:255])
         return count
 
@@ -529,18 +474,10 @@ class Table(QueryExpression):
                     match = match.groupdict()
                     # if schema name missing, use table
                     if "`.`" not in match["child"]:
-                        match["child"] = "{}.{}".format(
-                            table.full_table_name.split(".")[0], match["child"]
-                        )
-                    if (
-                        match["pk_attrs"] is not None
-                    ):  # fully matched, adjusting the keys
-                        match["fk_attrs"] = [
-                            k.strip("`") for k in match["fk_attrs"].split(",")
-                        ]
-                        match["pk_attrs"] = [
-                            k.strip("`") for k in match["pk_attrs"].split(",")
-                        ]
+                        match["child"] = "{}.{}".format(table.full_table_name.split(".")[0], match["child"])
+                    if match["pk_attrs"] is not None:  # fully matched, adjusting the keys
+                        match["fk_attrs"] = [k.strip("`") for k in match["fk_attrs"].split(",")]
+                        match["pk_attrs"] = [k.strip("`") for k in match["pk_attrs"].split(",")]
                     else:  # only partially matched, querying with constraint to determine keys
                         match["fk_attrs"], match["parent"], match["pk_attrs"] = list(
                             map(
@@ -550,10 +487,7 @@ class Table(QueryExpression):
                                         constraint_info_query,
                                         args=(
                                             match["name"].strip("`"),
-                                            *[
-                                                _.strip("`")
-                                                for _ in match["child"].split("`.`")
-                                            ],
+                                            *[_.strip("`") for _ in match["child"].split("`.`")],
                                         ),
                                     ).fetchall()
                                 ),
@@ -566,16 +500,11 @@ class Table(QueryExpression):
                     #   2. if child renames any attributes
                     # Otherwise restrict child by table's restriction.
                     child = FreeTable(table.connection, match["child"])
-                    if (
-                        set(table.restriction_attributes) <= set(child.primary_key)
-                        and match["fk_attrs"] == match["pk_attrs"]
-                    ):
+                    if set(table.restriction_attributes) <= set(child.primary_key) and match["fk_attrs"] == match["pk_attrs"]:
                         child._restriction = table._restriction
                         child._restriction_attributes = table.restriction_attributes
                     elif match["fk_attrs"] != match["pk_attrs"]:
-                        child &= table.proj(
-                            **dict(zip(match["fk_attrs"], match["pk_attrs"]))
-                        )
+                        child &= table.proj(**dict(zip(match["fk_attrs"], match["pk_attrs"])))
                     else:
                         child &= table.proj()
 
@@ -601,11 +530,7 @@ class Table(QueryExpression):
                         cascade(child)
                 else:
                     deleted.add(table.full_table_name)
-                    logger.info(
-                        "Deleting {count} rows from {table}".format(
-                            count=delete_count, table=table.full_table_name
-                        )
-                    )
+                    logger.info("Deleting {count} rows from {table}".format(count=delete_count, table=table.full_table_name))
                     break
             else:
                 raise DataJointError("Exceeded maximum number of delete attempts.")
@@ -642,8 +567,9 @@ class Table(QueryExpression):
                     if transaction:
                         self.connection.cancel_transaction()
                     raise DataJointError(
-                        "Attempt to delete part table {part} before deleting from "
-                        "its master {master} first.".format(part=part, master=master)
+                        "Attempt to delete part table {part} before deleting from its master {master} first.".format(
+                            part=part, master=master
+                        )
                     )
 
         # Confirm and commit
@@ -677,9 +603,7 @@ class Table(QueryExpression):
             logger.info("Dropped table %s" % self.full_table_name)
             self._log(query[:255])
         else:
-            logger.info(
-                "Nothing to drop: table %s is not declared" % self.full_table_name
-            )
+            logger.info("Nothing to drop: table %s is not declared" % self.full_table_name)
 
     def drop(self):
         """
@@ -688,31 +612,25 @@ class Table(QueryExpression):
         """
         if self.restriction:
             raise DataJointError(
-                "A table with an applied restriction cannot be dropped."
-                " Call drop() on the unrestricted Table."
+                "A table with an applied restriction cannot be dropped. Call drop() on the unrestricted Table."
             )
         self.connection.dependencies.load()
         do_drop = True
-        tables = [
-            table
-            for table in self.connection.dependencies.descendants(self.full_table_name)
-            if not table.isdigit()
-        ]
+        tables = [table for table in self.connection.dependencies.descendants(self.full_table_name) if not table.isdigit()]
 
         # avoid dropping part tables without their masters: See issue #374
         for part in tables:
             master = get_master(part)
             if master and master not in tables:
                 raise DataJointError(
-                    "Attempt to drop part table {part} before dropping "
-                    "its master. Drop {master} first.".format(part=part, master=master)
+                    "Attempt to drop part table {part} before dropping its master. Drop {master} first.".format(
+                        part=part, master=master
+                    )
                 )
 
         if config["safemode"]:
             for table in tables:
-                logger.info(
-                    table + " (%d tuples)" % len(FreeTable(self.connection, table))
-                )
+                logger.info(table + " (%d tuples)" % len(FreeTable(self.connection, table)))
             do_drop = user_choice("Proceed?", default="no") == "yes"
         if do_drop:
             for table in reversed(tables):
@@ -725,9 +643,7 @@ class Table(QueryExpression):
         :return: size of data and indices in bytes on the storage device
         """
         ret = self.connection.query(
-            'SHOW TABLE STATUS FROM `{database}` WHERE NAME="{table}"'.format(
-                database=self.database, table=self.table_name
-            ),
+            'SHOW TABLE STATUS FROM `{database}` WHERE NAME="{table}"'.format(database=self.database, table=self.table_name),
             as_dict=True,
         ).fetchone()
         return ret["Data_length"] + ret["Index_length"]
@@ -744,11 +660,7 @@ class Table(QueryExpression):
             self.connection.dependencies.load()
         parents = self.parents(foreign_key_info=True)
         in_key = True
-        definition = (
-            "# " + self.heading.table_status["comment"] + "\n"
-            if self.heading.table_status["comment"]
-            else ""
-        )
+        definition = "# " + self.heading.table_status["comment"] + "\n" if self.heading.table_status["comment"] else ""
         attributes_thus_far = set()
         attributes_declared = set()
         indexes = self.heading.indexes.copy()
@@ -769,51 +681,34 @@ class Table(QueryExpression):
                             index_props = ""
                         else:
                             index_props = [k for k, v in index_props.items() if v]
-                            index_props = (
-                                " [{}]".format(", ".join(index_props))
-                                if index_props
-                                else ""
-                            )
+                            index_props = " [{}]".format(", ".join(index_props)) if index_props else ""
 
                         if not fk_props["aliased"]:
                             # simple foreign key
                             definition += "->{props} {class_name}\n".format(
                                 props=index_props,
-                                class_name=lookup_class_name(parent_name, context)
-                                or parent_name,
+                                class_name=lookup_class_name(parent_name, context) or parent_name,
                             )
                         else:
                             # projected foreign key
-                            definition += (
-                                "->{props} {class_name}.proj({proj_list})\n".format(
-                                    props=index_props,
-                                    class_name=lookup_class_name(parent_name, context)
-                                    or parent_name,
-                                    proj_list=",".join(
-                                        '{}="{}"'.format(attr, ref)
-                                        for attr, ref in fk_props["attr_map"].items()
-                                        if ref != attr
-                                    ),
-                                )
+                            definition += "->{props} {class_name}.proj({proj_list})\n".format(
+                                props=index_props,
+                                class_name=lookup_class_name(parent_name, context) or parent_name,
+                                proj_list=",".join(
+                                    '{}="{}"'.format(attr, ref) for attr, ref in fk_props["attr_map"].items() if ref != attr
+                                ),
                             )
                             attributes_declared.update(fk_props["attr_map"])
             if do_include:
                 attributes_declared.add(attr.name)
                 definition += "%-20s : %-28s %s\n" % (
-                    (
-                        attr.name
-                        if attr.default is None
-                        else "%s=%s" % (attr.name, attr.default)
-                    ),
-                    "%s%s"
-                    % (attr.type, " auto_increment" if attr.autoincrement else ""),
+                    (attr.name if attr.default is None else "%s=%s" % (attr.name, attr.default)),
+                    "%s%s" % (attr.type, " auto_increment" if attr.autoincrement else ""),
                     "# " + attr.comment if attr.comment else "",
                 )
         # add remaining indexes
         for k, v in indexes.items():
-            definition += "{unique}INDEX ({attrs})\n".format(
-                unique="UNIQUE " if v["unique"] else "", attrs=", ".join(k)
-            )
+            definition += "{unique}INDEX ({attrs})\n".format(unique="UNIQUE " if v["unique"] else "", attrs=", ".join(k))
         if printout:
             logger.info("\n" + definition)
         return definition
@@ -843,35 +738,19 @@ class Table(QueryExpression):
                     try:
                         value = uuid.UUID(value)
                     except (AttributeError, ValueError):
-                        raise DataJointError(
-                            "badly formed UUID value {v} for attribute `{n}`".format(
-                                v=value, n=name
-                            )
-                        )
+                        raise DataJointError("badly formed UUID value {v} for attribute `{n}`".format(v=value, n=name))
                 value = value.bytes
             elif attr.is_blob:
                 value = blob.pack(value)
-                value = (
-                    self.external[attr.store].put(value).bytes
-                    if attr.is_external
-                    else value
-                )
+                value = self.external[attr.store].put(value).bytes if attr.is_external else value
             elif attr.is_attachment:
                 attachment_path = Path(value)
                 if attr.is_external:
                     # value is hash of contents
-                    value = (
-                        self.external[attr.store]
-                        .upload_attachment(attachment_path)
-                        .bytes
-                    )
+                    value = self.external[attr.store].upload_attachment(attachment_path).bytes
                 else:
                     # value is filename + contents
-                    value = (
-                        str.encode(attachment_path.name)
-                        + b"\0"
-                        + attachment_path.read_bytes()
-                    )
+                    value = str.encode(attachment_path.name) + b"\0" + attachment_path.read_bytes()
             elif attr.is_filepath:
                 value = self.external[attr.store].upload_filepath(value).bytes
             elif attr.numeric:
@@ -898,9 +777,7 @@ class Table(QueryExpression):
                 if not ignore_extra_fields:
                     for field in fields:
                         if field not in self.heading:
-                            raise KeyError(
-                                "`{0:s}` is not in the table heading".format(field)
-                            )
+                            raise KeyError("`{0:s}` is not in the table heading".format(field))
             elif set(field_list) != set(fields).intersection(self.heading.names):
                 raise DataJointError("Attempt to insert rows with different fields.")
 
@@ -914,16 +791,13 @@ class Table(QueryExpression):
         elif isinstance(row, collections.abc.Mapping):  # dict-based
             check_fields(row)
             attributes = [
-                self.__make_placeholder(name, row[name], ignore_extra_fields)
-                for name in self.heading
-                if name in row
+                self.__make_placeholder(name, row[name], ignore_extra_fields) for name in self.heading if name in row
             ]
         else:  # positional
             try:
                 if len(row) != len(self.heading):
                     raise DataJointError(
-                        "Invalid insert argument. Incorrect number of attributes: "
-                        "{given} given; {expected} expected".format(
+                        "Invalid insert argument. Incorrect number of attributes: {given} given; {expected} expected".format(
                             given=len(row), expected=len(self.heading)
                         )
                     )
@@ -931,8 +805,7 @@ class Table(QueryExpression):
                 raise DataJointError("Datatype %s cannot be inserted" % type(row))
             else:
                 attributes = [
-                    self.__make_placeholder(name, value, ignore_extra_fields)
-                    for name, value in zip(self.heading, row)
+                    self.__make_placeholder(name, value, ignore_extra_fields) for name, value in zip(self.heading, row)
                 ]
         if ignore_extra_fields:
             attributes = [a for a in attributes if a is not None]
@@ -946,9 +819,7 @@ class Table(QueryExpression):
             #  reorder attributes in row_to_insert to match field_list
             order = list(row_to_insert["names"].index(field) for field in field_list)
             row_to_insert["names"] = list(row_to_insert["names"][i] for i in order)
-            row_to_insert["placeholders"] = list(
-                row_to_insert["placeholders"][i] for i in order
-            )
+            row_to_insert["placeholders"] = list(row_to_insert["placeholders"][i] for i in order)
             row_to_insert["values"] = list(row_to_insert["values"][i] for i in order)
         return row_to_insert
 
@@ -977,24 +848,10 @@ def lookup_class_name(name, context, depth=3):
                     except AttributeError:
                         pass  # not a UserTable -- cannot have part tables.
                     else:
-                        for part in (
-                            getattr(member, p)
-                            for p in parts
-                            if p[0].isupper() and hasattr(member, p)
-                        ):
-                            if (
-                                inspect.isclass(part)
-                                and issubclass(part, Table)
-                                and part.full_table_name == name
-                            ):
-                                return ".".join(
-                                    [node["context_name"], member_name, part.__name__]
-                                ).lstrip(".")
-                elif (
-                    node["depth"] > 0
-                    and inspect.ismodule(member)
-                    and member.__name__ != "datajoint"
-                ):
+                        for part in (getattr(member, p) for p in parts if p[0].isupper() and hasattr(member, p)):
+                            if inspect.isclass(part) and issubclass(part, Table) and part.full_table_name == name:
+                                return ".".join([node["context_name"], member_name, part.__name__]).lstrip(".")
+                elif node["depth"] > 0 and inspect.ismodule(member) and member.__name__ != "datajoint":
                     try:
                         nodes.append(
                             dict(
@@ -1018,9 +875,7 @@ class FreeTable(Table):
     """
 
     def __init__(self, conn, full_table_name):
-        self.database, self._table_name = (
-            s.strip("`") for s in full_table_name.split(".")
-        )
+        self.database, self._table_name = (s.strip("`") for s in full_table_name.split("."))
         self._connection = conn
         self._support = [full_table_name]
         self._heading = Heading(
@@ -1033,10 +888,7 @@ class FreeTable(Table):
         )
 
     def __repr__(self):
-        return (
-            "FreeTable(`%s`.`%s`)\n" % (self.database, self._table_name)
-            + super().__repr__()
-        )
+        return "FreeTable(`%s`.`%s`)\n" % (self.database, self._table_name) + super().__repr__()
 
 
 class Log(Table):
@@ -1053,11 +905,7 @@ class Log(Table):
         self.database = database
         self.skip_logging = skip_logging
         self._connection = conn
-        self._heading = Heading(
-            table_info=dict(
-                conn=conn, database=database, table_name=self.table_name, context=None
-            )
-        )
+        self._heading = Heading(table_info=dict(conn=conn, database=database, table_name=self.table_name, context=None))
         self._support = [self.full_table_name]
 
         self._definition = """    # event logging table for `{database}`
@@ -1068,9 +916,7 @@ class Log(Table):
         user     :varchar(255)                    # user@host
         host=""  :varchar(255)                    # system hostname
         event="" :varchar(255)                    # event message
-        """.format(
-            database=database
-        )
+        """.format(database=database)
 
         super().__init__()
 
