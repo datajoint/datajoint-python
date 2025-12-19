@@ -28,7 +28,7 @@ def arr_a():
 @pytest.fixture
 def schema_nan_pop(schema_nan, arr_a):
     rel = NanTest()
-    with dj.config(safemode=False):
+    with dj.config.override(safemode=False):
         rel.delete()
     rel.insert(((i, value) for i, value in enumerate(arr_a)))
     return schema_nan
