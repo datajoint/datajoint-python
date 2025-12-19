@@ -2,35 +2,47 @@
 DataJoint Settings using pydantic-settings.
 
 This module provides a strongly-typed configuration system for DataJoint.
-Settings can be configured via:
-1. Environment variables (prefixed with DJ_)
-2. Configuration files (dj_local_conf.json or ~/.datajoint_config.json)
-3. Direct attribute assignment
+
+Configuration sources (in priority order):
+1. Environment variables (DJ_*)
+2. Secrets directories (.secrets/ in project, /run/secrets/datajoint/)
+3. Project config file (datajoint.json, searched recursively up to .git/.hg)
 
 Example usage:
     >>> import datajoint as dj
-    >>> dj.config.database.host = "localhost"
-    >>> dj.config.database.port = 3306
+    >>> dj.config.database.host
+    'localhost'
     >>> with dj.config.override(safemode=False):
     ...     # dangerous operations here
+
+Project structure:
+    myproject/
+    ├── .git/
+    ├── datajoint.json      # Project config (commit this)
+    ├── .secrets/           # Local secrets (gitignore this)
+    │   ├── database.password
+    │   └── aws.secret_access_key
+    └── src/
+        └── analysis.py     # Config found via parent search
 """
 
 import json
 import logging
-import os
+import warnings
 from contextlib import contextmanager
 from copy import deepcopy
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Iterator, Literal, Optional, Tuple, Union
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .errors import DataJointError
 
-LOCALCONFIG = "dj_local_conf.json"
-GLOBALCONFIG = ".datajoint_config.json"
+CONFIG_FILENAME = "datajoint.json"
+SECRETS_DIRNAME = ".secrets"
+SYSTEM_SECRETS_DIR = Path("/run/secrets/datajoint")
 DEFAULT_SUBFOLDING = (2, 2)
 
 Role = Enum("Role", "manual lookup imported computed job")
@@ -46,6 +58,85 @@ prefix_to_role = dict(zip(role_to_prefix.values(), role_to_prefix))
 logger = logging.getLogger(__name__.split(".")[0])
 
 
+def find_config_file(start: Optional[Path] = None) -> Optional[Path]:
+    """
+    Search for datajoint.json in current and parent directories.
+
+    Searches upward from `start` (default: cwd) until finding the config file
+    or hitting a project boundary (.git, .hg) or filesystem root.
+
+    Args:
+        start: Directory to start search from. Defaults to current working directory.
+
+    Returns:
+        Path to config file if found, None otherwise.
+    """
+    current = (start or Path.cwd()).resolve()
+
+    while True:
+        config_path = current / CONFIG_FILENAME
+        if config_path.is_file():
+            return config_path
+
+        # Stop at project/repo root
+        if (current / ".git").exists() or (current / ".hg").exists():
+            return None
+
+        # Stop at filesystem root
+        if current == current.parent:
+            return None
+
+        current = current.parent
+
+
+def find_secrets_dir(config_path: Optional[Path] = None) -> Optional[Path]:
+    """
+    Find the secrets directory.
+
+    Priority:
+    1. .secrets/ in same directory as datajoint.json (project secrets)
+    2. /run/secrets/datajoint/ (Docker/Kubernetes secrets)
+
+    Args:
+        config_path: Path to datajoint.json if found.
+
+    Returns:
+        Path to secrets directory if found, None otherwise.
+    """
+    # Check project secrets directory (next to config file)
+    if config_path is not None:
+        project_secrets = config_path.parent / SECRETS_DIRNAME
+        if project_secrets.is_dir():
+            return project_secrets
+
+    # Check system secrets directory (Docker/Kubernetes)
+    if SYSTEM_SECRETS_DIR.is_dir():
+        return SYSTEM_SECRETS_DIR
+
+    return None
+
+
+def read_secret_file(secrets_dir: Optional[Path], name: str) -> Optional[str]:
+    """
+    Read a secret value from a file in the secrets directory.
+
+    Args:
+        secrets_dir: Path to secrets directory.
+        name: Name of the secret file (e.g., 'database.password').
+
+    Returns:
+        Secret value as string, or None if not found.
+    """
+    if secrets_dir is None:
+        return None
+
+    secret_path = secrets_dir / name
+    if secret_path.is_file():
+        return secret_path.read_text().strip()
+
+    return None
+
+
 class DatabaseSettings(BaseSettings):
     """Database connection settings."""
 
@@ -58,7 +149,7 @@ class DatabaseSettings(BaseSettings):
 
     host: str = Field(default="localhost", validation_alias="DJ_HOST")
     user: Optional[str] = Field(default=None, validation_alias="DJ_USER")
-    password: Optional[str] = Field(default=None, validation_alias="DJ_PASS")
+    password: Optional[SecretStr] = Field(default=None, validation_alias="DJ_PASS")
     port: int = Field(default=3306, validation_alias="DJ_PORT")
     reconnect: bool = True
     use_tls: Optional[bool] = None
@@ -96,43 +187,20 @@ class ExternalSettings(BaseSettings):
     aws_access_key_id: Optional[str] = Field(
         default=None, validation_alias="DJ_AWS_ACCESS_KEY_ID"
     )
-    aws_secret_access_key: Optional[str] = Field(
+    aws_secret_access_key: Optional[SecretStr] = Field(
         default=None, validation_alias="DJ_AWS_SECRET_ACCESS_KEY"
     )
-
-
-class StoreSpec(BaseSettings):
-    """Configuration for an external store."""
-
-    model_config = SettingsConfigDict(extra="forbid")
-
-    protocol: Literal["file", "s3"]
-    location: str
-    subfolding: Tuple[int, ...] = DEFAULT_SUBFOLDING
-    stage: Optional[str] = None
-
-    # S3-specific fields
-    endpoint: Optional[str] = None
-    bucket: Optional[str] = None
-    access_key: Optional[str] = None
-    secret_key: Optional[str] = None
-    secure: bool = True
-    proxy_server: Optional[str] = None
-
-    @model_validator(mode="after")
-    def validate_s3_fields(self) -> "StoreSpec":
-        """Ensure S3-specific fields are provided for S3 protocol."""
-        if self.protocol == "s3":
-            required = ["endpoint", "bucket", "access_key", "secret_key"]
-            missing = [f for f in required if getattr(self, f) is None]
-            if missing:
-                raise ValueError(f"S3 store requires: {', '.join(missing)}")
-        return self
 
 
 class Config(BaseSettings):
     """
     Main DataJoint configuration.
+
+    Settings are loaded from (in priority order):
+    1. Environment variables (DJ_*)
+    2. Secrets directory (.secrets/ or /run/secrets/datajoint/)
+    3. Config file (datajoint.json, searched in parent directories)
+    4. Default values
 
     Access settings via attributes:
         >>> config.database.host
@@ -172,6 +240,10 @@ class Config(BaseSettings):
     # Cache paths
     cache: Optional[Path] = None
     query_cache: Optional[Path] = None
+
+    # Internal: track where config was loaded from
+    _config_path: Optional[Path] = None
+    _secrets_dir: Optional[Path] = None
 
     @field_validator("loglevel", mode="after")
     @classmethod
@@ -243,38 +315,35 @@ class Config(BaseSettings):
 
         return spec
 
-    def save(self, filename: Union[str, Path], verbose: bool = False) -> None:
+    def save(self, filename: Optional[Union[str, Path]] = None, verbose: bool = False) -> None:
         """
         Save settings to a JSON file.
 
         Args:
-            filename: Path to save the configuration
-            verbose: If True, log the save operation
+            filename: Path to save the configuration. Defaults to datajoint.json in cwd.
+            verbose: If True, log the save operation.
         """
+        if filename is None:
+            filename = Path.cwd() / CONFIG_FILENAME
+
         data = self._to_flat_dict()
+        # Remove secrets from saved config
+        secrets_keys = ["database.password", "external.aws_secret_access_key"]
+        for key in secrets_keys:
+            data.pop(key, None)
+
         with open(filename, "w") as f:
             json.dump(data, f, indent=4, default=str)
         if verbose:
             logger.info(f"Saved settings to {filename}")
 
-    def save_local(self, verbose: bool = False) -> None:
-        """Save settings to local config file (dj_local_conf.json)."""
-        self.save(LOCALCONFIG, verbose)
-
-    def save_global(self, verbose: bool = False) -> None:
-        """Save settings to global config file (~/.datajoint_config.json)."""
-        self.save(Path.home() / GLOBALCONFIG, verbose)
-
-    def load(self, filename: Union[str, Path, None] = None) -> None:
+    def load(self, filename: Union[str, Path]) -> None:
         """
         Load settings from a JSON file.
 
         Args:
-            filename: Path to load configuration from. If None, uses LOCALCONFIG.
+            filename: Path to load configuration from.
         """
-        if filename is None:
-            filename = LOCALCONFIG
-
         filepath = Path(filename)
         if not filepath.exists():
             raise FileNotFoundError(f"Config file not found: {filepath}")
@@ -285,6 +354,7 @@ class Config(BaseSettings):
             data = json.load(f)
 
         self._update_from_flat_dict(data)
+        self._config_path = filepath
 
     def _to_flat_dict(self) -> Dict[str, Any]:
         """Convert settings to flat dict with dot notation keys."""
@@ -293,10 +363,14 @@ class Config(BaseSettings):
         def flatten(obj: Any, prefix: str = "") -> None:
             if isinstance(obj, BaseSettings):
                 for name in obj.model_fields:
+                    if name.startswith("_"):
+                        continue
                     value = getattr(obj, name)
                     key = f"{prefix}.{name}" if prefix else name
                     if isinstance(value, BaseSettings):
                         flatten(value, key)
+                    elif isinstance(value, SecretStr):
+                        result[key] = value.get_secret_value() if value else None
                     elif isinstance(value, Path):
                         result[key] = str(value)
                     else:
@@ -312,7 +386,7 @@ class Config(BaseSettings):
         for key, value in data.items():
             parts = key.split(".")
             if len(parts) == 1:
-                if hasattr(self, key):
+                if hasattr(self, key) and not key.startswith("_"):
                     setattr(self, key, value)
             elif len(parts) == 2:
                 group, attr = parts
@@ -320,6 +394,27 @@ class Config(BaseSettings):
                     group_obj = getattr(self, group)
                     if hasattr(group_obj, attr):
                         setattr(group_obj, attr, value)
+
+    def _load_secrets(self, secrets_dir: Path) -> None:
+        """Load secrets from a secrets directory."""
+        self._secrets_dir = secrets_dir
+
+        # Map of secret file names to config paths
+        secret_mappings = {
+            "database.password": ("database", "password"),
+            "database.user": ("database", "user"),
+            "aws.access_key_id": ("external", "aws_access_key_id"),
+            "aws.secret_access_key": ("external", "aws_secret_access_key"),
+        }
+
+        for secret_name, (group, attr) in secret_mappings.items():
+            value = read_secret_file(secrets_dir, secret_name)
+            if value is not None:
+                group_obj = getattr(self, group)
+                # Only set if not already set by env var
+                if getattr(group_obj, attr) is None:
+                    setattr(group_obj, attr, value)
+                    logger.debug(f"Loaded secret '{secret_name}' from {secrets_dir}")
 
     @contextmanager
     def override(self, **kwargs: Any) -> Iterator["Config"]:
@@ -378,7 +473,7 @@ class Config(BaseSettings):
                     group, attr = key_parts
                     setattr(getattr(self, group), attr, original)
 
-    # Backward compatibility: dict-like access
+    # Dict-like access for convenience
     def __getitem__(self, key: str) -> Any:
         """Get setting by dot-notation key (e.g., 'database.host')."""
         parts = key.split(".")
@@ -390,6 +485,9 @@ class Config(BaseSettings):
                 obj = obj[part]
             else:
                 raise KeyError(f"Setting '{key}' not found")
+        # Unwrap SecretStr for compatibility
+        if isinstance(obj, SecretStr):
+            return obj.get_secret_value()
         return obj
 
     def __setitem__(self, key: str, value: Any) -> None:
@@ -418,21 +516,25 @@ def _create_config() -> Config:
     """Create and initialize the global config instance."""
     cfg = Config()
 
-    # Try to load from config file
-    config_paths = [
-        Path(LOCALCONFIG),
-        Path.home() / GLOBALCONFIG,
-    ]
+    # Find config file (recursive parent search)
+    config_path = find_config_file()
 
-    for path in config_paths:
-        if path.exists():
-            try:
-                cfg.load(path)
-                break
-            except Exception as e:
-                logger.warning(f"Failed to load config from {path}: {e}")
+    if config_path is not None:
+        try:
+            cfg.load(config_path)
+        except Exception as e:
+            warnings.warn(f"Failed to load config from {config_path}: {e}")
     else:
-        logger.debug("No config file found, using defaults and environment variables")
+        warnings.warn(
+            f"No {CONFIG_FILENAME} found. Using defaults and environment variables. "
+            f"Create {CONFIG_FILENAME} in your project root to configure DataJoint.",
+            stacklevel=2,
+        )
+
+    # Find and load secrets
+    secrets_dir = find_secrets_dir(config_path)
+    if secrets_dir is not None:
+        cfg._load_secrets(secrets_dir)
 
     # Set initial log level
     logger.setLevel(cfg.loglevel)
