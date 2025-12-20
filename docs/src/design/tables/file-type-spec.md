@@ -85,6 +85,7 @@ For local filesystem storage:
 | `object_storage.bucket` | string | For cloud | Bucket name (S3, GCS, Azure) |
 | `object_storage.endpoint` | string | For S3 | S3 endpoint URL |
 | `object_storage.partition_pattern` | string | No | Path pattern with `{attribute}` placeholders |
+| `object_storage.hash_length` | int | No | Random suffix length for filenames (default: 8, range: 4-16) |
 | `object_storage.access_key` | string | For cloud | Access key (can use secrets file) |
 | `object_storage.secret_key` | string | For cloud | Secret key (can use secrets file) |
 
@@ -149,7 +150,7 @@ The `file` type is stored as a `JSON` column in MySQL containing:
 
 ```json
 {
-    "path": "subject123/session45/schema_name/objects/Recording-raw_data/recording.dat",
+    "path": "subject123/session45/schema_name/objects/Recording-raw_data/recording_Ax7bQ2kM.dat",
     "size": 12345,
     "hash": "sha256:abcdef1234...",
     "original_name": "recording.dat",
@@ -178,14 +179,40 @@ DataJoint generates storage paths using:
 3. **Schema name** - from the table's schema
 4. **Object directory** - `objects/`
 5. **Table-field identifier** - `{TableName}-{field_name}/`
-6. **Primary key hash** - unique identifier for the record
-7. **Original filename** - preserved from insert
+6. **Suffixed filename** - original name with random hash suffix
 
 Example path construction:
 
 ```
-{location}/{partition}/{schema}/objects/{Table}-{field}/{pk_hash}/{original_name}
+{location}/{partition}/{schema}/objects/{Table}-{field}/{basename}_{hash}.{ext}
 ```
+
+### Filename Collision Avoidance
+
+To prevent filename collisions, each stored file receives a **random hash suffix** appended to its basename:
+
+```
+original: recording.dat
+stored:   recording_Ax7bQ2kM.dat
+
+original: image.analysis.tiff
+stored:   image.analysis_pL9nR4wE.tiff
+```
+
+#### Hash Suffix Specification
+
+- **Alphabet**: URL-safe and filename-safe Base64 characters: `A-Z`, `a-z`, `0-9`, `-`, `_`
+- **Length**: Configurable via `object_storage.hash_length` (default: 8, range: 4-16)
+- **Generation**: Cryptographically random using `secrets.token_urlsafe()`
+
+At 8 characters with 64 possible values per character: 64^8 = 281 trillion combinations.
+
+#### Rationale
+
+- Avoids collisions without requiring existence checks
+- Preserves original filename for human readability
+- URL-safe for web-based access to cloud storage
+- Filesystem-safe across all supported platforms
 
 ### No Deduplication
 
@@ -224,10 +251,62 @@ with open("/local/path/data.bin", "rb") as f:
 1. Resolve storage backend from pipeline configuration
 2. Read file content (from path or stream)
 3. Compute content hash (SHA-256)
-4. Generate storage path using partition pattern and primary key
+4. Generate storage path with random suffix
 5. Upload file to storage backend via `fsspec`
 6. Build JSON metadata structure
 7. Store JSON in database column
+
+## Transaction Handling
+
+File uploads and database inserts must be coordinated to maintain consistency. Since storage backends don't support distributed transactions with MySQL, DataJoint uses a **upload-first** strategy with cleanup on failure.
+
+### Insert Transaction Flow
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ 1. Validate input and generate storage path             │
+├─────────────────────────────────────────────────────────┤
+│ 2. Upload file to storage backend                       │
+│    └─ On failure: raise error (nothing to clean up)     │
+├─────────────────────────────────────────────────────────┤
+│ 3. Build JSON metadata with storage path                │
+├─────────────────────────────────────────────────────────┤
+│ 4. Execute database INSERT                              │
+│    └─ On failure: delete uploaded file, raise error     │
+├─────────────────────────────────────────────────────────┤
+│ 5. Commit database transaction                          │
+│    └─ On failure: delete uploaded file, raise error     │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Failure Scenarios
+
+| Scenario | State Before | Recovery Action | Result |
+|----------|--------------|-----------------|--------|
+| Upload fails | No file, no record | None needed | Clean failure |
+| DB insert fails | File exists, no record | Delete file | Clean failure |
+| DB commit fails | File exists, no record | Delete file | Clean failure |
+| Cleanup fails | File exists, no record | Log warning | Orphaned file |
+
+### Orphaned File Handling
+
+In rare cases (e.g., process crash, network failure during cleanup), orphaned files may remain in storage. These can be identified and cleaned:
+
+```python
+# Future utility method
+schema.external_storage.find_orphaned()  # List files not referenced in DB
+schema.external_storage.cleanup_orphaned()  # Delete orphaned files
+```
+
+### Batch Insert Handling
+
+For batch inserts with multiple `file` attributes:
+
+1. Upload all files first (collect paths)
+2. Execute batch INSERT with all metadata
+3. On any failure: delete all uploaded files from this batch
+
+This ensures atomicity at the batch level - either all records are inserted with their files, or none are.
 
 ## Fetch Behavior
 
@@ -275,6 +354,7 @@ class ObjectStorageSettings(BaseSettings):
     bucket: str | None = None
     endpoint: str | None = None
     partition_pattern: str | None = None
+    hash_length: int = Field(default=8, ge=4, le=16)
     access_key: str | None = None
     secret_key: SecretStr | None = None
 ```
