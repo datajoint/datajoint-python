@@ -77,6 +77,40 @@ sending/receiving an opaque data file to/from a DataJoint pipeline.
 - `filepath@store`: a [filepath](filepath.md) used to link non-DataJoint managed files
 into a DataJoint pipeline.
 
+## Numeric type aliases
+
+DataJoint provides convenient type aliases that map to standard MySQL numeric types.
+These aliases use familiar naming conventions from NumPy and other numerical computing
+libraries, making table definitions more readable and explicit about data precision.
+
+| Alias | MySQL Type | Description |
+|-------|------------|-------------|
+| `int8` | `tinyint` | 8-bit signed integer (-128 to 127) |
+| `uint8` | `tinyint unsigned` | 8-bit unsigned integer (0 to 255) |
+| `int16` | `smallint` | 16-bit signed integer (-32,768 to 32,767) |
+| `uint16` | `smallint unsigned` | 16-bit unsigned integer (0 to 65,535) |
+| `int32` | `int` | 32-bit signed integer |
+| `uint32` | `int unsigned` | 32-bit unsigned integer |
+| `int64` | `bigint` | 64-bit signed integer |
+| `uint64` | `bigint unsigned` | 64-bit unsigned integer |
+| `float32` | `float` | 32-bit single-precision floating point |
+| `float64` | `double` | 64-bit double-precision floating point |
+
+Example usage:
+
+```python
+@schema
+class Measurement(dj.Manual):
+    definition = """
+    measurement_id : int
+    ---
+    temperature : float32       # single-precision temperature reading
+    precise_value : float64     # double-precision measurement
+    sample_count : uint32       # unsigned 32-bit counter
+    sensor_flags : uint8        # 8-bit status flags
+    """
+```
+
 ## Datatypes not (yet) supported
 
 -  `binary`
