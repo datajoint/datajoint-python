@@ -311,28 +311,6 @@ class Config(BaseSettings):
 
         return spec
 
-    def save(self, filename: Optional[Union[str, Path]] = None, verbose: bool = False) -> None:
-        """
-        Save settings to a JSON file.
-
-        Args:
-            filename: Path to save the configuration. Defaults to datajoint.json in cwd.
-            verbose: If True, log the save operation.
-        """
-        if filename is None:
-            filename = Path.cwd() / CONFIG_FILENAME
-
-        data = self._to_flat_dict()
-        # Remove secrets from saved config
-        secrets_keys = ["database.password", "external.aws_secret_access_key"]
-        for key in secrets_keys:
-            data.pop(key, None)
-
-        with open(filename, "w") as f:
-            json.dump(data, f, indent=4, default=str)
-        if verbose:
-            logger.info(f"Saved settings to {filename}")
-
     def load(self, filename: Union[str, Path]) -> None:
         """
         Load settings from a JSON file.
@@ -351,31 +329,6 @@ class Config(BaseSettings):
 
         self._update_from_flat_dict(data)
         self._config_path = filepath
-
-    def _to_flat_dict(self) -> Dict[str, Any]:
-        """Convert settings to flat dict with dot notation keys."""
-        result: Dict[str, Any] = {}
-
-        def flatten(obj: Any, prefix: str = "") -> None:
-            if isinstance(obj, BaseSettings):
-                for name in obj.model_fields:
-                    if name.startswith("_"):
-                        continue
-                    value = getattr(obj, name)
-                    key = f"{prefix}.{name}" if prefix else name
-                    if isinstance(value, BaseSettings):
-                        flatten(value, key)
-                    elif isinstance(value, SecretStr):
-                        result[key] = value.get_secret_value() if value else None
-                    elif isinstance(value, Path):
-                        result[key] = str(value)
-                    else:
-                        result[key] = value
-            elif isinstance(obj, dict):
-                result[prefix] = obj
-
-        flatten(self)
-        return result
 
     def _update_from_flat_dict(self, data: Dict[str, Any]) -> None:
         """Update settings from a flat dict with dot notation keys."""

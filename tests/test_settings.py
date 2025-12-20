@@ -1,6 +1,5 @@
 """Tests for DataJoint settings module."""
 
-import json
 from pathlib import Path
 
 import pytest
@@ -245,50 +244,25 @@ class TestContextManager:
         assert dj.config.safemode == original
 
 
-class TestSaveLoad:
-    """Test saving and loading configuration."""
+class TestLoad:
+    """Test loading configuration."""
 
-    def test_save_and_load(self, tmp_path):
-        """Test saving and loading configuration."""
+    def test_load_config_file(self, tmp_path):
+        """Test loading configuration from file."""
         filename = tmp_path / "test_config.json"
+        filename.write_text('{"database": {"host": "loaded_host"}}')
         original_host = dj.config.database.host
 
         try:
-            dj.config.database.host = "saved_host"
-            dj.config.save(filename)
-            dj.config.database.host = "reset_host"
             dj.config.load(filename)
-
-            assert dj.config.database.host == "saved_host"
+            assert dj.config.database.host == "loaded_host"
         finally:
             dj.config.database.host = original_host
-
-    def test_save_excludes_secrets(self, tmp_path):
-        """Test that save() excludes secret values."""
-        filename = tmp_path / "test_config.json"
-        original_password = dj.config.database.password
-
-        try:
-            dj.config.database.password = "should_not_save"
-            dj.config.save(filename)
-
-            with open(filename) as f:
-                saved = json.load(f)
-
-            assert "database.password" not in saved
-        finally:
-            dj.config.database.password = original_password
 
     def test_load_nonexistent_file(self):
         """Test loading nonexistent file raises FileNotFoundError."""
         with pytest.raises(FileNotFoundError):
             dj.config.load("/nonexistent/path/config.json")
-
-    def test_save_default_filename(self, tmp_path, monkeypatch):
-        """Test save() uses datajoint.json in cwd by default."""
-        monkeypatch.chdir(tmp_path)
-        dj.config.save()
-        assert (tmp_path / CONFIG_FILENAME).exists()
 
 
 class TestStoreSpec:
