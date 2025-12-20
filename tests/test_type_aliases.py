@@ -4,7 +4,7 @@ Tests for numeric type aliases (float32, float64, int8, int16, int32, int64, etc
 
 import pytest
 
-from datajoint.declare import TYPE_ALIASES, TYPE_PATTERN, SPECIAL_TYPES, match_type
+from datajoint.declare import TYPE_ALIASES, SPECIAL_TYPES, match_type
 
 from .schema_type_aliases import TypeAliasTable, TypeAliasPrimaryKey, TypeAliasNullable
 
