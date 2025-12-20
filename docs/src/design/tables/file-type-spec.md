@@ -433,13 +433,23 @@ Orphaned files (files in storage without corresponding database records) may acc
 **This is acceptable** because:
 - Random tokens prevent collisions with future inserts
 - Orphaned files can be identified by comparing storage contents with database records
-- Cleanup utilities can remove orphaned files periodically
+- A separate cleanup procedure removes orphaned files during maintenance
+
+### Orphan Cleanup Procedure
+
+Orphan cleanup is a **separate maintenance operation** that must be performed during maintenance windows to avoid race conditions with concurrent inserts.
 
 ```python
-# Future utility methods
+# Maintenance utility methods
 schema.file_storage.find_orphaned()     # List files not referenced in DB
 schema.file_storage.cleanup_orphaned()  # Delete orphaned files
 ```
+
+**Important considerations:**
+- Should be run during low-activity periods
+- Uses transactions or locking to avoid race conditions with concurrent inserts
+- Files recently uploaded (within a grace period) are excluded to handle in-flight inserts
+- Provides dry-run mode to preview deletions before execution
 
 ## Fetch Behavior
 
