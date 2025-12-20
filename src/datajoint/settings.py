@@ -184,12 +184,8 @@ class ExternalSettings(BaseSettings):
         validate_assignment=True,
     )
 
-    aws_access_key_id: Optional[str] = Field(
-        default=None, validation_alias="DJ_AWS_ACCESS_KEY_ID"
-    )
-    aws_secret_access_key: Optional[SecretStr] = Field(
-        default=None, validation_alias="DJ_AWS_SECRET_ACCESS_KEY"
-    )
+    aws_access_key_id: Optional[str] = Field(default=None, validation_alias="DJ_AWS_ACCESS_KEY_ID")
+    aws_secret_access_key: Optional[SecretStr] = Field(default=None, validation_alias="DJ_AWS_SECRET_ACCESS_KEY")
 
 
 class Config(BaseSettings):
@@ -225,9 +221,7 @@ class Config(BaseSettings):
     external: ExternalSettings = Field(default_factory=ExternalSettings)
 
     # Top-level settings
-    loglevel: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(
-        default="INFO", validation_alias="DJ_LOG_LEVEL"
-    )
+    loglevel: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(default="INFO", validation_alias="DJ_LOG_LEVEL")
     safemode: bool = True
     fetch_format: Literal["array", "frame"] = "array"
     enable_python_native_blobs: bool = True
@@ -282,9 +276,7 @@ class Config(BaseSettings):
         # Validate protocol
         protocol = spec.get("protocol", "").lower()
         if protocol not in ("file", "s3"):
-            raise DataJointError(
-                f'Missing or invalid protocol in config.stores["{store}"]'
-            )
+            raise DataJointError(f'Missing or invalid protocol in config.stores["{store}"]')
 
         # Define required and allowed keys by protocol
         required_keys: Dict[str, Tuple[str, ...]] = {
@@ -294,24 +286,28 @@ class Config(BaseSettings):
         allowed_keys: Dict[str, Tuple[str, ...]] = {
             "file": ("protocol", "location", "subfolding", "stage"),
             "s3": (
-                "protocol", "endpoint", "bucket", "access_key", "secret_key",
-                "location", "secure", "subfolding", "stage", "proxy_server",
+                "protocol",
+                "endpoint",
+                "bucket",
+                "access_key",
+                "secret_key",
+                "location",
+                "secure",
+                "subfolding",
+                "stage",
+                "proxy_server",
             ),
         }
 
         # Check required keys
         missing = [k for k in required_keys[protocol] if k not in spec]
         if missing:
-            raise DataJointError(
-                f'config.stores["{store}"] is missing: {", ".join(missing)}'
-            )
+            raise DataJointError(f'config.stores["{store}"] is missing: {", ".join(missing)}')
 
         # Check for invalid keys
         invalid = [k for k in spec if k not in allowed_keys[protocol]]
         if invalid:
-            raise DataJointError(
-                f'Invalid key(s) in config.stores["{store}"]: {", ".join(invalid)}'
-            )
+            raise DataJointError(f'Invalid key(s) in config.stores["{store}"]: {", ".join(invalid)}')
 
         return spec
 
