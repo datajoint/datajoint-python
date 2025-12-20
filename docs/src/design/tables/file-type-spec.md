@@ -162,7 +162,7 @@ The `file` type is stored as a `JSON` column in MySQL containing:
 **File example:**
 ```json
 {
-    "path": "my_schema/objects/Recording/raw_data/subject_id=123/session_id=45/recording_Ax7bQ2kM.dat",
+    "path": "my_schema/objects/Recording/subject_id=123/session_id=45/raw_data/recording_Ax7bQ2kM.dat",
     "size": 12345,
     "hash": "sha256:abcdef1234...",
     "original_name": "recording.dat",
@@ -175,7 +175,7 @@ The `file` type is stored as a `JSON` column in MySQL containing:
 **Folder example:**
 ```json
 {
-    "path": "my_schema/objects/Recording/raw_data/subject_id=123/session_id=45/data_folder_pL9nR4wE",
+    "path": "my_schema/objects/Recording/subject_id=123/session_id=45/raw_data/data_folder_pL9nR4wE",
     "size": 567890,
     "hash": "sha256:fedcba9876...",
     "original_name": "data_folder",
@@ -205,20 +205,43 @@ Storage paths are **deterministically constructed** from record metadata, enabli
 ### Path Components
 
 1. **Location** - from configuration (`object_storage.location`)
-2. **Schema name** - from the table's schema
-3. **Object directory** - `objects/`
-4. **Table name** - the table class name
-5. **Field name** - the attribute name
-6. **Primary key encoding** - all PK attributes and values
-7. **Suffixed filename** - original name with random hash suffix
+2. **Partition attributes** - promoted PK attributes (if `partition_pattern` configured)
+3. **Schema name** - from the table's schema
+4. **Object directory** - `objects/`
+5. **Table name** - the table class name
+6. **Primary key encoding** - remaining PK attributes and values
+7. **Field name** - the attribute name
+8. **Suffixed filename** - original name with random hash suffix
 
 ### Path Template
 
+**Without partitioning:**
 ```
-{location}/{schema}/objects/{Table}/{field}/{pk_attr1}={pk_val1}/{pk_attr2}={pk_val2}/.../{basename}_{token}.{ext}
+{location}/{schema}/objects/{Table}/{pk_attr1}={pk_val1}/{pk_attr2}={pk_val2}/.../field/{basename}_{token}.{ext}
 ```
 
-### Example
+**With partitioning:**
+```
+{location}/{partition_attr}={val}/.../schema/objects/{Table}/{remaining_pk_attrs}/.../field/{basename}_{token}.{ext}
+```
+
+### Partitioning
+
+The **partition pattern** allows promoting certain primary key attributes to the beginning of the path (after `location`). This organizes storage by high-level attributes like subject or experiment, enabling:
+- Efficient data locality for related records
+- Easier manual browsing of storage
+- Potential for storage tiering by partition
+
+**Configuration:**
+```json
+{
+    "object_storage.partition_pattern": "{subject_id}/{experiment_id}"
+}
+```
+
+Partition attributes are extracted from the primary key and placed at the path root. Remaining PK attributes appear in their normal position.
+
+### Example Without Partitioning
 
 For a table:
 ```python
@@ -235,8 +258,18 @@ class Recording(dj.Manual):
 Inserting `{"subject_id": 123, "session_id": 45, "raw_data": "/path/to/recording.dat"}` produces:
 
 ```
-my_project/my_schema/objects/Recording/raw_data/subject_id=123/session_id=45/recording_Ax7bQ2kM.dat
+my_project/my_schema/objects/Recording/subject_id=123/session_id=45/raw_data/recording_Ax7bQ2kM.dat
 ```
+
+### Example With Partitioning
+
+With `partition_pattern = "{subject_id}"`:
+
+```
+my_project/subject_id=123/my_schema/objects/Recording/session_id=45/raw_data/recording_Ax7bQ2kM.dat
+```
+
+The `subject_id` is promoted to the path root, grouping all files for subject 123 together regardless of schema or table.
 
 ### Deterministic Bidirectional Mapping
 
