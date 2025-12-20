@@ -15,6 +15,18 @@ from .errors import FILEPATH_FEATURE_SWITCH, DataJointError, _support_filepath_t
 from .settings import config
 
 UUID_DATA_TYPE = "binary(16)"
+
+# Type aliases for numeric types
+TYPE_ALIASES = {
+    "FLOAT32": "float",
+    "FLOAT64": "double",
+    "INT32": "int",
+    "UINT32": "int unsigned",
+    "INT16": "smallint",
+    "UINT16": "smallint unsigned",
+    "INT8": "tinyint",
+    "UINT8": "tinyint unsigned",
+}
 MAX_TABLE_NAME_LENGTH = 64
 CONSTANT_LITERALS = {
     "CURRENT_TIMESTAMP",
@@ -25,6 +37,16 @@ EXTERNAL_TABLE_ROOT = "~external"
 TYPE_PATTERN = {
     k: re.compile(v, re.I)
     for k, v in dict(
+        # Type aliases must come before INTEGER and FLOAT patterns to avoid prefix matching
+        FLOAT32=r"float32$",
+        FLOAT64=r"float64$",
+        INT32=r"int32$",
+        UINT32=r"uint32$",
+        INT16=r"int16$",
+        UINT16=r"uint16$",
+        INT8=r"int8$",
+        UINT8=r"uint8$",
+        # Native MySQL types
         INTEGER=r"((tiny|small|medium|big|)int|integer)(\s*\(.+\))?(\s+unsigned)?(\s+auto_increment)?|serial$",
         DECIMAL=r"(decimal|numeric)(\s*\(.+\))?(\s+unsigned)?$",
         FLOAT=r"(double|float|real)(\s*\(.+\))?(\s+unsigned)?$",
@@ -51,7 +73,7 @@ SPECIAL_TYPES = {
     "EXTERNAL_BLOB",
     "FILEPATH",
     "ADAPTED",
-}
+} | set(TYPE_ALIASES)
 NATIVE_TYPES = set(TYPE_PATTERN) - SPECIAL_TYPES
 EXTERNAL_TYPES = {
     "EXTERNAL_ATTACH",
@@ -460,6 +482,8 @@ def substitute_special_type(match, category, foreign_key_sql, context):
         if category in SPECIAL_TYPES:
             # recursive redefinition from user-defined datatypes.
             substitute_special_type(match, category, foreign_key_sql, context)
+    elif category in TYPE_ALIASES:
+        match["type"] = TYPE_ALIASES[category]
     else:
         assert False, "Unknown special type"
 
