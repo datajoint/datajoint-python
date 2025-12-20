@@ -42,19 +42,17 @@ A DataJoint project creates a structured hierarchical storage pattern:
 
 ```
 📁 project_name/
-├── datajoint.json
-├── 📁 schema_name1/
-├── 📁 schema_name2/
-├── 📁 schema_name3/
-│   ├── schema.py
-│   ├── 📁 tables/
-│   │   ├── table1/key1-value1.parquet
-│   │   ├── table2/key2-value2.parquet
-│   │   ...
-│   ├── 📁 objects/
-│   │   ├── table1-field1/key3-value3.zarr
-│   │   ├── table1-field2/key3-value3.gif
-│   │   ...
+├── datajoint_store.json         # store metadata (not client config)
+├── 📁 schema_name/
+│   ├── 📁 Table1/
+│   │   ├── data.parquet         # tabular data export (future)
+│   │   └── 📁 objects/          # object storage for this table
+│   │       ├── pk1=val1/pk2=val2/field1_token.dat
+│   │       └── pk1=val1/pk2=val2/field2_token.zarr
+│   ├── 📁 Table2/
+│   │   ├── data.parquet
+│   │   └── 📁 objects/
+│   │       └── ...
 ```
 
 ### Object Storage Keys
@@ -62,8 +60,8 @@ A DataJoint project creates a structured hierarchical storage pattern:
 When using cloud object storage:
 
 ```
-s3://bucket/project_name/schema_name3/objects/table1/key1-value1.parquet
-s3://bucket/project_name/schema_name3/objects/table1-field1/key3-value3.zarr
+s3://bucket/project_name/schema_name/Table1/objects/pk1=val1/field_token.dat
+s3://bucket/project_name/schema_name/Table1/objects/pk1=val1/field_token.zarr
 ```
 
 ## Configuration
@@ -145,24 +143,24 @@ The partition pattern is configured **per pipeline** (one per settings file). Pl
 **Example with partitioning:**
 
 ```
-s3://my-bucket/my_project/subject123/session45/schema_name/objects/Recording-raw_data/recording.dat
+s3://my-bucket/my_project/subject_id=123/session_id=45/schema_name/Recording/objects/raw_data_Ax7bQ2kM.dat
 ```
 
-If no partition pattern is specified, files are organized directly under `{location}/{schema}/objects/`.
+If no partition pattern is specified, files are organized directly under `{location}/{schema}/{Table}/objects/`.
 
-## Store Metadata (`dj-store-meta.json`)
+## Store Metadata (`datajoint_store.json`)
 
-Each object store contains a metadata file at its root that identifies the store and enables verification by DataJoint clients.
+Each object store contains a metadata file at its root that identifies the store and enables verification by DataJoint clients. This file is named `datajoint_store.json` to distinguish it from client configuration files (`datajoint.json`).
 
 ### Location
 
 ```
-{location}/dj-store-meta.json
+{location}/datajoint_store.json
 ```
 
 For cloud storage:
 ```
-s3://bucket/my_project/dj-store-meta.json
+s3://bucket/my_project/datajoint_store.json
 ```
 
 ### Content
@@ -193,7 +191,7 @@ The store metadata file is created when the first `object` attribute is used:
 ┌─────────────────────────────────────────────────────────┐
 │ 1. Client attempts first file operation                 │
 ├─────────────────────────────────────────────────────────┤
-│ 2. Check if dj-store-meta.json exists                   │
+│ 2. Check if datajoint_store.json exists                 │
 │    ├─ If exists: verify project_name matches            │
 │    └─ If not: create with current project_name          │
 ├─────────────────────────────────────────────────────────┤
@@ -205,7 +203,7 @@ The store metadata file is created when the first `object` attribute is used:
 
 DataJoint performs a basic verification on connect to ensure store-database cohesion:
 
-1. **On connect**: Client reads `dj-store-meta.json` from store
+1. **On connect**: Client reads `datajoint_store.json` from store
 2. **Verify**: `project_name` in client settings matches store metadata
 3. **On mismatch**: Raise `DataJointError` with descriptive message
 
@@ -248,7 +246,7 @@ The `object` type is stored as a `JSON` column in MySQL containing:
 **File example:**
 ```json
 {
-    "path": "my_schema/objects/Recording/subject_id=123/session_id=45/raw_data_Ax7bQ2kM.dat",
+    "path": "my_schema/Recording/objects/subject_id=123/session_id=45/raw_data_Ax7bQ2kM.dat",
     "size": 12345,
     "hash": "sha256:abcdef1234...",
     "ext": ".dat",
@@ -261,7 +259,7 @@ The `object` type is stored as a `JSON` column in MySQL containing:
 **Folder example:**
 ```json
 {
-    "path": "my_schema/objects/Recording/subject_id=123/session_id=45/raw_data_pL9nR4wE",
+    "path": "my_schema/Recording/objects/subject_id=123/session_id=45/raw_data_pL9nR4wE",
     "size": 567890,
     "hash": "sha256:fedcba9876...",
     "ext": null,
@@ -314,8 +312,8 @@ Storage paths are **deterministically constructed** from record metadata, enabli
 1. **Location** - from configuration (`object_storage.location`)
 2. **Partition attributes** - promoted PK attributes (if `partition_pattern` configured)
 3. **Schema name** - from the table's schema
-4. **Object directory** - `objects/`
-5. **Table name** - the table class name
+4. **Table name** - the table class name
+5. **Object directory** - `objects/`
 6. **Primary key encoding** - remaining PK attributes and values
 7. **Suffixed filename** - `{field}_{token}{ext}`
 
@@ -323,13 +321,15 @@ Storage paths are **deterministically constructed** from record metadata, enabli
 
 **Without partitioning:**
 ```
-{location}/{schema}/objects/{Table}/{pk_attr1}={pk_val1}/{pk_attr2}={pk_val2}/.../{field}_{token}{ext}
+{location}/{schema}/{Table}/objects/{pk_attr1}={pk_val1}/{pk_attr2}={pk_val2}/.../{field}_{token}{ext}
 ```
 
 **With partitioning:**
 ```
-{location}/{partition_attr}={val}/.../schema/objects/{Table}/{remaining_pk_attrs}/.../{field}_{token}{ext}
+{location}/{partition_attr}={val}/.../schema/{Table}/objects/{remaining_pk_attrs}/.../{field}_{token}{ext}
 ```
+
+Note: The `objects/` directory follows the table name, allowing each table folder to also contain tabular data exports (e.g., `data.parquet`) alongside the objects.
 
 ### Partitioning
 
@@ -364,7 +364,7 @@ class Recording(dj.Manual):
 Inserting `{"subject_id": 123, "session_id": 45, "raw_data": "/path/to/recording.dat"}` produces:
 
 ```
-my_project/my_schema/objects/Recording/subject_id=123/session_id=45/raw_data_Ax7bQ2kM.dat
+my_project/my_schema/Recording/objects/subject_id=123/session_id=45/raw_data_Ax7bQ2kM.dat
 ```
 
 Note: The filename is `raw_data` (field name) with `.dat` extension (from source file).
@@ -374,7 +374,7 @@ Note: The filename is `raw_data` (field name) with `.dat` extension (from source
 With `partition_pattern = "{subject_id}"`:
 
 ```
-my_project/subject_id=123/my_schema/objects/Recording/session_id=45/raw_data_Ax7bQ2kM.dat
+my_project/subject_id=123/my_schema/Recording/objects/session_id=45/raw_data_Ax7bQ2kM.dat
 ```
 
 The `subject_id` is promoted to the path root, grouping all files for subject 123 together regardless of schema or table.
