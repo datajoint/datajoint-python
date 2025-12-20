@@ -480,38 +480,77 @@ The file/folder is copied to storage **before** the database insert is attempted
 
 ### Staged Insert (Direct Write Mode)
 
-For large objects like Zarr arrays, copying from local storage is inefficient. **Staged insert** allows writing directly to the destination:
+For large objects like Zarr arrays, copying from local storage is inefficient. **Staged insert** allows writing directly to the destination.
+
+#### Why a Separate Method?
+
+Staged insert uses a dedicated `staged_insert1` method rather than co-opting `insert1` because:
+
+1. **Explicit over implicit** - Staged inserts have fundamentally different semantics (file creation happens during context, commit on exit). A separate method makes this explicit.
+2. **Backward compatibility** - `insert1` returns `None` and doesn't support context manager protocol. Changing this could break existing code.
+3. **Clear error handling** - The context manager semantics (success = commit, exception = rollback) are obvious with `staged_insert1`.
+4. **Type safety** - The staged context exposes `.store()` for object fields. A dedicated method can return a properly-typed `StagedInsert` object.
+
+**Staged inserts are limited to `insert1`** (one row at a time). Multi-row inserts are not supported for staged operations.
+
+#### Basic Usage
 
 ```python
-# Stage an object for direct writing
-with Recording.stage_object(
-    {"subject_id": 123, "session_id": 45},
-    "raw_data",
-    "my_array.zarr"
-) as staged:
-    # Write directly to object storage (no local copy)
-    import zarr
-    z = zarr.open(staged.store, mode='w', shape=(10000, 10000), dtype='f4')
+# Stage an insert with direct object storage writes
+with Recording.staged_insert1 as staged:
+    # Set primary key values
+    staged.rec['subject_id'] = 123
+    staged.rec['session_id'] = 45
+
+    # Create object storage directly using store()
+    z = zarr.open(staged.store('raw_data', 'my_array.zarr'), mode='w', shape=(10000, 10000), dtype='f4')
     z[:] = compute_large_array()
+
+    # Assign the created object to the record
+    staged.rec['raw_data'] = z
 
 # On successful exit: metadata computed, record inserted
 # On exception: storage cleaned up, no record inserted
 ```
 
-#### StagedObject Interface
+#### StagedInsert Interface
 
 ```python
-@dataclass
-class StagedObject:
-    """Handle for staged write operations."""
+class StagedInsert:
+    """Context manager for staged insert operations."""
 
-    path: str                              # Reserved storage path
-    full_path: str                         # Full URI (e.g., 's3://bucket/path')
-    fs: fsspec.AbstractFileSystem          # fsspec filesystem
-    store: fsspec.FSMap                    # FSMap for Zarr/xarray
+    rec: dict[str, Any]  # Record dict for setting attribute values
 
-    def open(self, subpath: str = "", mode: str = "wb") -> IO:
-        """Open a file within the staged object for writing."""
+    def store(self, field: str, name: str) -> fsspec.FSMap:
+        """
+        Get an FSMap store for direct writes to an object field.
+
+        Args:
+            field: Name of the object attribute
+            name: Filename/dirname for the stored object
+
+        Returns:
+            fsspec.FSMap suitable for Zarr/xarray
+        """
+        ...
+
+    def open(self, field: str, name: str, mode: str = "wb") -> IO:
+        """
+        Open a file for direct writes to an object field.
+
+        Args:
+            field: Name of the object attribute
+            name: Filename for the stored object
+            mode: File mode (default: "wb")
+
+        Returns:
+            File-like object for writing
+        """
+        ...
+
+    @property
+    def fs(self) -> fsspec.AbstractFileSystem:
+        """Return fsspec filesystem for advanced operations."""
         ...
 ```
 
@@ -519,17 +558,21 @@ class StagedObject:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ 1. Reserve storage path with random token               │
+│ 1. Enter context: create StagedInsert with empty rec    │
 ├─────────────────────────────────────────────────────────┤
-│ 2. Return StagedObject handle to user                   │
+│ 2. User sets primary key values in staged.rec           │
 ├─────────────────────────────────────────────────────────┤
-│ 3. User writes data directly via fs/store               │
+│ 3. User calls store()/open() to get storage handles     │
+│    - Path reserved with random token on first call      │
+│    - User writes data directly via fsspec               │
 ├─────────────────────────────────────────────────────────┤
-│ 4. On context exit (success):                           │
+│ 4. User assigns object references to staged.rec         │
+├─────────────────────────────────────────────────────────┤
+│ 5. On context exit (success):                           │
 │    - Compute metadata (size, hash, item_count)          │
 │    - Execute database INSERT                            │
 ├─────────────────────────────────────────────────────────┤
-│ 5. On context exit (exception):                         │
+│ 6. On context exit (exception):                         │
 │    - Delete any written data                            │
 │    - Re-raise exception                                 │
 └─────────────────────────────────────────────────────────┘
@@ -542,13 +585,12 @@ import zarr
 import numpy as np
 
 # Create a large Zarr array directly in object storage
-with Recording.stage_object(
-    {"subject_id": 123, "session_id": 45},
-    "neural_data",
-    "spikes.zarr"
-) as staged:
-    # Create Zarr hierarchy
-    root = zarr.open(staged.store, mode='w')
+with Recording.staged_insert1 as staged:
+    staged.rec['subject_id'] = 123
+    staged.rec['session_id'] = 45
+
+    # Create Zarr hierarchy directly in object storage
+    root = zarr.open(staged.store('neural_data', 'spikes.zarr'), mode='w')
     root.create_dataset('timestamps', data=np.arange(1000000))
     root.create_dataset('waveforms', shape=(1000000, 82), chunks=(10000, 82))
 
@@ -556,7 +598,28 @@ with Recording.stage_object(
     for i, chunk in enumerate(data_stream):
         root['waveforms'][i*10000:(i+1)*10000] = chunk
 
+    # Assign to record
+    staged.rec['neural_data'] = root
+
 # Record automatically inserted with computed metadata
+```
+
+#### Multiple Object Fields
+
+```python
+with Recording.staged_insert1 as staged:
+    staged.rec['subject_id'] = 123
+    staged.rec['session_id'] = 45
+
+    # Write multiple object fields
+    raw = zarr.open(staged.store('raw_data', 'raw.zarr'), mode='w', shape=(1000, 1000))
+    raw[:] = raw_array
+
+    processed = zarr.open(staged.store('processed', 'processed.zarr'), mode='w', shape=(100, 100))
+    processed[:] = processed_array
+
+    staged.rec['raw_data'] = raw
+    staged.rec['processed'] = processed
 ```
 
 #### Comparison: Copy vs Staged Insert
@@ -567,7 +630,8 @@ with Recording.stage_object(
 | Efficiency | Copy overhead | No copy needed |
 | Use case | Small files, existing data | Large arrays, streaming data |
 | Cleanup on failure | Orphan possible | Cleaned up |
-| API | `insert1({..., "field": path})` | `stage_object()` context manager |
+| API | `insert1({..., "field": path})` | `staged_insert1` context manager |
+| Multi-row | Supported | Not supported (insert1 only) |
 
 ## Transaction Handling
 
