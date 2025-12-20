@@ -1,14 +1,14 @@
-# File Column Type Specification
+# Object Column Type Specification
 
 ## Overview
 
-The `file` type introduces a new paradigm for managed file storage in DataJoint. Unlike existing `attach@store` and `filepath@store` types that reference named stores, the `file` type uses a **unified storage backend** that is tightly coupled with the schema and configured at the pipeline level.
+The `object` type introduces a new paradigm for managed file storage in DataJoint. Unlike existing `attach@store` and `filepath@store` types that reference named stores, the `object` type uses a **unified storage backend** that is tightly coupled with the schema and configured at the pipeline level.
 
-The `file` type supports both **files and folders**. Content is copied to storage at insert time, referenced via handle on fetch, and deleted when the record is deleted.
+The `object` type supports both **files and folders**. Content is copied to storage at insert time, referenced via handle on fetch, and deleted when the record is deleted.
 
 ### Immutability Contract
 
-Files stored via the `file` type are **immutable**. Users agree to:
+Files stored via the `object` type are **immutable**. Users agree to:
 - **Insert**: Copy content to storage (only way to create)
 - **Fetch**: Read content via handle (no modification)
 - **Delete**: Remove content when record is deleted (only way to remove)
@@ -179,7 +179,7 @@ s3://bucket/my_project/dj-store-meta.json
 
 ### Store Initialization
 
-The store metadata file is created when the first `file` attribute is used:
+The store metadata file is created when the first `object` attribute is used:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -226,8 +226,8 @@ class Recording(dj.Manual):
     subject_id : int
     session_id : int
     ---
-    raw_data : file          # managed file storage
-    processed : file         # another file attribute
+    raw_data : object          # managed file storage
+    processed : object         # another object attribute
     """
 ```
 
@@ -235,7 +235,7 @@ Note: No `@store` suffix needed - storage is determined by pipeline configuratio
 
 ## Database Storage
 
-The `file` type is stored as a `JSON` column in MySQL containing:
+The `object` type is stored as a `JSON` column in MySQL containing:
 
 **File example:**
 ```json
@@ -244,7 +244,7 @@ The `file` type is stored as a `JSON` column in MySQL containing:
     "size": 12345,
     "hash": "sha256:abcdef1234...",
     "original_name": "recording.dat",
-    "is_folder": false,
+    "is_dir": false,
     "timestamp": "2025-01-15T10:30:00Z",
     "mime_type": "application/octet-stream"
 }
@@ -257,9 +257,9 @@ The `file` type is stored as a `JSON` column in MySQL containing:
     "size": 567890,
     "hash": "sha256:fedcba9876...",
     "original_name": "data_folder",
-    "is_folder": true,
+    "is_dir": true,
     "timestamp": "2025-01-15T10:30:00Z",
-    "file_count": 42
+    "item_count": 42
 }
 ```
 
@@ -271,10 +271,10 @@ The `file` type is stored as a `JSON` column in MySQL containing:
 | `size` | integer | Yes | Total size in bytes (sum for folders) |
 | `hash` | string | Yes | Content hash with algorithm prefix |
 | `original_name` | string | Yes | Original file/folder name at insert time |
-| `is_folder` | boolean | Yes | True if stored content is a directory |
+| `is_dir` | boolean | Yes | True if stored content is a directory |
 | `timestamp` | string | Yes | ISO 8601 upload timestamp |
 | `mime_type` | string | No | MIME type (files only, auto-detected or provided) |
-| `file_count` | integer | No | Number of files (folders only) |
+| `item_count` | integer | No | Number of files (folders only) |
 
 ## Path Generation
 
@@ -329,7 +329,7 @@ class Recording(dj.Manual):
     subject_id : int
     session_id : int
     ---
-    raw_data : file
+    raw_data : object
     """
 ```
 
@@ -422,7 +422,7 @@ Each insert stores a separate copy of the file, even if identical content was pr
 
 ## Insert Behavior
 
-At insert time, the `file` attribute accepts:
+At insert time, the `object` attribute accepts:
 
 1. **File path** (string or `Path`): Path to an existing file
 2. **Folder path** (string or `Path`): Path to an existing directory
@@ -531,7 +531,7 @@ schema.file_storage.cleanup_orphaned()  # Delete orphaned files
 
 ## Fetch Behavior
 
-On fetch, the `file` type returns a **handle** (`FileRef` object) to the stored content. **The file is not copied** - all operations access the storage backend directly.
+On fetch, the `object` type returns a **handle** (`ObjectRef` object) to the stored content. **The file is not copied** - all operations access the storage backend directly.
 
 ```python
 record = Recording.fetch1()
@@ -542,7 +542,7 @@ print(file_ref.path)           # Full storage path
 print(file_ref.size)           # File size in bytes
 print(file_ref.hash)           # Content hash
 print(file_ref.original_name)  # Original filename
-print(file_ref.is_folder)      # True if stored content is a folder
+print(file_ref.is_dir)      # True if stored content is a folder
 
 # Read content directly from storage backend
 content = file_ref.read()      # Returns bytes (files only)
@@ -561,7 +561,7 @@ with file_ref.open("subdir/file.dat") as f:
 
 ### No Automatic Download
 
-Unlike `attach@store`, the `file` type does **not** automatically download content to a local path. Users access content directly through the `FileRef` handle, which streams from the storage backend.
+Unlike `attach@store`, the `object` type does **not** automatically download content to a local path. Users access content directly through the `ObjectRef` handle, which streams from the storage backend.
 
 For local copies, users explicitly download:
 
@@ -581,7 +581,7 @@ New `ObjectStorageSettings` class:
 
 ```python
 class ObjectStorageSettings(BaseSettings):
-    """Object storage configuration for file columns."""
+    """Object storage configuration for object columns."""
 
     model_config = SettingsConfigDict(
         env_prefix="DJ_OBJECT_STORAGE_",
@@ -590,7 +590,7 @@ class ObjectStorageSettings(BaseSettings):
     )
 
     project_name: str | None = None  # Must match store metadata
-    protocol: Literal["file", "s3", "gcs", "azure"] | None = None
+    protocol: Literal["object", "s3", "gcs", "azure"] | None = None
     location: str | None = None
     bucket: str | None = None
     endpoint: str | None = None
@@ -614,7 +614,7 @@ object_storage: ObjectStorageSettings = Field(default_factory=ObjectStorageSetti
 
 ### 3. Type Declaration (`declare.py`)
 
-- Add `FILE` pattern: `file$`
+- Add `OBJECT` pattern: `object$`
 - Add to `SPECIAL_TYPES`
 - Substitute to `JSON` type in database
 
@@ -631,25 +631,25 @@ object_storage: ObjectStorageSettings = Field(default_factory=ObjectStorageSetti
 
 ### 6. Fetch Processing (`fetch.py`)
 
-- New `FileRef` class
+- New `ObjectRef` class
 - Lazy loading from storage backend
 - Metadata access interface
 
-### 7. FileRef Class (`fileref.py` - new module)
+### 7. ObjectRef Class (`objectref.py` - new module)
 
 ```python
 @dataclass
-class FileRef:
+class ObjectRef:
     """Handle to a file or folder stored in the pipeline's storage backend."""
 
     path: str
     size: int
     hash: str
     original_name: str
-    is_folder: bool
+    is_dir: bool
     timestamp: datetime
     mime_type: str | None      # files only
-    file_count: int | None     # folders only
+    item_count: int | None     # folders only
     _backend: StorageBackend   # internal reference
 
     # File operations
@@ -681,7 +681,7 @@ azure = ["adlfs"]
 
 ## Comparison with Existing Types
 
-| Feature | `attach@store` | `filepath@store` | `file` |
+| Feature | `attach@store` | `filepath@store` | `object` |
 |---------|----------------|------------------|--------|
 | Store config | Per-attribute | Per-attribute | Per-pipeline |
 | Path control | DataJoint | User-managed | DataJoint |
@@ -698,11 +698,11 @@ The existing `attach@store` and `filepath@store` types will be:
 - **Deprecated** in future releases with migration warnings
 - **Eventually removed** after a transition period
 
-New pipelines should use the `file` type exclusively.
+New pipelines should use the `object` type exclusively.
 
 ## Delete Behavior
 
-When a record with a `file` attribute is deleted:
+When a record with a `object` attribute is deleted:
 
 1. **Database delete executes first** (within transaction)
 2. **File delete is attempted** after successful DB commit
@@ -736,7 +736,7 @@ Each record owns its file exclusively. There is no deduplication or reference co
 ## Migration Path
 
 - Existing `attach@store` and `filepath@store` remain unchanged
-- `file` type is additive - new tables only
+- `object` type is additive - new tables only
 - Future: Migration utilities to convert existing external storage
 
 ## Future Extensions
