@@ -9,7 +9,8 @@ import os
 import pprint
 from contextlib import contextmanager
 from enum import Enum
-from typing import Any, Dict, Iterator, List, Literal, Optional, Tuple
+from collections.abc import Iterator
+from typing import Any, Literal
 
 from pydantic import Field, field_validator
 from pydantic.aliases import AliasChoices
@@ -48,11 +49,11 @@ class DatabaseSettings(BaseSettings):
     """Database connection settings"""
 
     host: str = "localhost"
-    password: Optional[str] = None
-    user: Optional[str] = None
+    password: str | None = None
+    user: str | None = None
     port: int = 3306
     reconnect: bool = True
-    use_tls: Optional[bool] = None
+    use_tls: bool | None = None
 
     model_config = SettingsConfigDict(
         env_prefix="DJ_",
@@ -64,7 +65,7 @@ class DatabaseSettings(BaseSettings):
 class ConnectionSettings(BaseSettings):
     """Connection settings"""
 
-    init_function: Optional[str] = None
+    init_function: str | None = None
     charset: str = ""  # pymysql uses '' as default
 
     model_config = SettingsConfigDict(
@@ -91,8 +92,8 @@ class DisplaySettings(BaseSettings):
 class ExternalSettings(BaseSettings):
     """External storage settings"""
 
-    aws_access_key_id: Optional[str] = None
-    aws_secret_access_key: Optional[str] = None
+    aws_access_key_id: str | None = None
+    aws_secret_access_key: str | None = None
 
     model_config = SettingsConfigDict(
         env_prefix="DJ_",
@@ -117,12 +118,12 @@ class DataJointSettings(BaseSettings):
     fetch_format: Literal["array", "frame"] = "array"
     enable_python_native_blobs: bool = True
     add_hidden_timestamp: bool = False
-    filepath_checksum_size_limit: Optional[int] = None
+    filepath_checksum_size_limit: int | None = None
 
     # External stores configuration (not managed by pydantic directly)
-    stores: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
-    cache: Optional[str] = None
-    query_cache: Optional[str] = None
+    stores: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    cache: str | None = None
+    query_cache: str | None = None
 
     model_config = SettingsConfigDict(
         env_prefix="DJ_",
@@ -133,7 +134,7 @@ class DataJointSettings(BaseSettings):
 
     @field_validator("cache", "query_cache", mode="before")
     @classmethod
-    def validate_path(cls, v: Any) -> Optional[str]:
+    def validate_path(cls, v: Any) -> str | None:
         """Convert path-like objects to strings"""
         if v is None:
             return v
@@ -162,11 +163,11 @@ class ConfigWrapper(collections.abc.MutableMapping):
 
     def __init__(self, settings: DataJointSettings):
         self._settings = settings
-        self._original_values: Dict[str, Any] = {}  # For context manager support
-        self._extra: Dict[str, Any] = {}  # Store arbitrary extra keys not in pydantic model
+        self._original_values: dict[str, Any] = {}  # For context manager support
+        self._extra: dict[str, Any] = {}  # Store arbitrary extra keys not in pydantic model
 
     @property
-    def _conf(self) -> Dict[str, Any]:
+    def _conf(self) -> dict[str, Any]:
         """Backward compatibility: expose internal config as _conf"""
         result = self._to_dict()
         result.update(self._extra)
@@ -284,9 +285,9 @@ class ConfigWrapper(collections.abc.MutableMapping):
         """Return number of configuration keys"""
         return len(self._get_all_keys())
 
-    def _get_all_keys(self) -> List[str]:
+    def _get_all_keys(self) -> list[str]:
         """Get all configuration keys in flat dot notation"""
-        keys: List[str] = []
+        keys: list[str] = []
 
         def _extract_keys(obj: Any, prefix: str = "") -> None:
             if isinstance(obj, BaseSettings):
@@ -318,9 +319,9 @@ class ConfigWrapper(collections.abc.MutableMapping):
         """Repr representation"""
         return self.__str__()
 
-    def _to_dict(self) -> Dict[str, Any]:
+    def _to_dict(self) -> dict[str, Any]:
         """Convert settings to a flat dict with dot notation keys"""
-        result: Dict[str, Any] = {}
+        result: dict[str, Any] = {}
 
         def _flatten(obj: Any, prefix: str = "") -> None:
             if isinstance(obj, BaseSettings):
@@ -389,7 +390,7 @@ class ConfigWrapper(collections.abc.MutableMapping):
         """saves the settings in the global config file"""
         self.save(os.path.expanduser(os.path.join("~", GLOBALCONFIG)), verbose)
 
-    def get_store_spec(self, store: str) -> Dict[str, Any]:
+    def get_store_spec(self, store: str) -> dict[str, Any]:
         """
         find configuration of external stores for blobs and attachments
         """
@@ -398,10 +399,10 @@ class ConfigWrapper(collections.abc.MutableMapping):
         except KeyError:
             raise DataJointError(f"Storage {store} is requested but not configured")
 
-        spec: Dict[str, Any] = dict(spec)  # Make a copy
+        spec: dict[str, Any] = dict(spec)  # Make a copy
         spec["subfolding"] = spec.get("subfolding", DEFAULT_SUBFOLDING)
 
-        spec_keys_by_protocol: Dict[str, Tuple[str, ...]] = {  # REQUIRED in uppercase and allowed in lowercase
+        spec_keys_by_protocol: dict[str, tuple[str, ...]] = {  # REQUIRED in uppercase and allowed in lowercase
             "file": ("PROTOCOL", "LOCATION", "subfolding", "stage"),
             "s3": (
                 "PROTOCOL",
@@ -418,7 +419,7 @@ class ConfigWrapper(collections.abc.MutableMapping):
         }
 
         try:
-            spec_keys: Tuple[str, ...] = spec_keys_by_protocol[spec.get("protocol", "").lower()]
+            spec_keys: tuple[str, ...] = spec_keys_by_protocol[spec.get("protocol", "").lower()]
         except KeyError:
             raise DataJointError(f'Missing or invalid protocol in dj.config["stores"]["{store}"]')
 
@@ -441,7 +442,7 @@ class ConfigWrapper(collections.abc.MutableMapping):
         return spec
 
     @contextmanager
-    def __call__(self, **kwargs: Any) -> Iterator["ConfigWrapper"]:
+    def __call__(self, **kwargs: Any) -> "Iterator[ConfigWrapper]":
         """
         The config object can also be used in a with statement to change the state of the configuration
         temporarily. kwargs to the context manager are the keys into config, where '.' is replaced by a
@@ -453,8 +454,8 @@ class ConfigWrapper(collections.abc.MutableMapping):
         >>>     # do dangerous stuff here
         """
         # Save current values
-        backup_values: Dict[str, Any] = {}
-        converted_kwargs: Dict[str, Any] = {k.replace("__", "."): v for k, v in kwargs.items()}
+        backup_values: dict[str, Any] = {}
+        converted_kwargs: dict[str, Any] = {k.replace("__", "."): v for k, v in kwargs.items()}
 
         try:
             # Save original values
