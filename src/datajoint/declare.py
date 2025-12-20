@@ -20,6 +20,8 @@ UUID_DATA_TYPE = "binary(16)"
 TYPE_ALIASES = {
     "FLOAT32": "float",
     "FLOAT64": "double",
+    "INT64": "bigint",
+    "UINT64": "bigint unsigned",
     "INT32": "int",
     "UINT32": "int unsigned",
     "INT16": "smallint",
@@ -40,6 +42,8 @@ TYPE_PATTERN = {
         # Type aliases must come before INTEGER and FLOAT patterns to avoid prefix matching
         FLOAT32=r"float32$",
         FLOAT64=r"float64$",
+        INT64=r"int64$",
+        UINT64=r"uint64$",
         INT32=r"int32$",
         UINT32=r"uint32$",
         INT16=r"int16$",
