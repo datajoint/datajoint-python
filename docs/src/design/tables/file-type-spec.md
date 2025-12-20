@@ -248,10 +248,10 @@ The `object` type is stored as a `JSON` column in MySQL containing:
 **File example:**
 ```json
 {
-    "path": "my_schema/objects/Recording/subject_id=123/session_id=45/raw_data/recording_Ax7bQ2kM.dat",
+    "path": "my_schema/objects/Recording/subject_id=123/session_id=45/raw_data_Ax7bQ2kM.dat",
     "size": 12345,
     "hash": "sha256:abcdef1234...",
-    "original_name": "recording.dat",
+    "ext": ".dat",
     "is_dir": false,
     "timestamp": "2025-01-15T10:30:00Z",
     "mime_type": "application/octet-stream"
@@ -261,10 +261,10 @@ The `object` type is stored as a `JSON` column in MySQL containing:
 **Folder example:**
 ```json
 {
-    "path": "my_schema/objects/Recording/subject_id=123/session_id=45/raw_data/data_folder_pL9nR4wE",
+    "path": "my_schema/objects/Recording/subject_id=123/session_id=45/raw_data_pL9nR4wE",
     "size": 567890,
     "hash": "sha256:fedcba9876...",
-    "original_name": "data_folder",
+    "ext": null,
     "is_dir": true,
     "timestamp": "2025-01-15T10:30:00Z",
     "item_count": 42
@@ -278,11 +278,32 @@ The `object` type is stored as a `JSON` column in MySQL containing:
 | `path` | string | Yes | Full path/key within storage backend (includes token) |
 | `size` | integer | Yes | Total size in bytes (sum for folders) |
 | `hash` | string | Yes | Content hash with algorithm prefix |
-| `original_name` | string | Yes | Original file/folder name at insert time |
+| `ext` | string/null | Yes | File extension (e.g., `.dat`, `.zarr`) or null |
 | `is_dir` | boolean | Yes | True if stored content is a directory |
 | `timestamp` | string | Yes | ISO 8601 upload timestamp |
-| `mime_type` | string | No | MIME type (files only, auto-detected or provided) |
+| `mime_type` | string | No | MIME type (files only, auto-detected from extension) |
 | `item_count` | integer | No | Number of files (folders only) |
+
+### Filename Convention
+
+The stored filename is **always derived from the field name**:
+- **Base name**: The attribute/field name (e.g., `raw_data`)
+- **Extension**: Adopted from source file (copy insert) or optionally provided (staged insert)
+- **Token**: Random suffix for collision avoidance
+
+```
+Stored filename = {field}_{token}{ext}
+
+Examples:
+  raw_data_Ax7bQ2kM.dat     # file with .dat extension
+  raw_data_pL9nR4wE.zarr    # Zarr directory with .zarr extension
+  raw_data_kM3nP2qR         # directory without extension
+```
+
+This convention ensures:
+- Consistent, predictable naming across all objects
+- Field name visible in storage for easier debugging
+- Extension preserved for MIME type detection and tooling compatibility
 
 ## Path Generation
 
@@ -296,19 +317,18 @@ Storage paths are **deterministically constructed** from record metadata, enabli
 4. **Object directory** - `objects/`
 5. **Table name** - the table class name
 6. **Primary key encoding** - remaining PK attributes and values
-7. **Field name** - the attribute name
-8. **Suffixed filename** - original name with random token suffix
+7. **Suffixed filename** - `{field}_{token}{ext}`
 
 ### Path Template
 
 **Without partitioning:**
 ```
-{location}/{schema}/objects/{Table}/{pk_attr1}={pk_val1}/{pk_attr2}={pk_val2}/.../field/{basename}_{token}.{ext}
+{location}/{schema}/objects/{Table}/{pk_attr1}={pk_val1}/{pk_attr2}={pk_val2}/.../{field}_{token}{ext}
 ```
 
 **With partitioning:**
 ```
-{location}/{partition_attr}={val}/.../schema/objects/{Table}/{remaining_pk_attrs}/.../field/{basename}_{token}.{ext}
+{location}/{partition_attr}={val}/.../schema/objects/{Table}/{remaining_pk_attrs}/.../{field}_{token}{ext}
 ```
 
 ### Partitioning
@@ -344,15 +364,17 @@ class Recording(dj.Manual):
 Inserting `{"subject_id": 123, "session_id": 45, "raw_data": "/path/to/recording.dat"}` produces:
 
 ```
-my_project/my_schema/objects/Recording/subject_id=123/session_id=45/raw_data/recording_Ax7bQ2kM.dat
+my_project/my_schema/objects/Recording/subject_id=123/session_id=45/raw_data_Ax7bQ2kM.dat
 ```
+
+Note: The filename is `raw_data` (field name) with `.dat` extension (from source file).
 
 ### Example With Partitioning
 
 With `partition_pattern = "{subject_id}"`:
 
 ```
-my_project/subject_id=123/my_schema/objects/Recording/session_id=45/raw_data/recording_Ax7bQ2kM.dat
+my_project/subject_id=123/my_schema/objects/Recording/session_id=45/raw_data_Ax7bQ2kM.dat
 ```
 
 The `subject_id` is promoted to the path root, grouping all files for subject 123 together regardless of schema or table.
@@ -396,14 +418,17 @@ description=a1b2c3d4_abc123     # long string truncated + hash
 
 ### Filename Collision Avoidance
 
-To prevent filename collisions, each stored file receives a **random token suffix** appended to its basename:
+To prevent filename collisions, each stored object receives a **random token suffix** appended to the field name:
 
 ```
-original: recording.dat
-stored:   recording_Ax7bQ2kM.dat
+field: raw_data, source: recording.dat
+stored: raw_data_Ax7bQ2kM.dat
 
-original: image.analysis.tiff
-stored:   image.analysis_pL9nR4wE.tiff
+field: image, source: scan.tiff
+stored: image_pL9nR4wE.tiff
+
+field: neural_data (staged with .zarr)
+stored: neural_data_kM3nP2qR.zarr
 ```
 
 #### Token Suffix Specification
@@ -417,7 +442,7 @@ At 8 characters with 64 possible values per character: 64^8 = 281 trillion combi
 #### Rationale
 
 - Avoids collisions without requiring existence checks
-- Preserves original filename for human readability
+- Field name visible in storage for easier debugging/auditing
 - URL-safe for web-based access to cloud storage
 - Filesystem-safe across all supported platforms
 
@@ -432,33 +457,35 @@ Each insert stores a separate copy of the file, even if identical content was pr
 
 At insert time, the `object` attribute accepts:
 
-1. **File path** (string or `Path`): Path to an existing file
+1. **File path** (string or `Path`): Path to an existing file (extension extracted)
 2. **Folder path** (string or `Path`): Path to an existing directory
-3. **Stream object**: File-like object with `read()` method
-4. **Tuple of (name, stream)**: Stream with explicit filename
+3. **Tuple of (ext, stream)**: File-like object with explicit extension
 
 ```python
-# From file path
+# From file path - extension (.dat) extracted from source
 Recording.insert1({
     "subject_id": 123,
     "session_id": 45,
     "raw_data": "/local/path/to/recording.dat"
 })
+# Stored as: raw_data_Ax7bQ2kM.dat
 
-# From folder path
+# From folder path - no extension
 Recording.insert1({
     "subject_id": 123,
     "session_id": 45,
     "raw_data": "/local/path/to/data_folder/"
 })
+# Stored as: raw_data_pL9nR4wE/
 
-# From stream with explicit name
+# From stream with explicit extension
 with open("/local/path/data.bin", "rb") as f:
     Recording.insert1({
         "subject_id": 123,
         "session_id": 45,
-        "raw_data": ("custom_name.dat", f)
+        "raw_data": (".bin", f)
     })
+# Stored as: raw_data_kM3nP2qR.bin
 ```
 
 ### Insert Processing Steps
@@ -503,7 +530,8 @@ with Recording.staged_insert1 as staged:
     staged.rec['session_id'] = 45
 
     # Create object storage directly using store()
-    z = zarr.open(staged.store('raw_data', 'my_array.zarr'), mode='w', shape=(10000, 10000), dtype='f4')
+    # Extension is optional - .zarr is conventional for Zarr arrays
+    z = zarr.open(staged.store('raw_data', '.zarr'), mode='w', shape=(10000, 10000), dtype='f4')
     z[:] = compute_large_array()
 
     # Assign the created object to the record
@@ -511,6 +539,7 @@ with Recording.staged_insert1 as staged:
 
 # On successful exit: metadata computed, record inserted
 # On exception: storage cleaned up, no record inserted
+# Stored as: raw_data_Ax7bQ2kM.zarr
 ```
 
 #### StagedInsert Interface
@@ -521,26 +550,26 @@ class StagedInsert:
 
     rec: dict[str, Any]  # Record dict for setting attribute values
 
-    def store(self, field: str, name: str) -> fsspec.FSMap:
+    def store(self, field: str, ext: str = "") -> fsspec.FSMap:
         """
         Get an FSMap store for direct writes to an object field.
 
         Args:
             field: Name of the object attribute
-            name: Filename/dirname for the stored object
+            ext: Optional extension (e.g., ".zarr", ".hdf5")
 
         Returns:
             fsspec.FSMap suitable for Zarr/xarray
         """
         ...
 
-    def open(self, field: str, name: str, mode: str = "wb") -> IO:
+    def open(self, field: str, ext: str = "", mode: str = "wb") -> IO:
         """
         Open a file for direct writes to an object field.
 
         Args:
             field: Name of the object attribute
-            name: Filename for the stored object
+            ext: Optional extension (e.g., ".bin", ".dat")
             mode: File mode (default: "wb")
 
         Returns:
@@ -590,7 +619,8 @@ with Recording.staged_insert1 as staged:
     staged.rec['session_id'] = 45
 
     # Create Zarr hierarchy directly in object storage
-    root = zarr.open(staged.store('neural_data', 'spikes.zarr'), mode='w')
+    # .zarr extension is optional but conventional
+    root = zarr.open(staged.store('neural_data', '.zarr'), mode='w')
     root.create_dataset('timestamps', data=np.arange(1000000))
     root.create_dataset('waveforms', shape=(1000000, 82), chunks=(10000, 82))
 
@@ -602,6 +632,7 @@ with Recording.staged_insert1 as staged:
     staged.rec['neural_data'] = root
 
 # Record automatically inserted with computed metadata
+# Stored as: neural_data_kM3nP2qR.zarr
 ```
 
 #### Multiple Object Fields
@@ -611,15 +642,17 @@ with Recording.staged_insert1 as staged:
     staged.rec['subject_id'] = 123
     staged.rec['session_id'] = 45
 
-    # Write multiple object fields
-    raw = zarr.open(staged.store('raw_data', 'raw.zarr'), mode='w', shape=(1000, 1000))
+    # Write multiple object fields - extension optional
+    raw = zarr.open(staged.store('raw_data', '.zarr'), mode='w', shape=(1000, 1000))
     raw[:] = raw_array
 
-    processed = zarr.open(staged.store('processed', 'processed.zarr'), mode='w', shape=(100, 100))
+    processed = zarr.open(staged.store('processed', '.zarr'), mode='w', shape=(100, 100))
     processed[:] = processed_array
 
     staged.rec['raw_data'] = raw
     staged.rec['processed'] = processed
+
+# Stored as: raw_data_Ax7bQ2kM.zarr, processed_pL9nR4wE.zarr
 ```
 
 #### Comparison: Copy vs Staged Insert
@@ -704,8 +737,8 @@ file_ref = record["raw_data"]
 print(file_ref.path)           # Full storage path
 print(file_ref.size)           # File size in bytes
 print(file_ref.hash)           # Content hash
-print(file_ref.original_name)  # Original filename
-print(file_ref.is_dir)      # True if stored content is a folder
+print(file_ref.ext)            # File extension (e.g., ".dat") or None
+print(file_ref.is_dir)         # True if stored content is a folder
 
 # Read content directly from storage backend
 content = file_ref.read()      # Returns bytes (files only)
@@ -808,10 +841,10 @@ class ObjectRef:
     path: str
     size: int
     hash: str
-    original_name: str
+    ext: str | None            # file extension (e.g., ".dat") or None
     is_dir: bool
     timestamp: datetime
-    mime_type: str | None      # files only
+    mime_type: str | None      # files only, derived from ext
     item_count: int | None     # folders only
     _backend: StorageBackend   # internal reference
 
