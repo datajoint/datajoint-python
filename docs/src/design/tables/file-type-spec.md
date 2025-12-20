@@ -284,6 +284,30 @@ This enables:
 
 The **random token** is stored in the JSON metadata to complete the full path.
 
+### Primary Key Value Encoding
+
+Primary key values are encoded directly in paths when they are simple, path-safe types:
+- **Integers**: Used directly (`subject_id=123`)
+- **Dates**: ISO format (`session_date=2025-01-15`)
+- **Timestamps**: ISO format with safe separators (`created=2025-01-15T10-30-00`)
+- **Simple strings**: Used directly if path-safe (`experiment=baseline`)
+
+**Conversion to path-safe strings** is applied only when necessary:
+- Strings containing `/`, `\`, or other path-unsafe characters
+- Very long strings (truncated with hash suffix)
+- Binary or complex types (hashed)
+
+```python
+# Direct encoding (no conversion needed)
+subject_id=123
+session_date=2025-01-15
+trial_type=control
+
+# Converted encoding (path-unsafe characters)
+filename=my%2Ffile.dat          # "/" encoded
+description=a1b2c3d4_abc123     # long string truncated + hash
+```
+
 ### Filename Collision Avoidance
 
 To prevent filename collisions, each stored file receives a **random hash suffix** appended to its basename:
