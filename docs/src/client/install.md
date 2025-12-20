@@ -1,6 +1,6 @@
 # Install and Connect
 
-DataJoint is implemented for Python 3.4+.
+DataJoint is implemented for Python 3.10+ and requires MySQL 8.0+.
 You may install it from [PyPI](https://pypi.python.org/pypi/datajoint):
 
 ```bash
@@ -25,7 +25,7 @@ to connect to DataJoint pipelines.
 
 Quick install steps for advanced users are as follows:
 
-- Install latest Python 3.x and ensure it is in `PATH` (3.6.3 current at time of writing)
+- Install Python 3.10 or later and ensure it is in `PATH`
   ```bash
   pip install datajoint
   ```
@@ -46,7 +46,7 @@ Python for Windows is available from:
 
 https://www.python.org/downloads/windows
 
-The latest 64 bit 3.x version, currently 3.6.3, is available from the [Python site](https://www.python.org/ftp/python/3.6.3/python-3.6.3-amd64.exe).
+Download and install the latest Python 3.10+ version (64-bit recommended).
 
 From here run the installer to install Python.
 
