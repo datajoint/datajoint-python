@@ -612,6 +612,15 @@ azure = ["adlfs"]
 | Metadata | External table | External table | Inline JSON |
 | Deduplication | By content | By path | None |
 
+### Legacy Type Deprecation
+
+The existing `attach@store` and `filepath@store` types will be:
+- **Maintained** for backward compatibility with existing pipelines
+- **Deprecated** in future releases with migration warnings
+- **Eventually removed** after a transition period
+
+New pipelines should use the `file` type exclusively.
+
 ## Delete Behavior
 
 When a record with a `file` attribute is deleted:
