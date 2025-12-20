@@ -8,7 +8,7 @@ The `file` type introduces a new paradigm for managed file storage in DataJoint.
 
 ### Single Storage Backend Per Pipeline
 
-Each DataJoint pipeline has **one** associated storage backend configured in `datajoint.toml`. DataJoint fully controls the path structure within this backend.
+Each DataJoint pipeline has **one** associated storage backend configured in `datajoint.json`. DataJoint fully controls the path structure within this backend.
 
 ### Supported Backends
 
@@ -16,7 +16,6 @@ DataJoint uses **[`fsspec`](https://filesystem-spec.readthedocs.io/en/latest/)**
 
 - **Local storage** – POSIX-compliant file systems (e.g., NFS, SMB)
 - **Cloud-based object storage** – Amazon S3, Google Cloud Storage, Azure Blob, MinIO
-- **Hybrid storage** – Combining local and cloud storage for flexibility
 
 ## Project Structure
 
@@ -24,7 +23,7 @@ A DataJoint project creates a structured hierarchical storage pattern:
 
 ```
 📁 project_name/
-├── datajoint.toml
+├── datajoint.json
 ├── 📁 schema_name1/
 ├── 📁 schema_name2/
 ├── 📁 schema_name3/
@@ -50,41 +49,83 @@ s3://bucket/project_name/schema_name3/objects/table1-field1/key3-value3.zarr
 
 ## Configuration
 
-### `datajoint.toml` Structure
+### Settings Structure
 
-```toml
-[project]
-name = "my_project"
+Object storage is configured in `datajoint.json` using the existing settings system:
 
-[storage]
-backend = "s3"  # or "file", "gcs", "azure"
-bucket = "my-bucket"
-# For local: path = "/data/my_project"
+```json
+{
+    "database.host": "localhost",
+    "database.user": "datajoint",
 
-[storage.credentials]
-# Backend-specific credentials (or reference to secrets manager)
+    "object_storage.protocol": "s3",
+    "object_storage.endpoint": "s3.amazonaws.com",
+    "object_storage.bucket": "my-bucket",
+    "object_storage.location": "my_project",
+    "object_storage.partition_pattern": "subject{subject_id}/session{session_id}"
+}
+```
 
-[object_storage]
-partition_pattern = "subject{subject_id}/session{session_id}"
+For local filesystem storage:
+
+```json
+{
+    "object_storage.protocol": "file",
+    "object_storage.location": "/data/my_project",
+    "object_storage.partition_pattern": "subject{subject_id}/session{session_id}"
+}
+```
+
+### Settings Schema
+
+| Setting | Type | Required | Description |
+|---------|------|----------|-------------|
+| `object_storage.protocol` | string | Yes | Storage backend: `file`, `s3`, `gcs`, `azure` |
+| `object_storage.location` | string | Yes | Base path or bucket prefix |
+| `object_storage.bucket` | string | For cloud | Bucket name (S3, GCS, Azure) |
+| `object_storage.endpoint` | string | For S3 | S3 endpoint URL |
+| `object_storage.partition_pattern` | string | No | Path pattern with `{attribute}` placeholders |
+| `object_storage.access_key` | string | For cloud | Access key (can use secrets file) |
+| `object_storage.secret_key` | string | For cloud | Secret key (can use secrets file) |
+
+### Environment Variables
+
+Settings can be overridden via environment variables:
+
+```bash
+DJ_OBJECT_STORAGE_PROTOCOL=s3
+DJ_OBJECT_STORAGE_BUCKET=my-bucket
+DJ_OBJECT_STORAGE_LOCATION=my_project
+DJ_OBJECT_STORAGE_PARTITION_PATTERN="subject{subject_id}/session{session_id}"
+```
+
+### Secrets
+
+Credentials can be stored in the `.secrets/` directory:
+
+```
+.secrets/
+├── object_storage.access_key
+└── object_storage.secret_key
 ```
 
 ### Partition Pattern
 
-The organizational structure of stored objects is configurable, allowing partitioning based on **primary key attributes**.
+The partition pattern is configured **per pipeline** (one per settings file). Placeholders use `{attribute_name}` syntax and are replaced with primary key values.
 
-```toml
-[object_storage]
-partition_pattern = "subject{subject_id}/session{session_id}"
+```json
+{
+    "object_storage.partition_pattern": "subject{subject_id}/session{session_id}"
+}
 ```
-
-Placeholders `{subject_id}` and `{session_id}` are dynamically replaced with actual primary key values.
 
 **Example with partitioning:**
 
 ```
-s3://my-bucket/project_name/subject123/session45/schema_name3/objects/table1/key1-value1/image1.tiff
-s3://my-bucket/project_name/subject123/session45/schema_name3/objects/table2/key2-value2/movie2.zarr
+s3://my-bucket/my_project/subject123/session45/schema_name/objects/Recording-raw_data/recording.dat
 ```
+
+If no partition pattern is specified, files are organized directly under `{location}/{schema}/objects/`.
 
 ## Syntax
 
@@ -108,7 +149,7 @@ The `file` type is stored as a `JSON` column in MySQL containing:
 
 ```json
 {
-    "path": "subject123/session45/schema_name/objects/Recording-raw_data/...",
+    "path": "subject123/session45/schema_name/objects/Recording-raw_data/recording.dat",
     "size": 12345,
     "hash": "sha256:abcdef1234...",
     "original_name": "recording.dat",
@@ -132,19 +173,26 @@ The `file` type is stored as a `JSON` column in MySQL containing:
 
 DataJoint generates storage paths using:
 
-1. **Project name** - from configuration
-2. **Partition values** - from primary key (if configured)
+1. **Location** - from configuration (`object_storage.location`)
+2. **Partition values** - from primary key (if `partition_pattern` configured)
 3. **Schema name** - from the table's schema
 4. **Object directory** - `objects/`
-5. **Table-field identifier** - `{table_name}-{field_name}/`
-6. **Key identifier** - derived from primary key values
+5. **Table-field identifier** - `{TableName}-{field_name}/`
+6. **Primary key hash** - unique identifier for the record
 7. **Original filename** - preserved from insert
 
 Example path construction:
 
 ```
-{project}/{partition}/{schema}/objects/{table}-{field}/{key_hash}/{original_name}
+{location}/{partition}/{schema}/objects/{Table}-{field}/{pk_hash}/{original_name}
 ```
+
+### No Deduplication
+
+Each insert stores a separate copy of the file, even if identical content was previously stored. This ensures:
+- Clear 1:1 relationship between records and files
+- Simplified delete behavior
+- No reference counting complexity
 
 ## Insert Behavior
 
@@ -173,7 +221,7 @@ with open("/local/path/data.bin", "rb") as f:
 
 ### Insert Processing Steps
 
-1. Resolve storage backend from schema's pipeline configuration
+1. Resolve storage backend from pipeline configuration
 2. Read file content (from path or stream)
 3. Compute content hash (SHA-256)
 4. Generate storage path using partition pattern and primary key
@@ -208,39 +256,68 @@ with file_ref.open() as f:
 
 ## Implementation Components
 
-### 1. Storage Backend (`storage.py` - new module)
+### 1. Settings Extension (`settings.py`)
+
+New `ObjectStorageSettings` class:
+
+```python
+class ObjectStorageSettings(BaseSettings):
+    """Object storage configuration for file columns."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="DJ_OBJECT_STORAGE_",
+        extra="forbid",
+        validate_assignment=True,
+    )
+
+    protocol: Literal["file", "s3", "gcs", "azure"] | None = None
+    location: str | None = None
+    bucket: str | None = None
+    endpoint: str | None = None
+    partition_pattern: str | None = None
+    access_key: str | None = None
+    secret_key: SecretStr | None = None
+```
+
+Add to main `Config` class:
+
+```python
+object_storage: ObjectStorageSettings = Field(default_factory=ObjectStorageSettings)
+```
+
+### 2. Storage Backend (`storage.py` - new module)
 
 - `StorageBackend` class wrapping `fsspec`
 - Methods: `upload()`, `download()`, `open()`, `exists()`, `delete()`
 - Path generation with partition support
-- Configuration loading from `datajoint.toml`
 
-### 2. Type Declaration (`declare.py`)
+### 3. Type Declaration (`declare.py`)
 
 - Add `FILE` pattern: `file$`
 - Add to `SPECIAL_TYPES`
 - Substitute to `JSON` type in database
 
-### 3. Schema Integration (`schemas.py`)
+### 4. Schema Integration (`schemas.py`)
 
 - Associate storage backend with schema
-- Load configuration on schema creation
+- Validate storage configuration on schema creation
 
-### 4. Insert Processing (`table.py`)
+### 5. Insert Processing (`table.py`)
 
 - New `__process_file_attribute()` method
 - Path generation using primary key and partition pattern
 - Upload via storage backend
 
-### 5. Fetch Processing (`fetch.py`)
+### 6. Fetch Processing (`fetch.py`)
 
 - New `FileRef` class
 - Lazy loading from storage backend
 - Metadata access interface
 
-### 6. FileRef Class (`fileref.py` - new module)
+### 7. FileRef Class (`fileref.py` - new module)
 
 ```python
+@dataclass
 class FileRef:
     """Reference to a file stored in the pipeline's storage backend."""
 
@@ -250,10 +327,11 @@ class FileRef:
     original_name: str
     timestamp: datetime
     mime_type: str | None
+    _backend: StorageBackend  # internal reference
 
     def read(self) -> bytes: ...
-    def open(self, mode="rb") -> IO: ...
-    def download(self, destination: Path) -> Path: ...
+    def open(self, mode: str = "rb") -> IO: ...
+    def download(self, destination: Path | str) -> Path: ...
     def exists(self) -> bool: ...
 ```
 
@@ -278,9 +356,16 @@ azure = ["adlfs"]
 | Store config | Per-attribute | Per-attribute | Per-pipeline |
 | Path control | DataJoint | User-managed | DataJoint |
 | DB column | binary(16) UUID | binary(16) UUID | JSON |
-| Backend | File/S3 | File/S3 | fsspec (any) |
+| Backend | File/S3 only | File/S3 only | fsspec (any) |
 | Partitioning | Hash-based | User path | Configurable |
 | Metadata | External table | External table | Inline JSON |
+| Deduplication | By content | By path | None |
+
+## Delete Behavior
+
+When a record with a `file` attribute is deleted:
+- The corresponding file in storage is also deleted
+- No reference counting (each record owns its file)
 
 ## Migration Path
 
